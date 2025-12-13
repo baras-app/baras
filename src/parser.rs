@@ -1,5 +1,4 @@
 use crate::event_models::*;
-use core::hash;
 use memchr::memchr;
 use memchr::memchr_iter;
 use memmap2::Mmap;
@@ -300,6 +299,7 @@ fn parse_dmg_details(segment: &str) -> Option<Details> {
     if inner.trim() == "0 -" {
         return Some(Details {
             dmg_amount: 0,
+            avoid_type: String::from("reflected"),
             is_reflect: true,
             threat,
             ..Default::default()
@@ -312,25 +312,25 @@ fn parse_dmg_details(segment: &str) -> Option<Details> {
     // Check for reflected marker
     let is_reflect = inner.contains("reflected");
 
-    // Check for avoidance (-miss, -dodge, -parry, -immune, -resist, -deflect, -shield)
-    // But not the bare "-" from (0 -)
-    let avoid_pos = inner.find(" -").map(|p| p + 1); // find " -" to avoid matching other dashes
-    let avoid_type = avoid_pos.and_then(|pos| {
-        let after_dash = &inner[pos + 1..];
-        // Skip if it's just "-" alone
-        if after_dash.is_empty() {
-            return None;
-        }
-        let end = after_dash
-            .find(|c: char| c.is_whitespace() || c == '{')
-            .unwrap_or(after_dash.len());
-        let avoid = &after_dash[..end];
-        if avoid.is_empty() {
-            None
-        } else {
-            Some(avoid.to_string())
-        }
-    });
+    // Check for avoidance (-miss, -dodge, -parry, -immune, -resist, -deflect, -shield, -)
+    let dash = memchr(b'-', inner_bytes);
+    let avoid_type = if dash.is_some() {
+        dash.map(|pos| {
+            let start = pos + 1;
+            let end = inner[start..]
+                .find(|c: char| c.is_whitespace())
+                .map(|e| start + e)
+                .unwrap_or_default();
+            if end != 0 {
+                inner[start..end].trim().to_string()
+            } else {
+                String::new()
+            }
+        })
+        .unwrap_or_default()
+    } else {
+        String::new()
+    };
 
     // Parse amount (first number)
     let amount_end = inner
@@ -339,8 +339,8 @@ fn parse_dmg_details(segment: &str) -> Option<Details> {
     let dmg_amount = parse_i32!(&inner[..amount_end]);
 
     // Parse effective damage after ~
-    let effective_pos = memchr(b'~', inner_bytes);
-    let dmg_effective = effective_pos
+    let tilde = memchr(b'~', inner_bytes);
+    let dmg_effective = tilde
         .map(|pos| {
             let start = pos + 1;
             let end = inner[start..]
@@ -357,12 +357,17 @@ fn parse_dmg_details(segment: &str) -> Option<Details> {
     let (dmg_type, dmg_type_id) = if let (Some(bs), Some(be)) = (brace, brace_end) {
         // Find type name before the brace - scan backwards for a word
         let type_start = inner[..bs]
+            .trim_end()
             .rfind(|c: char| c.is_whitespace())
             .map(|p| p + 1)
             .unwrap_or(0);
         let dmg_type = inner[type_start..bs].trim().to_string();
         let dmg_type_id = parse_i64!(&inner[bs + 1..be]);
-        (dmg_type, dmg_type_id)
+        if dmg_type.contains('-') {
+            (String::new(), 0)
+        } else {
+            (dmg_type, dmg_type_id)
+        }
     } else {
         (String::new(), 0)
     };
@@ -374,11 +379,12 @@ fn parse_dmg_details(segment: &str) -> Option<Details> {
             let absorbed_str = &inner[nested_paren + 1..absorbed_pos].trim();
             Some(parse_i32!(absorbed_str))
         } else {
-            None
+            Some(0)
         }
     } else {
         None
-    };
+    }
+    .unwrap_or(0);
 
     Some(Details {
         dmg_amount,
@@ -439,8 +445,8 @@ fn parse_heal_details(segment: &str) -> Option<Details> {
     let heal_amount = parse_i32!(&inner[..amount_end]);
 
     // Parse effective heal after ~, default to heal_amount if not present
-    let effective_pos = memchr(b'~', inner_bytes);
-    let heal_effective = effective_pos
+    let tilde = memchr(b'~', inner_bytes);
+    let heal_effective = tilde
         .map(|pos| {
             let start = pos + 1;
             let end = inner[start..]
