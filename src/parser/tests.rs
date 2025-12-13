@@ -1,7 +1,8 @@
 use super::*;
 
+// parse_entity
 #[test]
-pub fn test_parse_entity_npc() {
+fn test_parse_entity_npc() {
     let input = "[Dread Master Bestia {3273941900591104}:5320000112163|(137.28,-120.98,-8.85,81.28)|(0/19129210)]";
     let result = parse_entity(input);
     assert!(result.is_some());
@@ -65,4 +66,25 @@ fn test_parse_entity_empty() {
     let (remaining, entity) = result.unwrap();
     assert_eq!(remaining, "");
     assert_eq!(entity.entity_type, EntityType::Empty);
+}
+
+// parse_charges
+#[test]
+fn test_parse_charges_one() {
+    let input = "(1 charges {836045448953667})";
+    let result = parse_charges(input);
+    assert!(result.is_some());
+
+    let details = result.unwrap();
+    assert_eq!(details.charges, 1);
+}
+
+#[test]
+fn test_parse_charges_ten() {
+    let input = "(10 charges {836045448953667})";
+    let result = parse_charges(input);
+    assert!(result.is_some());
+
+    let details = result.unwrap();
+    assert_eq!(details.charges, 10);
 }
