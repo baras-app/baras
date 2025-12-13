@@ -46,12 +46,12 @@ pub struct CombatEvent {
 pub struct Effect {
     pub type_name: String,
     pub type_id: i64,
-    pub name: String,
-    pub id: i64,
-    pub difficulty_name: Option<String>,
-    pub difficulty_id: Option<i64>,
-    pub discipline_name: Option<String>,
-    pub discipline_id: Option<i64>,
+    pub effect_name: String,
+    pub effect_id: i64,
+    pub difficulty_name: String,
+    pub difficulty_id: i64,
+    pub discipline_name: String,
+    pub discipline_id: i64,
 }
 
 #[derive(Debug, Clone, Default)]

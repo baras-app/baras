@@ -1,4 +1,5 @@
 use crate::event_models::*;
+use core::hash;
 use memchr::memchr;
 use memchr::memchr_iter;
 use memmap2::Mmap;
@@ -51,19 +52,30 @@ pub fn parse_log_file<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<CombatEven
 }
 
 fn parse_line(line_number: usize, _line: &str) -> Option<CombatEvent> {
-    let (_remaining, ts) = parse_timestamp(_line)?;
-    let (_remaining, source_entity) = parse_entity(_remaining)?;
-    let (_remaining, target_entity) = parse_entity(_remaining)?;
+    let b = _line.as_bytes();
+    let brackets: Vec<usize> = memchr_iter(b'[', b).collect();
+    let end_brackets: Vec<usize> = memchr_iter(b']', b).collect();
 
-    let (_remaining, action) = parse_action(_remaining)?;
+    let time_segment = &_line[brackets[0] + 1..end_brackets[0]];
+    let source_entity_segment = &_line[brackets[1] + 1..end_brackets[1]];
+    let target_entity_segment = &_line[brackets[2] + 1..end_brackets[2]];
+    let action_segment = &_line[brackets[3] + 1..end_brackets[3]];
+    let effect_segment = &_line[brackets[4] + 1..end_brackets[4]];
+    let details_segment = &_line[end_brackets[4] + 1..];
+
+    let ts = parse_timestamp(time_segment)?;
+    let source_entity = parse_entity(source_entity_segment)?;
+    let target_entity = parse_entity(target_entity_segment)?;
+    let action = parse_action(action_segment)?;
 
     let target_entity = if target_entity.entity_type == EntityType::SelfReference {
         source_entity.clone()
     } else {
         target_entity
     };
-    let (_remaining, effect) = parse_effect(_remaining)?;
-    let details = parse_details(_remaining, &effect.name)?;
+
+    let effect = parse_effect(effect_segment)?;
+    let details = parse_details(details_segment, &effect.effect_name)?;
 
     let event = CombatEvent {
         line_number,
@@ -78,105 +90,93 @@ fn parse_line(line_number: usize, _line: &str) -> Option<CombatEvent> {
     Some(event)
 }
 
-fn parse_timestamp(input: &str) -> Option<(&str, Timestamp)> {
-    let b = input.as_bytes();
-    if b.len() < 14 || b[0] != b'[' || b[3] != b':' || b[6] != b':' || b[9] != b'.' || b[13] != b']'
-    {
+// parse HH:MM:SS.mmm
+fn parse_timestamp(segment: &str) -> Option<Timestamp> {
+    let b = segment.as_bytes();
+    if b.len() != 12 || b[2] != b':' || b[5] != b':' || b[8] != b'.' {
         return None;
     }
 
-    let hour = (b[1] - b'0') * 10 + (b[2] - b'0');
-    let minute = (b[4] - b'0') * 10 + (b[5] - b'0');
-    let second = (b[7] - b'0') * 10 + (b[8] - b'0');
-    let millis = (b[10] - b'0') as u16 * 100 + (b[11] - b'0') as u16 * 10 + (b[12] - b'0') as u16;
+    let hour = (b[0] - b'0') * 10 + (b[1] - b'0');
+    let minute = (b[3] - b'0') * 10 + (b[4] - b'0');
+    let second = (b[6] - b'0') * 10 + (b[7] - b'0');
+    let millis = (b[9] - b'0') as u16 * 100 + (b[10] - b'0') as u16 * 10 + (b[11] - b'0') as u16;
 
-    Some((
-        &input[14..],
-        Timestamp {
-            hour,
-            minute,
-            second,
-            millis,
-        },
-    ))
+    Some(Timestamp {
+        hour,
+        minute,
+        second,
+        millis,
+    })
 }
 
-fn parse_entity(input: &str) -> Option<(&str, Entity)> {
-    let bytes = input.as_bytes();
-    let segment_start_pos = memchr(b'[', bytes)?;
-    let segment_end_pos = memchr(b']', bytes)?;
+fn parse_entity(segment: &str) -> Option<Entity> {
+    let bytes = segment.as_bytes();
     let self_target_pos = memchr(b'=', bytes);
-    if segment_end_pos <= 2 && self_target_pos.is_none() {
-        return Some((
-            &input[segment_end_pos + 1..],
-            Entity {
-                ..Default::default()
-            },
-        ));
-    }
 
+    // handle [=]
     if self_target_pos.is_some() {
-        return Some((
-            &input[segment_end_pos + 1..],
-            Entity {
-                entity_type: EntityType::SelfReference,
-                ..Default::default()
-            },
-        ));
+        return Some(Entity {
+            entity_type: EntityType::SelfReference,
+            ..Default::default()
+        });
+    }
+    //handle []
+    if segment.is_empty() {
+        return Some(Entity {
+            ..Default::default()
+        });
     }
 
-    let pipe_pos: Vec<usize> = memchr_iter(b'|', bytes).collect();
-    let name_segment = &input[segment_start_pos + 1..pipe_pos[0]];
-    let _ = &input[pipe_pos[0] + 1..pipe_pos[1]]; // coordinates ignore for now not used
-    let health_segment = &input[pipe_pos[1]..segment_end_pos];
+    let pipes: Vec<usize> = memchr_iter(b'|', bytes).collect();
+    let name_segment = &segment[..pipes[0]];
+    // let _ = &segment[pipes[0] + 1..pipes[1]]; // coordinates ignore for now not used
+    let health_segment = &segment[pipes[1]..];
 
     let (name, class_id, log_id, entity_type) = parse_entity_name_id(name_segment)?;
     let health = parse_entity_health(health_segment)?;
 
-    Some((
-        &input[segment_end_pos + 1..],
-        Entity {
-            name: name.to_string(),
-            class_id,
-            log_id,
-            entity_type,
-            health,
-        },
-    ))
+    Some(Entity {
+        name: name.to_string(),
+        class_id,
+        log_id,
+        entity_type,
+        health,
+    })
 }
 
-fn parse_entity_health(input: &str) -> Option<(i32, i32)> {
-    let bytes = input.as_bytes();
-    let health_start_pos = memchr(b'(', bytes);
-    let health_delim_pos = memchr(b'/', bytes);
-    let health_end_pos = memchr(b')', bytes);
+fn parse_entity_health(segment: &str) -> Option<(i32, i32)> {
+    let bytes = segment.as_bytes();
+    let paren = memchr(b'(', bytes);
+    let slash = memchr(b'/', bytes);
+    let paren_end = memchr(b')', bytes);
 
-    let current_health = parse_i32!(&input[health_start_pos? + 1..health_delim_pos?]);
-    let health_end_pos = parse_i32!(&input[health_delim_pos? + 1..health_end_pos?]);
+    let current_health = parse_i32!(&segment[paren? + 1..slash?]);
+    let health_end_pos = parse_i32!(&segment[slash? + 1..paren_end?]);
 
     Some((current_health, health_end_pos))
 }
 
-fn parse_entity_name_id(input: &str) -> Option<(&str, i64, i64, EntityType)> {
-    let bytes = input.as_bytes();
+fn parse_entity_name_id(segment: &str) -> Option<(&str, i64, i64, EntityType)> {
+    let bytes = segment.as_bytes();
 
-    let end_brack_pos = memchr(b'}', bytes);
-    let start_brack_pos = memchr(b'{', bytes);
-    let name_delim_pos = memchr(b'#', bytes);
-    let companion_delim_pos = memchr(b'/', bytes);
+    let brace = memchr(b'{', bytes);
+    let end_brace = memchr(b'}', bytes);
+    let hashtag = memchr(b'#', bytes);
+    let slash = memchr(b'/', bytes);
 
     // Parse Player and Player Companion
-    if name_delim_pos.is_some() {
-        let player_name = &input[1..name_delim_pos?];
+    if hashtag.is_some() {
+        let player_name = &segment[1..hashtag?];
 
-        if companion_delim_pos.is_none() {
-            let player_id = parse_i64!(&input[name_delim_pos? + 1..]);
+        if slash.is_none() {
+            let player_id = parse_i64!(&segment[hashtag? + 1..]);
 
             return Some((player_name, 0, player_id, EntityType::Player));
         } else {
-            let companion_name = &input[companion_delim_pos? + 1..start_brack_pos? - 1];
-            let companion_char_id = parse_i64!(&input[start_brack_pos? + 1..end_brack_pos?]);
-            let companion_log_id = parse_i64!(&&input[end_brack_pos? + 2..]);
+            let companion_name = &segment[slash? + 1..brace? - 1];
+            let companion_char_id = parse_i64!(&segment[brace? + 1..end_brace?]);
+            let companion_log_id = parse_i64!(&&segment[end_brace? + 2..]);
 
             return Some((
                 companion_name,
@@ -188,145 +188,77 @@ fn parse_entity_name_id(input: &str) -> Option<(&str, i64, i64, EntityType)> {
     }
 
     // if no '#' detected parse NPC
-    let npc_name = input[..start_brack_pos?].trim();
-    let npc_char_id = parse_i64!(&input[start_brack_pos? + 1..end_brack_pos?]);
-    let npc_log_id = parse_i64!(&input[end_brack_pos? + 2..]);
+    let npc_name = segment[..brace?].trim();
+    let npc_char_id = parse_i64!(&segment[brace? + 1..end_brace?]);
+    let npc_log_id = parse_i64!(&segment[end_brace? + 2..]);
 
     Some((npc_name, npc_char_id, npc_log_id, EntityType::Npc))
 }
 
-fn parse_action(input: &str) -> Option<(&str, Action)> {
-    let bytes = input.as_bytes();
-
-    let segment_start_pos = memchr(b'[', bytes)?;
-    let segment_end_pos = memchr(b']', bytes)?;
-    let end_brack_pos = memchr(b'}', bytes);
-    let start_brack_pos = memchr(b'{', bytes);
-    if segment_end_pos <= 2 {
-        return Some((
-            &input[segment_end_pos + 1..],
-            Action {
-                ..Default::default()
-            },
-        ));
-    }
-
-    let action_name = input[segment_start_pos + 1..start_brack_pos?]
-        .trim()
-        .to_string();
-    let action_id = parse_i64!(input[start_brack_pos? + 1..end_brack_pos?]);
-
-    Some((
-        &input[segment_end_pos + 1..],
-        Action {
-            name: action_name,
-            action_id,
-        },
-    ))
-}
-
-fn parse_effect(input: &str) -> Option<(&str, Effect)> {
-    let bytes = input.as_bytes();
-    let segment_start_pos = memchr(b'[', bytes)?;
-    let segment_end_pos = memchr(b']', bytes)?;
-    let segment = &input[segment_start_pos + 1..segment_end_pos];
-
-    let effect = if segment.starts_with("DisciplineChanged") {
-        parse_discipline_changed(segment)?
-    } else if segment.starts_with("AreaEntered") {
-        parse_area_entered(segment)?
-    } else {
-        parse_standard_effect(segment)?
-    };
-
-    Some((&input[segment_end_pos + 1..], effect))
-}
-
-fn parse_discipline_changed(segment: &str) -> Option<Effect> {
+fn parse_action(segment: &str) -> Option<Action> {
     let bytes = segment.as_bytes();
 
-    let brackets: Vec<usize> = memchr_iter(b'{', bytes).collect();
-    let end_brackets: Vec<usize> = memchr_iter(b'}', bytes).collect();
-    let slash_pos = memchr(b'/', bytes)?;
+    let brace = memchr(b'{', bytes);
+    let end_brace = memchr(b'}', bytes);
 
-    let type_name = segment[..brackets[0]].trim().to_string();
-    let type_id = parse_i64!(&segment[brackets[0] + 1..end_brackets[0]]);
-    let name = segment[end_brackets[0] + 2..brackets[1] - 1]
-        .trim()
-        .to_string();
-    let id = parse_i64!(&segment[brackets[1] + 1..end_brackets[1]]);
-    let discipline_name = segment[slash_pos + 1..brackets[2] - 1].trim().to_string();
-    let discipline_id = parse_i64!(&segment[brackets[2] + 1..end_brackets[2]]);
+    if segment.is_empty() {
+        return Some(Action {
+            ..Default::default()
+        });
+    }
 
-    Some(Effect {
-        type_id,
-        type_name,
-        name,
-        id,
-        discipline_name: Some(discipline_name),
-        discipline_id: Some(discipline_id),
-        ..Default::default()
+    let action_name = segment[..end_brace?].trim().to_string();
+    let action_id = parse_i64!(segment[brace? + 1..end_brace?]);
+
+    Some(Action {
+        name: action_name,
+        action_id,
     })
 }
 
-fn parse_area_entered(segment: &str) -> Option<Effect> {
+fn parse_effect(segment: &str) -> Option<Effect> {
     let bytes = segment.as_bytes();
-    let brackets: Vec<usize> = memchr_iter(b'{', bytes).collect();
-    let end_brackets: Vec<usize> = memchr_iter(b'}', bytes).collect();
-
-    if brackets.len() < 2 || end_brackets.len() < 2 {
+    let braces: Vec<usize> = memchr_iter(b'{', bytes).collect();
+    let end_braces: Vec<usize> = memchr_iter(b'}', bytes).collect();
+    let slash = memchr(b'/', bytes);
+    if braces.len() < 2 || end_braces.len() < 2 {
         return Some(Effect {
             ..Default::default()
         });
     }
 
-    let type_id = parse_i64!(&segment[brackets[0] + 1..end_brackets[0]]);
-    let type_name = segment[..end_brackets[0]].trim().to_string();
-    let area_name = segment[end_brackets[0] + 2..brackets[1] - 1]
-        .trim()
-        .to_string();
-    let area_id = parse_i64!(&segment[brackets[1] + 1..end_brackets[1]]);
+    let type_name = segment[..braces[0]].trim().to_string();
+    let type_id = parse_i64!(&segment[braces[0] + 1..end_braces[0]]);
+    let effect_name = segment[end_braces[0] + 2..braces[1] - 1].trim().to_string();
+    let effect_id = parse_i64!(&segment[braces[1] + 1..end_braces[1]]);
 
-    // Difficulty is optional - check if there's a third bracket pair
-    let (difficulty_name, difficulty_id) = if brackets.len() >= 3 && end_brackets.len() >= 3 {
-        let diff_name = segment[end_brackets[1] + 1..brackets[2] - 1]
-            .trim()
-            .to_string();
-        let diff_id = parse_i64!(&segment[brackets[2] + 1..end_brackets[2]]);
-        (Some(diff_name), Some(diff_id))
+    let (difficulty_name, difficulty_id) = if type_name == "AreaEntered" && braces.len() == 3 {
+        (
+            segment[end_braces[1] + 1..braces[2]].trim().to_string(),
+            parse_i64!(segment[braces[2] + 1..end_braces[2]]),
+        )
     } else {
-        (None, None)
+        ("".to_string(), 0)
+    };
+
+    let (discipline_name, discipline_id) = if type_name == "DisciplineChanged" {
+        (
+            segment[slash? + 1..braces[2]].trim().to_string(),
+            parse_i64!(segment[braces[2] + 1..end_braces[2]]),
+        )
+    } else {
+        ("".to_string(), 0)
     };
 
     Some(Effect {
-        type_id,
         type_name,
-        name: area_name,
-        id: area_id,
+        type_id,
+        effect_name,
+        effect_id,
         difficulty_name,
         difficulty_id,
-        ..Default::default()
-    })
-}
-fn parse_standard_effect(segment: &str) -> Option<Effect> {
-    let bytes = segment.as_bytes();
-    let brackets: Vec<usize> = memchr_iter(b'{', bytes).collect();
-    let end_brackets: Vec<usize> = memchr_iter(b'}', bytes).collect();
-
-    if brackets.len() < 2 {
-        return Some(Effect {
-            ..Default::default()
-        });
-    }
-
-    Some(Effect {
-        type_name: segment[..brackets[0]].trim().to_string(),
-        type_id: parse_i64!(&segment[brackets[0] + 1..end_brackets[0]]),
-        name: segment[end_brackets[0] + 2..brackets[1] - 1]
-            .trim()
-            .to_string(),
-        id: parse_i64!(&segment[brackets[1] + 1..end_brackets[1]]),
-        ..Default::default()
+        discipline_name,
+        discipline_id,
     })
 }
 
@@ -350,16 +282,16 @@ fn parse_dmg_details(segment: &str) -> Option<Details> {
     let bytes = segment.as_bytes();
 
     // Find main delimiters
-    let paren_start = memchr(b'(', bytes)?;
-    let paren_end = rfind_matching_paren(bytes, paren_start)?;
-    let angle_start = memchr(b'<', bytes);
+    let paren = memchr(b'(', bytes)?;
+    let paren_end = rfind_matching_paren(bytes, paren)?;
+    let angle = memchr(b'<', bytes);
     let angle_end = memchr(b'>', bytes);
 
-    let inner = &segment[paren_start + 1..paren_end];
+    let inner = &segment[paren + 1..paren_end];
     let inner_bytes = inner.as_bytes();
 
     // Parse threat from <value>
-    let threat = angle_start
+    let threat = angle
         .zip(angle_end)
         .and_then(|(s, e)| segment[s + 1..e].parse::<f32>().ok())
         .unwrap_or_default();
@@ -419,10 +351,10 @@ fn parse_dmg_details(segment: &str) -> Option<Details> {
         })
         .unwrap_or(dmg_amount);
     // Find damage type and ID (first { } pair in inner, but not "reflected" or "absorbed")
-    let brace_start = memchr(b'{', inner_bytes);
+    let brace = memchr(b'{', inner_bytes);
     let brace_end = memchr(b'}', inner_bytes);
 
-    let (dmg_type, dmg_type_id) = if let (Some(bs), Some(be)) = (brace_start, brace_end) {
+    let (dmg_type, dmg_type_id) = if let (Some(bs), Some(be)) = (brace, brace_end) {
         // Find type name before the brace - scan backwards for a word
         let type_start = inner[..bs]
             .rfind(|c: char| c.is_whitespace())
@@ -483,16 +415,16 @@ fn parse_heal_details(segment: &str) -> Option<Details> {
     let bytes = segment.as_bytes();
 
     // Find main delimiters
-    let paren_start = memchr(b'(', bytes)?;
+    let paren = memchr(b'(', bytes)?;
     let paren_end = memchr(b')', bytes)?;
-    let angle_start = memchr(b'<', bytes);
+    let angle = memchr(b'<', bytes);
     let angle_end = memchr(b'>', bytes);
 
-    let inner = &segment[paren_start + 1..paren_end];
+    let inner = &segment[paren + 1..paren_end];
     let inner_bytes = inner.as_bytes();
 
     // Parse threat from <value> - only present if effective heal occurred
-    let threat = angle_start
+    let threat = angle
         .zip(angle_end)
         .and_then(|(s, e)| segment[s + 1..e].parse::<f32>().ok())
         .unwrap_or_default();
@@ -527,23 +459,24 @@ fn parse_heal_details(segment: &str) -> Option<Details> {
         ..Default::default()
     })
 }
+
 fn parse_charges(segment: &str) -> Option<Details> {
     let bytes = segment.as_bytes();
 
-    let paren_start = memchr(b'(', bytes)?;
+    let paren = memchr(b'(', bytes)?;
     let paren_end = memchr(b')', bytes)?;
-    let brace_start = memchr(b'{', bytes)?;
+    let brace = memchr(b'{', bytes)?;
     let brace_end = memchr(b'}', bytes)?;
 
     // Parse count: number before "charges"
-    let inner = &segment[paren_start + 1..paren_end];
+    let inner = &segment[paren + 1..paren_end];
     let count_end = inner
         .find(|c: char| !c.is_ascii_digit())
         .unwrap_or(inner.len());
     let charges = parse_i32!(&inner[..count_end]);
 
     // Parse ability ID
-    let ability_id = parse_i64!(&segment[brace_start + 1..brace_end]);
+    let ability_id = parse_i64!(&segment[brace + 1..brace_end]);
 
     Some(Details {
         charges,
