@@ -1,3 +1,5 @@
+use std::borrow;
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum EntityType {
     Player,
@@ -5,6 +7,7 @@ pub enum EntityType {
     Companion,
     #[default]
     Empty,
+    SelfReference,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -21,8 +24,7 @@ pub struct Entity {
     pub class_id: i64,
     pub log_id: i64,
     pub entity_type: EntityType,
-    pub coordinates: Option<String>,
-    pub health: Option<(i32, i32)>,
+    pub health: (i32, i32),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -30,12 +32,7 @@ pub struct CombatEvent {
     pub line_number: usize,
     pub timestamp: Timestamp,
     pub source_entity: Entity,
-    pub target_entity_id: Option<String>,
-    pub target_entity_type: Option<EntityType>,
-    pub target_entity_name: Option<String>,
-    pub target_coordinates: Option<String>,
-    pub target_health: Option<i64>,
-    pub target_max_health: Option<i64>,
+    pub target_entity: Entity,
     pub action_id: Option<String>,
     pub action_name: Option<String>,
     pub effect_type_id: Option<String>,

@@ -4,6 +4,7 @@ use memchr::memchr_iter;
 use memmap2::Mmap;
 use rayon::prelude::*;
 use std::fs::File;
+use std::io::pipe;
 use std::option::Option;
 use std::path::Path;
 
@@ -12,7 +13,11 @@ macro_rules! parse_i64 {
         $s.parse::<i64>().unwrap_or_default()
     };
 }
-
+macro_rules! parse_i32 {
+    ($s:expr) => {
+        $s.parse::<i32>().unwrap_or_default()
+    };
+}
 pub fn parse_log_file<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<CombatEvent>> {
     let file = File::open(path)?;
     let mmap = unsafe { Mmap::map(&file)? };
@@ -46,11 +51,19 @@ pub fn parse_log_file<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<CombatEven
 fn parse_line(line_number: usize, _line: &str) -> Option<CombatEvent> {
     let (_remaining, ts) = parse_timestamp(_line)?;
     let (_remaining, source_entity) = parse_entity(_remaining)?;
+    // println!("{_remaining}");
+    let (_remaining, target_entity) = parse_entity(_remaining)?;
 
+    let target_entity = if target_entity.entity_type == EntityType::SelfReference {
+        source_entity.clone()
+    } else {
+        target_entity
+    };
     let event = CombatEvent {
         line_number,
         timestamp: ts,
         source_entity,
+        target_entity,
         ..Default::default()
     };
 
@@ -86,41 +99,58 @@ pub fn parse_timestamp(input: &str) -> Option<(&str, Timestamp)> {
 
 pub fn parse_entity(input: &str) -> Option<(&str, Entity)> {
     let bytes = input.as_bytes();
-    let delim_pos = memchr(b']', bytes)?;
-
-    if delim_pos == 1 {
+    let segment_start_pos = memchr(b'[', bytes)?;
+    let segment_end_pos = memchr(b']', bytes)?;
+    let self_target_pos = memchr(b'=', bytes);
+    if segment_end_pos <= 2 {
         return Some((
-            &input[2..],
+            &input[segment_end_pos + 1..],
             Entity {
                 ..Default::default()
             },
         ));
     }
 
-    if bytes[1] == b'=' {
+    if self_target_pos.is_some_and(|x| x == 2) {
         return Some((
-            &input[1..],
+            &input[segment_end_pos + 1..],
             Entity {
+                entity_type: EntityType::SelfReference,
                 ..Default::default()
             },
         ));
     }
 
-    let first_pipe = memchr(b'|', bytes)?;
-    let name_segment = &input[2..first_pipe];
+    let pipe_pos: Vec<usize> = memchr_iter(b'|', bytes).collect();
+    let name_segment = &input[segment_start_pos + 1..pipe_pos[0]];
+    let _ = &input[pipe_pos[0] + 1..pipe_pos[1]]; // coordinates ignore for now not used
+    let health_segment = &input[pipe_pos[1]..segment_end_pos];
 
     let (name, class_id, log_id, entity_type) = parse_entity_name_id(name_segment)?;
+    let health = parse_entity_health(health_segment)?;
 
     Some((
-        &input[first_pipe..],
+        &input[segment_end_pos + 1..],
         Entity {
             name: name.to_string(),
             class_id,
             log_id,
             entity_type,
-            ..Default::default()
+            health,
         },
     ))
+}
+
+pub fn parse_entity_health(input: &str) -> Option<(i32, i32)> {
+    let bytes = input.as_bytes();
+    let health_start_pos = memchr(b'(', bytes);
+    let health_delim_pos = memchr(b'/', bytes);
+    let health_end_pos = memchr(b')', bytes);
+
+    let current_health = parse_i32!(&input[health_start_pos? + 1..health_delim_pos?]);
+    let health_end_pos = parse_i32!(&input[health_delim_pos? + 1..health_end_pos?]);
+
+    Some((current_health, health_end_pos))
 }
 
 pub fn parse_entity_name_id(input: &str) -> Option<(&str, i64, i64, EntityType)> {
