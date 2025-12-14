@@ -10,10 +10,7 @@ use tokio::sync::RwLock;
 
 #[tokio::main]
 async fn main() -> Result<(), String> {
-    let state = Arc::new(RwLock::new(AppState {
-        events: vec![],
-        ..Default::default()
-    }));
+    let state = Arc::new(RwLock::new(AppState::new()));
 
     loop {
         let line = readline()?;
@@ -53,6 +50,7 @@ enum Commands {
     },
     Stats,
     Exit,
+    Config,
 }
 
 async fn respond(line: &str, state: Arc<RwLock<AppState>>) -> Result<bool, String> {
@@ -84,6 +82,7 @@ async fn respond(line: &str, state: Arc<RwLock<AppState>>) -> Result<bool, Strin
             let s = state.read().await;
             println!("total events: {}", s.events.len());
         }
+        Some(Commands::Config) => println!("{}", state.read().await.config.log_directory),
         Some(Commands::Exit) => {
             write!(std::io::stdout(), "quitting...").map_err(|e| e.to_string())?;
             std::io::stdout().flush().map_err(|e| e.to_string())?;
