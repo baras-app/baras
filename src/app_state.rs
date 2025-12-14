@@ -1,6 +1,8 @@
 use crate::CombatEvent;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use time::Date;
+use time::format_description::well_known::Iso8601;
 
 #[derive(Default)]
 pub struct AppState {
@@ -8,6 +10,7 @@ pub struct AppState {
     pub current_byte: Option<u64>,
     pub config: AppConfig,
     pub active_file: Option<PathBuf>,
+    pub game_session_date: Option<Date>,
 }
 
 impl AppState {
@@ -18,11 +21,23 @@ impl AppState {
             current_byte: None,
             config,
             active_file: None,
+            game_session_date: None,
         }
     }
 
-    pub fn set_active_file(&mut self, path: &str) -> PathBuf {
+    pub fn set_active_file(&mut self, path: &str) {
         let given_path = Path::new(path);
+        let stem = given_path
+            .file_stem()
+            .expect("missing file name")
+            .to_str()
+            .expect("invalid UTF-8 in file name")
+            .split('_')
+            .nth(1)
+            .expect("invalid file format: expected combat_YYYY-MM-DD_...");
+
+        let format = Iso8601::DATE;
+        let date_stamp = Date::parse(stem, &format).expect("failed to parse date from file name");
 
         let resolved = if given_path.is_relative() {
             Path::new(&self.config.log_directory).join(given_path)
@@ -30,8 +45,8 @@ impl AppState {
             given_path.to_path_buf()
         };
 
-        self.active_file = Some(resolved.clone());
-        resolved
+        self.active_file = Some(resolved);
+        self.game_session_date = Some(date_stamp);
     }
 }
 
@@ -47,4 +62,3 @@ impl ::std::default::Default for AppConfig {
         }
     }
 }
-// /home/prescott/baras/test-log-files/50mb/combat_2025-12-10_18_12_15_087604.txt

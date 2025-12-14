@@ -1,4 +1,5 @@
 pub mod app_state;
+pub mod commands;
 pub mod encounter;
 pub mod event_models;
 pub mod log_ids;
