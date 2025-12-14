@@ -10,7 +10,10 @@ use tokio::sync::RwLock;
 
 #[tokio::main]
 async fn main() -> Result<(), String> {
-    let state = Arc::new(RwLock::new(AppState { events: vec![] }));
+    let state = Arc::new(RwLock::new(AppState {
+        events: vec![],
+        ..Default::default()
+    }));
 
     loop {
         let line = readline()?;
@@ -60,13 +63,22 @@ async fn respond(line: &str, state: Arc<RwLock<AppState>>) -> Result<bool, Strin
     match &cli.command {
         Some(Commands::ParseFile { path }) => {
             let timer = Instant::now();
-            let data = read_log_file(path).expect("failed to parse log file {path}");
+            let (events, end_pos) = read_log_file(path).expect("failed to parse log file {path}");
             {
                 let mut s = state.write().await;
-                s.events = data.0.clone();
+                s.current_byte = Some(end_pos);
+                s.events = events.clone();
             }
             let ms = timer.elapsed().as_millis();
-            println!("parsed {} events in {}ms", data.0.len(), ms);
+            println!("parsed {} events in {}ms", events.len(), ms);
+
+            let state_clone = Arc::clone(&state);
+            let path_clone = path.clone();
+            tokio::spawn(async move {
+                tail_log_file(&path_clone, state_clone).await.ok();
+            });
+
+            println!("tailing started");
         }
         Some(Commands::Stats) => {
             let s = state.read().await;

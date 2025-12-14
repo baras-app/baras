@@ -1,3 +1,4 @@
+use crate::app_state::AppState;
 use crate::{CombatEvent, parse_line};
 use memchr::memchr_iter;
 use memmap2::Mmap;
@@ -6,9 +7,10 @@ use std::fs;
 use std::io::Result;
 use std::io::SeekFrom;
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, AsyncSeekExt, BufReader};
-use tokio::sync::mpsc;
+use tokio::sync::RwLock;
 use tokio::time::{Duration, sleep};
 
 pub fn read_log_file<P: AsRef<Path>>(path: P) -> Result<(Vec<CombatEvent>, u64)> {
@@ -42,40 +44,31 @@ pub fn read_log_file<P: AsRef<Path>>(path: P) -> Result<(Vec<CombatEvent>, u64)>
     Ok((events, end_pos))
 }
 
-pub async fn tail_log_file<P: AsRef<Path>>(
-    path: P,
-    start_index: u64,
-    start_byte: u64,
-    tx: mpsc::Sender<CombatEvent>,
-) -> Result<()> {
+pub async fn tail_log_file<P: AsRef<Path>>(path: P, state: Arc<RwLock<AppState>>) -> Result<()> {
     let file = File::open(&path).await?;
     let mut reader = BufReader::new(file);
-    let mut idx = start_index;
+    let mut line_number = 0u64;
+    let pos = state.read().await.current_byte.unwrap_or(0);
 
-    reader.seek(SeekFrom::Start(start_byte)).await?;
+    reader.seek(SeekFrom::Start(pos)).await?;
 
     let mut line = String::new();
 
     loop {
         match reader.read_line(&mut line).await {
             Ok(0) => {
-                // No new data, wait briefly before checking again
                 sleep(Duration::from_millis(100)).await;
+                continue;
             }
             Ok(_) => {
-                idx += 1;
-                if let Some(parsed_event) = parse_line(idx, &line) {
-                    tx.send(parsed_event).await.ok();
-                };
-                print!("Parsed line {}", idx);
+                if let Some(event) = parse_line(line_number, &line) {
+                    state.write().await.events.push(event);
+                }
                 line.clear();
+                line_number += 1;
             }
-            Err(e) => {
-                eprintln!("Error reading file line: {} ", e);
-                break;
-            }
+            Err(_) => break,
         }
     }
-
     Ok(())
 }
