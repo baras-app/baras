@@ -1,31 +1,46 @@
 use std::time::Instant;
 
 use crate::app_state::AppState;
-use crate::reader::{read_log_file, tail_log_file};
+use crate::reader::Reader;
 use std::io::Write;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn parse_file(path: &str, state: Arc<RwLock<AppState>>) {
+    let timer = Instant::now();
     let mut s = state.write().await;
     s.set_active_file(path);
-    let timer = Instant::now();
-    let active_path = s.active_file.as_ref().expect("a");
-    let (events, end_pos) = read_log_file(active_path).expect("failed to parse log file {path}");
-    let ms = timer.elapsed().as_millis();
+    let active_path = s.active_file.clone().expect("invalid file given");
+
+    let state_clone = Arc::clone(&state);
+    if let Some(active_tail) = s.log_tail_task.take() {
+        active_tail.abort();
+    }
+
+    drop(s);
+    let reader = Reader::from(active_path.clone(), state_clone);
+
+    let (events, end_pos) = reader
+        .read_log_file()
+        .expect("failed to parse log file {path}");
+
+    println!(
+        "parsed {} events in {}ms",
+        events.len(),
+        timer.elapsed().as_millis()
+    );
+
     {
-        println!("parsed {} events in {}ms", events.len(), ms);
+        let mut s = state.write().await;
         s.current_byte = Some(end_pos);
         s.process_events(events);
     }
 
-    let state_clone = Arc::clone(&state);
-    let resolved_path = s.active_file.clone().expect("invalid file path");
-    drop(s);
-    println!("tailing file: {}", resolved_path.to_str().unwrap());
-    tokio::spawn(async move {
-        tail_log_file(resolved_path, state_clone).await.ok();
+    println!("tailing file: {}", active_path.display());
+    let handle = tokio::spawn(async move {
+        reader.tail_log_file().await.ok();
     });
+    state.write().await.log_tail_task = Some(handle);
 }
 
 pub async fn show_settings(state: Arc<RwLock<AppState>>) {
