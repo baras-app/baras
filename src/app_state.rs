@@ -1,6 +1,6 @@
 use crate::CombatEvent;
 use crate::directory_index::LogFileIndex;
-use crate::encounter::SessionCache;
+use crate::session_cache::SessionCache;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use time::Date;
