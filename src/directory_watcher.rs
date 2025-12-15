@@ -1,6 +1,6 @@
 use crate::app_state::AppState;
 use crate::commands;
-use crate::directory_index::{LogFileIndex, extract_character_name};
+use crate::directory_index::LogFileIndex;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -106,19 +106,12 @@ async fn handle_new_file(path: PathBuf, state: Arc<RwLock<AppState>>) {
     let mut has_content = false;
 
     while start.elapsed() < NEW_FILE_TIMEOUT {
-        match extract_character_name(&path) {
-            Ok(Some(_)) => {
-                has_content = true;
-                break;
-            }
-            Ok(None) => {
-                // File exists but no DisciplineChanged yet, keep waiting
-                sleep(NEW_FILE_POLL_INTERVAL).await;
-            }
-            Err(_) => {
-                // File might still be locked/being created, keep waiting
-                sleep(NEW_FILE_POLL_INTERVAL).await;
-            }
+        if path.metadata().map(|m| m.len()).unwrap_or(0) == 0 {
+            has_content = true;
+            break;
+        } else {
+            // File might still be locked/being created, keep waiting
+            sleep(NEW_FILE_POLL_INTERVAL).await;
         }
     }
 
