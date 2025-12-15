@@ -42,7 +42,7 @@ pub fn parse_line(line_number: u64, _line: &str) -> Option<CombatEvent> {
     };
 
     let effect = parse_effect(effect_segment)?;
-    let details = parse_details(details_segment, effect.effect_id)?;
+    let details = parse_details(details_segment, effect.effect_id, effect.type_id)?;
 
     let event = CombatEvent {
         line_number,
@@ -225,12 +225,15 @@ fn parse_effect(segment: &str) -> Option<Effect> {
     })
 }
 
-fn parse_details(segment: &str, effect_id: i64) -> Option<Details> {
+fn parse_details(segment: &str, effect_id: i64, effect_type_id: i64) -> Option<Details> {
     match effect_id {
         effect_id::DAMAGE => parse_dmg_details(segment),
         effect_id::HEAL => parse_heal_details(segment),
         _ => {
-            if memchr(b'(', segment.as_bytes()).is_some() {
+            if (effect_type_id == effect_type_id::APPLYEFFECT
+                || effect_type_id == effect_type_id::MODIFYCHARGES)
+                && memchr(b'(', segment.as_bytes()).is_some()
+            {
                 parse_charges(segment)
             } else {
                 Some(Details {

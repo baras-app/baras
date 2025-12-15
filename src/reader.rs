@@ -13,6 +13,7 @@ use tokio::io::{AsyncBufReadExt, AsyncSeekExt, BufReader};
 use tokio::sync::RwLock;
 use tokio::time::{Duration, sleep};
 
+// processing full log file, don't want to always write to session cache
 pub fn read_log_file<P: AsRef<Path>>(path: P) -> Result<(Vec<CombatEvent>, u64)> {
     let file = fs::File::open(path)?;
     let mmap = unsafe { Mmap::map(&file)? };
@@ -44,6 +45,7 @@ pub fn read_log_file<P: AsRef<Path>>(path: P) -> Result<(Vec<CombatEvent>, u64)>
     Ok((events, end_pos))
 }
 
+//tailing live log file always write to session cache
 pub async fn tail_log_file<P: AsRef<Path>>(path: P, state: Arc<RwLock<AppState>>) -> Result<()> {
     let file = File::open(&path).await?;
     let mut reader = BufReader::new(file);
@@ -62,7 +64,7 @@ pub async fn tail_log_file<P: AsRef<Path>>(path: P, state: Arc<RwLock<AppState>>
             }
             Ok(_) => {
                 if let Some(event) = parse_line(line_number, &line) {
-                    state.write().await.events.push(event);
+                    state.write().await.process_event(event);
                 }
                 line.clear();
                 line_number += 1;

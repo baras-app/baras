@@ -1,4 +1,5 @@
 use crate::CombatEvent;
+use crate::encounter::SessionCache;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use time::Date;
@@ -6,22 +7,22 @@ use time::format_description::well_known::Iso8601;
 
 #[derive(Default)]
 pub struct AppState {
-    pub events: Vec<CombatEvent>,
     pub current_byte: Option<u64>,
     pub config: AppConfig,
     pub active_file: Option<PathBuf>,
     pub game_session_date: Option<Date>,
+    pub session_cache: Option<SessionCache>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         let config = confy::load("baras", None).unwrap_or_default();
         Self {
-            events: vec![],
             current_byte: None,
             config,
             active_file: None,
             game_session_date: None,
+            session_cache: None,
         }
     }
 
@@ -47,6 +48,21 @@ impl AppState {
 
         self.active_file = Some(resolved);
         self.game_session_date = Some(date_stamp);
+        self.session_cache = Some(SessionCache::new(date_stamp));
+    }
+
+    pub fn process_event(&mut self, event: CombatEvent) {
+        if let Some(cache) = &mut self.session_cache {
+            cache.process_event(event);
+        }
+    }
+
+    pub fn process_events(&mut self, events: Vec<CombatEvent>) {
+        if let Some(cache) = &mut self.session_cache {
+            for event in events {
+                cache.process_event(event);
+            }
+        }
     }
 }
 

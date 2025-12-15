@@ -16,7 +16,7 @@ pub async fn parse_file(path: &str, state: Arc<RwLock<AppState>>) {
     {
         println!("parsed {} events in {}ms", events.len(), ms);
         s.current_byte = Some(end_pos);
-        s.events = events.clone();
+        s.process_events(events);
     }
 
     let state_clone = Arc::clone(&state);
@@ -30,25 +30,42 @@ pub async fn parse_file(path: &str, state: Arc<RwLock<AppState>>) {
 
 pub async fn show_settings(state: Arc<RwLock<AppState>>) {
     let s = state.read().await;
-
-    println!(
-        "Current file: {}",
-        s.active_file
-            .as_ref()
-            .map_or("No active file".to_string(), |p| p.display().to_string())
-    );
-
-    println!(
-        "Game session start date: {}",
-        s.game_session_date
-            .as_ref()
-            .map_or("None".to_string(), |d| d.to_string())
-    );
+    s.session_cache.as_ref().expect("no cache").print_metadata();
 }
 
-pub async fn file_info(state: Arc<RwLock<AppState>>) {
+pub async fn session_info(state: Arc<RwLock<AppState>>) {
     let s = state.read().await;
-    println!("total events: {}", s.events.len());
+
+    let enc_state = s
+        .session_cache
+        .as_ref()
+        .unwrap()
+        .current_encounter()
+        .unwrap()
+        .state
+        .clone();
+
+    println!("{:?}", enc_state);
+
+    println!(
+        "Current Player {:?}",
+        s.session_cache
+            .as_ref()
+            .expect("no session initialized")
+            .player
+            .id
+    );
+
+    println!(
+        "Current Area {}",
+        s.session_cache
+            .as_ref()
+            .expect("not sesssion")
+            .current_area
+            .area_name
+    );
+
+    println!("{}", s.session_cache.as_ref().unwrap().session_date);
 }
 
 pub fn exit() {
