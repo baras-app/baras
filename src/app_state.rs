@@ -1,4 +1,5 @@
 use crate::CombatEvent;
+use crate::directory_index::LogFileIndex;
 use crate::encounter::SessionCache;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -12,6 +13,9 @@ pub struct AppState {
     pub active_file: Option<PathBuf>,
     pub game_session_date: Option<Date>,
     pub session_cache: Option<SessionCache>,
+    pub log_tail_task: Option<tokio::task::JoinHandle<()>>,
+    pub file_index: Option<LogFileIndex>,
+    pub watcher_task: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl AppState {
@@ -23,6 +27,9 @@ impl AppState {
             active_file: None,
             game_session_date: None,
             session_cache: None,
+            log_tail_task: None,
+            file_index: None,
+            watcher_task: None,
         }
     }
 
@@ -69,12 +76,18 @@ impl AppState {
 #[derive(Serialize, Deserialize)]
 pub struct AppConfig {
     pub log_directory: String,
+    #[serde(default)]
+    pub auto_delete_empty_files: bool,
+    #[serde(default)]
+    pub log_retention_days: u32,
 }
 
 impl ::std::default::Default for AppConfig {
     fn default() -> Self {
         Self {
             log_directory: "/home/prescott/baras/test-log-files/".to_string(),
+            auto_delete_empty_files: false,
+            log_retention_days: 21,
         }
     }
 }

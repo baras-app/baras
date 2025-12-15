@@ -87,3 +87,115 @@ pub fn exit() {
     write!(std::io::stdout(), "quitting...").expect("error exiting");
     std::io::stdout().flush().expect("error flushing stdout");
 }
+
+pub async fn list_files(state: Arc<RwLock<AppState>>) {
+    let s = state.read().await;
+    let index = match &s.file_index {
+        Some(idx) => idx,
+        None => {
+            println!("No file index available");
+            return;
+        }
+    };
+
+    if index.is_empty() {
+        println!("No log files found");
+        return;
+    }
+
+    println!("{:<50} {:<20} {}", "Character", "Date", "Session");
+    println!("{}", "-".repeat(80));
+
+    for entry in index.entries() {
+        let char_name = entry.character_name.as_deref().unwrap_or("Unknown");
+        let empty_marker = if entry.is_empty { " (empty)" } else { "" };
+        println!(
+            "{:<50} {:<20} {}{}",
+            char_name, entry.date, entry.session_number, empty_marker
+        );
+    }
+
+    println!("\nTotal: {} files", index.len());
+}
+
+pub async fn delete_old_files(state: Arc<RwLock<AppState>>, days: u32) {
+    let today = time::OffsetDateTime::now_utc().date();
+
+    let files_to_delete: Vec<_> = {
+        let s = state.read().await;
+        let index = match &s.file_index {
+            Some(idx) => idx,
+            None => {
+                println!("No file index available");
+                return;
+            }
+        };
+
+        index
+            .entries_older_than(days, today)
+            .iter()
+            .map(|e| e.path.clone())
+            .collect()
+    };
+
+    if files_to_delete.is_empty() {
+        println!("No files older than {} days", days);
+        return;
+    }
+
+    println!("Deleting {} files older than {} days...", files_to_delete.len(), days);
+
+    let mut deleted = 0;
+    for path in &files_to_delete {
+        match std::fs::remove_file(path) {
+            Ok(_) => {
+                deleted += 1;
+                let mut s = state.write().await;
+                if let Some(index) = &mut s.file_index {
+                    index.remove_file(path);
+                }
+            }
+            Err(e) => println!("Failed to delete {}: {}", path.display(), e),
+        }
+    }
+
+    println!("Deleted {} files", deleted);
+}
+
+pub async fn clean_empty_files(state: Arc<RwLock<AppState>>) {
+    let files_to_delete: Vec<_> = {
+        let s = state.read().await;
+        let index = match &s.file_index {
+            Some(idx) => idx,
+            None => {
+                println!("No file index available");
+                return;
+            }
+        };
+
+        index.empty_files().iter().map(|e| e.path.clone()).collect()
+    };
+
+    if files_to_delete.is_empty() {
+        println!("No empty files to delete");
+        return;
+    }
+
+    println!("Deleting {} empty files...", files_to_delete.len());
+
+    let mut deleted = 0;
+    for path in &files_to_delete {
+        match std::fs::remove_file(path) {
+            Ok(_) => {
+                deleted += 1;
+                let mut s = state.write().await;
+                if let Some(index) = &mut s.file_index {
+                    index.remove_file(path);
+                }
+            }
+            Err(e) => println!("Failed to delete {}: {}", path.display(), e),
+        }
+    }
+
+    println!("Deleted {} empty files", deleted);
+}

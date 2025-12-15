@@ -1,4 +1,5 @@
 use baras::commands;
+use baras::watcher;
 use clap::{Parser, Subcommand};
 use std::io::Write;
 
@@ -10,6 +11,11 @@ use tokio::sync::RwLock;
 #[tokio::main]
 async fn main() -> Result<(), String> {
     let state = Arc::new(RwLock::new(AppState::new()));
+
+    // Initialize file index and start directory watcher
+    if let Some(handle) = watcher::init_watcher(Arc::clone(&state)).await {
+        state.write().await.watcher_task = Some(handle);
+    }
 
     loop {
         let line = readline()?;
@@ -50,6 +56,12 @@ enum Commands {
     SessionInfo,
     Exit,
     Config,
+    ListFiles,
+    DeleteOld {
+        #[arg(short, long)]
+        days: u32,
+    },
+    CleanEmpty,
 }
 
 async fn respond(line: &str, state: Arc<RwLock<AppState>>) -> Result<bool, String> {
@@ -61,6 +73,11 @@ async fn respond(line: &str, state: Arc<RwLock<AppState>>) -> Result<bool, Strin
         Some(Commands::ParseFile { path }) => commands::parse_file(path, Arc::clone(&state)).await,
         Some(Commands::SessionInfo) => commands::session_info(Arc::clone(&state)).await,
         Some(Commands::Config) => commands::show_settings(Arc::clone(&state)).await,
+        Some(Commands::ListFiles) => commands::list_files(Arc::clone(&state)).await,
+        Some(Commands::DeleteOld { days }) => {
+            commands::delete_old_files(Arc::clone(&state), *days).await
+        }
+        Some(Commands::CleanEmpty) => commands::clean_empty_files(Arc::clone(&state)).await,
         Some(Commands::Exit) => {
             commands::exit();
             return Ok(true);
