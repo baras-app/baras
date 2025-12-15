@@ -61,6 +61,10 @@ enum Commands {
         #[arg(short, long)]
         days: u32,
     },
+    SetDirectory {
+        #[arg(short, long)]
+        path: String,
+    },
     CleanEmpty,
 }
 
@@ -78,6 +82,9 @@ async fn respond(line: &str, state: Arc<RwLock<AppState>>) -> Result<bool, Strin
             commands::delete_old_files(Arc::clone(&state), *days).await
         }
         Some(Commands::CleanEmpty) => commands::clean_empty_files(Arc::clone(&state)).await,
+        Some(Commands::SetDirectory { path }) => {
+            commands::set_directory(path, Arc::clone(&state)).await
+        }
         Some(Commands::Exit) => {
             commands::exit();
             return Ok(true);
