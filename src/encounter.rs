@@ -98,6 +98,9 @@ pub struct SessionCache {
 
     // Post-combat grace period for trailing damage
     post_combat_threshold_ms: i64,
+
+    // Track last exit combat time for damage-based combat start detection
+    last_exit_combat_time: Option<Time>,
 }
 
 impl SessionCache {
@@ -110,6 +113,7 @@ impl SessionCache {
             encounters: VecDeque::with_capacity(3),
             next_encounter_id: 0,
             post_combat_threshold_ms: 5000,
+            last_exit_combat_time: None,
         };
         cache.push_new_encounter();
         cache
@@ -229,8 +233,17 @@ impl SessionCache {
                         enc.events.push(event);
                     }
                 } else if effect_id == effect_id::DAMAGE {
-                    // Damage before combat starts - discard or ignore
-                    // (shouldn't normally happen unless log is mid-combat)
+                    // Start combat on damage if >15s since last exit (or no prior exit)
+                    let should_start = match self.last_exit_combat_time {
+                        None => true,
+                        Some(last_exit) => timestamp.duration_since(last_exit).whole_seconds() > 15,
+                    };
+                    if should_start && let Some(enc) = self.current_encounter_mut() {
+                        enc.state = EncounterState::InCombat;
+                        enc.enter_combat_time = Some(timestamp);
+                        enc.events.push(event);
+                    }
+                    // Otherwise discard - likely trailing damage from previous encounter
                 } else {
                     // Buffer non-damage events for the upcoming encounter
                     if let Some(enc) = self.current_encounter_mut() {
@@ -257,6 +270,7 @@ impl SessionCache {
                                 exit_time: last_activity,
                             };
                         }
+                        self.last_exit_combat_time = Some(last_activity);
                         self.finalize_and_start_new();
                         // Re-process this event in the new encounter
                         self.route_event_to_encounter(event);
@@ -271,6 +285,7 @@ impl SessionCache {
                         enc.state = EncounterState::PostCombat {
                             exit_time: timestamp,
                         };
+                        self.last_exit_combat_time = Some(timestamp);
                         self.finalize_and_start_new();
                         //reroute event to new encounter
                         self.route_event_to_encounter(event);
@@ -285,6 +300,7 @@ impl SessionCache {
                         };
                         enc.events.push(event);
                     }
+                    self.last_exit_combat_time = Some(timestamp);
                 //always terminate combat on area entered
                 } else if effect_type_id == effect_type_id::AREAENTERED {
                     if let Some(enc) = self.current_encounter_mut() {
@@ -292,6 +308,7 @@ impl SessionCache {
                         enc.state = EncounterState::PostCombat {
                             exit_time: timestamp,
                         };
+                        self.last_exit_combat_time = Some(timestamp);
                         self.finalize_and_start_new();
                     }
                 } else {
