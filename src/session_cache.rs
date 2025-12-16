@@ -221,6 +221,7 @@ impl SessionCache {
                 } else {
                     // Collect all events during combat
                     if let Some(enc) = self.current_encounter_mut() {
+                        enc.track_event_entities(&event);
                         enc.events.push(event);
                         if effect_id == effect_id::DAMAGE || effect_id == effect_id::HEAL {
                             enc.last_combat_activity_time = Some(timestamp);
@@ -383,7 +384,21 @@ impl SessionCache {
             println!("    Players ({}):", enc.players.len());
             for (id, player) in &enc.players {
                 println!(
-                    "      [{}] alive={}, death_time={}",
+                    "      [{}: {}] alive={}, death_time={}",
+                    player.name,
+                    id,
+                    !player.is_dead,
+                    player
+                        .death_time
+                        .map(|t| t.to_string())
+                        .unwrap_or_else(|| "N/A".to_string())
+                );
+            }
+            println!("    Npcs ({}):", enc.npcs.len());
+            for (id, player) in &enc.npcs {
+                println!(
+                    "      [{}: {}] alive={}, death_time={}",
+                    player.name,
                     id,
                     !player.is_dead,
                     player

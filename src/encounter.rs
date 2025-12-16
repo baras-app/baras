@@ -115,9 +115,23 @@ impl Encounter {
             _ => {}
         }
     }
+    pub fn track_event_entities(&mut self, event: &CombatEvent) {
+        self.try_track_entity(&event.source_entity, event.timestamp);
+        self.try_track_entity(&event.target_entity, event.timestamp);
+    }
 
-    pub fn track_entity(&mut self, entity: &Entity, timestamp: Time) {
+    #[inline]
+    fn try_track_entity(&mut self, entity: &Entity, timestamp: Time) {
         match entity.entity_type {
+            EntityType::Player => {
+                self.players
+                    .entry(entity.log_id)
+                    .or_insert_with(|| PlayerInfo {
+                        id: entity.log_id,
+                        name: entity.name.clone(),
+                        ..Default::default()
+                    });
+            }
             EntityType::Npc | EntityType::Companion => {
                 self.npcs.entry(entity.log_id).or_insert_with(|| NpcInfo {
                     name: entity.name.clone(),
