@@ -4,6 +4,7 @@ use crate::{
     log_ids::{effect_id, effect_type_id},
 };
 use std::collections::VecDeque;
+use std::io;
 use time::{Date, PrimitiveDateTime, Time};
 
 pub struct SessionCache {
@@ -315,6 +316,15 @@ impl SessionCache {
         self.encounters.iter().flat_map(|e| e.events.iter())
     }
 
+    /// Get last encounter that is in combat
+    pub fn last_combat_encounter(&self) -> Option<&Encounter> {
+        self.encounters
+            .iter()
+            .rfind(|e| e.state != EncounterState::NotStarted)
+    }
+
+    // --- Utility Methods ---
+
     /// Resolve a Time to full PrimitiveDateTime using session date
     /// Handles midnight rollover by checking if time < previous time
     pub fn resolve_datetime(&self, time: Time, previous: Option<Time>) -> PrimitiveDateTime {
@@ -324,7 +334,6 @@ impl SessionCache {
         };
         PrimitiveDateTime::new(date, time)
     }
-
     /// Print session and encounter metadata (excludes event lists)
     pub fn print_metadata(&self) {
         println!("=== Session Metadata ===");

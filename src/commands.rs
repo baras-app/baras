@@ -1,5 +1,6 @@
 use crate::app_state::AppState;
 use crate::directory_watcher;
+use crate::log_ids::effect_id;
 use crate::reader::Reader;
 use std::io::Write;
 use std::path::PathBuf;
@@ -82,6 +83,34 @@ pub async fn session_info(state: Arc<RwLock<AppState>>) {
     );
 
     println!("{}", s.session_cache.as_ref().unwrap().session_date);
+}
+
+pub async fn show_stats(state: Arc<RwLock<AppState>>) {
+    let s = state.read().await;
+    let enc = s
+        .session_cache
+        .as_ref()
+        .unwrap()
+        .last_combat_encounter()
+        .unwrap();
+    enc.show_dps();
+
+    // let dmg: Vec<(String, i32, i32)> = enc
+    //     .events
+    //     .clone()
+    //     .into_iter()
+    //     .filter(|e| e.effect.effect_id == effect_id::DAMAGE)
+    //     .map(|e| {
+    //         (
+    //             e.source_entity.name,
+    //             e.details.dmg_effective,
+    //             e.details.dmg_amount,
+    //         )
+    //     })
+    //     .collect();
+    // for entry in dmg {
+    //     println!("{}, effective: {}, actual: {}", entry.0, entry.1, entry.2);
+    // }
 }
 
 pub fn exit() {

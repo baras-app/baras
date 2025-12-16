@@ -1,8 +1,9 @@
 use crate::CombatEvent;
 use crate::Entity;
 use crate::EntityType;
+use crate::log_ids::effect_id;
 use hashbrown::HashMap;
-use time::Time;
+use time::{OffsetDateTime, Time};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum EncounterState {
@@ -115,6 +116,10 @@ impl Encounter {
             _ => {}
         }
     }
+
+    pub fn check_all_players_dead(&mut self) {
+        self.all_players_dead = !self.players.is_empty() && self.players.values().all(|p| p.is_dead)
+    }
     pub fn track_event_entities(&mut self, event: &CombatEvent) {
         self.try_track_entity(&event.source_entity, event.timestamp);
         self.try_track_entity(&event.target_entity, event.timestamp);
@@ -145,7 +150,6 @@ impl Encounter {
             _ => {}
         }
     }
-
     pub fn is_active(&self) -> bool {
         matches!(
             self.state,
@@ -161,7 +165,112 @@ impl Encounter {
             _ => None,
         }
     }
-    pub fn check_all_players_dead(&mut self) {
-        self.all_players_dead = !self.players.is_empty() && self.players.values().all(|p| p.is_dead)
+
+    fn duration_seconds(&self) -> Option<i64> {
+        let enter = self.enter_combat_time?;
+        let terminal = match self.exit_combat_time {
+            Some(exit) => exit,
+            None => OffsetDateTime::now_local().ok()?.time(),
+        };
+
+        let mut duration = terminal.duration_since(enter);
+
+        // If negative, we crossed midnight - add 24 hours
+        if duration.is_negative() {
+            duration += time::Duration::days(1);
+        }
+
+        Some(duration.whole_seconds())
     }
+
+    fn get_entity_name(&self, id: i64) -> Option<String> {
+        let name = self.players.get(&id).map(|e| e.name.clone());
+        if name.is_none() {
+            return self.npcs.get(&id).map(|e| e.name.clone());
+        }
+
+        name
+    }
+
+    pub fn calculate_entity_statistics(&self) -> Option<Vec<EntityStatistics>> {
+        let duration = self.duration_seconds()?;
+        if duration <= 0 {
+            return None;
+        }
+
+        let mut accumulators: HashMap<i64, StatAccumulator> = HashMap::new();
+
+        for event in &self.events {
+            match event.effect.effect_id {
+                effect_id::DAMAGE => {
+                    // Source dealt damage
+                    let acc = accumulators.entry(event.source_entity.log_id).or_default();
+                    acc.damage_dealt += event.details.dmg_amount as i64;
+                    acc.damage_dealt_effective += event.details.dmg_effective as i64;
+                    acc.hit_count += 1;
+                    // Track crits if you have that field
+                    // if event.details.is_crit { acc.crit_count += 1; }
+
+                    // Target received damage
+                    let target_acc = accumulators.entry(event.target_entity.log_id).or_default();
+                    target_acc.damage_received += event.details.dmg_effective as i64;
+                }
+                effect_id::HEAL => {
+                    // Source did healing
+                    let acc = accumulators.entry(event.source_entity.log_id).or_default();
+                    acc.healing_done += event.details.heal_amount as i64; // adjust field name
+
+                    // Target received healing
+                    let target_acc = accumulators.entry(event.target_entity.log_id).or_default();
+                    target_acc.healing_received += event.details.heal_amount as i64;
+                }
+                _ => {}
+            }
+        }
+
+        let mut stats: Vec<EntityStatistics> = accumulators
+            .into_iter()
+            .map(|(id, acc)| EntityStatistics {
+                entity_id: id,
+                name: self.get_entity_name(id).unwrap_or_default(),
+                total_damage: acc.damage_dealt,
+                dps: (acc.damage_dealt / duration) as i32,
+                edps: (acc.damage_dealt_effective / duration) as i32,
+                // Add more fields to EntityStatistics as needed
+            })
+            .collect();
+
+        stats.sort_by(|a, b| b.dps.cmp(&a.dps));
+        Some(stats)
+    }
+    pub fn show_dps(&self) {
+        let stats = self.calculate_entity_statistics().unwrap_or_default();
+
+        for entity in stats {
+            println!(
+                "      [{}: {} dps, {} edps, {} total] ",
+                entity.name, entity.dps, entity.edps, entity.total_damage
+            );
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EntityStatistics {
+    pub entity_id: i64,
+    pub name: String,
+    pub total_damage: i64,
+    pub dps: i32,
+    pub edps: i32,
+}
+
+#[derive(Debug, Clone, Default)]
+struct StatAccumulator {
+    damage_dealt: i64,
+    damage_dealt_effective: i64,
+    damage_received: i64,
+    healing_done: i64,
+    healing_received: i64,
+    hit_count: u32,
+    crit_count: u32,
 }

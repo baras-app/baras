@@ -65,6 +65,7 @@ enum Commands {
         #[arg(short, long)]
         path: String,
     },
+    Stats,
     CleanEmpty,
 }
 
@@ -85,6 +86,7 @@ async fn respond(line: &str, state: Arc<RwLock<AppState>>) -> Result<bool, Strin
         Some(Commands::SetDirectory { path }) => {
             commands::set_directory(path, Arc::clone(&state)).await
         }
+        Some(Commands::Stats) => commands::show_stats(state).await,
         Some(Commands::Exit) => {
             commands::exit();
             return Ok(true);
