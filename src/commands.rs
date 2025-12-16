@@ -1,6 +1,5 @@
 use crate::app_state::AppState;
 use crate::directory_watcher;
-use crate::log_ids::effect_id;
 use crate::reader::Reader;
 use std::io::Write;
 use std::path::PathBuf;
@@ -133,7 +132,7 @@ pub async fn list_files(state: Arc<RwLock<AppState>>) {
         return;
     }
 
-    println!("{:<50} {:<20} {}", "Character", "Date", "Session");
+    println!("{:<50} {:<20} Session", "Character", "Date");
     println!("{}", "-".repeat(80));
 
     for entry in index.entries() {

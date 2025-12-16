@@ -4,7 +4,6 @@ use crate::{
     log_ids::{effect_id, effect_type_id},
 };
 use std::collections::VecDeque;
-use std::io;
 use time::{Date, PrimitiveDateTime, Time};
 
 pub struct SessionCache {
