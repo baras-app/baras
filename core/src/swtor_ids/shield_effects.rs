@@ -193,4 +193,3 @@ pub static SHIELD_EFFECT_IDS: phf::Set<i64> = phf_set! {
   999516199190834i64
 
 };
-

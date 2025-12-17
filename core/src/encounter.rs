@@ -1,7 +1,7 @@
 use crate::CombatEvent;
 use crate::Entity;
 use crate::EntityType;
-use crate::log_ids::effect_id;
+use crate::swtor_ids::effect_id;
 use crate::swtor_ids::SHIELD_EFFECT_IDS;
 use chrono::{NaiveDateTime, TimeDelta};
 use hashbrown::HashMap;

@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 use crate::{
     combat_event::*,
     encounter::*,
-    log_ids::{effect_id, effect_type_id},
+    swtor_ids::{effect_id, effect_type_id},
 };
 use std::collections::VecDeque;
 

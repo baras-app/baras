@@ -4,7 +4,6 @@ pub mod directory_index;
 pub mod directory_watcher;
 pub mod encounter;
 pub mod file_handler;
-pub mod log_ids;
 pub mod parser;
 pub mod reader;
 pub mod session_cache;
