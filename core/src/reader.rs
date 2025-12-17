@@ -1,5 +1,5 @@
 use crate::app_state::AppState;
-use crate::{CombatEvent, parse_line};
+use crate::{CombatEvent, LogParser};
 use memchr::memchr_iter;
 use memmap2::Mmap;
 use rayon::prelude::*;
@@ -27,7 +27,7 @@ impl Reader {
     }
 
     // processing full log file, don't want to always write to session cache
-    pub fn read_log_file(&self) -> Result<(Vec<CombatEvent>, u64)> {
+    pub async fn read_log_file(&self) -> Result<(Vec<CombatEvent>, u64)> {
         let file = fs::File::open(&self.path)?;
         let mmap = unsafe { Mmap::map(&file)? };
         let bytes = mmap.as_ref();
@@ -45,13 +45,20 @@ impl Reader {
         if start < bytes.len() {
             line_ranges.push((start, bytes.len()));
         }
+        let date = &self
+            .state
+            .read()
+            .await
+            .game_session_date
+            .unwrap_or_default();
 
+        let parser = LogParser::new(*date);
         let events: Vec<CombatEvent> = line_ranges
             .par_iter()
             .enumerate()
             .filter_map(|(idx, &(start, end))| {
                 let line = unsafe { std::str::from_utf8_unchecked(&bytes[start..end]) };
-                parse_line(idx as u64 + 1, line)
+                parser.parse_line(idx as u64 + 1, line)
             })
             .collect();
 
@@ -65,8 +72,16 @@ impl Reader {
         let mut line_number = 0u64;
         let pos = self.state.read().await.current_byte.unwrap_or(0);
 
+        let sesion_date = self
+            .state
+            .read()
+            .await
+            .game_session_date
+            .expect("failed to find game_session_date");
+
         reader.seek(SeekFrom::Start(pos)).await?;
 
+        let parser = LogParser::new(sesion_date);
         let mut line = String::new();
 
         loop {
@@ -78,7 +93,7 @@ impl Reader {
                 Ok(_) => {
                     // Only process if line is complete (ends with newline)
                     if line.ends_with("\r\n") {
-                        if let Some(event) = parse_line(line_number, &line) {
+                        if let Some(event) = parser.parse_line(line_number, &line) {
                             self.state.write().await.process_event(event);
                         }
                         line.clear();

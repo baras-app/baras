@@ -1,4 +1,4 @@
-use time::Time;
+use chrono::NaiveDateTime;
 
 #[derive(Debug, Clone, Default)]
 pub struct Action {
@@ -28,7 +28,7 @@ pub struct Entity {
 #[derive(Debug, Clone)]
 pub struct CombatEvent {
     pub line_number: u64,
-    pub timestamp: Time,
+    pub timestamp: NaiveDateTime,
     pub source_entity: Entity,
     pub target_entity: Entity,
     pub action: Action,

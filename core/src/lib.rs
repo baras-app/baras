@@ -13,5 +13,5 @@ pub mod swtor_ids;
 pub use combat_event::CombatEvent;
 pub use combat_event::Entity;
 pub use combat_event::EntityType;
-pub use parser::parse_line;
+pub use parser::LogParser;
 pub use swtor_ids::*;

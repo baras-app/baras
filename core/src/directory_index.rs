@@ -1,18 +1,17 @@
+use crate::LogParser;
 use crate::log_ids::effect_type_id;
-use crate::parse_line;
+use chrono::{NaiveDate, NaiveDateTime};
 use hashbrown::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Result};
 use std::path::{Path, PathBuf};
-use time::format_description::well_known::Iso8601;
-use time::{Date, PrimitiveDateTime, Time};
 
 pub struct LogFileMetaData {
     pub path: PathBuf,
     pub filename: String,
-    pub date: Date,
-    pub created_at: PrimitiveDateTime,
+    pub date: NaiveDate,
+    pub created_at: NaiveDateTime,
     pub character_name: Option<String>,
     pub session_number: u32,
     pub is_empty: bool,
@@ -30,7 +29,7 @@ impl LogFileMetaData {
 #[derive(Default)]
 pub struct LogFileIndex {
     entries: HashMap<PathBuf, LogFileMetaData>,
-    session_counts: HashMap<(String, Date), u32>,
+    session_counts: HashMap<(String, NaiveDate), u32>,
 }
 
 impl LogFileIndex {
@@ -75,7 +74,7 @@ impl LogFileIndex {
         let is_empty = metatdata.len() == 0;
 
         let character_name = if !is_empty {
-            extract_character_name(path).ok().flatten()
+            extract_character_name(path, created_at).ok().flatten()
         } else {
             None
         };
@@ -109,7 +108,7 @@ impl LogFileIndex {
         self.entries.remove(path);
     }
 
-    fn compute_session_number(&mut self, character: &str, date: Date) -> u32 {
+    fn compute_session_number(&mut self, character: &str, date: NaiveDate) -> u32 {
         let key = (character.to_string(), date);
         let count = self.session_counts.entry(key).or_insert(0);
         *count += 1;
@@ -141,12 +140,16 @@ impl LogFileIndex {
         entries
     }
 
-    pub fn entries_older_than(&self, days: u32, reference_date: Date) -> Vec<&LogFileMetaData> {
+    pub fn entries_older_than(
+        &self,
+        days: u32,
+        reference_date: NaiveDate,
+    ) -> Vec<&LogFileMetaData> {
         self.entries
             .values()
             .filter(|e| {
                 let diff = reference_date - e.date;
-                diff.whole_days() > days as i64
+                diff.num_days() > days as i64
             })
             .collect()
     }
@@ -174,36 +177,30 @@ impl LogFileIndex {
     }
 }
 
-pub fn parse_log_filename(filename: &str) -> Option<(Date, PrimitiveDateTime)> {
+pub fn parse_log_filename(filename: &str) -> Option<(NaiveDate, NaiveDateTime)> {
     let stem = filename.strip_suffix(".txt").unwrap_or(filename);
-    let parts: Vec<&str> = stem.split('_').collect();
+    let filedate = stem.strip_prefix("combat_");
 
-    if parts.len() != 6 || parts[0] != "combat" {
-        println!("attempted to parse invalid file name {}", filename);
-        return None;
-    }
+    println!("{:?}", filedate);
+    let date_stamp = NaiveDateTime::parse_from_str(filedate?, "%Y-%m-%d_%H_%M_%S_%f").ok()?;
 
-    let date = Date::parse(parts[1], &Iso8601::DATE).ok()?;
-    let hour: u8 = parts[2].parse().ok()?;
-    let min: u8 = parts[3].parse().ok()?;
-    let sec: u8 = parts[4].parse().ok()?;
-    let microsec: u32 = parts[5].parse().ok()?;
+    println!("{:?}", date_stamp);
 
-    let time = Time::from_hms_micro(hour, min, sec, microsec).ok()?;
-    Some((date, PrimitiveDateTime::new(date, time)))
+    Some((date_stamp.date(), date_stamp))
 }
 
-pub fn extract_character_name(path: &Path) -> Result<Option<String>> {
+pub fn extract_character_name(path: &Path, session_date: NaiveDateTime) -> Result<Option<String>> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
 
     //take first 25 lines. If not in first 25 something is probably wrong
     for (idx, line) in reader.lines().take(25).enumerate() {
         let line = line?;
-        if let Some(event) = parse_line(idx as u64, &line)
+        let parser = LogParser::new(session_date);
+        if let Some(event) = &parser.parse_line(idx as u64, &line)
             && event.effect.type_id == effect_type_id::DISCIPLINECHANGED
         {
-            return Ok(Some(event.source_entity.name));
+            return Ok(Some(event.source_entity.name.clone()));
         }
     }
     Ok(None)

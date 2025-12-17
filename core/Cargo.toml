@@ -14,10 +14,6 @@ notify = "8.2"
 memmap2 = "0.9.9"
 rayon = "1.11.0"
 serde = { version = "1.0.228", features = ["derive"] }
-time = { version = "0.3.44", features = [
-  "formatting",
-  "local-offset",
-  "parsing",
-] }
 tokio = { version = "1.48.0", features = ["full"] }
 phf = { version = "0.13.1", features = ["macros"] }
+chrono = "0.4.42"

@@ -27,6 +27,7 @@ pub async fn parse_file(path: &str, state: Arc<RwLock<AppState>>) -> Result<Pars
 
     let (events, end_pos) = reader
         .read_log_file()
+        .await
         .map_err(|e| format!("failed to parse log file: {}", e))?;
 
     let events_count = events.len();

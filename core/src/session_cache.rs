@@ -1,14 +1,14 @@
+use chrono::NaiveDateTime;
+
 use crate::{
     combat_event::*,
     encounter::*,
     log_ids::{effect_id, effect_type_id},
 };
 use std::collections::VecDeque;
-use time::{Date, PrimitiveDateTime, Time};
 
 pub struct SessionCache {
     // Session metadata
-    pub session_date: Date, // from filename, used for timestamp date assignment
 
     // Player state
     pub player: PlayerInfo,
@@ -25,13 +25,12 @@ pub struct SessionCache {
     post_combat_threshold_ms: i64,
 
     // Track last exit combat time for damage-based combat start detection
-    last_exit_combat_time: Option<Time>,
+    last_exit_combat_time: Option<NaiveDateTime>,
 }
 
 impl SessionCache {
-    pub fn new(session_date: Date) -> Self {
+    pub fn new() -> Self {
         let mut cache = Self {
-            session_date,
             player: PlayerInfo::default(),
             player_initialized: false,
             current_area: AreaInfo::default(),
@@ -169,7 +168,9 @@ impl SessionCache {
                     // Start combat on damage if >15s since last exit (or no prior exit)
                     let should_start = match self.last_exit_combat_time {
                         None => true,
-                        Some(last_exit) => timestamp.duration_since(last_exit).whole_seconds() > 15,
+                        Some(last_exit) => {
+                            timestamp.signed_duration_since(last_exit).num_seconds() > 15
+                        }
                     };
                     if should_start && let Some(enc) = self.current_encounter_mut() {
                         enc.state = EncounterState::InCombat;
@@ -196,7 +197,7 @@ impl SessionCache {
                 if let Some(enc) = self.current_encounter()
                     && let Some(last_activity) = enc.last_combat_activity_time
                 {
-                    let elapsed = timestamp.duration_since(last_activity).whole_seconds();
+                    let elapsed = timestamp.signed_duration_since(last_activity).num_seconds();
                     if elapsed >= 120 {
                         // End combat at last_activity_time, not current timestamp
                         if let Some(enc) = self.current_encounter_mut() {
@@ -271,8 +272,10 @@ impl SessionCache {
                     }
                 } else if effect_id == effect_id::DAMAGE {
                     // Damage in post-combat - check if within grace period
-                    let elapsed = timestamp.duration_since(exit_time).whole_milliseconds();
-                    if elapsed <= self.post_combat_threshold_ms as i128 {
+                    let elapsed = timestamp
+                        .signed_duration_since(exit_time)
+                        .num_milliseconds();
+                    if elapsed <= self.post_combat_threshold_ms {
                         // Assign to current (ending) encounter
                         if let Some(enc) = self.current_encounter_mut() {
                             enc.accumulate_data(&event);
@@ -356,20 +359,9 @@ impl SessionCache {
 
     // --- Utility Methods --- //
 
-    /// Resolve a Time to full PrimitiveDateTime using session date
-    /// Handles midnight rollover by checking if time < previous time
-    pub fn resolve_datetime(&self, time: Time, previous: Option<Time>) -> PrimitiveDateTime {
-        let date = match previous {
-            Some(prev) if time < prev => self.session_date.next_day().unwrap_or(self.session_date),
-            _ => self.session_date,
-        };
-        PrimitiveDateTime::new(date, time)
-    }
     /// Print session and encounter metadata (excludes event lists)
     pub fn print_metadata(&self) {
         println!("=== Session Metadata ===");
-        println!("Session date: {}", self.session_date);
-        println!();
 
         println!("--- Player Info ---");
         println!("  Name: {}", self.player.name);

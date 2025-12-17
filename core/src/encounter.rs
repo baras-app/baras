@@ -3,8 +3,8 @@ use crate::Entity;
 use crate::EntityType;
 use crate::log_ids::effect_id;
 use crate::swtor_ids::SHIELD_EFFECT_IDS;
+use chrono::{NaiveDateTime, TimeDelta};
 use hashbrown::HashMap;
-use time::{OffsetDateTime, Time};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum EncounterState {
@@ -12,7 +12,7 @@ pub enum EncounterState {
     NotStarted,
     InCombat,
     PostCombat {
-        exit_time: Time,
+        exit_time: NaiveDateTime,
     },
 }
 
@@ -25,7 +25,7 @@ pub struct PlayerInfo {
     pub discipline_id: i64,
     pub discipline_name: String,
     pub is_dead: bool,
-    pub death_time: Option<Time>,
+    pub death_time: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -36,15 +36,15 @@ pub struct NpcInfo {
     pub log_id: i64,
     pub class_id: i64,
     pub is_dead: bool,
-    pub first_seen_at: Option<Time>,
-    pub death_time: Option<Time>,
+    pub first_seen_at: Option<NaiveDateTime>,
+    pub death_time: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct AreaInfo {
     pub area_name: String,
     pub area_id: i64,
-    pub entered_at: Option<Time>,
+    pub entered_at: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Clone)]
@@ -81,8 +81,8 @@ pub struct EffectInstance {
     pub effect_id: i64,
     pub source_id: i64,
     pub target_id: i64,
-    pub applied_at: Time,
-    pub removed_at: Option<Time>,
+    pub applied_at: NaiveDateTime,
+    pub removed_at: Option<NaiveDateTime>,
     pub is_shield: bool,
 }
 
@@ -91,9 +91,9 @@ pub struct Encounter {
     pub id: u64,
     pub state: EncounterState,
     pub events: Vec<CombatEvent>,
-    pub enter_combat_time: Option<Time>,
-    pub exit_combat_time: Option<Time>,
-    pub last_combat_activity_time: Option<Time>,
+    pub enter_combat_time: Option<NaiveDateTime>,
+    pub exit_combat_time: Option<NaiveDateTime>,
+    pub last_combat_activity_time: Option<NaiveDateTime>,
     // Summary fields populated on state transitions
     pub players: HashMap<i64, PlayerInfo>,
     pub npcs: HashMap<i64, NpcInfo>,
@@ -127,7 +127,12 @@ impl Encounter {
 
     // --- Player State
 
-    pub fn set_entity_death(&mut self, entity_id: i64, entity_type: &EntityType, timestamp: Time) {
+    pub fn set_entity_death(
+        &mut self,
+        entity_id: i64,
+        entity_type: &EntityType,
+        timestamp: NaiveDateTime,
+    ) {
         match entity_type {
             EntityType::Player => {
                 if let Some(player) = self.players.get_mut(&entity_id) {
@@ -172,7 +177,7 @@ impl Encounter {
     }
 
     #[inline]
-    fn try_track_entity(&mut self, entity: &Entity, timestamp: Time) {
+    fn try_track_entity(&mut self, entity: &Entity, timestamp: NaiveDateTime) {
         match entity.entity_type {
             EntityType::Player => {
                 self.players
@@ -207,9 +212,7 @@ impl Encounter {
 
     pub fn duration_ms(&self) -> Option<i64> {
         match (self.enter_combat_time, self.exit_combat_time) {
-            (Some(enter), Some(exit)) => {
-                Some(exit.duration_since(enter).whole_milliseconds() as i64)
-            }
+            (Some(enter), Some(exit)) => Some(exit.signed_duration_since(enter).num_milliseconds()),
             _ => None,
         }
     }
@@ -218,17 +221,17 @@ impl Encounter {
         let enter = self.enter_combat_time?;
         let terminal = match self.exit_combat_time {
             Some(exit) => exit,
-            None => OffsetDateTime::now_local().ok()?.time(),
+            None => chrono::offset::Local::now().naive_local(),
         };
 
-        let mut duration = terminal.duration_since(enter);
+        let mut duration = terminal.signed_duration_since(enter);
 
         // If negative, we crossed midnight - add 24 hours
-        if duration.is_negative() {
-            duration += time::Duration::days(1);
+        if duration.num_milliseconds().is_negative() {
+            duration = duration.checked_add(&TimeDelta::days(1))?;
         }
 
-        Some(duration.whole_seconds())
+        Some(duration.num_seconds())
     }
 
     fn get_entity_name(&self, id: i64) -> Option<String> {
@@ -308,8 +311,8 @@ impl Encounter {
                                 && (e.removed_at.is_none_or(|t| t >= event.timestamp)
                                     || e.removed_at
                                         .unwrap()
-                                        .duration_until(event.timestamp)
-                                        .whole_milliseconds()
+                                        .signed_duration_since(event.timestamp)
+                                        .num_milliseconds()
                                         <= 750)
                         })
                         .min_by_key(|e| e.applied_at);

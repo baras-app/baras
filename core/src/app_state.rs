@@ -1,17 +1,16 @@
 use crate::CombatEvent;
 use crate::directory_index::LogFileIndex;
 use crate::session_cache::SessionCache;
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use time::Date;
-use time::format_description::well_known::Iso8601;
 
 #[derive(Default)]
 pub struct AppState {
     pub current_byte: Option<u64>,
     pub config: AppConfig,
     pub active_file: Option<PathBuf>,
-    pub game_session_date: Option<Date>,
+    pub game_session_date: Option<NaiveDateTime>,
     pub session_cache: Option<SessionCache>,
     pub log_tail_task: Option<tokio::task::JoinHandle<()>>,
     pub file_index: Option<LogFileIndex>,
@@ -40,12 +39,10 @@ impl AppState {
             .expect("missing file name")
             .to_str()
             .expect("invalid UTF-8 in file name")
-            .split('_')
-            .nth(1)
-            .expect("invalid file format: expected combat_YYYY-MM-DD_...");
+            .trim_start_matches("combat_");
 
-        let format = Iso8601::DATE;
-        let date_stamp = Date::parse(stem, &format).expect("failed to parse date from file name");
+        let date_stamp =
+            NaiveDateTime::parse_from_str(stem, "%Y-%m-%d_%H_%M%S_%.f").unwrap_or_default();
 
         let resolved = if given_path.is_relative() {
             Path::new(&self.config.log_directory).join(given_path)
@@ -55,7 +52,7 @@ impl AppState {
 
         self.active_file = Some(resolved);
         self.game_session_date = Some(date_stamp);
-        self.session_cache = Some(SessionCache::new(date_stamp));
+        self.session_cache = Some(SessionCache::new());
     }
 
     pub fn process_event(&mut self, event: CombatEvent) {

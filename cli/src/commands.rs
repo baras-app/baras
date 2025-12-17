@@ -1,5 +1,6 @@
 use baras_core::app_state::AppState;
 use baras_core::file_handler;
+use chrono::offset;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -86,7 +87,7 @@ pub async fn list_files(state: Arc<RwLock<AppState>>) {
 }
 
 pub async fn delete_old_files(state: Arc<RwLock<AppState>>, days: u32) {
-    let today = time::OffsetDateTime::now_utc().date();
+    let today = offset::Local::now().date_naive();
 
     let files_to_delete: Vec<_> = {
         let s = state.read().await;
