@@ -1,6 +1,5 @@
-pub mod app_state;
+pub mod context;
 pub mod combat_event;
-pub mod directory_index;
 pub mod directory_watcher;
 pub mod encounter;
 pub mod file_handler;

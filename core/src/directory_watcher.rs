@@ -1,4 +1,4 @@
-use crate::directory_index::LogFileIndex;
+use crate::context::DirectoryIndex;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -116,9 +116,9 @@ fn is_combat_log(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-pub fn build_index(dir: &Path) -> Result<(LogFileIndex, Option<PathBuf>), String> {
+pub fn build_index(dir: &Path) -> Result<(DirectoryIndex, Option<PathBuf>), String> {
     let index =
-        LogFileIndex::build_index(dir).map_err(|e| format!("Failed to build file index: {}", e))?;
+        DirectoryIndex::build_index(dir).map_err(|e| format!("Failed to build file index: {}", e))?;
 
     let newest = index.newest_file().map(|f| f.path.clone());
     Ok((index, newest))

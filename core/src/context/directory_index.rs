@@ -27,12 +27,12 @@ impl LogFileMetaData {
 }
 
 #[derive(Default)]
-pub struct LogFileIndex {
+pub struct DirectoryIndex {
     entries: HashMap<PathBuf, LogFileMetaData>,
     session_counts: HashMap<(String, NaiveDate), u32>,
 }
 
-impl LogFileIndex {
+impl DirectoryIndex {
     pub fn new() -> Self {
         Self {
             ..Default::default()
@@ -181,10 +181,7 @@ pub fn parse_log_filename(filename: &str) -> Option<(NaiveDate, NaiveDateTime)> 
     let stem = filename.strip_suffix(".txt").unwrap_or(filename);
     let filedate = stem.strip_prefix("combat_");
 
-    println!("{:?}", filedate);
     let date_stamp = NaiveDateTime::parse_from_str(filedate?, "%Y-%m-%d_%H_%M_%S_%f").ok()?;
-
-    println!("{:?}", date_stamp);
 
     Some((date_stamp.date(), date_stamp))
 }

@@ -1,4 +1,4 @@
-use crate::app_state::AppState;
+use crate::context::ParsingSession;
 use crate::reader::Reader;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -10,13 +10,8 @@ pub struct ParseResult {
     pub end_pos: u64,
 }
 
-pub async fn parse_file(path: &str, state: Arc<RwLock<AppState>>) -> Result<ParseResult, String> {
+pub async fn parse_file(state: Arc<RwLock<ParsingSession>>) -> Result<ParseResult, String> {
     let timer = std::time::Instant::now();
-
-    {
-        let mut s = state.write().await;
-        s.set_active_file(path);
-    }
 
     let active_path = {
         let s = state.read().await;

@@ -1,16 +1,14 @@
 use crate::commands;
-use baras_core::app_state::AppState;
+use crate::CliContext;
 use baras_core::directory_watcher::{self as core_watcher, DirectoryEvent, DirectoryWatcher};
 use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
 /// Initialize the file index and start the watcher
-pub async fn init_watcher(state: Arc<RwLock<AppState>>) -> Option<JoinHandle<()>> {
+pub async fn init_watcher(ctx: &CliContext) -> Option<JoinHandle<()>> {
     let dir = {
-        let s = state.read().await;
-        PathBuf::from(&s.config.log_directory)
+        let config = ctx.config.read().await;
+        PathBuf::from(&config.log_directory)
     };
 
     if !dir.exists() {
@@ -24,8 +22,8 @@ pub async fn init_watcher(state: Arc<RwLock<AppState>>) -> Option<JoinHandle<()>
             let file_count = index.len();
 
             {
-                let mut s = state.write().await;
-                s.file_index = Some(index);
+                let mut index_guard = ctx.file_index.write().await;
+                *index_guard = Some(index);
             }
 
             println!("Indexed {} log files", file_count);
@@ -33,7 +31,7 @@ pub async fn init_watcher(state: Arc<RwLock<AppState>>) -> Option<JoinHandle<()>
             // Auto-load newest file if available
             if let Some(newest_path) = newest {
                 let path_str = newest_path.to_string_lossy().to_string();
-                commands::parse_file(&path_str, Arc::clone(&state)).await;
+                commands::parse_file(&path_str, ctx).await;
             }
         }
         Err(e) => {
@@ -52,26 +50,26 @@ pub async fn init_watcher(state: Arc<RwLock<AppState>>) -> Option<JoinHandle<()>
 
     println!("Watching directory: {}", dir.display());
 
-    // CLI spawns and handles events
-    let watcher_state = Arc::clone(&state);
+    // Clone context for the spawned task
+    let watcher_ctx = ctx.clone();
     let handle = tokio::spawn(async move {
         while let Some(event) = watcher.next_event().await {
-            handle_watcher_event(event, Arc::clone(&watcher_state)).await;
+            handle_watcher_event(event, &watcher_ctx).await;
         }
     });
 
     Some(handle)
 }
 
-async fn handle_watcher_event(event: DirectoryEvent, state: Arc<RwLock<AppState>>) {
+async fn handle_watcher_event(event: DirectoryEvent, ctx: &CliContext) {
     match event {
         DirectoryEvent::NewFile(path) => {
             println!("New log file detected: {}", path.display());
 
             // Add to index
             let is_latest_file = {
-                let mut s = state.write().await;
-                if let Some(index) = &mut s.file_index {
+                let mut index_guard = ctx.file_index.write().await;
+                if let Some(index) = &mut *index_guard {
                     index.add_file(&path);
                     index.newest_file().map(|f| f.path == path).unwrap_or(false)
                 } else {
@@ -81,31 +79,45 @@ async fn handle_watcher_event(event: DirectoryEvent, state: Arc<RwLock<AppState>
 
             if is_latest_file {
                 let path_str = path.to_string_lossy().to_string();
-                commands::parse_file(&path_str, state.clone()).await;
+                commands::parse_file(&path_str, ctx).await;
             }
         }
 
         DirectoryEvent::FileRemoved(path) => {
             let next_file = {
-                let mut s = state.write().await;
-
                 // Remove from index
-                if let Some(index) = &mut s.file_index {
-                    index.remove_file(&path);
+                {
+                    let mut index_guard = ctx.file_index.write().await;
+                    if let Some(index) = &mut *index_guard {
+                        index.remove_file(&path);
+                    }
                 }
 
                 // Check if removed file was the active file
-                let was_active = s.active_file.as_ref().map(|p| p == &path).unwrap_or(false);
+                let was_active = {
+                    if let Some(session) = ctx.session().await {
+                        let s = session.read().await;
+                        s.active_file.as_ref().map(|p| p == &path).unwrap_or(false)
+                    } else {
+                        false
+                    }
+                };
 
                 if was_active {
-                    // Clear current state
-                    s.active_file = None;
-                    if let Some(tail) = s.log_tail_task.take() {
-                        tail.abort();
+                    // Abort tail task
+                    {
+                        let mut tasks = ctx.tasks.lock().await;
+                        if let Some(tail) = tasks.log_tail.take() {
+                            tail.abort();
+                        }
                     }
 
+                    // Clear session
+                    ctx.clear_session().await;
+
                     // Get newest file to switch to
-                    s.file_index
+                    let index_guard = ctx.file_index.read().await;
+                    index_guard
                         .as_ref()
                         .and_then(|idx| idx.newest_file())
                         .map(|f| f.path.clone())
@@ -118,7 +130,7 @@ async fn handle_watcher_event(event: DirectoryEvent, state: Arc<RwLock<AppState>
             if let Some(new_path) = next_file {
                 println!("Active file removed, switching to: {}", new_path.display());
                 let path_str = new_path.to_string_lossy().to_string();
-                commands::parse_file(&path_str, Arc::clone(&state)).await;
+                commands::parse_file(&path_str, ctx).await;
             }
         }
 

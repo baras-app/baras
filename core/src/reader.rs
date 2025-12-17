@@ -1,4 +1,4 @@
-use crate::app_state::AppState;
+use crate::context::ParsingSession;
 use crate::{CombatEvent, LogParser};
 use memchr::memchr_iter;
 use memmap2::Mmap;
@@ -17,11 +17,11 @@ const TAIL_SLEEP_DURATION: Duration = Duration::from_millis(100);
 
 pub struct Reader {
     path: PathBuf,
-    state: Arc<RwLock<AppState>>,
+    state: Arc<RwLock<ParsingSession>>,
 }
 
 impl Reader {
-    pub fn from(file_path: PathBuf, state: Arc<RwLock<AppState>>) -> Self {
+    pub fn from(file_path: PathBuf, state: Arc<RwLock<ParsingSession>>) -> Self {
         Reader {
             path: file_path,
             state,
