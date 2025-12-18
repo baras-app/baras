@@ -35,6 +35,14 @@ pub fn App() -> Element {
         }
     });
 
+    if overlay_visible() {
+    use_future(move || async move {
+        invoke("show_overlay", JsValue::NULL).await;
+    });
+    }
+
+
+
     // Read signals once at the top to avoid multiple borrow conflicts
     let is_visible = overlay_visible();
     let is_move_mode = move_mode();

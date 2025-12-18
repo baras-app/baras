@@ -99,7 +99,10 @@ pub async fn spawn_overlay() -> (Sender<OverlayCommand>, JoinHandle<()>) {
 }
 
 #[tauri::command]
-pub async fn show_overlay(state: State<'_, SharedOverlayState>) -> Result<bool, String> {
+pub async fn show_overlay(
+    state: State<'_, SharedOverlayState>,
+    service: State<'_, crate::service::ServiceHandle>,
+) -> Result<bool, String> {
     // Check if already running (release lock before await)
     {
         let state = state.lock().map_err(|e| e.to_string())?;
@@ -112,10 +115,35 @@ pub async fn show_overlay(state: State<'_, SharedOverlayState>) -> Result<bool, 
     let (tx, handle) = spawn_overlay().await;
 
     // Re-acquire to update state
-    let mut state = state.lock().map_err(|e| e.to_string())?;
-    state.tx = Some(tx);
-    state.handle = Some(handle);
-    state.is_running = true;
+    {
+        let mut state = state.lock().map_err(|e| e.to_string())?;
+        state.tx = Some(tx.clone());
+        state.handle = Some(handle);
+        state.is_running = true;
+    }
+
+    // If tailing is active, send current metrics to the new overlay
+    if service.is_tailing().await {
+        if let Some(metrics) = service.current_metrics().await {
+            if !metrics.is_empty() {
+                let entries: Vec<_> = metrics
+                    .iter()
+                    .map(|m| MeterEntry::new(&m.name, m.dps, m.dps))
+                    .collect();
+
+                let max_dps = entries.iter().map(|e| e.value).fold(0, i64::max);
+                let entries: Vec<_> = entries
+                    .into_iter()
+                    .map(|mut e| {
+                        e.max_value = max_dps;
+                        e
+                    })
+                    .collect();
+
+                let _ = tx.send(OverlayCommand::UpdateEntries(entries)).await;
+            }
+        }
+    }
 
     Ok(true)
 }
