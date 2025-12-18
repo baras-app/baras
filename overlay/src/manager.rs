@@ -167,6 +167,11 @@ impl OverlayWindow {
         self.platform.pending_size()
     }
 
+    /// Check if overlay is in interactive mode (not click-through)
+    pub fn is_interactive(&self) -> bool {
+        self.platform.is_interactive()
+    }
+
     /// Run the window event loop with a render callback
     pub fn run<F>(&mut self, mut render_callback: F)
     where
@@ -188,15 +193,21 @@ pub struct MeterEntry {
     pub color: Color,
 }
 
+/// Base dimensions for scaling calculations
+const BASE_WIDTH: f32 = 280.0;
+const BASE_HEIGHT: f32 = 200.0;
+
+/// Base layout values (at BASE_WIDTH x BASE_HEIGHT)
+const BASE_BAR_HEIGHT: f32 = 20.0;
+const BASE_BAR_SPACING: f32 = 4.0;
+const BASE_PADDING: f32 = 8.0;
+const BASE_FONT_SIZE: f32 = 14.0;
+
 /// A specialized DPS/HPS meter overlay
 pub struct MeterOverlay {
     window: OverlayWindow,
     entries: Vec<MeterEntry>,
     title: String,
-    bar_height: f32,
-    bar_spacing: f32,
-    padding: f32,
-    font_size: f32,
 }
 
 impl MeterOverlay {
@@ -208,11 +219,38 @@ impl MeterOverlay {
             window,
             entries: Vec::new(),
             title: title.to_string(),
-            bar_height: 20.0,
-            bar_spacing: 4.0,
-            padding: 8.0,
-            font_size: 14.0,
         })
+    }
+
+    /// Calculate scale factor based on current window size
+    fn scale_factor(&self) -> f32 {
+        let width = self.window.width() as f32;
+        let height = self.window.height() as f32;
+
+        // Use geometric mean of width and height ratios for balanced scaling
+        let width_ratio = width / BASE_WIDTH;
+        let height_ratio = height / BASE_HEIGHT;
+        (width_ratio * height_ratio).sqrt()
+    }
+
+    /// Get scaled bar height
+    fn bar_height(&self) -> f32 {
+        BASE_BAR_HEIGHT * self.scale_factor()
+    }
+
+    /// Get scaled bar spacing
+    fn bar_spacing(&self) -> f32 {
+        BASE_BAR_SPACING * self.scale_factor()
+    }
+
+    /// Get scaled padding
+    fn padding(&self) -> f32 {
+        BASE_PADDING * self.scale_factor()
+    }
+
+    /// Get scaled font size
+    fn font_size(&self) -> f32 {
+        BASE_FONT_SIZE * self.scale_factor()
     }
 
     /// Update the meter entries
@@ -230,30 +268,37 @@ impl MeterOverlay {
         let width = self.window.width() as f32;
         let height = self.window.height() as f32;
 
+        // Get scaled layout values
+        let padding = self.padding();
+        let font_size = self.font_size();
+        let bar_height = self.bar_height();
+        let bar_spacing = self.bar_spacing();
+        let corner_radius = 8.0 * self.scale_factor();
+
         // Clear with transparent background
         self.window.clear(colors::transparent());
 
         // Draw background
         self.window
-            .fill_rounded_rect(0.0, 0.0, width, height, 8.0, colors::overlay_bg());
+            .fill_rounded_rect(0.0, 0.0, width, height, corner_radius, colors::overlay_bg());
 
         // Draw title
-        let title_y = self.padding + self.font_size;
+        let title_y = padding + font_size;
         self.window.draw_text(
             &self.title,
-            self.padding,
+            padding,
             title_y,
-            self.font_size,
+            font_size,
             colors::white(),
         );
 
         // Draw separator line
-        let sep_y = title_y + self.bar_spacing + 2.0;
+        let sep_y = title_y + bar_spacing + 2.0;
         self.window.fill_rect(
-            self.padding,
+            padding,
             sep_y,
-            width - self.padding * 2.0,
-            1.0,
+            width - padding * 2.0,
+            1.0 * self.scale_factor(),
             colors::white(),
         );
 
@@ -261,46 +306,48 @@ impl MeterOverlay {
         let max_val = self.entries.iter().map(|e| e.max_value).fold(1.0, f64::max);
 
         // Draw entries
-        let bar_width = width - self.padding * 2.0;
-        let mut y = sep_y + self.bar_spacing + 4.0;
+        let bar_width = width - padding * 2.0;
+        let mut y = sep_y + bar_spacing + 4.0 * self.scale_factor();
+        let bar_radius = 4.0 * self.scale_factor();
+        let text_font_size = font_size - 2.0 * self.scale_factor();
 
         for entry in &self.entries {
             let progress = (entry.value / max_val) as f32;
 
             // Draw bar
             self.window.draw_progress_bar(
-                self.padding,
+                padding,
                 y,
                 bar_width,
-                self.bar_height,
+                bar_height,
                 progress,
                 colors::dps_bar_bg(),
                 entry.color,
-                4.0,
+                bar_radius,
             );
 
             // Draw name on the left
-            let text_y = y + self.bar_height / 2.0 + self.font_size / 3.0;
+            let text_y = y + bar_height / 2.0 + text_font_size / 3.0;
             self.window.draw_text(
                 &entry.name,
-                self.padding + 4.0,
+                padding + 4.0 * self.scale_factor(),
                 text_y,
-                self.font_size - 2.0,
+                text_font_size,
                 colors::white(),
             );
 
             // Draw value on the right
             let value_text = format!("{:.1}", entry.value);
-            let (text_width, _) = self.window.measure_text(&value_text, self.font_size - 2.0);
+            let (text_width, _) = self.window.measure_text(&value_text, text_font_size);
             self.window.draw_text(
                 &value_text,
-                width - self.padding - text_width - 4.0,
+                width - padding - text_width - 4.0 * self.scale_factor(),
                 text_y,
-                self.font_size - 2.0,
+                text_font_size,
                 colors::white(),
             );
 
-            y += self.bar_height + self.bar_spacing;
+            y += bar_height + bar_spacing;
         }
 
         // Draw resize indicator in bottom-right corner when pointer is there

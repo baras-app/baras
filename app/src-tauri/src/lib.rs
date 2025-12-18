@@ -44,32 +44,24 @@ fn spawn_overlay() -> (Sender<OverlayCommand>, JoinHandle<()>) {
             }
         };
 
-        // Set up dummy data
+        // Set up dummy data (16 entries for testing max capacity)
         let dummy_entries = vec![
-            MeterEntry {
-                name: "Player One".to_string(),
-                value: 15234.0,
-                max_value: 15234.0,
-                color: colors::dps_bar_fill(),
-            },
-            MeterEntry {
-                name: "Player Two".to_string(),
-                value: 12100.0,
-                max_value: 15234.0,
-                color: colors::dps_bar_fill(),
-            },
-            MeterEntry {
-                name: "Player Three".to_string(),
-                value: 9800.0,
-                max_value: 15234.0,
-                color: colors::dps_bar_fill(),
-            },
-            MeterEntry {
-                name: "Player Four".to_string(),
-                value: 7500.0,
-                max_value: 15234.0,
-                color: colors::dps_bar_fill(),
-            },
+            MeterEntry { name: "Player One".to_string(), value: 15234.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Two".to_string(), value: 14100.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Three".to_string(), value: 13200.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Four".to_string(), value: 12500.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Five".to_string(), value: 11800.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Six".to_string(), value: 10900.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Seven".to_string(), value: 10100.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Eight".to_string(), value: 9400.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Nine".to_string(), value: 8700.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Ten".to_string(), value: 8000.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Eleven".to_string(), value: 7200.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Twelve".to_string(), value: 6500.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Thirteen".to_string(), value: 5800.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Fourteen".to_string(), value: 5100.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Fifteen".to_string(), value: 4300.0, max_value: 15234.0, color: colors::dps_bar_fill() },
+            MeterEntry { name: "Player Sixteen".to_string(), value: 3500.0, max_value: 15234.0, color: colors::dps_bar_fill() },
         ];
         overlay.set_entries(dummy_entries);
 
@@ -95,9 +87,11 @@ fn spawn_overlay() -> (Sender<OverlayCommand>, JoinHandle<()>) {
             }
             overlay.render();
 
-            // Minimal sleep - just yield to OS scheduler
-            // The event loop naturally blocks when waiting for events
-            thread::sleep(std::time::Duration::from_millis(1));
+            // Adaptive sleep based on mode:
+            // - Interactive mode (move/resize): 1ms for responsive input
+            // - Locked mode: 16ms (~60fps) since no user interaction needed
+            let sleep_ms = if overlay.window_mut().is_interactive() { 1 } else { 16 };
+            thread::sleep(std::time::Duration::from_millis(sleep_ms));
         }
     });
 

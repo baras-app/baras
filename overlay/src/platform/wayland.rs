@@ -47,6 +47,7 @@ struct WaylandState {
     layer_surface: Option<ZwlrLayerSurfaceV1>,
     shm: Option<WlShm>,
     buffer: Option<WlBuffer>,
+    seat: Option<WlSeat>,
     pointer: Option<WlPointer>,
 
     // Pixel buffer (RGBA format for rendering, converted to ARGB for Wayland)
@@ -66,7 +67,15 @@ struct WaylandState {
     pending_height: u32,
     position_dirty: bool,
     pending_resize: Option<(u32, u32)>, // (width, height) - applied on release
+
+    // Mode tracking for optimization
+    click_through: bool,
 }
+
+/// Overlay size constraints
+const MIN_OVERLAY_SIZE: u32 = 100;
+const MAX_OVERLAY_WIDTH: u32 = 300;
+const MAX_OVERLAY_HEIGHT: u32 = 700;
 
 /// Resize corner detection
 struct ResizeCorner;
@@ -89,7 +98,7 @@ struct ShmBuffer {
 unsafe impl Send for ShmBuffer {}
 
 impl WaylandState {
-    fn new(width: u32, height: u32, x: i32, y: i32) -> Self {
+    fn new(width: u32, height: u32, x: i32, y: i32, click_through: bool) -> Self {
         let pixel_count = (width * height) as usize;
         Self {
             running: true,
@@ -101,6 +110,7 @@ impl WaylandState {
             layer_surface: None,
             shm: None,
             buffer: None,
+            seat: None,
             pointer: None,
             pixel_data: vec![0u8; pixel_count * 4],
             shm_data: None,
@@ -115,6 +125,7 @@ impl WaylandState {
             pending_height: height,
             position_dirty: false,
             pending_resize: None,
+            click_through,
         }
     }
 
@@ -136,6 +147,16 @@ impl WaylandState {
             Some(s) => s,
             None => return,
         };
+
+        // Clean up old buffer first
+        if let Some(old_buffer) = self.buffer.take() {
+            old_buffer.destroy();
+        }
+        if let Some(old_shm) = self.shm_data.take() {
+            unsafe {
+                rustix::mm::munmap(old_shm.ptr as *mut _, old_shm.size).ok();
+            }
+        }
 
         let stride = self.width * 4;
         let size = (stride * self.height) as usize;
@@ -216,7 +237,7 @@ impl OverlayPlatform for WaylandOverlay {
                 .map_err(|e| PlatformError::ConnectionFailed(e.to_string()))?;
 
         let qh = event_queue.handle();
-        let mut state = WaylandState::new(config.width, config.height, config.x, config.y);
+        let mut state = WaylandState::new(config.width, config.height, config.x, config.y, config.click_through);
 
         // Bind globals
         let _registry = connection.display().get_registry(&qh, ());
@@ -235,14 +256,20 @@ impl OverlayPlatform for WaylandOverlay {
 
         state.shm = Some(shm);
 
-        // Bind seat for pointer input
+        // Bind seat for pointer input (stored for later use when toggling modes)
         let seat: WlSeat = globals
             .bind(&qh, 1..=9, ())
             .map_err(|_| PlatformError::UnsupportedFeature("wl_seat".to_string()))?;
+        state.seat = Some(seat);
 
-        // Get pointer from seat
-        let pointer = seat.get_pointer(&qh, ());
-        state.pointer = Some(pointer);
+        // Only create pointer if interactive (not click-through)
+        // This saves memory/CPU when overlay is locked
+        if !config.click_through {
+            if let Some(seat) = &state.seat {
+                let pointer = seat.get_pointer(&qh, ());
+                state.pointer = Some(pointer);
+            }
+        }
 
         // Create surface
         let surface = compositor.create_surface(&qh, ());
@@ -345,6 +372,8 @@ impl OverlayPlatform for WaylandOverlay {
 
     fn set_click_through(&mut self, enabled: bool) {
         self.config.click_through = enabled;
+        self.state.click_through = enabled;
+
         if let (Some(compositor), Some(surface)) = (&self.state.compositor, &self.state.surface) {
             let region = compositor.create_region(&self.qh, ());
             if !enabled {
@@ -353,6 +382,26 @@ impl OverlayPlatform for WaylandOverlay {
             }
             surface.set_input_region(Some(&region));
             surface.commit();
+        }
+
+        // Manage pointer lifecycle based on mode
+        if enabled {
+            // Locked mode: release pointer to save resources
+            if let Some(pointer) = self.state.pointer.take() {
+                pointer.release();
+            }
+            // Reset interaction state
+            self.state.is_dragging = false;
+            self.state.is_resizing = false;
+            self.state.in_resize_corner = false;
+        } else {
+            // Interactive mode: acquire pointer if we don't have one
+            if self.state.pointer.is_none() {
+                if let Some(seat) = &self.state.seat {
+                    let pointer = seat.get_pointer(&self.qh, ());
+                    self.state.pointer = Some(pointer);
+                }
+            }
         }
     }
 
@@ -370,6 +419,10 @@ impl OverlayPlatform for WaylandOverlay {
         } else {
             None
         }
+    }
+
+    fn is_interactive(&self) -> bool {
+        !self.state.click_through
     }
 
     fn pixel_buffer(&mut self) -> Option<&mut [u8]> {
@@ -606,8 +659,6 @@ impl Dispatch<WlPointer, ()> for WaylandState {
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
     ) {
-        const MIN_SIZE: u32 = 100; // Minimum window dimension
-
         match event {
             wl_pointer::Event::Enter { surface_x, surface_y, .. } => {
                 state.pointer_x = surface_x;
@@ -634,12 +685,19 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                     let new_width = state.pending_width as i32 + delta_x as i32;
                     let new_height = state.pending_height as i32 + delta_y as i32;
 
-                    // Enforce minimum size
-                    if new_width >= MIN_SIZE as i32 && new_height >= MIN_SIZE as i32 {
-                        state.pending_width = new_width as u32;
-                        state.pending_height = new_height as u32;
-                        // Apply resize immediately
-                        state.pending_resize = Some((new_width as u32, new_height as u32));
+                    // Clamp to min/max size constraints
+                    let clamped_width = (new_width as u32)
+                        .max(MIN_OVERLAY_SIZE)
+                        .min(MAX_OVERLAY_WIDTH);
+                    let clamped_height = (new_height as u32)
+                        .max(MIN_OVERLAY_SIZE)
+                        .min(MAX_OVERLAY_HEIGHT);
+
+                    // Only update if within valid range
+                    if new_width > 0 && new_height > 0 {
+                        state.pending_width = clamped_width;
+                        state.pending_height = clamped_height;
+                        state.pending_resize = Some((clamped_width, clamped_height));
                     }
                 } else if state.is_dragging {
                     // Move window

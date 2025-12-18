@@ -99,6 +99,10 @@ pub trait OverlayPlatform: Sized {
     /// Get pending resize dimensions during drag (for preview)
     fn pending_size(&self) -> Option<(u32, u32)>;
 
+    /// Check if overlay is in interactive mode (not click-through)
+    /// Callers can use this to adjust poll frequency - locked overlays need less frequent updates
+    fn is_interactive(&self) -> bool;
+
     /// Get mutable access to the pixel buffer (RGBA format)
     /// Returns None if buffer is not ready
     fn pixel_buffer(&mut self) -> Option<&mut [u8]>;
