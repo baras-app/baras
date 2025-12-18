@@ -152,7 +152,7 @@ impl Renderer {
         let metrics = Metrics::new(font_size, font_size * 1.2);
         let mut text_buffer = Buffer::new(&mut self.font_system, metrics);
 
-        let attrs = Attrs::new().family(Family::SansSerif);
+        let attrs = Attrs::new().family(Family::Name("Noto Sans"));
         text_buffer.set_text(&mut self.font_system, text, attrs, Shaping::Advanced);
         text_buffer.shape_until_scroll(&mut self.font_system, false);
 

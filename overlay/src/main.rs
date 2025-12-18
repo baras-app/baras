@@ -31,26 +31,26 @@ fn main() {
     let entries = vec![
         MeterEntry {
             name: "Player 1".to_string(),
-            value: 12500.0,
-            max_value: 15000.0,
+            value: 12500,
+            max_value: 15000,
             color: colors::dps_bar_fill(),
         },
         MeterEntry {
             name: "Player 2".to_string(),
-            value: 10200.0,
-            max_value: 15000.0,
+            value: 10200,
+            max_value: 15000,
             color: colors::dps_bar_fill(),
         },
         MeterEntry {
             name: "Player 3".to_string(),
-            value: 8700.0,
-            max_value: 15000.0,
+            value: 8700,
+            max_value: 15000,
             color: colors::hps_bar_fill(),
         },
         MeterEntry {
             name: "Player 4".to_string(),
-            value: 6100.0,
-            max_value: 15000.0,
+            value: 6100,
+            max_value: 15000,
             color: colors::tank_bar_fill(),
         },
     ];

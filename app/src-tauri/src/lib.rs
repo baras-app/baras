@@ -79,7 +79,7 @@ fn spawn_overlay_bridge(
                             })
                             .collect();
 
-                        let max_dps = entries.iter().map(|e| e.value).fold(0.0, f64::max);
+                        let max_dps = entries.iter().map(|e| e.value).fold(0, i64::max);
                         let entries: Vec<_> = entries
                             .into_iter()
                             .map(|mut e| {

@@ -120,9 +120,9 @@ impl ServiceHandle {
                 .map(|m| PlayerMetrics {
                     entity_id: m.entity_id,
                     name: resolve(m.name).to_string(),
-                    dps: m.dps as f64,
+                    dps: m.dps as i64,
                     total_damage: m.total_damage as u64,
-                    hps: m.hps as f64,
+                    hps: m.hps as i64,
                     total_healing: m.total_healing as u64,
                 })
                 .collect(),
@@ -394,9 +394,9 @@ async fn calculate_metrics(shared: &Arc<SharedState>) -> Option<Vec<PlayerMetric
                 PlayerMetrics {
                     entity_id: m.entity_id,
                     name: safe_name,
-                    dps: m.dps as f64,
+                    dps: m.dps as i64,
                     total_damage: m.total_damage as u64,
-                    hps: m.hps as f64,
+                    hps: m.hps as i64,
                     total_healing: m.total_healing as u64,
                 }
             })
@@ -421,9 +421,9 @@ pub struct LogFileInfo {
 pub struct PlayerMetrics {
     pub entity_id: i64,
     pub name: String,
-    pub dps: f64,
+    pub dps: i64,
     pub total_damage: u64,
-    pub hps: f64,
+    pub hps: i64,
     pub total_healing: u64,
 }
 

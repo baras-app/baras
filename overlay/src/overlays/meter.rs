@@ -12,13 +12,13 @@ use crate::renderer::colors;
 #[derive(Debug, Clone)]
 pub struct MeterEntry {
     pub name: String,
-    pub value: f64,
-    pub max_value: f64,
+    pub value: i64,
+    pub max_value: i64,
     pub color: Color,
 }
 
 impl MeterEntry {
-    pub fn new(name: impl Into<String>, value: f64, max_value: f64) -> Self {
+    pub fn new(name: impl Into<String>, value: i64, max_value: i64) -> Self {
         Self {
             name: name.into(),
             value,
@@ -148,7 +148,7 @@ impl MeterOverlay {
         );
 
         // Find max value for scaling
-        let max_val = self.entries.iter().map(|e| e.max_value).fold(1.0, f64::max);
+        let max_val = self.entries.iter().map(|e| e.max_value as f64).fold(1.0, f64::max);
 
         // Draw entries
         let bar_width = width - padding * 2.0;
@@ -157,7 +157,7 @@ impl MeterOverlay {
         let text_font_size = font_size - 2.0 * self.scale_factor();
 
         for entry in &self.entries {
-            let progress = (entry.value / max_val).clamp(0.0, 1.0) as f32;
+            let progress = (entry.value as f64 / max_val).clamp(0.0, 1.0) as f32;
 
             // Draw bar background
             self.window.fill_rounded_rect(
