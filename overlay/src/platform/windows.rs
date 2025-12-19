@@ -15,7 +15,16 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture};
-use windows::Win32::UI::WindowsAndMessaging::*;
+use windows::Win32::UI::WindowsAndMessaging::{
+    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, LoadCursorW, PeekMessageW,
+    RegisterClassExW, SetWindowLongPtrW, SetWindowPos, ShowWindow, TranslateMessage,
+    UpdateLayeredWindow, GetCursorPos,
+    CS_HREDRAW, CS_VREDRAW, GWL_EXSTYLE, HTCLIENT, HWND_TOPMOST, IDC_ARROW, MSG, PM_REMOVE,
+    SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, ULW_ALPHA, WM_DESTROY,
+    WM_ERASEBKGND, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEMOVE, WM_NCHITTEST, WM_QUIT,
+    WNDCLASSEXW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+    WS_EX_TRANSPARENT, WS_POPUP,
+};
 
 use super::{OverlayConfig, OverlayPlatform, PlatformError};
 
@@ -43,10 +52,14 @@ pub struct WindowsOverlay {
     is_dragging: bool,
     is_resizing: bool,
     in_resize_corner: bool,
-    drag_start_x: i32,
-    drag_start_y: i32,
+    // Drag tracking - uses screen coordinates for stable movement
+    drag_start_screen_x: i32,
+    drag_start_screen_y: i32,
     drag_start_win_x: i32,
     drag_start_win_y: i32,
+    // Resize tracking - uses client coordinates (size changes, not position)
+    resize_start_x: i32,
+    resize_start_y: i32,
     pending_width: u32,
     pending_height: u32,
     running: bool,
@@ -269,10 +282,12 @@ impl OverlayPlatform for WindowsOverlay {
             is_dragging: false,
             is_resizing: false,
             in_resize_corner: false,
-            drag_start_x: 0,
-            drag_start_y: 0,
+            drag_start_screen_x: 0,
+            drag_start_screen_y: 0,
             drag_start_win_x: config.x,
             drag_start_win_y: config.y,
+            resize_start_x: 0,
+            resize_start_y: 0,
             pending_width: config.width,
             pending_height: config.height,
             running: true,
@@ -409,19 +424,22 @@ impl OverlayPlatform for WindowsOverlay {
                             self.is_resizing = true;
                             self.pending_width = self.width;
                             self.pending_height = self.height;
+                            self.resize_start_x = x;
+                            self.resize_start_y = y;
                         } else {
                             self.is_dragging = true;
+                            // Use screen coordinates for stable drag
+                            let mut pt = POINT::default();
+                            let _ = GetCursorPos(&mut pt);
+                            self.drag_start_screen_x = pt.x;
+                            self.drag_start_screen_y = pt.y;
+                            self.drag_start_win_x = self.x;
+                            self.drag_start_win_y = self.y;
                         }
-                        self.drag_start_x = x;
-                        self.drag_start_y = y;
-                        self.drag_start_win_x = self.x;
-                        self.drag_start_win_y = self.y;
                         let _ = SetCapture(self.hwnd);
                     }
                     WM_LBUTTONUP => {
-                        if self.is_resizing {
-                            self.set_size(self.pending_width, self.pending_height);
-                        }
+                        // Size is updated live during resize, no need to apply on release
                         self.is_dragging = false;
                         self.is_resizing = false;
                         let _ = ReleaseCapture();
@@ -437,16 +455,26 @@ impl OverlayPlatform for WindowsOverlay {
                         }
 
                         if self.is_dragging {
-                            let dx = x - self.drag_start_x;
-                            let dy = y - self.drag_start_y;
+                            // Use screen coordinates for stable drag (no oscillation)
+                            let mut pt = POINT::default();
+                            let _ = GetCursorPos(&mut pt);
+                            let dx = pt.x - self.drag_start_screen_x;
+                            let dy = pt.y - self.drag_start_screen_y;
                             self.set_position(self.drag_start_win_x + dx, self.drag_start_win_y + dy);
                         } else if self.is_resizing {
-                            let dx = x - self.drag_start_x;
-                            let dy = y - self.drag_start_y;
-                            let new_w = (self.width as i32 + dx).max(MIN_OVERLAY_SIZE as i32).min(MAX_OVERLAY_WIDTH as i32) as u32;
-                            let new_h = (self.height as i32 + dy).max(MIN_OVERLAY_SIZE as i32).min(MAX_OVERLAY_HEIGHT as i32) as u32;
-                            self.pending_width = new_w;
-                            self.pending_height = new_h;
+                            // Resize uses client coordinates (size changes, position doesn't)
+                            let dx = x - self.resize_start_x;
+                            let dy = y - self.resize_start_y;
+                            let new_w = (self.pending_width as i32 + dx).max(MIN_OVERLAY_SIZE as i32).min(MAX_OVERLAY_WIDTH as i32) as u32;
+                            let new_h = (self.pending_height as i32 + dy).max(MIN_OVERLAY_SIZE as i32).min(MAX_OVERLAY_HEIGHT as i32) as u32;
+
+                            // Live resize - update immediately for visual feedback
+                            if new_w != self.width || new_h != self.height {
+                                self.set_size(new_w, new_h);
+                                // Update resize start for next delta
+                                self.resize_start_x = x;
+                                self.resize_start_y = y;
+                            }
                         }
                     }
                     WM_DESTROY => {

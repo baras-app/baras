@@ -18,6 +18,10 @@ use wayland_client::protocol::wl_shm::{self, Format, WlShm};
 use wayland_client::protocol::wl_shm_pool::WlShmPool;
 use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::{Connection, Dispatch, EventQueue, QueueHandle};
+use wayland_protocols::wp::relative_pointer::zv1::client::{
+    zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1,
+    zwp_relative_pointer_v1::{self, ZwpRelativePointerV1},
+};
 use wayland_protocols_wlr::layer_shell::v1::client::{
     zwlr_layer_shell_v1::ZwlrLayerShellV1,
     zwlr_layer_surface_v1::{self, Anchor, KeyboardInteractivity, ZwlrLayerSurfaceV1},
@@ -49,6 +53,8 @@ struct WaylandState {
     buffer: Option<WlBuffer>,
     seat: Option<WlSeat>,
     pointer: Option<WlPointer>,
+    relative_pointer_manager: Option<ZwpRelativePointerManagerV1>,
+    relative_pointer: Option<ZwpRelativePointerV1>,
 
     // Pixel buffer (RGBA format for rendering, converted to ARGB for Wayland)
     pixel_data: Vec<u8>,
@@ -62,6 +68,11 @@ struct WaylandState {
     in_resize_corner: bool, // true when pointer is in resize corner (for visual feedback)
     window_x: i32,
     window_y: i32,
+    // Drag tracking - uses relative pointer motion for smooth movement
+    drag_start_window_x: i32,
+    drag_start_window_y: i32,
+    drag_accum_x: f64,  // Accumulated relative motion since drag start
+    drag_accum_y: f64,
     // Track pending dimensions during resize (separate from actual state.width/height)
     pending_width: u32,
     pending_height: u32,
@@ -112,6 +123,8 @@ impl WaylandState {
             buffer: None,
             seat: None,
             pointer: None,
+            relative_pointer_manager: None,
+            relative_pointer: None,
             pixel_data: vec![0u8; pixel_count * 4],
             shm_data: None,
             pointer_x: 0.0,
@@ -121,6 +134,10 @@ impl WaylandState {
             in_resize_corner: false,
             window_x: x,
             window_y: y,
+            drag_start_window_x: x,
+            drag_start_window_y: y,
+            drag_accum_x: 0.0,
+            drag_accum_y: 0.0,
             pending_width: width,
             pending_height: height,
             position_dirty: false,
@@ -262,11 +279,21 @@ impl OverlayPlatform for WaylandOverlay {
             .map_err(|_| PlatformError::UnsupportedFeature("wl_seat".to_string()))?;
         state.seat = Some(seat);
 
+        // Bind relative pointer manager for smooth dragging (optional - graceful fallback)
+        if let Ok(rpm) = globals.bind::<ZwpRelativePointerManagerV1, _, _>(&qh, 1..=1, ()) {
+            state.relative_pointer_manager = Some(rpm);
+        }
+
         // Only create pointer if interactive (not click-through)
         // This saves memory/CPU when overlay is locked
         if !config.click_through {
             if let Some(seat) = &state.seat {
                 let pointer = seat.get_pointer(&qh, ());
+                // Create relative pointer if manager is available
+                if let Some(rpm) = &state.relative_pointer_manager {
+                    let rel_pointer = rpm.get_relative_pointer(&pointer, &qh, ());
+                    state.relative_pointer = Some(rel_pointer);
+                }
                 state.pointer = Some(pointer);
             }
         }
@@ -400,7 +427,10 @@ impl OverlayPlatform for WaylandOverlay {
 
         // Manage pointer lifecycle based on mode
         if enabled {
-            // Locked mode: release pointer to save resources
+            // Locked mode: release pointers to save resources
+            if let Some(rel_pointer) = self.state.relative_pointer.take() {
+                rel_pointer.destroy();
+            }
             if let Some(pointer) = self.state.pointer.take() {
                 pointer.release();
             }
@@ -413,6 +443,11 @@ impl OverlayPlatform for WaylandOverlay {
             if self.state.pointer.is_none() {
                 if let Some(seat) = &self.state.seat {
                     let pointer = seat.get_pointer(&self.qh, ());
+                    // Create relative pointer if manager is available
+                    if let Some(rpm) = &self.state.relative_pointer_manager {
+                        let rel_pointer = rpm.get_relative_pointer(&pointer, &self.qh, ());
+                        self.state.relative_pointer = Some(rel_pointer);
+                    }
                     self.state.pointer = Some(pointer);
                 }
             }
@@ -683,9 +718,6 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                 );
             }
             wl_pointer::Event::Motion { surface_x, surface_y, .. } => {
-                let delta_x = surface_x - state.pointer_x;
-                let delta_y = surface_y - state.pointer_y;
-
                 // Only update resize corner state when not actively resizing
                 // (during resize, keep it true so grip stays visible)
                 if !state.is_resizing {
@@ -695,7 +727,10 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                 }
 
                 if state.is_resizing {
-                    // Bottom-right corner resize - apply immediately for real-time feedback
+                    // Use incremental delta for resize (works fine since we're changing size, not position)
+                    let delta_x = surface_x - state.pointer_x;
+                    let delta_y = surface_y - state.pointer_y;
+
                     let new_width = state.pending_width as i32 + delta_x as i32;
                     let new_height = state.pending_height as i32 + delta_y as i32;
 
@@ -707,22 +742,21 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                         .max(MIN_OVERLAY_SIZE)
                         .min(MAX_OVERLAY_HEIGHT);
 
-                    // Only update if within valid range
                     if new_width > 0 && new_height > 0 {
                         state.pending_width = clamped_width;
                         state.pending_height = clamped_height;
                         state.pending_resize = Some((clamped_width, clamped_height));
                     }
-                } else if state.is_dragging {
-                    // Move window
-                    let new_x = state.window_x + delta_x as i32;
-                    let new_y = state.window_y + delta_y as i32;
-                    state.update_position(new_x, new_y);
-                }
 
-                // Always update pointer position for next delta calculation
-                state.pointer_x = surface_x;
-                state.pointer_y = surface_y;
+                    // Update pointer for resize delta calculation
+                    state.pointer_x = surface_x;
+                    state.pointer_y = surface_y;
+                } else {
+                    // Dragging is handled by relative pointer events for smooth movement
+                    // Just track pointer position for corner detection
+                    state.pointer_x = surface_x;
+                    state.pointer_y = surface_y;
+                }
             }
             wl_pointer::Event::Button { button, state: button_state, .. } => {
                 use wayland_client::WEnum;
@@ -739,7 +773,12 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                                 state.pending_width = state.width;
                                 state.pending_height = state.height;
                             } else {
+                                // Initialize drag state - reset accumulator for relative motion
                                 state.is_dragging = true;
+                                state.drag_start_window_x = state.window_x;
+                                state.drag_start_window_y = state.window_y;
+                                state.drag_accum_x = 0.0;
+                                state.drag_accum_y = 0.0;
                             }
                         }
                         WEnum::Value(wl_pointer::ButtonState::Released) => {
@@ -763,6 +802,49 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                     state.in_resize_corner = false;
                 }
                 // Don't cancel drag/resize on leave - user might move fast
+            }
+            _ => {}
+        }
+    }
+}
+
+impl Dispatch<ZwpRelativePointerManagerV1, ()> for WaylandState {
+    fn event(
+        _state: &mut Self,
+        _proxy: &ZwpRelativePointerManagerV1,
+        _event: <ZwpRelativePointerManagerV1 as wayland_client::Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+        // Manager doesn't send events
+    }
+}
+
+impl Dispatch<ZwpRelativePointerV1, ()> for WaylandState {
+    fn event(
+        state: &mut Self,
+        _proxy: &ZwpRelativePointerV1,
+        event: zwp_relative_pointer_v1::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+        match event {
+            zwp_relative_pointer_v1::Event::RelativeMotion { dx, dy, .. } => {
+                // dx, dy are in surface-local coordinates but represent actual cursor movement
+                // This is the key: these deltas don't change when the window moves!
+                if state.is_dragging {
+                    // Accumulate relative motion
+                    state.drag_accum_x += dx;
+                    state.drag_accum_y += dy;
+
+                    // Calculate new window position
+                    let new_x = state.drag_start_window_x + state.drag_accum_x as i32;
+                    let new_y = state.drag_start_window_y + state.drag_accum_y as i32;
+
+                    state.update_position(new_x, new_y);
+                }
             }
             _ => {}
         }

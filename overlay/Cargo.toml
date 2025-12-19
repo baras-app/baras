@@ -16,7 +16,7 @@ tokio = { version = "1.48", features = ["sync", "rt", "macros"] }
 # Platform: Wayland (Linux)
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 wayland-client = "0.31"
-wayland-protocols = { version = "0.32", features = ["client"] }
+wayland-protocols = { version = "0.32", features = ["client", "unstable"] }
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 memmap2 = "0.9"
 rustix = { version = "1.0", features = ["fs", "mm"] }
