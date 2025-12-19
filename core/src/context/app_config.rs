@@ -88,6 +88,29 @@ impl OverlaySettings {
 // App Config
 // ─────────────────────────────────────────────────────────────────────────────
 
+fn default_log_directory() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        dirs::document_dir()
+            .map(|p| p.join("Star Wars - The Old Republic/CombatLogs"))
+            .and_then(|p| p.to_str().map(String::from))
+            .unwrap_or_default()
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        dirs::home_dir()
+            .map(|p| {
+                p.join(".local/share/Steam/steamapps/compatdata/1286830/pfx/drive_c/users/steamuser/Documents/Star Wars - The Old Republic/CombatLogs")
+            })
+            .and_then(|p| p.to_str().map(String::from))
+            .unwrap_or_default()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        String::new()
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppConfig {
     pub log_directory: String,
@@ -99,10 +122,10 @@ pub struct AppConfig {
     pub overlay_settings: OverlaySettings,
 }
 
-impl ::std::default::Default for AppConfig {
+impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            log_directory: "/home/prescott/baras/test-log-files/".to_string(),
+            log_directory: default_log_directory(),
             auto_delete_empty_files: false,
             log_retention_days: 21,
             overlay_settings: OverlaySettings::default(),
