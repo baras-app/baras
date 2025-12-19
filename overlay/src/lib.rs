@@ -40,3 +40,6 @@ pub use overlays::{MeterEntry, MeterOverlay};
 pub use platform::{NativeOverlay, OverlayConfig, OverlayPlatform, PlatformError};
 pub use renderer::{colors, Renderer};
 pub use widgets::ProgressBar;
+
+// Re-export tiny_skia Color for external use
+pub use tiny_skia::Color;

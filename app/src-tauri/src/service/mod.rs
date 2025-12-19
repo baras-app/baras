@@ -35,7 +35,7 @@ pub enum ServiceCommand {
     Shutdown,
     FileDetected(PathBuf),
     FileRemoved(PathBuf),
-    UpdateConfig(AppConfig),
+    UpdateConfig { old: AppConfig, new: AppConfig },
 }
 
 /// Updates sent to the overlay system
@@ -164,20 +164,18 @@ impl CombatService {
                 ServiceCommand::FileRemoved(path) => {
                     self.file_removed(path).await;
                 }
-                ServiceCommand::UpdateConfig(config) => {
-                    self.update_config(config).await;
+                ServiceCommand::UpdateConfig { old, new } => {
+                    self.update_config(old, new).await;
                 }
             }
         }
     }
 
-    async fn update_config(&mut self, new_config: AppConfig) {
-        let old_config = self.shared.config.read().await.clone();
+    async fn update_config(&mut self, old_config: AppConfig, new_config: AppConfig) {
+        // Note: shared config already updated by ServiceHandle::update_config
+        // This handler only processes side effects
 
-        // Update config FIRST so handlers can read the new values
-        *self.shared.config.write().await = new_config.clone();
-
-        // Now trigger side effects for changed fields
+        // Trigger side effects for changed fields
         if old_config.log_directory != new_config.log_directory {
             eprintln!(
                 "Directory changed: {} -> {}",
@@ -472,6 +470,8 @@ async fn calculate_metrics(shared: &Arc<SharedState>) -> Option<Vec<PlayerMetric
                     total_damage: m.total_damage as u64,
                     hps: m.hps as i64,
                     total_healing: m.total_healing as u64,
+                    tps: m.tps as i64,
+                    total_threat: m.total_threat as u64,
                 }
             })
             .collect(),
@@ -499,4 +499,16 @@ pub struct PlayerMetrics {
     pub total_damage: u64,
     pub hps: i64,
     pub total_healing: u64,
+    pub tps: i64,
+    pub total_threat: u64,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SessionInfo {
+    pub player_name: Option<String>,
+    pub player_class: Option<String>,
+    pub player_discipline: Option<String>,
+    pub area_name: Option<String>,
+    pub in_combat: bool,
+    pub encounter_count: usize,
 }

@@ -127,6 +127,18 @@ impl MeterOverlay {
         self.window
             .fill_rounded_rect(0.0, 0.0, width, height, corner_radius, colors::overlay_bg());
 
+        // Draw border when unlocked (interactive mode)
+        if self.window.is_interactive() {
+            let border_color = Color::from_rgba8(128, 128, 128, 200);
+            self.window.stroke_rounded_rect(
+                1.0, 1.0,
+                width - 2.0, height - 2.0,
+                corner_radius - 1.0,
+                2.0,
+                border_color,
+            );
+        }
+
         // Draw title
         let title_y = padding + font_size;
         self.window.draw_text(

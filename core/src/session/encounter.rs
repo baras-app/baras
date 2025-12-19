@@ -29,6 +29,8 @@ pub struct EntityMetrics {
     pub abs: i32,
     pub total_healing: i64,
     pub apm: f32,
+    pub tps: i32,
+    pub total_threat: i64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -43,6 +45,7 @@ pub struct MetricAccumulator {
     hit_count: u32,
     actions: u32,
     shielding_given: i64,
+    threat_generated: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -256,6 +259,7 @@ impl Encounter {
             source_accumulator.hit_count += 1;
             source_accumulator.healing_effective += event.details.heal_effective as i64;
             source_accumulator.healing_done += event.details.heal_amount as i64;
+            source_accumulator.threat_generated += event.details.threat as f64;
             if event.effect.effect_id == effect_id::ABILITYACTIVATE
                 && self.enter_combat_time.is_some_and(|t| event.timestamp >= t)
                 && self.exit_combat_time.is_none_or(|t| t >= event.timestamp)
@@ -326,6 +330,8 @@ impl Encounter {
                     dtps: (acc.damage_received / duration) as i32,
                     abs: (acc.shielding_given / duration) as i32,
                     apm: (acc.actions as f32 / duration as f32) * 60.0,
+                    tps: (acc.threat_generated / duration as f64) as i32,
+                    total_threat: acc.threat_generated as i64,
                 })
             })
             .collect();

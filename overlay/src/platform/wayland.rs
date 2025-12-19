@@ -328,6 +328,20 @@ impl OverlayPlatform for WaylandOverlay {
         self.state.height
     }
 
+    fn x(&self) -> i32 {
+        self.state.window_x
+    }
+
+    fn y(&self) -> i32 {
+        self.state.window_y
+    }
+
+    fn take_position_dirty(&mut self) -> bool {
+        let dirty = self.state.position_dirty;
+        self.state.position_dirty = false;
+        dirty
+    }
+
     fn set_position(&mut self, x: i32, y: i32) {
         self.config.x = x;
         self.config.y = y;

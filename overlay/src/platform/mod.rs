@@ -81,6 +81,15 @@ pub trait OverlayPlatform: Sized {
     /// Get the current height of the overlay
     fn height(&self) -> u32;
 
+    /// Get the current X position
+    fn x(&self) -> i32;
+
+    /// Get the current Y position
+    fn y(&self) -> i32;
+
+    /// Check if position has changed since last check (clears the dirty flag)
+    fn take_position_dirty(&mut self) -> bool;
+
     /// Update the overlay position
     fn set_position(&mut self, x: i32, y: i32);
 

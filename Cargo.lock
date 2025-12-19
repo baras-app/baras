@@ -138,6 +138,7 @@ dependencies = [
  "dioxus",
  "dioxus-logger",
  "dirs",
+ "gloo-timers",
  "js-sys",
  "serde",
  "serde-wasm-bindgen",

@@ -221,3 +221,141 @@ button {
 .log-input:disabled {
   opacity: 0.6;
 }
+
+/* Overlay controls */
+.overlay-controls {
+  margin: 1.5em auto;
+  max-width: 400px;
+}
+
+.overlay-meters {
+  margin: 1.5em auto;
+  max-width: 400px;
+}
+
+.overlay-controls h3 {
+  margin-bottom: 0.5em;
+}
+
+.overlay-toggles {
+  display: flex;
+  gap: 0.5em;
+  justify-content: center;
+}
+
+.btn-overlay {
+  min-width: 60px;
+  padding: 0.6em 1em;
+  margin-left: 0.5em;
+}
+
+.btn-lock {
+  min-width: 80px;
+  margin-left: 1em;
+}
+
+.btn-show-all {
+  min-width: 70px;
+  margin-left: 0.5em;
+  background-color: #2a6e2a;
+  border-color: #3a8e3a;
+  color: white;
+}
+
+.btn-show-all:hover {
+  background-color: #308030;
+}
+
+.btn-hide-all {
+  min-width: 70px;
+  margin-left: 0.5em;
+  background-color: #8e2a2a;
+  border-color: #ae3a3a;
+  color: white;
+}
+
+.btn-hide-all:hover {
+  background-color: #a03030;
+}
+
+/* Session panel */
+.session-panel {
+  margin: 1.5em auto;
+  max-width: 400px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 1em;
+}
+
+.session-panel h3 {
+  margin-top: 0;
+  margin-bottom: 0.75em;
+}
+
+.session-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5em;
+}
+
+.session-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.25em 0.5em;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.session-item .label {
+  font-size: 0.75em;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.session-item .value {
+  font-weight: 500;
+}
+
+/* Active file display */
+.active-file {
+  margin-top: 0.75em;
+  padding: 0.5em;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  font-size: 0.85em;
+  text-align: left;
+  word-break: break-all;
+}
+
+.active-file .label {
+  color: #888;
+}
+
+.active-file .filename {
+  font-family: monospace;
+}
+
+/* Status footer */
+.status-footer {
+  margin-top: 2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  font-size: 0.85em;
+  color: #888;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.status-on {
+  background-color: #4a4;
+}
+
+.status-dot.status-off {
+  background-color: #888;
+}

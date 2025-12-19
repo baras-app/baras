@@ -32,6 +32,21 @@ impl OverlayWindow {
         self.platform.height()
     }
 
+    /// Get the current X position
+    pub fn x(&self) -> i32 {
+        self.platform.x()
+    }
+
+    /// Get the current Y position
+    pub fn y(&self) -> i32 {
+        self.platform.y()
+    }
+
+    /// Check if position has changed since last check (clears the dirty flag)
+    pub fn take_position_dirty(&mut self) -> bool {
+        self.platform.take_position_dirty()
+    }
+
     /// Set the window position
     pub fn set_position(&mut self, x: i32, y: i32) {
         self.platform.set_position(x, y);

@@ -1,9 +1,13 @@
 use crate::service::LogFileInfo;
 use crate::service::SharedState;
 use crate::service::PlayerMetrics;
+use crate::service::SessionInfo;
 use crate::service::ServiceCommand;
+use std::sync::atomic::Ordering;
 use std::path::PathBuf;
 use std::sync::Arc;
+use baras_core::EncounterState;
+use baras_core::Entity;
 use tokio::sync::{mpsc};
 
 use baras_core::context::{resolve, AppConfig};
@@ -51,9 +55,20 @@ impl ServiceHandle {
     }
 
     /// Update the configuration
+    ///
+    /// Updates shared state immediately for reads, then sends command
+    /// for side effects (disk save, watcher updates, etc.)
     pub async fn update_config(&self, config: AppConfig) -> Result<(), String> {
+        // Capture old config before updating for change detection
+        let old_config = self.shared.config.read().await.clone();
+
+        // Update shared state immediately so subsequent reads see the new values
+        *self.shared.config.write().await = config.clone();
+
+        // Send command for side effects (save to disk, trigger watchers, etc.)
+        // Pass old_config so service can detect what changed
         self.cmd_tx
-            .send(ServiceCommand::UpdateConfig(config))
+            .send(ServiceCommand::UpdateConfig { old: old_config, new: config })
             .await
             .map_err(|e| e.to_string())
     }
@@ -86,6 +101,39 @@ impl ServiceHandle {
             .unwrap_or(Some("None".to_string()))
     }
 
+    /// Get current session info
+    pub async fn session_info(&self) -> Option<SessionInfo> {
+        let session_guard = self.shared.session.read().await;
+        let session = session_guard.as_ref()?;
+        let session = session.read().await;
+        let cache = session.session_cache.as_ref()?;
+
+        Some(SessionInfo {
+            player_name: if cache.player_initialized {
+                Some(resolve(cache.player.name).to_string())
+            } else {
+                None
+            },
+            player_class: if cache.player_initialized {
+                Some(cache.player.class_name.clone())
+            } else {
+                None
+            },
+            player_discipline: if cache.player_initialized {
+                Some(cache.player.discipline_name.clone())
+            } else {
+                None
+            },
+            area_name: if !cache.current_area.area_name.is_empty() {
+                Some(cache.current_area.area_name.clone())
+            } else {
+                None
+            },
+            in_combat: self.shared.in_combat.load(Ordering::SeqCst),
+            encounter_count: cache.encounters().filter(|e| e.state != EncounterState::NotStarted ).map(|e| e.id + 1).max().unwrap_or(0) as usize
+        })
+    }
+
     /// Get current encounter metrics
     pub async fn current_metrics(&self) -> Option<Vec<PlayerMetrics>> {
         let session_guard = self.shared.session.read().await;
@@ -107,6 +155,8 @@ impl ServiceHandle {
                     total_damage: m.total_damage as u64,
                     hps: m.hps as i64,
                     total_healing: m.total_healing as u64,
+                    tps: m.tps as i64,
+                    total_threat: m.total_threat as u64,
                 })
                 .collect(),
         )
@@ -169,4 +219,11 @@ pub async fn update_config(
     handle: State<'_, ServiceHandle>
 ) -> Result<(), String> {
     handle.update_config(config).await
+}
+
+#[tauri::command]
+pub async fn get_session_info(
+    handle: State<'_, ServiceHandle>
+) -> Result<Option<SessionInfo>, String> {
+    Ok(handle.session_info().await)
 }
