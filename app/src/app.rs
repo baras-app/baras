@@ -242,8 +242,8 @@ pub fn App() -> Element {
     rsx! {
         link { rel: "stylesheet", href: CSS }
         main { class: "container",
-            h1 { "Baras" }
-            p { class: "subtitle", "SWTOR Combat Log Parser" }
+            h1 { "BARAS" }
+            p { class: "subtitle", "Battle Analysis and Raid Assessment System" }
 
 
             // Session info panel

@@ -2,13 +2,12 @@ pub mod overlay;
 pub mod service;
 pub mod utils;
 pub mod bridge;
-use overlay::{OverlayState, SharedOverlayState, PositionEvent, OverlayType, OverlayHandle, OverlayCommand};
+use overlay::{OverlayState, SharedOverlayState, OverlayType, OverlayHandle, OverlayCommand};
 use bridge::spawn_overlay_bridge;
 use service::{CombatService, OverlayUpdate, ServiceHandle};
 use tauri::Manager;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
-use baras_core::context::OverlayPositionConfig;
 
 /// Auto-show all enabled overlays on startup (if overlays_visible is true)
 fn spawn_auto_show_overlays(
@@ -35,21 +34,19 @@ fn spawn_auto_show_overlays(
             };
 
             // Check if already running
-            let (is_running, position_tx) = {
+            {
                 let state = match overlay_state.lock() {
                     Ok(s) => s,
                     Err(_) => continue,
                 };
-                (state.is_running(overlay_type), state.position_tx().cloned())
-            };
-
-            if is_running {
-                continue;
+                if state.is_running(overlay_type) {
+                    continue;
+                }
             }
 
             // Load position and spawn
             let position = config.overlay_settings.get_position(&key);
-            let (tx, handle) = overlay::spawn_overlay(overlay_type, position, position_tx);
+            let (tx, handle) = overlay::spawn_overlay(overlay_type, position);
 
             // Update state
             {
@@ -75,52 +72,10 @@ fn spawn_auto_show_overlays(
     });
 }
 
-/// Spawn a task to handle position events and persist them to config
-fn spawn_position_persistence(
-    position_rx: std::sync::mpsc::Receiver<PositionEvent>,
-    service_handle: ServiceHandle,
-) {
-    std::thread::spawn(move || {
-        while let Ok(event) = position_rx.recv() {
-            // Use blocking runtime to call async methods
-            let handle = service_handle.clone();
-            let _ = std::thread::spawn(move || {
-                tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .unwrap()
-                    .block_on(async {
-                        let mut config = handle.config().await;
-                        config.overlay_settings.set_position(
-                            event.overlay_type.config_key(),
-                            OverlayPositionConfig {
-                                x: event.x,
-                                y: event.y,
-                                width: event.width,
-                                height: event.height,
-                                monitor_id: None,
-                            },
-                        );
-                        let _ = handle.update_config(config).await;
-                    });
-            }).join();
-        }
-    });
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Create shared overlay state upfront so we can clone it for the bridge
+    // Create shared overlay state
     let overlay_state = Arc::new(Mutex::new(OverlayState::default()));
-
-    // Create position event channel for persistence
-    let (position_tx, position_rx) = std::sync::mpsc::channel::<PositionEvent>();
-
-    // Set position_tx on overlay state
-    {
-        let mut state = overlay_state.lock().unwrap();
-        state.set_position_tx(position_tx);
-    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -136,9 +91,6 @@ pub fn run() {
 
                 // Store the service handle for commands
                 app.handle().manage(handle.clone());
-
-                // Spawn position persistence handler
-                spawn_position_persistence(position_rx, handle.clone());
 
                 // Spawn the overlay update bridge
                 spawn_overlay_bridge(overlay_rx, overlay_state.clone());

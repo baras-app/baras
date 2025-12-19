@@ -89,6 +89,8 @@ impl OverlayType {
 pub enum OverlayCommand {
     SetMoveMode(bool),
     UpdateEntries(Vec<MeterEntry>),
+    /// Request current position via oneshot channel
+    GetPosition(tokio::sync::oneshot::Sender<PositionEvent>),
     Shutdown,
 }
 
@@ -108,24 +110,11 @@ pub struct OverlayHandle {
     pub handle: JoinHandle<()>,
 }
 
-/// Sender for position events (stored globally for position persistence)
-pub type PositionEventSender = std::sync::mpsc::Sender<PositionEvent>;
-
 /// State managing multiple overlay threads
+#[derive(Default)]
 pub struct OverlayState {
     overlays: HashMap<OverlayType, OverlayHandle>,
     move_mode: bool,
-    position_tx: Option<PositionEventSender>,
-}
-
-impl Default for OverlayState {
-    fn default() -> Self {
-        Self {
-            overlays: HashMap::new(),
-            move_mode: false,
-            position_tx: None,
-        }
-    }
 }
 
 impl std::fmt::Debug for OverlayState {
@@ -158,14 +147,6 @@ impl OverlayState {
         self.overlays.keys().copied().collect()
     }
 
-    pub fn set_position_tx(&mut self, tx: PositionEventSender) {
-        self.position_tx = Some(tx);
-    }
-
-    pub fn position_tx(&self) -> Option<&PositionEventSender> {
-        self.position_tx.as_ref()
-    }
-
     pub fn insert(&mut self, overlay_type: OverlayType, handle: OverlayHandle) {
         self.overlays.insert(overlay_type, handle);
     }
@@ -187,7 +168,6 @@ impl OverlayState {
 pub fn spawn_overlay(
     overlay_type: OverlayType,
     position: OverlayPositionConfig,
-    position_tx: Option<PositionEventSender>,
 ) -> (Sender<OverlayCommand>, JoinHandle<()>) {
     let (tx, mut rx) = mpsc::channel::<OverlayCommand>(32);
 
@@ -225,33 +205,22 @@ pub fn spawn_overlay(
                         overlay.set_entries(entries);
                         needs_render = true;
                     }
+                    OverlayCommand::GetPosition(response_tx) => {
+                        let _ = response_tx.send(PositionEvent {
+                            overlay_type,
+                            x: overlay.window_mut().x(),
+                            y: overlay.window_mut().y(),
+                            width: overlay.window_mut().width(),
+                            height: overlay.window_mut().height(),
+                        });
+                    }
                     OverlayCommand::Shutdown => {
-                        // Send final position before shutdown
-                        if let Some(ref tx) = position_tx {
-                            let _ = tx.send(PositionEvent {
-                                overlay_type,
-                                x: overlay.window_mut().x(),
-                                y: overlay.window_mut().y(),
-                                width: overlay.window_mut().width(),
-                                height: overlay.window_mut().height(),
-                            });
-                        }
                         return;
                     }
                 }
             }
 
             if !overlay.poll_events() {
-                // Send final position on window close
-                if let Some(ref tx) = position_tx {
-                    let _ = tx.send(PositionEvent {
-                        overlay_type,
-                        x: overlay.window_mut().x(),
-                        y: overlay.window_mut().y(),
-                        width: overlay.window_mut().width(),
-                        height: overlay.window_mut().height(),
-                    });
-                }
                 break;
             }
 
@@ -259,18 +228,8 @@ pub fn spawn_overlay(
                 needs_render = true;
             }
 
-            // Check for position changes and report them
-            if overlay.window_mut().take_position_dirty() {
-                if let Some(ref tx) = position_tx {
-                    let _ = tx.send(PositionEvent {
-                        overlay_type,
-                        x: overlay.window_mut().x(),
-                        y: overlay.window_mut().y(),
-                        width: overlay.window_mut().width(),
-                        height: overlay.window_mut().height(),
-                    });
-                }
-            }
+            // Clear position dirty flag (position is saved on lock, not continuously)
+            let _ = overlay.window_mut().take_position_dirty();
 
             let is_interactive = overlay.window_mut().is_interactive();
 
@@ -279,7 +238,7 @@ pub fn spawn_overlay(
                 needs_render = false;
             }
 
-            let sleep_ms = if is_interactive { 1 } else { 50 };
+            let sleep_ms = if is_interactive { 32 } else { 50 }; // ~60 FPS when interactive, ~20 FPS when locked
             thread::sleep(std::time::Duration::from_millis(sleep_ms));
         }
     });
@@ -310,20 +269,19 @@ pub async fn show_overlay(
         return Ok(true);
     }
 
-    // Check if already running and get position tx
-    let position_tx = {
+    // Check if already running
+    {
         let state = state.lock().map_err(|e| e.to_string())?;
         if state.is_running(overlay_type) {
             return Ok(true);
         }
-        state.position_tx().cloned()
-    };
+    }
 
     // Load position from config
     let position = config.overlay_settings.get_position(overlay_type.config_key());
 
     // Spawn without holding lock
-    let (tx, handle) = spawn_overlay(overlay_type, position, position_tx);
+    let (tx, handle) = spawn_overlay(overlay_type, position);
 
     // Update state
     {
@@ -332,13 +290,12 @@ pub async fn show_overlay(
     }
 
     // Send current metrics if tailing
-    if service.is_tailing().await {
-        if let Some(metrics) = service.current_metrics().await {
-            if !metrics.is_empty() {
-                let entries = create_entries_for_type(overlay_type, &metrics);
-                let _ = tx.send(OverlayCommand::UpdateEntries(entries)).await;
-            }
-        }
+    if service.is_tailing().await
+        && let Some(metrics) = service.current_metrics().await
+        && !metrics.is_empty()
+    {
+        let entries = create_entries_for_type(overlay_type, &metrics);
+        let _ = tx.send(OverlayCommand::UpdateEntries(entries)).await;
     }
 
     Ok(true)
@@ -426,19 +383,17 @@ pub async fn show_all_overlays(
         };
 
         // Check if already running
-        let (is_running, position_tx) = {
+        {
             let state = state.lock().map_err(|e| e.to_string())?;
-            (state.is_running(overlay_type), state.position_tx().cloned())
-        };
-
-        if is_running {
-            shown.push(overlay_type);
-            continue;
+            if state.is_running(overlay_type) {
+                shown.push(overlay_type);
+                continue;
+            }
         }
 
         // Load position and spawn
         let position = config.overlay_settings.get_position(&key);
-        let (tx, handle) = spawn_overlay(overlay_type, position, position_tx);
+        let (tx, handle) = spawn_overlay(overlay_type, position);
 
         // Update state
         {
@@ -447,14 +402,13 @@ pub async fn show_all_overlays(
         }
 
         // Send current metrics if tailing
-        if service.is_tailing().await {
-            if let Some(metrics) = service.current_metrics().await {
-                if !metrics.is_empty() {
+        if service.is_tailing().await
+            && let Some(metrics) = service.current_metrics().await
+            && !metrics.is_empty() {
                     let entries = create_entries_for_type(overlay_type, &metrics);
                     let _ = tx.send(OverlayCommand::UpdateEntries(entries)).await;
                 }
-            }
-        }
+
 
         shown.push(overlay_type);
     }
@@ -463,19 +417,51 @@ pub async fn show_all_overlays(
 }
 
 #[tauri::command]
-pub async fn toggle_move_mode(state: State<'_, SharedOverlayState>) -> Result<bool, String> {
+pub async fn toggle_move_mode(
+    state: State<'_, SharedOverlayState>,
+    service: State<'_, crate::service::ServiceHandle>,
+) -> Result<bool, String> {
     let (txs, new_mode) = {
         let mut state = state.lock().map_err(|e| e.to_string())?;
         if !state.any_running() {
             return Err("No overlays running".to_string());
         }
         state.move_mode = !state.move_mode;
-        (state.all_txs().into_iter().cloned().collect::<Vec<_>>(), state.move_mode)
+        let txs: Vec<_> = state.all_txs().into_iter().cloned().collect();
+        (txs, state.move_mode)
     };
 
     // Send to all overlays
-    for tx in txs {
+    for tx in &txs {
         let _ = tx.send(OverlayCommand::SetMoveMode(new_mode)).await;
+    }
+
+    // When locking (move_mode = false), save all overlay positions
+    if !new_mode {
+        let mut positions = Vec::new();
+        for tx in &txs {
+            let (pos_tx, pos_rx) = tokio::sync::oneshot::channel();
+            let _ = tx.send(OverlayCommand::GetPosition(pos_tx)).await;
+            if let Ok(pos) = pos_rx.await {
+                positions.push(pos);
+            }
+        }
+
+        // Save positions to config
+        let mut config = service.config().await;
+        for pos in positions {
+            config.overlay_settings.set_position(
+                pos.overlay_type.config_key(),
+                OverlayPositionConfig {
+                    x: pos.x,
+                    y: pos.y,
+                    width: pos.width,
+                    height: pos.height,
+                    monitor_id: None,
+                },
+            );
+        }
+        service.update_config(config).await.map_err(|e| e.to_string())?;
     }
 
     Ok(new_mode)

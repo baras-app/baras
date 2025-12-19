@@ -5,8 +5,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  height: 100%;
-  overflow-x: hidden;
+  min-height: 100vh;
 }
 
 .logo.dioxus:hover {
@@ -36,10 +35,9 @@ html, body {
   justify-content: flex-start;
   align-items: center;
   text-align: center;
-  height: 100%;
+  min-height: 100vh;
   width: 100%;
   max-width: min(600px, 90%);
-  overflow-y: auto;
 }
 
 .logo {
