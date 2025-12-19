@@ -22,7 +22,7 @@ pub fn run() {
                 let (overlay_tx, overlay_rx) = mpsc::channel::<OverlayUpdate>(64);
 
                 // Create and spawn the combat service
-                let (service, handle) = CombatService::new(overlay_tx);
+                let (service, handle) = CombatService::new(app.handle().clone(), overlay_tx);
                 tauri::async_runtime::spawn(service.run());
 
                 // Store the service handle for commands
@@ -50,6 +50,7 @@ pub fn run() {
             service::get_current_metrics,
             service::get_config,
             service::update_config,
+            service::get_active_file,
             // Utilities
             utils::default_log_path,
         ])

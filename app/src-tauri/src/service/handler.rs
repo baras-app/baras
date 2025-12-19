@@ -79,6 +79,13 @@ impl ServiceHandle {
         self.shared.session.read().await.is_some()
     }
 
+    pub async fn active_file(&self) -> Option<String> {
+        self.shared.with_session(|session|
+            { session.active_file.as_ref().map(|p| p.to_string_lossy().to_string())})
+            .await
+            .unwrap_or(Some("None".to_string()))
+    }
+
     /// Get current encounter metrics
     pub async fn current_metrics(&self) -> Option<Vec<PlayerMetrics>> {
         let session_guard = self.shared.session.read().await;
@@ -107,3 +114,59 @@ impl ServiceHandle {
 }
 
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tauri Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+use tauri::State;
+
+#[tauri::command]
+pub async fn get_log_files(handle: State<'_, ServiceHandle>) -> Result<Vec<LogFileInfo>, String> {
+    Ok(handle.log_files().await)
+}
+
+#[tauri::command]
+pub async fn start_tailing(path: PathBuf, handle: State<'_, ServiceHandle>) -> Result<(), String> {
+    handle.start_tailing(path).await
+}
+
+#[tauri::command]
+pub async fn stop_tailing(handle: State<'_, ServiceHandle>) -> Result<(), String> {
+    handle.stop_tailing().await
+}
+
+#[tauri::command]
+pub async fn refresh_log_index(handle: State<'_, ServiceHandle>) -> Result<(), String> {
+    handle.refresh_index().await
+}
+
+#[tauri::command]
+pub async fn get_tailing_status(handle: State<'_, ServiceHandle>) -> Result<bool, String> {
+    Ok(handle.is_tailing().await)
+}
+
+#[tauri::command]
+pub async fn get_current_metrics(
+    handle: State<'_, ServiceHandle>,
+) -> Result<Option<Vec<PlayerMetrics>>, String> {
+    Ok(handle.current_metrics().await)
+}
+
+#[tauri::command]
+pub async fn get_config(handle: State<'_, ServiceHandle>) -> Result<AppConfig, String> {
+    Ok(handle.config().await)
+}
+
+#[tauri::command]
+pub async fn get_active_file(handle: State<'_, ServiceHandle>) -> Result<Option<String>, String> {
+    Ok(handle.active_file().await)
+}
+
+#[tauri::command]
+pub async fn update_config(
+    config: AppConfig,
+    handle: State<'_, ServiceHandle>
+) -> Result<(), String> {
+    handle.update_config(config).await
+}

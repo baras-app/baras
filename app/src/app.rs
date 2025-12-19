@@ -10,6 +10,9 @@ static CSS: Asset = asset!("/assets/styles.css");
 extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
     async fn invoke(cmd: &str, args: JsValue) -> JsValue;
+
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"], js_name = "listen")]
+    async fn tauri_listen(event: &str, handler: &Closure<dyn FnMut(JsValue)>) -> JsValue;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -26,6 +29,7 @@ pub fn App() -> Element {
     let mut move_mode = use_signal(|| false);
     let mut status_msg = use_signal(String::new);
     let mut log_directory = use_signal(String::new);
+    let mut active_file = use_signal(String::new);
     let mut is_watching = use_signal(|| false);
 
     // Fetch config from backend on mount
@@ -37,6 +41,28 @@ pub fn App() -> Element {
                 is_watching.set(true);
             }
         }
+
+        // Also fetch initial active file
+        let file_result = invoke("get_active_file", JsValue::NULL).await;
+        if let Some(file) = file_result.as_string() {
+            active_file.set(file);
+        }
+    });
+
+    // Listen for active file changes from backend
+    use_future(move || async move {
+        let closure = Closure::new(move |event: JsValue| {
+            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload")) {
+                if let Some(file_path) = payload.as_string() {
+                    active_file.set(file_path);
+                }
+            }
+        });
+
+        tauri_listen("active-file-changed", &closure).await;
+
+        // Keep the closure alive for the lifetime of the app
+        closure.forget();
     });
 
     if overlay_visible() {
@@ -117,6 +143,7 @@ pub fn App() -> Element {
 
             let result = invoke("update_config", obj.into()).await;
             if result.is_undefined() || result.is_null() {
+                // Active file will be updated via event listener
                 is_watching.set(true);
                 status_msg.set(format!("Watching: {}", dir));
             } else if let Some(err) = result.as_string() {
@@ -136,14 +163,14 @@ pub fn App() -> Element {
                 button {
                     class: if is_visible { "btn btn-active" } else { "btn" },
                     onclick: toggle_overlay,
-                    if is_visible { "Hide Overlay" } else { "Show Overlay" }
+                    if is_visible { "Hide Overlays" } else { "Show Overlays" }
                 }
 
                 button {
                     class: if is_move_mode { "btn btn-warning" } else { "btn" },
                     disabled: !is_visible,
                     onclick: toggle_move,
-                    if is_move_mode { "Lock Position" } else { "Move Overlay" }
+                    if is_move_mode { "Lock Overlays" } else { "Unlock Overlays" }
                 }
             }
 
@@ -164,6 +191,9 @@ pub fn App() -> Element {
                         "Set Directory"
                     }
                 }
+                div {class: "active-file",
+                    p { "{active_file}" }
+            }
             }
 
             if !status.is_empty() {

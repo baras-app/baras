@@ -9,11 +9,12 @@ mod handler;
 mod state;
 
 use state::SharedState;
-pub use handler::ServiceHandle;
+pub use handler::*;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use baras_core::directory_watcher;
+use tauri::{AppHandle, Emitter};
 use tokio::sync::{mpsc, RwLock};
 
 use baras_core::context::{resolve, AppConfig, DirectoryIndex, ParsingSession};
@@ -91,6 +92,7 @@ impl SignalHandler for CombatSignalHandler {
 
 /// Main combat service that runs in a background task
 pub struct CombatService {
+    app_handle: AppHandle,
     shared: Arc<SharedState>,
     overlay_tx: mpsc::Sender<OverlayUpdate>,
     cmd_rx: mpsc::Receiver<ServiceCommand>,
@@ -102,7 +104,7 @@ pub struct CombatService {
 
 impl CombatService {
     /// Create a new combat service and return a handle to communicate with it
-    pub fn new(overlay_tx: mpsc::Sender<OverlayUpdate>) -> (Self, ServiceHandle) {
+    pub fn new(app_handle: AppHandle, overlay_tx: mpsc::Sender<OverlayUpdate>) -> (Self, ServiceHandle) {
         let (cmd_tx, cmd_rx) = mpsc::channel(32);
 
         let config = AppConfig::load();
@@ -112,6 +114,7 @@ impl CombatService {
         let shared = Arc::new(SharedState::new(config, directory_index));
 
         let service = Self {
+            app_handle,
             shared: shared.clone(),
             overlay_tx,
             cmd_rx,
@@ -307,11 +310,10 @@ impl CombatService {
 
       let handle = tokio::spawn(async move {
           while let Some(event) = watcher.next_event().await {
-              if let Some(cmd) = directory::translate_event(event) {
-                  if cmd_tx.send(cmd).await.is_err() {
+              if let Some(cmd) = directory::translate_event(event)
+                  && cmd_tx.send(cmd).await.is_err() {
                       break; // Service shut down
                   }
-              }
           }
       });
 
@@ -334,6 +336,9 @@ impl CombatService {
 
         // Update shared state
         *self.shared.session.write().await = Some(session.clone());
+
+        // Notify frontend of active file change
+        let _ = self.app_handle.emit("active-file-changed", path.to_string_lossy().to_string());
 
         // Create reader
         let reader = Reader::from(path, session.clone());
@@ -494,55 +499,4 @@ pub struct PlayerMetrics {
     pub total_damage: u64,
     pub hps: i64,
     pub total_healing: u64,
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tauri Commands
-// ─────────────────────────────────────────────────────────────────────────────
-
-use tauri::State;
-
-#[tauri::command]
-pub async fn get_log_files(handle: State<'_, ServiceHandle>) -> Result<Vec<LogFileInfo>, String> {
-    Ok(handle.log_files().await)
-}
-
-#[tauri::command]
-pub async fn start_tailing(path: PathBuf, handle: State<'_, ServiceHandle>) -> Result<(), String> {
-    handle.start_tailing(path).await
-}
-
-#[tauri::command]
-pub async fn stop_tailing(handle: State<'_, ServiceHandle>) -> Result<(), String> {
-    handle.stop_tailing().await
-}
-
-#[tauri::command]
-pub async fn refresh_log_index(handle: State<'_, ServiceHandle>) -> Result<(), String> {
-    handle.refresh_index().await
-}
-
-#[tauri::command]
-pub async fn get_tailing_status(handle: State<'_, ServiceHandle>) -> Result<bool, String> {
-    Ok(handle.is_tailing().await)
-}
-
-#[tauri::command]
-pub async fn get_current_metrics(
-    handle: State<'_, ServiceHandle>,
-) -> Result<Option<Vec<PlayerMetrics>>, String> {
-    Ok(handle.current_metrics().await)
-}
-
-#[tauri::command]
-pub async fn get_config(handle: State<'_, ServiceHandle>) -> Result<AppConfig, String> {
-    Ok(handle.config().await)
-}
-
-#[tauri::command]
-pub async fn update_config(
-    config: AppConfig,
-    handle: State<'_, ServiceHandle>
-) -> Result<(), String> {
-    handle.update_config(config).await
 }

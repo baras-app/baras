@@ -28,4 +28,19 @@ impl SharedState {
             in_combat: AtomicBool::new(false),
         }
     }
+
+    pub async fn with_session<F, T>(&self, f: F) -> Option<T>
+    where
+        F: FnOnce(&mut ParsingSession) -> T,
+    {
+        let session_lock = self.session.read().await;
+        if let Some(session_arc) = &*session_lock {
+            let mut session = session_arc.write().await;
+            Some(f(&mut session))
+        } else {
+            None
+        }
+    }
+
+
 }
