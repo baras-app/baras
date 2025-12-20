@@ -4,6 +4,7 @@
 //! with sample data. In production, this would receive data from
 //! the core combat log parser.
 
+use baras_core::context::OverlayAppearanceConfig;
 use baras_overlay::{MeterEntry, MetricOverlay, OverlayConfig, colors};
 use std::time::{Duration, Instant};
 
@@ -18,8 +19,9 @@ fn main() {
         click_through: false,
     };
 
-    // Create the metric overlay
-    let mut metric = match MetricOverlay::new(config, "DPS Meter") {
+    // Create the metric overlay with default appearance
+    let appearance = OverlayAppearanceConfig::default();
+    let mut metric = match MetricOverlay::new(config, "DPS Meter", appearance, 180) {
         Ok(m) => m,
         Err(e) => {
             eprintln!("Failed to create overlay: {}", e);

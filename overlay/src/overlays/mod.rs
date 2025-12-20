@@ -5,5 +5,7 @@
 //! layer for window management.
 
 mod metric;
+mod personal;
 
 pub use metric::{MeterEntry, MetricOverlay};
+pub use personal::{PersonalOverlay, PersonalStats};

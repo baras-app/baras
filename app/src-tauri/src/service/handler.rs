@@ -148,11 +148,16 @@ impl ServiceHandle {
                     entity_id: m.entity_id,
                     name: resolve(m.name).to_string(),
                     dps: m.dps as i64,
+                    edps: m.edps as i64,
                     total_damage: m.total_damage as u64,
                     hps: m.hps as i64,
+                    ehps: m.ehps as i64,
                     total_healing: m.total_healing as u64,
                     tps: m.tps as i64,
                     total_threat: m.total_threat as u64,
+                    dtps: m.dtps as i64,
+                    edtps: m.edtps as i64,
+                    abs: m.abs as i64,
                 })
                 .collect(),
         )

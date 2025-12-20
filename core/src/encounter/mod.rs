@@ -224,46 +224,89 @@ impl Encounter {
     }
 
     pub fn accumulate_data(&mut self, event: &CombatEvent) {
+        let avoid = resolve(event.details.avoid_type);
+        let is_defense = matches!(avoid, "dodge" | "parry" | "resist" | "deflect");
+        let is_natural_shield = avoid == "shield";
+
+        // Source accumulation (damage/healing dealt)
         {
-            let source_accumulator = self
+            let source = self
                 .accumulated_data
                 .entry(event.source_entity.log_id)
                 .or_default();
-            source_accumulator.damage_dealt += event.details.dmg_amount as i64;
-            source_accumulator.damage_dealt_effective += event.details.dmg_effective as i64;
-            source_accumulator.hit_count += 1;
-            source_accumulator.healing_effective += event.details.heal_effective as i64;
-            source_accumulator.healing_done += event.details.heal_amount as i64;
-            source_accumulator.threat_generated += event.details.threat as f64;
+
+            // Damage dealt
+            if event.details.dmg_amount > 0 {
+                source.damage_dealt += event.details.dmg_amount as i64;
+                source.damage_dealt_effective += event.details.dmg_effective as i64;
+                source.damage_hit_count += 1;
+                if event.details.is_crit {
+                    source.damage_crit_count += 1;
+                }
+            }
+
+            // Healing dealt
+            if event.details.heal_amount > 0 {
+                source.healing_done += event.details.heal_amount as i64;
+                source.healing_effective += event.details.heal_effective as i64;
+                source.heal_count += 1;
+                if event.details.is_crit {
+                    source.heal_crit_count += 1;
+                }
+            }
+
+            source.threat_generated += event.details.threat as f64;
+
+            // Actions (APM tracking)
             if event.effect.effect_id == effect_id::ABILITYACTIVATE
                 && self.enter_combat_time.is_some_and(|t| event.timestamp >= t)
                 && self.exit_combat_time.is_none_or(|t| t >= event.timestamp)
             {
-                source_accumulator.actions += 1;
+                source.actions += 1;
             }
 
-            if event.details.dmg_absorbed > 0 {
-                let avoid = resolve(event.details.avoid_type);
-                // Skip natural shield rolls: avoid_type=shield with no effective damage reduction.
-                // These are tank shield stat procs, not absorb bubbles like Static Barrier.
-                let is_natural_shield_roll =
-                    avoid == "shield" && event.details.dmg_effective == event.details.dmg_amount;
-
-                if !is_natural_shield_roll {
-                    self.attribute_shield_absorption(event);
-                }
+            // Taunt tracking
+            if event.effect.effect_id == effect_id::TAUNT {
+                source.taunt_count += 1;
             }
 
+            // Effect shield absorption (Static Barrier, etc.)
+            if event.details.dmg_absorbed > 0 && !is_natural_shield {
+                self.attribute_shield_absorption(event);
+            }
         }
 
+        // Target accumulation (damage/healing received)
         {
-            let target_accumulator = self
+            let target = self
                 .accumulated_data
                 .entry(event.target_entity.log_id)
                 .or_default();
-            target_accumulator.damage_received += event.details.dmg_effective as i64;
-            target_accumulator.damage_absorbed += event.details.dmg_absorbed as i64;
-            target_accumulator.healing_received += event.details.heal_amount as i64;
+
+            // Damage received
+            if event.details.dmg_amount > 0 {
+                target.damage_received += event.details.dmg_amount as i64;
+                target.damage_received_effective += event.details.dmg_effective as i64;
+                target.damage_absorbed += event.details.dmg_absorbed as i64;
+                target.attacks_received += 1;
+
+                // Defense stats
+                if is_defense {
+                    target.defense_count += 1;
+                }
+
+                // Natural shield roll (tank stat)
+                if is_natural_shield {
+                    target.shield_roll_count += 1;
+                    target.shield_roll_absorbed += event.details.dmg_absorbed as i64;
+                }
+            }
+
+            // Healing received
+            if event.details.heal_amount > 0 {
+                target.healing_received += event.details.heal_amount as i64;
+                target.healing_received_effective += event.details.heal_effective as i64;
+            }
         }
     }
 
@@ -280,18 +323,81 @@ impl Encounter {
             .filter_map(|(id, acc)| {
                 let name = self.get_entity_name(*id)?;
                 let entity_type = self.get_entity_type(*id)?;
+
+                // Crit percentages (avoid division by zero)
+                let damage_crit_pct = if acc.damage_hit_count > 0 {
+                    (acc.damage_crit_count as f32 / acc.damage_hit_count as f32) * 100.0
+                } else {
+                    0.0
+                };
+                let heal_crit_pct = if acc.heal_count > 0 {
+                    (acc.heal_crit_count as f32 / acc.heal_count as f32) * 100.0
+                } else {
+                    0.0
+                };
+
+                // Effective heal percentage
+                let effective_heal_pct = if acc.healing_done > 0 {
+                    (acc.healing_effective as f32 / acc.healing_done as f32) * 100.0
+                } else {
+                    0.0
+                };
+
+                // Defense percentage (dodge/parry/resist/deflect)
+                let defense_pct = if acc.attacks_received > 0 {
+                    (acc.defense_count as f32 / acc.attacks_received as f32) * 100.0
+                } else {
+                    0.0
+                };
+
+                // Shield percentage (natural shield rolls)
+                let shield_pct = if acc.attacks_received > 0 {
+                    (acc.shield_roll_count as f32 / acc.attacks_received as f32) * 100.0
+                } else {
+                    0.0
+                };
+
                 Some(EntityMetrics {
                     entity_id: *id,
                     entity_type,
                     name,
+
+                    // Damage dealing
                     total_damage: acc.damage_dealt,
+                    total_damage_effective: acc.damage_dealt_effective,
                     dps: (acc.damage_dealt / duration) as i32,
                     edps: (acc.damage_dealt_effective / duration) as i32,
-                    ehps: (acc.healing_effective + acc.shielding_given / duration) as i32,
+                    damage_crit_pct,
+
+                    // Healing dealing
                     total_healing: acc.healing_done,
-                    hps: ((acc.healing_done + acc.shielding_given) / duration) as i32,
-                    dtps: (acc.damage_received / duration) as i32,
+                    total_healing_effective: acc.healing_effective,
+                    hps: (acc.healing_done / duration) as i32,
+                    ehps: ((acc.healing_effective + acc.shielding_given) / duration) as i32,
+                    heal_crit_pct,
+                    effective_heal_pct,
+
+                    // Shielding
                     abs: (acc.shielding_given / duration) as i32,
+                    total_shielding: acc.shielding_given,
+
+                    // Damage taken
+                    total_damage_taken: acc.damage_received,
+                    total_damage_taken_effective: acc.damage_received_effective,
+                    dtps: (acc.damage_received / duration) as i32,
+                    edtps: (acc.damage_received_effective / duration) as i32,
+
+                    // Healing received
+                    htps: (acc.healing_received / duration) as i32,
+                    ehtps: (acc.healing_received_effective / duration) as i32,
+
+                    // Tank stats
+                    defense_pct,
+                    shield_pct,
+                    total_shield_absorbed: acc.shield_roll_absorbed,
+                    taunt_count: acc.taunt_count,
+
+                    // General
                     apm: (acc.actions as f32 / duration as f32) * 60.0,
                     tps: (acc.threat_generated / duration as f64) as i32,
                     total_threat: acc.threat_generated as i64,

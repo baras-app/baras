@@ -20,6 +20,7 @@ use tokio::sync::{mpsc, RwLock};
 use baras_core::context::{resolve, AppConfig, DirectoryIndex, ParsingSession};
 use baras_core::{EntityType, GameSignal, Reader, SignalHandler};
 use baras_core::directory_watcher::DirectoryWatcher;
+use baras_overlay::PersonalStats;
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,6 +45,7 @@ pub enum OverlayUpdate {
     CombatStarted,
     CombatEnded,
     MetricsUpdated(Vec<PlayerMetrics>),
+    PersonalStatsUpdated(PersonalStats),
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -375,22 +377,33 @@ impl CombatService {
 
                 // Calculate and send metrics
                 let metrics = calculate_metrics(&shared).await;
+                let personal = calculate_personal_stats(&shared).await;
 
                 if let Some(metrics) = metrics
-                    && !metrics.is_empty() {
-                        eprintln!("Sending {} metrics to overlay", metrics.len());
-                        let _ = overlay_tx.try_send(OverlayUpdate::MetricsUpdated(metrics));
-                    }
+                    && !metrics.is_empty()
+                {
+                    eprintln!("Sending {} metrics to overlay", metrics.len());
+                    let _ = overlay_tx.try_send(OverlayUpdate::MetricsUpdated(metrics));
+                }
 
+                if let Some(personal) = personal {
+                    let _ = overlay_tx.try_send(OverlayUpdate::PersonalStatsUpdated(personal));
+                }
 
                 // For CombatStarted, start polling during combat
                 if matches!(trigger, MetricsTrigger::CombatStarted) {
                     // Poll during active combat
                     while shared.in_combat.load(Ordering::SeqCst) {
                         tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-                        if let Some(metrics) = calculate_metrics(&shared).await &&
-                            !metrics.is_empty() {
-                                let _ = overlay_tx.try_send(OverlayUpdate::MetricsUpdated(metrics));
+
+                        if let Some(metrics) = calculate_metrics(&shared).await
+                            && !metrics.is_empty()
+                        {
+                            let _ = overlay_tx.try_send(OverlayUpdate::MetricsUpdated(metrics));
+                        }
+
+                        if let Some(personal) = calculate_personal_stats(&shared).await {
+                            let _ = overlay_tx.try_send(OverlayUpdate::PersonalStatsUpdated(personal));
                         }
                     }
                 }
@@ -450,15 +463,74 @@ async fn calculate_metrics(shared: &Arc<SharedState>) -> Option<Vec<PlayerMetric
                     entity_id: m.entity_id,
                     name: safe_name,
                     dps: m.dps as i64,
+                    edps: m.edps as i64,
                     total_damage: m.total_damage as u64,
                     hps: m.hps as i64,
+                    ehps: m.ehps as i64,
                     total_healing: m.total_healing as u64,
                     tps: m.tps as i64,
                     total_threat: m.total_threat as u64,
+                    dtps: m.dtps as i64,
+                    edtps: m.edtps as i64,
+                    abs: m.abs as i64,
                 }
             })
             .collect(),
     )
+}
+
+/// Calculate personal stats for the primary player
+async fn calculate_personal_stats(shared: &Arc<SharedState>) -> Option<PersonalStats> {
+    let session_guard = shared.session.read().await;
+    let session = session_guard.as_ref()?;
+    let session = session.read().await;
+    let cache = session.session_cache.as_ref()?;
+
+    // Get player info for class/discipline from cache
+    let player_info = &cache.player;
+    let class_discipline = if !player_info.class_name.is_empty() && !player_info.discipline_name.is_empty() {
+        Some(format!("{} / {}", player_info.class_name, player_info.discipline_name))
+    } else if !player_info.class_name.is_empty() {
+        Some(player_info.class_name.clone())
+    } else {
+        None
+    };
+
+    let encounter = cache.last_combat_encounter()?;
+    let encounter_count = cache.encounter_count();
+    let encounter_time_secs = encounter.duration_ms().unwrap_or(0) / 1000;
+
+    // Get player entity ID (id field, must be non-zero)
+    let player_entity_id = player_info.id;
+    if player_entity_id == 0 {
+        return None;
+    }
+
+    // Find the player's metrics in the entity metrics
+    let entity_metrics = encounter.calculate_entity_metrics()?;
+    let player_metrics = entity_metrics
+        .iter()
+        .find(|m| m.entity_id == player_entity_id)?;
+
+    Some(PersonalStats {
+        encounter_time_secs: encounter_time_secs as u64,
+        encounter_count,
+        class_discipline,
+        apm: player_metrics.apm,
+        dps: player_metrics.dps,
+        edps: player_metrics.edps,
+        total_damage: player_metrics.total_damage,
+        hps: player_metrics.hps,
+        ehps: player_metrics.ehps,
+        total_healing: player_metrics.total_healing,
+        dtps: player_metrics.dtps,
+        edtps: player_metrics.edtps,
+        tps: player_metrics.tps,
+        total_threat: player_metrics.total_threat,
+        damage_crit_pct: player_metrics.damage_crit_pct,
+        heal_crit_pct: player_metrics.heal_crit_pct,
+        effective_heal_pct: player_metrics.effective_heal_pct,
+    })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -479,11 +551,16 @@ pub struct PlayerMetrics {
     pub entity_id: i64,
     pub name: String,
     pub dps: i64,
+    pub edps: i64,
     pub total_damage: u64,
     pub hps: i64,
+    pub ehps: i64,
     pub total_healing: u64,
     pub tps: i64,
     pub total_threat: u64,
+    pub dtps: i64,
+    pub edtps: i64,
+    pub abs: i64,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

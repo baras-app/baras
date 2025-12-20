@@ -36,7 +36,7 @@ pub mod widgets;
 
 // Re-export commonly used types
 pub use manager::OverlayWindow;
-pub use overlays::{MeterEntry, MetricOverlay};
+pub use overlays::{MeterEntry, MetricOverlay, PersonalOverlay, PersonalStats};
 pub use platform::{NativeOverlay, OverlayConfig, OverlayPlatform, PlatformError};
 pub use renderer::{colors, Renderer};
 pub use widgets::ProgressBar;

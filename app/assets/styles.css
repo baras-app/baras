@@ -246,8 +246,20 @@ button {
 }
 
 .overlay-meters {
-  margin: 1.5em 0;
+  margin: 0.5em 0 1em 0;
   width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  justify-content: center;
+}
+
+.subsection-title {
+  font-size: 0.85em;
+  color: #888;
+  text-transform: uppercase;
+  margin: 0.75em 0 0.25em 0;
+  letter-spacing: 0.5px;
 }
 
 .overlay-controls h3 {
@@ -377,4 +389,200 @@ button {
 
 .status-dot.status-off {
   background-color: #888;
+}
+
+/* Settings button */
+.btn-settings {
+  min-width: 80px;
+  margin-left: 0.5em;
+  background-color: #4a4a6a;
+  border-color: #5a5a8a;
+  color: white;
+}
+
+.btn-settings:hover {
+  background-color: #5a5a7a;
+}
+
+/* Settings panel */
+.settings-panel {
+  width: 100%;
+  max-width: min(450px, 100%);
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 1em;
+  margin: 1em 0;
+  text-align: left;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1em;
+}
+
+.settings-header h3 {
+  margin: 0;
+}
+
+.btn-close {
+  min-width: auto;
+  padding: 0.3em 0.6em;
+  font-size: 0.9em;
+  background: transparent;
+  border: 1px solid #666;
+}
+
+.btn-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Settings tabs */
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25em;
+  margin: 1em 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5em;
+}
+
+.tab-btn {
+  padding: 0.4em 0.8em;
+  min-width: auto;
+  font-size: 0.85em;
+  border-radius: 4px 4px 0 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #888;
+  box-shadow: none;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #aaa;
+}
+
+.tab-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+  border-bottom-color: transparent;
+}
+
+/* Settings sections */
+.settings-section {
+  margin: 1em 0;
+  padding: 0.75em;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
+
+.settings-section h4 {
+  margin: 0 0 0.75em 0;
+  font-size: 0.95em;
+  color: #aaa;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin: 0.5em 0;
+}
+
+.setting-row label {
+  flex: 1;
+  font-size: 0.9em;
+}
+
+.setting-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.setting-row input[type="range"] {
+  flex: 1;
+  max-width: 150px;
+}
+
+.setting-row input[type="number"] {
+  width: 60px;
+  text-align: center;
+  padding: 0.3em;
+}
+
+.setting-row .value {
+  width: 40px;
+  text-align: right;
+  font-size: 0.85em;
+  color: #888;
+}
+
+/* Personal stat grid */
+.hint {
+  font-size: 0.85em;
+  color: #888;
+  margin: 0 0 0.75em 0;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4em;
+}
+
+.stat-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.85em;
+  padding: 0.25em;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.stat-toggle:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stat-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+/* Settings footer */
+.settings-footer {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  margin-top: 1em;
+  padding-top: 1em;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-save {
+  min-width: 120px;
+  background-color: #2a6e2a;
+  border-color: #3a8e3a;
+  color: white;
+}
+
+.btn-save:hover:not(:disabled) {
+  background-color: #308030;
+}
+
+.btn-save.btn-disabled,
+.btn-save:disabled {
+  background-color: #444;
+  border-color: #555;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.save-status {
+  font-size: 0.85em;
+  color: #4a4;
 }
