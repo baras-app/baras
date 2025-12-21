@@ -40,7 +40,7 @@ pub mod widgets;
 pub use frame::OverlayFrame;
 pub use manager::OverlayWindow;
 pub use overlays::{
-    MeterEntry, MetricOverlay, Overlay, OverlayConfigUpdate, OverlayData, OverlayPosition,
+    MetricEntry, MetricOverlay, Overlay, OverlayConfigUpdate, OverlayData, OverlayPosition,
     PersonalOverlay, PersonalStats,
 };
 pub use platform::{

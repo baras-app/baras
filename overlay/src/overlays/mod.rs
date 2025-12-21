@@ -12,7 +12,7 @@
 mod metric;
 mod personal;
 
-pub use metric::{MeterEntry, MetricOverlay};
+pub use metric::{MetricEntry, MetricOverlay};
 pub use personal::{PersonalOverlay, PersonalStats};
 
 use crate::frame::OverlayFrame;
@@ -26,7 +26,7 @@ use baras_core::context::{OverlayAppearanceConfig, PersonalOverlayConfig};
 #[derive(Debug, Clone)]
 pub enum OverlayData {
     /// Metric entries for DPS/HPS/TPS meters
-    Metrics(Vec<MeterEntry>),
+    Metrics(Vec<MetricEntry>),
     /// Personal player statistics
     Personal(PersonalStats),
     // Future variants:

@@ -14,7 +14,7 @@ use crate::widgets::{Footer, Header, ProgressBar};
 
 /// Entry in a DPS/HPS metric
 #[derive(Debug, Clone)]
-pub struct MeterEntry {
+pub struct MetricEntry {
     pub name: String,
     /// Per-second rate (e.g., DPS, HPS)
     pub value: i64,
@@ -25,7 +25,7 @@ pub struct MeterEntry {
     pub color: Color,
 }
 
-impl MeterEntry {
+impl MetricEntry {
     pub fn new(name: impl Into<String>, value: i64, max_value: i64) -> Self {
         Self {
             name: name.into(),
@@ -64,7 +64,7 @@ const MAX_NAME_CHARS: usize = 16;
 /// A specialized DPS/HPS metric overlay
 pub struct MetricOverlay {
     frame: OverlayFrame,
-    entries: Vec<MeterEntry>,
+    entries: Vec<MetricEntry>,
     title: String,
     appearance: OverlayAppearanceConfig,
 }
@@ -119,7 +119,7 @@ impl MetricOverlay {
     }
 
     /// Update the metric entries
-    pub fn set_entries(&mut self, entries: Vec<MeterEntry>) {
+    pub fn set_entries(&mut self, entries: Vec<MetricEntry>) {
         self.entries = entries;
     }
 
