@@ -49,6 +49,14 @@ impl ServiceHandle {
             .map_err(|e| e.to_string())
     }
 
+    /// Send command to restart the directory watcher
+    pub async fn restart_watcher(&self) -> Result<(), String> {
+        self.cmd_tx
+            .send(ServiceCommand::DirectoryChanged)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
     /// Get the current configuration
     pub async fn config(&self) -> AppConfig {
         self.shared.config.read().await.clone()
@@ -89,6 +97,11 @@ impl ServiceHandle {
     /// Check if currently tailing a file
     pub async fn is_tailing(&self) -> bool {
         self.shared.session.read().await.is_some()
+    }
+
+    /// Check if directory watcher is active
+    pub fn is_watching(&self) -> bool {
+        self.shared.watching.load(Ordering::SeqCst)
     }
 
     pub async fn active_file(&self) -> Option<String> {
@@ -166,8 +179,18 @@ pub async fn refresh_log_index(handle: State<'_, ServiceHandle>) -> Result<(), S
 }
 
 #[tauri::command]
+pub async fn restart_watcher(handle: State<'_, ServiceHandle>) -> Result<(), String> {
+    handle.restart_watcher().await
+}
+
+#[tauri::command]
 pub async fn get_tailing_status(handle: State<'_, ServiceHandle>) -> Result<bool, String> {
     Ok(handle.is_tailing().await)
+}
+
+#[tauri::command]
+pub async fn get_watching_status(handle: State<'_, ServiceHandle>) -> Result<bool, String> {
+    Ok(handle.is_watching())
 }
 
 #[tauri::command]

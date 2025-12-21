@@ -354,9 +354,12 @@ pub fn App() -> Element {
         if let Ok(config) = serde_wasm_bindgen::from_value::<AppConfig>(result) {
             log_directory.set(config.log_directory.clone());
             overlay_settings.set(config.overlay_settings);
-            if !config.log_directory.is_empty() {
-                is_watching.set(true);
-            }
+        }
+
+        // Get watcher status
+        let watching_result = invoke("get_watching_status", JsValue::NULL).await;
+        if let Ok(watching) = serde_wasm_bindgen::from_value::<bool>(watching_result) {
+            is_watching.set(watching);
         }
 
         // Get active file
@@ -400,13 +403,21 @@ pub fn App() -> Element {
         closure.forget();
     });
 
-    // Poll session info periodically
+    // Poll session info and watcher status periodically
     use_future(move || async move {
         loop {
             gloo_timers::future::TimeoutFuture::new(2000).await;
+
+            // Session info
             let session_result = invoke("get_session_info", JsValue::NULL).await;
             if let Ok(info) = serde_wasm_bindgen::from_value::<Option<SessionInfo>>(session_result) {
                 session_info.set(info);
+            }
+
+            // Watcher status
+            let watching_result = invoke("get_watching_status", JsValue::NULL).await;
+            if let Ok(watching) = serde_wasm_bindgen::from_value::<bool>(watching_result) {
+                is_watching.set(watching);
             }
         }
     });
@@ -603,24 +614,42 @@ pub fn App() -> Element {
                 }
             }
 
-            // Active file info (moved from Log Directory section)
-            if watching {
-                section { class: "active-file-panel",
+            // Active file info panel
+            section { class: "active-file-panel",
+                div { class: "file-info",
+                    span { class: "label",
+                        i { class: "fa-solid fa-folder-open" }
+                        " Directory: "
+                    }
+                    span { class: "value", "{current_directory}" }
+                }
+                if !current_file.is_empty() {
                     div { class: "file-info",
                         span { class: "label",
-                            i { class: "fa-solid fa-folder-open" }
-                            " Directory: "
+                            i { class: "fa-solid fa-file-lines" }
+                            " Active: "
                         }
-                        span { class: "value", "{current_directory}" }
+                        span { class: "value filename", "{current_filename}" }
                     }
-                    if !current_file.is_empty() {
-                        div { class: "file-info",
-                            span { class: "label",
-                                i { class: "fa-solid fa-file-lines" }
-                                " Active: "
-                            }
-                            span { class: "value filename", "{current_filename}" }
-                        }
+                }
+                // Watcher status indicator
+                div { class: "watcher-status",
+                    span {
+                        class: if watching { "status-dot watching" } else { "status-dot not-watching" }
+                    }
+                    span {
+                        class: "status-text",
+                        if watching { "Watching" } else { "Not Watching" }
+                    }
+                    button {
+                        class: "btn-restart-watcher",
+                        title: "Restart file directory watcher",
+                        onclick: move |_| {
+                            spawn(async move {
+                                let _ = invoke("restart_watcher", JsValue::NULL).await;
+                            });
+                        },
+                        i { class: "fa-solid fa-rotate" }
                     }
                 }
             }

@@ -939,6 +939,61 @@ details[open] .collapsible-summary::before {
   font-size: 0.9em;
 }
 
+/* Watcher status indicator */
+.watcher-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  margin-top: 0.4vh;
+  padding-top: 0.4vh;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: clamp(0.55rem, 1.2vh, 0.8rem);
+}
+
+.watcher-status .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.watcher-status .status-dot.watching {
+  background-color: #4a4;
+  box-shadow: 0 0 4px #4a4;
+}
+
+.watcher-status .status-dot.not-watching {
+  background-color: #ca4;
+  box-shadow: 0 0 4px #ca4;
+}
+
+.watcher-status .status-text {
+  color: #888;
+}
+
+.btn-restart-watcher {
+  margin-left: auto;
+  padding: 0.2em 0.5em;
+  min-width: unset;
+  font-size: 0.85em;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-restart-watcher:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ccc;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-restart-watcher:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 /* General settings modal */
 .general-settings {
   max-width: 500px;

@@ -81,7 +81,7 @@ impl DirectoryWatcher {
     }
 
     async fn handle_new_file(&self, path: PathBuf) -> DirectoryEvent {
-        const NEW_FILE_TIMEOUT: Duration = Duration::from_secs(30);
+        const NEW_FILE_TIMEOUT: Duration = Duration::from_secs(60);
         const NEW_FILE_POLL_INTERVAL: Duration = Duration::from_millis(500);
 
         // Wait for file to have content (DisciplineChanged event)

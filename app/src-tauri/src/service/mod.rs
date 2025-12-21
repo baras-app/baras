@@ -179,6 +179,7 @@ impl CombatService {
 
         // Stop existing watcher
         if let Some(handle) = self.directory_handle.take() {
+            self.shared.watching.store(false, Ordering::SeqCst);
             handle.abort();
             let _ = handle.await;
         }
@@ -285,12 +286,14 @@ impl CombatService {
             }
             Err(e) => {
                 eprintln!("start_watcher: failed to start directory watcher: {}", e);
+                self.shared.watching.store(false, Ordering::SeqCst);
                 return;
             }
         };
 
       // Clone the command sender so watcher can send back to service
       let cmd_tx = self.cmd_tx.clone();
+      let shared = self.shared.clone();
 
       let handle = tokio::spawn(async move {
           while let Some(event) = watcher.next_event().await {
@@ -299,9 +302,12 @@ impl CombatService {
                       break; // Service shut down
                   }
           }
+          // Watcher stopped
+          shared.watching.store(false, Ordering::SeqCst);
       });
 
       self.directory_handle = Some(handle);
+      self.shared.watching.store(true, Ordering::SeqCst);
     }
 
     async fn start_tailing(&mut self, path: PathBuf) {

@@ -17,6 +17,8 @@ pub struct SharedState {
     pub session: RwLock<Option<Arc<RwLock<ParsingSession>>>>,
     /// Whether we're currently in active combat (for metrics updates)
     pub in_combat: AtomicBool,
+    /// Whether the directory watcher is active
+    pub watching: AtomicBool,
 }
 
 impl SharedState {
@@ -26,6 +28,7 @@ impl SharedState {
             directory_index: RwLock::new(directory_index),
             session: RwLock::new(None),
             in_combat: AtomicBool::new(false),
+            watching: AtomicBool::new(false),
         }
     }
 
