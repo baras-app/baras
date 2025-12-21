@@ -52,6 +52,13 @@ html, body {
 .app-header {
   flex: 0 1 auto;
   width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-header .header-content {
+  flex: 1;
 }
 
 .app-header h1 {
@@ -63,6 +70,27 @@ html, body {
 .app-header .subtitle {
   margin: 0.25vh 0 0 0;
   font-size: clamp(0.7rem, 1.5vh, 1rem);
+}
+
+.btn-header-settings {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #888;
+  padding: 0.6em;
+  font-size: 1.2em;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-header-settings:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ccc;
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .logo {
@@ -857,6 +885,115 @@ details[open] .collapsible-summary::before {
 }
 
 .save-status {
+  font-size: 0.85em;
+  color: #4a4;
+}
+
+/* Active file panel (above overlays) */
+.active-file-panel {
+  width: 100%;
+  max-width: min(500px, 100%);
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 0.75vh 1vw;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25vh;
+}
+
+.active-file-panel .file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: clamp(0.6rem, 1.3vh, 0.85rem);
+}
+
+.active-file-panel .file-info .label {
+  color: #888;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  flex-shrink: 0;
+}
+
+.active-file-panel .file-info .value {
+  color: #ccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active-file-panel .file-info .filename {
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+/* General settings modal */
+.general-settings {
+  max-width: 500px;
+}
+
+.general-settings h4 {
+  margin: 0 0 0.5em 0;
+  font-size: 1em;
+  color: #ccc;
+}
+
+/* Directory picker */
+.directory-picker {
+  display: flex;
+  gap: 0.75em;
+  align-items: stretch;
+  margin: 0.75em 0;
+}
+
+.directory-display {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  padding: 0.75em 1em;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.directory-display i {
+  color: #888;
+  font-size: 1.1em;
+  flex-shrink: 0;
+}
+
+.directory-path {
+  font-family: monospace;
+  font-size: 0.85em;
+  color: #aaa;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-browse {
+  background: #3a5a8a;
+  border-color: #4a7aba;
+  color: white;
+  padding: 0.75em 1.25em;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  white-space: nowrap;
+}
+
+.btn-browse:hover {
+  background: #4a6a9a;
+}
+
+.directory-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-top: 0.5em;
   font-size: 0.85em;
   color: #4a4;
 }

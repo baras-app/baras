@@ -14,6 +14,9 @@ extern "C" {
 
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"], js_name = "listen")]
     async fn tauri_listen(event: &str, handler: &Closure<dyn FnMut(JsValue)>) -> JsValue;
+
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "dialog"], js_name = "open")]
+    async fn open_dialog(options: JsValue) -> JsValue;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -330,6 +333,7 @@ pub fn App() -> Element {
 
     // Settings panel state
     let mut settings_open = use_signal(|| false);
+    let mut general_settings_open = use_signal(|| false);
     let mut overlay_settings = use_signal(OverlaySettings::default);
     let selected_overlay_tab = use_signal(|| "dps".to_string());
 
@@ -408,6 +412,7 @@ pub fn App() -> Element {
     let current_directory = log_directory();
     let watching = is_watching();
     let current_file = active_file();
+    let current_filename = current_file.rsplit(['/', '\\']).next().unwrap_or(&current_file).to_string();
     let session = session_info();
 
     // Toggle metric overlay enabled state
@@ -487,33 +492,41 @@ pub fn App() -> Element {
         }
     };
 
-    let set_directory = move |_| {
-        let dir = log_directory();
+    // Browse and set directory using native dialog
+    let browse_directory = move |_| {
         let current_overlay_settings = overlay_settings();
 
         async move {
-            if dir.is_empty() {
-                status_msg.set("Please enter a log directory path".to_string());
-                return;
-            }
+            // Open native directory picker
+            let options = js_sys::Object::new();
+            js_sys::Reflect::set(&options, &JsValue::from_str("directory"), &JsValue::TRUE).unwrap();
+            js_sys::Reflect::set(&options, &JsValue::from_str("title"), &JsValue::from_str("Select Log Directory")).unwrap();
 
-            let config = AppConfig {
-                log_directory: dir.clone(),
-                auto_delete_empty_files: false,
-                log_retention_days: 0,
-                overlay_settings: current_overlay_settings,
-            };
+            let result = open_dialog(options.into()).await;
 
-            let args = serde_wasm_bindgen::to_value(&config).unwrap_or(JsValue::NULL);
-            let obj = js_sys::Object::new();
-            js_sys::Reflect::set(&obj, &JsValue::from_str("config"), &args).unwrap();
+            // Result is the selected path string or null
+            if let Some(path) = result.as_string() {
+                log_directory.set(path.clone());
 
-            let result = invoke("update_config", obj.into()).await;
-            if result.is_undefined() || result.is_null() {
-                is_watching.set(true);
-                status_msg.set(format!("Watching: {}", dir));
-            } else if let Some(err) = result.as_string() {
-                status_msg.set(format!("Error: {}", err));
+                // Save to config
+                let config = AppConfig {
+                    log_directory: path.clone(),
+                    auto_delete_empty_files: false,
+                    log_retention_days: 0,
+                    overlay_settings: current_overlay_settings,
+                };
+
+                let args = serde_wasm_bindgen::to_value(&config).unwrap_or(JsValue::NULL);
+                let obj = js_sys::Object::new();
+                js_sys::Reflect::set(&obj, &JsValue::from_str("config"), &args).unwrap();
+
+                let save_result = invoke("update_config", obj.into()).await;
+                if save_result.is_undefined() || save_result.is_null() {
+                    is_watching.set(true);
+                    status_msg.set(format!("Watching: {}", path));
+                } else if let Some(err) = save_result.as_string() {
+                    status_msg.set(format!("Error: {}", err));
+                }
             }
         }
     };
@@ -524,8 +537,15 @@ pub fn App() -> Element {
         main { class: "container",
             // App header
             header { class: "app-header",
-                h1 { "BARAS" }
-                p { class: "subtitle", "Battle Analysis and Raid Assessment System" }
+                div { class: "header-content",
+                    h1 { "BARAS" }
+                    p { class: "subtitle", "Battle Analysis and Raid Assessment System" }
+                }
+                button {
+                    class: "btn btn-header-settings",
+                    onclick: move |_| general_settings_open.set(true),
+                    i { class: "fa-solid fa-gear" }
+                }
             }
 
 
@@ -573,6 +593,27 @@ pub fn App() -> Element {
                 }
             }
 
+            // Active file info (moved from Log Directory section)
+            if watching {
+                section { class: "active-file-panel",
+                    div { class: "file-info",
+                        span { class: "label",
+                            i { class: "fa-solid fa-folder-open" }
+                            " Directory: "
+                        }
+                        span { class: "value", "{current_directory}" }
+                    }
+                    if !current_file.is_empty() {
+                        div { class: "file-info",
+                            span { class: "label",
+                                i { class: "fa-solid fa-file-lines" }
+                                " Active: "
+                            }
+                            span { class: "value filename", "{current_filename}" }
+                        }
+                    }
+                }
+            }
 
             // Overlay controls section
             section { class: "overlay-controls",
@@ -668,27 +709,55 @@ pub fn App() -> Element {
                 }
             }
 
-            // Log directory section
-            section { class: "log-section",
-                h3 { "Log Directory" }
-                div { class: "log-controls",
-                    input {
-                        r#type: "text",
-                        class: "log-input",
-                        placeholder: "Path to SWTOR combat log directory...",
-                        value: "{current_directory}",
-                        oninput: move |e| log_directory.set(e.value())
-                    }
-                    button {
-                        class: "btn",
-                        onclick: set_directory,
-                        "Set"
-                    }
-                }
-                if watching && !current_file.is_empty() {
-                    div { class: "active-file",
-                        span { class: "label", "Active: " }
-                        span { class: "filename", "{current_file}" }
+            // General settings modal
+            if general_settings_open() {
+                div {
+                    class: "modal-backdrop",
+                    onclick: move |_| general_settings_open.set(false),
+                    div {
+                        onclick: move |e| e.stop_propagation(),
+                        section { class: "settings-panel general-settings",
+                            div { class: "settings-header",
+                                h3 { "Settings" }
+                                button {
+                                    class: "btn btn-close",
+                                    onclick: move |_| general_settings_open.set(false),
+                                    "X"
+                                }
+                            }
+
+                            div { class: "settings-section",
+                                h4 { "Log Directory" }
+                                p { class: "hint", "Select the directory containing your SWTOR combat logs." }
+
+                                div { class: "directory-picker",
+                                    div { class: "directory-display",
+                                        i { class: "fa-solid fa-folder" }
+                                        span {
+                                            class: "directory-path",
+                                            if current_directory.is_empty() {
+                                                "No directory selected"
+                                            } else {
+                                                "{current_directory}"
+                                            }
+                                        }
+                                    }
+                                    button {
+                                        class: "btn btn-browse",
+                                        onclick: browse_directory,
+                                        i { class: "fa-solid fa-folder-open" }
+                                        " Browse"
+                                    }
+                                }
+
+                                if watching {
+                                    div { class: "directory-status",
+                                        span { class: "status-dot status-on" }
+                                        span { "Watching for new log files" }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -698,16 +767,6 @@ pub fn App() -> Element {
                 p {
                     class: if status.starts_with("Error") { "error" } else { "info" },
                     "{status}"
-                }
-            }
-
-            // Footer status
-            footer { class: "status-footer",
-                span {
-                    class: if watching { "status-dot status-on" } else { "status-dot status-off" }
-                }
-                span {
-                    if watching { "Watching directory" } else { "Not watching" }
                 }
             }
         }

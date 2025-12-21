@@ -81,6 +81,14 @@ pub async fn show_overlay(
         state.insert(overlay_handle);
     }
 
+    // Sync move mode state - if app is in move mode, new overlay should be too
+    let current_move_mode = {
+        state.lock().map_err(|e| e.to_string())?.move_mode
+    };
+    if current_move_mode {
+        let _ = tx.send(OverlayCommand::SetMoveMode(true)).await;
+    }
+
     // Send current data if tailing
     if service.is_tailing().await
         && let Some(data) = service.current_combat_data().await
