@@ -26,12 +26,30 @@ static BOSS_LOOKUP: LazyLock<HashMap<i64, BossInfo>> = LazyLock::new(|| {
     map
 });
 
-/// Type of content (Operation, Flashpoint, World Boss)
+/// Lazy-initialized lookup of area/operation names → content type
+static AREA_CONTENT_LOOKUP: LazyLock<HashMap<&'static str, ContentType>> = LazyLock::new(|| {
+    let mut map = HashMap::new();
+    for (_, info) in RAID_BOSS_DATA.iter() {
+        // Skip training dummy - "Parsing" isn't a real area
+        if info.content_type != ContentType::TrainingDummy {
+            map.insert(info.operation, info.content_type);
+        }
+    }
+    for (_, info) in LAIR_BOSS_DATA.iter() {
+        map.insert(info.operation, info.content_type);
+    }
+    for (_, info) in FLASHPOINT_BOSS_DATA.iter() {
+        map.insert(info.operation, info.content_type);
+    }
+    map
+});
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContentType {
     Operation,
     Flashpoint,
     LairBoss,
+    TrainingDummy,
 }
 
 /// Difficulty mode
@@ -90,7 +108,7 @@ pub struct BossInfo {
     pub content_type: ContentType,
     pub operation: &'static str,
     pub boss: &'static str,
-    pub difficulty: Difficulty,
+    pub difficulty: Option<Difficulty>,
     /// True if this entity's death marks the encounter as complete
     pub is_kill_target: bool,
 }
@@ -98,12 +116,18 @@ pub struct BossInfo {
 impl BossInfo {
     /// Format as encounter name (e.g., "Eternity Vault: Soa (HM 8)")
     pub fn encounter_name(&self) -> String {
-        format!("{}: {} ({})", self.operation, self.boss, self.difficulty.short_name())
+        match self.difficulty {
+            Some(d) => format!("{}: {} ({})", self.operation, self.boss, d.short_name()),
+            None => format!("{}: {}", self.operation, self.boss),
+        }
     }
 
     /// Format as short name (e.g., "Soa HM 8")
     pub fn short_name(&self) -> String {
-        format!("{} {}", self.boss, self.difficulty.short_name())
+        match self.difficulty {
+            Some(d) => format!("{} {}", self.boss, d.short_name()),
+            None => self.boss.to_string(),
+        }
     }
 }
 
@@ -124,6 +148,12 @@ pub fn get_boss_ids(operation: &str, boss: &str) -> Vec<i64> {
         .filter(|(_, info)| info.operation == operation && info.boss == boss)
         .map(|(id, _)| *id)
         .collect()
+}
+
+/// Lookup content type by area/operation name
+/// Returns Some(ContentType) if the area is a known operation/flashpoint/lair
+pub fn lookup_area_content_type(area_name: &str) -> Option<ContentType> {
+    AREA_CONTENT_LOOKUP.get(area_name).copied()
 }
 
 
