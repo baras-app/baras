@@ -1109,10 +1109,10 @@ pub fn App() -> Element {
                             // Hotkey Settings Section
                             div { class: "settings-section",
                                 h4 { "Global Hotkeys" }
-                                p { class: "hint", "Configure keyboard shortcuts. Format: Ctrl+Shift+Key (Windows/macOS only)" }
+                                p { class: "hint", "Configure keyboard shortcuts. Format: Ctrl+Shift+Key (Windows only)" }
                                 p { class: "hint hint-warning",
                                     i { class: "fa-solid fa-triangle-exclamation" }
-                                    " Not supported on Linux. Restart app after changes."
+                                    "Restart app on hotkey changes."
                                 }
 
                                 div { class: "hotkey-grid",
