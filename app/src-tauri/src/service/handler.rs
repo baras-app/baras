@@ -12,6 +12,7 @@ use tokio::sync::mpsc;
 use baras_core::context::{resolve, AppConfig, OverlayAppearanceConfig};
 use baras_core::PlayerMetrics;
 use baras_core::encounter::EncounterState;
+use baras_core::EncounterSummary;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service Handle (for Tauri commands)
@@ -164,6 +165,20 @@ impl ServiceHandle {
         super::calculate_combat_data(&self.shared).await
     }
 
+    /// Get encounter history for the current log file
+    pub async fn encounter_history(&self) -> Vec<EncounterSummary> {
+        let session_guard = self.shared.session.read().await;
+        let Some(session) = session_guard.as_ref() else {
+            return Vec::new();
+        };
+        let session = session.read().await;
+        let Some(cache) = session.session_cache.as_ref() else {
+            return Vec::new();
+        };
+
+        cache.encounter_history.summaries().to_vec()
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Raid Registry Operations
     // ─────────────────────────────────────────────────────────────────────────
@@ -274,6 +289,13 @@ pub async fn get_session_info(
     handle: State<'_, ServiceHandle>
 ) -> Result<Option<SessionInfo>, String> {
     Ok(handle.session_info().await)
+}
+
+#[tauri::command]
+pub async fn get_encounter_history(
+    handle: State<'_, ServiceHandle>
+) -> Result<Vec<EncounterSummary>, String> {
+    Ok(handle.encounter_history().await)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

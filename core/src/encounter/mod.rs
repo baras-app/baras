@@ -2,6 +2,7 @@ pub mod metrics;
 pub mod effect_instance;
 pub mod shielding;
 pub mod entity_info;
+pub mod summary;
 use crate::is_boss;
 use crate::log::{CombatEvent, Entity, EntityType};
 use crate::context::{resolve, IStr};
@@ -21,6 +22,17 @@ pub enum EncounterState {
     NotStarted,
     InCombat,
     PostCombat { exit_time: NaiveDateTime },
+}
+
+/// Classification of the phase/content type where an encounter occurred
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
+pub enum PhaseType {
+    #[default]
+    OpenWorld,
+    Raid,
+    Flashpoint,
+    PvP,
+    DummyParse,
 }
 
 
@@ -115,6 +127,12 @@ impl Encounter {
     }
 
     pub fn track_event_entities(&mut self, event: &CombatEvent) {
+        // Guard against entities not in combat that the player
+        // targeted from being added
+        if event.effect.type_id == effect_id::TARGETSET ||
+            event.effect.type_id == effect_id::TARGETCLEARED {
+            return;
+    }
         self.try_track_entity(&event.source_entity, event.timestamp);
         self.try_track_entity(&event.target_entity, event.timestamp);
     }

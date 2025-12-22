@@ -19,6 +19,7 @@ use tokio::sync::{mpsc, RwLock};
 
 use baras_core::context::{resolve, AppConfig, DirectoryIndex, ParsingSession};
 use baras_core::encounter::EncounterState;
+use baras_core::encounter::summary::classify_encounter;
 use baras_core::directory_watcher::DirectoryWatcher;
 use baras_core::tracking::EffectCategory;
 use baras_core::swtor_data::{Discipline, Role};
@@ -554,6 +555,24 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
     let encounter_count = cache.encounters().filter(|e| e.state != EncounterState::NotStarted ).map(|e| e.id + 1).max().unwrap_or(0) as usize;
     let encounter_time_secs = encounter.duration_seconds().unwrap_or(0) as u64;
 
+    // Classify the encounter to get phase type and boss info
+    let (phase_type, boss_info) = classify_encounter(encounter, &cache.current_area);
+
+    // Generate encounter name - if there's a boss use that, otherwise use phase type
+    let encounter_name = if let Some(boss) = boss_info {
+        Some(boss.boss.to_string())
+    } else {
+        // Use phase type for trash/non-boss encounters
+        Some(format!("{:?}", phase_type))
+    };
+
+    // Get difficulty from area info, fallback to phase type name for non-instanced content
+    let difficulty = if !cache.current_area.difficulty_name.is_empty() {
+        Some(cache.current_area.difficulty_name.clone())
+    } else {
+        Some(format!("{:?}", phase_type))
+    };
+
     // Calculate metrics for all players
     let entity_metrics = encounter.calculate_entity_metrics()?;
     let metrics: Vec<PlayerMetrics> = entity_metrics
@@ -568,6 +587,8 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         encounter_time_secs,
         encounter_count,
         class_discipline,
+        encounter_name,
+        difficulty,
     })
 }
 
@@ -749,6 +770,10 @@ pub struct CombatData {
     pub encounter_count: usize,
     /// Player's class and discipline (e.g., "Sorcerer / Corruption")
     pub class_discipline: Option<String>,
+    /// Current encounter display name (e.g., "Raid Trash 3" or "Dread Master Bestia Pull 1")
+    pub encounter_name: Option<String>,
+    /// Current area difficulty (e.g., "NiM 8") or phase type for non-instanced content
+    pub difficulty: Option<String>,
 }
 
 impl CombatData {
@@ -756,6 +781,8 @@ impl CombatData {
     pub fn to_personal_stats(&self) -> Option<PersonalStats> {
         let player = self.metrics.iter().find(|m| m.entity_id == self.player_entity_id)?;
         Some(PersonalStats {
+            encounter_name: self.encounter_name.clone(),
+            difficulty: self.difficulty.clone(),
             encounter_time_secs: self.encounter_time_secs,
             encounter_count: self.encounter_count,
             class_discipline: self.class_discipline.clone(),

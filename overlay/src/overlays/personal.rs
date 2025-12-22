@@ -13,6 +13,8 @@ use crate::widgets::LabeledValue;
 /// Data for the personal overlay
 #[derive(Debug, Clone, Default)]
 pub struct PersonalStats {
+    pub encounter_name: Option<String>,
+    pub difficulty: Option<String>,
     pub encounter_time_secs: u64,
     pub encounter_count: usize,
     pub class_discipline: Option<String>,
@@ -95,6 +97,14 @@ impl PersonalOverlay {
     /// Get the display value for a stat
     fn stat_display(&self, stat: PersonalStat) -> (&'static str, String) {
         match stat {
+            PersonalStat::EncounterName => {
+                let name = self.stats.encounter_name.as_deref().unwrap_or("");
+                ("", name.to_string())
+            }
+            PersonalStat::Difficulty => {
+                let diff = self.stats.difficulty.as_deref().unwrap_or("Open World");
+                ("", diff.to_string())
+            }
             PersonalStat::EncounterTime => ("Combat Time", format_time(self.stats.encounter_time_secs)),
             PersonalStat::EncounterCount => ("Session Encounters", format!("{}", self.stats.encounter_count)),
             PersonalStat::Apm => ("APM", format!("{:.1}", self.stats.apm)),

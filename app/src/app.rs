@@ -5,8 +5,8 @@ use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-// Import SettingsPanel from components module
-use crate::components::SettingsPanel;
+// Import components
+use crate::components::{HistoryPanel, SettingsPanel};
 
 static CSS: Asset = asset!("/assets/styles.css");
 
@@ -72,6 +72,8 @@ impl Default for OverlayAppearanceConfig {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PersonalStat {
+    EncounterName,
+    Difficulty,
     EncounterTime,
     EncounterCount,
     Apm,
@@ -95,6 +97,8 @@ pub enum PersonalStat {
 impl PersonalStat {
     pub fn label(&self) -> &'static str {
         match self {
+            PersonalStat::EncounterName => "Encounter Name",
+            PersonalStat::Difficulty => "Difficulty",
             PersonalStat::EncounterTime => "Duration",
             PersonalStat::EncounterCount => "Encounter",
             PersonalStat::Apm => "APM",
@@ -118,6 +122,8 @@ impl PersonalStat {
 
     pub fn all() -> &'static [PersonalStat] {
         &[
+            PersonalStat::EncounterName,
+            PersonalStat::Difficulty,
             PersonalStat::EncounterTime,
             PersonalStat::EncounterCount,
             PersonalStat::ClassDiscipline,
@@ -449,6 +455,9 @@ pub fn App() -> Element {
     // Settings panel state
     let mut settings_open = use_signal(|| false);
     let mut general_settings_open = use_signal(|| false);
+
+    // Main view tab state: "session" or "overlays"
+    let mut active_tab = use_signal(|| "session".to_string());
     let mut overlay_settings = use_signal(OverlaySettings::default);
     let selected_overlay_tab = use_signal(|| "dps".to_string());
 
@@ -742,6 +751,27 @@ pub fn App() -> Element {
                 }
             }
 
+            // Main navigation tabs
+            nav { class: "main-tabs",
+                button {
+                    class: if active_tab() == "session" { "tab-btn active" } else { "tab-btn" },
+                    onclick: move |_| active_tab.set("session".to_string()),
+                    i { class: "fa-solid fa-chart-line" }
+                    " Session"
+                }
+                button {
+                    class: if active_tab() == "overlays" { "tab-btn active" } else { "tab-btn" },
+                    onclick: move |_| active_tab.set("overlays".to_string()),
+                    i { class: "fa-solid fa-layer-group" }
+                    " Overlays"
+                }
+            }
+
+            // Tab content container
+            div { class: "tab-content",
+
+            // SESSION TAB: Session info + History
+            if active_tab() == "session" {
 
             // Session info panel
             if let Some(ref info) = session {
@@ -779,15 +809,11 @@ pub fn App() -> Element {
                                 span { class: "value", "{disc}" }
                             }
                         }
-                        div { class: "session-item",
-                            span { class: "label", "Encounters" }
-                            span { class: "value", "{info.encounter_count}" }
-                        }
                     }
                 }
             }
 
-            // Active file info panel
+            // Active file info panel (moved from Overlays tab)
             section { class: "active-file-panel",
                 div { class: "file-info",
                     span { class: "label",
@@ -826,6 +852,16 @@ pub fn App() -> Element {
                     }
                 }
             }
+
+            // Encounter history panel (larger in session tab)
+            div { class: "history-container-large",
+                HistoryPanel {}
+            }
+
+            } // end SESSION TAB
+
+            // OVERLAYS TAB: Overlay controls
+            if active_tab() == "overlays" {
 
             // Overlay controls section
             section { class: "overlay-controls",
@@ -1059,6 +1095,10 @@ pub fn App() -> Element {
                     }
                 }
             }
+
+            } // end OVERLAYS TAB
+
+            } // end tab-content
 
             // General settings modal
             if general_settings_open() {

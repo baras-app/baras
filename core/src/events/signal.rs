@@ -87,6 +87,9 @@ pub enum GameSignal {
     // Area transitions
     AreaEntered {
         area_id: i64,
+        area_name: String,
+        difficulty_id: i64,
+        difficulty_name: String,
         timestamp: NaiveDateTime,
     },
 

@@ -17,3 +17,5 @@ pub use swtor_data::*;
 pub use tracking::{ActiveEffect, DefinitionSet, EffectDefinition, load_definitions};
 pub use log::*;
 pub use encounter::metrics::PlayerMetrics;
+pub use encounter::summary::{EncounterSummary, EncounterHistory};
+pub use encounter::PhaseType;

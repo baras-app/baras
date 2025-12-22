@@ -1,8 +1,11 @@
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100vh;
@@ -36,7 +39,7 @@ html, body {
 
 .container {
   margin: 0 auto;
-  padding: 1.5vh 1vw;
+  padding: 1.5vh 2vw;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -44,7 +47,7 @@ html, body {
   text-align: center;
   height: 100vh;
   width: 100%;
-  max-width: min(700px, 95%);
+  max-width: 95%;
   overflow: hidden;
   gap: 0.75vh;
 }
@@ -255,7 +258,7 @@ a:hover {
 .log-section {
   margin: 0;
   width: 100%;
-  max-width: min(500px, 100%);
+  max-width: 100%;
   flex: 0 1 auto;
 }
 
@@ -283,7 +286,8 @@ a:hover {
 .overlay-controls {
   margin: 0;
   width: 100%;
-  max-width: min(500px, 100%);
+  max-width: 70%;
+  align-self: center;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -414,9 +418,9 @@ a:hover {
 
 /* Session panel */
 .session-panel {
-  margin: 0;
+  margin: 0 auto;
   width: 100%;
-  max-width: min(500px, 100%);
+  max-width: 100%;
   background: rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   padding: 1vh 1.5vw;
@@ -1002,7 +1006,7 @@ details[open] .collapsible-summary::before {
 /* Active file panel (above overlays) */
 .active-file-panel {
   width: 100%;
-  max-width: min(500px, 100%);
+  max-width: 100%;
   background: rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   padding: 0.75vh 1vw;
@@ -1423,4 +1427,480 @@ details[open] .collapsible-summary::before {
 
 .profile-create .btn-small {
   padding: 0.4em 0.6em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   History Panel Styles
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.history-panel {
+  width: 100%;
+  background: rgba(45, 45, 50, 0.95);
+  border-radius: 8px;
+  padding: 0.75em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75em;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.history-header h3 {
+  margin: 0;
+  font-size: 1em;
+  color: #e0e0e0;
+}
+
+.history-header h3 i {
+  margin-right: 0.5em;
+  color: #888;
+}
+
+.encounter-count {
+  font-size: 0.8em;
+  color: #888;
+}
+
+.history-loading,
+.history-empty {
+  text-align: center;
+  padding: 2em;
+  color: #888;
+}
+
+.history-empty i {
+  font-size: 2em;
+  margin-bottom: 0.5em;
+  display: block;
+}
+
+.history-empty .hint {
+  font-size: 0.85em;
+  color: #666;
+  margin-top: 0.5em;
+}
+
+.history-table-container {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+
+.history-table th,
+.history-table td {
+  padding: 0.5em 0.75em;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.history-table th {
+  background: rgba(30, 30, 35, 0.8);
+  color: #aaa;
+  font-weight: 500;
+  font-size: 0.9em;
+  position: sticky;
+  top: 0;
+}
+
+.history-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.history-table tbody tr:hover {
+  background: rgba(60, 60, 70, 0.5);
+}
+
+.history-table tbody tr.expanded {
+  background: rgba(70, 70, 85, 0.6);
+}
+
+.col-name {
+  width: 45%;
+}
+.col-type {
+  width: 20%;
+}
+.col-duration {
+  width: 20%;
+}
+.col-result {
+  width: 15%;
+  text-align: center;
+}
+
+.encounter-name {
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.difficulty-badge {
+  margin-left: 0.5em;
+  padding: 0.15em 0.4em;
+  background: rgba(100, 100, 150, 0.4);
+  border-radius: 3px;
+  font-size: 0.8em;
+  color: #aabbdd;
+}
+
+.phase-type {
+  font-size: 0.9em;
+  color: #aaa;
+  text-transform: capitalize;
+}
+
+.result-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75em;
+  height: 1.75em;
+  border-radius: 50%;
+  font-size: 0.85em;
+}
+
+.result-badge.success {
+  background: rgba(50, 180, 100, 0.3);
+  color: #5fd98e;
+}
+
+.result-badge.wipe {
+  background: rgba(200, 80, 80, 0.3);
+  color: #e87575;
+}
+
+/* Detail row */
+.detail-row td {
+  padding: 0 !important;
+  background: rgba(35, 35, 40, 0.95);
+}
+
+.encounter-detail {
+  padding: 0.75em;
+}
+
+.detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em 1.5em;
+  margin-bottom: 0.75em;
+  font-size: 0.85em;
+  color: #888;
+  align-items: center;
+}
+
+.detail-header i {
+  margin-right: 0.3em;
+}
+
+.detail-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.detail-item.npc-list {
+  color: #aa8866;
+  flex: 1 1 auto;
+  white-space: normal;
+  min-width: 0;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.metrics-table th,
+.metrics-table td {
+  padding: 0.4em 0.6em;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.metrics-table th {
+  color: #888;
+  font-weight: 500;
+  font-size: 0.85em;
+}
+
+.player-name {
+  font-weight: 500;
+  color: #ddd;
+}
+
+.metric-value {
+  font-family: monospace;
+  color: #aaa;
+}
+
+.metric-value.dps {
+  color: #e87575;
+}
+
+.metric-value.hps {
+  color: #5fd98e;
+}
+
+.metric-value.dtps {
+  color: #d9a75f;
+}
+
+.metric-value.tps {
+  color: #b39ddb;
+}
+
+.metrics-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.metrics-table .col-player {
+  min-width: 100px;
+}
+
+.metrics-table .col-metric {
+  min-width: 55px;
+  text-align: right;
+}
+
+.metrics-table td.metric-value {
+  text-align: right;
+}
+
+.no-metrics {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 1em;
+}
+
+/* Phase header rows (area/phase dividers - collapsible) */
+.phase-header-row {
+  background: linear-gradient(
+    90deg,
+    rgba(60, 70, 90, 0.6) 0%,
+    rgba(40, 45, 55, 0.4) 100%
+  );
+  cursor: pointer !important;
+  user-select: none;
+}
+
+.phase-header-row:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(70, 80, 100, 0.7) 0%,
+    rgba(50, 55, 65, 0.5) 100%
+  ) !important;
+}
+
+.phase-header-row td {
+  padding: 0.5em 0.75em !important;
+  border-bottom: 1px solid rgba(100, 120, 160, 0.3);
+}
+
+.phase-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.9em;
+  color: #8899bb;
+}
+
+.phase-header i {
+  color: #6688bb;
+}
+
+.phase-header .collapse-icon {
+  width: 1em;
+  font-size: 0.8em;
+  color: #7799cc;
+  transition: transform 0.15s ease;
+}
+
+.phase-area {
+  font-weight: 500;
+  color: #aabbdd;
+}
+
+.phase-difficulty {
+  color: #88aacc;
+  font-weight: 400;
+}
+
+.section-count {
+  color: #6688aa;
+  font-size: 0.85em;
+  margin-left: 0.25em;
+}
+
+/* Responsive history table */
+@media (min-width: 600px) {
+  .history-table-container {
+    max-height: 350px;
+  }
+
+  .metrics-table .col-metric {
+    min-width: 65px;
+  }
+
+  .session-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 800px) {
+  .history-table-container {
+    max-height: 450px;
+  }
+
+  .history-table {
+    font-size: 0.9em;
+  }
+
+  .history-table th,
+  .history-table td {
+    padding: 0.6em 1em;
+  }
+
+  .metrics-table {
+    font-size: 0.95em;
+  }
+
+  .metrics-table .col-metric {
+    min-width: 70px;
+  }
+
+  .encounter-detail {
+    padding: 1em;
+  }
+
+  .session-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .session-panel {
+    padding: 1.5em;
+  }
+}
+
+@media (min-width: 1000px) {
+  .history-table-container {
+    max-height: 550px;
+  }
+
+  .history-table {
+    font-size: 0.95em;
+  }
+
+  .history-table th,
+  .history-table td {
+    padding: 0.7em 1.2em;
+  }
+
+  .metrics-table .col-metric {
+    min-width: 85px;
+  }
+
+  .session-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1em 2em;
+  }
+}
+
+@media (min-width: 1200px) {
+  .history-table {
+    font-size: 1em;
+  }
+
+  .metrics-table {
+    font-size: 1em;
+  }
+
+  .session-panel {
+    padding: 2em;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Main Navigation Tabs
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.main-tabs {
+  display: flex;
+  gap: 0.5em;
+  width: 100%;
+  margin-bottom: 0.5em;
+  padding: 0 0.5em;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 0.6em 1em;
+  background: rgba(50, 50, 55, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+}
+
+.tab-btn:hover {
+  background: rgba(60, 60, 70, 0.9);
+  color: #ddd;
+}
+
+.tab-btn.active {
+  background: rgba(70, 100, 150, 0.6);
+  color: #fff;
+  border-color: rgba(100, 140, 200, 0.5);
+}
+
+.tab-btn i {
+  font-size: 0.95em;
+}
+
+.tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75vh;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Larger history panel in session tab */
+.history-container-large .history-panel {
+  flex: 1;
+}
+
+.history-container-large .history-table-container {
+  max-height: none;
+  min-height: 200px;
+  flex: 1;
+}
+
+.history-container-large {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }

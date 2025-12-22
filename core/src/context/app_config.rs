@@ -100,6 +100,8 @@ impl Default for OverlayAppearanceConfig {
 /// Stats that can be displayed on the personal overlay
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PersonalStat {
+    EncounterName,
+    Difficulty,
     EncounterTime,
     EncounterCount,
     Apm,
@@ -133,6 +135,8 @@ pub struct PersonalOverlayConfig {
 
 fn default_personal_stats() -> Vec<PersonalStat> {
     vec![
+        PersonalStat::EncounterName,
+        PersonalStat::Difficulty,
         PersonalStat::EncounterTime,
         PersonalStat::Dps,
         PersonalStat::Hps,

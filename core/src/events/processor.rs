@@ -102,6 +102,9 @@ impl EventProcessor {
             self.update_area_from_event(&event, cache);
             signals.push(GameSignal::AreaEntered {
                 area_id: event.effect.effect_id,
+                area_name: resolve(event.effect.effect_name).to_string(),
+                difficulty_id: event.effect.difficulty_id,
+                difficulty_name: resolve(event.effect.difficulty_name).to_string(),
                 timestamp: event.timestamp,
             });
         }
@@ -147,6 +150,8 @@ impl EventProcessor {
     fn update_area_from_event(&self, event: &CombatEvent, cache: &mut SessionCache) {
         cache.current_area.area_name = resolve(event.effect.effect_name).to_string();
         cache.current_area.area_id = event.effect.effect_id;
+        cache.current_area.difficulty_id = event.effect.difficulty_id;
+        cache.current_area.difficulty_name = resolve(event.effect.difficulty_name).to_string();
         cache.current_area.entered_at = Some(event.timestamp);
     }
 

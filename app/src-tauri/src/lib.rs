@@ -11,6 +11,7 @@ use baras_overlay::OverlayData;
 use bridge::spawn_overlay_bridge;
 use service::{CombatService, OverlayUpdate, ServiceHandle};
 use tauri::Manager;
+use tauri::tray::TrayIconBuilder;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 
@@ -388,6 +389,7 @@ pub fn run() {
             service::update_config,
             service::get_active_file,
             service::get_session_info,
+            service::get_encounter_history,
             // Profile commands
             service::get_profile_names,
             service::get_active_profile,
