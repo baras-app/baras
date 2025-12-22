@@ -1,130 +1,202 @@
-use crate::encounter::CombatEvent;
+use crate::log::CombatEvent;
 use chrono::NaiveDateTime;
 use super::EffectInstance;
 use super::Encounter;
 
-/// Grace period (in ms) after a shield is removed during which it can still
-/// receive credit for absorption. Accounts for log timing discrepancies.
-pub const SHIELD_GRACE_PERIOD_MS: i64 = 2000;
+/// Grace period when another shield is still active (tighter window)
+const ABSORPTION_INSIDE_DELAY_MS: i64 = 500;
+/// Grace period when no other shields active (more lenient for log lag)
+const ABSORPTION_OUTSIDE_DELAY_MS: i64 = 4000;
 
+/// A damage event with absorption waiting to be attributed to a shield
+#[derive(Debug, Clone)]
+pub struct PendingAbsorption {
+    pub timestamp: NaiveDateTime,
+    pub absorbed: i64,
+    pub source_id: i64, // who to credit when resolved
+}
 
 impl Encounter {
-   /// Attributes absorbed damage to the appropriate shield source(s).
-    ///
-    /// When multiple shields are active on a target, absorption is split:
-    /// - Single shield: receives full absorption credit
-    /// - Two+ shields: first (oldest) shield receives primary credit,
-    ///   second shield receives remainder if applicable
-    ///
-    /// A shield is considered "active" if:
-    /// - It was applied before the damage event
-    /// - It hasn't been marked as consumed (`has_absorbed`)
-    /// - It's either still active OR was removed within the grace period
+    /// Process a damage event that has absorption.
+    /// - If exactly one shield is active: attribute immediately
+    /// - If multiple shields active: queue for later resolution
     pub fn attribute_shield_absorption(&mut self, event: &CombatEvent) {
-        let Some(effects) = self.effects.get_mut(&event.target_entity.log_id) else {
+        let absorbed = event.details.dmg_absorbed as i64;
+        if absorbed == 0 {
+            return;
+        }
+
+        let target_id = event.target_entity.log_id;
+        let Some(effects) = self.effects.get(&target_id) else {
             return;
         };
 
-        let mut active_shield_indices: Vec<usize> = effects
+        // Find active shields at this timestamp
+        let active_shields: Vec<&EffectInstance> = effects
             .iter()
-            .enumerate()
-            .filter(|(_, e)| {
+            .filter(|e| {
                 e.is_shield
                     && !e.has_absorbed
                     && e.applied_at < event.timestamp
-                    && is_shield_active_at(e, event.timestamp)
+                    && is_shield_active_at(e, event.timestamp, false)
             })
-            .map(|(i, _)| i)
             .collect();
 
-        active_shield_indices.sort_by_key(|&i| effects[i].applied_at);
-
-        if active_shield_indices.is_empty() {
-            return;
-        }
-
-        let absorbed = event.details.dmg_absorbed as i64;
-        let total_dmg = event.details.dmg_amount as i64;
-
-        match active_shield_indices.len() {
-            1 => {
-                // Single shield: gets all absorption credit
-                let shield = &mut effects[active_shield_indices[0]];
-                let source_id = shield.source_id;
-
-                // Mark as consumed if the shield was removed (depleted) and damage got through
-                if shield.removed_at.is_some() && event.details.dmg_effective > 0 {
-                    shield.has_absorbed = true;
+        match active_shields.len() {
+            0 => {
+                // No active shields - try to find a recently closed one
+                if let Some(shield) = find_recently_closed_shield(effects, event.timestamp) {
+                    let acc = self.accumulated_data.entry(shield.source_id).or_default();
+                    acc.shielding_given += absorbed;
                 }
-
-                let acc = self.accumulated_data.entry(source_id).or_default();
+            }
+            1 => {
+                // Single shield: attribute immediately
+                let shield = active_shields[0];
+                let acc = self.accumulated_data.entry(shield.source_id).or_default();
                 acc.shielding_given += absorbed;
             }
             _ => {
-                // Multiple shields: split absorption between first two
-                let first_idx = active_shield_indices[0];
-                let second_idx = active_shield_indices[1];
-
-                let first_source = effects[first_idx].source_id;
-                let second_source = effects[second_idx].source_id;
-
-                // Determine how to split the absorption
-                // If absorbed == total damage, first shield took it all
-                // Otherwise, split: first gets (total - absorbed), second gets absorbed
-                let (first_portion, second_portion) = if absorbed >= total_dmg {
-                    (absorbed, 0i64)
-                } else {
-                    // First shield absorbed partial, second absorbed remainder
-                    // This matches Orbs' heuristic: first_portion = total - absorbed - mitigated
-                    // Since we don't track separate mitigation, use: first gets overflow, second gets logged absorbed
-                    let first = total_dmg.saturating_sub(absorbed);
-                    let second = absorbed;
-                    (first, second)
-                };
-
-                // Mark first shield as consumed if it was removed and damage got through
-                if effects[first_idx].removed_at.is_some() && event.details.dmg_effective > 0 {
-                    effects[first_idx].has_absorbed = true;
-                }
-
-                // Credit first shield
-                if first_portion > 0 {
-                    let acc = self.accumulated_data.entry(first_source).or_default();
-                    acc.shielding_given += first_portion;
-                }
-
-                // Credit second shield
-                if second_portion > 0 {
-                    // Mark second as consumed if it was removed and damage got through
-                    if effects[second_idx].removed_at.is_some() && event.details.dmg_effective > 0 {
-                        effects[second_idx].has_absorbed = true;
-                    }
-                    let acc = self.accumulated_data.entry(second_source).or_default();
-                    acc.shielding_given += second_portion;
-                }
+                // Multiple shields: queue for resolution when one ends
+                self.pending_absorptions
+                    .entry(target_id)
+                    .or_default()
+                    .push(PendingAbsorption {
+                        timestamp: event.timestamp,
+                        absorbed,
+                        source_id: 0, // will be set on resolution
+                    });
             }
         }
     }
 
+    /// Called when a shield effect is removed. Resolves any pending absorptions
+    /// by attributing them to this shield (since it ended first).
+    pub fn resolve_pending_absorptions(&mut self, target_id: i64, removed_shield: &EffectInstance) {
+        let Some(pending) = self.pending_absorptions.get_mut(&target_id) else {
+            return;
+        };
+
+        if pending.is_empty() {
+            return;
+        }
+
+        let removal_time = removed_shield.removed_at.unwrap_or(removed_shield.applied_at);
+
+        // Check if other shields are still active (affects grace period)
+        let other_shields_active = self
+            .effects
+            .get(&target_id)
+            .map(|effects| {
+                effects.iter().any(|e| {
+                    e.is_shield
+                        && !e.has_absorbed
+                        && e.effect_id != removed_shield.effect_id
+                        && e.removed_at.is_none()
+                })
+            })
+            .unwrap_or(false);
+
+        let grace_ms = if other_shields_active {
+            ABSORPTION_INSIDE_DELAY_MS
+        } else {
+            ABSORPTION_OUTSIDE_DELAY_MS
+        };
+
+        // Resolve pending absorptions that occurred before or shortly after removal
+        let mut total_absorbed = 0i64;
+        pending.retain(|p| {
+            let delta_ms = removal_time
+                .signed_duration_since(p.timestamp)
+                .num_milliseconds();
+
+            // Keep if: event happened AFTER removal + grace period (can't be this shield)
+            // Resolve if: event happened BEFORE removal OR within grace period after
+            if delta_ms >= -grace_ms {
+                // This absorption belongs to the removed shield
+                total_absorbed += p.absorbed;
+                false // remove from pending
+            } else {
+                true // keep in pending
+            }
+        });
+
+        if total_absorbed > 0 {
+            let acc = self.accumulated_data.entry(removed_shield.source_id).or_default();
+            acc.shielding_given += total_absorbed;
+        }
+
+        // Clean up empty entries
+        if pending.is_empty() {
+            self.pending_absorptions.remove(&target_id);
+        }
+    }
+
+    /// Flush any remaining pending absorptions at end of combat.
+    /// Uses the outside delay window and attributes to most recent shield.
+    pub fn flush_pending_absorptions(&mut self) {
+        let pending_targets: Vec<i64> = self.pending_absorptions.keys().copied().collect();
+
+        for target_id in pending_targets {
+            let Some(pending) = self.pending_absorptions.remove(&target_id) else {
+                continue;
+            };
+
+            // Find the most recently removed shield for this target
+            let last_shield = self
+                .effects
+                .get(&target_id)
+                .and_then(|effects| {
+                    effects
+                        .iter()
+                        .filter(|e| e.is_shield && e.removed_at.is_some())
+                        .max_by_key(|e| e.removed_at)
+                });
+
+            if let Some(shield) = last_shield {
+                let total: i64 = pending.iter().map(|p| p.absorbed).sum();
+                if total > 0 {
+                    let acc = self.accumulated_data.entry(shield.source_id).or_default();
+                    acc.shielding_given += total;
+                }
+            }
+        }
+    }
 }
 
-    /// Checks if a shield effect is active at the given timestamp.
-    /// A shield is active if:
-    /// - It has no removal time (still active), OR
-    /// - It was removed but within the grace period after the event
-    #[inline]
-    fn is_shield_active_at(effect: &EffectInstance, timestamp: NaiveDateTime) -> bool {
-        match effect.removed_at {
-            None => true,
-            Some(removed) => {
-                // Shield is active if removed_at >= timestamp (still active at event time)
-                // OR if removed within grace period after the event
-                removed >= timestamp
-                    || removed
-                        .signed_duration_since(timestamp)
-                        .num_milliseconds()
-                        .abs()
-                        <= SHIELD_GRACE_PERIOD_MS
+/// Checks if a shield is active at the given timestamp.
+fn is_shield_active_at(effect: &EffectInstance, timestamp: NaiveDateTime, use_outside_window: bool) -> bool {
+    match effect.removed_at {
+        None => true,
+        Some(removed) => {
+            if removed >= timestamp {
+                return true;
             }
+            // Check grace period
+            let grace_ms = if use_outside_window {
+                ABSORPTION_OUTSIDE_DELAY_MS
+            } else {
+                ABSORPTION_INSIDE_DELAY_MS
+            };
+            let delta = removed.signed_duration_since(timestamp).num_milliseconds().abs();
+            delta <= grace_ms
         }
     }
+}
+
+/// Find a shield that was recently closed (within outside delay window)
+fn find_recently_closed_shield(effects: &[EffectInstance], timestamp: NaiveDateTime) -> Option<&EffectInstance> {
+    effects
+        .iter()
+        .filter(|e| {
+            e.is_shield
+                && !e.has_absorbed
+                && e.removed_at.is_some()
+        })
+        .filter(|e| {
+            let removed = e.removed_at.unwrap();
+            let delta = timestamp.signed_duration_since(removed).num_milliseconds();
+            delta >= 0 && delta <= ABSORPTION_OUTSIDE_DELAY_MS
+        })
+        .max_by_key(|e| e.removed_at)
+}

@@ -81,6 +81,12 @@ impl SessionCache {
             .rfind(|e| e.state != EncounterState::NotStarted)
     }
 
+    pub fn last_combat_encounter_mut(&mut self) -> Option<&mut Encounter> {
+        self.encounters
+            .iter_mut()
+            .rfind(|e| e.state != EncounterState::NotStarted)
+    }
+
     pub fn encounter_count(&self) -> usize {
         self.encounters.len()
     }

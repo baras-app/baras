@@ -22,7 +22,7 @@ use baras_core::encounter::EncounterState;
 use baras_core::directory_watcher::DirectoryWatcher;
 use baras_core::tracking::EffectCategory;
 use baras_core::swtor_ids::{Discipline, Role};
-use baras_core::{load_definitions, ActiveEffect, DefinitionSet, EntityType, GameSignal, Reader, SignalHandler};
+use baras_core::{load_definitions, ActiveEffect, DefinitionSet, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler};
 use baras_overlay::{PersonalStats, PlayerRole, RaidEffect, RaidFrame, RaidFrameData};
 
 
@@ -559,35 +559,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
     let metrics: Vec<PlayerMetrics> = entity_metrics
         .into_iter()
         .filter(|m| m.entity_type != EntityType::Npc)
-        .map(|m| {
-            let name = resolve(m.name).to_string();
-            // Filter out control characters for safe display
-            let safe_name: String = name.chars().filter(|c| !c.is_control()).collect();
-            PlayerMetrics {
-                entity_id: m.entity_id,
-                name: safe_name,
-                dps: m.dps as i64,
-                edps: m.edps as i64,
-                total_damage: m.total_damage as u64,
-                total_damage_effective: m.total_damage_effective as u64,
-                damage_crit_pct: m.damage_crit_pct,
-                hps: m.hps as i64,
-                ehps: m.ehps as i64,
-                total_healing: m.total_healing as u64,
-                total_healing_effective: m.total_healing_effective as u64,
-                heal_crit_pct: m.heal_crit_pct,
-                effective_heal_pct: m.effective_heal_pct,
-                tps: m.tps as i64,
-                total_threat: m.total_threat as u64,
-                dtps: m.dtps as i64,
-                edtps: m.edtps as i64,
-                total_damage_taken: m.total_damage_taken as u64,
-                total_damage_taken_effective: m.total_damage_taken_effective as u64,
-                abs: m.abs as i64,
-                total_shielding: m.total_shielding as u64,
-                apm: m.apm,
-            }
-        })
+        .map(|m| m.to_player_metrics())
         .collect();
 
     Some(CombatData {
@@ -695,7 +667,7 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
     // Log periodically
     static COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
     let count = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    if count % 33 == 0 {
+    if count.is_multiple_of(33) {
         let total_effects: usize = frames.iter().map(|f| f.effects.len()).sum();
         eprintln!("[RAID-DATA] Tick {}: {} players, {} effects", count, registry.len(), total_effects);
     }
@@ -764,38 +736,6 @@ pub struct LogFileInfo {
     pub is_empty: bool,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct PlayerMetrics {
-    pub entity_id: i64,
-    pub name: String,
-    // Damage dealing
-    pub dps: i64,
-    pub edps: i64,
-    pub total_damage: u64,
-    pub total_damage_effective: u64,
-    pub damage_crit_pct: f32,
-    // Healing
-    pub hps: i64,
-    pub ehps: i64,
-    pub total_healing: u64,
-    pub total_healing_effective: u64,
-    pub heal_crit_pct: f32,
-    pub effective_heal_pct: f32,
-    // Threat
-    pub tps: i64,
-    pub total_threat: u64,
-    // Damage taken
-    pub dtps: i64,
-    pub edtps: i64,
-    pub total_damage_taken: u64,
-    pub total_damage_taken_effective: u64,
-    // Shielding (absorbs)
-    pub abs: i64,
-    pub total_shielding: u64,
-    // Activity
-    pub apm: f32,
-}
-
 /// Unified combat data for metric overlays
 #[derive(Debug, Clone)]
 pub struct CombatData {
@@ -822,14 +762,16 @@ impl CombatData {
             apm: player.apm,
             dps: player.dps as i32,
             edps: player.edps as i32,
-            total_damage: player.total_damage as i64,
+            bossdps: player.bossdps as i32,
+            total_damage: player.total_damage,
+            total_damage_boss: player.total_damage_boss,
             hps: player.hps as i32,
             ehps: player.ehps as i32,
-            total_healing: player.total_healing as i64,
+            total_healing: player.total_healing,
             dtps: player.dtps as i32,
             edtps: player.edtps as i32,
             tps: player.tps as i32,
-            total_threat: player.total_threat as i64,
+            total_threat: player.total_threat,
             damage_crit_pct: player.damage_crit_pct,
             heal_crit_pct: player.heal_crit_pct,
             effective_heal_pct: player.effective_heal_pct,

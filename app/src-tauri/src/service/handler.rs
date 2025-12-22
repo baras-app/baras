@@ -2,7 +2,6 @@ use crate::overlay::MetricType;
 use crate::service::CombatData;
 use crate::service::LogFileInfo;
 use crate::service::SharedState;
-use crate::service::PlayerMetrics;
 use crate::service::SessionInfo;
 use crate::service::ServiceCommand;
 use std::sync::atomic::Ordering;
@@ -11,6 +10,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 use baras_core::context::{resolve, AppConfig, OverlayAppearanceConfig};
+use baras_core::PlayerMetrics;
 use baras_core::encounter::EncounterState;
 
 // ─────────────────────────────────────────────────────────────────────────────

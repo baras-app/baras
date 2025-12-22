@@ -14,12 +14,12 @@ use serde::{Deserialize, Serialize};
 pub enum MetricType {
     Dps,
     EDps,
+    BossDps,
     Hps,
     EHps,
-    Tps,
-    Dtps,
-    EDtps,
     Abs,
+    Dtps,
+    Tps,
 }
 
 impl MetricType {
@@ -28,11 +28,11 @@ impl MetricType {
         match self {
             MetricType::Dps => "Damage",
             MetricType::EDps => "Effective Damage",
+            MetricType::BossDps => "Boss Damage",
             MetricType::Hps => "Healing",
             MetricType::EHps => "Effective Healing",
             MetricType::Tps => "Threat",
             MetricType::Dtps => "Damage Taken",
-            MetricType::EDtps => "Effective Damage Taken",
             MetricType::Abs => "Shielding Given",
         }
     }
@@ -42,11 +42,11 @@ impl MetricType {
         match self {
             MetricType::Dps => "baras-dps",
             MetricType::EDps => "baras-edps",
+            MetricType::BossDps => "baras-boss-dps",
             MetricType::Hps => "baras-hps",
             MetricType::EHps => "baras-ehps",
             MetricType::Tps => "baras-tps",
             MetricType::Dtps => "baras-dtps",
-            MetricType::EDtps => "baras-edtps",
             MetricType::Abs => "baras-abs",
         }
     }
@@ -56,11 +56,11 @@ impl MetricType {
         match self {
             MetricType::Dps => (50, 50),
             MetricType::EDps => (50, 50),
+            MetricType::BossDps => (50,50),
             MetricType::Hps => (50, 280),
             MetricType::EHps => (50, 280),
             MetricType::Tps => (50, 510),
             MetricType::Dtps => (350, 50),
-            MetricType::EDtps => (350, 50),
             MetricType::Abs => (350, 280),
         }
     }
@@ -70,12 +70,12 @@ impl MetricType {
         &[
             MetricType::Dps,
             MetricType::EDps,
+            MetricType::BossDps,
             MetricType::Hps,
             MetricType::EHps,
-            MetricType::Tps,
-            MetricType::Dtps,
-            MetricType::EDtps,
             MetricType::Abs,
+            MetricType::Dtps,
+            MetricType::Tps,
         ]
     }
 
@@ -84,11 +84,11 @@ impl MetricType {
         match self {
             MetricType::Dps => "dps",
             MetricType::EDps => "edps",
+            MetricType::BossDps => "bossdps",
             MetricType::Hps => "hps",
             MetricType::EHps => "ehps",
             MetricType::Tps => "tps",
             MetricType::Dtps => "dtps",
-            MetricType::EDtps => "edtps",
             MetricType::Abs => "abs",
         }
     }
@@ -102,7 +102,6 @@ impl MetricType {
             "ehps" => Some(MetricType::EHps),
             "tps" => Some(MetricType::Tps),
             "dtps" => Some(MetricType::Dtps),
-            "edtps" => Some(MetricType::EDtps),
             "abs" => Some(MetricType::Abs),
             _ => None,
         }

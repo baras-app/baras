@@ -2,6 +2,7 @@ pub mod metrics;
 pub mod effect_instance;
 pub mod shielding;
 pub mod entity_info;
+use crate::is_boss;
 use crate::log::{CombatEvent, Entity, EntityType};
 use crate::context::{resolve, IStr};
 use entity_info::PlayerInfo;
@@ -37,6 +38,8 @@ pub struct Encounter {
     pub all_players_dead: bool,
     pub effects: HashMap<i64, Vec<EffectInstance>>,
     pub accumulated_data: HashMap<i64, MetricAccumulator>,
+    /// Pending shield absorptions waiting for resolution (target_id -> pending events)
+    pub pending_absorptions: HashMap<i64, Vec<shielding::PendingAbsorption>>,
 }
 
 impl Encounter {
@@ -53,6 +56,7 @@ impl Encounter {
             effects: HashMap::new(),
             all_players_dead: false,
             accumulated_data: HashMap::new(),
+            pending_absorptions: HashMap::new(),
         }
     }
 
@@ -130,7 +134,7 @@ impl Encounter {
             EntityType::Npc | EntityType::Companion => {
                 self.npcs.entry(entity.log_id).or_insert_with(|| NpcInfo {
                     name: entity.name,
-                    entity_type: entity.entity_type.clone(),
+                    entity_type: entity.entity_type,
                     log_id: entity.log_id,
                     class_id: entity.class_id,
                     first_seen_at: Some(timestamp),
@@ -202,17 +206,28 @@ impl Encounter {
     }
 
     pub fn remove_effect(&mut self, event: &CombatEvent) {
-        let Some(effects) = self.effects.get_mut(&event.target_entity.log_id) else {
+        let target_id = event.target_entity.log_id;
+        let Some(effects) = self.effects.get_mut(&target_id) else {
             return;
         };
+
+        let mut removed_shield: Option<EffectInstance> = None;
         for effect_instance in effects.iter_mut().rev() {
             if effect_instance.effect_id == event.effect.effect_id
                 && effect_instance.source_id == event.source_entity.log_id
                 && effect_instance.removed_at.is_none()
             {
                 effect_instance.removed_at = Some(event.timestamp);
-                return;
+                if effect_instance.is_shield {
+                    removed_shield = Some(effect_instance.clone());
+                }
+                break;
             }
+        }
+
+        // Resolve pending absorptions when a shield ends
+        if let Some(shield) = removed_shield {
+            self.resolve_pending_absorptions(target_id, &shield);
         }
     }
 
@@ -236,6 +251,10 @@ impl Encounter {
                 if event.details.is_crit {
                     source.damage_crit_count += 1;
                 }
+                if is_boss(event.target_entity.class_id) {
+                    source.damge_dealt_boss += event.details.dmg_amount as i64;
+                }
+
             }
 
             // Healing dealt
@@ -357,9 +376,11 @@ impl Encounter {
 
                     // Damage dealing
                     total_damage: acc.damage_dealt,
+                    total_damage_boss: acc.damge_dealt_boss,
                     total_damage_effective: acc.damage_dealt_effective,
                     dps: (acc.damage_dealt / duration) as i32,
                     edps: (acc.damage_dealt_effective / duration) as i32,
+                    bossdps: (acc.damge_dealt_boss / duration) as i32,
                     damage_crit_pct,
 
                     // Healing dealing

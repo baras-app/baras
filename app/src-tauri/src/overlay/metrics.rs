@@ -4,10 +4,10 @@
 
 use std::collections::HashMap;
 
+use baras_core::PlayerMetrics;
 use baras_overlay::MetricEntry;
 
 use super::types::MetricType;
-use crate::service::PlayerMetrics;
 
 /// Create meter entries for a specific overlay type from player metrics
 ///
@@ -25,6 +25,10 @@ pub fn create_entries_for_type(overlay_type: MetricType, metrics: &[PlayerMetric
             .iter()
             .map(|m| (m.name.clone(), m.edps, m.total_damage_effective as i64))
             .collect(),
+        MetricType::BossDps => metrics
+            .iter()
+            .map(|m| (m.name.clone(), m.bossdps, m.total_damage_boss as i64))
+            .collect(),
         MetricType::Hps => metrics
             .iter()
             .map(|m| (m.name.clone(), m.hps, m.total_healing as i64))
@@ -39,11 +43,7 @@ pub fn create_entries_for_type(overlay_type: MetricType, metrics: &[PlayerMetric
             .collect(),
         MetricType::Dtps => metrics
             .iter()
-            .map(|m| (m.name.clone(), m.dtps, m.total_damage_taken as i64))
-            .collect(),
-        MetricType::EDtps => metrics
-            .iter()
-            .map(|m| (m.name.clone(), m.edtps, m.total_damage_taken_effective as i64))
+            .map(|m| (m.name.clone(), m.edtps, m.total_damage_taken_effective))
             .collect(),
         MetricType::Abs => metrics
             .iter()

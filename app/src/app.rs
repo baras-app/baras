@@ -78,11 +78,12 @@ pub enum PersonalStat {
     Dps,
     EDps,
     TotalDamage,
+    BossDamage,
+    BossDps,
     Hps,
     EHps,
     TotalHealing,
     Dtps,
-    EDtps,
     Tps,
     TotalThreat,
     DamageCritPct,
@@ -99,12 +100,13 @@ impl PersonalStat {
             PersonalStat::Apm => "APM",
             PersonalStat::Dps => "DPS",
             PersonalStat::EDps => "eDPS",
+            PersonalStat::BossDps => "Boss DPS",
+            PersonalStat::BossDamage => "Boss Damage",
             PersonalStat::TotalDamage => "Total Damage",
             PersonalStat::Hps => "HPS",
             PersonalStat::EHps => "eHPS",
             PersonalStat::TotalHealing => "Total Healing",
-            PersonalStat::Dtps => "DTPS",
-            PersonalStat::EDtps => "eDTPS",
+            PersonalStat::Dtps => "eDTPS",
             PersonalStat::Tps => "TPS",
             PersonalStat::TotalThreat => "Total Threat",
             PersonalStat::DamageCritPct => "Dmg Crit %",
@@ -122,12 +124,13 @@ impl PersonalStat {
             PersonalStat::Apm,
             PersonalStat::Dps,
             PersonalStat::EDps,
+            PersonalStat::BossDamage,
+            PersonalStat::BossDps,
             PersonalStat::TotalDamage,
             PersonalStat::Hps,
             PersonalStat::EHps,
             PersonalStat::TotalHealing,
             PersonalStat::Dtps,
-            PersonalStat::EDtps,
             PersonalStat::Tps,
             PersonalStat::TotalThreat,
             PersonalStat::DamageCritPct,
@@ -349,12 +352,12 @@ pub struct OverlayStatus {
 pub enum MetricType {
     Dps,
     EDps,
+    BossDps,
     Hps,
     EHps,
-    Tps,
-    Dtps,
-    EDtps,
     Abs,
+    Dtps,
+    Tps,
 }
 
 impl MetricType {
@@ -362,11 +365,11 @@ impl MetricType {
         match self {
             MetricType::Dps => "Damage",
             MetricType::EDps => "Effective Damage",
+            MetricType::BossDps => "Boss Damage",
             MetricType::Hps => "Healing",
             MetricType::EHps => "Effective Healing",
             MetricType::Tps => "Threat",
             MetricType::Dtps => "Damage Taken",
-            MetricType::EDtps => "Effective Damage Taken",
             MetricType::Abs => "Shielding Given",
         }
     }
@@ -375,11 +378,11 @@ impl MetricType {
         match self {
             MetricType::Dps => "dps",
             MetricType::EDps => "edps",
+            MetricType::BossDps => "bossdps",
             MetricType::Hps => "hps",
             MetricType::EHps => "ehps",
             MetricType::Tps => "tps",
             MetricType::Dtps => "dtps",
-            MetricType::EDtps => "edtps",
             MetricType::Abs => "abs",
         }
     }
@@ -389,12 +392,12 @@ impl MetricType {
         &[
             MetricType::Dps,
             MetricType::EDps,
+            MetricType::BossDps,
             MetricType::Hps,
             MetricType::EHps,
-            MetricType::Tps,
-            MetricType::Dtps,
-            MetricType::EDtps,
             MetricType::Abs,
+            MetricType::Dtps,
+            MetricType::Tps,
         ]
     }
 

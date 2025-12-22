@@ -46,6 +46,7 @@ pub mod overlay_colors {
 
     pub const DPS: Color = [180, 50, 50, 255];      // Red
     pub const EDPS: Color = [180, 50, 50, 255];     // Red (same as DPS)
+    pub const BOSSDPS: Color = [180, 50, 50, 255];     // Red (same as DPS)
     pub const HPS: Color = [50, 180, 50, 255];      // Green
     pub const EHPS: Color = [50, 180, 50, 255];     // Green (same as HPS)
     pub const TPS: Color = [50, 100, 180, 255];     // Blue
@@ -58,6 +59,7 @@ pub mod overlay_colors {
         match key {
             "dps" => DPS,
             "edps" => EDPS,
+            "bossdps" => EDPS,
             "hps" => HPS,
             "ehps" => EHPS,
             "tps" => TPS,
@@ -103,12 +105,13 @@ pub enum PersonalStat {
     Apm,
     Dps,
     EDps,
+    BossDps,
     TotalDamage,
+    BossDamage,
     Hps,
     EHps,
     TotalHealing,
     Dtps,
-    EDtps,
     Tps,
     TotalThreat,
     DamageCritPct,
