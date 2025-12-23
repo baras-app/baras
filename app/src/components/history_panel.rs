@@ -161,7 +161,6 @@ pub fn HistoryPanel() -> Element {
                         thead {
                             tr {
                                 th { class: "col-name", "Encounter" }
-                                th { class: "col-type", "Type" }
                                 th { class: "col-duration", "Duration" }
                                 th { class: "col-result", "Result" }
                             }
@@ -222,8 +221,6 @@ pub fn HistoryPanel() -> Element {
                                                             td { class: "col-name",
                                                                 span { class: "encounter-name", "{enc.display_name}" }
                                                             }
-                                                            td { class: "col-type",
-                                                                span { class: "phase-type", "{enc.phase_type}" }
                                                             }
                                                             td { class: "col-duration",
                                                                 "{format_duration(enc.duration_seconds)}"
