@@ -1,23 +1,17 @@
 //! Settings panel component for overlay configuration
 //!
-//! This is a floating, draggable panel that allows users to customize
-//! overlay appearances, personal stats, and (soon) raid frame settings.
+//! Floating, draggable panel for customizing overlay appearances,
+//! personal stats, and raid frame settings.
 
+use std::collections::HashMap;
 use dioxus::prelude::*;
-use crate::app::{
-    MetricType, OverlayAppearanceConfig, OverlaySettings, OverlayStatus,
-    PersonalOverlayConfig, PersonalStat, RaidOverlaySettings, parse_hex_color,
-    MAX_PROFILES,
+
+use crate::api;
+use crate::types::{
+    BossHealthConfig, MetricType, OverlayAppearanceConfig, OverlaySettings,
+    PersonalOverlayConfig, PersonalStat, RaidOverlaySettings, MAX_PROFILES,
 };
-use wasm_bindgen::prelude::*;
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
-    async fn invoke(cmd: &str, args: JsValue) -> JsValue;
-}
-
-use crate::app::AppConfig;
+use crate::utils::{color_to_hex, parse_hex_color};
 
 #[component]
 pub fn SettingsPanel(
@@ -25,8 +19,7 @@ pub fn SettingsPanel(
     selected_tab: Signal<String>,
     profile_names: Signal<Vec<String>>,
     active_profile: Signal<Option<String>>,
-    // Overlay enabled signals for UI state updates
-    metric_overlays_enabled: Signal<std::collections::HashMap<MetricType, bool>>,
+    metric_overlays_enabled: Signal<HashMap<MetricType, bool>>,
     personal_enabled: Signal<bool>,
     raid_enabled: Signal<bool>,
     overlays_visible: Signal<bool>,
@@ -38,14 +31,14 @@ pub fn SettingsPanel(
     let mut has_changes = use_signal(|| false);
     let mut save_status = use_signal(String::new);
 
-    // Profile UI state (local to this panel)
+    // Profile UI state
     let mut new_profile_name = use_signal(String::new);
     let mut profile_status = use_signal(String::new);
 
     let current_settings = draft_settings();
     let tab = selected_tab();
 
-    // Get appearance for current tab (uses backend-provided defaults if no saved appearance)
+    // Get appearance for current tab
     let get_appearance = |key: &str| -> OverlayAppearanceConfig {
         current_settings.appearances.get(key).cloned()
             .or_else(|| current_settings.default_appearances.get(key).cloned())
@@ -54,42 +47,19 @@ pub fn SettingsPanel(
 
     let current_appearance = get_appearance(&tab);
 
-    // Pre-compute hex color strings for color pickers
-    let bar_color_hex = format!(
-        "#{:02x}{:02x}{:02x}",
-        current_appearance.bar_color[0],
-        current_appearance.bar_color[1],
-        current_appearance.bar_color[2]
-    );
-    let font_color_hex = format!(
-        "#{:02x}{:02x}{:02x}",
-        current_appearance.font_color[0],
-        current_appearance.font_color[1],
-        current_appearance.font_color[2]
-    );
-    let personal_font_color_hex = format!(
-        "#{:02x}{:02x}{:02x}",
-        current_settings.personal_overlay.font_color[0],
-        current_settings.personal_overlay.font_color[1],
-        current_settings.personal_overlay.font_color[2]
-    );
+    // Pre-compute hex color strings
+    let bar_color_hex = color_to_hex(&current_appearance.bar_color);
+    let font_color_hex = color_to_hex(&current_appearance.font_color);
+    let personal_font_color_hex = color_to_hex(&current_settings.personal_overlay.font_color);
+    let personal_label_font_color_hex = color_to_hex(&current_settings.personal_overlay.label_color);
+    let boss_bar_hex = color_to_hex(&current_settings.boss_health.bar_color);
 
-    let personal_label_font_color_hex = format!(
-        "#{:02x}{:02x}{:02x}",
-        current_settings.personal_overlay.label_color[0],
-        current_settings.personal_overlay.label_color[1],
-        current_settings.personal_overlay.label_color[2]
-    );
-
-
-    // Save settings to backend (preserves positions)
+    // Save settings to backend
     let save_to_backend = move |_| {
         let new_settings = draft_settings();
         async move {
-            // Get current full config first to preserve positions
-            let result = invoke("get_config", JsValue::NULL).await;
-            if let Ok(mut config) = serde_wasm_bindgen::from_value::<AppConfig>(result) {
-                // Preserve existing positions - only update appearances and other settings
+            if let Some(mut config) = api::get_config().await {
+                // Preserve existing positions and enabled state
                 let existing_positions = config.overlay_settings.positions.clone();
                 let existing_enabled = config.overlay_settings.enabled.clone();
 
@@ -101,19 +71,11 @@ pub fn SettingsPanel(
                 config.overlay_settings.raid_opacity = new_settings.raid_opacity;
                 config.overlay_settings.boss_health = new_settings.boss_health.clone();
                 config.overlay_settings.boss_health_opacity = new_settings.boss_health_opacity;
-                // Keep positions and enabled state untouched
                 config.overlay_settings.positions = existing_positions;
                 config.overlay_settings.enabled = existing_enabled;
 
-                let args = serde_wasm_bindgen::to_value(&config).unwrap_or(JsValue::NULL);
-                let obj = js_sys::Object::new();
-                js_sys::Reflect::set(&obj, &JsValue::from_str("config"), &args).unwrap();
-
-                let result = invoke("update_config", obj.into()).await;
-                if result.is_undefined() || result.is_null() {
-                    // Refresh running overlays with new settings
-                    let _ = invoke("refresh_overlay_settings", JsValue::NULL).await;
-
+                if api::update_config(&config).await {
+                    api::refresh_overlay_settings().await;
                     settings.set(new_settings);
                     has_changes.set(false);
                     save_status.set("Settings saved!".to_string());
@@ -131,8 +93,10 @@ pub fn SettingsPanel(
         save_status.set(String::new());
     };
 
+
     rsx! {
         section { class: "settings-panel",
+            // Header
             div {
                 class: "settings-header draggable",
                 onmousedown: move |e| on_header_mousedown.call(e),
@@ -140,12 +104,14 @@ pub fn SettingsPanel(
                 button {
                     class: "btn btn-close",
                     onclick: move |_| on_close.call(()),
-                    onmousedown: move |e| e.stop_propagation(), // Don't start drag when clicking close
+                    onmousedown: move |e| e.stop_propagation(),
                     "X"
                 }
             }
 
-            // Profiles section (collapsible accordion)
+            // ─────────────────────────────────────────────────────────────────
+            // Profiles section (inline)
+            // ─────────────────────────────────────────────────────────────────
             details { class: "settings-section collapsible",
                 summary { class: "collapsible-summary",
                     i { class: "fa-solid fa-user-gear summary-icon" }
@@ -164,6 +130,7 @@ pub fn SettingsPanel(
                                     let is_active = active_profile().as_ref() == Some(&profile_name);
                                     rsx! {
                                         div {
+                                            key: "{profile_name}",
                                             class: if is_active { "profile-item active" } else { "profile-item" },
                                             span { class: "profile-name", "{profile_name}" }
                                             div { class: "profile-actions",
@@ -176,42 +143,31 @@ pub fn SettingsPanel(
                                                         move |_| {
                                                             let pname = pname.clone();
                                                             spawn(async move {
-                                                                let obj = js_sys::Object::new();
-                                                                js_sys::Reflect::set(&obj, &JsValue::from_str("name"), &JsValue::from_str(&pname)).unwrap();
-                                                                let result = invoke("load_profile", obj.into()).await;
-                                                                if result.is_undefined() || result.is_null() {
+                                                                if api::load_profile(&pname).await {
                                                                     active_profile.set(Some(pname.clone()));
                                                                     profile_status.set(format!("Loaded '{}'", pname));
-                                                                    // Refresh settings in this panel
-                                                                    let config_result = invoke("get_config", JsValue::NULL).await;
-                                                                    if let Ok(config) = serde_wasm_bindgen::from_value::<AppConfig>(config_result) {
+                                                                    if let Some(config) = api::get_config().await {
                                                                         draft_settings.set(config.overlay_settings.clone());
                                                                         settings.set(config.overlay_settings);
                                                                     }
-                                                                    // Refresh ALL running overlays
-                                                                    let _ = invoke("refresh_overlay_settings", JsValue::NULL).await;
-                                                                    // Update UI button states from actual overlay status
-                                                                    let status_result = invoke("get_overlay_status", JsValue::NULL).await;
-                                                                    if let Ok(status) = serde_wasm_bindgen::from_value::<OverlayStatus>(status_result) {
-                                                                        let mut new_map = std::collections::HashMap::new();
-                                                                        for ot in MetricType::all_metrics() {
-                                                                            let key = ot.config_key().to_string();
-                                                                            new_map.insert(*ot, status.enabled.contains(&key));
-                                                                        }
+                                                                    api::refresh_overlay_settings().await;
+                                                                    if let Some(status) = api::get_overlay_status().await {
+                                                                        let new_map: HashMap<MetricType, bool> = MetricType::all()
+                                                                            .iter()
+                                                                            .map(|ot| (*ot, status.enabled.contains(&ot.config_key().to_string())))
+                                                                            .collect();
                                                                         metric_overlays_enabled.set(new_map);
                                                                         personal_enabled.set(status.personal_enabled);
                                                                         raid_enabled.set(status.raid_enabled);
                                                                         overlays_visible.set(status.overlays_visible);
                                                                     }
-                                                                } else if let Some(err) = result.as_string() {
-                                                                    profile_status.set(format!("Error: {}", err));
                                                                 }
                                                             });
                                                         }
                                                     },
                                                     "Load"
                                                 }
-                                                // Save/Update button
+                                                // Save button
                                                 button {
                                                     class: "btn btn-small btn-update",
                                                     title: "Overwrite profile with current settings",
@@ -220,14 +176,9 @@ pub fn SettingsPanel(
                                                         move |_| {
                                                             let pname = pname.clone();
                                                             spawn(async move {
-                                                                let obj = js_sys::Object::new();
-                                                                js_sys::Reflect::set(&obj, &JsValue::from_str("name"), &JsValue::from_str(&pname)).unwrap();
-                                                                let result = invoke("save_profile", obj.into()).await;
-                                                                if result.is_undefined() || result.is_null() {
+                                                                if api::save_profile(&pname).await {
                                                                     active_profile.set(Some(pname.clone()));
                                                                     profile_status.set(format!("Saved '{}'", pname));
-                                                                } else if let Some(err) = result.as_string() {
-                                                                    profile_status.set(format!("Error: {}", err));
                                                                 }
                                                             });
                                                         }
@@ -242,22 +193,10 @@ pub fn SettingsPanel(
                                                         move |_| {
                                                             let pname = pname.clone();
                                                             spawn(async move {
-                                                                let obj = js_sys::Object::new();
-                                                                js_sys::Reflect::set(&obj, &JsValue::from_str("name"), &JsValue::from_str(&pname)).unwrap();
-                                                                let result = invoke("delete_profile", obj.into()).await;
-                                                                if result.is_undefined() || result.is_null() {
-                                                                    // Refresh profile list in shared state
-                                                                    let names_result = invoke("get_profile_names", JsValue::NULL).await;
-                                                                    if let Ok(names) = serde_wasm_bindgen::from_value::<Vec<String>>(names_result) {
-                                                                        profile_names.set(names);
-                                                                    }
-                                                                    let active_result = invoke("get_active_profile", JsValue::NULL).await;
-                                                                    if let Ok(name) = serde_wasm_bindgen::from_value::<Option<String>>(active_result) {
-                                                                        active_profile.set(name);
-                                                                    }
+                                                                if api::delete_profile(&pname).await {
+                                                                    profile_names.set(api::get_profile_names().await);
+                                                                    active_profile.set(api::get_active_profile().await);
                                                                     profile_status.set(format!("Deleted '{}'", pname));
-                                                                } else if let Some(err) = result.as_string() {
-                                                                    profile_status.set(format!("Error: {}", err));
                                                                 }
                                                             });
                                                         }
@@ -288,22 +227,12 @@ pub fn SettingsPanel(
                             onclick: move |_| {
                                 let name = new_profile_name().trim().to_string();
                                 if name.is_empty() { return; }
-
                                 spawn(async move {
-                                    let obj = js_sys::Object::new();
-                                    js_sys::Reflect::set(&obj, &JsValue::from_str("name"), &JsValue::from_str(&name)).unwrap();
-                                    let result = invoke("save_profile", obj.into()).await;
-                                    if result.is_undefined() || result.is_null() {
-                                        // Refresh profile list in shared state
-                                        let names_result = invoke("get_profile_names", JsValue::NULL).await;
-                                        if let Ok(names) = serde_wasm_bindgen::from_value::<Vec<String>>(names_result) {
-                                            profile_names.set(names);
-                                        }
+                                    if api::save_profile(&name).await {
+                                        profile_names.set(api::get_profile_names().await);
                                         active_profile.set(Some(name.clone()));
                                         new_profile_name.set(String::new());
                                         profile_status.set(format!("Created '{}'", name));
-                                    } else if let Some(err) = result.as_string() {
-                                        profile_status.set(format!("Error: {}", err));
                                     }
                                 });
                             },
@@ -312,163 +241,108 @@ pub fn SettingsPanel(
                     }
 
                     if profile_names().len() >= MAX_PROFILES {
-                        p { class: "hint hint-warning compact",
-                            "Maximum {MAX_PROFILES} profiles"
-                        }
+                        p { class: "hint hint-warning compact", "Maximum {MAX_PROFILES} profiles" }
                     }
-
                     if !profile_status().is_empty() {
                         p { class: "profile-status compact", "{profile_status}" }
                     }
                 }
             }
 
-            // Category opacity settings (collapsible)
+            // ─────────────────────────────────────────────────────────────────
+            // Category opacity settings
+            // ─────────────────────────────────────────────────────────────────
             details { class: "settings-section collapsible",
                 summary { class: "collapsible-summary", "Background Opacity" }
                 div { class: "collapsible-content",
-                    div { class: "setting-row",
-                        label { "Metrics Opacity" }
-                        input {
-                            r#type: "range",
-                            min: "0",
-                            max: "255",
-                            value: "{current_settings.metric_opacity}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<u8>() {
-                                    let mut new_settings = draft_settings();
-                                    new_settings.metric_opacity = val;
-                                    update_draft(new_settings);
-                                }
-                            }
-                        }
-                        span { class: "value", "{current_settings.metric_opacity}" }
+                    OpacitySlider {
+                        label: "Metrics Opacity",
+                        value: current_settings.metric_opacity,
+                        on_change: move |val| {
+                            let mut new_settings = draft_settings();
+                            new_settings.metric_opacity = val;
+                            update_draft(new_settings);
+                        },
                     }
-                    div { class: "setting-row",
-                        label { "Personal Opacity" }
-                        input {
-                            r#type: "range",
-                            min: "0",
-                            max: "255",
-                            value: "{current_settings.personal_opacity}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<u8>() {
-                                    let mut new_settings = draft_settings();
-                                    new_settings.personal_opacity = val;
-                                    update_draft(new_settings);
-                                }
-                            }
-                        }
-                        span { class: "value", "{current_settings.personal_opacity}" }
+                    OpacitySlider {
+                        label: "Personal Opacity",
+                        value: current_settings.personal_opacity,
+                        on_change: move |val| {
+                            let mut new_settings = draft_settings();
+                            new_settings.personal_opacity = val;
+                            update_draft(new_settings);
+                        },
                     }
                 }
             }
 
-            // Tabs for overlay types - grouped by category
+            // ─────────────────────────────────────────────────────────────────
+            // Tabs for overlay types
+            // ─────────────────────────────────────────────────────────────────
             div { class: "settings-tabs",
-                // General group
                 div { class: "tab-group",
                     span { class: "tab-group-label", "General" }
                     div { class: "tab-group-buttons",
-                        button {
-                            class: if tab == "personal" { "tab-btn active" } else { "tab-btn" },
-                            onclick: move |_| selected_tab.set("personal".to_string()),
-                            "Personal Stats"
-                        }
-                        button {
-                            class: if tab == "raid" { "tab-btn active" } else { "tab-btn" },
-                            onclick: move |_| selected_tab.set("raid".to_string()),
-                            "Raid Frames"
-                        }
-                        button {
-                            class: if tab == "boss_health" { "tab-btn active" } else { "tab-btn" },
-                            onclick: move |_| selected_tab.set("boss_health".to_string()),
-                            "Boss Health"
-                        }
+                        TabButton { label: "Personal Stats", tab_key: "personal", selected_tab: selected_tab }
+                        TabButton { label: "Raid Frames", tab_key: "raid", selected_tab: selected_tab }
+                        TabButton { label: "Boss Health", tab_key: "boss_health", selected_tab: selected_tab }
                     }
                 }
-                // Metrics group
                 div { class: "tab-group",
                     span { class: "tab-group-label", "Metrics" }
                     div { class: "tab-group-buttons",
-                        for overlay_type in MetricType::all_metrics() {
-                            {
-                                let ot = *overlay_type;
-                                let key = ot.config_key().to_string();
-                                let label = ot.label();
-                                rsx! {
-                                    button {
-                                        class: if tab == key { "tab-btn active" } else { "tab-btn" },
-                                        onclick: move |_| selected_tab.set(key.clone()),
-                                        "{label}"
-                                    }
-                                }
+                        for overlay_type in MetricType::all() {
+                            TabButton {
+                                key: "{overlay_type.config_key()}",
+                                label: overlay_type.label(),
+                                tab_key: overlay_type.config_key(),
+                                selected_tab: selected_tab,
                             }
                         }
                     }
                 }
             }
 
-            // Per-overlay settings
+            // ─────────────────────────────────────────────────────────────────
+            // Per-overlay settings content (inline)
+            // ─────────────────────────────────────────────────────────────────
             if tab == "boss_health" {
-                // Boss health overlay settings
+                // Boss Health Settings
                 div { class: "settings-section",
                     h4 { "Appearance" }
 
-                    // Background Opacity
+                    OpacitySlider {
+                        label: "Background Opacity",
+                        value: current_settings.boss_health_opacity,
+                        on_change: move |val| {
+                            let mut new_settings = draft_settings();
+                            new_settings.boss_health_opacity = val;
+                            update_draft(new_settings);
+                        },
+                    }
+
                     div { class: "setting-row",
-                        label { "Background Opacity" }
+                        label { "Bar Color" }
                         input {
-                            r#type: "range",
-                            min: "0",
-                            max: "255",
-                            value: "{current_settings.boss_health_opacity}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<u8>() {
+                            r#type: "color",
+                            value: "{boss_bar_hex}",
+                            class: "color-picker",
+                            oninput: move |e: Event<FormData>| {
+                                if let Some(color) = parse_hex_color(&e.value()) {
                                     let mut new_settings = draft_settings();
-                                    new_settings.boss_health_opacity = val;
+                                    new_settings.boss_health.bar_color = color;
                                     update_draft(new_settings);
                                 }
                             }
                         }
-                        span { class: "value", "{current_settings.boss_health_opacity}" }
                     }
 
-                    // Bar Color
-                    {
-                        let bar_hex = format!(
-                            "#{:02x}{:02x}{:02x}",
-                            current_settings.boss_health.bar_color[0],
-                            current_settings.boss_health.bar_color[1],
-                            current_settings.boss_health.bar_color[2]
-                        );
-                        rsx! {
-                            div { class: "setting-row",
-                                label { "Bar Color" }
-                                input {
-                                    r#type: "color",
-                                    key: "boss-health-bar",
-                                    value: "{bar_hex}",
-                                    class: "color-picker",
-                                    oninput: move |e: Event<FormData>| {
-                                        if let Some(color) = parse_hex_color(&e.value()) {
-                                            let mut new_settings = draft_settings();
-                                            new_settings.boss_health.bar_color = color;
-                                            update_draft(new_settings);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Reset to default button
                     div { class: "setting-row reset-row",
                         button {
                             class: "btn btn-reset",
                             onclick: move |_| {
                                 let mut new_settings = draft_settings();
-                                new_settings.boss_health = crate::app::BossHealthConfig::default();
+                                new_settings.boss_health = BossHealthConfig::default();
                                 new_settings.boss_health_opacity = 180;
                                 update_draft(new_settings);
                             },
@@ -478,17 +352,16 @@ pub fn SettingsPanel(
                     }
                 }
             } else if tab == "raid" {
-                // Raid frame overlay settings
-                div { class: "settings-section",
-                    h4 { "Grid Layout" }
+                // Raid Settings
+                {
+                    let cols = current_settings.raid_overlay.grid_columns;
+                    let rows = current_settings.raid_overlay.grid_rows;
+                    let is_valid = current_settings.raid_overlay.is_valid_grid();
 
-                    // Grid validation helper
-                    {
-                        let cols = current_settings.raid_overlay.grid_columns;
-                        let rows = current_settings.raid_overlay.grid_rows;
-                        let is_valid = current_settings.raid_overlay.is_valid_grid();
+                    rsx! {
+                        div { class: "settings-section",
+                            h4 { "Grid Layout" }
 
-                        rsx! {
                             div { class: "setting-row",
                                 label { "Columns" }
                                 select {
@@ -524,335 +397,122 @@ pub fn SettingsPanel(
                                 }
                             }
 
-                            // Grid validation message
                             div { class: "setting-row",
-                                span { class: "hint",
-                                    "Total slots: {cols * rows}"
-                                }
+                                span { class: "hint", "Total slots: {cols * rows}" }
                             }
                             if !is_valid {
                                 div { class: "setting-row validation-error",
                                     "⚠ Grid must have 4, 8, or 16 total slots"
                                 }
                             }
-
-                            // Hint about requiring toggle
                             div { class: "setting-row",
-                                span { class: "hint hint-subtle",
-                                    "Grid changes require toggling overlay off/on"
-                                }
+                                span { class: "hint hint-subtle", "Grid changes require toggling overlay off/on" }
                             }
-                        }
-                    }
 
-                    h4 { "Appearance" }
+                            h4 { "Appearance" }
 
-                    // Background Opacity
-                    div { class: "setting-row",
-                        label { "Background Opacity" }
-                        input {
-                            r#type: "range",
-                            min: "0",
-                            max: "255",
-                            value: "{current_settings.raid_opacity}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<u8>() {
+                            OpacitySlider {
+                                label: "Background Opacity",
+                                value: current_settings.raid_opacity,
+                                on_change: move |val| {
                                     let mut new_settings = draft_settings();
                                     new_settings.raid_opacity = val;
                                     update_draft(new_settings);
+                                },
+                            }
+
+                            div { class: "setting-row",
+                                label { "Max Effects per Frame" }
+                                input {
+                                    r#type: "number",
+                                    min: "1",
+                                    max: "8",
+                                    value: "{current_settings.raid_overlay.max_effects_per_frame}",
+                                    onchange: move |e: Event<FormData>| {
+                                        if let Ok(val) = e.value().parse::<u8>() {
+                                            let mut new_settings = draft_settings();
+                                            new_settings.raid_overlay.max_effects_per_frame = val.clamp(1, 8);
+                                            update_draft(new_settings);
+                                        }
+                                    }
                                 }
                             }
-                        }
-                        span { class: "value", "{current_settings.raid_opacity}" }
-                    }
 
-                    // Max Effects per Frame
-                    div { class: "setting-row",
-                        label { "Max Effects per Frame" }
-                        input {
-                            r#type: "number",
-                            min: "1",
-                            max: "8",
-                            value: "{current_settings.raid_overlay.max_effects_per_frame}",
-                            onchange: move |e: Event<FormData>| {
-                                if let Ok(val) = e.value().parse::<u8>() {
-                                    let mut new_settings = draft_settings();
-                                    new_settings.raid_overlay.max_effects_per_frame = val.clamp(1, 8);
-                                    update_draft(new_settings);
+                            div { class: "setting-row",
+                                label { "Effect Size" }
+                                input {
+                                    r#type: "range",
+                                    min: "8",
+                                    max: "24",
+                                    value: "{current_settings.raid_overlay.effect_size as i32}",
+                                    oninput: move |e| {
+                                        if let Ok(val) = e.value().parse::<f32>() {
+                                            let mut new_settings = draft_settings();
+                                            new_settings.raid_overlay.effect_size = val.clamp(8.0, 24.0);
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                                span { class: "value", "{current_settings.raid_overlay.effect_size:.0}px" }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Effect Vertical Offset" }
+                                input {
+                                    r#type: "range",
+                                    min: "-10",
+                                    max: "30",
+                                    value: "{current_settings.raid_overlay.effect_vertical_offset as i32}",
+                                    oninput: move |e| {
+                                        if let Ok(val) = e.value().parse::<f32>() {
+                                            let mut new_settings = draft_settings();
+                                            new_settings.raid_overlay.effect_vertical_offset = val.clamp(-10.0, 30.0);
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                                span { class: "value", "{current_settings.raid_overlay.effect_vertical_offset:.0}px" }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Show Role Icons" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: current_settings.raid_overlay.show_role_icons,
+                                    onchange: move |e: Event<FormData>| {
+                                        let mut new_settings = draft_settings();
+                                        new_settings.raid_overlay.show_role_icons = e.checked();
+                                        update_draft(new_settings);
+                                    }
                                 }
                             }
-                        }
-                    }
 
-                    // Effect Size slider
-                    div { class: "setting-row",
-                        label { "Effect Size" }
-                        input {
-                            r#type: "range",
-                            min: "8",
-                            max: "24",
-                            value: "{current_settings.raid_overlay.effect_size as i32}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<f32>() {
-                                    let mut new_settings = draft_settings();
-                                    new_settings.raid_overlay.effect_size = val.clamp(8.0, 24.0);
-                                    update_draft(new_settings);
+                            div { class: "setting-row reset-row",
+                                button {
+                                    class: "btn btn-reset",
+                                    onclick: move |_| {
+                                        let mut new_settings = draft_settings();
+                                        new_settings.raid_overlay = RaidOverlaySettings::default();
+                                        new_settings.raid_opacity = 180;
+                                        update_draft(new_settings);
+                                    },
+                                    i { class: "fa-solid fa-rotate-left" }
+                                    span { " Reset Style" }
                                 }
                             }
-                        }
-                        span { class: "value", "{current_settings.raid_overlay.effect_size:.0}px" }
-                    }
-
-                    // Effect Vertical Position
-                    div { class: "setting-row",
-                        label { "Effect Vertical Offset" }
-                        input {
-                            r#type: "range",
-                            min: "-10",
-                            max: "30",
-                            value: "{current_settings.raid_overlay.effect_vertical_offset as i32}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<f32>() {
-                                    let mut new_settings = draft_settings();
-                                    new_settings.raid_overlay.effect_vertical_offset = val.clamp(-10.0, 30.0);
-                                    update_draft(new_settings);
-                                }
-                            }
-                        }
-                        span { class: "value", "{current_settings.raid_overlay.effect_vertical_offset:.0}px" }
-                    }
-
-                    // Show Role Icons
-                    div { class: "setting-row",
-                        label { "Show Role Icons" }
-                        input {
-                            r#type: "checkbox",
-                            checked: current_settings.raid_overlay.show_role_icons,
-                            onchange: move |e: Event<FormData>| {
-                                let mut new_settings = draft_settings();
-                                new_settings.raid_overlay.show_role_icons = e.checked();
-                                update_draft(new_settings);
-                            }
-                        }
-                    }
-
-                    // Reset to default button
-                    div { class: "setting-row reset-row",
-                        button {
-                            class: "btn btn-reset",
-                            onclick: move |_| {
-                                let mut new_settings = draft_settings();
-                                new_settings.raid_overlay = RaidOverlaySettings::default();
-                                new_settings.raid_opacity = 180; // default opacity
-                                update_draft(new_settings);
-                            },
-                            i { class: "fa-solid fa-rotate-left" }
-                            span { " Reset Style" }
                         }
                     }
                 }
-            } else if tab != "personal" {
-                div { class: "settings-section",
-                    // Display options
-                    div { class: "setting-row",
-                        label { "Show Per-Second" }
-                        input {
-                            r#type: "checkbox",
-                            checked: current_appearance.show_per_second,
-                            onchange: {
-                                let tab = tab.clone();
-                                move |e: Event<FormData>| {
-                                    let mut new_settings = draft_settings();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let mut appearance = new_settings.appearances
-                                        .entry(tab.clone())
-                                        .or_insert(default)
-                                        .clone();
-                                    appearance.show_per_second = e.checked();
-                                    new_settings.appearances.insert(tab.clone(), appearance);
-                                    update_draft(new_settings);
-                                }
-                            }
-                        }
-                    }
+            } else if tab == "personal" {
+                // Personal Settings
+                {
+                    let visible_stats = current_settings.personal_overlay.visible_stats.clone();
+                    let stat_count = visible_stats.len();
 
-                    div { class: "setting-row",
-                        label { "Show Total" }
-                        input {
-                            r#type: "checkbox",
-                            checked: current_appearance.show_total,
-                            onchange: {
-                                let tab = tab.clone();
-                                move |e: Event<FormData>| {
-                                    let mut new_settings = draft_settings();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let mut appearance = new_settings.appearances
-                                        .entry(tab.clone())
-                                        .or_insert(default)
-                                        .clone();
-                                    appearance.show_total = e.checked();
-                                    new_settings.appearances.insert(tab.clone(), appearance);
-                                    update_draft(new_settings);
-                                }
-                            }
-                        }
-                    }
+                    rsx! {
+                        div { class: "settings-section",
+                            p { class: "hint", "Displayed stats:" }
 
-                    div { class: "setting-row",
-                        label { "Show Header" }
-                        input {
-                            r#type: "checkbox",
-                            checked: current_appearance.show_header,
-                            onchange: {
-                                let tab = tab.clone();
-                                move |e: Event<FormData>| {
-                                    let mut new_settings = draft_settings();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let mut appearance = new_settings.appearances
-                                        .entry(tab.clone())
-                                        .or_insert(default)
-                                        .clone();
-                                    appearance.show_header = e.checked();
-                                    new_settings.appearances.insert(tab.clone(), appearance);
-                                    update_draft(new_settings);
-                                }
-                            }
-                        }
-                    }
-
-                    div { class: "setting-row",
-                        label { "Show Footer" }
-                        input {
-                            r#type: "checkbox",
-                            checked: current_appearance.show_footer,
-                            onchange: {
-                                let tab = tab.clone();
-                                move |e: Event<FormData>| {
-                                    let mut new_settings = draft_settings();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let mut appearance = new_settings.appearances
-                                        .entry(tab.clone())
-                                        .or_insert(default)
-                                        .clone();
-                                    appearance.show_footer = e.checked();
-                                    new_settings.appearances.insert(tab.clone(), appearance);
-                                    update_draft(new_settings);
-                                }
-                            }
-                        }
-                    }
-
-                    div { class: "setting-row",
-                        label { "Max Entries" }
-                        input {
-                            r#type: "number",
-                            min: "1",
-                            max: "16",
-                            value: "{current_appearance.max_entries}",
-                            onchange: {
-                                let tab = tab.clone();
-                                move |e: Event<FormData>| {
-                                    if let Ok(val) = e.value().parse::<u8>() {
-                                        let mut new_settings = draft_settings();
-                                        let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                        let mut appearance = new_settings.appearances
-                                            .entry(tab.clone())
-                                            .or_insert(default)
-                                            .clone();
-                                        appearance.max_entries = val.clamp(1, 16);
-                                        new_settings.appearances.insert(tab.clone(), appearance);
-                                        update_draft(new_settings);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Color settings
-                    div { class: "setting-row",
-                        label { "Bar Color" }
-                        input {
-                            r#type: "color",
-                            key: "{tab}-bar",
-                            value: "{bar_color_hex}",
-                            class: "color-picker",
-                            oninput: {
-                                let tab = tab.clone();
-                                move |e: Event<FormData>| {
-                                    if let Some(color) = parse_hex_color(&e.value()) {
-                                        let mut new_settings = draft_settings();
-                                        let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                        let mut appearance = new_settings.appearances
-                                            .entry(tab.clone())
-                                            .or_insert(default)
-                                            .clone();
-                                        appearance.bar_color = color;
-                                        new_settings.appearances.insert(tab.clone(), appearance);
-                                        update_draft(new_settings);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    div { class: "setting-row",
-                        label { "Font Color" }
-                        input {
-                            r#type: "color",
-                            key: "{tab}-font",
-                            value: "{font_color_hex}",
-                            class: "color-picker",
-                            oninput: {
-                                let tab = tab.clone();
-                                move |e: Event<FormData>| {
-                                    if let Some(color) = parse_hex_color(&e.value()) {
-                                        let mut new_settings = draft_settings();
-                                        let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                        let mut appearance = new_settings.appearances
-                                            .entry(tab.clone())
-                                            .or_insert(default)
-                                            .clone();
-                                        appearance.font_color = color;
-                                        new_settings.appearances.insert(tab.clone(), appearance);
-                                        update_draft(new_settings);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Reset to default button
-                    div { class: "setting-row reset-row",
-                        button {
-                            class: "btn btn-reset",
-                            onclick: {
-                                let tab = tab.clone();
-                                move |_| {
-                                    let mut new_settings = draft_settings();
-                                    // Use overlay-specific default from backend
-                                    let default_appearance = new_settings.default_appearances
-                                        .get(&tab)
-                                        .cloned()
-                                        .unwrap_or_default();
-                                    new_settings.appearances.insert(tab.clone(), default_appearance);
-                                    update_draft(new_settings);
-                                }
-                            },
-                            i { class: "fa-solid fa-rotate-left" }
-                            span { " Reset Style" }
-                        }
-                    }
-                }
-            } else {
-                // Personal overlay settings
-                div { class: "settings-section",
-                    p { class: "hint", "Displayed stats:" }
-
-                    // Ordered list of selected stats
-                    {
-                        let visible_stats = current_settings.personal_overlay.visible_stats.clone();
-                        let stat_count = visible_stats.len();
-                        rsx! {
                             div { class: "stat-order-list",
                                 for (idx, stat) in visible_stats.into_iter().enumerate() {
                                     div { class: "stat-order-item", key: "{stat:?}",
@@ -864,9 +524,7 @@ pub fn SettingsPanel(
                                                 onclick: move |_| {
                                                     let mut new_settings = draft_settings();
                                                     let stats = &mut new_settings.personal_overlay.visible_stats;
-                                                    if idx > 0 {
-                                                        stats.swap(idx, idx - 1);
-                                                    }
+                                                    if idx > 0 { stats.swap(idx, idx - 1); }
                                                     update_draft(new_settings);
                                                 },
                                                 "▲"
@@ -877,9 +535,7 @@ pub fn SettingsPanel(
                                                 onclick: move |_| {
                                                     let mut new_settings = draft_settings();
                                                     let stats = &mut new_settings.personal_overlay.visible_stats;
-                                                    if idx < stats.len() - 1 {
-                                                        stats.swap(idx, idx + 1);
-                                                    }
+                                                    if idx < stats.len() - 1 { stats.swap(idx, idx + 1); }
                                                     update_draft(new_settings);
                                                 },
                                                 "▼"
@@ -897,90 +553,253 @@ pub fn SettingsPanel(
                                     }
                                 }
                             }
-                        }
-                    }
 
-                    // Available stats to add
-                    div { class: "stat-add-section",
-                        p { class: "hint", "Add stats:" }
-                        div { class: "stat-add-grid",
-                            for stat in PersonalStat::all() {
-                                {
-                                    let is_visible = current_settings.personal_overlay.visible_stats.contains(stat);
-                                    if !is_visible {
-                                        let stat = *stat;
-                                        rsx! {
-                                            button {
-                                                class: "btn-add-stat",
-                                                onclick: move |_| {
-                                                    let mut new_settings = draft_settings();
-                                                    if !new_settings.personal_overlay.visible_stats.contains(&stat) {
-                                                        new_settings.personal_overlay.visible_stats.push(stat);
+                            // Add stats section
+                            div { class: "stat-add-section",
+                                p { class: "hint", "Add stats:" }
+                                div { class: "stat-add-grid",
+                                    for stat in PersonalStat::all() {
+                                        {
+                                            let is_visible = current_settings.personal_overlay.visible_stats.contains(stat);
+                                            if !is_visible {
+                                                let stat = *stat;
+                                                rsx! {
+                                                    button {
+                                                        class: "btn-add-stat",
+                                                        onclick: move |_| {
+                                                            let mut new_settings = draft_settings();
+                                                            if !new_settings.personal_overlay.visible_stats.contains(&stat) {
+                                                                new_settings.personal_overlay.visible_stats.push(stat);
+                                                            }
+                                                            update_draft(new_settings);
+                                                        },
+                                                        "+ {stat.label()}"
                                                     }
-                                                    update_draft(new_settings);
-                                                },
-                                                "+ {stat.label()}"
+                                                }
+                                            } else {
+                                                rsx! {}
                                             }
                                         }
-                                    } else {
-                                        rsx! {}
                                     }
                                 }
                             }
-                        }
-                    }
 
-                    // Personal overlay font color
-                    div { class: "setting-row",
-                        label { "Value Font Color" }
-                        input {
-                            r#type: "color",
-                            key: "personal-font",
-                            value: "{personal_font_color_hex}",
-                            class: "color-picker",
-                            oninput: move |e: Event<FormData>| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
-                                    let mut new_settings = draft_settings();
-                                    new_settings.personal_overlay.font_color = color;
-                                    update_draft(new_settings);
+                            div { class: "setting-row",
+                                label { "Value Font Color" }
+                                input {
+                                    r#type: "color",
+                                    value: "{personal_font_color_hex}",
+                                    class: "color-picker",
+                                    oninput: move |e: Event<FormData>| {
+                                        if let Some(color) = parse_hex_color(&e.value()) {
+                                            let mut new_settings = draft_settings();
+                                            new_settings.personal_overlay.font_color = color;
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Label Font Color" }
+                                input {
+                                    r#type: "color",
+                                    value: "{personal_label_font_color_hex}",
+                                    class: "color-picker",
+                                    oninput: move |e: Event<FormData>| {
+                                        if let Some(color) = parse_hex_color(&e.value()) {
+                                            let mut new_settings = draft_settings();
+                                            new_settings.personal_overlay.label_color = color;
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row reset-row",
+                                button {
+                                    class: "btn btn-reset",
+                                    onclick: move |_| {
+                                        let mut new_settings = draft_settings();
+                                        new_settings.personal_overlay = PersonalOverlayConfig::default();
+                                        update_draft(new_settings);
+                                    },
+                                    i { class: "fa-solid fa-rotate-left" }
+                                    span { " Reset Style" }
                                 }
                             }
                         }
                     }
-
-                    div { class: "setting-row",
-                        label { "Label Font Color" }
-                        input {
-                            r#type: "color",
-                            key: "personal-label-font",
-                            value: "{personal_label_font_color_hex}",
-                            class: "color-picker",
-                            oninput: move |e: Event<FormData>| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
-                                    let mut new_settings = draft_settings();
-                                    new_settings.personal_overlay.label_color = color;
-                                    update_draft(new_settings);
+                }
+            } else {
+                // Metric Settings (default tab content)
+                {
+                    let tab_key = tab.clone();
+                    rsx! {
+                        div { class: "settings-section",
+                            div { class: "setting-row",
+                                label { "Show Per-Second" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: current_appearance.show_per_second,
+                                    onchange: {
+                                        let tab = tab_key.clone();
+                                        move |e: Event<FormData>| {
+                                            let mut new_settings = draft_settings();
+                                            let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
+                                            let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
+                                            appearance.show_per_second = e.checked();
+                                            update_draft(new_settings);
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                    // Reset to default button
-                    div { class: "setting-row reset-row",
-                        button {
-                            class: "btn btn-reset",
-                            onclick: move |_| {
-                                let mut new_settings = draft_settings();
-                                new_settings.personal_overlay = PersonalOverlayConfig::default();
-                                update_draft(new_settings);
-                            },
-                            i { class: "fa-solid fa-rotate-left" }
-                            span { " Reset Style" }
+
+                            div { class: "setting-row",
+                                label { "Show Total" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: current_appearance.show_total,
+                                    onchange: {
+                                        let tab = tab_key.clone();
+                                        move |e: Event<FormData>| {
+                                            let mut new_settings = draft_settings();
+                                            let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
+                                            let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
+                                            appearance.show_total = e.checked();
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Show Header" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: current_appearance.show_header,
+                                    onchange: {
+                                        let tab = tab_key.clone();
+                                        move |e: Event<FormData>| {
+                                            let mut new_settings = draft_settings();
+                                            let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
+                                            let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
+                                            appearance.show_header = e.checked();
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Show Footer" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: current_appearance.show_footer,
+                                    onchange: {
+                                        let tab = tab_key.clone();
+                                        move |e: Event<FormData>| {
+                                            let mut new_settings = draft_settings();
+                                            let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
+                                            let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
+                                            appearance.show_footer = e.checked();
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Max Entries" }
+                                input {
+                                    r#type: "number",
+                                    min: "1",
+                                    max: "16",
+                                    value: "{current_appearance.max_entries}",
+                                    onchange: {
+                                        let tab = tab_key.clone();
+                                        move |e: Event<FormData>| {
+                                            if let Ok(val) = e.value().parse::<u8>() {
+                                                let mut new_settings = draft_settings();
+                                                let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
+                                                let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
+                                                appearance.max_entries = val.clamp(1, 16);
+                                                update_draft(new_settings);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Bar Color" }
+                                input {
+                                    r#type: "color",
+                                    value: "{bar_color_hex}",
+                                    class: "color-picker",
+                                    oninput: {
+                                        let tab = tab_key.clone();
+                                        move |e: Event<FormData>| {
+                                            if let Some(color) = parse_hex_color(&e.value()) {
+                                                let mut new_settings = draft_settings();
+                                                let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
+                                                let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
+                                                appearance.bar_color = color;
+                                                update_draft(new_settings);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Font Color" }
+                                input {
+                                    r#type: "color",
+                                    value: "{font_color_hex}",
+                                    class: "color-picker",
+                                    oninput: {
+                                        let tab = tab_key.clone();
+                                        move |e: Event<FormData>| {
+                                            if let Some(color) = parse_hex_color(&e.value()) {
+                                                let mut new_settings = draft_settings();
+                                                let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
+                                                let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
+                                                appearance.font_color = color;
+                                                update_draft(new_settings);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row reset-row",
+                                button {
+                                    class: "btn btn-reset",
+                                    onclick: {
+                                        let tab = tab_key.clone();
+                                        move |_| {
+                                            let mut new_settings = draft_settings();
+                                            let default_appearance = new_settings.default_appearances
+                                                .get(&tab)
+                                                .cloned()
+                                                .unwrap_or_default();
+                                            new_settings.appearances.insert(tab.clone(), default_appearance);
+                                            update_draft(new_settings);
+                                        }
+                                    },
+                                    i { class: "fa-solid fa-rotate-left" }
+                                    span { " Reset Style" }
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Save button and status
+            // ─────────────────────────────────────────────────────────────────
+            // Save button
+            // ─────────────────────────────────────────────────────────────────
             div { class: "settings-footer",
                 button {
                     class: if has_changes() { "btn btn-save" } else { "btn btn-save btn-disabled" },
@@ -992,6 +811,47 @@ pub fn SettingsPanel(
                     span { class: "save-status", "{save_status()}" }
                 }
             }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Simple Sub-Components (these work with simple props)
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[component]
+fn TabButton(label: &'static str, tab_key: &'static str, selected_tab: Signal<String>) -> Element {
+    let is_active = selected_tab() == tab_key;
+    rsx! {
+        button {
+            class: if is_active { "tab-btn active" } else { "tab-btn" },
+            onclick: move |_| selected_tab.set(tab_key.to_string()),
+            "{label}"
+        }
+    }
+}
+
+#[component]
+fn OpacitySlider(
+    label: &'static str,
+    value: u8,
+    on_change: EventHandler<u8>,
+) -> Element {
+    rsx! {
+        div { class: "setting-row",
+            label { "{label}" }
+            input {
+                r#type: "range",
+                min: "0",
+                max: "255",
+                value: "{value}",
+                oninput: move |e| {
+                    if let Ok(val) = e.value().parse::<u8>() {
+                        on_change.call(val);
+                    }
+                }
+            }
+            span { class: "value", "{value}" }
         }
     }
 }

@@ -4,14 +4,9 @@
 
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
-use wasm_bindgen::prelude::*;
 use std::collections::HashSet;
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
-    async fn invoke(cmd: &str, args: JsValue) -> JsValue;
-}
+use crate::api;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Types (mirrors backend)
@@ -113,7 +108,7 @@ pub fn HistoryPanel() -> Element {
 
     // Fetch encounter history
     use_future(move || async move {
-        let result = invoke("get_encounter_history", JsValue::NULL).await;
+        let result = api::get_encounter_history().await;
         if let Ok(history) = serde_wasm_bindgen::from_value::<Vec<EncounterSummary>>(result) {
             encounters.set(history);
         }
@@ -124,7 +119,7 @@ pub fn HistoryPanel() -> Element {
     use_future(move || async move {
         loop {
             gloo_timers::future::TimeoutFuture::new(3000).await;
-            let result = invoke("get_encounter_history", JsValue::NULL).await;
+            let result = api::get_encounter_history().await;
             if let Ok(history) = serde_wasm_bindgen::from_value::<Vec<EncounterSummary>>(result) {
                 encounters.set(history);
             }
