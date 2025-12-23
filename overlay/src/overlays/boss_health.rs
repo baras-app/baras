@@ -180,11 +180,7 @@ impl BossHealthOverlay {
             y += label_height + label_bar_gap;
 
             // Format health text for inside bar: "(1.5M/2.0M)"
-            let health_text = format!(
-                "({}/{})",
-                format_number(entry.current as i64),
-                format_number(entry.max as i64)
-            );
+            let health_text = format_number(entry.current as i64);
 
             // Format percentage for right side
             let percent_text = if self.config.show_percent {
