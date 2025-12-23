@@ -40,74 +40,31 @@ impl EventProcessor {
     ) -> Vec<GameSignal> {
         let mut signals = Vec::new();
 
-        // 1. Handle player initialization on DisciplineChanged
-        if event.effect.type_id == effect_type_id::DISCIPLINECHANGED {
-            if !cache.player_initialized || event.source_entity.log_id == cache.player.id {
-                self.update_primary_player(&event, cache);
-                if cache.player_initialized {
-                    signals.push(GameSignal::PlayerInitialized {
-                        entity_id: cache.player.id,
-                        timestamp: event.timestamp,
-                    });
-                }
-            }
-            self.add_player_to_encounter(&event, cache);
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 1: Global Event Handlers (state-independent)
+        // ═══════════════════════════════════════════════════════════════════════
 
-            // Emit DisciplineChanged for ALL players (used for raid frame role detection)
-            if event.effect.discipline_id != 0 {
-                signals.push(GameSignal::DisciplineChanged {
-                    entity_id: event.source_entity.log_id,
-                    discipline_id: event.effect.discipline_id,
-                    timestamp: event.timestamp,
-                });
-            }
-        }
+        // 1a. Player/discipline tracking
+        signals.extend(self.handle_discipline_event(&event, cache));
 
-        // 2. Handle death/revive
-        if event.effect.effect_id == effect_id::DEATH {
-            if let Some(enc) = cache.current_encounter_mut() {
-                enc.set_entity_death(
-                    event.target_entity.log_id,
-                    &event.target_entity.entity_type,
-                    event.timestamp,
-                );
-                enc.check_all_players_dead();
-            }
-            signals.push(GameSignal::EntityDeath {
-                entity_id: event.target_entity.log_id,
-                entity_type: event.target_entity.entity_type,
-                timestamp: event.timestamp,
-            });
-        } else if event.effect.effect_id == effect_id::REVIVED {
-            if let Some(enc) = cache.current_encounter_mut() {
-                enc.set_entity_alive(
-                    event.source_entity.log_id,
-                    &event.source_entity.entity_type,
-                );
-                enc.check_all_players_dead();
-            }
-            signals.push(GameSignal::EntityRevived {
-                entity_id: event.source_entity.log_id,
-                entity_type: event.source_entity.entity_type,
-                timestamp: event.timestamp,
-            });
-        }
+        // 1b. Entity lifecycle (death/revive)
+        signals.extend(self.handle_entity_lifecycle(&event, cache));
 
-        // 3. Handle area transitions
-        if event.effect.type_id == effect_type_id::AREAENTERED {
-            self.update_area_from_event(&event, cache);
-            signals.push(GameSignal::AreaEntered {
-                area_id: event.effect.effect_id,
-                area_name: resolve(event.effect.effect_name).to_string(),
-                difficulty_id: event.effect.difficulty_id,
-                difficulty_name: resolve(event.effect.difficulty_name).to_string(),
-                timestamp: event.timestamp,
-            });
-        }
+        // 1c. Area transitions
+        signals.extend(self.handle_area_transition(&event, cache));
 
-        // 4. Route event to encounter and collect additional signals
-        let routing_signals = self.route_event_to_encounter(event, cache);
-        signals.extend(routing_signals);
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 2: Signal Emission (pure transformation)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        signals.extend(self.emit_effect_signals(&event));
+        signals.extend(self.emit_action_signals(&event));
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PHASE 3: Combat State Machine
+        // ═══════════════════════════════════════════════════════════════════════
+
+        signals.extend(self.advance_combat_state(event, cache));
 
         signals
     }
@@ -151,37 +108,115 @@ impl EventProcessor {
         cache.current_area.entered_at = Some(event.timestamp);
     }
 
-    fn route_event_to_encounter(
-        &mut self,
-        event: CombatEvent,
-        cache: &mut SessionCache,
-    ) -> Vec<GameSignal> {
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Phase 1: Global Event Handlers
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Handle DisciplineChanged events for player initialization and role detection.
+    fn handle_discipline_event(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+        if event.effect.type_id != effect_type_id::DISCIPLINECHANGED {
+            return Vec::new();
+        }
+
         let mut signals = Vec::new();
 
-        let effect_id = event.effect.effect_id;
-        let effect_type_id = event.effect.type_id;
-        let timestamp = event.timestamp;
+        // Initialize or update primary player
+        if !cache.player_initialized || event.source_entity.log_id == cache.player.id {
+            self.update_primary_player(event, cache);
+            if cache.player_initialized {
+                signals.push(GameSignal::PlayerInitialized {
+                    entity_id: cache.player.id,
+                    timestamp: event.timestamp,
+                });
+            }
+        }
 
-        let current_state = cache
-            .current_encounter()
-            .map(|e| e.state.clone())
-            .unwrap_or_default();
+        // Track player in encounter
+        self.add_player_to_encounter(event, cache);
 
-        // Handle effect application/removal/charges (doesn't change combat state)
+        // Emit DisciplineChanged for ALL players (used for raid frame role detection)
+        if event.effect.discipline_id != 0 {
+            signals.push(GameSignal::DisciplineChanged {
+                entity_id: event.source_entity.log_id,
+                discipline_id: event.effect.discipline_id,
+                timestamp: event.timestamp,
+            });
+        }
+
+        signals
+    }
+
+    /// Handle Death and Revive events.
+    fn handle_entity_lifecycle(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+        let mut signals = Vec::new();
+
+        if event.effect.effect_id == effect_id::DEATH {
+            if let Some(enc) = cache.current_encounter_mut() {
+                enc.set_entity_death(
+                    event.target_entity.log_id,
+                    &event.target_entity.entity_type,
+                    event.timestamp,
+                );
+                enc.check_all_players_dead();
+            }
+            signals.push(GameSignal::EntityDeath {
+                entity_id: event.target_entity.log_id,
+                entity_type: event.target_entity.entity_type,
+                timestamp: event.timestamp,
+            });
+        } else if event.effect.effect_id == effect_id::REVIVED {
+            if let Some(enc) = cache.current_encounter_mut() {
+                enc.set_entity_alive(
+                    event.source_entity.log_id,
+                    &event.source_entity.entity_type,
+                );
+                enc.check_all_players_dead();
+            }
+            signals.push(GameSignal::EntityRevived {
+                entity_id: event.source_entity.log_id,
+                entity_type: event.source_entity.entity_type,
+                timestamp: event.timestamp,
+            });
+        }
+
+        signals
+    }
+
+    /// Handle AreaEntered events.
+    fn handle_area_transition(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+        if event.effect.type_id != effect_type_id::AREAENTERED {
+            return Vec::new();
+        }
+
+        self.update_area_from_event(event, cache);
+
+        vec![GameSignal::AreaEntered {
+            area_id: event.effect.effect_id,
+            area_name: resolve(event.effect.effect_name).to_string(),
+            difficulty_id: event.effect.difficulty_id,
+            difficulty_name: resolve(event.effect.difficulty_name).to_string(),
+            timestamp: event.timestamp,
+        }]
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Phase 2: Signal Emission (pure transformation, no state changes)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Emit signals for effect application/removal/charge changes.
+    /// Pure transformation - no encounter state modification.
+    fn emit_effect_signals(&self, event: &CombatEvent) -> Vec<GameSignal> {
         match event.effect.type_id {
             effect_type_id::APPLYEFFECT => {
                 if event.target_entity.entity_type == EntityType::Empty {
-                    return signals;
-                }
-                if let Some(enc) = cache.current_encounter_mut() {
-                    enc.apply_effect(&event);
+                    return Vec::new();
                 }
                 let charges = if event.details.charges > 0 {
                     Some(correct_apply_charges(event.effect.effect_id, event.details.charges as u8))
                 } else {
                     None
                 };
-                signals.push(GameSignal::EffectApplied {
+                vec![GameSignal::EffectApplied {
                     effect_id: event.effect.effect_id,
                     action_id: event.action.action_id,
                     source_id: event.source_entity.log_id,
@@ -190,38 +225,42 @@ impl EventProcessor {
                     target_entity_type: event.target_entity.entity_type,
                     timestamp: event.timestamp,
                     charges,
-                });
+                }]
             }
             effect_type_id::REMOVEEFFECT => {
                 if event.source_entity.entity_type == EntityType::Empty {
-                    return signals;
+                    return Vec::new();
                 }
-                if let Some(enc) = cache.current_encounter_mut() {
-                    enc.remove_effect(&event);
-                }
-                signals.push(GameSignal::EffectRemoved {
+                vec![GameSignal::EffectRemoved {
                     effect_id: event.effect.effect_id,
                     source_id: event.source_entity.log_id,
                     target_id: event.target_entity.log_id,
                     timestamp: event.timestamp,
-                });
+                }]
             }
             effect_type_id::MODIFYCHARGES => {
                 if event.target_entity.entity_type == EntityType::Empty {
-                    return signals;
+                    return Vec::new();
                 }
-                signals.push(GameSignal::EffectChargesChanged {
+                vec![GameSignal::EffectChargesChanged {
                     effect_id: event.effect.effect_id,
                     action_id: event.action.action_id,
                     target_id: event.target_entity.log_id,
                     timestamp: event.timestamp,
                     charges: event.details.charges as u8,
-                });
+                }]
             }
-            _ => {}
+            _ => Vec::new(),
         }
+    }
 
-        // Emit ability activation signal
+    /// Emit signals for ability activations and target changes.
+    /// Pure transformation - no encounter state modification.
+    fn emit_action_signals(&self, event: &CombatEvent) -> Vec<GameSignal> {
+        let mut signals = Vec::new();
+        let effect_id = event.effect.effect_id;
+
+        // Ability activation
         if effect_id == effect_id::ABILITYACTIVATE {
             signals.push(GameSignal::AbilityActivated {
                 ability_id: event.action.action_id,
@@ -233,7 +272,7 @@ impl EventProcessor {
             });
         }
 
-        // Emit target change signals
+        // Target changes
         if effect_id == effect_id::TARGETSET {
             signals.push(GameSignal::TargetChanged {
                 source_id: event.source_entity.log_id,
@@ -249,26 +288,65 @@ impl EventProcessor {
             });
         }
 
-        match current_state {
-            EncounterState::NotStarted => {
-                signals.extend(self.handle_not_started(event, cache, effect_id, timestamp));
-            }
-            EncounterState::InCombat => {
-                signals.extend(self.handle_in_combat(
-                    event,
-                    cache,
-                    effect_id,
-                    effect_type_id,
-                    timestamp,
-                ));
-            }
-            EncounterState::PostCombat { exit_time } => {
-                signals.extend(self.handle_post_combat(event, cache, effect_id, timestamp, exit_time));
-            }
-        }
-
         signals
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Phase 3: Combat State Machine
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Advance the combat state machine and emit CombatStarted/CombatEnded signals.
+    /// This is the critical encounter lifecycle handler.
+    fn advance_combat_state(
+        &mut self,
+        event: CombatEvent,
+        cache: &mut SessionCache,
+    ) -> Vec<GameSignal> {
+        // Track effect applications/removals in the encounter (for shield absorption calculation).
+        // Must run before accumulate_data() so shield effects are present when damage is processed.
+        self.track_encounter_effects(&event, cache);
+
+        let effect_id = event.effect.effect_id;
+        let effect_type_id = event.effect.type_id;
+        let timestamp = event.timestamp;
+
+        let current_state = cache
+            .current_encounter()
+            .map(|e| e.state.clone())
+            .unwrap_or_default();
+
+        match current_state {
+            EncounterState::NotStarted => {
+                self.handle_not_started(event, cache, effect_id, timestamp)
+            }
+            EncounterState::InCombat => {
+                self.handle_in_combat(event, cache, effect_id, effect_type_id, timestamp)
+            }
+            EncounterState::PostCombat { exit_time } => {
+                self.handle_post_combat(event, cache, effect_id, timestamp, exit_time)
+            }
+        }
+    }
+
+    /// Track effect applications/removals in the encounter for shield absorption calculation.
+    fn track_encounter_effects(&self, event: &CombatEvent, cache: &mut SessionCache) {
+        let Some(enc) = cache.current_encounter_mut() else { return };
+
+        match event.effect.type_id {
+            effect_type_id::APPLYEFFECT if event.target_entity.entity_type != EntityType::Empty => {
+                enc.apply_effect(event);
+            }
+            effect_type_id::REMOVEEFFECT if event.source_entity.entity_type != EntityType::Empty => {
+                enc.remove_effect(event);
+            }
+            _ => {}
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Combat State Handlers (handle_not_started, handle_in_combat, handle_post_combat)
+    // These contain the critical state machine logic - modify with extreme care!
+    // ═══════════════════════════════════════════════════════════════════════════
 
     fn handle_not_started(
         &mut self,
@@ -333,8 +411,8 @@ impl EventProcessor {
                     });
 
                     cache.push_new_encounter();
-                    // Re-process this event in the new encounter
-                    signals.extend(self.route_event_to_encounter(event, cache));
+                    // Re-process this event in the new encounter's state machine
+                    signals.extend(self.advance_combat_state(event, cache));
                     return signals;
                 }
 
@@ -362,7 +440,7 @@ impl EventProcessor {
             });
 
             cache.push_new_encounter();
-            signals.extend(self.route_event_to_encounter(event, cache));
+            signals.extend(self.advance_combat_state(event, cache));
         } else if effect_id == effect_id::EXITCOMBAT || all_players_dead {
             let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
             if let Some(enc) = cache.current_encounter_mut() {

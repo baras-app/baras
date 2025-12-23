@@ -141,10 +141,4 @@ impl SessionCache {
         entries
     }
 
-    // --- Debug/Display ---
-
-    /// Print session and encounter metadata (excludes event lists)
-    pub fn print_metadata(&self) {
-        print!("function deprecated")
-    }
 }
