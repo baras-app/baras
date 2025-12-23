@@ -16,6 +16,7 @@ pub struct LogFileMetaData {
     pub character_name: Option<String>,
     pub session_number: u32,
     pub is_empty: bool,
+    pub file_size: u64,
 }
 
 impl LogFileMetaData {
@@ -71,7 +72,8 @@ impl DirectoryIndex {
         let filename = path.file_name()?.to_str()?.to_string();
         let (date, created_at) = parse_log_filename(&filename)?;
         let metadata = fs::metadata(path).ok()?;
-        let is_empty = metadata.len() == 0;
+        let file_size = metadata.len();
+        let is_empty = file_size == 0;
 
         let character_name = if !is_empty {
             extract_character_name(path, created_at).ok().flatten()
@@ -90,6 +92,7 @@ impl DirectoryIndex {
             character_name,
             session_number,
             is_empty,
+            file_size,
         })
     }
 
@@ -174,6 +177,58 @@ impl DirectoryIndex {
 
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
+    }
+
+    /// Get total size of all indexed files in bytes
+    pub fn total_size(&self) -> u64 {
+        self.entries.values().map(|e| e.file_size).sum()
+    }
+
+    /// Clean up log files based on settings. Returns (empty_deleted, old_deleted).
+    pub fn cleanup(
+        &mut self,
+        delete_empty: bool,
+        retention_days: Option<u32>,
+    ) -> (u32, u32) {
+        let mut empty_deleted = 0u32;
+        let mut old_deleted = 0u32;
+
+        // Collect paths to delete (can't modify while iterating)
+        let mut to_delete: Vec<PathBuf> = Vec::new();
+
+        // Find empty files to delete
+        if delete_empty {
+            let empty = self.empty_files();
+            for entry in empty {
+                to_delete.push(entry.path.clone());
+            }
+        }
+
+        // Find old files to delete
+        if let Some(days) = retention_days {
+            let today = chrono::Local::now().date_naive();
+            let old = self.entries_older_than(days, today);
+            for entry in old {
+                if !to_delete.contains(&entry.path) {
+                    to_delete.push(entry.path.clone());
+                }
+            }
+        }
+
+        // Delete files and update index
+        for path in to_delete {
+            let was_empty = self.entries.get(&path).map(|e| e.is_empty).unwrap_or(false);
+            if fs::remove_file(&path).is_ok() {
+                self.entries.remove(&path);
+                if was_empty {
+                    empty_deleted += 1;
+                } else {
+                    old_deleted += 1;
+                }
+            }
+        }
+
+        (empty_deleted, old_deleted)
     }
 }
 

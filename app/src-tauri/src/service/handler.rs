@@ -93,8 +93,27 @@ impl ServiceHandle {
                 character_name: e.character_name.clone(),
                 date: e.date.to_string(),
                 is_empty: e.is_empty,
+                file_size: e.file_size,
             })
             .collect()
+    }
+
+    /// Get total size of all log files in bytes
+    pub async fn log_directory_size(&self) -> u64 {
+        let index = self.shared.directory_index.read().await;
+        index.total_size()
+    }
+
+    /// Get count of log files
+    pub async fn log_file_count(&self) -> usize {
+        let index = self.shared.directory_index.read().await;
+        index.len()
+    }
+
+    /// Clean up log files based on provided settings. Returns (empty_deleted, old_deleted).
+    pub async fn cleanup_logs(&self, delete_empty: bool, retention_days: Option<u32>) -> (u32, u32) {
+        let mut index = self.shared.directory_index.write().await;
+        index.cleanup(delete_empty, retention_days)
     }
 
     // ─────────────────────────────────────────────────────────────────────────

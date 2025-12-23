@@ -31,6 +31,25 @@ pub async fn restart_watcher(handle: State<'_, ServiceHandle>) -> Result<(), Str
     handle.restart_watcher().await
 }
 
+#[tauri::command]
+pub async fn get_log_directory_size(handle: State<'_, ServiceHandle>) -> Result<u64, String> {
+    Ok(handle.log_directory_size().await)
+}
+
+#[tauri::command]
+pub async fn get_log_file_count(handle: State<'_, ServiceHandle>) -> Result<usize, String> {
+    Ok(handle.log_file_count().await)
+}
+
+#[tauri::command]
+pub async fn cleanup_logs(
+    handle: State<'_, ServiceHandle>,
+    delete_empty: bool,
+    retention_days: Option<u32>,
+) -> Result<(u32, u32), String> {
+    Ok(handle.cleanup_logs(delete_empty, retention_days).await)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tailing Commands
 // ─────────────────────────────────────────────────────────────────────────────

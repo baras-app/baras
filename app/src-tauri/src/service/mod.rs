@@ -799,6 +799,7 @@ pub struct LogFileInfo {
     pub character_name: Option<String>,
     pub date: String,
     pub is_empty: bool,
+    pub file_size: u64,
 }
 
 /// Unified combat data for metric overlays

@@ -50,6 +50,14 @@ pub fn App() -> Element {
     let mut hotkey_rearrange = use_signal(String::new);
     let mut hotkey_save_status = use_signal(String::new);
 
+    // Log management state
+    let mut log_dir_size = use_signal(|| 0u64);
+    let mut log_file_count = use_signal(|| 0usize);
+    let mut auto_delete_empty = use_signal(|| false);
+    let mut auto_delete_old = use_signal(|| false);
+    let mut retention_days = use_signal(|| 21u32);
+    let mut cleanup_status = use_signal(String::new);
+
     // Profile state
     let mut profile_names = use_signal(Vec::<String>::new);
     let mut active_profile = use_signal(|| None::<String>);
@@ -67,7 +75,13 @@ pub fn App() -> Element {
             if let Some(v) = config.hotkeys.toggle_rearrange_mode { hotkey_rearrange.set(v); }
             profile_names.set(config.profiles.iter().map(|p| p.name.clone()).collect());
             active_profile.set(config.active_profile_name);
+            auto_delete_empty.set(config.auto_delete_empty_files);
+            auto_delete_old.set(config.auto_delete_old_files);
+            retention_days.set(config.log_retention_days);
         }
+
+        log_dir_size.set(api::get_log_directory_size().await);
+        log_file_count.set(api::get_log_file_count().await);
 
         is_watching.set(api::get_watching_status().await);
         if let Some(file) = api::get_active_file().await {
@@ -465,7 +479,13 @@ pub fn App() -> Element {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.log_directory = path;
                                                     api::update_config(&cfg).await;
+                                                    // Restart watcher and rebuild index for new directory
+                                                    api::restart_watcher().await;
+                                                    api::refresh_log_index().await;
                                                     is_watching.set(true);
+                                                    // Now fetch updated stats
+                                                    log_dir_size.set(api::get_log_directory_size().await);
+                                                    log_file_count.set(api::get_log_file_count().await);
                                                 }
                                             }
                                         }); },
@@ -477,6 +497,99 @@ pub fn App() -> Element {
                                     div { class: "directory-status",
                                         span { class: "status-dot status-on" }
                                         span { "Watching for new log files" }
+                                    }
+                                }
+                            }
+
+                            div { class: "settings-section",
+                                h4 { "Log Management" }
+                                {
+                                    let count = log_file_count();
+                                    let size_mb = log_dir_size() as f64 / 1_000_000.0;
+                                    rsx! {
+                                        p { class: "hint", "{count} files • {size_mb:.1} MB" }
+                                    }
+                                }
+
+                                div { class: "setting-row",
+                                    label { "Auto-delete empty files" }
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: auto_delete_empty(),
+                                        onchange: move |e| {
+                                            let checked = e.checked();
+                                            auto_delete_empty.set(checked);
+                                            spawn(async move {
+                                                if let Some(mut cfg) = api::get_config().await {
+                                                    cfg.auto_delete_empty_files = checked;
+                                                    api::update_config(&cfg).await;
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+
+                                div { class: "setting-row",
+                                    label { "Delete old files" }
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: auto_delete_old(),
+                                        onchange: move |e| {
+                                            let checked = e.checked();
+                                            auto_delete_old.set(checked);
+                                            spawn(async move {
+                                                if let Some(mut cfg) = api::get_config().await {
+                                                    cfg.auto_delete_old_files = checked;
+                                                    api::update_config(&cfg).await;
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+
+                                div { class: "setting-row",
+                                    label { "Retention days" }
+                                    input {
+                                        r#type: "number",
+                                        min: "1",
+                                        max: "365",
+                                        value: "{retention_days()}",
+                                        onchange: move |e| {
+                                            if let Ok(days) = e.value().parse::<u32>() {
+                                                let days = days.clamp(1, 365);
+                                                retention_days.set(days);
+                                                spawn(async move {
+                                                    if let Some(mut cfg) = api::get_config().await {
+                                                        cfg.log_retention_days = days;
+                                                        api::update_config(&cfg).await;
+                                                    }
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+
+                                div { class: "settings-footer",
+                                    button {
+                                        class: "btn btn-control",
+                                        onclick: move |_| {
+                                            let del_empty = auto_delete_empty();
+                                            let del_old = auto_delete_old();
+                                            let days = retention_days();
+                                            spawn(async move {
+                                                cleanup_status.set("Cleaning...".to_string());
+                                                let retention = if del_old { Some(days) } else { None };
+                                                let (empty, old) = api::cleanup_logs(del_empty, retention).await;
+                                                cleanup_status.set(format!("Deleted {} empty, {} old files", empty, old));
+                                                log_dir_size.set(api::get_log_directory_size().await);
+                                                log_file_count.set(api::get_log_file_count().await);
+                                            });
+                                        },
+                                        i { class: "fa-solid fa-broom" }
+                                        " Clean Now"
+                                    }
+                                    if !cleanup_status().is_empty() {
+                                        span { class: "save-status", "{cleanup_status}" }
                                     }
                                 }
                             }

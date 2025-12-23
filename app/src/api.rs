@@ -171,6 +171,45 @@ pub async fn restart_watcher() {
     let _ = invoke("restart_watcher", JsValue::NULL).await;
 }
 
+/// Refresh the log file index (rebuilds from disk)
+pub async fn refresh_log_index() {
+    let _ = invoke("refresh_log_index", JsValue::NULL).await;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Log Management Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Get total size of all log files in bytes
+pub async fn get_log_directory_size() -> u64 {
+    let result = invoke("get_log_directory_size", JsValue::NULL).await;
+    from_js(result).unwrap_or(0)
+}
+
+/// Get count of log files
+pub async fn get_log_file_count() -> usize {
+    let result = invoke("get_log_file_count", JsValue::NULL).await;
+    from_js(result).unwrap_or(0)
+}
+
+/// Get list of all log files with metadata
+pub async fn get_log_files() -> JsValue {
+    invoke("get_log_files", JsValue::NULL).await
+}
+
+/// Clean up log files. Returns (empty_deleted, old_deleted).
+pub async fn cleanup_logs(delete_empty: bool, retention_days: Option<u32>) -> (u32, u32) {
+    let args = js_sys::Object::new();
+    js_sys::Reflect::set(&args, &JsValue::from_str("deleteEmpty"), &JsValue::from_bool(delete_empty)).unwrap();
+    if let Some(days) = retention_days {
+        js_sys::Reflect::set(&args, &JsValue::from_str("retentionDays"), &JsValue::from_f64(days as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&args, &JsValue::from_str("retentionDays"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("cleanup_logs", args.into()).await;
+    from_js(result).unwrap_or((0, 0))
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Profile Commands
 // ─────────────────────────────────────────────────────────────────────────────
