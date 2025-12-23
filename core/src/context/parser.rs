@@ -2,13 +2,13 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use chrono::NaiveDateTime;
+use tokio::sync::RwLock;
 
-use crate::context::AppConfig;
+use crate::combat_log::{CombatEvent, Reader};
+use crate::context::{AppConfig, parse_log_filename};
+use crate::effects::{DefinitionSet, EffectTracker};
 use crate::events::{EventProcessor, GameSignal, SignalHandler};
-use crate::handlers::EffectTracker;
-use crate::session::SessionCache;
-use crate::tracking::DefinitionSet;
-use crate::CombatEvent;
+use crate::state::SessionCache;
 
 /// A live parsing session that processes combat events and tracks game state.
 ///
@@ -51,7 +51,11 @@ impl ParsingSession {
     /// Effect tracking is always enabled. Pass a `DefinitionSet` to configure
     /// which effects to track, or use `DefinitionSet::default()` for an empty set.
     pub fn new(path: PathBuf, definitions: DefinitionSet) -> Self {
-        let date_stamp = parse_log_timestamp(&path);
+        let date_stamp = path
+            .file_name()
+            .and_then(|f| f.to_str())
+            .and_then(|f| parse_log_filename(f))
+            .map(|(_, dt)| dt);
 
         Self {
             current_byte: None,
@@ -131,22 +135,10 @@ impl ParsingSession {
     /// Enable/disable live mode for effect tracking.
     /// Call with `true` after initial file load to start tracking effects.
     pub fn set_effect_live_mode(&self, enabled: bool) {
-        eprintln!("[PARSING-SESSION] Setting effect live mode: {}", enabled);
-        match self.effect_tracker.lock() {
-            Ok(mut tracker) => {
-                tracker.set_live_mode(enabled);
-                eprintln!("[PARSING-SESSION] Effect live mode set successfully");
-            }
-            Err(e) => {
-                eprintln!("[PARSING-SESSION] ERROR: Failed to lock effect_tracker: {}", e);
-            }
+        if let Ok(mut tracker) = self.effect_tracker.lock() {
+            tracker.set_live_mode(enabled);
         }
     }
-}
-
-fn parse_log_timestamp(path: &Path) -> Option<NaiveDateTime> {
-    let stem = path.file_stem()?.to_str()?.trim_start_matches("combat_");
-    NaiveDateTime::parse_from_str(stem, "%Y-%m-%d_%H_%M_%S_%f").ok()
 }
 
 /// Resolve a log file path, joining with log_directory if relative.
@@ -156,4 +148,49 @@ pub fn resolve_log_path(config: &AppConfig, path: &Path) -> PathBuf {
     } else {
         Path::new(&config.log_directory).join(path)
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// File Parsing Helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Result of parsing a log file
+pub struct ParseResult {
+    pub events_count: usize,
+    pub elapsed_ms: u128,
+    pub reader: Reader,
+    pub end_pos: u64,
+}
+
+/// Parse an entire log file, processing events through the session.
+pub async fn parse_file(state: Arc<RwLock<ParsingSession>>) -> Result<ParseResult, String> {
+    let timer = std::time::Instant::now();
+
+    let active_path = {
+        let s = state.read().await;
+        s.active_file.clone().ok_or("invalid file given")?
+    };
+
+    let reader = Reader::from(active_path, Arc::clone(&state));
+
+    let (events, end_pos) = reader
+        .read_log_file()
+        .await
+        .map_err(|e| format!("failed to parse log file: {}", e))?;
+
+    let events_count = events.len();
+    let elapsed_ms = timer.elapsed().as_millis();
+
+    {
+        let mut s = state.write().await;
+        s.current_byte = Some(end_pos);
+        s.process_events(events);
+    }
+
+    Ok(ParseResult {
+        events_count,
+        elapsed_ms,
+        reader,
+        end_pos,
+    })
 }

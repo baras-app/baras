@@ -294,7 +294,6 @@ pub fn App() -> Element {
     let is_visible = overlays_visible();
     let is_move_mode = move_mode();
     let is_rearrange_mode = rearrange_mode();
-    let status = status_msg();
     let current_directory = log_directory();
     let watching = is_watching();
     let current_file = active_file();
@@ -974,16 +973,7 @@ pub fn App() -> Element {
                     }
                 }
             }
-
-            // Status messages
-            if !status.is_empty() {
-                p {
-                    class: if status.starts_with("Error") { "error" } else { "info" },
-                    "{status}"
-                }
-            }
         }
     }
 }
 
-// SettingsPanel component is now in components/settings_panel.rs

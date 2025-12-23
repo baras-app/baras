@@ -1,10 +1,10 @@
-use crate::log::{CombatEvent, EntityType};
+use crate::combat_log::{CombatEvent, EntityType};
 use crate::context::resolve;
 use crate::events::signal::GameSignal;
-use crate::session::cache::SessionCache;
+use crate::state::cache::SessionCache;
 use crate::encounter::EncounterState;
 use crate::encounter::entity_info::PlayerInfo;
-use crate::swtor_data::{effect_id, effect_type_id, correct_apply_charges};
+use crate::game_data::{effect_id, effect_type_id, correct_apply_charges};
 use chrono::NaiveDateTime;
 
 // Combat state machine constants

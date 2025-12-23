@@ -9,9 +9,9 @@ use serde::Serialize;
 use super::metrics::PlayerMetrics;
 use super::PhaseType;
 use super::Encounter;
-use crate::session::info::AreaInfo;
-use crate::swtor_data::{lookup_boss, lookup_area_content_type, BossInfo, ContentType, is_pvp_area};
-use crate::log::EntityType;
+use crate::state::info::AreaInfo;
+use crate::game_data::{lookup_boss, lookup_area_content_type, BossInfo, ContentType, is_pvp_area};
+use crate::combat_log::EntityType;
 use crate::context::resolve;
 
 /// Summary of a completed encounter with computed metrics

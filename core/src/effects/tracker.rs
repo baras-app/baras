@@ -9,14 +9,58 @@ use std::time::Duration;
 
 use chrono::NaiveDateTime;
 
+use crate::combat_log::EntityType;
 use crate::context::IStr;
 use crate::events::{GameSignal, SignalHandler};
-use crate::log::EntityType;
-use crate::tracking::{ActiveEffect, DefinitionSet, EffectDefinition, EntityFilter};
+
+use super::{ActiveEffect, EffectDefinition, EntityFilter};
+
+/// Combined set of effect definitions
+#[derive(Debug, Clone, Default)]
+pub struct DefinitionSet {
+    /// All effect definitions, keyed by ID
+    pub effects: HashMap<String, EffectDefinition>,
+}
+
+impl DefinitionSet {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add definitions, returns IDs of any duplicates
+    pub fn add_definitions(&mut self, definitions: Vec<EffectDefinition>) -> Vec<String> {
+        let mut duplicates = Vec::new();
+        for def in definitions {
+            if self.effects.contains_key(&def.id) {
+                duplicates.push(def.id.clone());
+            }
+            self.effects.insert(def.id.clone(), def);
+        }
+        duplicates
+    }
+
+    /// Get an effect definition by ID
+    pub fn get(&self, id: &str) -> Option<&EffectDefinition> {
+        self.effects.get(id)
+    }
+
+    /// Find effect definitions that match a game effect ID
+    pub fn find_by_game_id(&self, effect_id: u64) -> Vec<&EffectDefinition> {
+        self.effects
+            .values()
+            .filter(|def| def.enabled && def.matches_effect(effect_id))
+            .collect()
+    }
+
+    /// Get all enabled effect definitions
+    pub fn enabled(&self) -> impl Iterator<Item = &EffectDefinition> {
+        self.effects.values().filter(|def| def.enabled)
+    }
+}
 
 /// Key for identifying unique effect instances
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct EffectKey {
+struct EffectInstanceKey {
     definition_id: String,
     target_entity_id: i64,
 }
@@ -46,7 +90,7 @@ pub struct EffectTracker {
     definitions: DefinitionSet,
 
     /// Currently active effects
-    active_effects: HashMap<EffectKey, ActiveEffect>,
+    active_effects: HashMap<EffectInstanceKey, ActiveEffect>,
 
     /// Local player entity ID (for source/target filtering)
     local_player_id: Option<i64>,
@@ -80,7 +124,6 @@ impl Default for EffectTracker {
 impl EffectTracker {
     /// Create a new effect tracker with the given definitions
     pub fn new(definitions: DefinitionSet) -> Self {
-        eprintln!("[EFFECT-TRACKER] Created with {} effect definitions", definitions.effects.len());
         Self {
             definitions,
             active_effects: HashMap::new(),
@@ -96,7 +139,6 @@ impl EffectTracker {
     /// Enable live mode (start tracking effects)
     /// Call this after initial file load is complete
     pub fn set_live_mode(&mut self, enabled: bool) {
-        eprintln!("[EFFECT-TRACKER] Live mode: {}", enabled);
         self.live_mode = enabled;
     }
 
@@ -160,49 +202,26 @@ impl EffectTracker {
         self.current_game_time = Some(timestamp);
 
         // Garbage collect dead effects before processing new ones.
-        // This ensures expired/removed effects don't block new applications.
-        // Any effect that's not active (expired or removed) is immediately removed.
         self.active_effects.retain(|_, effect| effect.is_active(timestamp));
 
         // Skip effect tracking when processing historical data (initial file load)
         if !self.live_mode {
-            // Log occasionally to confirm we're skipping historical effects
-            static SKIP_COUNT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-            let count = SKIP_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            if count == 0 || count.is_multiple_of(1000) {
-                eprintln!("[EFFECT-TRACKER] Skipping effect (historical mode), count={}", count);
-            }
             return;
         }
 
-        // Find matching definitions (before filtering)
-        let pre_filter: Vec<_> = self
+        // Find matching definitions
+        let matching_defs: Vec<_> = self
             .definitions
-            .find_effects_by_game_id(effect_id as u64)
-            .into_iter()
-            .collect();
-
-        // Log ALL effects when in live mode to confirm we're receiving them
-        let is_from_local = self.local_player_id == Some(source_id);
-        eprintln!("[EFFECT-TRACKER] Live effect: id={}, source={}, target={}, local={}, defs_matched={}",
-            effect_id, source_id, target_id, is_from_local, pre_filter.len());
-
-        // Apply source/target filters
-        let matching_defs: Vec<_> = pre_filter
+            .find_by_game_id(effect_id as u64)
             .into_iter()
             .filter(|def| self.matches_filters(def, source_id, target_id))
             .collect();
-
-        if !matching_defs.is_empty() {
-            eprintln!("[EFFECT-TRACKER] Effect {} matched {} definitions",
-                effect_id, matching_defs.len());
-        }
 
         let is_from_local = self.local_player_id == Some(source_id);
         let mut should_register = false;
 
         for def in matching_defs {
-            let key = EffectKey {
+            let key = EffectInstanceKey {
                 definition_id: def.id.clone(),
                 target_entity_id: target_id,
             };
@@ -211,7 +230,6 @@ impl EffectTracker {
 
             if let Some(existing) = self.active_effects.get_mut(&key) {
                 // Refresh existing effect if this action is in refresh_abilities
-                // (or if refresh_abilities is empty and can_be_refreshed is true)
                 let should_refresh = if def.refresh_abilities.is_empty() {
                     def.can_be_refreshed
                 } else {
@@ -223,8 +241,6 @@ impl EffectTracker {
                     if let Some(c) = charges {
                         existing.set_stacks(c);
                     }
-                    eprintln!("[EFFECT-TRACKER] Refreshed effect '{}' via action {}",
-                        existing.name, action_id);
                     should_register = true;
                 }
             } else {
@@ -247,30 +263,21 @@ impl EffectTracker {
                     effect.set_stacks(c);
                 }
 
-                eprintln!("[EFFECT-TRACKER] New effect: '{}' (id={}) on target {}",
-                    effect.name, effect.game_effect_id, target_id);
                 self.active_effects.insert(key, effect);
                 should_register = true;
             }
         }
 
         // Queue target for raid frame registration only when effect was created or refreshed.
-        // Only register players and companions - NPCs are filtered out.
         if should_register && is_from_local && matches!(target_entity_type, EntityType::Player | EntityType::Companion) {
             self.new_targets.push(NewTargetInfo {
                 entity_id: target_id,
                 name: target_name,
             });
         }
-
-        // Log active effect count periodically
-        if !self.active_effects.is_empty() {
-            eprintln!("[EFFECT-TRACKER] Total active effects: {}", self.active_effects.len());
-        }
     }
 
     /// Refresh any tracked effects on this target that have this action in their refresh_abilities.
-    /// Pushes to new_targets if an effect is actually refreshed.
     fn refresh_effects_by_action(
         &mut self,
         action_id: i64,
@@ -281,22 +288,20 @@ impl EffectTracker {
     ) {
         // Find all definitions that have this action in their refresh_abilities
         let refreshable_defs: Vec<_> = self.definitions
-            .enabled_effects()
+            .enabled()
             .filter(|def| def.can_refresh_with(action_id as u64))
             .map(|def| (def.id.clone(), def.duration_secs.map(Duration::from_secs_f32)))
             .collect();
 
         let mut did_refresh = false;
         for (def_id, duration) in refreshable_defs {
-            let key = EffectKey {
+            let key = EffectInstanceKey {
                 definition_id: def_id,
                 target_entity_id: target_id,
             };
 
             if let Some(effect) = self.active_effects.get_mut(&key) {
                 effect.refresh(timestamp, duration);
-                eprintln!("[EFFECT-TRACKER] Refreshed effect '{}' via action {} (action-based refresh)",
-                    effect.name, action_id);
                 did_refresh = true;
             }
         }
@@ -323,13 +328,13 @@ impl EffectTracker {
         // Find matching definitions and mark their effects as removed
         let matching_def_ids: Vec<_> = self
             .definitions
-            .find_effects_by_game_id(effect_id as u64)
+            .find_by_game_id(effect_id as u64)
             .into_iter()
             .map(|def| def.id.clone())
             .collect();
 
         for def_id in matching_def_ids {
-            let key = EffectKey {
+            let key = EffectInstanceKey {
                 definition_id: def_id,
                 target_entity_id: target_id,
             };
@@ -341,8 +346,6 @@ impl EffectTracker {
     }
 
     /// Handle charges changed signal
-    ///
-    /// Updates stacks AND refreshes duration if the action is in refresh_abilities.
     fn handle_charges_changed(
         &mut self,
         effect_id: i64,
@@ -356,12 +359,12 @@ impl EffectTracker {
         // Find matching definitions
         let matching_defs: Vec<_> = self
             .definitions
-            .find_effects_by_game_id(effect_id as u64)
+            .find_by_game_id(effect_id as u64)
             .into_iter()
             .collect();
 
         for def in matching_defs {
-            let key = EffectKey {
+            let key = EffectInstanceKey {
                 definition_id: def.id.clone(),
                 target_entity_id: target_id,
             };
@@ -379,8 +382,6 @@ impl EffectTracker {
                 if should_refresh {
                     let duration = def.duration_secs.map(Duration::from_secs_f32);
                     effect.refresh(timestamp, duration);
-                    eprintln!("[EFFECT-TRACKER] Refreshed effect '{}' on charges change via action {}",
-                        effect.name, action_id);
                 }
             }
         }
@@ -391,7 +392,7 @@ impl EffectTracker {
         // Get definition IDs that should persist past death
         let persist_ids: std::collections::HashSet<_> = self
             .definitions
-            .enabled_effects()
+            .enabled()
             .filter(|def| def.persist_past_death)
             .map(|def| def.id.as_str())
             .collect();
@@ -411,7 +412,7 @@ impl EffectTracker {
         // Mark effects that don't track outside combat as removed
         let outside_combat_ids: std::collections::HashSet<_> = self
             .definitions
-            .enabled_effects()
+            .enabled()
             .filter(|def| def.track_outside_combat)
             .map(|def| def.id.as_str())
             .collect();
@@ -425,16 +426,10 @@ impl EffectTracker {
 
     /// Handle area change (zone transition) - clear all active effects
     fn handle_area_change(&mut self) {
-        // Mark all active effects as removed on zone change
-        // The raid registry (player slots) is NOT affected - only effect state is cleared
         for (_key, effect) in self.active_effects.iter_mut() {
             effect.mark_removed();
         }
-
-        // Also clear tracked targets since they're likely invalid in new zone
         self.current_targets.clear();
-
-        // Reset combat state
         self.in_combat = false;
     }
 
@@ -510,8 +505,6 @@ impl SignalHandler for EffectTracker {
                 self.handle_combat_ended();
             }
             GameSignal::AreaEntered { .. } => {
-                // Clear active effects on zone change
-                // (registry is kept - players stay registered but lose effect state)
                 self.handle_area_change();
             }
             GameSignal::PlayerInitialized { entity_id, .. } => {
@@ -530,15 +523,12 @@ impl SignalHandler for EffectTracker {
                     // Resolve target: if target is self/empty, use tracked target from TargetSet
                     let (resolved_id, resolved_name, resolved_type) =
                         if *target_id == *source_id || *target_id == 0 {
-                            // Use tracked target info from TargetSet, or fall back to self
                             if let Some(tracked) = self.current_targets.get(source_id).cloned() {
                                 (tracked.entity_id, tracked.name, tracked.entity_type)
                             } else {
-                                // No tracked target, default to self
                                 (*source_id, *target_name, target_entity_type.clone())
                             }
                         } else {
-                            // Use target info from the event
                             (*target_id, *target_name, target_entity_type.clone())
                         };
 

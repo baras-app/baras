@@ -1,4 +1,4 @@
-use crate::log::EntityType;
+use crate::combat_log::EntityType;
 use crate::context::{IStr, empty_istr};
 use chrono::NaiveDateTime;
 

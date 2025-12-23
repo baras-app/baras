@@ -1,9 +1,9 @@
-//! Effect and Timer tracking system
+//! Effect tracking system
 //!
 //! This module provides:
-//! - **Definitions**: Templates that describe what effects/timers to track
-//! - **Active instances**: Runtime state of currently active effects/timers
-//! - **Config loading**: TOML-based configuration for builtin and custom definitions
+//! - **Definitions**: Templates that describe what effects to track (loaded from TOML)
+//! - **Active instances**: Runtime state of currently active effects
+//! - **Tracker**: Signal handler that manages effect lifecycle
 //!
 //! # Architecture
 //!
@@ -25,14 +25,10 @@
 //!                     Overlay Renderer
 //! ```
 
-mod active_effect;
-mod active_timer;
-mod config;
-mod definitions;
+mod active;
+mod definition;
+pub mod tracker;
 
-pub use active_effect::{ActiveEffect, EffectKey};
-pub use active_timer::{ActiveTimer, TimerKey};
-pub use config::{load_definitions, DefinitionSet, ConfigError};
-pub use definitions::{
-    DefinitionConfig, EffectCategory, EffectDefinition, EntityFilter, TimerDefinition, TimerTrigger,
-};
+pub use active::{ActiveEffect, EffectKey};
+pub use definition::{DefinitionConfig, EffectCategory, EffectDefinition, EntityFilter};
+pub use tracker::{DefinitionSet, EffectTracker, NewTargetInfo};

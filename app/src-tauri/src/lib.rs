@@ -1,6 +1,5 @@
 pub mod overlay;
 pub mod service;
-pub mod utils;
 pub mod bridge;
 use overlay::{
     OverlayState, SharedOverlayState, MetricType, OverlayType, OverlayCommand,
@@ -422,8 +421,6 @@ pub fn run() {
             service::load_profile,
             service::delete_profile,
             service::rename_profile,
-            // Utilities
-            utils::default_log_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

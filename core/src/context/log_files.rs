@@ -1,6 +1,6 @@
 use crate::LogParser;
 use crate::context::resolve;
-use crate::swtor_data::effect_type_id;
+use crate::game_data::effect_type_id;
 use chrono::{NaiveDate, NaiveDateTime};
 use hashbrown::HashMap;
 use std::fs;
@@ -44,7 +44,6 @@ impl DirectoryIndex {
         let mut index = Self::new();
 
         if !dir.exists() {
-            println!("provided directory path not found");
             return Ok(index);
         }
         //get all files starting with combat and sort
@@ -71,8 +70,8 @@ impl DirectoryIndex {
     pub fn create_entry(&mut self, path: &Path) -> Option<LogFileMetaData> {
         let filename = path.file_name()?.to_str()?.to_string();
         let (date, created_at) = parse_log_filename(&filename)?;
-        let metatdata = fs::metadata(path).ok()?;
-        let is_empty = metatdata.len() == 0;
+        let metadata = fs::metadata(path).ok()?;
+        let is_empty = metadata.len() == 0;
 
         let character_name = if !is_empty {
             extract_character_name(path, created_at).ok().flatten()

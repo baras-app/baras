@@ -1,8 +1,8 @@
 use crate::encounter::{Encounter, EncounterState, BossHealthEntry};
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{EncounterHistory, create_summary};
-use crate::session::info::AreaInfo;
-use crate::swtor_data::lookup_boss;
+use crate::state::info::AreaInfo;
+use crate::game_data::lookup_boss;
 use std::collections::VecDeque;
 
 const CACHE_DEFAULT_CAPACITY: usize = 3;

@@ -21,9 +21,8 @@ use baras_core::context::{resolve, AppConfig, AppConfigExt, DirectoryIndex, Pars
 use baras_core::encounter::EncounterState;
 use baras_core::encounter::summary::classify_encounter;
 use baras_core::directory_watcher::DirectoryWatcher;
-use baras_core::tracking::EffectCategory;
-use baras_core::swtor_data::{Discipline, Role};
-use baras_core::{load_definitions, ActiveEffect, DefinitionSet, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler};
+use baras_core::game_data::{Discipline, Role};
+use baras_core::{ActiveEffect, DefinitionConfig, DefinitionSet, EffectCategory, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler};
 use baras_overlay::{BossHealthData, PersonalStats, PlayerRole, RaidEffect, RaidFrame, RaidFrameData};
 
 
@@ -156,7 +155,6 @@ impl CombatService {
     /// Load effect definitions from builtin and user config directories
     fn load_effect_definitions(app_handle: &AppHandle) -> DefinitionSet {
         // Builtin definitions: bundled with the app in resources
-        // Use resolve() with Resource base directory for proper dev/bundle handling
         let builtin_dir = app_handle
             .path()
             .resolve("definitions/builtin", tauri::path::BaseDirectory::Resource)
@@ -168,30 +166,51 @@ impl CombatService {
         eprintln!("[DEFINITIONS] Looking for builtin definitions at: {:?}", builtin_dir);
         eprintln!("[DEFINITIONS] Looking for custom definitions at: {:?}", custom_dir);
 
-        // Check if builtin path exists
-        if let Some(ref path) = builtin_dir {
-            eprintln!("[DEFINITIONS] Builtin path exists: {}", path.exists());
-            if path.exists() {
-                if let Ok(entries) = std::fs::read_dir(path) {
-                    let files: Vec<_> = entries.filter_map(|e| e.ok()).collect();
-                    eprintln!("[DEFINITIONS] Builtin directory has {} entries", files.len());
-                }
-            }
+        // Load definitions from TOML files
+        let mut set = DefinitionSet::new();
+
+        // Load from builtin directory
+        if let Some(ref path) = builtin_dir && path.exists() {
+            Self::load_definitions_from_dir(&mut set, path, "builtin");
         }
 
-        match load_definitions(builtin_dir.as_deref(), custom_dir.as_deref()) {
-            Ok(defs) => {
-                let effect_count = defs.effects.len();
-                let timer_count = defs.timers.len();
-                eprintln!(
-                    "[DEFINITIONS] Loaded {} effect definitions, {} timer definitions",
-                    effect_count, timer_count
-                );
-                defs
-            }
+        // Load from custom directory (overrides builtins)
+        if let Some(ref path) = custom_dir && path.exists() {
+            Self::load_definitions_from_dir(&mut set, path, "custom");
+        }
+
+        eprintln!("[DEFINITIONS] Loaded {} effect definitions", set.effects.len());
+        set
+    }
+
+    /// Load effect definitions from a directory of TOML files
+    fn load_definitions_from_dir(set: &mut DefinitionSet, dir: &std::path::Path, source: &str) {
+        let entries = match std::fs::read_dir(dir) {
+            Ok(e) => e,
             Err(e) => {
-                eprintln!("[DEFINITIONS] Failed to load: {}", e);
-                DefinitionSet::default()
+                eprintln!("[DEFINITIONS] Failed to read {}: {}", source, e);
+                return;
+            }
+        };
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().is_some_and(|ext| ext == "toml") {
+                match std::fs::read_to_string(&path) {
+                    Ok(contents) => {
+                        // Parse TOML and extract effect definitions
+                        if let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
+                            let duplicates = set.add_definitions(config.effects);
+                            if !duplicates.is_empty() {
+                                eprintln!("[{}] Duplicate IDs in {:?}: {:?}",
+                                    source, path.file_name(), duplicates);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("[{}] Failed to read {:?}: {}", source, path.file_name(), e);
+                    }
+                }
             }
         }
     }

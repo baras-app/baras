@@ -1,3 +1,8 @@
+//! Timer management handler
+//!
+//! Manages ability cooldown and buff timers.
+//! Reacts to signals to start, pause, and reset timers.
+
 use crate::events::{GameSignal, SignalHandler};
 
 /// Manages ability cooldown and buff timers.

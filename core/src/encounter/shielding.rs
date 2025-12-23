@@ -1,4 +1,4 @@
-use crate::log::CombatEvent;
+use crate::combat_log::CombatEvent;
 use chrono::NaiveDateTime;
 use super::EffectInstance;
 use super::Encounter;
