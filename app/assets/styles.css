@@ -1,3 +1,122 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   1. CSS VARIABLES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Typography ─────────────────────────────────────────────────────────────── */
+  --font-base: clamp(10px, 1.8vh, 16px);
+  --font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  --font-mono: 'Consolas', 'Monaco', monospace;
+
+  /* ─── Colors - Brand ─────────────────────────────────────────────────────────── */
+  --swtor-blue: #4a9eff;
+  --swtor-blue-bright: #6ab0ff;
+  --swtor-blue-dim: #2d5a8a;
+  --swtor-blue-glow: var(--blue-alpha-20);
+  --swtor-gold: #c9a227;
+  --swtor-gold-dim: #8a7020;
+  --swtor-gold-glow: rgba(201, 162, 39, 0.3);
+  --swtor-red: #ff4a4a;
+
+  /* ─── Colors - Semantic ──────────────────────────────────────────────────────── */
+  --color-success: #5fd98e;
+  --color-success-bg: rgba(95, 217, 142, 0.15);
+  --color-success-bg-hover: rgba(95, 217, 142, 0.25);
+  --color-success-border: rgba(95, 217, 142, 0.4);
+  --color-error: #e87575;
+  --color-error-bg: rgba(232, 117, 117, 0.15);
+  --color-error-bg-hover: rgba(232, 117, 117, 0.25);
+  --color-error-border: rgba(232, 117, 117, 0.4);
+  --color-warning: #d4a850;
+  --color-warning-bg: rgba(212, 168, 80, 0.2);
+  --color-warning-bg-hover: rgba(212, 168, 80, 0.3);
+  --color-warning-border: rgba(212, 168, 80, 0.4);
+
+  /* ─── Colors - Text ──────────────────────────────────────────────────────────── */
+  --text-primary: #f6f6f6;
+  --text-secondary: #ccc;
+  --text-tertiary: #aaa;
+  --text-muted: #888;
+  --text-disabled: #666;
+
+  /* ─── Colors - Backgrounds ───────────────────────────────────────────────────── */
+  --bg-body: #2f2f2f;
+  --bg-dark: #1a1a1f;
+  --bg-mid: #252530;
+  --bg-light: #2f2f38;
+  --bg-input: #2a2a2f;
+  --bg-elevated: rgba(40, 40, 45, 0.9);
+
+  /* ─── Colors - Borders ───────────────────────────────────────────────────────── */
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-medium: rgba(255, 255, 255, 0.15);
+  --border-accent: rgba(74, 158, 255, 0.12);
+  --border-accent-medium: rgba(74, 158, 255, 0.2);
+  --border-accent-strong: rgba(74, 158, 255, 0.3);
+  --border-accent-heavy: rgba(74, 158, 255, 0.4);
+
+  /* ─── Blue Alpha Variants (for backgrounds, hovers, glows) ────────────────────── */
+  --blue-alpha-5: rgba(74, 158, 255, 0.05);
+  --blue-alpha-8: rgba(74, 158, 255, 0.08);
+  --blue-alpha-10: rgba(74, 158, 255, 0.1);
+  --blue-alpha-15: rgba(74, 158, 255, 0.15);
+  --blue-alpha-20: rgba(74, 158, 255, 0.2);
+  --blue-alpha-25: rgba(74, 158, 255, 0.25);
+
+  /* ─── Spacing ────────────────────────────────────────────────────────────────── */
+  --space-xs: 0.25em;
+  --space-sm: 0.5em;
+  --space-md: 0.75em;
+  --space-lg: 1em;
+  --space-xl: 1.5em;
+
+  /* ─── Border Radius ──────────────────────────────────────────────────────────── */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-round: 50%;
+
+  /* ─── Shadows ────────────────────────────────────────────────────────────────── */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-glow-blue: 0 0 12px var(--blue-alpha-20);
+
+  /* ─── Gradients ──────────────────────────────────────────────────────────────── */
+  --gradient-panel: linear-gradient(180deg, var(--bg-mid) 0%, var(--bg-dark) 100%);
+  --gradient-btn-active: linear-gradient(180deg, var(--blue-alpha-15) 0%, var(--blue-alpha-5) 100%);
+
+  /* ─── Transitions ────────────────────────────────────────────────────────────── */
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.15s ease;
+  --transition-slow: 0.25s ease;
+
+  /* ─── Legacy (for compatibility) ─────────────────────────────────────────────── */
+  --swtor-bg-dark: var(--bg-dark);
+  --swtor-bg-mid: var(--bg-mid);
+  --swtor-bg-light: var(--bg-light);
+  --swtor-border: var(--border-accent);
+
+  /* ─── Root Typography ────────────────────────────────────────────────────────── */
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background-color: var(--bg-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   2. RESET & BASE STYLES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
 *,
 *::before,
 *::after {
@@ -12,51 +131,13 @@ body {
   overflow: hidden;
 }
 
-/* Responsive font sizing - scales with viewport height */
-:root {
-  --base-font: clamp(10px, 1.8vh, 16px);
-
-  /* SWTOR-inspired color palette */
-  --swtor-gold: #c9a227;
-  --swtor-gold-dim: #8a7020;
-  --swtor-gold-glow: rgba(201, 162, 39, 0.3);
-  --swtor-blue: #4a9eff;
-  --swtor-blue-dim: #2d5a8a;
-  --swtor-blue-glow: rgba(74, 158, 255, 0.2);
-  --swtor-red: #ff4a4a;
-  --swtor-bg-dark: #1a1a1f;
-  --swtor-bg-mid: #252530;
-  --swtor-bg-light: #2f2f38;
-  --swtor-border: rgba(74, 158, 255, 0.12);
-}
-
-.logo.dioxus:hover {
-  filter: drop-shadow(0 0 2em #2076a8);
-}
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  /* Force dark theme regardless of system preference */
-  color: #f6f6f6;
-  background-color: #2f2f2f;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
 /* Global select styling for dark theme */
 select {
   padding: 0.4em 2em 0.4em 0.6em;
-  background-color: #2a2a2f;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  color: #eee;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.9em;
   cursor: pointer;
   appearance: none;
@@ -78,8 +159,8 @@ select:focus {
 }
 
 select option {
-  background: #2a2a2f;
-  color: #eee;
+  background: var(--bg-input);
+  color: var(--text-primary);
   padding: 0.3em;
 }
 
@@ -130,7 +211,7 @@ select optgroup {
   line-height: 1.1;
   letter-spacing: 0.05em;
   color: var(--swtor-blue);
-  text-shadow: 0 0 20px var(--swtor-blue-glow), 0 0 40px rgba(74, 158, 255, 0.15);
+  text-shadow: 0 0 20px var(--swtor-blue-glow), 0 0 40px var(--blue-alpha-15);
 }
 
 .app-header .header-logo {
@@ -141,7 +222,7 @@ select optgroup {
 
 .app-header .header-version {
   font-size: clamp(0.6rem, 1.2vh, 0.8rem);
-  color: #666;
+  color: var(--text-disabled);
   align-self: flex-end;
   margin-bottom: 0.3em;
 }
@@ -156,7 +237,7 @@ select optgroup {
 .btn-header-settings {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(80, 80, 90, 0.4);
-  color: #888;
+  color: var(--text-muted);
   padding: 0.6em;
   font-size: 1.2em;
   border-radius: 50%;
@@ -170,7 +251,7 @@ select optgroup {
 
 .btn-header-settings:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #ccc;
+  color: var(--text-secondary);
   border-color: rgba(255, 255, 255, 0.2);
 }
 
@@ -187,16 +268,16 @@ select optgroup {
   margin-right: 1em;
   padding: 0.3em 0.5em;
   background: rgba(0, 0, 0, 0.3);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(80, 80, 90, 0.3);
 }
 
 .header-profile-dropdown {
   padding: 0.3em 1.8em 0.3em 0.5em;
-  background: rgba(40, 40, 45, 0.9);
+  background: var(--bg-elevated);
   border: 1px solid rgba(80, 80, 90, 0.4);
-  border-radius: 4px;
-  color: #aaa;
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
   font-size: 0.8em;
   cursor: pointer;
   min-width: 80px;
@@ -217,33 +298,33 @@ select optgroup {
 .btn-header-overlay {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #666;
+  color: var(--text-disabled);
   padding: 0.4em;
   font-size: 0.9em;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   width: 30px;
   height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-normal);
 }
 
 .btn-header-overlay:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.12);
-  color: #aaa;
+  color: var(--text-tertiary);
   border-color: rgba(255, 255, 255, 0.2);
 }
 
 .btn-header-overlay.active {
-  background: rgba(74, 158, 255, 0.2);
+  background: var(--blue-alpha-20);
   color: #4a9eff;
-  border-color: rgba(74, 158, 255, 0.4);
+  border-color: var(--border-accent-heavy);
 }
 
 .btn-header-overlay.active:hover:not(:disabled) {
-  background: rgba(74, 158, 255, 0.3);
+  background: var(--border-accent-strong);
 }
 
 .btn-header-overlay:disabled {
@@ -254,7 +335,7 @@ select optgroup {
 .btn-header-files {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(80, 80, 90, 0.4);
-  color: #888;
+  color: var(--text-muted);
   padding: 0.6em;
   font-size: 1.2em;
   border-radius: 50%;
@@ -268,34 +349,19 @@ select optgroup {
 
 .btn-header-files:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #ccc;
+  color: var(--text-secondary);
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--swtor-blue);
   text-decoration: inherit;
 }
 
 a:hover {
-  color: #535bf2;
+  color: var(--swtor-blue-bright, #6ab0ff);
 }
 
 h1 {
@@ -304,16 +370,17 @@ h1 {
 
 input,
 button {
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   border: 1px solid transparent;
   padding: 0.6vh 1.2vw;
   font-size: clamp(0.7rem, 1.5vh, 1rem);
   font-weight: 500;
   font-family: inherit;
-  color: #ffffff;
-  background-color: #0f0f0f98;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+  color: var(--text-primary);
+  background-color: rgba(15, 15, 15, 0.6);
+  transition: border-color var(--transition-normal);
+  box-shadow: var(--shadow-sm);
+  outline: none;
 }
 
 button {
@@ -321,57 +388,47 @@ button {
 }
 
 button:hover {
-  border-color: #396cd8;
+  border-color: var(--swtor-blue-dim);
 }
+
 button:active {
-  border-color: #396cd8;
-  background-color: #0f0f0f69;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-/* Dark theme is now the default - no media query needed */
-a:hover {
-  color: #24c8db;
+  border-color: var(--swtor-blue-dim);
+  background-color: rgba(15, 15, 15, 0.4);
 }
 
 /* Baras-specific styles */
 .subtitle {
-  color: #888;
+  color: var(--text-muted);
   margin-top: 0;
   margin-bottom: 0;
 }
 
-.controls {
-  display: flex;
-  gap: 1em;
-  justify-content: center;
-  margin-bottom: 2em;
-}
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   3. BASE COMPONENTS - Buttons
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Base button */
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
   min-width: unset;
-  padding: 0.8vh 1.5vw;
-  font-size: clamp(0.7rem, 1.5vh, 1rem);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(60, 60, 65, 0.6);
-  color: #aaa;
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.9em;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-light);
+  color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
 }
 
 .btn:hover:not(:disabled) {
-  background: rgba(70, 70, 75, 0.7);
+  background: var(--bg-elevated);
   border-color: rgba(255, 255, 255, 0.25);
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .btn:disabled {
@@ -379,90 +436,202 @@ a:hover {
   cursor: not-allowed;
 }
 
-.btn-active {
-  background-color: rgba(70, 120, 70, 0.5);
-  border-color: rgba(90, 140, 90, 0.6);
-  color: #ddd;
+/* Button Variants */
+.btn-primary {
+  background: var(--blue-alpha-15);
+  border-color: var(--border-accent-strong);
+  color: var(--swtor-blue);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--blue-alpha-25);
+  box-shadow: var(--shadow-glow-blue);
+}
+
+.btn-success {
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success);
+}
+
+.btn-success:hover:not(:disabled) {
+  background: var(--color-success-bg-hover);
+  box-shadow: 0 0 10px rgba(95, 217, 142, 0.2);
+}
+
+.btn-danger {
+  background: var(--color-error-bg);
+  border-color: var(--color-error-border);
+  color: var(--color-error);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-error-bg-hover);
 }
 
 .btn-warning {
-  background-color: #8e6e2a;
-  border-color: #ae8e3a;
-  color: white;
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+  color: var(--color-warning);
 }
 
-.status {
-  margin-top: 2em;
-  padding: 1em;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  width: 100%;
-  max-width: min(400px, 100%);
+.btn-warning:hover:not(:disabled) {
+  background: var(--color-warning-bg-hover);
 }
 
-.status p {
-  margin: 0.5em 0;
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
 }
 
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+}
+
+/* Button Sizes */
+.btn-sm {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.8em;
+}
+
+.btn-lg {
+  padding: var(--space-md) var(--space-lg);
+  font-size: 1em;
+}
+
+/* Button States */
+.btn-active,
+.btn.active {
+  background: var(--gradient-btn-active);
+  border-color: var(--swtor-blue);
+  color: var(--swtor-blue);
+  box-shadow: var(--shadow-glow-blue);
+}
+
+/* Icon-only button */
+.btn-icon {
+  padding: var(--space-sm);
+  border-radius: var(--radius-round);
+  width: 2.5em;
+  height: 2.5em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   4. BASE COMPONENTS - Panels
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Base panel - dark gradient with subtle blue border */
+.panel {
+  background: var(--gradient-panel);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-accent);
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 1.1em;
+  color: var(--swtor-blue);
+}
+
+.panel-subtitle {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   5. BASE COMPONENTS - Forms & Inputs
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Base text input */
+.input {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.9em;
+  transition: border-color var(--transition-normal);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--swtor-blue-dim);
+}
+
+.input::placeholder {
+  color: var(--text-disabled);
+}
+
+.input-sm {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.85em;
+}
+
+/* Form layout helpers */
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.form-row label {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.form-row-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.form-field label {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   6. BASE COMPONENTS - Tables
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Placeholder for table base styles */
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   7. LAYOUT - Overlays Tab
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Status indicator classes (used in session panel) */
 .status-on {
-  color: #4a4;
+  color: var(--color-success);
   font-weight: bold;
 }
 
 .status-off {
-  color: #888;
+  color: var(--text-muted);
 }
 
 .status-warning {
-  color: #ca4;
+  color: var(--color-warning);
   font-weight: bold;
-}
-
-.error {
-  color: #c44;
-  background: rgba(200, 50, 50, 0.1);
-  padding: 0.5em 1em;
-  border-radius: 4px;
-  width: 100%;
-  max-width: min(400px, 100%);
-  margin: 1em 0;
-}
-
-.info {
-  color: #4a4;
-  background: rgba(50, 150, 50, 0.1);
-  padding: 0.5em 1em;
-  border-radius: 4px;
-  width: 100%;
-  max-width: min(400px, 100%);
-  margin: 1em 0;
-}
-
-.log-section {
-  margin: 0;
-  width: 100%;
-  max-width: 100%;
-  flex: 0 1 auto;
-}
-
-.log-section h3 {
-  margin: 0 0 0.5vh 0;
-  font-size: clamp(0.9rem, 2vh, 1.2rem);
-}
-
-.log-controls {
-  display: flex;
-  gap: 0.5vw;
-}
-
-.log-input {
-  flex: 1;
-  padding: 0.6vh 1vw;
-  font-size: clamp(0.65rem, 1.4vh, 0.9rem);
-}
-
-.log-input:disabled {
-  opacity: 0.6;
 }
 
 /* Overlay controls */
@@ -475,10 +644,10 @@ a:hover {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
-  border-radius: 8px;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
   padding: 1vh 1.5vw;
-  border: 1px solid rgba(74, 158, 255, 0.12);
+  border: 1px solid var(--border-accent);
 }
 
 .overlay-controls h3 {
@@ -495,13 +664,13 @@ a:hover {
   margin-bottom: 0.5vh;
   padding: 0.75vh 0.75vw;
   background: rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
+  border-radius: var(--radius-xl);
   flex-shrink: 0;
 }
 
 .subsection-title {
   font-size: clamp(0.5rem, 1.2vh, 0.75rem);
-  color: #666;
+  color: var(--text-disabled);
   text-transform: uppercase;
   margin: 0.3vh 0 0.2vh 0;
   letter-spacing: 0.5px;
@@ -535,7 +704,7 @@ a:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   border-width: 1px;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(30, 30, 35, 0.95) 100%);
   border: 1px solid rgba(80, 80, 90, 0.4);
   color: #777;
@@ -549,14 +718,14 @@ a:hover {
   background: linear-gradient(180deg, rgba(55, 60, 75, 0.95) 0%, rgba(35, 40, 55, 0.95) 100%);
   border-color: var(--swtor-blue-dim);
   color: var(--swtor-blue);
-  box-shadow: 0 0 10px rgba(74, 158, 255, 0.15);
+  box-shadow: 0 0 10px var(--blue-alpha-15);
 }
 
 .btn-overlay.btn-active {
-  background: linear-gradient(180deg, rgba(74, 158, 255, 0.2) 0%, rgba(45, 90, 140, 0.15) 100%);
+  background: linear-gradient(180deg, var(--blue-alpha-20) 0%, rgba(45, 90, 140, 0.15) 100%);
   border-color: var(--swtor-blue);
   color: var(--swtor-blue);
-  box-shadow: 0 0 12px rgba(74, 158, 255, 0.2), inset 0 0 15px rgba(74, 158, 255, 0.08);
+  box-shadow: 0 0 12px var(--blue-alpha-20), inset 0 0 15px var(--blue-alpha-8);
 }
 
 .btn-control {
@@ -565,7 +734,7 @@ a:hover {
   margin: 0;
   font-size: clamp(0.7rem, 1.5vh, 0.95rem);
   border-width: 1px;
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(30, 30, 35, 0.95) 100%);
   border: 1px solid rgba(80, 80, 90, 0.4);
   transition: all 0.2s ease;
@@ -584,8 +753,8 @@ a:hover {
 
 .btn-locked:hover:not(:disabled) {
   background: linear-gradient(180deg, rgba(60, 60, 65, 0.95) 0%, rgba(45, 45, 50, 0.95) 100%);
-  border-color: #888;
-  color: #ccc;
+  border-color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /* Lock button - unlocked state (warning orange) */
@@ -607,7 +776,7 @@ a:hover {
 .btn-visible {
   min-width: unset;
   margin: 0;
-  background: linear-gradient(180deg, rgba(74, 158, 255, 0.2) 0%, rgba(45, 90, 140, 0.15) 100%);
+  background: linear-gradient(180deg, var(--blue-alpha-20) 0%, rgba(45, 90, 140, 0.15) 100%);
   border-color: var(--swtor-blue);
   color: var(--swtor-blue);
   box-shadow: 0 0 12px var(--swtor-blue-glow);
@@ -624,14 +793,14 @@ a:hover {
   margin: 0;
   background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(35, 35, 40, 0.95) 100%);
   border-color: rgba(80, 80, 90, 0.4);
-  color: #666;
+  color: var(--text-disabled);
 }
 
 .btn-hidden:hover {
   background: linear-gradient(180deg, rgba(55, 60, 70, 0.95) 0%, rgba(40, 45, 55, 0.95) 100%);
   border-color: var(--swtor-blue-dim);
   color: var(--swtor-blue);
-  box-shadow: 0 0 8px rgba(74, 158, 255, 0.12);
+  box-shadow: 0 0 8px var(--border-accent);
 }
 
 .btn-visibility-placeholder {
@@ -639,7 +808,7 @@ a:hover {
   margin: 0;
   background-color: #3a3a3a;
   border-color: #4a4a4a;
-  color: #666;
+  color: var(--text-disabled);
   cursor: default;
 }
 
@@ -648,12 +817,12 @@ a:hover {
   margin: 0 auto;
   width: 100%;
   max-width: 100%;
-  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
-  border-radius: 8px;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
   padding: 1vh 1.5vw;
   box-sizing: border-box;
   flex: 0 1 auto;
-  border: 1px solid rgba(74, 158, 255, 0.12);
+  border: 1px solid var(--border-accent);
 }
 
 .session-panel h3 {
@@ -675,13 +844,13 @@ a:hover {
   text-align: center;
   padding: 0.5em 0.75em;
   background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(74, 158, 255, 0.08);
-  border-radius: 6px;
+  border: 1px solid var(--blue-alpha-8);
+  border-radius: var(--radius-lg);
   transition: border-color 0.2s;
 }
 
 .session-item:hover {
-  border-color: rgba(74, 158, 255, 0.2);
+  border-color: var(--blue-alpha-20);
 }
 
 .session-item .label {
@@ -701,14 +870,14 @@ a:hover {
   margin-top: 0.5vh;
   padding: 0.4vh 0.5vw;
   background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   font-size: clamp(0.55rem, 1.2vh, 0.85rem);
   text-align: left;
   word-break: break-all;
 }
 
 .active-file .label {
-  color: #888;
+  color: var(--text-muted);
 }
 
 .active-file .filename {
@@ -724,7 +893,7 @@ a:hover {
   justify-content: center;
   gap: 0.5vw;
   font-size: clamp(0.6rem, 1.3vh, 0.85rem);
-  color: #888;
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -739,7 +908,7 @@ a:hover {
 }
 
 .status-dot.status-off {
-  background-color: #888;
+  background-color: var(--text-muted);
 }
 
 /* Settings/Customize button */
@@ -753,8 +922,8 @@ a:hover {
 
 .btn-settings:hover {
   background: linear-gradient(180deg, rgba(60, 60, 65, 0.95) 0%, rgba(45, 45, 50, 0.95) 100%);
-  border-color: #888;
-  color: #ccc;
+  border-color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /* Rearrange Frames button - green/teal accent */
@@ -763,7 +932,7 @@ a:hover {
   margin: 0;
   background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(35, 35, 40, 0.95) 100%);
   border-color: rgba(100, 100, 110, 0.4);
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 
 .btn-rearrange:hover:not(:disabled) {
@@ -791,7 +960,7 @@ a:hover {
   margin: 0;
   background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(35, 35, 40, 0.95) 100%);
   border-color: rgba(100, 100, 110, 0.4);
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 
 .btn-clear-frames:hover:not(:disabled) {
@@ -845,13 +1014,13 @@ a:hover {
   width: 90%;
   max-width: 750px;
   max-height: 85vh;
-  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
-  border-radius: 8px;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
   padding: 1em;
   text-align: left;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(74, 158, 255, 0.1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6), 0 0 20px var(--blue-alpha-10);
   overflow-y: auto;
-  border: 1px solid rgba(74, 158, 255, 0.2);
+  border: 1px solid var(--blue-alpha-20);
 }
 
 /* Floating version of settings panel */
@@ -859,7 +1028,7 @@ a:hover {
   position: fixed;
   width: 650px;
   pointer-events: auto; /* Re-enable clicks on the panel itself */
-  border: 1px solid rgba(74, 158, 255, 0.25);
+  border: 1px solid var(--blue-alpha-25);
 }
 
 /* Draggable header */
@@ -878,7 +1047,7 @@ a:hover {
   align-items: center;
   margin-bottom: 1em;
   padding-bottom: 0.75em;
-  border-bottom: 1px solid rgba(74, 158, 255, 0.15);
+  border-bottom: 1px solid var(--blue-alpha-15);
 }
 
 .settings-header h3 {
@@ -930,7 +1099,7 @@ a:hover {
 .settings-panel .tab-btn {
   background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(35, 35, 40, 0.95) 100%);
   border: 1px solid rgba(80, 80, 90, 0.4);
-  color: #888;
+  color: var(--text-muted);
 }
 
 .settings-panel .tab-btn:hover {
@@ -940,10 +1109,10 @@ a:hover {
 }
 
 .settings-panel .tab-btn.active {
-  background: linear-gradient(180deg, rgba(74, 158, 255, 0.2) 0%, rgba(45, 90, 140, 0.15) 100%);
+  background: linear-gradient(180deg, var(--blue-alpha-20) 0%, rgba(45, 90, 140, 0.15) 100%);
   border-color: var(--swtor-blue);
   color: var(--swtor-blue);
-  box-shadow: 0 0 10px rgba(74, 158, 255, 0.15);
+  box-shadow: 0 0 10px var(--blue-alpha-15);
 }
 
 .inline-opacity {
@@ -951,7 +1120,7 @@ a:hover {
   align-items: center;
   gap: 0.5em;
   font-size: 0.7em;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .inline-opacity label {
@@ -983,8 +1152,8 @@ a:hover {
   margin: 1em 0;
   padding: 0.75em;
   background: rgba(0, 0, 0, 0.15);
-  border-radius: 6px;
-  border: 1px solid rgba(74, 158, 255, 0.1);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--blue-alpha-10);
 }
 
 .settings-section h4 {
@@ -1003,7 +1172,7 @@ a:hover {
   user-select: none;
   font-size: 0.95em;
   font-weight: 500;
-  color: #aaa;
+  color: var(--text-tertiary);
   padding: 0.25em 0;
   list-style: none;
   display: flex;
@@ -1026,7 +1195,7 @@ details[open] .collapsible-summary::before {
 }
 
 .collapsible-summary:hover {
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .collapsible-content {
@@ -1070,7 +1239,7 @@ details[open] .collapsible-summary::before {
   height: 30px;
   padding: 2px;
   border: 1px solid #555;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   background: transparent;
 }
@@ -1100,25 +1269,25 @@ details[open] .collapsible-summary::before {
 .btn-reset {
   background: rgba(100, 100, 100, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #aaa;
+  color: var(--text-tertiary);
   padding: 0.4em 0.8em;
   font-size: 0.85em;
 }
 
 .btn-reset:hover {
   background: rgba(100, 100, 100, 0.5);
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 /* Personal stats section */
 .hint {
   font-size: 0.85em;
-  color: #888;
+  color: var(--text-muted);
   margin: 0 0 0.5em 0;
 }
 
 .hint-subtle {
-  color: #666;
+  color: var(--text-disabled);
   font-style: italic;
 }
 
@@ -1145,8 +1314,8 @@ details[open] .collapsible-summary::before {
   flex: 1;
   padding: 0.5em 0.75em;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
   color: #f6f6f6;
   font-family: monospace;
   font-size: 0.9em;
@@ -1159,7 +1328,7 @@ details[open] .collapsible-summary::before {
 }
 
 .hotkey-input::placeholder {
-  color: #666;
+  color: var(--text-disabled);
   font-style: italic;
 }
 
@@ -1179,7 +1348,7 @@ details[open] .collapsible-summary::before {
   gap: 0.5em;
   padding: 0.4em 0.6em;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   font-size: 0.85em;
 }
 
@@ -1198,7 +1367,7 @@ details[open] .collapsible-summary::before {
   font-size: 0.75em;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #aaa;
+  color: var(--text-tertiary);
   border-radius: 3px;
 }
 
@@ -1242,14 +1411,14 @@ details[open] .collapsible-summary::before {
   padding: 0.3em 0.6em;
   min-width: unset;
   font-size: 0.75em;
-  background: rgba(50, 150, 50, 0.2);
-  border: 1px solid rgba(50, 150, 50, 0.4);
-  color: #afa;
-  border-radius: 4px;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  color: var(--color-success);
+  border-radius: var(--radius-md);
 }
 
 .btn-add-stat:hover {
-  background: rgba(50, 150, 50, 0.4);
+  background: var(--color-success-bg-hover);
 }
 
 /* Settings footer */
@@ -1264,28 +1433,29 @@ details[open] .collapsible-summary::before {
 
 .btn-save {
   min-width: 120px;
-  background-color: #2a6e2a;
-  border-color: #3a8e3a;
-  color: white;
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success);
 }
 
 .btn-save:hover:not(:disabled) {
-  background-color: #308030;
+  background: var(--color-success-bg-hover);
 }
 
 .btn-save.btn-disabled,
 .btn-save:disabled {
-  background-color: #444;
-  border-color: #555;
-  color: #888;
+  background: var(--bg-light);
+  border-color: var(--border-medium);
+  color: var(--text-muted);
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .save-status {
   font-size: 0.85em;
   color: #4a4;
   padding: 0.2em 0.5em;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
 }
 
 .save-status.error {
@@ -1297,13 +1467,13 @@ details[open] .collapsible-summary::before {
 .active-file-panel {
   width: 100%;
   max-width: 100%;
-  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
-  border-radius: 8px;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
   padding: 0.75vh 1vw;
   display: flex;
   flex-direction: column;
   gap: 0.25vh;
-  border: 1px solid rgba(74, 158, 255, 0.1);
+  border: 1px solid var(--blue-alpha-10);
 }
 
 .active-file-panel .file-info {
@@ -1322,7 +1492,7 @@ details[open] .collapsible-summary::before {
 }
 
 .active-file-panel .file-info .value {
-  color: #ccc;
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1340,7 +1510,7 @@ details[open] .collapsible-summary::before {
   gap: 0.4em;
   margin-top: 0.4vh;
   padding-top: 0.4vh;
-  border-top: 1px solid rgba(74, 158, 255, 0.1);
+  border-top: 1px solid var(--blue-alpha-10);
   font-size: clamp(0.55rem, 1.2vh, 0.8rem);
 }
 
@@ -1357,7 +1527,7 @@ details[open] .collapsible-summary::before {
 }
 
 .watcher-status .status-dot.not-watching {
-  background-color: #888;
+  background-color: var(--text-muted);
   box-shadow: none;
 }
 
@@ -1367,16 +1537,16 @@ details[open] .collapsible-summary::before {
 }
 
 .watcher-status .status-text {
-  color: #888;
+  color: var(--text-muted);
 }
 
 .btn-resume-live {
   margin-left: 0.5em;
   padding: 0.25em 0.6em;
   font-size: 0.85em;
-  background: linear-gradient(180deg, rgba(74, 158, 255, 0.2) 0%, rgba(45, 90, 140, 0.15) 100%);
+  background: linear-gradient(180deg, var(--blue-alpha-20) 0%, rgba(45, 90, 140, 0.15) 100%);
   border: 1px solid var(--swtor-blue);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   color: var(--swtor-blue);
   cursor: pointer;
   transition: all 0.2s;
@@ -1386,8 +1556,8 @@ details[open] .collapsible-summary::before {
 }
 
 .btn-resume-live:hover {
-  background: linear-gradient(180deg, rgba(74, 158, 255, 0.3) 0%, rgba(55, 100, 155, 0.2) 100%);
-  box-shadow: 0 0 12px rgba(74, 158, 255, 0.25);
+  background: linear-gradient(180deg, var(--border-accent-strong) 0%, rgba(55, 100, 155, 0.2) 100%);
+  box-shadow: 0 0 12px var(--blue-alpha-25);
 }
 
 .btn-resume-live:active {
@@ -1400,21 +1570,21 @@ details[open] .collapsible-summary::before {
   min-width: unset;
   font-size: 0.85em;
   background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(74, 158, 255, 0.2);
-  border-radius: 4px;
-  color: #888;
+  border: 1px solid var(--blue-alpha-20);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-restart-watcher:hover {
-  background: rgba(74, 158, 255, 0.1);
+  background: var(--blue-alpha-10);
   color: var(--swtor-blue);
-  border-color: rgba(74, 158, 255, 0.3);
+  border-color: var(--border-accent-strong);
 }
 
 .btn-restart-watcher:active {
-  background: rgba(74, 158, 255, 0.15);
+  background: var(--blue-alpha-15);
 }
 
 /* General settings modal */
@@ -1425,7 +1595,7 @@ details[open] .collapsible-summary::before {
 .general-settings h4 {
   margin: 0 0 0.5em 0;
   font-size: 1em;
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 /* Directory picker */
@@ -1443,13 +1613,13 @@ details[open] .collapsible-summary::before {
   gap: 0.75em;
   padding: 0.75em 1em;
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
 
 .directory-display i {
-  color: #888;
+  color: var(--text-muted);
   font-size: 1.1em;
   flex-shrink: 0;
 }
@@ -1457,7 +1627,7 @@ details[open] .collapsible-summary::before {
 .directory-path {
   font-family: monospace;
   font-size: 0.85em;
-  color: #aaa;
+  color: var(--text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1498,11 +1668,11 @@ details[open] .collapsible-summary::before {
   margin-bottom: 0.75em;
   padding: 0.5em 0.75em;
   background: #2a2a2a;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
 }
 
 .profile-current .label {
-  color: #888;
+  color: var(--text-muted);
 }
 
 .profile-current .value {
@@ -1526,7 +1696,7 @@ details[open] .collapsible-summary::before {
   padding: 0.5em 0.75em;
   background: #353535;
   border: 1px solid #444;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   transition: all 0.15s ease;
 }
 
@@ -1541,7 +1711,7 @@ details[open] .collapsible-summary::before {
 
 .profile-name {
   font-weight: 500;
-  color: #ddd;
+  color: var(--text-primary);
 }
 
 .profile-item.active .profile-name {
@@ -1583,12 +1753,13 @@ details[open] .collapsible-summary::before {
 }
 
 .btn-delete {
-  background: #6a3a3a;
-  border-color: #8a4a4a;
+  background: var(--color-error-bg);
+  border-color: var(--color-error-border);
+  color: var(--color-error);
 }
 
 .btn-delete:hover {
-  background: #7a4a4a;
+  background: var(--color-error-bg-hover);
 }
 
 .profile-create {
@@ -1602,7 +1773,7 @@ details[open] .collapsible-summary::before {
   padding: 0.5em 0.75em;
   background: #2a2a2a;
   border: 1px solid #444;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   color: #f6f6f6;
   font-size: 0.9em;
 }
@@ -1613,14 +1784,14 @@ details[open] .collapsible-summary::before {
 }
 
 .profile-name-input::placeholder {
-  color: #666;
+  color: var(--text-disabled);
 }
 
 .profile-status {
   margin-top: 0.5em;
   padding: 0.4em 0.6em;
   background: #2a3a2a;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   font-size: 0.85em;
   color: #8a8;
 }
@@ -1637,7 +1808,7 @@ details[open] .collapsible-summary::before {
   gap: 1em;
   margin-bottom: 0.75em;
   padding-bottom: 0.75em;
-  border-bottom: 1px solid rgba(74, 158, 255, 0.15);
+  border-bottom: 1px solid var(--blue-alpha-15);
 }
 
 /* Customize button - distinct blue styling */
@@ -1646,9 +1817,9 @@ details[open] .collapsible-summary::before {
   align-items: center;
   gap: 0.5em;
   padding: 0.6em 1.2em;
-  background: linear-gradient(180deg, rgba(74, 158, 255, 0.2) 0%, rgba(45, 90, 140, 0.15) 100%);
+  background: linear-gradient(180deg, var(--blue-alpha-20) 0%, rgba(45, 90, 140, 0.15) 100%);
   border: 1px solid var(--swtor-blue);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   color: var(--swtor-blue);
   font-size: 0.9em;
   font-weight: 500;
@@ -1659,8 +1830,8 @@ details[open] .collapsible-summary::before {
 }
 
 .btn-customize:hover {
-  background: linear-gradient(180deg, rgba(74, 158, 255, 0.3) 0%, rgba(55, 100, 155, 0.2) 100%);
-  box-shadow: 0 0 15px rgba(74, 158, 255, 0.25);
+  background: linear-gradient(180deg, var(--border-accent-strong) 0%, rgba(55, 100, 155, 0.2) 100%);
+  box-shadow: 0 0 15px var(--blue-alpha-25);
 }
 
 .btn-customize i {
@@ -1671,7 +1842,7 @@ details[open] .collapsible-summary::before {
   display: flex;
   align-items: center;
   gap: 0.5em;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .profile-label {
@@ -1686,8 +1857,8 @@ details[open] .collapsible-summary::before {
   padding-right: 1.5em;
   background: #353535;
   border: 1px solid #4a4a4a;
-  border-radius: 4px;
-  color: #ddd;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.85em;
   cursor: pointer;
   appearance: none;
@@ -1709,7 +1880,7 @@ details[open] .collapsible-summary::before {
 
 .profile-dropdown option {
   background: #2a2a2a;
-  color: #ddd;
+  color: var(--text-primary);
 }
 
 .profile-save-btn {
@@ -1722,8 +1893,8 @@ details[open] .collapsible-summary::before {
   padding: 0;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
-  color: #666;
+  border-radius: var(--radius-md);
+  color: var(--text-disabled);
   font-size: 0.85em;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1765,7 +1936,7 @@ details[open] .collapsible-summary::before {
 
 .summary-icon {
   margin-right: 0.5em;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .hint.compact,
@@ -1784,15 +1955,15 @@ details[open] .collapsible-summary::before {
    ───────────────────────────────────────────────────────────────────────────── */
 
 .file-browser-modal {
-  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
-  border-radius: 8px;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
   width: 90vw;
   max-width: 600px;
   max-height: 70vh;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(74, 158, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(74, 158, 255, 0.1);
+  border: 1px solid var(--blue-alpha-20);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px var(--blue-alpha-10);
 }
 
 .file-browser-header {
@@ -1800,7 +1971,7 @@ details[open] .collapsible-summary::before {
   justify-content: space-between;
   align-items: center;
   padding: 1em 1.25em;
-  border-bottom: 1px solid rgba(74, 158, 255, 0.15);
+  border-bottom: 1px solid var(--blue-alpha-15);
 }
 
 .file-browser-header h3 {
@@ -1828,7 +1999,7 @@ details[open] .collapsible-summary::before {
   justify-content: center;
   gap: 0.5em;
   padding: 2em;
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.9em;
 }
 
@@ -1837,16 +2008,16 @@ details[open] .collapsible-summary::before {
   justify-content: space-between;
   align-items: center;
   padding: 0.75em 1em;
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   margin-bottom: 0.25em;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid transparent;
-  transition: all 0.15s;
+  transition: all var(--transition-normal);
 }
 
 .file-item:hover {
-  background: rgba(74, 158, 255, 0.08);
-  border-color: rgba(74, 158, 255, 0.15);
+  background: var(--blue-alpha-8);
+  border-color: var(--blue-alpha-15);
 }
 
 .file-item.empty {
@@ -1862,7 +2033,7 @@ details[open] .collapsible-summary::before {
 
 .file-item .file-name {
   font-weight: 500;
-  color: #ddd;
+  color: var(--text-primary);
   font-size: 0.9em;
   white-space: nowrap;
   overflow: hidden;
@@ -1873,7 +2044,7 @@ details[open] .collapsible-summary::before {
   display: flex;
   gap: 1em;
   font-size: 0.75em;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .file-item .file-char {
@@ -1881,11 +2052,11 @@ details[open] .collapsible-summary::before {
 }
 
 .file-item .file-date {
-  color: #888;
+  color: var(--text-muted);
 }
 
 .file-item .file-size {
-  color: #666;
+  color: var(--text-disabled);
 }
 
 .file-item .btn-open {
@@ -1894,19 +2065,19 @@ details[open] .collapsible-summary::before {
   display: flex;
   align-items: center;
   gap: 0.3em;
-  background: rgba(74, 158, 255, 0.15);
-  border: 1px solid rgba(74, 158, 255, 0.3);
+  background: var(--blue-alpha-15);
+  border: 1px solid var(--border-accent-strong);
   color: var(--swtor-blue);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-normal);
   flex-shrink: 0;
 }
 
 .file-item .btn-open:hover:not(:disabled) {
-  background: rgba(74, 158, 255, 0.25);
+  background: var(--blue-alpha-25);
   border-color: rgba(74, 158, 255, 0.5);
-  box-shadow: 0 0 10px rgba(74, 158, 255, 0.2);
+  box-shadow: 0 0 10px var(--blue-alpha-20);
 }
 
 .file-item .btn-open:disabled {
@@ -1925,17 +2096,17 @@ details[open] .collapsible-summary::before {
   font-size: 0.8em;
   display: flex;
   align-items: center;
-  background: rgba(74, 158, 255, 0.1);
-  border: 1px solid rgba(74, 158, 255, 0.25);
+  background: var(--blue-alpha-10);
+  border: 1px solid var(--blue-alpha-25);
   color: var(--swtor-blue-dim);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-normal);
 }
 
 .file-item .btn-upload:hover:not(:disabled) {
-  background: rgba(74, 158, 255, 0.2);
-  border-color: rgba(74, 158, 255, 0.4);
+  background: var(--blue-alpha-20);
+  border-color: var(--border-accent-heavy);
   color: var(--swtor-blue);
 }
 
@@ -1948,7 +2119,7 @@ details[open] .collapsible-summary::before {
   font-size: 0.7em;
   margin-top: 0.25em;
   word-break: break-all;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .file-item .upload-status.error {
@@ -1981,10 +2152,10 @@ details[open] .collapsible-summary::before {
 
 .history-panel {
   width: 100%;
-  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
-  border-radius: 8px;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
   padding: 0.75em;
-  border: 1px solid rgba(74, 158, 255, 0.12);
+  border: 1px solid var(--border-accent);
 }
 
 .history-header {
@@ -1993,7 +2164,7 @@ details[open] .collapsible-summary::before {
   justify-content: space-between;
   margin-bottom: 0.75em;
   padding-bottom: 0.5em;
-  border-bottom: 1px solid rgba(74, 158, 255, 0.12);
+  border-bottom: 1px solid var(--border-accent);
 }
 
 .history-header h3 {
@@ -2018,13 +2189,13 @@ details[open] .collapsible-summary::before {
   align-items: center;
   gap: 0.4em;
   font-size: 0.75em;
-  color: #888;
+  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
 }
 
 .boss-filter-toggle:hover {
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 
 .boss-filter-toggle input[type="checkbox"] {
@@ -2034,14 +2205,14 @@ details[open] .collapsible-summary::before {
 
 .encounter-count {
   font-size: 0.8em;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .history-loading,
 .history-empty {
   text-align: center;
   padding: 2em;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .history-empty i {
@@ -2052,7 +2223,7 @@ details[open] .collapsible-summary::before {
 
 .history-empty .hint {
   font-size: 0.85em;
-  color: #666;
+  color: var(--text-disabled);
   margin-top: 0.5em;
 }
 
@@ -2075,13 +2246,13 @@ details[open] .collapsible-summary::before {
 }
 
 .history-table th {
-  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
+  background: var(--gradient-panel);
   color: var(--swtor-blue-dim);
   font-weight: 500;
   font-size: 0.9em;
   position: sticky;
   top: 0;
-  border-bottom: 1px solid rgba(74, 158, 255, 0.12);
+  border-bottom: 1px solid var(--border-accent);
 }
 
 .history-table tbody tr {
@@ -2090,11 +2261,11 @@ details[open] .collapsible-summary::before {
 }
 
 .history-table tbody tr:hover {
-  background: rgba(74, 158, 255, 0.05);
+  background: var(--blue-alpha-5);
 }
 
 .history-table tbody tr.expanded {
-  background: rgba(74, 158, 255, 0.08);
+  background: var(--blue-alpha-8);
 }
 
 .col-name {
@@ -2127,7 +2298,7 @@ details[open] .collapsible-summary::before {
 
 .phase-type {
   font-size: 0.9em;
-  color: #aaa;
+  color: var(--text-tertiary);
   text-transform: capitalize;
 }
 
@@ -2143,19 +2314,19 @@ details[open] .collapsible-summary::before {
 
 .result-badge.success {
   background: rgba(50, 180, 100, 0.3);
-  color: #5fd98e;
+  color: var(--color-success);
 }
 
 .result-badge.wipe {
   background: rgba(200, 80, 80, 0.3);
-  color: #e87575;
+  color: var(--color-error);
 }
 
 /* Detail row */
 .detail-row td {
   padding: 0 !important;
   background: linear-gradient(180deg, rgba(40, 45, 55, 0.95) 0%, rgba(30, 35, 45, 0.95) 100%);
-  border-top: 1px solid rgba(74, 158, 255, 0.1);
+  border-top: 1px solid var(--blue-alpha-10);
 }
 
 .encounter-detail {
@@ -2168,7 +2339,7 @@ details[open] .collapsible-summary::before {
   gap: 1em 1.5em;
   margin-bottom: 0.75em;
   font-size: 0.85em;
-  color: #888;
+  color: var(--text-muted);
   align-items: center;
 }
 
@@ -2203,27 +2374,27 @@ details[open] .collapsible-summary::before {
 }
 
 .metrics-table th {
-  color: #888;
+  color: var(--text-muted);
   font-weight: 500;
   font-size: 0.85em;
 }
 
 .player-name {
   font-weight: 500;
-  color: #ddd;
+  color: var(--text-primary);
 }
 
 .metric-value {
   font-family: monospace;
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 
 .metric-value.dps {
-  color: #e87575;
+  color: var(--color-error);
 }
 
 .metric-value.hps {
-  color: #5fd98e;
+  color: var(--color-success);
 }
 
 .metric-value.dtps {
@@ -2254,7 +2425,7 @@ details[open] .collapsible-summary::before {
 
 .no-metrics {
   text-align: center;
-  color: #666;
+  color: var(--text-disabled);
   font-style: italic;
   padding: 1em;
 }
@@ -2273,7 +2444,7 @@ details[open] .collapsible-summary::before {
 
 .sortable-header.active {
   background-color: rgba(100, 150, 200, 0.15);
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .sortable-header .sort-icon {
@@ -2455,8 +2626,8 @@ details[open] .collapsible-summary::before {
   padding: 0.6em 1em;
   background: linear-gradient(180deg, var(--swtor-bg-light) 0%, var(--swtor-bg-mid) 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  color: #888;
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 0.9em;
   font-weight: 500;
@@ -2469,12 +2640,12 @@ details[open] .collapsible-summary::before {
 
 .tab-btn:hover {
   background: linear-gradient(180deg, var(--swtor-bg-light) 0%, rgba(60, 60, 70, 0.9) 100%);
-  color: #ccc;
+  color: var(--text-secondary);
   border-color: var(--swtor-border);
 }
 
 .tab-btn.active {
-  background: linear-gradient(180deg, rgba(74, 158, 255, 0.15) 0%, rgba(74, 158, 255, 0.05) 100%);
+  background: linear-gradient(180deg, var(--blue-alpha-15) 0%, var(--blue-alpha-5) 100%);
   color: var(--swtor-blue);
   border-color: var(--swtor-blue-dim);
   box-shadow: 0 0 10px var(--swtor-blue-glow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -2521,11 +2692,11 @@ details[open] .collapsible-summary::before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
-  border-radius: 8px;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
   padding: 1em;
   overflow: hidden;
-  border: 1px solid rgba(74, 158, 255, 0.12);
+  border: 1px solid var(--border-accent);
 }
 
 .timer-editor-header {
@@ -2534,7 +2705,7 @@ details[open] .collapsible-summary::before {
   align-items: center;
   margin-bottom: 0.75em;
   padding-bottom: 0.5em;
-  border-bottom: 1px solid rgba(74, 158, 255, 0.12);
+  border-bottom: 1px solid var(--border-accent);
 }
 
 .timer-editor-header h2 {
@@ -2544,7 +2715,7 @@ details[open] .collapsible-summary::before {
 }
 
 .timer-count {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.85em;
 }
 
@@ -2562,14 +2733,14 @@ details[open] .collapsible-summary::before {
   max-height: 100%;
   overflow-y: auto;
   background: rgba(30, 30, 35, 0.6);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   padding: 0.5em;
 }
 
 .area-loading {
   padding: 1em;
   text-align: center;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .area-category {
@@ -2580,7 +2751,7 @@ details[open] .collapsible-summary::before {
   font-size: 0.75em;
   font-weight: 600;
   text-transform: uppercase;
-  color: #888;
+  color: var(--text-muted);
   padding: 0.25em 0.5em;
   margin-bottom: 0.25em;
   letter-spacing: 0.5px;
@@ -2591,7 +2762,7 @@ details[open] .collapsible-summary::before {
   justify-content: space-between;
   align-items: center;
   padding: 0.4em 0.6em;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.15s;
   font-size: 0.85em;
@@ -2602,7 +2773,7 @@ details[open] .collapsible-summary::before {
 }
 
 .area-item.selected {
-  background: rgba(74, 158, 255, 0.15);
+  background: var(--blue-alpha-15);
   color: var(--swtor-blue);
 }
 
@@ -2626,7 +2797,7 @@ details[open] .collapsible-summary::before {
 
 .area-item.selected .area-counts {
   color: var(--swtor-blue);
-  background: rgba(74, 158, 255, 0.12);
+  background: var(--border-accent);
 }
 
 .timer-content {
@@ -2642,7 +2813,7 @@ details[open] .collapsible-summary::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #666;
+  color: var(--text-disabled);
 }
 
 .timer-empty-state .empty-icon {
@@ -2666,47 +2837,47 @@ details[open] .collapsible-summary::before {
   padding: 0.5em 0.75em;
   background: rgba(50, 50, 55, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #eee;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.9em;
 }
 
 .timer-search-input::placeholder {
-  color: #666;
+  color: var(--text-disabled);
 }
 
 .timer-category-filter {
   padding: 0.5em 0.75em;
-  background: #2a2a2f;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  color: #eee;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.9em;
   cursor: pointer;
 }
 
 /* Native select dropdown styling */
 .timer-category-filter option {
-  background: #2a2a2f;
-  color: #eee;
+  background: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .boss-select option {
-  background: #2a2a2f;
-  color: #eee;
+  background: var(--bg-input);
+  color: var(--text-primary);
 }
 
 /* General select/option styling for timer editor */
 .timer-editor-panel select option,
 .new-timer-form select option {
-  background: #2a2a2f;
+  background: var(--bg-input);
   color: #222;
 }
 
 .timer-loading,
 .timer-empty {
   text-align: center;
-  color: #888;
+  color: var(--text-muted);
   padding: 2em;
   font-size: 0.95em;
 }
@@ -2722,8 +2893,8 @@ details[open] .collapsible-summary::before {
 /* Timer Row */
 .timer-row {
   background: rgba(45, 45, 50, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   transition: background 0.15s;
 }
 
@@ -2746,7 +2917,7 @@ details[open] .collapsible-summary::before {
 
 .timer-expand-icon {
   width: 1em;
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.8em;
 }
 
@@ -2767,12 +2938,12 @@ details[open] .collapsible-summary::before {
 }
 
 .timer-name {
-  color: #ddd;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .timer-id-inline {
-  color: #666;
+  color: var(--text-disabled);
   font-size: 0.75em;
   font-family: monospace;
   margin-left: 0.5em;
@@ -2798,7 +2969,7 @@ details[open] .collapsible-summary::before {
 }
 
 .timer-status.disabled {
-  color: #888;
+  color: var(--text-muted);
   background: rgba(100, 100, 100, 0.1);
 }
 
@@ -2814,7 +2985,7 @@ details[open] .collapsible-summary::before {
 .timer-id-row {
   background: rgba(0, 0, 0, 0.2);
   padding: 0.3em 0.5em;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   margin-bottom: 0.3em;
 }
 
@@ -2829,72 +3000,57 @@ details[open] .collapsible-summary::before {
 }
 
 .timer-id-hint {
-  color: #666;
+  color: var(--text-disabled);
   font-size: 0.75em;
   margin-left: 0.75em;
   font-style: italic;
 }
 
-.form-row {
-  display: flex;
+/* Timer/Effect editor form layouts - inline variant */
+.timer-editor-panel .form-row,
+.effect-editor-panel .form-row,
+.new-timer-form .form-row,
+.new-effect-form .form-row {
+  flex-direction: row;
   align-items: center;
-  gap: 0.75em;
+  gap: var(--space-md);
 }
 
-.form-row label {
+.timer-editor-panel .form-row label,
+.effect-editor-panel .form-row label,
+.new-timer-form .form-row label,
+.new-effect-form .form-row label {
   width: 100px;
-  color: #999;
-  font-size: 0.85em;
+  flex-shrink: 0;
 }
 
-.form-row input[type="text"],
-.form-row input[type="number"] {
-  flex: 1;
-  padding: 0.4em 0.6em;
-  background: #2a2a2f !important;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  color: #eee !important;
-  font-size: 0.9em;
-}
-
-/* Ensure all inputs in timer editor have dark background */
+/* Dark inputs in editor panels */
 .timer-editor-panel input[type="text"],
 .timer-editor-panel input[type="number"],
 .timer-editor-panel select,
+.effect-editor-panel input[type="text"],
+.effect-editor-panel input[type="number"],
+.effect-editor-panel select,
 .new-timer-form input[type="text"],
 .new-timer-form input[type="number"],
-.new-timer-form select {
-  background: #2a2a2f !important;
-  color: #eee !important;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.form-row-inline {
-  display: flex;
-  gap: 1em;
-  flex-wrap: wrap;
-}
-
-.form-field {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-}
-
-.form-field label {
-  color: #999;
-  font-size: 0.85em;
-}
-
-.form-field input[type="number"] {
-  width: 70px;
-  padding: 0.4em 0.5em;
-  background: rgba(40, 40, 45, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #eee;
+.new-timer-form select,
+.new-effect-form input[type="text"],
+.new-effect-form input[type="number"],
+.new-effect-form select {
+  flex: 1;
+  padding: 0.4em 0.6em;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.9em;
+}
+
+/* Form field number inputs */
+.timer-editor-panel .form-field input[type="number"],
+.effect-editor-panel .form-field input[type="number"] {
+  width: 70px;
+  flex: none;
 }
 
 .form-field input[type="checkbox"] {
@@ -2919,7 +3075,7 @@ details[open] .collapsible-summary::before {
 }
 
 .trigger-ids {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.8em;
   font-family: monospace;
 }
@@ -2934,11 +3090,11 @@ details[open] .collapsible-summary::before {
   background: rgba(50, 50, 55, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 3px;
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.8em;
   cursor: pointer;
   text-transform: capitalize;
-  transition: all 0.15s;
+  transition: all var(--transition-normal);
 }
 
 .diff-btn:hover {
@@ -2974,55 +3130,33 @@ details[open] .collapsible-summary::before {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.btn-save {
+/* Form action buttons (timer/effect editors) - smaller variant */
+.form-actions .btn-save {
+  min-width: unset;
   padding: 0.4em 1em;
-  background: rgba(60, 120, 60, 0.6);
-  border: 1px solid rgba(100, 180, 100, 0.4);
-  border-radius: 4px;
-  color: #afa;
   font-size: 0.85em;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-save:hover:not(:disabled) {
-  background: rgba(70, 140, 70, 0.7);
-}
-
-.btn-save:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .btn-duplicate {
   padding: 0.4em 0.8em;
-  background: rgba(60, 80, 120, 0.5);
-  border: 1px solid rgba(100, 140, 200, 0.3);
-  border-radius: 4px;
-  color: #adf;
+  background: var(--blue-alpha-15);
+  border: 1px solid var(--border-accent-strong);
+  border-radius: var(--radius-md);
+  color: var(--swtor-blue);
   font-size: 0.85em;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-normal);
 }
 
 .btn-duplicate:hover {
-  background: rgba(70, 100, 140, 0.6);
+  background: var(--blue-alpha-25);
 }
 
-.btn-delete {
+/* Form action delete button - smaller variant */
+.form-actions .btn-delete {
   padding: 0.4em 0.8em;
-  background: rgba(120, 50, 50, 0.4);
-  border: 1px solid rgba(200, 100, 100, 0.3);
-  border-radius: 4px;
-  color: #faa;
   font-size: 0.85em;
-  cursor: pointer;
   margin-left: auto;
-  transition: all 0.15s;
-}
-
-.btn-delete:hover {
-  background: rgba(140, 60, 60, 0.5);
 }
 
 .delete-confirm {
@@ -3030,34 +3164,35 @@ details[open] .collapsible-summary::before {
   align-items: center;
   gap: 0.4em;
   margin-left: auto;
-  color: #faa;
+  color: var(--color-error);
   font-size: 0.85em;
 }
 
 .btn-delete-yes,
 .btn-delete-no {
   padding: 0.25em 0.6em;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   font-size: 0.85em;
   cursor: pointer;
+  transition: all var(--transition-fast);
 }
 
 .btn-delete-yes {
-  background: rgba(180, 60, 60, 0.6);
-  border: 1px solid rgba(220, 100, 100, 0.4);
-  color: #fcc;
+  background: var(--color-error-bg-hover);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error);
 }
 
 .btn-delete-no {
-  background: rgba(60, 60, 65, 0.6);
-  border: 1px solid rgba(100, 100, 110, 0.3);
-  color: #bbb;
+  background: var(--bg-light);
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
 }
 
 .timer-file-info {
   margin-top: 0.5em;
   font-size: 0.75em;
-  color: #666;
+  color: var(--text-disabled);
   font-family: monospace;
 }
 
@@ -3070,17 +3205,17 @@ details[open] .collapsible-summary::before {
 
 .btn-new-timer {
   padding: 0.4em 0.8em;
-  background: rgba(60, 120, 60, 0.5);
-  border: 1px solid rgba(100, 180, 100, 0.4);
-  border-radius: 4px;
-  color: #afa;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-md);
+  color: var(--color-success);
   font-size: 0.85em;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-normal);
 }
 
 .btn-new-timer:hover {
-  background: rgba(70, 140, 70, 0.6);
+  background: var(--color-success-bg-hover);
 }
 
 /* Boss headers (collapsible groups) */
@@ -3091,7 +3226,7 @@ details[open] .collapsible-summary::before {
   padding: 0.6em 0.75em;
   background: rgba(50, 55, 65, 0.7);
   border: 1px solid rgba(100, 140, 200, 0.2);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   margin-top: 0.5em;
   transition: background 0.15s;
@@ -3118,7 +3253,7 @@ details[open] .collapsible-summary::before {
 }
 
 .boss-timer-count {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.85em;
   margin-left: 0.25em;
 }
@@ -3154,14 +3289,14 @@ details[open] .collapsible-summary::before {
   padding: 0.4em 0.6em;
   background: rgba(40, 40, 45, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #eee;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.9em;
   max-width: 200px;
 }
 
 .trigger-hint {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.8em;
   font-style: italic;
 }
@@ -3183,8 +3318,8 @@ details[open] .collapsible-summary::before {
   padding: 0.35em 0.5em;
   background: rgba(40, 40, 45, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #eee;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.9em;
 }
 
@@ -3253,8 +3388,8 @@ details[open] .collapsible-summary::before {
   padding: 0.3em 0.5em;
   background: rgba(40, 40, 45, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #eee;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.85em;
   width: 140px;
   font-family: monospace;
@@ -3262,23 +3397,23 @@ details[open] .collapsible-summary::before {
 
 .btn-add-id {
   padding: 0.3em 0.6em;
-  background: rgba(60, 100, 60, 0.5);
-  border: 1px solid rgba(100, 160, 100, 0.3);
-  border-radius: 4px;
-  color: #afa;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-md);
+  color: var(--color-success);
   cursor: pointer;
   font-size: 0.9em;
 }
 
 .btn-add-id:hover {
-  background: rgba(70, 120, 70, 0.6);
+  background: var(--color-success-bg-hover);
 }
 
 /* New Timer Form */
 .new-timer-form {
   background: rgba(45, 50, 60, 0.8);
   border: 1px solid rgba(100, 140, 200, 0.3);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   padding: 1em;
   margin-bottom: 0.75em;
 }
@@ -3294,8 +3429,8 @@ details[open] .collapsible-summary::before {
   padding: 0.4em 0.6em;
   background: rgba(40, 40, 45, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #eee;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.9em;
 }
 
@@ -3306,8 +3441,8 @@ details[open] .collapsible-summary::before {
 }
 
 .boss-select option {
-  background: #2a2a2f;
-  color: #ddd;
+  background: var(--bg-input);
+  color: var(--text-primary);
 }
 
 /* Boss Search Select (Fuzzy Search Dropdown) */
@@ -3325,7 +3460,7 @@ details[open] .collapsible-summary::before {
   padding: 0.5em 0.75em;
   background: #2a2a2f !important;
   border: 1px solid rgba(100, 140, 200, 0.3);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   color: #eee !important;
   font-size: 0.9em;
 }
@@ -3337,7 +3472,7 @@ details[open] .collapsible-summary::before {
 }
 
 .boss-search-input::placeholder {
-  color: #888;
+  color: var(--text-muted);
 }
 
 .selected-boss-display {
@@ -3397,13 +3532,13 @@ details[open] .collapsible-summary::before {
 }
 
 .boss-search-dropdown .boss-option .boss-name {
-  color: #ddd;
+  color: var(--text-primary);
   font-size: 0.9em;
 }
 
 .boss-search-dropdown .no-results {
   padding: 1em;
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.85em;
   text-align: center;
   font-style: italic;
@@ -3413,16 +3548,16 @@ details[open] .collapsible-summary::before {
   padding: 0.4em 0.8em;
   background: rgba(60, 60, 65, 0.6);
   border: 1px solid rgba(100, 100, 110, 0.3);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   color: #bbb;
   font-size: 0.85em;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-normal);
 }
 
 .btn-cancel:hover {
   background: rgba(70, 70, 75, 0.7);
-  color: #ddd;
+  color: var(--text-primary);
 }
 
 .color-picker {
@@ -3430,7 +3565,7 @@ details[open] .collapsible-summary::before {
   height: 28px;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
 
@@ -3469,7 +3604,7 @@ details[open] .collapsible-summary::before {
 .composite-trigger {
   background: rgba(40, 50, 60, 0.5);
   border: 1px solid rgba(100, 140, 180, 0.3);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   padding: 0.5em;
 }
 
@@ -3494,7 +3629,7 @@ details[open] .collapsible-summary::before {
   background: rgba(60, 60, 70, 0.6);
   border: 1px solid rgba(100, 100, 120, 0.3);
   border-radius: 3px;
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 0.75em;
   cursor: pointer;
 }
@@ -3502,7 +3637,7 @@ details[open] .collapsible-summary::before {
 .btn-toggle-type:hover,
 .btn-unwrap:hover {
   background: rgba(70, 70, 80, 0.7);
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .composite-conditions {
@@ -3522,32 +3657,32 @@ details[open] .collapsible-summary::before {
 
 .btn-remove-condition {
   padding: 0.1em 0.4em;
-  background: rgba(120, 50, 50, 0.4);
-  border: 1px solid rgba(180, 80, 80, 0.3);
-  border-radius: 3px;
-  color: #f88;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-error);
   font-size: 0.8em;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .btn-remove-condition:hover {
-  background: rgba(140, 60, 60, 0.5);
+  background: var(--color-error-bg-hover);
 }
 
 .btn-add-condition {
   padding: 0.25em 0.5em;
-  background: rgba(60, 100, 60, 0.4);
-  border: 1px solid rgba(100, 160, 100, 0.3);
-  border-radius: 3px;
-  color: #afa;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-success);
   font-size: 0.8em;
   cursor: pointer;
   margin-top: 0.3em;
 }
 
 .btn-add-condition:hover {
-  background: rgba(70, 120, 70, 0.5);
+  background: var(--color-success-bg-hover);
 }
 
 /* Simple Trigger Editor */
@@ -3607,26 +3742,11 @@ details[open] .collapsible-summary::before {
   width: 140px;
   padding: 0.3em 0.5em;
   background: #2a2a2f !important;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--border-medium);
   border-radius: 3px;
   color: #eee !important;
   font-size: 0.85em;
   font-family: monospace;
-}
-
-.btn-add-id {
-  padding: 0.3em 0.6em;
-  background: rgba(60, 120, 80, 0.5);
-  border: 1px solid rgba(100, 180, 120, 0.3);
-  border-radius: 3px;
-  color: #afa;
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btn-add-id:hover {
-  background: rgba(70, 140, 90, 0.6);
 }
 
 /* Trigger section styling */
@@ -3656,7 +3776,7 @@ details[open] .collapsible-summary::before {
 .btn-close {
   background: none;
   border: none;
-  color: #888;
+  color: var(--text-muted);
   font-size: 1.2em;
   cursor: pointer;
   padding: 0.2em 0.4em;
@@ -3689,11 +3809,11 @@ details[open] .collapsible-summary::before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
-  border-radius: 8px;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
   padding: 1em;
   overflow: hidden;
-  border: 1px solid rgba(74, 158, 255, 0.12);
+  border: 1px solid var(--border-accent);
 }
 
 .effect-editor-header {
@@ -3702,7 +3822,7 @@ details[open] .collapsible-summary::before {
   align-items: center;
   margin-bottom: 0.75em;
   padding-bottom: 0.5em;
-  border-bottom: 1px solid rgba(74, 158, 255, 0.15);
+  border-bottom: 1px solid var(--blue-alpha-15);
 }
 
 .effect-editor-header h2 {
@@ -3712,7 +3832,7 @@ details[open] .collapsible-summary::before {
 }
 
 .effect-count {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.85em;
 }
 
@@ -3727,19 +3847,19 @@ details[open] .collapsible-summary::before {
   padding: 0.5em 0.75em;
   background: rgba(50, 50, 55, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #eee;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.9em;
 }
 
 .effect-search-input::placeholder {
-  color: #666;
+  color: var(--text-disabled);
 }
 
 .effect-loading,
 .effect-empty {
   text-align: center;
-  color: #888;
+  color: var(--text-muted);
   padding: 2em;
   font-size: 0.95em;
 }
@@ -3759,8 +3879,8 @@ details[open] .collapsible-summary::before {
   gap: 0.5em;
   padding: 0.6em 0.75em;
   background: rgba(50, 55, 65, 0.7);
-  border: 1px solid rgba(74, 158, 255, 0.2);
-  border-radius: 4px;
+  border: 1px solid var(--blue-alpha-20);
+  border-radius: var(--radius-md);
   cursor: pointer;
   margin-top: 0.5em;
   transition: background 0.15s;
@@ -3787,14 +3907,14 @@ details[open] .collapsible-summary::before {
 }
 
 .file-effect-count {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.85em;
   margin-left: 0.25em;
 }
 
 .file-effects {
   margin-left: 1em;
-  border-left: 2px solid rgba(74, 158, 255, 0.15);
+  border-left: 2px solid var(--blue-alpha-15);
   padding-left: 0.5em;
   display: flex;
   flex-direction: column;
@@ -3805,8 +3925,8 @@ details[open] .collapsible-summary::before {
 /* Effect Row */
 .effect-row {
   background: rgba(45, 45, 50, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   transition: background 0.15s;
 }
 
@@ -3816,7 +3936,7 @@ details[open] .collapsible-summary::before {
 
 .effect-row.expanded {
   background: rgba(50, 55, 65, 0.7);
-  border-color: rgba(74, 158, 255, 0.3);
+  border-color: var(--border-accent-strong);
 }
 
 .effect-row-summary {
@@ -3829,7 +3949,7 @@ details[open] .collapsible-summary::before {
 
 .effect-expand-icon {
   width: 1em;
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.8em;
 }
 
@@ -3841,12 +3961,12 @@ details[open] .collapsible-summary::before {
 }
 
 .effect-name {
-  color: #ddd;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .effect-id-inline {
-  color: #666;
+  color: var(--text-disabled);
   font-size: 0.75em;
   font-family: monospace;
   margin-left: 0.5em;
@@ -3854,7 +3974,7 @@ details[open] .collapsible-summary::before {
 }
 
 .effect-category-badge {
-  background: rgba(74, 158, 255, 0.2);
+  background: var(--blue-alpha-20);
   padding: 0.15em 0.4em;
   border-radius: 3px;
   color: var(--swtor-blue);
@@ -3879,7 +3999,7 @@ details[open] .collapsible-summary::before {
 }
 
 .effect-status.disabled {
-  color: #888;
+  color: var(--text-muted);
   background: rgba(100, 100, 100, 0.1);
 }
 
@@ -3895,7 +4015,7 @@ details[open] .collapsible-summary::before {
 .effect-id-row {
   background: rgba(0, 0, 0, 0.2);
   padding: 0.3em 0.5em;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   margin-bottom: 0.3em;
 }
 
@@ -3912,7 +4032,7 @@ details[open] .collapsible-summary::before {
 .effect-file-info {
   margin-top: 0.5em;
   font-size: 0.75em;
-  color: #666;
+  color: var(--text-disabled);
   font-family: monospace;
 }
 
@@ -3922,8 +4042,8 @@ details[open] .collapsible-summary::before {
 .new-effect-form select {
   padding: 0.4em 0.6em;
   background: #2a2a2f !important;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
   color: #eee !important;
   font-size: 0.9em;
 }
@@ -3931,32 +4051,32 @@ details[open] .collapsible-summary::before {
 .effect-editor-panel select option,
 .effect-edit-form select option,
 .new-effect-form select option {
-  background: #2a2a2f;
-  color: #eee;
+  background: var(--bg-input);
+  color: var(--text-primary);
 }
 
 /* New Effect button */
 .btn-new-effect {
   padding: 0.4em 0.8em;
-  background: rgba(74, 158, 255, 0.15);
-  border: 1px solid rgba(74, 158, 255, 0.4);
-  border-radius: 4px;
+  background: var(--blue-alpha-15);
+  border: 1px solid var(--border-accent-heavy);
+  border-radius: var(--radius-md);
   color: var(--swtor-blue);
   font-size: 0.85em;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-normal);
 }
 
 .btn-new-effect:hover {
-  background: rgba(74, 158, 255, 0.25);
-  box-shadow: 0 0 10px rgba(74, 158, 255, 0.2);
+  background: var(--blue-alpha-25);
+  box-shadow: 0 0 10px var(--blue-alpha-20);
 }
 
 /* New Effect Form */
 .new-effect-form {
   background: rgba(45, 50, 60, 0.8);
-  border: 1px solid rgba(74, 158, 255, 0.3);
-  border-radius: 6px;
+  border: 1px solid var(--border-accent-strong);
+  border-radius: var(--radius-lg);
   padding: 1em;
   margin-bottom: 0.75em;
 }
@@ -3977,19 +4097,10 @@ details[open] .collapsible-summary::before {
 .file-select {
   flex: 1;
   padding: 0.4em 0.6em;
-  background: rgba(40, 40, 45, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #eee;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
   font-size: 0.9em;
 }
 
-/* Ensure form inputs are dark in effect editor */
-.effect-editor-panel input[type="text"],
-.effect-editor-panel input[type="number"],
-.new-effect-form input[type="text"],
-.new-effect-form input[type="number"] {
-  background: #2a2a2f !important;
-  color: #eee !important;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
