@@ -304,15 +304,20 @@ pub async fn create_encounter_timer(
         show_on_raid_frames: timer.show_on_raid_frames,
     };
 
+    // Check for duplicate ID across ALL bosses (not just the target boss)
+    for boss_with_path in &bosses {
+        if boss_with_path.boss.timers.iter().any(|t| t.id == timer_id) {
+            return Err(format!(
+                "Timer with ID '{}' already exists in boss '{}'. Timer IDs must be globally unique.",
+                timer_id, boss_with_path.boss.name
+            ));
+        }
+    }
+
     // Find the boss and add the timer
     let mut created_item: Option<TimerListItem> = None;
     for boss_with_path in &mut bosses {
         if boss_with_path.boss.id == *boss_id && boss_with_path.file_path == file_path_buf {
-            // Check for duplicate ID
-            if boss_with_path.boss.timers.iter().any(|t| t.id == timer_id) {
-                return Err(format!("Timer with ID '{}' already exists", timer_id));
-            }
-
             boss_with_path.boss.timers.push(new_timer.clone());
             created_item = Some(TimerListItem::from_boss_timer(boss_with_path, &new_timer));
             break;
@@ -417,11 +422,14 @@ pub async fn duplicate_encounter_timer(
             if let Some(timer) = boss_with_path.boss.timers.iter().find(|t| t.id == timer_id) {
                 let mut cloned = timer.clone();
 
-                // Generate unique ID
+                // Generate unique ID (check globally across ALL bosses)
                 let mut suffix = 1;
                 loop {
                     let new_id = format!("{}_copy{}", timer_id, suffix);
-                    if !boss_with_path.boss.timers.iter().any(|t| t.id == new_id) {
+                    let exists_globally = bosses.iter().any(|b| {
+                        b.boss.timers.iter().any(|t| t.id == new_id)
+                    });
+                    if !exists_globally {
                         cloned.id = new_id;
                         cloned.name = format!("{} (Copy)", timer.name);
                         break;

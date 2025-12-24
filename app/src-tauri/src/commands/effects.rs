@@ -294,6 +294,14 @@ pub async fn update_effect_definition(
     service: State<'_, ServiceHandle>,
     effect: EffectListItem,
 ) -> Result<(), String> {
+    // Validate effect has at least one way to match
+    if effect.effect_ids.is_empty() && effect.refresh_abilities.is_empty() {
+        return Err(
+            "Effect must have at least one effect ID or refresh ability to match against. \
+            Without these, the effect will never trigger.".to_string()
+        );
+    }
+
     let effects = load_user_effects(&app_handle)?;
     let file_path = PathBuf::from(&effect.file_path);
 
@@ -333,6 +341,14 @@ pub async fn create_effect_definition(
     service: State<'_, ServiceHandle>,
     effect: EffectListItem,
 ) -> Result<EffectListItem, String> {
+    // Validate effect has at least one way to match
+    if effect.effect_ids.is_empty() && effect.refresh_abilities.is_empty() {
+        return Err(
+            "Effect must have at least one effect ID or refresh ability to match against. \
+            Without these, the effect will never trigger.".to_string()
+        );
+    }
+
     let effects = load_user_effects(&app_handle)?;
     let file_path = PathBuf::from(&effect.file_path);
 

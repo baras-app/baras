@@ -27,12 +27,22 @@ impl DefinitionSet {
         Self::default()
     }
 
-    /// Add definitions, returns IDs of any duplicates
+    /// Add definitions, returns IDs of any duplicates that were SKIPPED (not overwritten)
     pub fn add_definitions(&mut self, definitions: Vec<EffectDefinition>) -> Vec<String> {
         let mut duplicates = Vec::new();
         for def in definitions {
+            // Warn about effects that will never match anything
+            if def.effect_ids.is_empty() && def.refresh_abilities.is_empty() {
+                eprintln!(
+                    "[EFFECT WARNING] Effect '{}' has no effect_ids or refresh_abilities - it will never match anything!",
+                    def.id
+                );
+            }
+
             if self.effects.contains_key(&def.id) {
                 duplicates.push(def.id.clone());
+                // Skip duplicate instead of overwriting - keep the first definition
+                continue;
             }
             self.effects.insert(def.id.clone(), def);
         }

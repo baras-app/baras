@@ -222,8 +222,9 @@ impl CombatService {
                         if let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
                             let duplicates = set.add_definitions(config.effects);
                             if !duplicates.is_empty() {
-                                eprintln!("[{}] Duplicate IDs in {:?}: {:?}",
-                                    source, path.file_name(), duplicates);
+                                eprintln!("[EFFECT WARNING] Duplicate effect IDs SKIPPED in {:?}: {:?}. \
+                                    Check your {} definitions for conflicts.",
+                                    path.file_name(), duplicates, source);
                             }
                         }
                     }

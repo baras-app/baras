@@ -79,12 +79,29 @@ impl TimerManager {
     /// Load timer definitions
     pub fn load_definitions(&mut self, definitions: Vec<TimerDefinition>) {
         self.definitions.clear();
+        let mut duplicate_count = 0;
         for def in definitions {
             if def.enabled {
+                if let Some(existing) = self.definitions.get(&def.id) {
+                    eprintln!(
+                        "[TIMER WARNING] Duplicate timer ID '{}' found! First: '{}', Duplicate: '{}'. Keeping first.",
+                        def.id, existing.name, def.name
+                    );
+                    duplicate_count += 1;
+                    continue;
+                }
                 self.definitions.insert(def.id.clone(), def);
             }
-      }
-        eprintln!("TimerManager: loaded {} enabled definitions", self.definitions.len());
+        }
+        if duplicate_count > 0 {
+            eprintln!("TimerManager: loaded {} enabled definitions ({} duplicates skipped)",
+                self.definitions.len(), duplicate_count);
+        } else {
+            eprintln!("TimerManager: loaded {} enabled definitions", self.definitions.len());
+        }
+
+        // Validate timer chain references
+        self.validate_timer_chains();
     }
 
     /// Alias for load_definitions (matches effect tracker API)
@@ -102,11 +119,29 @@ impl TimerManager {
         self.definitions.retain(|id, _| !id.contains('_') || id.starts_with("generic_"));
 
         let mut timer_count = 0;
+        let mut duplicate_count = 0;
         for boss in bosses {
             // Extract boss timers and convert to TimerDefinition
             for boss_timer in &boss.timers {
                 if boss_timer.enabled {
                     let timer_def = convert_boss_timer_to_definition(boss_timer, &boss);
+
+                    // Check for duplicate ID - warn and skip instead of silent overwrite
+                    if let Some(existing) = self.definitions.get(&timer_def.id) {
+                        eprintln!(
+                            "[TIMER WARNING] Duplicate timer ID '{}' found! \
+                            First: '{}' ({}), Duplicate: '{}' ({}). \
+                            Keeping first, ignoring duplicate.",
+                            timer_def.id,
+                            existing.name,
+                            existing.boss.as_deref().unwrap_or("unknown"),
+                            timer_def.name,
+                            boss.name
+                        );
+                        duplicate_count += 1;
+                        continue;
+                    }
+
                     self.definitions.insert(timer_def.id.clone(), timer_def);
                     timer_count += 1;
                 }
@@ -119,12 +154,48 @@ impl TimerManager {
         }
 
         let boss_count: usize = self.boss_definitions.values().map(|v| v.len()).sum();
-        eprintln!(
-            "TimerManager: loaded {} bosses across {} areas, {} boss timers",
-            boss_count,
-            self.boss_definitions.len(),
-            timer_count
-        );
+        if duplicate_count > 0 {
+            eprintln!(
+                "TimerManager: loaded {} bosses, {} timers ({} DUPLICATES SKIPPED - check your timer definitions!)",
+                boss_count, timer_count, duplicate_count
+            );
+        } else {
+            eprintln!(
+                "TimerManager: loaded {} bosses across {} areas, {} boss timers",
+                boss_count,
+                self.boss_definitions.len(),
+                timer_count
+            );
+        }
+
+        // Validate timer chain references
+        self.validate_timer_chains();
+    }
+
+    /// Validate that all timer chain references (triggers_timer/chains_to) point to existing timers
+    fn validate_timer_chains(&self) {
+        let mut broken_chains = Vec::new();
+
+        for (id, def) in &self.definitions {
+            if let Some(ref chain_to) = def.triggers_timer {
+                if !self.definitions.contains_key(chain_to) {
+                    broken_chains.push((id.clone(), chain_to.clone()));
+                }
+            }
+        }
+
+        if !broken_chains.is_empty() {
+            eprintln!(
+                "[TIMER WARNING] {} broken timer chain reference(s) found:",
+                broken_chains.len()
+            );
+            for (timer_id, missing_ref) in &broken_chains {
+                eprintln!(
+                    "  - Timer '{}' chains to '{}' which does not exist",
+                    timer_id, missing_ref
+                );
+            }
+        }
     }
 
     /// Get current encounter state (for external queries)
