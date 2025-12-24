@@ -9,7 +9,7 @@ use crate::context::{AppConfig, parse_log_filename};
 use crate::effects::{DefinitionSet, EffectTracker};
 use crate::events::{EventProcessor, GameSignal, SignalHandler};
 use crate::state::SessionCache;
-use crate::encounters::BossDefinition;
+use crate::boss_timers::BossDefinition;
 use crate::timers::{TimerDefinition, TimerManager};
 
 /// A live parsing session that processes combat events and tracks game state.

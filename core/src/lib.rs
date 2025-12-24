@@ -1,8 +1,8 @@
+pub mod boss_timers;
 pub mod combat_log;
 pub mod context;
 pub mod effects;
 pub mod encounter;
-pub mod encounters;
 pub mod events;
 pub mod game_data;
 pub mod state;
@@ -22,7 +22,7 @@ pub use events::{EventProcessor, GameSignal, SignalHandler};
 pub use game_data::*;
 pub use state::SessionCache;
 pub use timers::{ActiveTimer, TimerDefinition, TimerKey, TimerManager, TimerTrigger};
-pub use encounters::{
+pub use boss_timers::{
     BossConfig, BossDefinition, BossEncounterState, BossTimerDefinition, CounterCondition,
     CounterDefinition, PhaseDefinition, PhaseTrigger, load_bosses_from_dir,
 };
