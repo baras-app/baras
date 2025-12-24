@@ -197,8 +197,37 @@ pub fn App() -> Element {
                     }
                     p { class: "subtitle", "Battle Analysis and Raid Assessment System" }
                 }
-                // Quick overlay controls
+                // Quick overlay controls with profile dropdown
                 div { class: "header-overlay-controls",
+                    // Profile dropdown (no label, compact)
+                    if !profile_names().is_empty() {
+                        select {
+                            class: "header-profile-dropdown",
+                            title: "Switch profile",
+                            value: active_profile().unwrap_or_default(),
+                            onchange: move |e| {
+                                let selected = e.value();
+                                spawn(async move {
+                                    if !selected.is_empty() && api::load_profile(&selected).await {
+                                        active_profile.set(Some(selected));
+                                        if let Some(cfg) = api::get_config().await {
+                                            overlay_settings.set(cfg.overlay_settings);
+                                        }
+                                        api::refresh_overlay_settings().await;
+                                        if let Some(status) = api::get_overlay_status().await {
+                                            apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
+                                                &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
+                                                &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
+                                        }
+                                    }
+                                });
+                            },
+                            for name in profile_names().iter() {
+                                option { value: "{name}", "{name}" }
+                            }
+                        }
+                    }
+                    div { class: "header-controls-divider" }
                     button {
                         class: if is_visible { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
                         title: if is_visible { "Hide overlays" } else { "Show overlays" },
@@ -409,10 +438,17 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 if active_tab() == "overlays" {
                     section { class: "overlay-controls",
-                        div { class: "overlays-header",
+                        // Top bar: Customize button + Profile selector
+                        div { class: "overlays-top-bar",
+                            button {
+                                class: "btn btn-customize",
+                                onclick: move |_| settings_open.set(!settings_open()),
+                                i { class: "fa-solid fa-screwdriver-wrench" }
+                                span { " Customize" }
+                            }
                             if !profile_names().is_empty() {
                                 div { class: "profile-selector",
-                                    i { class: "fa-solid fa-user-gear" }
+                                    span { class: "profile-label", "Profiles:" }
                                     select {
                                         class: "profile-dropdown",
                                         value: active_profile().unwrap_or_default(),
@@ -576,15 +612,6 @@ pub fn App() -> Element {
                             }
                         }
 
-                        // Customize button
-                        div { class: "customize-section",
-                            button {
-                                class: "btn btn-control btn-settings",
-                                onclick: move |_| settings_open.set(!settings_open()),
-                                i { class: "fa-solid fa-screwdriver-wrench" }
-                                span { " Customize" }
-                            }
-                        }
                     }
 
                     // Floating settings panel

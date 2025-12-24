@@ -57,21 +57,24 @@ pub fn EffectEditorPanel() -> Element {
             .collect::<Vec<_>>()
     });
 
-    // Group filtered effects by file
+    // Group filtered effects by category
     let grouped_effects = use_memo(move || {
-        let mut groups: Vec<(String, Vec<EffectListItem>)> = Vec::new();
+        let mut groups: Vec<(EffectCategory, Vec<EffectListItem>)> = Vec::new();
 
         for effect in filtered_effects() {
-            let file_key = effect.file_path.clone();
-            if let Some(group) = groups.iter_mut().find(|(k, _)| k == &file_key) {
+            let cat = effect.category;
+            if let Some(group) = groups.iter_mut().find(|(k, _)| *k == cat) {
                 group.1.push(effect);
             } else {
-                groups.push((file_key, vec![effect]));
+                groups.push((cat, vec![effect]));
             }
         }
 
-        // Sort groups by file name
-        groups.sort_by(|a, b| a.0.cmp(&b.0));
+        // Sort groups by category order (HoT, Shield, Buff, etc.)
+        let cat_order = |c: &EffectCategory| -> usize {
+            EffectCategory::all().iter().position(|x| x == c).unwrap_or(99)
+        };
+        groups.sort_by(|a, b| cat_order(&a.0).cmp(&cat_order(&b.0)));
         groups
     });
 
@@ -203,37 +206,38 @@ pub fn EffectEditorPanel() -> Element {
                 }
             } else {
                 div { class: "effect-list",
-                    for (file_path, file_effects) in grouped_effects() {
+                    for (category, cat_effects) in grouped_effects() {
                         {
-                            let is_expanded = expanded_files().contains(&file_path);
-                            let file_key = file_path.clone();
-                            let file_name = file_path.rsplit('/').next().unwrap_or(&file_path).to_string();
-                            let effect_count = file_effects.len();
+                            let cat_key = category.label().to_string();
+                            let is_expanded = expanded_files().contains(&cat_key);
+                            let cat_key_toggle = cat_key.clone();
+                            let cat_label = category.label();
+                            let effect_count = cat_effects.len();
 
                             rsx! {
-                                // File header
+                                // Category header
                                 div {
                                     class: "file-header",
                                     onclick: move |_| {
                                         let mut set = expanded_files();
-                                        if set.contains(&file_key) {
-                                            set.remove(&file_key);
+                                        if set.contains(&cat_key_toggle) {
+                                            set.remove(&cat_key_toggle);
                                         } else {
-                                            set.insert(file_key.clone());
+                                            set.insert(cat_key_toggle.clone());
                                         }
                                         expanded_files.set(set);
                                     },
                                     span { class: "file-expand-icon",
                                         if is_expanded { "▼" } else { "▶" }
                                     }
-                                    span { class: "file-name", "{file_name}" }
+                                    span { class: "file-name", "{cat_label}" }
                                     span { class: "file-effect-count", "({effect_count})" }
                                 }
 
                                 // Effects (only if expanded)
                                 if is_expanded {
                                     div { class: "file-effects",
-                                        for effect in file_effects {
+                                        for effect in cat_effects {
                                             {
                                                 let effect_key = effect.id.clone();
                                                 let is_effect_expanded = expanded_effect() == Some(effect_key.clone());

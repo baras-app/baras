@@ -15,6 +15,19 @@ body {
 /* Responsive font sizing - scales with viewport height */
 :root {
   --base-font: clamp(10px, 1.8vh, 16px);
+
+  /* SWTOR-inspired color palette */
+  --swtor-gold: #c9a227;
+  --swtor-gold-dim: #8a7020;
+  --swtor-gold-glow: rgba(201, 162, 39, 0.3);
+  --swtor-blue: #4a9eff;
+  --swtor-blue-dim: #2d5a8a;
+  --swtor-blue-glow: rgba(74, 158, 255, 0.2);
+  --swtor-red: #ff4a4a;
+  --swtor-bg-dark: #1a1a1f;
+  --swtor-bg-mid: #252530;
+  --swtor-bg-light: #2f2f38;
+  --swtor-border: rgba(74, 158, 255, 0.12);
 }
 
 .logo.dioxus:hover {
@@ -77,8 +90,8 @@ select optgroup {
 }
 
 .container {
-  margin: 0 auto;
-  padding: 1.5vh 2vw;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -86,18 +99,20 @@ select optgroup {
   text-align: center;
   height: 100vh;
   width: 100%;
-  max-width: 95%;
   overflow: hidden;
   gap: 0.75vh;
 }
 
 /* App header */
 .app-header {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: linear-gradient(135deg, var(--swtor-bg-dark) 0%, var(--swtor-bg-mid) 50%, var(--swtor-bg-dark) 100%);
+  border-bottom: 1px solid var(--swtor-border);
+  padding: 0.75em 2vw;
 }
 
 .app-header .header-content {
@@ -114,6 +129,8 @@ select optgroup {
   font-size: clamp(1.2rem, 4vh, 2.5rem);
   line-height: 1.1;
   letter-spacing: 0.05em;
+  color: var(--swtor-blue);
+  text-shadow: 0 0 20px var(--swtor-blue-glow), 0 0 40px rgba(74, 158, 255, 0.15);
 }
 
 .app-header .header-logo {
@@ -137,8 +154,8 @@ select optgroup {
 }
 
 .btn-header-settings {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(80, 80, 90, 0.4);
   color: #888;
   padding: 0.6em;
   font-size: 1.2em;
@@ -152,9 +169,9 @@ select optgroup {
 }
 
 .btn-header-settings:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
   color: #ccc;
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .header-buttons {
@@ -165,12 +182,36 @@ select optgroup {
 /* Header overlay quick controls */
 .header-overlay-controls {
   display: flex;
+  align-items: center;
   gap: 0.35em;
   margin-right: 1em;
   padding: 0.3em 0.5em;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(80, 80, 90, 0.3);
+}
+
+.header-profile-dropdown {
+  padding: 0.3em 1.8em 0.3em 0.5em;
+  background: rgba(40, 40, 45, 0.9);
+  border: 1px solid rgba(80, 80, 90, 0.4);
+  border-radius: 4px;
+  color: #aaa;
+  font-size: 0.8em;
+  cursor: pointer;
+  min-width: 80px;
+}
+
+.header-profile-dropdown:hover {
+  border-color: var(--swtor-blue-dim);
+  color: var(--swtor-blue);
+}
+
+.header-controls-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 0.25em;
 }
 
 .btn-header-overlay {
@@ -211,8 +252,8 @@ select optgroup {
 }
 
 .btn-header-files {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(80, 80, 90, 0.4);
   color: #888;
   padding: 0.6em;
   font-size: 1.2em;
@@ -226,9 +267,9 @@ select optgroup {
 }
 
 .btn-header-files:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
   color: #ccc;
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .logo {
@@ -434,6 +475,10 @@ a:hover {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
+  border-radius: 8px;
+  padding: 1vh 1.5vw;
+  border: 1px solid rgba(74, 158, 255, 0.12);
 }
 
 .overlay-controls h3 {
@@ -449,14 +494,14 @@ a:hover {
   gap: 0.5vw;
   margin-bottom: 0.5vh;
   padding: 0.75vh 0.75vw;
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 8px;
   flex-shrink: 0;
 }
 
 .subsection-title {
   font-size: clamp(0.5rem, 1.2vh, 0.75rem);
-  color: #888;
+  color: #666;
   text-transform: uppercase;
   margin: 0.3vh 0 0.2vh 0;
   letter-spacing: 0.5px;
@@ -479,6 +524,7 @@ a:hover {
   justify-content: center;
 }
 
+/* ═══ Futuristic Control Panel Buttons ═══ */
 .btn-overlay {
   width: 100%;
   min-width: unset;
@@ -489,7 +535,28 @@ a:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   border-width: 1px;
-  border-radius: 6px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(30, 30, 35, 0.95) 100%);
+  border: 1px solid rgba(80, 80, 90, 0.4);
+  color: #777;
+  position: relative;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-overlay:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(55, 60, 75, 0.95) 0%, rgba(35, 40, 55, 0.95) 100%);
+  border-color: var(--swtor-blue-dim);
+  color: var(--swtor-blue);
+  box-shadow: 0 0 10px rgba(74, 158, 255, 0.15);
+}
+
+.btn-overlay.btn-active {
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.2) 0%, rgba(45, 90, 140, 0.15) 100%);
+  border-color: var(--swtor-blue);
+  color: var(--swtor-blue);
+  box-shadow: 0 0 12px rgba(74, 158, 255, 0.2), inset 0 0 15px rgba(74, 158, 255, 0.08);
 }
 
 .btn-control {
@@ -498,59 +565,73 @@ a:hover {
   margin: 0;
   font-size: clamp(0.7rem, 1.5vh, 0.95rem);
   border-width: 1px;
-  border-radius: 8px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(30, 30, 35, 0.95) 100%);
+  border: 1px solid rgba(80, 80, 90, 0.4);
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-/* Lock button - locked state (neutral/grey) */
+/* Lock button - locked state (neutral) */
 .btn-locked {
   min-width: unset;
   margin: 0;
-  background-color: #3a3a3a;
-  border-color: #4a4a4a;
-  color: #ccc;
+  background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(35, 35, 40, 0.95) 100%);
+  border-color: rgba(80, 80, 90, 0.4);
+  color: #999;
 }
 
 .btn-locked:hover:not(:disabled) {
-  background-color: #4a4a4a;
+  background: linear-gradient(180deg, rgba(60, 60, 65, 0.95) 0%, rgba(45, 45, 50, 0.95) 100%);
+  border-color: #888;
+  color: #ccc;
 }
 
 /* Lock button - unlocked state (warning orange) */
 .btn-unlocked {
   min-width: unset;
   margin: 0;
-  background-color: #8e6e2a;
-  border-color: #ae8e3a;
-  color: white;
+  background: linear-gradient(180deg, rgba(180, 140, 60, 0.25) 0%, rgba(140, 100, 40, 0.2) 100%);
+  border-color: #b89040;
+  color: #d4a850;
+  box-shadow: 0 0 12px rgba(180, 140, 60, 0.2);
 }
 
 .btn-unlocked:hover:not(:disabled) {
-  background-color: #a07e3a;
+  background: linear-gradient(180deg, rgba(200, 155, 70, 0.3) 0%, rgba(160, 115, 50, 0.25) 100%);
+  box-shadow: 0 0 15px rgba(180, 140, 60, 0.25);
 }
 
-/* Visibility button - visible state (blue) */
+/* Visibility button - visible state (active blue) */
 .btn-visible {
   min-width: unset;
   margin: 0;
-  background-color: #2a5a8e;
-  border-color: #3a7abe;
-  color: white;
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.2) 0%, rgba(45, 90, 140, 0.15) 100%);
+  border-color: var(--swtor-blue);
+  color: var(--swtor-blue);
+  box-shadow: 0 0 12px var(--swtor-blue-glow);
 }
 
 .btn-visible:hover {
-  background-color: #3a6a9e;
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.28) 0%, rgba(55, 100, 155, 0.2) 100%);
+  box-shadow: 0 0 15px var(--swtor-blue-glow);
 }
 
-/* Visibility button - hidden state (grey) */
+/* Visibility button - hidden state (inactive) */
 .btn-hidden {
   min-width: unset;
   margin: 0;
-  background-color: #4a4a4a;
-  border-color: #5a5a5a;
-  color: #aaa;
+  background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(35, 35, 40, 0.95) 100%);
+  border-color: rgba(80, 80, 90, 0.4);
+  color: #666;
 }
 
 .btn-hidden:hover {
-  background-color: #5a5a5a;
+  background: linear-gradient(180deg, rgba(55, 60, 70, 0.95) 0%, rgba(40, 45, 55, 0.95) 100%);
+  border-color: var(--swtor-blue-dim);
+  color: var(--swtor-blue);
+  box-shadow: 0 0 8px rgba(74, 158, 255, 0.12);
 }
 
 .btn-visibility-placeholder {
@@ -567,16 +648,18 @@ a:hover {
   margin: 0 auto;
   width: 100%;
   max-width: 100%;
-  background: rgba(0, 0, 0, 0.1);
+  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
   border-radius: 8px;
   padding: 1vh 1.5vw;
   box-sizing: border-box;
   flex: 0 1 auto;
+  border: 1px solid rgba(74, 158, 255, 0.12);
 }
 
 .session-panel h3 {
   margin: 0 0 0.5vh 0;
   font-size: clamp(0.9rem, 2vh, 1.2rem);
+  color: var(--swtor-blue);
 }
 
 .session-grid {
@@ -591,14 +674,19 @@ a:hover {
   align-items: center;
   text-align: center;
   padding: 0.5em 0.75em;
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(74, 158, 255, 0.08);
   border-radius: 6px;
+  transition: border-color 0.2s;
+}
+
+.session-item:hover {
+  border-color: rgba(74, 158, 255, 0.2);
 }
 
 .session-item .label {
   font-size: clamp(0.5rem, 1.2vh, 0.75rem);
-  color: #888;
+  color: var(--swtor-blue-dim);
   text-transform: uppercase;
   margin-bottom: 0.2em;
 }
@@ -658,53 +746,63 @@ a:hover {
 .btn-settings {
   min-width: unset;
   margin: 0;
-  background-color: #4a4a6a;
-  border-color: #5a5a8a;
-  color: white;
+  background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(35, 35, 40, 0.95) 100%);
+  border-color: rgba(80, 80, 90, 0.4);
+  color: #999;
 }
 
 .btn-settings:hover {
-  background-color: #5a5a7a;
+  background: linear-gradient(180deg, rgba(60, 60, 65, 0.95) 0%, rgba(45, 45, 50, 0.95) 100%);
+  border-color: #888;
+  color: #ccc;
 }
 
-/* Rearrange Frames button */
+/* Rearrange Frames button - green/teal accent */
 .btn-rearrange {
   min-width: unset;
   margin: 0;
-  background-color: #4a5a4a;
-  border-color: #5a6a5a;
-  color: white;
+  background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(35, 35, 40, 0.95) 100%);
+  border-color: rgba(100, 100, 110, 0.4);
+  color: #aaa;
 }
 
 .btn-rearrange:hover:not(:disabled) {
-  background-color: #5a6a5a;
+  background: linear-gradient(180deg, rgba(60, 75, 70, 0.95) 0%, rgba(45, 60, 55, 0.95) 100%);
+  border-color: #5a9a7a;
+  color: #7acaa0;
+  box-shadow: 0 0 10px rgba(90, 154, 122, 0.2);
 }
 
 .btn-rearrange.btn-active {
-  background-color: #5a8a5a;
-  border-color: #6a9a6a;
+  background: linear-gradient(180deg, rgba(90, 154, 122, 0.25) 0%, rgba(60, 100, 80, 0.2) 100%);
+  border-color: #5a9a7a;
+  color: #7acaa0;
+  box-shadow: 0 0 15px rgba(90, 154, 122, 0.3), inset 0 0 20px rgba(90, 154, 122, 0.1);
 }
 
 .btn-rearrange:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* Clear Frames button */
+/* Clear Frames button - red/danger accent */
 .btn-clear-frames {
   min-width: unset;
   margin: 0;
-  background-color: #5a4a4a;
-  border-color: #6a5a5a;
-  color: white;
+  background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(35, 35, 40, 0.95) 100%);
+  border-color: rgba(100, 100, 110, 0.4);
+  color: #aaa;
 }
 
 .btn-clear-frames:hover:not(:disabled) {
-  background-color: #6a5a5a;
+  background: linear-gradient(180deg, rgba(75, 55, 55, 0.95) 0%, rgba(60, 40, 40, 0.95) 100%);
+  border-color: var(--swtor-red);
+  color: var(--swtor-red);
+  box-shadow: 0 0 10px rgba(255, 74, 74, 0.2);
 }
 
 .btn-clear-frames:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -747,12 +845,13 @@ a:hover {
   width: 90%;
   max-width: 750px;
   max-height: 85vh;
-  background: #2a2a2a;
+  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
   border-radius: 8px;
   padding: 1em;
   text-align: left;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(74, 158, 255, 0.1);
   overflow-y: auto;
+  border: 1px solid rgba(74, 158, 255, 0.2);
 }
 
 /* Floating version of settings panel */
@@ -760,7 +859,7 @@ a:hover {
   position: fixed;
   width: 650px;
   pointer-events: auto; /* Re-enable clicks on the panel itself */
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(74, 158, 255, 0.25);
 }
 
 /* Draggable header */
@@ -778,10 +877,13 @@ a:hover {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1em;
+  padding-bottom: 0.75em;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.15);
 }
 
 .settings-header h3 {
   margin: 0;
+  color: var(--swtor-blue);
 }
 
 .btn-close {
@@ -812,7 +914,7 @@ a:hover {
 
 .tab-group-label {
   font-size: 0.7em;
-  color: #666;
+  color: var(--swtor-blue-dim);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 0.25em;
@@ -822,6 +924,26 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25em;
+}
+
+/* Settings panel tab buttons - blue theme */
+.settings-panel .tab-btn {
+  background: linear-gradient(180deg, rgba(50, 50, 55, 0.9) 0%, rgba(35, 35, 40, 0.95) 100%);
+  border: 1px solid rgba(80, 80, 90, 0.4);
+  color: #888;
+}
+
+.settings-panel .tab-btn:hover {
+  background: linear-gradient(180deg, rgba(55, 60, 75, 0.95) 0%, rgba(40, 45, 60, 0.95) 100%);
+  border-color: var(--swtor-blue-dim);
+  color: var(--swtor-blue);
+}
+
+.settings-panel .tab-btn.active {
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.2) 0%, rgba(45, 90, 140, 0.15) 100%);
+  border-color: var(--swtor-blue);
+  color: var(--swtor-blue);
+  box-shadow: 0 0 10px rgba(74, 158, 255, 0.15);
 }
 
 .inline-opacity {
@@ -853,40 +975,22 @@ a:hover {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.tab-btn {
-  padding: 0.4em 0.7em;
-  min-width: auto;
-  font-size: 0.8em;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: transparent;
-  color: #888;
-  box-shadow: none;
-}
-
-.tab-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #aaa;
-}
-
-.tab-btn.active {
-  background: rgba(100, 150, 255, 0.2);
-  color: #fff;
-  border-color: rgba(100, 150, 255, 0.4);
-}
+/* Note: Main tab-btn styles are defined below in the "Main Tabs" section.
+   These are fallback/older styles that may be overridden. */
 
 /* Settings sections */
 .settings-section {
   margin: 1em 0;
   padding: 0.75em;
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 6px;
+  border: 1px solid rgba(74, 158, 255, 0.1);
 }
 
 .settings-section h4 {
   margin: 0 0 0.75em 0;
   font-size: 0.95em;
-  color: #aaa;
+  color: var(--swtor-blue-dim);
 }
 
 /* Collapsible section using native details/summary */
@@ -1193,12 +1297,13 @@ details[open] .collapsible-summary::before {
 .active-file-panel {
   width: 100%;
   max-width: 100%;
-  background: rgba(0, 0, 0, 0.1);
+  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
   border-radius: 8px;
   padding: 0.75vh 1vw;
   display: flex;
   flex-direction: column;
   gap: 0.25vh;
+  border: 1px solid rgba(74, 158, 255, 0.1);
 }
 
 .active-file-panel .file-info {
@@ -1209,7 +1314,7 @@ details[open] .collapsible-summary::before {
 }
 
 .active-file-panel .file-info .label {
-  color: #888;
+  color: var(--swtor-blue-dim);
   display: flex;
   align-items: center;
   gap: 0.3em;
@@ -1235,7 +1340,7 @@ details[open] .collapsible-summary::before {
   gap: 0.4em;
   margin-top: 0.4vh;
   padding-top: 0.4vh;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(74, 158, 255, 0.1);
   font-size: clamp(0.55rem, 1.2vh, 0.8rem);
 }
 
@@ -1247,18 +1352,18 @@ details[open] .collapsible-summary::before {
 }
 
 .watcher-status .status-dot.watching {
-  background-color: #4a4;
-  box-shadow: 0 0 4px #4a4;
+  background-color: #5aaa7a;
+  box-shadow: 0 0 6px rgba(90, 170, 122, 0.4);
 }
 
 .watcher-status .status-dot.not-watching {
-  background-color: #ca4;
-  box-shadow: 0 0 4px #ca4;
+  background-color: #888;
+  box-shadow: none;
 }
 
 .watcher-status .status-dot.paused {
-  background-color: #f5a623;
-  box-shadow: 0 0 4px rgba(245, 166, 35, 0.6);
+  background-color: #d4a850;
+  box-shadow: 0 0 6px rgba(212, 168, 80, 0.4);
 }
 
 .watcher-status .status-text {
@@ -1269,10 +1374,10 @@ details[open] .collapsible-summary::before {
   margin-left: 0.5em;
   padding: 0.25em 0.6em;
   font-size: 0.85em;
-  background: linear-gradient(135deg, #4a7c59, #3d6b4f);
-  border: 1px solid rgba(74, 124, 89, 0.5);
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.2) 0%, rgba(45, 90, 140, 0.15) 100%);
+  border: 1px solid var(--swtor-blue);
   border-radius: 4px;
-  color: #fff;
+  color: var(--swtor-blue);
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -1281,12 +1386,12 @@ details[open] .collapsible-summary::before {
 }
 
 .btn-resume-live:hover {
-  background: linear-gradient(135deg, #5a8c69, #4d7b5f);
-  border-color: rgba(90, 140, 105, 0.7);
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.3) 0%, rgba(55, 100, 155, 0.2) 100%);
+  box-shadow: 0 0 12px rgba(74, 158, 255, 0.25);
 }
 
 .btn-resume-live:active {
-  background: linear-gradient(135deg, #3a6c49, #2d5b3f);
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.35) 0%, rgba(45, 90, 140, 0.25) 100%);
 }
 
 .btn-restart-watcher {
@@ -1294,8 +1399,8 @@ details[open] .collapsible-summary::before {
   padding: 0.2em 0.5em;
   min-width: unset;
   font-size: 0.85em;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(74, 158, 255, 0.2);
   border-radius: 4px;
   color: #888;
   cursor: pointer;
@@ -1303,13 +1408,13 @@ details[open] .collapsible-summary::before {
 }
 
 .btn-restart-watcher:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #ccc;
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(74, 158, 255, 0.1);
+  color: var(--swtor-blue);
+  border-color: rgba(74, 158, 255, 0.3);
 }
 
 .btn-restart-watcher:active {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(74, 158, 255, 0.15);
 }
 
 /* General settings modal */
@@ -1524,15 +1629,42 @@ details[open] .collapsible-summary::before {
    Profile Quick Selector (main page)
    ───────────────────────────────────────────────────────────────────────────── */
 
-.overlays-header {
+/* Overlays top bar - Customize + Profiles */
+.overlays-top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5em;
+  gap: 1em;
+  margin-bottom: 0.75em;
+  padding-bottom: 0.75em;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.15);
 }
 
-.overlays-header h3 {
-  margin: 0;
+/* Customize button - distinct blue styling */
+.btn-customize {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.6em 1.2em;
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.2) 0%, rgba(45, 90, 140, 0.15) 100%);
+  border: 1px solid var(--swtor-blue);
+  border-radius: 6px;
+  color: var(--swtor-blue);
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-customize:hover {
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.3) 0%, rgba(55, 100, 155, 0.2) 100%);
+  box-shadow: 0 0 15px rgba(74, 158, 255, 0.25);
+}
+
+.btn-customize i {
+  font-size: 0.95em;
 }
 
 .profile-selector {
@@ -1542,8 +1674,11 @@ details[open] .collapsible-summary::before {
   color: #888;
 }
 
-.profile-selector i {
-  font-size: 0.9em;
+.profile-label {
+  font-size: 0.85em;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .profile-dropdown {
@@ -1649,15 +1784,15 @@ details[open] .collapsible-summary::before {
    ───────────────────────────────────────────────────────────────────────────── */
 
 .file-browser-modal {
-  background: #2a2a2f;
+  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
   border-radius: 8px;
   width: 90vw;
   max-width: 600px;
   max-height: 70vh;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(74, 158, 255, 0.1);
 }
 
 .file-browser-header {
@@ -1665,20 +1800,20 @@ details[open] .collapsible-summary::before {
   justify-content: space-between;
   align-items: center;
   padding: 1em 1.25em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(74, 158, 255, 0.15);
 }
 
 .file-browser-header h3 {
   margin: 0;
   font-size: 1.1em;
-  color: #ddd;
+  color: var(--swtor-blue);
   display: flex;
   align-items: center;
   gap: 0.5em;
 }
 
 .file-browser-header h3 i {
-  color: #888;
+  color: var(--swtor-blue-dim);
 }
 
 .file-browser-list {
@@ -1704,12 +1839,14 @@ details[open] .collapsible-summary::before {
   padding: 0.75em 1em;
   border-radius: 6px;
   margin-bottom: 0.25em;
-  background: rgba(255, 255, 255, 0.03);
-  transition: background 0.15s;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid transparent;
+  transition: all 0.15s;
 }
 
 .file-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(74, 158, 255, 0.08);
+  border-color: rgba(74, 158, 255, 0.15);
 }
 
 .file-item.empty {
@@ -1757,9 +1894,9 @@ details[open] .collapsible-summary::before {
   display: flex;
   align-items: center;
   gap: 0.3em;
-  background: rgba(74, 124, 89, 0.3);
-  border: 1px solid rgba(74, 124, 89, 0.4);
-  color: #8fc99a;
+  background: rgba(74, 158, 255, 0.15);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  color: var(--swtor-blue);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
@@ -1767,9 +1904,9 @@ details[open] .collapsible-summary::before {
 }
 
 .file-item .btn-open:hover:not(:disabled) {
-  background: rgba(74, 124, 89, 0.5);
-  border-color: rgba(74, 124, 89, 0.6);
-  color: #afd9b8;
+  background: rgba(74, 158, 255, 0.25);
+  border-color: rgba(74, 158, 255, 0.5);
+  box-shadow: 0 0 10px rgba(74, 158, 255, 0.2);
 }
 
 .file-item .btn-open:disabled {
@@ -1788,18 +1925,18 @@ details[open] .collapsible-summary::before {
   font-size: 0.8em;
   display: flex;
   align-items: center;
-  background: rgba(100, 100, 120, 0.3);
-  border: 1px solid rgba(100, 100, 120, 0.4);
-  color: #9090a8;
+  background: rgba(74, 158, 255, 0.1);
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  color: var(--swtor-blue-dim);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .file-item .btn-upload:hover:not(:disabled) {
-  background: rgba(74, 89, 124, 0.5);
-  border-color: rgba(74, 89, 124, 0.6);
-  color: #a8b8d9;
+  background: rgba(74, 158, 255, 0.2);
+  border-color: rgba(74, 158, 255, 0.4);
+  color: var(--swtor-blue);
 }
 
 .file-item .btn-upload:disabled {
@@ -1844,10 +1981,10 @@ details[open] .collapsible-summary::before {
 
 .history-panel {
   width: 100%;
-  background: rgba(45, 45, 50, 0.95);
+  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
   border-radius: 8px;
   padding: 0.75em;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(74, 158, 255, 0.12);
 }
 
 .history-header {
@@ -1856,18 +1993,18 @@ details[open] .collapsible-summary::before {
   justify-content: space-between;
   margin-bottom: 0.75em;
   padding-bottom: 0.5em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(74, 158, 255, 0.12);
 }
 
 .history-header h3 {
   margin: 0;
   font-size: 1em;
-  color: #e0e0e0;
+  color: var(--swtor-blue);
 }
 
 .history-header h3 i {
   margin-right: 0.5em;
-  color: #888;
+  color: var(--swtor-blue-dim);
 }
 
 .history-controls {
@@ -1938,12 +2075,13 @@ details[open] .collapsible-summary::before {
 }
 
 .history-table th {
-  background: rgba(30, 30, 35, 0.8);
-  color: #aaa;
+  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
+  color: var(--swtor-blue-dim);
   font-weight: 500;
   font-size: 0.9em;
   position: sticky;
   top: 0;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.12);
 }
 
 .history-table tbody tr {
@@ -1952,11 +2090,11 @@ details[open] .collapsible-summary::before {
 }
 
 .history-table tbody tr:hover {
-  background: rgba(60, 60, 70, 0.5);
+  background: rgba(74, 158, 255, 0.05);
 }
 
 .history-table tbody tr.expanded {
-  background: rgba(70, 70, 85, 0.6);
+  background: rgba(74, 158, 255, 0.08);
 }
 
 .col-name {
@@ -2016,7 +2154,8 @@ details[open] .collapsible-summary::before {
 /* Detail row */
 .detail-row td {
   padding: 0 !important;
-  background: rgba(35, 35, 40, 0.95);
+  background: linear-gradient(180deg, rgba(40, 45, 55, 0.95) 0%, rgba(30, 35, 45, 0.95) 100%);
+  border-top: 1px solid rgba(74, 158, 255, 0.1);
 }
 
 .encounter-detail {
@@ -2308,16 +2447,16 @@ details[open] .collapsible-summary::before {
   gap: 0.5em;
   width: 100%;
   margin-bottom: 0.5em;
-  padding: 0 0.5em;
+  padding: 0 2vw;
 }
 
 .tab-btn {
   flex: 1;
   padding: 0.6em 1em;
-  background: rgba(50, 50, 55, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, var(--swtor-bg-light) 0%, var(--swtor-bg-mid) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
-  color: #aaa;
+  color: #888;
   cursor: pointer;
   font-size: 0.9em;
   font-weight: 500;
@@ -2329,14 +2468,16 @@ details[open] .collapsible-summary::before {
 }
 
 .tab-btn:hover {
-  background: rgba(60, 60, 70, 0.9);
-  color: #ddd;
+  background: linear-gradient(180deg, var(--swtor-bg-light) 0%, rgba(60, 60, 70, 0.9) 100%);
+  color: #ccc;
+  border-color: var(--swtor-border);
 }
 
 .tab-btn.active {
-  background: rgba(70, 100, 150, 0.6);
-  color: #fff;
-  border-color: rgba(100, 140, 200, 0.5);
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.15) 0%, rgba(74, 158, 255, 0.05) 100%);
+  color: var(--swtor-blue);
+  border-color: var(--swtor-blue-dim);
+  box-shadow: 0 0 10px var(--swtor-blue-glow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .tab-btn i {
@@ -2349,6 +2490,7 @@ details[open] .collapsible-summary::before {
   flex-direction: column;
   gap: 0.75vh;
   width: 100%;
+  padding: 0 2vw;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -2379,10 +2521,11 @@ details[open] .collapsible-summary::before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: rgba(35, 35, 40, 0.8);
+  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
   border-radius: 8px;
   padding: 1em;
   overflow: hidden;
+  border: 1px solid rgba(74, 158, 255, 0.12);
 }
 
 .timer-editor-header {
@@ -2390,12 +2533,14 @@ details[open] .collapsible-summary::before {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75em;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.12);
 }
 
 .timer-editor-header h2 {
   margin: 0;
   font-size: 1.1em;
-  color: #ddd;
+  color: var(--swtor-blue);
 }
 
 .timer-count {
@@ -2457,8 +2602,8 @@ details[open] .collapsible-summary::before {
 }
 
 .area-item.selected {
-  background: rgba(74, 158, 255, 0.25);
-  color: #4a9eff;
+  background: rgba(74, 158, 255, 0.15);
+  color: var(--swtor-blue);
 }
 
 .area-name {
@@ -2480,8 +2625,8 @@ details[open] .collapsible-summary::before {
 }
 
 .area-item.selected .area-counts {
-  color: #8ac4ff;
-  background: rgba(74, 158, 255, 0.15);
+  color: var(--swtor-blue);
+  background: rgba(74, 158, 255, 0.12);
 }
 
 .timer-content {
@@ -3544,10 +3689,11 @@ details[open] .collapsible-summary::before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: rgba(35, 35, 40, 0.8);
+  background: linear-gradient(180deg, var(--swtor-bg-mid) 0%, var(--swtor-bg-dark) 100%);
   border-radius: 8px;
   padding: 1em;
   overflow: hidden;
+  border: 1px solid rgba(74, 158, 255, 0.12);
 }
 
 .effect-editor-header {
@@ -3555,12 +3701,14 @@ details[open] .collapsible-summary::before {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75em;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.15);
 }
 
 .effect-editor-header h2 {
   margin: 0;
   font-size: 1.1em;
-  color: #ddd;
+  color: var(--swtor-blue);
 }
 
 .effect-count {
@@ -3611,7 +3759,7 @@ details[open] .collapsible-summary::before {
   gap: 0.5em;
   padding: 0.6em 0.75em;
   background: rgba(50, 55, 65, 0.7);
-  border: 1px solid rgba(100, 180, 140, 0.2);
+  border: 1px solid rgba(74, 158, 255, 0.2);
   border-radius: 4px;
   cursor: pointer;
   margin-top: 0.5em;
@@ -3623,17 +3771,17 @@ details[open] .collapsible-summary::before {
 }
 
 .file-header:hover {
-  background: rgba(60, 65, 75, 0.8);
+  background: rgba(60, 70, 85, 0.8);
 }
 
 .file-expand-icon {
   width: 1em;
-  color: #8fa;
+  color: var(--swtor-blue);
   font-size: 0.8em;
 }
 
 .file-name {
-  color: #afd;
+  color: var(--swtor-blue);
   font-weight: 500;
   font-size: 0.95em;
 }
@@ -3646,7 +3794,7 @@ details[open] .collapsible-summary::before {
 
 .file-effects {
   margin-left: 1em;
-  border-left: 2px solid rgba(100, 180, 140, 0.15);
+  border-left: 2px solid rgba(74, 158, 255, 0.15);
   padding-left: 0.5em;
   display: flex;
   flex-direction: column;
@@ -3667,8 +3815,8 @@ details[open] .collapsible-summary::before {
 }
 
 .effect-row.expanded {
-  background: rgba(50, 60, 55, 0.7);
-  border-color: rgba(100, 180, 140, 0.3);
+  background: rgba(50, 55, 65, 0.7);
+  border-color: rgba(74, 158, 255, 0.3);
 }
 
 .effect-row-summary {
@@ -3706,15 +3854,15 @@ details[open] .collapsible-summary::before {
 }
 
 .effect-category-badge {
-  background: rgba(80, 140, 100, 0.3);
+  background: rgba(74, 158, 255, 0.2);
   padding: 0.15em 0.4em;
   border-radius: 3px;
-  color: #8fa;
+  color: var(--swtor-blue);
   font-size: 0.75em;
 }
 
 .effect-duration {
-  color: #8fa;
+  color: var(--swtor-blue-dim);
   font-size: 0.85em;
   padding-right: 0.5em;
 }
@@ -3790,23 +3938,24 @@ details[open] .collapsible-summary::before {
 /* New Effect button */
 .btn-new-effect {
   padding: 0.4em 0.8em;
-  background: rgba(60, 120, 80, 0.5);
-  border: 1px solid rgba(100, 180, 120, 0.4);
+  background: rgba(74, 158, 255, 0.15);
+  border: 1px solid rgba(74, 158, 255, 0.4);
   border-radius: 4px;
-  color: #afa;
+  color: var(--swtor-blue);
   font-size: 0.85em;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .btn-new-effect:hover {
-  background: rgba(70, 140, 90, 0.6);
+  background: rgba(74, 158, 255, 0.25);
+  box-shadow: 0 0 10px rgba(74, 158, 255, 0.2);
 }
 
 /* New Effect Form */
 .new-effect-form {
-  background: rgba(45, 55, 50, 0.8);
-  border: 1px solid rgba(100, 180, 140, 0.3);
+  background: rgba(45, 50, 60, 0.8);
+  border: 1px solid rgba(74, 158, 255, 0.3);
   border-radius: 6px;
   padding: 1em;
   margin-bottom: 0.75em;
@@ -3821,7 +3970,7 @@ details[open] .collapsible-summary::before {
 
 .new-effect-header h3 {
   margin: 0;
-  color: #afd;
+  color: var(--swtor-blue);
   font-size: 1em;
 }
 
