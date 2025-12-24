@@ -9,6 +9,8 @@ use crate::components::{EffectEditorPanel, HistoryPanel, SettingsPanel, TimerEdi
 use crate::types::{MetricType, OverlaySettings, OverlayStatus, OverlayType, SessionInfo};
 
 static CSS: Asset = asset!("/assets/styles.css");
+static LOGO: Asset = asset!("/assets/logo.png");
+static FONT: Asset = asset!("/assets/StarJedi.ttf");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // App Component
@@ -62,6 +64,7 @@ pub fn App() -> Element {
 
     // Application settings
     let mut minimize_to_tray = use_signal(|| true);
+    let mut app_version = use_signal(String::new);
 
     // Profile state
     let mut profile_names = use_signal(Vec::<String>::new);
@@ -86,6 +89,7 @@ pub fn App() -> Element {
             minimize_to_tray.set(config.minimize_to_tray);
         }
 
+        app_version.set(api::get_app_version().await);
         log_dir_size.set(api::get_log_directory_size().await);
         log_file_count.set(api::get_log_file_count().await);
 
@@ -152,12 +156,17 @@ pub fn App() -> Element {
     rsx! {
         link { rel: "stylesheet", href: CSS }
         link { rel: "stylesheet", href: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" }
+        style { "@font-face {{ font-family: 'StarJedi'; src: url('{FONT}') format('truetype'); }}" }
 
         main { class: "container",
             // Header
             header { class: "app-header",
                 div { class: "header-content",
                     h1 { "BARAS" }
+                    img { class: "header-logo", src: LOGO, alt: "BARAS mascot" }
+                    if !app_version().is_empty() {
+                        span { class: "header-version", "v{app_version}" }
+                    }
                     p { class: "subtitle", "Battle Analysis and Raid Assessment System" }
                 }
                 button {

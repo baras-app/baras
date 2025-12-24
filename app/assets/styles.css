@@ -102,17 +102,38 @@ select optgroup {
 
 .app-header .header-content {
   flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .app-header h1 {
   margin: 0;
+  font-family: 'StarJedi', sans-serif;
   font-size: clamp(1.2rem, 4vh, 2.5rem);
   line-height: 1.1;
+  letter-spacing: 0.05em;
+}
+
+.app-header .header-logo {
+  width: clamp(28px, 5vh, 48px);
+  height: auto;
+  object-fit: contain;
+}
+
+.app-header .header-version {
+  font-size: clamp(0.6rem, 1.2vh, 0.8rem);
+  color: #666;
+  align-self: flex-end;
+  margin-bottom: 0.3em;
 }
 
 .app-header .subtitle {
+  width: 100%;
   margin: 0.25vh 0 0 0;
   font-size: clamp(0.7rem, 1.5vh, 1rem);
+  text-align: left;
 }
 
 .btn-header-settings {
@@ -729,7 +750,30 @@ a:hover {
   gap: 0.25em;
 }
 
-.metrics-opacity-row {
+.inline-opacity {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.7em;
+  color: #888;
+}
+
+.inline-opacity label {
+  white-space: nowrap;
+}
+
+.inline-opacity input[type="range"] {
+  width: 80px;
+  height: 4px;
+  accent-color: #4a9eff;
+}
+
+.inline-opacity .value {
+  min-width: 2em;
+  text-align: right;
+}
+
+.inline-opacity.metrics-opacity {
   margin-top: 0.5em;
   padding-top: 0.5em;
   border-top: 1px solid rgba(255, 255, 255, 0.08);

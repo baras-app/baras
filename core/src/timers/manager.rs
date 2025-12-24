@@ -225,12 +225,10 @@ impl TimerManager {
                 self.expired_this_tick.push(timer.definition_id.clone());
 
                 // Handle chaining
-                if let Some(next_timer_id) = chain_timer_id {
-                    if let Some(next_def) = self.definitions.get(&next_timer_id).cloned() {
-                        if self.is_definition_active(&next_def) {
+                if let Some(next_timer_id) = chain_timer_id
+                    && let Some(next_def) = self.definitions.get(&next_timer_id).cloned()
+                        && self.is_definition_active(&next_def) {
                             self.start_timer(&next_def, current_time, timer.target_entity_id);
-                        }
-                    }
                 }
             }
         }

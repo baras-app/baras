@@ -74,6 +74,8 @@ pub fn SettingsPanel(
                 config.overlay_settings.boss_health_opacity = new_settings.boss_health_opacity;
                 config.overlay_settings.timer_overlay = new_settings.timer_overlay.clone();
                 config.overlay_settings.timer_opacity = new_settings.timer_opacity;
+                config.overlay_settings.effects_overlay = new_settings.effects_overlay.clone();
+                config.overlay_settings.effects_opacity = new_settings.effects_opacity;
                 config.overlay_settings.positions = existing_positions;
                 config.overlay_settings.enabled = existing_enabled;
 
@@ -263,6 +265,7 @@ pub fn SettingsPanel(
                         TabButton { label: "Raid Frames", tab_key: "raid", selected_tab: selected_tab }
                         TabButton { label: "Boss Health", tab_key: "boss_health", selected_tab: selected_tab }
                         TabButton { label: "Timers", tab_key: "timers", selected_tab: selected_tab }
+                        TabButton { label: "Effects", tab_key: "effects", selected_tab: selected_tab }
                     }
                 }
                 div { class: "tab-group",
@@ -277,17 +280,22 @@ pub fn SettingsPanel(
                             }
                         }
                     }
-                }
-                // Global metrics opacity setting
-                div { class: "tab-group metrics-opacity-row",
-                    OpacitySlider {
-                        label: "Metrics Opacity",
-                        value: current_settings.metric_opacity,
-                        on_change: move |val| {
-                            let mut new_settings = draft_settings();
-                            new_settings.metric_opacity = val;
-                            update_draft(new_settings);
-                        },
+                    div { class: "inline-opacity metrics-opacity",
+                        label { "Metrics Opacity" }
+                        input {
+                            r#type: "range",
+                            min: "0",
+                            max: "255",
+                            value: "{current_settings.metric_opacity}",
+                            oninput: move |e| {
+                                if let Ok(val) = e.value().parse::<u8>() {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.metric_opacity = val;
+                                    update_draft(new_settings);
+                                }
+                            }
+                        }
+                        span { class: "value", "{current_settings.metric_opacity}" }
                     }
                 }
             }
@@ -378,6 +386,51 @@ pub fn SettingsPanel(
                                 let mut new_settings = draft_settings();
                                 new_settings.timer_overlay = TimerOverlayConfig::default();
                                 new_settings.timer_opacity = 180;
+                                update_draft(new_settings);
+                            },
+                            i { class: "fa-solid fa-rotate-left" }
+                            span { " Reset Style" }
+                        }
+                    }
+                }
+            } else if tab == "effects" {
+                // Effects Settings
+                div { class: "settings-section",
+                    h4 { "Appearance" }
+
+                    OpacitySlider {
+                        label: "Background Opacity",
+                        value: current_settings.effects_opacity,
+                        on_change: move |val| {
+                            let mut new_settings = draft_settings();
+                            new_settings.effects_opacity = val;
+                            update_draft(new_settings);
+                        },
+                    }
+
+                    div { class: "setting-row",
+                        label { "Font Color" }
+                        input {
+                            r#type: "color",
+                            value: "{color_to_hex(&current_settings.effects_overlay.font_color)}",
+                            class: "color-picker",
+                            oninput: move |e: Event<FormData>| {
+                                if let Some(color) = parse_hex_color(&e.value()) {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.effects_overlay.font_color = color;
+                                    update_draft(new_settings);
+                                }
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row reset-row",
+                        button {
+                            class: "btn btn-reset",
+                            onclick: move |_| {
+                                let mut new_settings = draft_settings();
+                                new_settings.effects_overlay = TimerOverlayConfig::default();
+                                new_settings.effects_opacity = 180;
                                 update_draft(new_settings);
                             },
                             i { class: "fa-solid fa-rotate-left" }

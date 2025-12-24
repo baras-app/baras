@@ -22,6 +22,9 @@ extern "C" {
 
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "dialog"], js_name = "open")]
     pub async fn open_dialog(options: JsValue) -> JsValue;
+
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "app"], js_name = "getVersion")]
+    pub async fn get_version() -> JsValue;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,6 +259,15 @@ pub async fn pick_directory(title: &str) -> Option<String> {
 
     let result = open_dialog(options.into()).await;
     result.as_string()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App Info
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Get the app version from tauri.conf.json
+pub async fn get_app_version() -> String {
+    get_version().await.as_string().unwrap_or_default()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

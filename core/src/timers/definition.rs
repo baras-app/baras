@@ -228,10 +228,9 @@ impl TimerDefinition {
         }
 
         // Check counter condition
-        if let Some(ref cond) = self.counter_condition {
-            if !state.check_counter_condition(cond) {
+        if let Some(ref cond) = self.counter_condition
+            && !state.check_counter_condition(cond) {
                 return false;
-            }
         }
 
         true
