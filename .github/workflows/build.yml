@@ -44,7 +44,7 @@ jobs:
         uses: cargo-bins/cargo-binstall@main
 
       - name: Install Dioxus and Tauri CLIs
-        run: cargo binstall dioxus-cli tauri-cli --no-confirm
+        run: cargo binstall dioxus-cli tauri-cli --no-confirm --force
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
@@ -81,7 +81,7 @@ jobs:
         uses: cargo-bins/cargo-binstall@main
 
       - name: Install Dioxus and Tauri CLIs
-        run: cargo binstall dioxus-cli tauri-cli --no-confirm
+        run: cargo binstall dioxus-cli tauri-cli --no-confirm --force
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
