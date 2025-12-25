@@ -562,7 +562,7 @@ impl AppConfig {
             auto_delete_empty_files: false,
             auto_delete_old_files: false,
             log_retention_days: 21,
-            minimize_to_tray: true,
+            minimize_to_tray: false,
             overlay_settings: OverlaySettings::default(),
             hotkeys: HotkeySettings::default(),
             profiles: Vec::new(),
