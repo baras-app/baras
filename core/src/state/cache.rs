@@ -133,19 +133,16 @@ impl SessionCache {
 
     // --- Boss Health ---
 
-    /// Get current health of all bosses in the last combat encounter
+    /// Get current health of all bosses from boss_state (realtime tracking)
     pub fn get_boss_health(&self) -> Vec<BossHealthEntry> {
-        let Some(encounter) = self.last_combat_encounter() else {
-            return vec![];
-        };
-
-        let mut entries: Vec<_> = encounter.npcs.values()
-            .filter_map(|npc| {
-                lookup_boss(npc.class_id).map(|info| BossHealthEntry {
+        let mut entries: Vec<_> = self.boss_state.hp_raw
+            .iter()
+            .filter_map(|(&npc_id, &(current, max))| {
+                lookup_boss(npc_id).map(|info| BossHealthEntry {
                     name: info.boss.to_string(),
-                    current: npc.health.0,
-                    max: npc.health.1,
-                    first_seen_at: npc.first_seen_at,
+                    current: current as i32,
+                    max: max as i32,
+                    first_seen_at: self.boss_state.first_seen.get(&npc_id).copied(),
                 })
             })
             .filter(|b| b.max > 0)

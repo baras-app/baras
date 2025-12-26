@@ -254,8 +254,12 @@ impl EventProcessor {
                 cache.boss_state.start_combat(event.timestamp);
 
                 // Start challenge tracker on the encounter (persists with encounter, not boss state)
+                // Also set initial phase on challenge tracker for duration tracking
                 if let Some(enc) = cache.current_encounter_mut() {
                     enc.challenge_tracker.start(challenges, npc_ids);
+                    if let Some(ref initial) = initial_phase {
+                        enc.challenge_tracker.set_phase(&initial.id, event.timestamp);
+                    }
                 }
 
                 let mut signals = vec![GameSignal::BossEncounterDetected {
@@ -315,9 +319,10 @@ impl EventProcessor {
             if let Some((old_hp, new_hp)) = cache.boss_state.update_entity_hp(
                 entity.log_id,
                 entity.class_id,
-                &resolve(entity.name).to_string(),
+                resolve(entity.name),
                 current_hp,
                 max_hp,
+                event.timestamp,
             ) {
                 signals.push(GameSignal::BossHpChanged {
                     entity_id: entity.log_id,
@@ -360,15 +365,22 @@ impl EventProcessor {
 
             if self.check_hp_trigger(&phase.trigger, old_hp, new_hp, npc_id, &cache.boss_state) {
                 let old_phase = cache.boss_state.current_phase.clone();
-                cache.boss_state.set_phase(&phase.id);
+                let new_phase_id = phase.id.clone();
+                let boss_id = def.id.clone();
+                let resets = phase.resets_counters.clone();
 
-                // Reset counters as specified by the phase
-                cache.boss_state.reset_counters(&phase.resets_counters);
+                cache.boss_state.set_phase(&new_phase_id);
+                cache.boss_state.reset_counters(&resets);
+
+                // Update challenge tracker phase for duration tracking
+                if let Some(enc) = cache.current_encounter_mut() {
+                    enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
+                }
 
                 return vec![GameSignal::PhaseChanged {
-                    boss_id: def.id.clone(),
+                    boss_id,
                     old_phase,
-                    new_phase: phase.id.clone(),
+                    new_phase: new_phase_id,
                     timestamp,
                 }];
             }
@@ -455,13 +467,22 @@ impl EventProcessor {
 
             if self.check_ability_trigger(&phase.trigger, event) {
                 let old_phase = cache.boss_state.current_phase.clone();
-                cache.boss_state.set_phase(&phase.id);
-                cache.boss_state.reset_counters(&phase.resets_counters);
+                let new_phase_id = phase.id.clone();
+                let boss_id = def.id.clone();
+                let resets = phase.resets_counters.clone();
+
+                cache.boss_state.set_phase(&new_phase_id);
+                cache.boss_state.reset_counters(&resets);
+
+                // Update challenge tracker phase for duration tracking
+                if let Some(enc) = cache.current_encounter_mut() {
+                    enc.challenge_tracker.set_phase(&new_phase_id, event.timestamp);
+                }
 
                 return vec![GameSignal::PhaseChanged {
-                    boss_id: def.id.clone(),
+                    boss_id,
                     old_phase,
-                    new_phase: phase.id.clone(),
+                    new_phase: new_phase_id,
                     timestamp: event.timestamp,
                 }];
             }
@@ -480,19 +501,19 @@ impl EventProcessor {
                 if event.effect.effect_id != effect_id::ABILITYACTIVATE {
                     return false;
                 }
-                ability_ids.iter().any(|&id| event.action.action_id as u64 == id)
+                ability_ids.contains(&(event.action.action_id as u64))
             }
             PhaseTrigger::EffectApplied { effect_ids } => {
                 if event.effect.type_id != effect_type_id::APPLYEFFECT {
                     return false;
                 }
-                effect_ids.iter().any(|&id| event.effect.effect_id as u64 == id)
+                effect_ids.contains(&(event.effect.effect_id as u64))
             }
             PhaseTrigger::EffectRemoved { effect_ids } => {
                 if event.effect.type_id != effect_type_id::REMOVEEFFECT {
                     return false;
                 }
-                effect_ids.iter().any(|&id| event.effect.effect_id as u64 == id)
+                effect_ids.contains(&(event.effect.effect_id as u64))
             }
             PhaseTrigger::AllOf { conditions } => {
                 conditions.iter().all(|c| self.check_ability_trigger(c, event))
@@ -547,13 +568,13 @@ impl EventProcessor {
                 if event.effect.effect_id != effect_id::ABILITYACTIVATE {
                     return false;
                 }
-                ability_ids.iter().any(|&id| event.action.action_id as u64 == id)
+                ability_ids.contains(&(event.action.action_id as u64))
             }
             CounterTrigger::EffectApplied { effect_ids } => {
                 if event.effect.type_id != effect_type_id::APPLYEFFECT {
                     return false;
                 }
-                effect_ids.iter().any(|&id| event.effect.effect_id as u64 == id)
+                effect_ids.contains(&(event.effect.effect_id as u64))
             }
             CounterTrigger::PhaseEntered { phase_id } => {
                 // Check if we emitted a PhaseChanged signal with this phase
@@ -865,6 +886,9 @@ impl EventProcessor {
                         enc.state = EncounterState::PostCombat {
                             exit_time: last_activity,
                         };
+                        // Finalize challenge tracker with phase duration and total time
+                        let duration = enc.duration_seconds().unwrap_or(0) as f32;
+                        enc.challenge_tracker.finalize(last_activity, duration);
                     }
 
                     signals.push(GameSignal::CombatEnded {
@@ -894,6 +918,8 @@ impl EventProcessor {
                 enc.state = EncounterState::PostCombat {
                     exit_time: timestamp,
                 };
+                let duration = enc.duration_seconds().unwrap_or(0) as f32;
+                enc.challenge_tracker.finalize(timestamp, duration);
             }
 
             signals.push(GameSignal::CombatEnded {
@@ -912,6 +938,8 @@ impl EventProcessor {
                     exit_time: timestamp,
                 };
                 enc.events.push(event);
+                let duration = enc.duration_seconds().unwrap_or(0) as f32;
+                enc.challenge_tracker.finalize(timestamp, duration);
             }
 
             signals.push(GameSignal::CombatEnded {
@@ -926,6 +954,8 @@ impl EventProcessor {
                 enc.state = EncounterState::PostCombat {
                     exit_time: timestamp,
                 };
+                let duration = enc.duration_seconds().unwrap_or(0) as f32;
+                enc.challenge_tracker.finalize(timestamp, duration);
             }
 
             signals.push(GameSignal::CombatEnded {

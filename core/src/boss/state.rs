@@ -8,7 +8,8 @@
 use chrono::NaiveDateTime;
 use std::collections::HashMap;
 
-use super::{ChallengeContext, CounterCondition};
+use super::CounterCondition;
+use super::ChallengeContext;
 
 /// Runtime state for a boss encounter
 #[derive(Debug, Clone, Default)]
@@ -30,6 +31,12 @@ pub struct BossEncounterState {
 
     /// HP percentages by NPC ID/class ID (most reliable for boss detection)
     pub hp_by_npc_id: HashMap<i64, f32>,
+
+    /// Raw HP values by NPC ID: (current, max) - for overlay display
+    pub hp_raw: HashMap<i64, (i64, i64)>,
+
+    /// First time each NPC was seen (for sorting by encounter order)
+    pub first_seen: HashMap<i64, NaiveDateTime>,
 
     /// HP percentages by boss name (for named HP triggers, fallback)
     pub hp_by_name: HashMap<String, f32>,
@@ -73,6 +80,8 @@ impl BossEncounterState {
         self.boss_hp_percent = 100.0;
         self.hp_by_entity.clear();
         self.hp_by_npc_id.clear();
+        self.hp_raw.clear();
+        self.first_seen.clear();
         self.hp_by_name.clear();
         self.combat_start = None;
         self.combat_time_secs = 0.0;
@@ -124,7 +133,7 @@ impl BossEncounterState {
     /// - `name`: Display name (fallback for configs using names)
     ///
     /// Returns `Some((old_hp, new_hp))` if HP changed significantly, `None` otherwise.
-    pub fn update_entity_hp(&mut self, entity_id: i64, npc_id: i64, name: &str, current: i64, max: i64) -> Option<(f32, f32)> {
+    pub fn update_entity_hp(&mut self, entity_id: i64, npc_id: i64, name: &str, current: i64, max: i64, timestamp: NaiveDateTime) -> Option<(f32, f32)> {
         let new_percent = if max > 0 {
             (current as f32 / max as f32) * 100.0
         } else {
@@ -137,6 +146,9 @@ impl BossEncounterState {
         self.hp_by_entity.insert(entity_id, new_percent);
         if npc_id != 0 {
             self.hp_by_npc_id.insert(npc_id, new_percent);
+            self.hp_raw.insert(npc_id, (current, max));
+            // Record first time we saw this NPC (for encounter ordering)
+            self.first_seen.entry(npc_id).or_insert(timestamp);
         }
         self.hp_by_name.insert(name.to_string(), new_percent);
 
@@ -169,6 +181,16 @@ impl BossEncounterState {
     /// Get HP percentage for a specific entity
     pub fn get_entity_hp(&self, entity_id: i64) -> Option<f32> {
         self.hp_by_entity.get(&entity_id).copied()
+    }
+
+    /// Get raw HP values (current, max) for a specific NPC ID
+    pub fn get_npc_hp_raw(&self, npc_id: i64) -> Option<(i64, i64)> {
+        self.hp_raw.get(&npc_id).copied()
+    }
+
+    /// Get all raw HP values by NPC ID (for overlay display)
+    pub fn all_hp_raw(&self) -> &HashMap<i64, (i64, i64)> {
+        &self.hp_raw
     }
 
     /// Check if a specific boss is below HP threshold

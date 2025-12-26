@@ -39,8 +39,6 @@ pub struct NpcInfo {
     pub is_dead: bool,
     pub first_seen_at: Option<NaiveDateTime>,
     pub death_time: Option<NaiveDateTime>,
-    /// Current health state (current, max) - updated on every combat event
-    pub health: (i32, i32),
 }
 
 impl Default for NpcInfo {
@@ -54,7 +52,6 @@ impl Default for NpcInfo {
             is_dead: false,
             first_seen_at: None,
             death_time: None,
-            health: (0, 0),
         }
     }
 }
