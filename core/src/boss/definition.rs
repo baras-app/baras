@@ -1,7 +1,7 @@
-//! Boss definition types
+//! Boss encounter definition types
 //!
 //! Definitions are loaded from TOML config files and describe boss encounters
-//! with their phases, counters, and phase-aware timers.
+//! with their phases, counters, timers, and challenges.
 
 use serde::{Deserialize, Serialize};
 
@@ -45,18 +45,19 @@ pub struct BossConfig {
     #[serde(default)]
     pub area: Option<AreaConfig>,
 
-    /// Boss definitions in this file
+    /// Boss encounter definitions in this file
     #[serde(default, rename = "boss")]
-    pub bosses: Vec<BossDefinition>,
+    pub bosses: Vec<BossEncounterDefinition>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Boss Definition
+// Boss Encounter Definition
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Definition of a boss encounter
+/// Definition of a boss encounter (e.g., "Dread Guard", "Brontes")
+/// An encounter can have multiple boss NPCs (tracked via npc_ids).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BossDefinition {
+pub struct BossEncounterDefinition {
     /// Unique identifier (e.g., "apex_vanguard")
     pub id: String,
 
@@ -418,13 +419,13 @@ fn default_true() -> bool {
 // Impl Blocks
 // ═══════════════════════════════════════════════════════════════════════════
 
-impl BossDefinition {
-    /// Check if an NPC name matches this boss
+impl BossEncounterDefinition {
+    /// Check if an NPC name matches any boss in this encounter
     pub fn matches_npc_name(&self, name: &str) -> bool {
         self.npc_names.iter().any(|n| n.eq_ignore_ascii_case(name))
     }
 
-    /// Check if an NPC ID matches this boss
+    /// Check if an NPC ID matches any boss in this encounter
     pub fn matches_npc_id(&self, id: i64) -> bool {
         self.npc_ids.contains(&id)
     }
@@ -444,11 +445,13 @@ impl BossDefinition {
             .map(|c| c.id.as_str())
             .collect()
     }
-}
 
-impl BossDefinition {
-    /// Check if this boss is active for the given area
+    /// Check if this encounter is for the given area
     pub fn matches_area(&self, area_name: &str) -> bool {
         self.area_name.eq_ignore_ascii_case(area_name)
     }
 }
+
+/// Type alias for backward compatibility
+#[deprecated(note = "Use BossEncounterDefinition instead")]
+pub type BossDefinition = BossEncounterDefinition;

@@ -9,7 +9,7 @@ use crate::context::{AppConfig, parse_log_filename};
 use crate::effects::{DefinitionSet, EffectTracker};
 use crate::events::{EventProcessor, GameSignal, SignalHandler};
 use crate::state::SessionCache;
-use crate::boss_timers::BossDefinition;
+use crate::boss::BossEncounterDefinition;
 use crate::timers::{TimerDefinition, TimerManager};
 
 /// A live parsing session that processes combat events and tracks game state.
@@ -168,7 +168,7 @@ impl ParsingSession {
     }
 
     /// Update boss definitions (for boss detection and phase tracking).
-    pub fn set_boss_definitions(&self, bosses: Vec<BossDefinition>) {
+    pub fn set_boss_definitions(&self, bosses: Vec<BossEncounterDefinition>) {
         if let Ok(mut timer_mgr) = self.timer_manager.lock() {
             timer_mgr.load_boss_definitions(bosses);
         }

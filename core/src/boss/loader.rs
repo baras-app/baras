@@ -10,12 +10,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::{AreaConfig, BossConfig, BossDefinition};
+use super::{AreaConfig, BossConfig, BossEncounterDefinition};
 
 /// Boss definition with its source file path for saving back
 #[derive(Debug, Clone)]
 pub struct BossWithPath {
-    pub boss: BossDefinition,
+    pub boss: BossEncounterDefinition,
     pub file_path: PathBuf,
     pub category: String, // "operations", "flashpoints", "lair_bosses"
 }
@@ -34,7 +34,7 @@ pub type AreaIndex = HashMap<i64, AreaIndexEntry>;
 
 /// Load boss definitions from a single TOML file
 /// Handles both legacy format (area_name on each boss) and new consolidated format
-pub fn load_bosses_from_file(path: &Path) -> Result<Vec<BossDefinition>, String> {
+pub fn load_bosses_from_file(path: &Path) -> Result<Vec<BossEncounterDefinition>, String> {
     let content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
 
@@ -102,7 +102,7 @@ fn build_area_index_recursive(dir: &Path, index: &mut AreaIndex) -> Result<(), S
 }
 
 /// Load all boss definitions from a directory (recursive)
-pub fn load_bosses_from_dir(dir: &Path) -> Result<Vec<BossDefinition>, String> {
+pub fn load_bosses_from_dir(dir: &Path) -> Result<Vec<BossEncounterDefinition>, String> {
     if !dir.exists() {
         return Ok(Vec::new());
     }
@@ -193,7 +193,7 @@ fn determine_category(base_dir: &Path, file_path: &Path) -> String {
     "unknown".to_string()
 }
 
-fn load_bosses_recursive(dir: &Path, bosses: &mut Vec<BossDefinition>) -> Result<(), String> {
+fn load_bosses_recursive(dir: &Path, bosses: &mut Vec<BossEncounterDefinition>) -> Result<(), String> {
     let entries = fs::read_dir(dir)
         .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
 
@@ -228,13 +228,13 @@ fn load_bosses_recursive(dir: &Path, bosses: &mut Vec<BossDefinition>) -> Result
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Save a single boss definition to a TOML file
-pub fn save_boss_to_file(boss: &BossDefinition, path: &Path) -> Result<(), String> {
+pub fn save_boss_to_file(boss: &BossEncounterDefinition, path: &Path) -> Result<(), String> {
     save_bosses_to_file(std::slice::from_ref(boss), path)
 }
 
 /// Save multiple boss definitions to a single TOML file
 /// Preserves the existing [area] header if present
-pub fn save_bosses_to_file(bosses: &[BossDefinition], path: &Path) -> Result<(), String> {
+pub fn save_bosses_to_file(bosses: &[BossEncounterDefinition], path: &Path) -> Result<(), String> {
     // Read existing file to preserve [area] section
     let existing_area = if path.exists() {
         fs::read_to_string(path)

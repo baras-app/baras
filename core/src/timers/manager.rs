@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use chrono::{Local, NaiveDateTime};
 
-use crate::boss_timers::{BossDefinition, BossEncounterState};
+use crate::boss::{BossEncounterDefinition, BossEncounterState};
 use crate::events::{GameSignal, SignalHandler};
 use crate::game_data::Difficulty;
 
@@ -50,13 +50,13 @@ pub struct TimerManager {
 
     // ─── Boss Encounter State ──────────────────────────────────────────────────
     /// Boss definitions indexed by area name (area -> [bosses in that area])
-    boss_definitions: HashMap<String, Vec<BossDefinition>>,
+    boss_definitions: HashMap<String, Vec<BossEncounterDefinition>>,
 
     /// Current boss encounter runtime state
     encounter_state: BossEncounterState,
 
     /// Active boss definition (if fighting a known boss)
-    active_boss_def: Option<BossDefinition>,
+    active_boss_def: Option<BossEncounterDefinition>,
 }
 
 impl Default for TimerManager {
@@ -115,7 +115,7 @@ impl TimerManager {
 
     /// Load boss definitions (indexed by area name for quick lookup)
     /// Also extracts boss timers into the main definitions map
-    pub fn load_boss_definitions(&mut self, bosses: Vec<BossDefinition>) {
+    pub fn load_boss_definitions(&mut self, bosses: Vec<BossEncounterDefinition>) {
         self.boss_definitions.clear();
 
         // Clear existing boss-related timer definitions (keep generic ones)
@@ -507,11 +507,11 @@ impl TimerManager {
             }
 
             let should_transition = match &phase.trigger {
-                crate::boss_timers::PhaseTrigger::BossHpBelow { hp_percent, npc_id, boss_name } => {
+                crate::boss::PhaseTrigger::BossHpBelow { hp_percent, npc_id, boss_name } => {
                     // Priority: NPC ID > name > any boss
                     self.encounter_state.is_boss_hp_below(*npc_id, boss_name.as_deref(), *hp_percent)
                 }
-                crate::boss_timers::PhaseTrigger::BossHpAbove { hp_percent, npc_id, boss_name } => {
+                crate::boss::PhaseTrigger::BossHpAbove { hp_percent, npc_id, boss_name } => {
                     self.encounter_state.is_boss_hp_above(*npc_id, boss_name.as_deref(), *hp_percent)
                 }
                 _ => false,
@@ -519,8 +519,8 @@ impl TimerManager {
 
             if should_transition {
                 let hp_display = match &phase.trigger {
-                    crate::boss_timers::PhaseTrigger::BossHpBelow { boss_name, .. } |
-                    crate::boss_timers::PhaseTrigger::BossHpAbove { boss_name, .. } => {
+                    crate::boss::PhaseTrigger::BossHpBelow { boss_name, .. } |
+                    crate::boss::PhaseTrigger::BossHpAbove { boss_name, .. } => {
                         boss_name.as_ref()
                             .and_then(|n| self.encounter_state.get_boss_hp(n))
                             .unwrap_or(self.encounter_state.boss_hp_percent)
@@ -714,10 +714,10 @@ fn signal_timestamp(signal: &GameSignal) -> Option<NaiveDateTime> {
 /// Convert a BossTimerDefinition to a TimerDefinition
 /// This bridges the boss-specific timer format to the generic timer system
 fn convert_boss_timer_to_definition(
-    boss_timer: &crate::boss_timers::BossTimerDefinition,
-    boss: &BossDefinition,
+    boss_timer: &crate::boss::BossTimerDefinition,
+    boss: &BossEncounterDefinition,
 ) -> TimerDefinition {
-    use crate::boss_timers::BossTimerTrigger;
+    use crate::boss::BossTimerTrigger;
 
     // Convert trigger type
     let trigger = match &boss_timer.trigger {
@@ -779,8 +779,8 @@ fn convert_boss_timer_to_definition(
 }
 
 /// Convert a single BossTimerTrigger to TimerTrigger (for nested conditions)
-fn convert_boss_trigger(trigger: &crate::boss_timers::BossTimerTrigger) -> super::TimerTrigger {
-    use crate::boss_timers::BossTimerTrigger;
+fn convert_boss_trigger(trigger: &crate::boss::BossTimerTrigger) -> super::TimerTrigger {
+    use crate::boss::BossTimerTrigger;
 
     match trigger {
         BossTimerTrigger::CombatStart => super::TimerTrigger::CombatStart,

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
-use baras_core::boss_timers::{
+use baras_core::boss::{
     load_bosses_with_paths, save_bosses_to_file, BossTimerDefinition,
     BossTimerTrigger, BossWithPath,
 };
@@ -543,7 +543,7 @@ fn collect_areas_recursive(
     current_dir: &PathBuf,
     areas: &mut Vec<AreaListItem>,
 ) -> Result<(), String> {
-    use baras_core::boss_timers::{load_area_config, load_bosses_from_file};
+    use baras_core::boss::{load_area_config, load_bosses_from_file};
 
     let entries = std::fs::read_dir(current_dir)
         .map_err(|e| format!("Failed to read directory: {}", e))?;

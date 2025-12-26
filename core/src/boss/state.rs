@@ -315,7 +315,7 @@ impl ActiveBoss {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::boss_timers::ComparisonOp;
+    use super::ComparisonOp;
 
     #[test]
     fn test_counter_operations() {

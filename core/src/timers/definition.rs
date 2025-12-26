@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::effects::EntityFilter;
-use crate::boss_timers::CounterCondition;
+use crate::boss::CounterCondition;
 use crate::game_data::Difficulty;
 
 /// What triggers a timer to start
@@ -221,7 +221,7 @@ impl TimerDefinition {
     }
 
     /// Check if this timer is active for the current phase/counter state
-    pub fn is_active_for_state(&self, state: &crate::boss_timers::BossEncounterState) -> bool {
+    pub fn is_active_for_state(&self, state: &crate::boss::BossEncounterState) -> bool {
         // Check phase filter
         if !self.phases.is_empty() && !state.is_in_any_phase(&self.phases) {
             return false;

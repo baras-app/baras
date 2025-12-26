@@ -22,7 +22,7 @@ use baras_core::encounter::EncounterState;
 use baras_core::encounter::summary::classify_encounter;
 use baras_core::directory_watcher::DirectoryWatcher;
 use baras_core::game_data::{Discipline, Role};
-use baras_core::{ActiveEffect, BossDefinition, DefinitionConfig, DefinitionSet, EffectCategory, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler};
+use baras_core::{ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, EffectCategory, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler};
 use baras_overlay::{BossHealthData, PersonalStats, PlayerRole, RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry};
 
 
@@ -170,7 +170,7 @@ pub struct CombatService {
     /// Effect definitions loaded at startup for overlay tracking
     definitions: DefinitionSet,
     /// Area index for lazy loading encounter definitions (area_id -> file path)
-    area_index: Arc<baras_core::boss_timers::AreaIndex>,
+    area_index: Arc<baras_core::boss::AreaIndex>,
     /// Currently loaded area ID (0 = none)
     loaded_area_id: i64,
 }
@@ -214,8 +214,8 @@ impl CombatService {
     }
 
     /// Build area index from encounter definition files (lightweight - only reads headers)
-    fn build_area_index(app_handle: &AppHandle) -> baras_core::boss_timers::AreaIndex {
-        use baras_core::boss_timers::build_area_index;
+    fn build_area_index(app_handle: &AppHandle) -> baras_core::boss::AreaIndex {
+        use baras_core::boss::build_area_index;
 
         // Bundled definitions: shipped with the app in resources
         let bundled_dir = app_handle
@@ -226,7 +226,7 @@ impl CombatService {
         // Custom definitions: user's config directory
         let custom_dir = dirs::config_dir().map(|p| p.join("baras").join("encounters"));
 
-        let mut index = baras_core::boss_timers::AreaIndex::new();
+        let mut index = baras_core::boss::AreaIndex::new();
 
         // Build index from bundled directory
         if let Some(ref path) = bundled_dir && path.exists() {
@@ -255,8 +255,8 @@ impl CombatService {
     }
 
     /// Load boss definitions for a specific area
-    fn load_area_definitions(&self, area_id: i64) -> Option<Vec<BossDefinition>> {
-        use baras_core::boss_timers::load_bosses_from_file;
+    fn load_area_definitions(&self, area_id: i64) -> Option<Vec<BossEncounterDefinition>> {
+        use baras_core::boss::load_bosses_from_file;
 
         let entry = self.area_index.get(&area_id)?;
 
@@ -776,7 +776,7 @@ impl CombatService {
 
                     // Load definitions for this area
                     if let Some(entry) = area_index.get(&area_id) {
-                        use baras_core::boss_timers::load_bosses_from_file;
+                        use baras_core::boss::load_bosses_from_file;
 
                         match load_bosses_from_file(&entry.file_path) {
                             Ok(bosses) => {
