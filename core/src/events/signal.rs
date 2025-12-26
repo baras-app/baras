@@ -109,6 +109,18 @@ pub enum GameSignal {
     },
 
     // ─── Boss Encounter Signals ────────────────────────────────────────────────
+    /// A boss encounter was detected (first boss NPC seen in combat).
+    /// Emitted once per combat when a known boss NPC is first encountered.
+    BossEncounterDetected {
+        /// The definition ID (e.g., "apex_vanguard")
+        definition_id: String,
+        /// Display name of the boss encounter
+        boss_name: String,
+        /// Index into SessionCache.boss_definitions
+        definition_idx: usize,
+        timestamp: NaiveDateTime,
+    },
+
     /// Boss HP has changed (for phase transition detection)
     BossHpChanged {
         entity_id: i64,

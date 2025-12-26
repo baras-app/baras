@@ -3,6 +3,7 @@ pub mod effect_instance;
 pub mod shielding;
 pub mod entity_info;
 pub mod summary;
+use crate::boss::ChallengeTracker;
 use crate::is_boss;
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::{resolve, IStr};
@@ -73,6 +74,8 @@ pub struct Encounter {
     pub accumulated_data: HashMap<i64, MetricAccumulator>,
     /// Pending shield absorptions waiting for resolution (target_id -> pending events)
     pub pending_absorptions: HashMap<i64, Vec<shielding::PendingAbsorption>>,
+    /// Challenge metrics accumulated during boss encounters
+    pub challenge_tracker: ChallengeTracker,
 }
 
 impl Encounter {
@@ -90,6 +93,7 @@ impl Encounter {
             all_players_dead: false,
             accumulated_data: HashMap::new(),
             pending_absorptions: HashMap::new(),
+            challenge_tracker: ChallengeTracker::new(),
         }
     }
 

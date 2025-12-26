@@ -168,7 +168,22 @@ impl ParsingSession {
     }
 
     /// Update boss definitions (for boss detection and phase tracking).
+    /// NOTE: This only updates TimerManager. For full support, use `load_boss_definitions`.
     pub fn set_boss_definitions(&self, bosses: Vec<BossEncounterDefinition>) {
+        if let Ok(mut timer_mgr) = self.timer_manager.lock() {
+            timer_mgr.load_boss_definitions(bosses);
+        }
+    }
+
+    /// Load boss definitions into both SessionCache and TimerManager.
+    /// Requires mutable access - use this when entering a new area.
+    pub fn load_boss_definitions(&mut self, bosses: Vec<BossEncounterDefinition>) {
+        // Update SessionCache (for boss encounter detection and state tracking)
+        if let Some(cache) = &mut self.session_cache {
+            cache.load_boss_definitions(bosses.clone());
+        }
+
+        // Update TimerManager (for timer activation)
         if let Ok(mut timer_mgr) = self.timer_manager.lock() {
             timer_mgr.load_boss_definitions(bosses);
         }

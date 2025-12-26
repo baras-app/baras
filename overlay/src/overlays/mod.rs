@@ -10,6 +10,7 @@
 //! interface for the application layer to interact with any overlay type.
 
 mod boss_health;
+mod challenges;
 mod effects;
 mod metric;
 mod personal;
@@ -17,6 +18,7 @@ mod raid;
 mod timers;
 
 pub use boss_health::{BossHealthOverlay, BossHealthData};
+pub use challenges::{ChallengeData, ChallengeEntry, PlayerContribution};
 pub use effects::{EffectsData, EffectEntry, EffectsOverlay};
 pub use metric::{MetricEntry, MetricOverlay};
 pub use personal::{PersonalOverlay, PersonalStats};
@@ -65,6 +67,8 @@ pub enum OverlayData {
     Timers(TimerData),
     /// Effects countdown bars
     Effects(EffectsData),
+    /// Challenge metrics during boss encounters
+    Challenges(ChallengeData),
 }
 
 /// Configuration updates that can be sent to overlays

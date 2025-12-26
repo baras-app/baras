@@ -268,6 +268,7 @@ pub fn save_bosses_to_file(bosses: &[BossEncounterDefinition], path: &Path) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::boss::{ChallengeMetric, ChallengeCondition, EntityMatcher};
 
     #[test]
     fn test_parse_boss_config() {
@@ -318,5 +319,150 @@ phases = ["p1"]
             boss.phases[1].trigger,
             super::super::PhaseTrigger::BossHpBelow { hp_percent, .. } if (hp_percent - 50.0).abs() < 0.01
         ));
+    }
+
+    #[test]
+    fn test_parse_boss_with_challenges() {
+        let toml = r#"
+[area]
+name = "Dread Palace"
+area_id = 833575842743088
+category = "operations"
+
+[[boss]]
+id = "bestia"
+name = "Dread Master Bestia"
+npc_ids = [3273941900591104]
+
+[[boss.phase]]
+id = "p1"
+name = "Phase 1"
+trigger = { type = "combat_start" }
+
+[[boss.phase]]
+id = "burn"
+name = "Burn Phase"
+trigger = { type = "boss_hp_below", hp_percent = 30.0, npc_id = 3273941900591104 }
+
+[[boss.counter]]
+id = "dread_scream_casts"
+increment_on = { type = "ability_cast", ability_ids = [3302391763959808] }
+
+[[boss.challenge]]
+id = "boss_damage"
+name = "Boss Damage"
+metric = "damage"
+conditions = [
+    { type = "target", match = "any_boss" }
+]
+
+[[boss.challenge]]
+id = "add_damage"
+name = "Add Damage"
+description = "Damage to Dread Larva and Dread Monster"
+metric = "damage"
+conditions = [
+    { type = "target", match = { npc_ids = [3292079547482112, 3291675820556288] } }
+]
+
+[[boss.challenge]]
+id = "burn_phase_dps"
+name = "Burn Phase DPS"
+metric = "damage"
+conditions = [
+    { type = "phase", phase_ids = ["burn"] },
+    { type = "target", match = "any_boss" }
+]
+
+[[boss.challenge]]
+id = "local_player_damage"
+name = "Your Boss Damage"
+metric = "damage"
+conditions = [
+    { type = "source", match = "local_player" },
+    { type = "target", match = "any_boss" }
+]
+"#;
+
+        let config: BossConfig = toml::from_str(toml).expect("Failed to parse TOML");
+        assert_eq!(config.bosses.len(), 1);
+
+        let boss = &config.bosses[0];
+        assert_eq!(boss.id, "bestia");
+        assert_eq!(boss.phases.len(), 2);
+        assert_eq!(boss.counters.len(), 1);
+        assert_eq!(boss.challenges.len(), 4);
+
+        // Verify area populated
+        let area = config.area.as_ref().expect("Area should be present");
+        assert_eq!(area.name, "Dread Palace");
+        assert_eq!(area.area_id, 833575842743088);
+
+        // Check challenge parsing
+        let boss_damage = &boss.challenges[0];
+        assert_eq!(boss_damage.id, "boss_damage");
+        assert_eq!(boss_damage.metric, ChallengeMetric::Damage);
+        assert_eq!(boss_damage.conditions.len(), 1);
+        assert!(matches!(
+            &boss_damage.conditions[0],
+            ChallengeCondition::Target { matcher: EntityMatcher::AnyBoss }
+        ));
+
+        let add_damage = &boss.challenges[1];
+        assert_eq!(add_damage.id, "add_damage");
+        assert!(matches!(
+            &add_damage.conditions[0],
+            ChallengeCondition::Target { matcher: EntityMatcher::NpcIds(ids) } if ids.len() == 2
+        ));
+
+        let burn_dps = &boss.challenges[2];
+        assert_eq!(burn_dps.id, "burn_phase_dps");
+        assert_eq!(burn_dps.conditions.len(), 2);
+        assert!(matches!(
+            &burn_dps.conditions[0],
+            ChallengeCondition::Phase { phase_ids } if phase_ids == &["burn"]
+        ));
+
+        let local_player = &boss.challenges[3];
+        assert!(matches!(
+            &local_player.conditions[0],
+            ChallengeCondition::Source { matcher: EntityMatcher::LocalPlayer }
+        ));
+    }
+
+    #[test]
+    fn test_load_bestia_fixture() {
+        // Load the actual Dread Palace fixture file
+        let path = std::path::Path::new("../test-log-files/fixtures/config/dread_palace.toml");
+        if !path.exists() {
+            eprintln!("Fixture file not found, skipping test");
+            return;
+        }
+
+        let bosses = load_bosses_from_file(path).expect("Failed to load fixture");
+        assert_eq!(bosses.len(), 1);
+
+        let bestia = &bosses[0];
+        assert_eq!(bestia.id, "bestia");
+        assert_eq!(bestia.name, "Dread Master Bestia");
+        assert_eq!(bestia.npc_ids, vec![3273941900591104_i64]);
+
+        // Phases
+        assert_eq!(bestia.phases.len(), 2);
+        assert_eq!(bestia.phases[0].id, "p1");
+        assert_eq!(bestia.phases[1].id, "burn");
+
+        // Counters
+        assert_eq!(bestia.counters.len(), 3);
+
+        // Challenges
+        assert_eq!(bestia.challenges.len(), 5);
+        assert_eq!(bestia.challenges[0].id, "boss_damage");
+        assert_eq!(bestia.challenges[1].id, "add_damage");
+        assert_eq!(bestia.challenges[2].id, "burn_phase_dps");
+        assert_eq!(bestia.challenges[3].id, "boss_damage_taken");
+        assert_eq!(bestia.challenges[4].id, "local_player_boss_damage");
+
+        eprintln!("Successfully loaded Bestia fixture with {} challenges", bestia.challenges.len());
     }
 }

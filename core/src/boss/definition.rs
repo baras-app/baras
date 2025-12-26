@@ -5,6 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::ChallengeDefinition;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Root Config Structure
 // ═══════════════════════════════════════════════════════════════════════════
@@ -93,6 +95,10 @@ pub struct BossEncounterDefinition {
     /// Boss-specific timers
     #[serde(default, rename = "timer")]
     pub timers: Vec<BossTimerDefinition>,
+
+    /// Challenge definitions for tracking metrics
+    #[serde(default, rename = "challenge")]
+    pub challenges: Vec<ChallengeDefinition>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -8,7 +8,7 @@
 use chrono::NaiveDateTime;
 use std::collections::HashMap;
 
-use super::CounterCondition;
+use super::{ChallengeContext, CounterCondition};
 
 /// Runtime state for a boss encounter
 #[derive(Debug, Clone, Default)]
@@ -76,6 +76,16 @@ impl BossEncounterState {
         self.hp_by_name.clear();
         self.combat_start = None;
         self.combat_time_secs = 0.0;
+    }
+
+    /// Build a ChallengeContext snapshot for condition matching
+    pub fn challenge_context(&self, boss_npc_ids: &[i64]) -> ChallengeContext {
+        ChallengeContext {
+            current_phase: self.current_phase.clone(),
+            counters: self.counters.clone(),
+            hp_by_npc_id: self.hp_by_npc_id.clone(),
+            boss_npc_ids: boss_npc_ids.to_vec(),
+        }
     }
 
     /// Set the active boss
@@ -315,7 +325,7 @@ impl ActiveBoss {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::ComparisonOp;
+    use crate::boss::ComparisonOp;
 
     #[test]
     fn test_counter_operations() {

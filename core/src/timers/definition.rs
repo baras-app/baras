@@ -220,22 +220,6 @@ impl TimerDefinition {
         }
     }
 
-    /// Check if this timer is active for the current phase/counter state
-    pub fn is_active_for_state(&self, state: &crate::boss::BossEncounterState) -> bool {
-        // Check phase filter
-        if !self.phases.is_empty() && !state.is_in_any_phase(&self.phases) {
-            return false;
-        }
-
-        // Check counter condition
-        if let Some(ref cond) = self.counter_condition
-            && !state.check_counter_condition(cond) {
-                return false;
-        }
-
-        true
-    }
-
     /// Check if this timer is active for a given encounter context
     pub fn is_active_for_context(&self, encounter: Option<&str>, boss: Option<&str>, difficulty: Option<Difficulty>) -> bool {
         // Check encounter filter

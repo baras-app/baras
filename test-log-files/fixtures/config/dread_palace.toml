@@ -1,0 +1,94 @@
+# Dread Palace Boss Definitions
+# Test fixture for challenge system validation
+
+[area]
+name = "Dread Palace"
+area_id = 833575842743088  # Placeholder - would need real ID
+category = "operations"
+
+[[boss]]
+id = "bestia"
+name = "Dread Master Bestia"
+area_name = "Dread Palace"
+npc_ids = [3273941900591104]
+
+# ─── Phases ────────────────────────────────────────────────────────────────
+
+[[boss.phase]]
+id = "p1"
+name = "Phase 1"
+trigger = { type = "combat_start" }
+
+[[boss.phase]]
+id = "burn"
+name = "Burn Phase"
+trigger = { type = "boss_hp_below", hp_percent = 30.0, npc_id = 3273941900591104 }
+
+# ─── Counters ──────────────────────────────────────────────────────────────
+
+[[boss.counter]]
+id = "larva_spawns"
+increment_on = { type = "ability_cast", ability_ids = [3292079547482112] }  # Larva spawn ability
+
+[[boss.counter]]
+id = "monster_spawns"
+increment_on = { type = "ability_cast", ability_ids = [3291675820556288] }  # Monster spawn ability
+
+[[boss.counter]]
+id = "dread_scream_casts"
+increment_on = { type = "ability_cast", ability_ids = [3302391763959808] }  # Dread Scream
+
+# ─── Challenges ────────────────────────────────────────────────────────────
+
+# Track all boss damage
+[[boss.challenge]]
+id = "boss_damage"
+name = "Boss Damage"
+description = "Total damage dealt to Dread Master Bestia"
+metric = "damage"
+conditions = [
+    { type = "target", match = "any_boss" }
+]
+
+# Track add damage (Dread Larva + Dread Monster)
+[[boss.challenge]]
+id = "add_damage"
+name = "Add Damage"
+description = "Total damage dealt to Dread Larva and Dread Monster adds"
+metric = "damage"
+conditions = [
+    { type = "target", match = { npc_ids = [3292079547482112, 3291675820556288] } }
+]
+
+# Track damage during burn phase
+[[boss.challenge]]
+id = "burn_phase_dps"
+name = "Burn Phase DPS"
+description = "Damage dealt to boss during burn phase (below 30% HP)"
+metric = "damage"
+conditions = [
+    { type = "phase", phase_ids = ["burn"] },
+    { type = "target", match = "any_boss" }
+]
+
+# Track player damage taken from boss
+[[boss.challenge]]
+id = "boss_damage_taken"
+name = "Damage Taken from Boss"
+description = "Damage taken from Bestia's abilities"
+metric = "damage_taken"
+conditions = [
+    { type = "source", match = "any_boss" },
+    { type = "target", match = "any_player" }
+]
+
+# Track local player's contribution
+[[boss.challenge]]
+id = "local_player_boss_damage"
+name = "Your Boss Damage"
+description = "Your personal damage to the boss"
+metric = "damage"
+conditions = [
+    { type = "source", match = "local_player" },
+    { type = "target", match = "any_boss" }
+]

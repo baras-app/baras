@@ -1,3 +1,4 @@
+use crate::boss::EntityInfo;
 use crate::combat_log::{CombatEvent, EntityType};
 use crate::context::resolve;
 use crate::events::signal::GameSignal;
@@ -53,12 +54,27 @@ impl EventProcessor {
         // 1c. Area transitions
         signals.extend(self.handle_area_transition(&event, cache));
 
+        // 1d. Boss encounter detection
+        signals.extend(self.handle_boss_detection(&event, cache));
+
+        // 1e. Boss HP tracking and phase transitions
+        signals.extend(self.handle_boss_hp_and_phases(&event, cache));
+
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 2: Signal Emission (pure transformation)
         // ═══════════════════════════════════════════════════════════════════════
 
         signals.extend(self.emit_effect_signals(&event));
         signals.extend(self.emit_action_signals(&event));
+
+        // Check for ability/effect-based phase transitions
+        signals.extend(self.check_ability_phase_transitions(&event, cache));
+
+        // Check for counter increments based on events
+        signals.extend(self.check_counter_increments(&event, cache, &signals));
+
+        // Process challenge metrics (accumulates values, polled with combat data)
+        self.process_challenge_events(&event, cache);
 
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 3: Combat State Machine
@@ -197,6 +213,451 @@ impl EventProcessor {
             difficulty_name: resolve(event.effect.difficulty_name).to_string(),
             timestamp: event.timestamp,
         }]
+    }
+
+    /// Detect boss encounters based on NPC class IDs.
+    /// When a known boss NPC is first seen in combat, activates the encounter.
+    fn handle_boss_detection(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+        // Already tracking a boss encounter
+        if cache.active_boss_idx.is_some() {
+            return Vec::new();
+        }
+
+        // No boss definitions loaded for this area
+        if cache.boss_definitions.is_empty() {
+            return Vec::new();
+        }
+
+        // Check source and target entities for boss NPC match
+        let npc_ids_to_check = [
+            (event.source_entity.class_id, event.source_entity.entity_type),
+            (event.target_entity.class_id, event.target_entity.entity_type),
+        ];
+
+        for (class_id, entity_type) in npc_ids_to_check {
+            // Only check NPCs
+            if entity_type != EntityType::Npc || class_id == 0 {
+                continue;
+            }
+
+            // Try to detect boss encounter from this NPC
+            if let Some(idx) = cache.detect_boss_encounter(class_id) {
+                // Clone data from definition before taking mutable borrows
+                let def = &cache.boss_definitions[idx];
+                let challenges = def.challenges.clone();
+                let npc_ids = def.npc_ids.clone();
+                let def_id = def.id.clone();
+                let boss_name = def.name.clone();
+                let initial_phase = def.initial_phase().cloned();
+
+                // Start combat timer in boss state
+                cache.boss_state.start_combat(event.timestamp);
+
+                // Start challenge tracker on the encounter (persists with encounter, not boss state)
+                if let Some(enc) = cache.current_encounter_mut() {
+                    enc.challenge_tracker.start(challenges, npc_ids);
+                }
+
+                let mut signals = vec![GameSignal::BossEncounterDetected {
+                    definition_id: def_id.clone(),
+                    boss_name,
+                    definition_idx: idx,
+                    timestamp: event.timestamp,
+                }];
+
+                // Activate initial phase (CombatStart trigger)
+                if let Some(initial) = initial_phase {
+                    cache.boss_state.set_phase(&initial.id);
+                    cache.boss_state.reset_counters(&initial.resets_counters);
+
+                    signals.push(GameSignal::PhaseChanged {
+                        boss_id: def_id,
+                        old_phase: None,
+                        new_phase: initial.id.clone(),
+                        timestamp: event.timestamp,
+                    });
+                }
+
+                return signals;
+            }
+        }
+
+        Vec::new()
+    }
+
+    /// Track boss HP changes and evaluate phase transitions.
+    fn handle_boss_hp_and_phases(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+        // No active boss encounter
+        let Some(def_idx) = cache.active_boss_idx else {
+            return Vec::new();
+        };
+
+        let mut signals = Vec::new();
+
+        // Update HP for entities that are boss NPCs
+        for entity in [&event.source_entity, &event.target_entity] {
+            if entity.entity_type != EntityType::Npc || entity.class_id == 0 {
+                continue;
+            }
+
+            // Check if this NPC is part of the active boss encounter
+            let def = &cache.boss_definitions[def_idx];
+            if !def.npc_ids.contains(&entity.class_id) {
+                continue;
+            }
+
+            let (current_hp, max_hp) = (entity.health.0 as i64, entity.health.1 as i64);
+            if max_hp <= 0 {
+                continue;
+            }
+
+            // Update boss state and check if HP changed
+            if let Some((old_hp, new_hp)) = cache.boss_state.update_entity_hp(
+                entity.log_id,
+                entity.class_id,
+                &resolve(entity.name).to_string(),
+                current_hp,
+                max_hp,
+            ) {
+                signals.push(GameSignal::BossHpChanged {
+                    entity_id: entity.log_id,
+                    npc_id: entity.class_id,
+                    entity_name: resolve(entity.name).to_string(),
+                    current_hp,
+                    max_hp,
+                    timestamp: event.timestamp,
+                });
+
+                // Check for HP-based phase transitions
+                signals.extend(self.check_hp_phase_transitions(cache, old_hp, new_hp, entity.class_id, event.timestamp));
+            }
+        }
+
+        signals
+    }
+
+    /// Check for phase transitions based on HP changes.
+    fn check_hp_phase_transitions(
+        &self,
+        cache: &mut SessionCache,
+        old_hp: f32,
+        new_hp: f32,
+        npc_id: i64,
+        timestamp: chrono::NaiveDateTime,
+    ) -> Vec<GameSignal> {
+        let Some(def_idx) = cache.active_boss_idx else {
+            return Vec::new();
+        };
+
+        let def = &cache.boss_definitions[def_idx];
+        let current_phase = cache.boss_state.current_phase.clone();
+
+        for phase in &def.phases {
+            // Don't re-enter the current phase
+            if current_phase.as_ref() == Some(&phase.id) {
+                continue;
+            }
+
+            if self.check_hp_trigger(&phase.trigger, old_hp, new_hp, npc_id, &cache.boss_state) {
+                let old_phase = cache.boss_state.current_phase.clone();
+                cache.boss_state.set_phase(&phase.id);
+
+                // Reset counters as specified by the phase
+                cache.boss_state.reset_counters(&phase.resets_counters);
+
+                return vec![GameSignal::PhaseChanged {
+                    boss_id: def.id.clone(),
+                    old_phase,
+                    new_phase: phase.id.clone(),
+                    timestamp,
+                }];
+            }
+        }
+
+        Vec::new()
+    }
+
+    /// Check if an HP-based phase trigger is satisfied.
+    fn check_hp_trigger(
+        &self,
+        trigger: &crate::boss::PhaseTrigger,
+        old_hp: f32,
+        new_hp: f32,
+        npc_id: i64,
+        state: &crate::boss::BossEncounterState,
+    ) -> bool {
+        use crate::boss::PhaseTrigger;
+
+        match trigger {
+            PhaseTrigger::BossHpBelow { hp_percent, npc_id: trigger_npc, boss_name } => {
+                // Check if we crossed below the threshold
+                let crossed = old_hp > *hp_percent && new_hp <= *hp_percent;
+                if !crossed {
+                    return false;
+                }
+
+                // Check NPC filter
+                if let Some(required_npc) = trigger_npc {
+                    return npc_id == *required_npc;
+                }
+
+                // Check name filter (fallback)
+                if let Some(name) = boss_name {
+                    return state.hp_by_name.contains_key(name);
+                }
+
+                // No filter - any boss crossing threshold triggers
+                true
+            }
+            PhaseTrigger::BossHpAbove { hp_percent, npc_id: trigger_npc, boss_name } => {
+                // Check if we crossed above the threshold
+                let crossed = old_hp < *hp_percent && new_hp >= *hp_percent;
+                if !crossed {
+                    return false;
+                }
+
+                // Check NPC filter
+                if let Some(required_npc) = trigger_npc {
+                    return npc_id == *required_npc;
+                }
+
+                // Check name filter (fallback)
+                if let Some(name) = boss_name {
+                    return state.hp_by_name.contains_key(name);
+                }
+
+                true
+            }
+            PhaseTrigger::AllOf { conditions } => {
+                conditions.iter().all(|c| self.check_hp_trigger(c, old_hp, new_hp, npc_id, state))
+            }
+            PhaseTrigger::AnyOf { conditions } => {
+                conditions.iter().any(|c| self.check_hp_trigger(c, old_hp, new_hp, npc_id, state))
+            }
+            _ => false, // Other triggers not HP-related
+        }
+    }
+
+    /// Check for phase transitions based on ability/effect events.
+    fn check_ability_phase_transitions(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+        let Some(def_idx) = cache.active_boss_idx else {
+            return Vec::new();
+        };
+
+        let def = &cache.boss_definitions[def_idx];
+        let current_phase = cache.boss_state.current_phase.clone();
+
+        for phase in &def.phases {
+            // Don't re-enter the current phase
+            if current_phase.as_ref() == Some(&phase.id) {
+                continue;
+            }
+
+            if self.check_ability_trigger(&phase.trigger, event) {
+                let old_phase = cache.boss_state.current_phase.clone();
+                cache.boss_state.set_phase(&phase.id);
+                cache.boss_state.reset_counters(&phase.resets_counters);
+
+                return vec![GameSignal::PhaseChanged {
+                    boss_id: def.id.clone(),
+                    old_phase,
+                    new_phase: phase.id.clone(),
+                    timestamp: event.timestamp,
+                }];
+            }
+        }
+
+        Vec::new()
+    }
+
+    /// Check if an ability/effect-based phase trigger is satisfied.
+    fn check_ability_trigger(&self, trigger: &crate::boss::PhaseTrigger, event: &CombatEvent) -> bool {
+        use crate::boss::PhaseTrigger;
+
+        match trigger {
+            PhaseTrigger::AbilityCast { ability_ids } => {
+                // Check if this is an ability activation event with matching ID
+                if event.effect.effect_id != effect_id::ABILITYACTIVATE {
+                    return false;
+                }
+                ability_ids.iter().any(|&id| event.action.action_id as u64 == id)
+            }
+            PhaseTrigger::EffectApplied { effect_ids } => {
+                if event.effect.type_id != effect_type_id::APPLYEFFECT {
+                    return false;
+                }
+                effect_ids.iter().any(|&id| event.effect.effect_id as u64 == id)
+            }
+            PhaseTrigger::EffectRemoved { effect_ids } => {
+                if event.effect.type_id != effect_type_id::REMOVEEFFECT {
+                    return false;
+                }
+                effect_ids.iter().any(|&id| event.effect.effect_id as u64 == id)
+            }
+            PhaseTrigger::AllOf { conditions } => {
+                conditions.iter().all(|c| self.check_ability_trigger(c, event))
+            }
+            PhaseTrigger::AnyOf { conditions } => {
+                conditions.iter().any(|c| self.check_ability_trigger(c, event))
+            }
+            _ => false, // HP, timer, counter, time triggers handled elsewhere
+        }
+    }
+
+    /// Check for counter increments based on events.
+    fn check_counter_increments(
+        &self,
+        event: &CombatEvent,
+        cache: &mut SessionCache,
+        current_signals: &[GameSignal],
+    ) -> Vec<GameSignal> {
+        let Some(def_idx) = cache.active_boss_idx else {
+            return Vec::new();
+        };
+
+        let def = &cache.boss_definitions[def_idx];
+        let mut signals = Vec::new();
+
+        for counter in &def.counters {
+            if self.check_counter_trigger(&counter.increment_on, event, current_signals) {
+                let new_value = cache.boss_state.increment_counter(&counter.id);
+
+                signals.push(GameSignal::CounterChanged {
+                    counter_id: counter.id.clone(),
+                    new_value,
+                    timestamp: event.timestamp,
+                });
+            }
+        }
+
+        signals
+    }
+
+    /// Check if a counter trigger is satisfied.
+    fn check_counter_trigger(
+        &self,
+        trigger: &crate::boss::CounterTrigger,
+        event: &CombatEvent,
+        current_signals: &[GameSignal],
+    ) -> bool {
+        use crate::boss::CounterTrigger;
+
+        match trigger {
+            CounterTrigger::AbilityCast { ability_ids } => {
+                if event.effect.effect_id != effect_id::ABILITYACTIVATE {
+                    return false;
+                }
+                ability_ids.iter().any(|&id| event.action.action_id as u64 == id)
+            }
+            CounterTrigger::EffectApplied { effect_ids } => {
+                if event.effect.type_id != effect_type_id::APPLYEFFECT {
+                    return false;
+                }
+                effect_ids.iter().any(|&id| event.effect.effect_id as u64 == id)
+            }
+            CounterTrigger::PhaseEntered { phase_id } => {
+                // Check if we emitted a PhaseChanged signal with this phase
+                current_signals.iter().any(|s| {
+                    matches!(s, GameSignal::PhaseChanged { new_phase, .. } if new_phase == phase_id)
+                })
+            }
+            CounterTrigger::TimerExpires { .. } => {
+                // Timer expiration handled by TimerManager
+                false
+            }
+        }
+    }
+
+    /// Process events through the challenge tracker to accumulate metrics
+    /// Challenge data is polled with other combat metrics, not pushed via signals
+    fn process_challenge_events(&self, event: &CombatEvent, cache: &mut SessionCache) {
+        // Get boss_npc_ids from encounter's tracker (need to extract before mutable borrow)
+        let boss_npc_ids = match cache.current_encounter() {
+            Some(enc) if enc.challenge_tracker.is_active() => {
+                enc.challenge_tracker.boss_npc_ids().to_vec()
+            }
+            _ => return, // No active challenge tracking
+        };
+
+        // Build context from current boss state (phase, counters, HP)
+        let ctx = cache.boss_state.challenge_context(&boss_npc_ids);
+
+        // Get local player ID for local_player matching
+        let local_player_id = cache.player.id;
+
+        // Convert entities to EntityInfo
+        let source = self.entity_to_info(&event.source_entity, local_player_id);
+        let target = self.entity_to_info(&event.target_entity, local_player_id);
+
+        // Get mutable access to the encounter's tracker
+        let Some(enc) = cache.current_encounter_mut() else { return };
+        let tracker = &mut enc.challenge_tracker;
+
+        // Process based on event type - just accumulate, no signals needed
+        match event.effect.effect_id {
+            effect_id::DAMAGE => {
+                let damage = event.details.dmg_effective as i64;
+                tracker.process_damage(
+                    &ctx,
+                    &source,
+                    &target,
+                    event.action.action_id as u64,
+                    damage,
+                );
+            }
+            effect_id::HEAL => {
+                let healing = event.details.heal_effective as i64;
+                tracker.process_healing(
+                    &ctx,
+                    &source,
+                    &target,
+                    event.action.action_id as u64,
+                    healing,
+                );
+            }
+            effect_id::ABILITYACTIVATE => {
+                tracker.process_ability(
+                    &ctx,
+                    &source,
+                    &target,
+                    event.action.action_id as u64,
+                );
+            }
+            effect_id::DEATH => {
+                tracker.process_death(&ctx, &target);
+            }
+            _ => {
+                if event.effect.type_id == effect_type_id::APPLYEFFECT {
+                    tracker.process_effect_applied(
+                        &ctx,
+                        &source,
+                        &target,
+                        event.effect.effect_id as u64,
+                    );
+                }
+            }
+        }
+    }
+
+    /// Convert a combat log Entity to EntityInfo for challenge matching
+    fn entity_to_info(&self, entity: &crate::combat_log::Entity, local_player_id: i64) -> EntityInfo {
+        match entity.entity_type {
+            EntityType::Player => EntityInfo {
+                entity_id: entity.log_id,
+                name: resolve(entity.name).to_string(),
+                is_player: true,
+                is_local_player: entity.log_id == local_player_id,
+                npc_id: None,
+            },
+            EntityType::Npc | EntityType::Companion => EntityInfo {
+                entity_id: entity.log_id,
+                name: resolve(entity.name).to_string(),
+                is_player: false,
+                is_local_player: false,
+                npc_id: Some(entity.class_id),
+            },
+            _ => EntityInfo::default(),
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

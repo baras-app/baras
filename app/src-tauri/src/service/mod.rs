@@ -23,7 +23,7 @@ use baras_core::encounter::summary::classify_encounter;
 use baras_core::directory_watcher::DirectoryWatcher;
 use baras_core::game_data::{Discipline, Role};
 use baras_core::{ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, EffectCategory, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler};
-use baras_overlay::{BossHealthData, PersonalStats, PlayerRole, RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry};
+use baras_overlay::{BossHealthData, ChallengeData, ChallengeEntry, PersonalStats, PlayerContribution, PlayerRole, RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry};
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -428,8 +428,8 @@ impl CombatService {
             && let Some(bosses) = self.load_area_definitions(current_area) {
                 // Update the active session if one exists
                 if let Some(session) = self.shared.session.read().await.as_ref() {
-                    let session = session.read().await;
-                    session.set_boss_definitions(bosses);
+                    let mut session = session.write().await;
+                    session.load_boss_definitions(bosses);
                     eprintln!("[SERVICE] Updated active session with new definitions");
             }
         }
@@ -786,8 +786,8 @@ impl CombatService {
 
                                 // Update the session with new definitions
                                 if let Some(session_arc) = &*shared.session.read().await {
-                                    let session = session_arc.read().await;
-                                    session.set_boss_definitions(bosses);
+                                    let mut session = session_arc.write().await;
+                                    session.load_boss_definitions(bosses);
                                 }
 
                                 loaded_area_id = area_id;
@@ -897,6 +897,74 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         .map(|m| m.to_player_metrics())
         .collect();
 
+    // Build challenge data from encounter's tracker (persists with encounter, not boss state)
+    let challenges = if encounter.challenge_tracker.is_active() {
+        let boss_name = cache.active_boss_idx.and_then(|idx| {
+            cache.boss_definitions.get(idx).map(|def| def.name.clone())
+        });
+        let duration_secs = cache.boss_state.combat_time_secs.max(1.0);
+
+        let entries: Vec<ChallengeEntry> = encounter.challenge_tracker
+            .snapshot()
+            .into_iter()
+            .map(|val| {
+                // Build per-player breakdown, sorted by value descending
+                let mut by_player: Vec<PlayerContribution> = val.by_player
+                    .iter()
+                    .filter_map(|(&entity_id, &value)| {
+                        // Resolve player name from encounter
+                        let name = encounter.players
+                            .get(&entity_id)
+                            .map(|p| resolve(p.name).to_string())
+                            .unwrap_or_else(|| format!("Player {}", entity_id));
+
+                        let percent = if val.value > 0 {
+                            (value as f32 / val.value as f32) * 100.0
+                        } else {
+                            0.0
+                        };
+
+                        Some(PlayerContribution {
+                            entity_id,
+                            name,
+                            value,
+                            percent,
+                            per_second: if value > 0 {
+                                Some(value as f32 / duration_secs)
+                            } else {
+                                None
+                            },
+                        })
+                    })
+                    .collect();
+
+                // Sort by value descending (top contributors first)
+                by_player.sort_by(|a, b| b.value.cmp(&a.value));
+
+                ChallengeEntry {
+                    name: val.name,
+                    value: val.value,
+                    event_count: val.event_count,
+                    per_second: if val.value > 0 {
+                        Some(val.value as f32 / duration_secs)
+                    } else {
+                        None
+                    },
+                    by_player,
+                }
+            })
+            .collect();
+
+        Some(ChallengeData {
+            entries,
+            boss_name,
+            duration_secs,
+            phase_durations: encounter.challenge_tracker.phase_durations().clone(),
+        })
+    } else {
+        None
+    };
+
     Some(CombatData {
         metrics,
         player_entity_id,
@@ -905,6 +973,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         class_discipline,
         encounter_name,
         difficulty,
+        challenges,
     })
 }
 
@@ -1212,6 +1281,8 @@ pub struct CombatData {
     pub encounter_name: Option<String>,
     /// Current area difficulty (e.g., "NiM 8") or phase type for non-instanced content
     pub difficulty: Option<String>,
+    /// Challenge metrics for boss encounters (polled with other metrics)
+    pub challenges: Option<ChallengeData>,
 }
 
 impl CombatData {

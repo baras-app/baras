@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use chrono::{Local, NaiveDateTime};
 
-use crate::boss::{BossEncounterDefinition, BossEncounterState};
+use crate::boss::BossEncounterDefinition;
 use crate::events::{GameSignal, SignalHandler};
 use crate::game_data::Difficulty;
 
@@ -48,15 +48,21 @@ pub struct TimerManager {
     /// Last known game timestamp
     last_timestamp: Option<NaiveDateTime>,
 
-    // ─── Boss Encounter State ──────────────────────────────────────────────────
-    /// Boss definitions indexed by area name (area -> [bosses in that area])
+    // ─── Boss Encounter State (from signals) ───────────────────────────────────
+    /// Boss definitions indexed by area name (for timer extraction)
     boss_definitions: HashMap<String, Vec<BossEncounterDefinition>>,
 
-    /// Current boss encounter runtime state
-    encounter_state: BossEncounterState,
+    /// Active boss definition ID (set by BossEncounterDetected signal)
+    active_boss_id: Option<String>,
 
-    /// Active boss definition (if fighting a known boss)
-    active_boss_def: Option<BossEncounterDefinition>,
+    /// Current phase (from PhaseChanged signals)
+    current_phase: Option<String>,
+
+    /// Counter values (from CounterChanged signals)
+    counters: HashMap<String, u32>,
+
+    /// Boss HP by NPC ID (from BossHpChanged signals)
+    boss_hp_by_npc: HashMap<i64, f32>,
 }
 
 impl Default for TimerManager {
@@ -75,8 +81,10 @@ impl TimerManager {
             in_combat: false,
             last_timestamp: None,
             boss_definitions: HashMap::new(),
-            encounter_state: BossEncounterState::default(),
-            active_boss_def: None,
+            active_boss_id: None,
+            current_phase: None,
+            counters: HashMap::new(),
+            boss_hp_by_npc: HashMap::new(),
         }
     }
 
@@ -201,9 +209,14 @@ impl TimerManager {
         }
     }
 
-    /// Get current encounter state (for external queries)
-    pub fn encounter_state(&self) -> &BossEncounterState {
-        &self.encounter_state
+    /// Get the current boss phase (if any)
+    pub fn current_phase(&self) -> Option<&str> {
+        self.current_phase.as_deref()
+    }
+
+    /// Get the current value of a counter
+    pub fn counter_value(&self, counter_id: &str) -> u32 {
+        self.counters.get(counter_id).copied().unwrap_or(0)
     }
 
     /// Tick to process timer expirations based on real time.
@@ -248,8 +261,26 @@ impl TimerManager {
             return false;
         }
 
-        // Then check phase/counter conditions if specified
-        def.is_active_for_state(&self.encounter_state)
+        // Check phase filter
+        if !def.phases.is_empty() {
+            if let Some(ref current) = self.current_phase {
+                if !def.phases.iter().any(|p| p == current) {
+                    return false;
+                }
+            } else {
+                return false; // Timer requires phase but none active
+            }
+        }
+
+        // Check counter condition
+        if let Some(ref cond) = def.counter_condition {
+            let value = self.counters.get(&cond.counter_id).copied().unwrap_or(0);
+            if !cond.operator.evaluate(value, cond.value) {
+                return false;
+            }
+        }
+
+        true
     }
 
     /// Start a timer from a definition
@@ -400,17 +431,9 @@ impl TimerManager {
         }
     }
 
-    /// Handle combat start
+    /// Handle combat start - start combat-triggered timers
     fn handle_combat_start(&mut self, timestamp: NaiveDateTime) {
         self.in_combat = true;
-        self.encounter_state.start_combat(timestamp);
-
-        // If we have an active boss, set initial phase
-        if let Some(ref boss_def) = self.active_boss_def
-            && let Some(initial_phase) = boss_def.initial_phase() {
-                self.encounter_state.set_phase(&initial_phase.id);
-                eprintln!("[TIMER] Boss fight started, initial phase: {}", initial_phase.name);
-        }
 
         let matching: Vec<_> = self.definitions
             .values()
@@ -427,121 +450,10 @@ impl TimerManager {
     fn clear_combat_timers(&mut self) {
         self.in_combat = false;
         self.active_timers.clear();
-        self.encounter_state.reset();
-        self.active_boss_def = None;
-    }
-
-    /// Detect boss from NPC name and activate boss definition
-    fn detect_boss(&mut self, npc_name: &str) {
-        // If we have an area, search only that area first
-        if let Some(ref area_name) = self.context.encounter_name
-            && let Some(bosses) = self.boss_definitions.get(area_name)
-                && let Some(boss_def) = bosses.iter().find(|b| b.matches_npc_name(npc_name)) {
-                    eprintln!("[TIMER] Boss detected by name: {} ({}) in {}", boss_def.name, boss_def.id, area_name);
-                    self.active_boss_def = Some(boss_def.clone());
-                    self.context.boss_name = Some(boss_def.name.clone());
-                    return;
-        }
-
-        // No area set or boss not found in current area - search ALL areas
-        for (area_name, bosses) in &self.boss_definitions {
-            if let Some(boss_def) = bosses.iter().find(|b| b.matches_npc_name(npc_name)) {
-                eprintln!("[TIMER] Boss detected by name: {} ({}) - inferred area: {}",
-                    boss_def.name, boss_def.id, area_name);
-                self.active_boss_def = Some(boss_def.clone());
-                self.context.boss_name = Some(boss_def.name.clone());
-                self.context.encounter_name = Some(area_name.clone());
-                return;
-            }
-        }
-    }
-
-    /// Detect boss from NPC ID (more reliable than name)
-    fn detect_boss_by_npc_id(&mut self, npc_id: i64) {
-        // If we have an area, search only that area first
-        if let Some(ref area_name) = self.context.encounter_name
-            && let Some(bosses) = self.boss_definitions.get(area_name)
-                && let Some(boss_def) = bosses.iter().find(|b| b.matches_npc_id(npc_id)) {
-                    eprintln!("[TIMER] Boss detected by NPC ID {}: {} ({}) in {}",
-                        npc_id, boss_def.name, boss_def.id, area_name);
-                    self.active_boss_def = Some(boss_def.clone());
-                    self.context.boss_name = Some(boss_def.name.clone());
-                    return;
-        }
-
-        // No area set or boss not found in current area - search ALL areas
-        for (area_name, bosses) in &self.boss_definitions {
-            if let Some(boss_def) = bosses.iter().find(|b| b.matches_npc_id(npc_id)) {
-                eprintln!("[TIMER] Boss detected by NPC ID {}: {} ({}) - inferred area: {}",
-                    npc_id, boss_def.name, boss_def.id, area_name);
-                self.active_boss_def = Some(boss_def.clone());
-                self.context.boss_name = Some(boss_def.name.clone());
-                self.context.encounter_name = Some(area_name.clone());
-                return;
-            }
-        }
-    }
-
-    /// Update boss HP and check for phase transitions
-    pub fn update_boss_hp(&mut self, current_hp: i64, max_hp: i64, timestamp: NaiveDateTime) {
-        let hp_changed = self.encounter_state.update_boss_hp(current_hp, max_hp);
-
-        if hp_changed {
-            self.check_phase_transitions(timestamp);
-        }
-    }
-
-    /// Check for HP-triggered phase transitions
-    fn check_phase_transitions(&mut self, _timestamp: NaiveDateTime) {
-        let Some(ref boss_def) = self.active_boss_def else {
-            return;
-        };
-
-        let current_phase = self.encounter_state.current_phase.clone();
-
-        // Check each phase for HP threshold triggers
-        for phase in &boss_def.phases {
-            // Skip if we're already in this phase
-            if current_phase.as_deref() == Some(&phase.id) {
-                continue;
-            }
-
-            let should_transition = match &phase.trigger {
-                crate::boss::PhaseTrigger::BossHpBelow { hp_percent, npc_id, boss_name } => {
-                    // Priority: NPC ID > name > any boss
-                    self.encounter_state.is_boss_hp_below(*npc_id, boss_name.as_deref(), *hp_percent)
-                }
-                crate::boss::PhaseTrigger::BossHpAbove { hp_percent, npc_id, boss_name } => {
-                    self.encounter_state.is_boss_hp_above(*npc_id, boss_name.as_deref(), *hp_percent)
-                }
-                _ => false,
-            };
-
-            if should_transition {
-                let hp_display = match &phase.trigger {
-                    crate::boss::PhaseTrigger::BossHpBelow { boss_name, .. } |
-                    crate::boss::PhaseTrigger::BossHpAbove { boss_name, .. } => {
-                        boss_name.as_ref()
-                            .and_then(|n| self.encounter_state.get_boss_hp(n))
-                            .unwrap_or(self.encounter_state.boss_hp_percent)
-                    }
-                    _ => self.encounter_state.boss_hp_percent,
-                };
-
-                eprintln!("[TIMER] Phase transition: {:?} -> {} (HP: {:.1}%)",
-                    current_phase, phase.name, hp_display);
-
-                // Reset counters specified for this phase
-                self.encounter_state.reset_counters(&phase.resets_counters);
-
-                // Set new phase
-                self.encounter_state.set_phase(&phase.id);
-
-                // Start any timers triggered by phase entry
-                // TODO: Implement PhaseEntered trigger for boss timers
-                break;
-            }
-        }
+        self.active_boss_id = None;
+        self.current_phase = None;
+        self.counters.clear();
+        self.boss_hp_by_npc.clear();
     }
 
     /// Pause timers for a dead entity
@@ -621,55 +533,55 @@ impl SignalHandler for TimerManager {
                 eprintln!("[TIMER] Area entered: {} (difficulty: {:?})", area_name, self.context.difficulty);
             }
 
-            GameSignal::TargetChanged { target_name, target_npc_id, target_entity_type, .. } => {
-                // Update boss context when targeting an NPC (bosses are NPCs)
+            GameSignal::TargetChanged { target_name, target_entity_type, .. } => {
+                // Update boss context when targeting an NPC
                 if matches!(target_entity_type, crate::EntityType::Npc) {
                     let name = crate::context::resolve(*target_name);
-                    eprintln!("[TIMER] Target changed to NPC: {} (ID: {})", name, target_npc_id);
                     self.context.boss_name = Some(name.to_string());
-
-                    // Try to detect if this is a known boss (prefer NPC ID over name)
-                    if *target_npc_id != 0 {
-                        self.detect_boss_by_npc_id(*target_npc_id);
-                    }
-                    // Fall back to name detection if NPC ID didn't match
-                    if self.active_boss_def.is_none() {
-                        self.detect_boss(name);
-                    }
                 }
             }
 
             GameSignal::TargetCleared { .. } => {
-                // Clear boss context when target is cleared
                 self.context.boss_name = None;
             }
 
-            GameSignal::BossHpChanged { entity_id, npc_id, entity_name, current_hp, max_hp, timestamp } => {
-                // Update per-entity HP tracking (by entity ID, NPC ID, and name)
-                // Returns Some((old_hp, new_hp)) if HP changed significantly
-                let hp_change = self.encounter_state.update_entity_hp(
-                    *entity_id,
-                    *npc_id,
-                    entity_name,
-                    *current_hp,
-                    *max_hp,
-                );
+            // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────
+            GameSignal::BossEncounterDetected { definition_id, boss_name, timestamp, .. } => {
+                eprintln!("[TIMER] Boss encounter detected: {} ({})", boss_name, definition_id);
+                self.active_boss_id = Some(definition_id.clone());
+                self.context.boss_name = Some(boss_name.clone());
+                // Reset phase and counters for new encounter
+                self.current_phase = None;
+                self.counters.clear();
+                self.boss_hp_by_npc.clear();
+                // Start combat-start timers
+                self.handle_combat_start(*timestamp);
+            }
 
-                // Try to detect boss by NPC ID if not already detected
-                if self.active_boss_def.is_none() && *npc_id != 0 {
-                    self.detect_boss_by_npc_id(*npc_id);
-                }
+            GameSignal::BossHpChanged { npc_id, current_hp, max_hp, timestamp, .. } => {
+                let new_hp = if *max_hp > 0 {
+                    (*current_hp as f32 / *max_hp as f32) * 100.0
+                } else {
+                    100.0
+                };
+                let old_hp = self.boss_hp_by_npc.get(npc_id).copied().unwrap_or(100.0);
+                self.boss_hp_by_npc.insert(*npc_id, new_hp);
 
-                if let Some((old_hp, new_hp)) = hp_change {
-                    // Check for HP threshold timer triggers
+                // Check for HP threshold timer triggers
+                if (old_hp - new_hp).abs() > 0.01 {
                     self.handle_boss_hp_change(old_hp, new_hp, *timestamp);
-                    // Check for phase transitions
-                    self.check_phase_transitions(*timestamp);
                 }
             }
 
-            // Informational signals - no action needed in TimerManager
-            GameSignal::PhaseChanged { .. } | GameSignal::CounterChanged { .. } => {}
+            GameSignal::PhaseChanged { new_phase, .. } => {
+                eprintln!("[TIMER] Phase changed to: {}", new_phase);
+                self.current_phase = Some(new_phase.clone());
+                // TODO: Could trigger phase-based timers here
+            }
+
+            GameSignal::CounterChanged { counter_id, new_value, .. } => {
+                self.counters.insert(counter_id.clone(), *new_value);
+            }
 
             _ => {}
         }
@@ -705,6 +617,7 @@ fn signal_timestamp(signal: &GameSignal) -> Option<NaiveDateTime> {
         GameSignal::AreaEntered { timestamp, .. } => Some(*timestamp),
         GameSignal::PlayerInitialized { timestamp, .. } => Some(*timestamp),
         GameSignal::DisciplineChanged { timestamp, .. } => Some(*timestamp),
+        GameSignal::BossEncounterDetected { timestamp, .. } => Some(*timestamp),
         GameSignal::BossHpChanged { timestamp, .. } => Some(*timestamp),
         GameSignal::PhaseChanged { timestamp, .. } => Some(*timestamp),
         GameSignal::CounterChanged { timestamp, .. } => Some(*timestamp),
