@@ -522,7 +522,7 @@ impl SignalHandler for EffectTracker {
                 timestamp,
                 charges,
             } => {
-                self.handle_effect_applied(*effect_id, *action_id, *source_id, *target_id, *target_name, target_entity_type.clone(), *timestamp, *charges);
+                self.handle_effect_applied(*effect_id, *action_id, *source_id, *target_id, *target_name, *target_entity_type, *timestamp, *charges);
             }
             GameSignal::EffectRemoved {
                 effect_id,
@@ -572,10 +572,10 @@ impl SignalHandler for EffectTracker {
                             if let Some(tracked) = self.current_targets.get(source_id).cloned() {
                                 (tracked.entity_id, tracked.name, tracked.entity_type)
                             } else {
-                                (*source_id, *target_name, target_entity_type.clone())
+                                (*source_id, *target_name, *target_entity_type)
                             }
                         } else {
-                            (*target_id, *target_name, target_entity_type.clone())
+                            (*target_id, *target_name, *target_entity_type)
                         };
 
                     self.refresh_effects_by_action(
@@ -597,7 +597,7 @@ impl SignalHandler for EffectTracker {
                 self.current_targets.insert(*source_id, TrackedTarget {
                     entity_id: *target_id,
                     name: *target_name,
-                    entity_type: target_entity_type.clone(),
+                    entity_type: *target_entity_type,
                 });
             }
             GameSignal::TargetCleared { source_id, .. } => {

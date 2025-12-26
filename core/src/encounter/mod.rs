@@ -235,7 +235,7 @@ impl Encounter {
         } else {
             self.npcs
                 .get(&id)
-                .map(|e| e.entity_type.clone())
+                .map(|e| e.entity_type)
         }
     }
 

@@ -28,6 +28,7 @@ pub fn SettingsPanel(
     on_header_mousedown: EventHandler<MouseEvent>,
 ) -> Element {
     // Local draft of settings being edited
+    #[allow(clippy::redundant_closure)]
     let mut draft_settings = use_signal(|| settings());
     let mut has_changes = use_signal(|| false);
     let mut save_status = use_signal(String::new);

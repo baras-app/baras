@@ -1003,8 +1003,8 @@ fn IdListEditor(
                     value: "{new_id_input}",
                     oninput: move |e| new_id_input.set(e.value()),
                     onkeydown: move |e| {
-                        if e.key() == Key::Enter {
-                            if let Ok(id) = new_id_input().parse::<u64>() {
+                        if e.key() == Key::Enter
+                            && let Ok(id) = new_id_input().parse::<u64>() {
                                 let mut new_ids = ids_for_keydown.clone();
                                 if !new_ids.contains(&id) {
                                     new_ids.push(id);
@@ -1012,7 +1012,6 @@ fn IdListEditor(
                                 }
                                 new_id_input.set(String::new());
                             }
-                        }
                     }
                 }
                 button {

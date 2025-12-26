@@ -181,11 +181,10 @@ impl TimerManager {
         let mut broken_chains = Vec::new();
 
         for (id, def) in &self.definitions {
-            if let Some(ref chain_to) = def.triggers_timer {
-                if !self.definitions.contains_key(chain_to) {
+            if let Some(ref chain_to) = def.triggers_timer
+                && !self.definitions.contains_key(chain_to) {
                     broken_chains.push((id.clone(), chain_to.clone()));
                 }
-            }
         }
 
         if !broken_chains.is_empty() {
@@ -407,11 +406,10 @@ impl TimerManager {
         self.encounter_state.start_combat(timestamp);
 
         // If we have an active boss, set initial phase
-        if let Some(ref boss_def) = self.active_boss_def {
-            if let Some(initial_phase) = boss_def.initial_phase() {
+        if let Some(ref boss_def) = self.active_boss_def
+            && let Some(initial_phase) = boss_def.initial_phase() {
                 self.encounter_state.set_phase(&initial_phase.id);
                 eprintln!("[TIMER] Boss fight started, initial phase: {}", initial_phase.name);
-            }
         }
 
         let matching: Vec<_> = self.definitions
@@ -436,15 +434,13 @@ impl TimerManager {
     /// Detect boss from NPC name and activate boss definition
     fn detect_boss(&mut self, npc_name: &str) {
         // If we have an area, search only that area first
-        if let Some(ref area_name) = self.context.encounter_name {
-            if let Some(bosses) = self.boss_definitions.get(area_name) {
-                if let Some(boss_def) = bosses.iter().find(|b| b.matches_npc_name(npc_name)) {
+        if let Some(ref area_name) = self.context.encounter_name
+            && let Some(bosses) = self.boss_definitions.get(area_name)
+                && let Some(boss_def) = bosses.iter().find(|b| b.matches_npc_name(npc_name)) {
                     eprintln!("[TIMER] Boss detected by name: {} ({}) in {}", boss_def.name, boss_def.id, area_name);
                     self.active_boss_def = Some(boss_def.clone());
                     self.context.boss_name = Some(boss_def.name.clone());
                     return;
-                }
-            }
         }
 
         // No area set or boss not found in current area - search ALL areas
@@ -463,16 +459,14 @@ impl TimerManager {
     /// Detect boss from NPC ID (more reliable than name)
     fn detect_boss_by_npc_id(&mut self, npc_id: i64) {
         // If we have an area, search only that area first
-        if let Some(ref area_name) = self.context.encounter_name {
-            if let Some(bosses) = self.boss_definitions.get(area_name) {
-                if let Some(boss_def) = bosses.iter().find(|b| b.matches_npc_id(npc_id)) {
+        if let Some(ref area_name) = self.context.encounter_name
+            && let Some(bosses) = self.boss_definitions.get(area_name)
+                && let Some(boss_def) = bosses.iter().find(|b| b.matches_npc_id(npc_id)) {
                     eprintln!("[TIMER] Boss detected by NPC ID {}: {} ({}) in {}",
                         npc_id, boss_def.name, boss_def.id, area_name);
                     self.active_boss_def = Some(boss_def.clone());
                     self.context.boss_name = Some(boss_def.name.clone());
                     return;
-                }
-            }
         }
 
         // No area set or boss not found in current area - search ALL areas
@@ -749,12 +743,12 @@ fn convert_boss_timer_to_definition(
         }
         BossTimerTrigger::AllOf { conditions } => {
             super::TimerTrigger::AllOf {
-                conditions: conditions.iter().map(|c| convert_boss_trigger(c)).collect()
+                conditions: conditions.iter().map(convert_boss_trigger).collect()
             }
         }
         BossTimerTrigger::AnyOf { conditions } => {
             super::TimerTrigger::AnyOf {
-                conditions: conditions.iter().map(|c| convert_boss_trigger(c)).collect()
+                conditions: conditions.iter().map(convert_boss_trigger).collect()
             }
         }
     };
@@ -808,12 +802,12 @@ fn convert_boss_trigger(trigger: &crate::boss_timers::BossTimerTrigger) -> super
         }
         BossTimerTrigger::AllOf { conditions } => {
             super::TimerTrigger::AllOf {
-                conditions: conditions.iter().map(|c| convert_boss_trigger(c)).collect()
+                conditions: conditions.iter().map(convert_boss_trigger).collect()
             }
         }
         BossTimerTrigger::AnyOf { conditions } => {
             super::TimerTrigger::AnyOf {
-                conditions: conditions.iter().map(|c| convert_boss_trigger(c)).collect()
+                conditions: conditions.iter().map(convert_boss_trigger).collect()
             }
         }
     }

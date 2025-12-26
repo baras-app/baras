@@ -9,7 +9,7 @@
 //! - User can reset to defaults by deleting the user config dir
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
 use baras_core::boss_timers::{
@@ -528,7 +528,7 @@ pub async fn get_area_index(app_handle: AppHandle) -> Result<Vec<AreaListItem>, 
     eprintln!("[TIMERS] User encounters dir: {:?}", user_dir);
 
     let mut areas = Vec::new();
-    collect_areas_recursive(&user_dir, &user_dir, &mut areas)?;
+    collect_areas_recursive(&user_dir, &mut areas)?;
 
     eprintln!("[TIMERS] Found {} areas", areas.len());
 
@@ -540,7 +540,6 @@ pub async fn get_area_index(app_handle: AppHandle) -> Result<Vec<AreaListItem>, 
 
 /// Recursively collect area files with summary stats
 fn collect_areas_recursive(
-    base_dir: &PathBuf,
     current_dir: &PathBuf,
     areas: &mut Vec<AreaListItem>,
 ) -> Result<(), String> {
@@ -553,7 +552,7 @@ fn collect_areas_recursive(
         let path = entry.path();
 
         if path.is_dir() {
-            collect_areas_recursive(base_dir, &path, areas)?;
+            collect_areas_recursive( &path, areas)?;
         } else if path.extension().is_some_and(|ext| ext == "toml") {
             // Try to load area config for metadata
             match load_area_config(&path) {
@@ -574,7 +573,7 @@ fn collect_areas_recursive(
                     let category = if !area_config.category.is_empty() {
                         area_config.category
                     } else {
-                        determine_category(base_dir, &path)
+                        determine_category(&path)
                     };
 
                     areas.push(AreaListItem {
@@ -600,7 +599,7 @@ fn collect_areas_recursive(
 }
 
 /// Determine category from file path or area name
-fn determine_category(base_dir: &PathBuf, file_path: &PathBuf) -> String {
+fn determine_category(file_path: &Path) -> String {
     let path_str = file_path.to_string_lossy().to_lowercase();
 
     if path_str.contains("/operations/") || path_str.contains("\\operations\\") {
@@ -650,7 +649,6 @@ fn determine_category(base_dir: &PathBuf, file_path: &PathBuf) -> String {
 /// Get timers for a specific area file (lazy loading)
 #[tauri::command]
 pub async fn get_timers_for_area(
-    app_handle: AppHandle,
     file_path: String,
 ) -> Result<Vec<TimerListItem>, String> {
     let path = PathBuf::from(&file_path);
@@ -660,7 +658,7 @@ pub async fn get_timers_for_area(
     }
 
     // Load bosses from this specific file
-    let bosses = load_bosses_with_paths(&path.parent().unwrap_or(&path))
+    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
         .map_err(|e| format!("Failed to load bosses: {}", e))?;
 
     // Filter to only bosses from this file and flatten timers
@@ -681,17 +679,14 @@ pub async fn get_timers_for_area(
 
 /// Get bosses for a specific area file (for "New Timer" dropdown within an area)
 #[tauri::command]
-pub async fn get_bosses_for_area(
-    app_handle: AppHandle,
-    file_path: String,
-) -> Result<Vec<BossListItem>, String> {
+pub async fn get_bosses_for_area(file_path: String) -> Result<Vec<BossListItem>, String> {
     let path = PathBuf::from(&file_path);
 
     if !path.exists() {
         return Err(format!("File not found: {}", file_path));
     }
 
-    let bosses = load_bosses_with_paths(&path.parent().unwrap_or(&path))
+    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
         .map_err(|e| format!("Failed to load bosses: {}", e))?;
 
     let items: Vec<_> = bosses

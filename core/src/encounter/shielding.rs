@@ -80,14 +80,12 @@ impl Encounter {
 
                 // Mark as consumed if the shield was removed (depleted) and damage got through
                 // This prevents double-counting via find_recently_closed_shield later
-                if shield.is_removed && event.details.dmg_effective > 0 {
-                    if let Some(effects) = self.effects.get_mut(&target_id) {
-                        if let Some(effect) = effects.iter_mut().find(|e| {
+                if shield.is_removed && event.details.dmg_effective > 0
+                    && let Some(effects) = self.effects.get_mut(&target_id)
+                        && let Some(effect) = effects.iter_mut().find(|e| {
                             e.is_shield && e.effect_id == shield.effect_id
                         }) {
                             effect.has_absorbed = true;
-                        }
-                    }
                 }
 
                 let acc = self.accumulated_data.entry(shield.source_id).or_default();
@@ -233,7 +231,7 @@ fn find_recently_closed_shield(effects: &[EffectInstance], timestamp: NaiveDateT
         .filter(|e| {
             let removed = e.removed_at.unwrap();
             let delta = timestamp.signed_duration_since(removed).num_milliseconds();
-            delta >= 0 && delta <= ABSORPTION_OUTSIDE_DELAY_MS
+            (0..=ABSORPTION_INSIDE_DELAY_MS).contains(&delta)
         })
         .max_by_key(|e| e.removed_at)
 }

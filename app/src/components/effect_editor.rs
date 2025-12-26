@@ -79,7 +79,7 @@ pub fn EffectEditorPanel() -> Element {
     });
 
     // Handlers
-    let mut on_save = move |updated_effect: EffectListItem| {
+    let on_save = move |updated_effect: EffectListItem| {
         let mut current = effects();
         if let Some(idx) = current.iter().position(|e| e.id == updated_effect.id) {
             current[idx] = updated_effect.clone();
@@ -119,7 +119,7 @@ pub fn EffectEditorPanel() -> Element {
         });
     };
 
-    let mut on_duplicate = move |effect: EffectListItem| {
+    let on_duplicate = move |effect: EffectListItem| {
         spawn(async move {
             if let Some(new_effect) =
                 api::duplicate_effect_definition(&effect.id, &effect.file_path).await
@@ -136,7 +136,7 @@ pub fn EffectEditorPanel() -> Element {
         });
     };
 
-    let mut on_create = move |new_effect: EffectListItem| {
+    let on_create = move |new_effect: EffectListItem| {
         spawn(async move {
             if let Some(created) = api::create_effect_definition(&new_effect).await {
                 let mut current = effects();
@@ -674,15 +674,14 @@ fn IdListEditor(
                     value: "{new_id_input}",
                     oninput: move |e| new_id_input.set(e.value()),
                     onkeydown: move |e| {
-                        if e.key() == Key::Enter {
-                            if let Ok(id) = new_id_input().parse::<u64>() {
+                        if e.key() == Key::Enter
+                            && let Ok(id) = new_id_input().parse::<u64>() {
                                 let mut new_ids = ids.clone();
                                 if !new_ids.contains(&id) {
                                     new_ids.push(id);
                                     on_change.call(new_ids);
                                 }
                                 new_id_input.set(String::new());
-                            }
                         }
                     }
                 }

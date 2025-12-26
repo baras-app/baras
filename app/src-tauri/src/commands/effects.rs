@@ -8,7 +8,7 @@
 //! - All edits are made to the user config copy, never the bundled defaults
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
 use baras_core::effects::{DefinitionConfig, EffectCategory, EffectDefinition, EntityFilter};
@@ -58,7 +58,7 @@ pub struct EffectListItem {
 }
 
 impl EffectListItem {
-    fn from_definition(def: &EffectDefinition, file_path: &PathBuf) -> Self {
+    fn from_definition(def: &EffectDefinition, file_path: &Path) -> Self {
         Self {
             id: def.id.clone(),
             name: def.name.clone(),
@@ -161,7 +161,7 @@ fn ensure_user_effects_dir(app_handle: &AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Copy files from src to dst that don't already exist in dst
-fn sync_missing_files(src: &PathBuf, dst: &PathBuf) -> Result<(), String> {
+fn sync_missing_files(src: &PathBuf, dst: &Path) -> Result<(), String> {
     let entries = std::fs::read_dir(src)
         .map_err(|e| format!("Failed to read directory {:?}: {}", src, e))?;
 

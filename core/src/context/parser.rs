@@ -60,7 +60,7 @@ impl ParsingSession {
         let date_stamp = path
             .file_name()
             .and_then(|f| f.to_str())
-            .and_then(|f| parse_log_filename(f))
+            .and_then(parse_log_filename)
             .map(|(_, dt)| dt);
 
         Self {

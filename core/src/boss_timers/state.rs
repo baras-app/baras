@@ -166,17 +166,15 @@ impl BossEncounterState {
     /// Priority: NPC ID > name > any tracked boss
     pub fn is_boss_hp_below(&self, npc_id: Option<i64>, name: Option<&str>, threshold: f32) -> bool {
         // First try NPC ID (most reliable)
-        if let Some(id) = npc_id {
-            if let Some(hp) = self.hp_by_npc_id.get(&id) {
+        if let Some(id) = npc_id
+            && let Some(hp) = self.hp_by_npc_id.get(&id) {
                 return *hp <= threshold;
-            }
         }
 
         // Fall back to name
-        if let Some(boss_name) = name {
-            if let Some(hp) = self.hp_by_name.get(boss_name) {
+        if let Some(boss_name) = name
+            && let Some(hp) = self.hp_by_name.get(boss_name) {
                 return *hp <= threshold;
-            }
         }
 
         // Fall back to any tracked boss (legacy behavior)
@@ -192,17 +190,15 @@ impl BossEncounterState {
     /// Priority: NPC ID > name > any tracked boss
     pub fn is_boss_hp_above(&self, npc_id: Option<i64>, name: Option<&str>, threshold: f32) -> bool {
         // First try NPC ID (most reliable)
-        if let Some(id) = npc_id {
-            if let Some(hp) = self.hp_by_npc_id.get(&id) {
+        if let Some(id) = npc_id
+            && let Some(hp) = self.hp_by_npc_id.get(&id) {
                 return *hp >= threshold;
-            }
         }
 
         // Fall back to name
-        if let Some(boss_name) = name {
-            if let Some(hp) = self.hp_by_name.get(boss_name) {
+        if let Some(boss_name) = name
+            && let Some(hp) = self.hp_by_name.get(boss_name) {
                 return *hp >= threshold;
-            }
         }
 
         // Fall back to any tracked boss (legacy behavior)

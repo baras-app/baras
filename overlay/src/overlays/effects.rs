@@ -160,7 +160,7 @@ impl EffectsOverlay {
             let time_text = entry.format_time();
 
             // Draw effect bar with name on left, time on right
-            ProgressBar::new(&entry.display_name(), entry.progress())
+            ProgressBar::new(entry.display_name(), entry.progress())
                 .with_fill_color(bar_color)
                 .with_bg_color(colors::dps_bar_bg())
                 .with_text_color(font_color)

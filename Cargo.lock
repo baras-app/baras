@@ -85,7 +85,7 @@ dependencies = [
  "tauri-plugin-global-shortcut",
  "tauri-plugin-opener",
  "tokio",
- "toml 0.8.2",
+ "toml 0.9.9+spec-1.0.0",
 ]
 
 [[package]]
@@ -409,7 +409,7 @@ dependencies = [
  "rayon",
  "serde",
  "tokio",
- "toml 0.8.2",
+ "toml 0.9.9+spec-1.0.0",
 ]
 
 [[package]]

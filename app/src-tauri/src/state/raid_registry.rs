@@ -101,12 +101,7 @@ impl RaidSlotRegistry {
 
     /// Find the first available slot (lowest numbered empty slot)
     fn find_first_available_slot(&self) -> Option<u8> {
-        for slot in 0..self.max_slots {
-            if !self.slots.contains_key(&slot) {
-                return Some(slot);
-            }
-        }
-        None // All slots full
+        (0..self.max_slots).find(|&s| !self.slots.contains_key(&s))
     }
 
     /// Swap two slots (user-initiated rearrange)
@@ -186,7 +181,7 @@ impl RaidSlotRegistry {
         let mut displaced: Vec<RegisteredPlayer> = Vec::new();
         let mut slots_to_remove = Vec::new();
 
-        for (&slot, _) in &self.slots {
+        for &slot in self.slots.keys(){
             if slot >= new_max {
                 slots_to_remove.push(slot);
             }

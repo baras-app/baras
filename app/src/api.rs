@@ -310,12 +310,6 @@ pub async fn get_encounter_history() -> JsValue {
 
 use crate::types::{AreaListItem, BossListItem, TimerListItem};
 
-/// Get all encounter timers as a flat list
-pub async fn get_encounter_timers() -> Option<Vec<TimerListItem>> {
-    let result = invoke("get_encounter_timers", JsValue::NULL).await;
-    from_js(result)
-}
-
 /// Update an existing timer
 pub async fn update_encounter_timer(timer: &TimerListItem) -> bool {
     let args = build_args("timer", timer);
@@ -349,12 +343,6 @@ pub async fn duplicate_encounter_timer(timer_id: &str, boss_id: &str, file_path:
 pub async fn create_encounter_timer(timer: &TimerListItem) -> Option<TimerListItem> {
     let args = build_args("timer", timer);
     let result = invoke("create_encounter_timer", args).await;
-    from_js(result)
-}
-
-/// Get list of all bosses for the "New Timer" dropdown
-pub async fn get_encounter_bosses() -> Option<Vec<BossListItem>> {
-    let result = invoke("get_encounter_bosses", JsValue::NULL).await;
     from_js(result)
 }
 

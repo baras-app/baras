@@ -3,6 +3,8 @@ name = "baras-core"
 version = "0.1.0"
 edition = "2024"
 
+[lints]
+workspace = true
 
 [dependencies]
 baras-types = { path = "../types" }
@@ -21,4 +23,4 @@ chrono = "0.4.42"
 phf = { version = "0.13.1", features = ["macros"] }
 dirs = "6.0.0"
 encoding_rs = "0.8"
-toml = "0.8"
+toml = "0.9"

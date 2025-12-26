@@ -87,16 +87,14 @@ fn build_area_index_recursive(dir: &Path, index: &mut AreaIndex) -> Result<(), S
 
         if path.is_dir() {
             build_area_index_recursive(&path, index)?;
-        } else if path.extension().is_some_and(|ext| ext == "toml") {
-            if let Ok(Some(area)) = load_area_config(&path) {
-                if area.area_id != 0 {
+        } else if path.extension().is_some_and(|ext| ext == "toml")
+            && let Ok(Some(area)) = load_area_config(&path)
+                && area.area_id != 0 {
                     index.insert(area.area_id, AreaIndexEntry {
                         name: area.name,
                         area_id: area.area_id,
                         file_path: path,
                     });
-                }
-            }
         }
     }
 
@@ -183,13 +181,12 @@ fn determine_category(base_dir: &Path, file_path: &Path) -> String {
     if let Ok(relative) = file_path.strip_prefix(base_dir) {
         let parts: Vec<_> = relative.components().collect();
         // Need at least 2 parts (category/subdir or category/file.toml)
-        if parts.len() >= 2 {
-            if let std::path::Component::Normal(first) = parts[0] {
+        if parts.len() >= 2
+            && let std::path::Component::Normal(first) = parts[0] {
                 let cat = first.to_string_lossy().to_string();
                 if !cat.ends_with(".toml") {
                     return cat;
                 }
-            }
         }
     }
 
@@ -232,7 +229,7 @@ fn load_bosses_recursive(dir: &Path, bosses: &mut Vec<BossDefinition>) -> Result
 
 /// Save a single boss definition to a TOML file
 pub fn save_boss_to_file(boss: &BossDefinition, path: &Path) -> Result<(), String> {
-    save_bosses_to_file(&[boss.clone()], path)
+    save_bosses_to_file(std::slice::from_ref(boss), path)
 }
 
 /// Save multiple boss definitions to a single TOML file

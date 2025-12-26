@@ -166,13 +166,12 @@ fn extract_xml_element(xml: &str, tag: &str) -> Option<String> {
     let open_tag = format!("<{}>", tag);
     let close_tag = format!("</{}>", tag);
 
-    if let Some(start) = xml.find(&open_tag) {
-        if let Some(end) = xml.find(&close_tag) {
+    if let Some(start) = xml.find(&open_tag)
+        && let Some(end) = xml.find(&close_tag) {
             let content_start = start + open_tag.len();
             if content_start < end {
                 return Some(xml[content_start..end].to_string());
             }
-        }
     }
     None
 }

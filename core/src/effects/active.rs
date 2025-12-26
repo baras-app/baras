@@ -93,6 +93,7 @@ pub struct ActiveEffect {
     pub show_on_effects_overlay: bool,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl ActiveEffect {
     /// Create a new active effect
     pub fn new(

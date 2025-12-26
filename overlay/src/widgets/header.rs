@@ -133,12 +133,10 @@ impl Footer {
         y: f32,
         width: f32,
         font_size: f32,
-        spacing: f32,
     ) {
-        let mut current_y = y;
 
         let text_padding = 4.0 * frame.scale_factor();
-        let text_y = current_y + font_size;
+        let text_y = y + font_size;
         let is_two_col = self.is_two_column();
 
         // Use smaller font for two-column layout

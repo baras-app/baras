@@ -424,14 +424,13 @@ impl CombatService {
 
         // Reload definitions for the currently loaded area (if any)
         let current_area = self.shared.current_area_id.load(Ordering::SeqCst);
-        if current_area != 0 {
-            if let Some(bosses) = self.load_area_definitions(current_area) {
+        if current_area != 0
+            && let Some(bosses) = self.load_area_definitions(current_area) {
                 // Update the active session if one exists
                 if let Some(session) = self.shared.session.read().await.as_ref() {
                     let session = session.read().await;
                     session.set_boss_definitions(bosses);
                     eprintln!("[SERVICE] Updated active session with new definitions");
-                }
             }
         }
     }
@@ -725,32 +724,28 @@ impl CombatService {
                 }
 
                 // Raid frames: always poll when active (HOTs can tick outside combat)
-                if raid_active {
-                    if let Some(data) = build_raid_frame_data(&shared).await {
+                if raid_active &&
+                    let Some(data) = build_raid_frame_data(&shared).await {
                         let _ = overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data));
-                    }
                 }
 
                 // Effects countdown: always poll when active (effects can tick outside combat)
-                if effects_active {
-                    if let Some(data) = build_effects_overlay_data(&shared).await {
+                if effects_active
+                    && let Some(data) = build_effects_overlay_data(&shared).await {
                         let _ = overlay_tx.try_send(OverlayUpdate::EffectsOverlayUpdated(data));
-                    }
                 }
 
                 // Boss health: only poll when in combat
-                if boss_active && in_combat {
-                    if let Some(data) = build_boss_health_data(&shared).await {
+                if boss_active && in_combat &&
+                     let Some(data) = build_boss_health_data(&shared).await {
                         let _ = overlay_tx.try_send(OverlayUpdate::BossHealthUpdated(data));
-                    }
                 }
 
                 // Timers: only poll when in combat and in live mode
-                if timer_active && in_combat && shared.is_live_tailing.load(Ordering::SeqCst) {
-                    if let Some(data) = build_timer_data(&shared).await {
+                if timer_active && in_combat && shared.is_live_tailing.load(Ordering::SeqCst)
+                    && let Some(data) = build_timer_data(&shared).await {
                         let _ = overlay_tx.try_send(OverlayUpdate::TimersUpdated(data));
                     }
-                }
             }
         });
 

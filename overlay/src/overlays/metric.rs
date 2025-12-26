@@ -276,7 +276,7 @@ impl MetricOverlay {
                     .with_color(font_color)
             };
 
-            footer.render(&mut self.frame, padding, y, content_width, font_size - 2.0, bar_spacing);
+            footer.render(&mut self.frame, padding, y, content_width, font_size - 2.0);
         }
 
         // End frame (resize indicator, commit)

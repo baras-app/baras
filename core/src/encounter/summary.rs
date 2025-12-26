@@ -65,7 +65,7 @@ impl EncounterHistory {
 
     /// Check if area changed and update tracking
     pub fn check_area_change(&mut self, area_name: &str) -> bool {
-        let changed = self.current_area_name.as_ref().map_or(true, |prev| prev != area_name);
+        let changed = self.current_area_name.as_ref().is_none_or(|prev| prev != area_name);
         if changed {
             self.current_area_name = Some(area_name.to_string());
             // Reset trash count on area change
