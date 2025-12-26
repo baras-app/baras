@@ -2,10 +2,10 @@ use crate::LogParser;
 use crate::context::resolve;
 use crate::game_data::effect_type_id;
 use chrono::{NaiveDate, NaiveDateTime};
+use encoding_rs::WINDOWS_1252;
 use hashbrown::HashMap;
 use std::fs;
-use std::fs::File;
-use std::io::{BufRead, BufReader, Result};
+use std::io::Result;
 use std::path::{Path, PathBuf};
 
 pub struct LogFileMetaData {
@@ -250,14 +250,13 @@ pub fn parse_log_filename(filename: &str) -> Option<(NaiveDate, NaiveDateTime)> 
 const CHECK_N_LINES: usize = 25;
 
 pub fn extract_character_name(path: &Path, session_date: NaiveDateTime) -> Result<Option<String>> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
+    let bytes = fs::read(path)?;
+    let (content, _, _) = WINDOWS_1252.decode(&bytes);
     let parser = LogParser::new(session_date);
 
     //take first 25 lines. If not in first 25 something is probably wrong
-    for (idx, line) in reader.lines().take(CHECK_N_LINES).enumerate() {
-        let line = line?;
-        if let Some(event) = &parser.parse_line(idx as u64, &line)
+    for (idx, line) in content.lines().take(CHECK_N_LINES).enumerate() {
+        if let Some(event) = &parser.parse_line(idx as u64, line)
             && event.effect.type_id == effect_type_id::DISCIPLINECHANGED
         {
             return Ok(Some(resolve(event.source_entity.name).to_string()));
