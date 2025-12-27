@@ -15,6 +15,7 @@ use tauri::{AppHandle, Manager, State};
 use baras_core::boss::{
     load_bosses_with_paths, save_bosses_to_file, BossTimerDefinition, BossWithPath,
 };
+use baras_core::effects::EntityFilter;
 use baras_core::timers::TimerTrigger;
 
 use crate::service::ServiceHandle;
@@ -45,6 +46,14 @@ pub struct TimerListItem {
     // Trigger info (serialized for frontend)
     pub trigger: TimerTrigger,
 
+    // Entity filters (preserved for round-trip, not yet editable in UI)
+    pub source: EntityFilter,
+    pub target: EntityFilter,
+
+    // Alert fields
+    pub is_alert: bool,
+    pub alert_text: Option<String>,
+
     // Optional fields
     pub can_be_refreshed: bool,
     pub repeats: u8,
@@ -72,6 +81,11 @@ impl TimerListItem {
             difficulties: timer.difficulties.clone(),
 
             trigger: timer.trigger.clone(),
+            source: timer.source.clone(),
+            target: timer.target.clone(),
+
+            is_alert: timer.is_alert,
+            alert_text: timer.alert_text.clone(),
 
             can_be_refreshed: timer.can_be_refreshed,
             repeats: timer.repeats,
@@ -87,8 +101,11 @@ impl TimerListItem {
             id: self.timer_id.clone(),
             name: self.name.clone(),
             trigger: self.trigger.clone(),
+            source: self.source.clone(),
+            target: self.target.clone(),
             duration_secs: self.duration_secs,
-            is_alert: false, // TODO: Add to UI if needed
+            is_alert: self.is_alert,
+            alert_text: self.alert_text.clone(),
             color: self.color,
             phases: self.phases.clone(),
             counter_condition: None, // TODO: Add to UI if needed
@@ -293,8 +310,11 @@ pub async fn create_encounter_timer(
         id: timer_id.clone(),
         name: timer.name.clone(),
         trigger: timer.trigger.clone(),
+        source: timer.source.clone(),
+        target: timer.target.clone(),
         duration_secs: timer.duration_secs,
-        is_alert: false, // TODO: Add to UI if needed
+        is_alert: timer.is_alert,
+        alert_text: timer.alert_text.clone(),
         color: timer.color,
         phases: timer.phases.clone(),
         counter_condition: None,
