@@ -29,6 +29,9 @@ mod active;
 mod definition;
 pub mod tracker;
 
+#[cfg(test)]
+mod tracker_tests;
+
 pub use active::{ActiveEffect, EffectKey};
 pub use definition::{DefinitionConfig, EffectCategory, EffectDefinition, EntityFilter};
 pub use tracker::{DefinitionSet, EffectTracker, NewTargetInfo};

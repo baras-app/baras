@@ -83,9 +83,11 @@ fn test_ability_cast_triggers_timer() {
     let signal = GameSignal::AbilityActivated {
         ability_id: 3302391763959808,
         source_id: 12345,
+        source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
         target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
         timestamp: now(),
     };
     manager.handle_signal(&signal);
@@ -113,9 +115,11 @@ fn test_effect_applied_triggers_timer() {
         source_id: 1,
         source_name: crate::context::IStr::default(),
         source_entity_type: crate::combat_log::EntityType::Npc,
+        source_npc_id: 12345,
         target_id: 2,
         target_name: crate::context::IStr::default(),
         target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
         timestamp: now(),
         charges: None,
     };
@@ -174,9 +178,11 @@ fn test_anyof_condition_triggers_on_either() {
     let signal1 = GameSignal::AbilityActivated {
         ability_id: 111,
         source_id: 1,
+        source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
         target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
         timestamp: now(),
     };
     manager.handle_signal(&signal1);
@@ -192,9 +198,11 @@ fn test_anyof_condition_triggers_on_either() {
     let signal2 = GameSignal::AbilityActivated {
         ability_id: 222,
         source_id: 1,
+        source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
         target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
         timestamp: now(),
     };
     manager.handle_signal(&signal2);
@@ -268,9 +276,11 @@ fn test_cancel_on_timer() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 444,
         source_id: 1,
+        source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
         target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
         timestamp: now(),
     });
 
@@ -295,9 +305,11 @@ fn test_wrong_ability_does_not_trigger() {
     let signal = GameSignal::AbilityActivated {
         ability_id: 99999, // Different ID
         source_id: 1,
+        source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
         target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
         timestamp: now(),
     };
     manager.handle_signal(&signal);
@@ -370,9 +382,11 @@ fn test_timer_expires_triggers_chain() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 999999, // Non-matching ability just to advance time
         source_id: 1,
+        source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
         target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
         timestamp: after_expiry,
     });
     manager.tick();
@@ -410,9 +424,11 @@ fn test_timer_expires_without_chain() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 999999,
         source_id: 1,
+        source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
         target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
         timestamp: after_expiry,
     });
     manager.tick();

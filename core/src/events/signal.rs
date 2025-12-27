@@ -29,6 +29,8 @@ pub enum GameSignal {
     EntityRevived {
         entity_id: i64,
         entity_type: EntityType,
+        /// NPC class/template ID (0 for players)
+        npc_id: i64,
         timestamp: NaiveDateTime,
     },
 
@@ -49,9 +51,13 @@ pub enum GameSignal {
         source_id: i64,
         source_name: IStr,
         source_entity_type: EntityType,
+        /// NPC class/template ID of source (0 for players/companions)
+        source_npc_id: i64,
         target_id: i64,
         target_name: IStr,
         target_entity_type: EntityType,
+        /// NPC class/template ID of target (0 for players/companions)
+        target_npc_id: i64,
         timestamp: NaiveDateTime,
         /// Initial charges (if applicable, from log)
         charges: Option<u8>,
@@ -77,9 +83,13 @@ pub enum GameSignal {
     AbilityActivated {
         ability_id: i64,
         source_id: i64,
+        /// NPC class/template ID of source (0 for players/companions)
+        source_npc_id: i64,
         target_id: i64,
         target_name: IStr,
         target_entity_type: EntityType,
+        /// NPC class/template ID of target (0 for players/companions)
+        target_npc_id: i64,
         timestamp: NaiveDateTime,
     },
 
@@ -132,6 +142,10 @@ pub enum GameSignal {
         boss_name: String,
         /// Index into SessionCache.boss_definitions
         definition_idx: usize,
+        /// Entity instance ID of the boss NPC that triggered detection
+        entity_id: i64,
+        /// NPC class/template ID
+        npc_id: i64,
         timestamp: NaiveDateTime,
     },
 

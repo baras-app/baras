@@ -82,6 +82,8 @@ struct EffectInstanceKey {
 #[derive(Debug, Clone, Copy)]
 struct EntityInfo {
     id: i64,
+    /// NPC class/template ID (0 for players/companions)
+    npc_id: i64,
     entity_type: EntityType,
     name: IStr,
 }
@@ -252,9 +254,11 @@ impl EffectTracker {
         source_id: i64,
         source_name: IStr,
         source_entity_type: EntityType,
+        source_npc_id: i64,
         target_id: i64,
         target_name: IStr,
         target_entity_type: EntityType,
+        target_npc_id: i64,
         timestamp: NaiveDateTime,
         charges: Option<u8>,
     ) {
@@ -271,11 +275,13 @@ impl EffectTracker {
         // Build entity info for filter matching
         let source_info = EntityInfo {
             id: source_id,
+            npc_id: source_npc_id,
             entity_type: source_entity_type,
             name: source_name,
         };
         let target_info = EntityInfo {
             id: target_id,
+            npc_id: target_npc_id,
             entity_type: target_entity_type,
             name: target_name,
         };
@@ -554,6 +560,9 @@ impl EffectTracker {
                 entity_name.eq_ignore_ascii_case(name)
             }
 
+            // Specific NPC by class/template ID
+            EntityFilter::SpecificNpc(npc_id) => is_npc && entity.npc_id == *npc_id,
+
             // Any entity
             EntityFilter::Any => true,
         }
@@ -569,9 +578,11 @@ impl SignalHandler for EffectTracker {
                 source_id,
                 source_name,
                 source_entity_type,
+                source_npc_id,
                 target_id,
                 target_name,
                 target_entity_type,
+                target_npc_id,
                 timestamp,
                 charges,
             } => {
@@ -581,9 +592,11 @@ impl SignalHandler for EffectTracker {
                     *source_id,
                     *source_name,
                     *source_entity_type,
+                    *source_npc_id,
                     *target_id,
                     *target_name,
                     *target_entity_type,
+                    *target_npc_id,
                     *timestamp,
                     *charges,
                 );
@@ -627,6 +640,7 @@ impl SignalHandler for EffectTracker {
                 target_name,
                 target_entity_type,
                 timestamp,
+                ..
             } => {
                 // Only process abilities from local player
                 if self.local_player_id == Some(*source_id) {
@@ -666,6 +680,12 @@ impl SignalHandler for EffectTracker {
             }
             GameSignal::TargetCleared { source_id, .. } => {
                 self.current_targets.remove(source_id);
+            }
+            GameSignal::BossEncounterDetected { entity_id, .. } => {
+                // Track boss entity ID immediately when encounter is detected
+                if !self.boss_entity_ids.contains(entity_id) {
+                    self.boss_entity_ids.push(*entity_id);
+                }
             }
             GameSignal::BossHpChanged { entity_id, .. } => {
                 // Track boss entity IDs for the Boss filter

@@ -42,6 +42,8 @@ pub enum EntityFilter {
     AnyNpc,
     /// Specific entity by name
     Specific(String),
+    /// Specific NPC by class/template ID
+    SpecificNpc(i64),
     /// Any entity whatsoever
     Any,
 }

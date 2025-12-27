@@ -200,6 +200,7 @@ impl EventProcessor {
             signals.push(GameSignal::EntityRevived {
                 entity_id: event.source_entity.log_id,
                 entity_type: event.source_entity.entity_type,
+                npc_id: event.source_entity.class_id,
                 timestamp: event.timestamp,
             });
         }
@@ -265,19 +266,16 @@ impl EventProcessor {
         }
 
         // Check source and target entities for boss NPC match
-        let npc_ids_to_check = [
-            (event.source_entity.class_id, event.source_entity.entity_type),
-            (event.target_entity.class_id, event.target_entity.entity_type),
-        ];
+        let entities_to_check = [&event.source_entity, &event.target_entity];
 
-        for (class_id, entity_type) in npc_ids_to_check {
+        for entity in entities_to_check {
             // Only check NPCs
-            if entity_type != EntityType::Npc || class_id == 0 {
+            if entity.entity_type != EntityType::Npc || entity.class_id == 0 {
                 continue;
             }
 
             // Try to detect boss encounter from this NPC
-            if let Some(idx) = cache.detect_boss_encounter(class_id) {
+            if let Some(idx) = cache.detect_boss_encounter(entity.class_id) {
                 // Clone data from definition before taking mutable borrows
                 let def = &cache.boss_definitions[idx];
                 let challenges = def.challenges.clone();
@@ -302,6 +300,8 @@ impl EventProcessor {
                     definition_id: def_id.clone(),
                     boss_name,
                     definition_idx: idx,
+                    entity_id: entity.log_id,
+                    npc_id: entity.class_id,
                     timestamp: event.timestamp,
                 }];
 
@@ -839,9 +839,11 @@ impl EventProcessor {
                     source_id: event.source_entity.log_id,
                     source_name: event.source_entity.name,
                     source_entity_type: event.source_entity.entity_type,
+                    source_npc_id: event.source_entity.class_id,
                     target_id: event.target_entity.log_id,
                     target_name: event.target_entity.name,
                     target_entity_type: event.target_entity.entity_type,
+                    target_npc_id: event.target_entity.class_id,
                     timestamp: event.timestamp,
                     charges,
                 }]
@@ -884,9 +886,11 @@ impl EventProcessor {
             signals.push(GameSignal::AbilityActivated {
                 ability_id: event.action.action_id,
                 source_id: event.source_entity.log_id,
+                source_npc_id: event.source_entity.class_id,
                 target_id: event.target_entity.log_id,
                 target_name: event.target_entity.name,
                 target_entity_type: event.target_entity.entity_type,
+                target_npc_id: event.target_entity.class_id,
                 timestamp: event.timestamp,
             });
         }
