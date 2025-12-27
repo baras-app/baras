@@ -20,9 +20,23 @@
 # ───────────────────────────────────────────────────────────────────────────────
 # Area Header (required for consolidated encounter files)
 # ───────────────────────────────────────────────────────────────────────────────
+#
+# area_type values:
+#   "operation"      - Raid/operation (8 or 16 player) [default]
+#   "flashpoint"     - Flashpoint (4 player)
+#   "lair_boss"      - World boss / lair boss
+#   "training_dummy" - Training dummy (parsing area)
+#   "other"          - Other/unknown content
+#
+# IMPORTANT: NPCs in npc_ids are automatically registered as "bosses" for DPS
+# tracking. This means new content works without code updates - just add a
+# proper definition file with the boss npc_ids.
+# ───────────────────────────────────────────────────────────────────────────────
+
 [area]
 name = "The Dread Palace"           # Display name in UI
 area_id = 833571547775792           # SWTOR area ID for lazy loading
+area_type = "operation"             # Content type (operation, flashpoint, lair_boss, etc.)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

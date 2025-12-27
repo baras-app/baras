@@ -186,8 +186,16 @@ pub fn lookup_boss(entity_id: i64) -> Option<&'static BossInfo> {
     BOSS_LOOKUP.get(&entity_id)
 }
 
-/// Check if an entity ID is a known boss
+/// Check if an entity ID is a known boss.
+///
+/// Checks dynamic registry (from loaded TOML definitions) first,
+/// then falls back to hardcoded data.
 pub fn is_boss(entity_id: i64) -> bool {
+    // Check dynamic registry first (from loaded definitions)
+    if let Some(is_registered) = super::boss_registry::is_registered_boss(entity_id) {
+        return is_registered;
+    }
+    // Fall back to hardcoded data
     BOSS_LOOKUP.contains_key(&entity_id)
 }
 

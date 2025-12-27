@@ -3,7 +3,7 @@ use crate::encounter::{Encounter, EncounterState, BossHealthEntry};
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{EncounterHistory, create_summary};
 use crate::state::info::AreaInfo;
-use crate::game_data::lookup_boss;
+use crate::game_data::{lookup_boss, register_boss_npcs, clear_boss_registry};
 use std::collections::{HashSet, VecDeque};
 
 const CACHE_DEFAULT_CAPACITY: usize = 3;
@@ -169,14 +169,21 @@ impl SessionCache {
 
     /// Load boss definitions for the current area.
     /// Called when entering a new area (AreaEntered signal).
+    /// Also registers NPC IDs in the global boss registry for is_boss() checks.
     pub fn load_boss_definitions(&mut self, definitions: Vec<BossEncounterDefinition>) {
+        // Register all boss NPC IDs in the global registry
+        for def in &definitions {
+            register_boss_npcs(&def.npc_ids);
+        }
         self.boss_definitions = definitions;
         self.active_boss_idx = None;
         // Don't reset boss_state here - that happens on CombatEnded
     }
 
     /// Clear boss definitions (e.g., when leaving an instance).
+    /// Also clears the global boss registry.
     pub fn clear_boss_definitions(&mut self) {
+        clear_boss_registry();
         self.boss_definitions.clear();
         self.active_boss_idx = None;
     }

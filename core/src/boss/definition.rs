@@ -11,6 +11,23 @@ use super::ChallengeDefinition;
 // Root Config Structure
 // ═══════════════════════════════════════════════════════════════════════════
 
+/// Type of content area (used for UI grouping and boss DPS tracking)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AreaType {
+    /// Raid/operation (8 or 16 player)
+    #[default]
+    Operation,
+    /// Flashpoint (4 player)
+    Flashpoint,
+    /// World boss / lair boss
+    LairBoss,
+    /// Training dummy (parsing area)
+    TrainingDummy,
+    /// Other/unknown content
+    Other,
+}
+
 /// Area header for consolidated encounter files
 /// Contains area metadata for indexing and lazy loading
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -23,9 +40,10 @@ pub struct AreaConfig {
     #[serde(default)]
     pub area_id: i64,
 
-    /// Category for UI grouping: "operations", "flashpoints", "lair_bosses"
+    /// Type of content (operation, flashpoint, lair_boss, etc.)
+    /// Used for UI grouping and determining if NPCs count as "bosses"
     #[serde(default)]
-    pub category: String,
+    pub area_type: AreaType,
 }
 
 /// Root structure for boss config files (TOML)
