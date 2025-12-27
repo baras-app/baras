@@ -18,6 +18,9 @@ mod active;
 mod definition;
 mod manager;
 
+#[cfg(test)]
+mod manager_tests;
+
 pub use active::{ActiveTimer, TimerKey};
 pub use definition::{TimerConfig, TimerDefinition, TimerTrigger};
 pub use manager::TimerManager;

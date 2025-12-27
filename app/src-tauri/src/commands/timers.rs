@@ -13,9 +13,9 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
 use baras_core::boss::{
-    load_bosses_with_paths, save_bosses_to_file, BossTimerDefinition,
-    BossTimerTrigger, BossWithPath,
+    load_bosses_with_paths, save_bosses_to_file, BossTimerDefinition, BossWithPath,
 };
+use baras_core::timers::TimerTrigger;
 
 use crate::service::ServiceHandle;
 
@@ -43,7 +43,7 @@ pub struct TimerListItem {
     pub difficulties: Vec<String>,
 
     // Trigger info (serialized for frontend)
-    pub trigger: BossTimerTrigger,
+    pub trigger: TimerTrigger,
 
     // Optional fields
     pub can_be_refreshed: bool,
@@ -96,6 +96,7 @@ impl TimerListItem {
             can_be_refreshed: self.can_be_refreshed,
             repeats: self.repeats,
             chains_to: self.chains_to.clone(),
+            cancel_on_timer: None, // TODO: Add to UI if needed
             alert_at_secs: self.alert_at_secs,
             show_on_raid_frames: self.show_on_raid_frames,
         }
@@ -300,6 +301,7 @@ pub async fn create_encounter_timer(
         can_be_refreshed: timer.can_be_refreshed,
         repeats: timer.repeats,
         chains_to: timer.chains_to.clone(),
+        cancel_on_timer: None,
         alert_at_secs: timer.alert_at_secs,
         show_on_raid_frames: timer.show_on_raid_frames,
     };

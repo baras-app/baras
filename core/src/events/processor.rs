@@ -6,6 +6,7 @@ use crate::state::cache::SessionCache;
 use crate::encounter::EncounterState;
 use crate::encounter::entity_info::PlayerInfo;
 use crate::game_data::{effect_id, effect_type_id, correct_apply_charges};
+use crate::boss::PhaseTrigger;
 use chrono::NaiveDateTime;
 
 // Combat state machine constants
@@ -557,7 +558,6 @@ impl EventProcessor {
 
     /// Check if a signal-based phase trigger is satisfied (EntityFirstSeen, EntityDeath).
     fn check_signal_phase_trigger(&self, trigger: &crate::boss::PhaseTrigger, signals: &[GameSignal]) -> bool {
-        use crate::boss::PhaseTrigger;
 
         match trigger {
             PhaseTrigger::EntityFirstSeen { npc_id } => {
@@ -569,16 +569,15 @@ impl EventProcessor {
                 signals.iter().any(|s| {
                     if let GameSignal::EntityDeath { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {
                         // Check NPC ID filter
-                        if let Some(required_id) = npc_id {
-                            if sig_npc_id != required_id {
+                        if let Some(required_id) = npc_id
+                           && sig_npc_id != required_id {
                                 return false;
-                            }
+
                         }
                         // Check name filter
-                        if let Some(required_name) = entity_name {
-                            if !required_name.eq_ignore_ascii_case(sig_name) {
+                        if let Some(required_name) = entity_name
+                            && !required_name.eq_ignore_ascii_case(sig_name) {
                                 return false;
-                            }
                         }
                         true
                     } else {
@@ -707,16 +706,14 @@ impl EventProcessor {
                 current_signals.iter().any(|s| {
                     if let GameSignal::EntityDeath { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {
                         // Check NPC ID filter
-                        if let Some(required_id) = npc_id {
-                            if sig_npc_id != required_id {
+                        if let Some(required_id) = npc_id
+                            && sig_npc_id != required_id {
                                 return false;
-                            }
                         }
                         // Check name filter
-                        if let Some(required_name) = entity_name {
-                            if !required_name.eq_ignore_ascii_case(sig_name) {
+                        if let Some(required_name) = entity_name
+                            && !required_name.eq_ignore_ascii_case(sig_name) {
                                 return false;
-                            }
                         }
                         true
                     } else {

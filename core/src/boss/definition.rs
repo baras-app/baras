@@ -284,7 +284,7 @@ pub struct BossTimerDefinition {
     pub name: String,
 
     /// What triggers this timer
-    pub trigger: BossTimerTrigger,
+    pub trigger: crate::timers::TimerTrigger,
 
     /// Duration in seconds
     pub duration_secs: f32,
@@ -331,65 +331,6 @@ pub struct BossTimerDefinition {
     pub show_on_raid_frames: bool,
 }
 
-/// Trigger types for boss timers
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case", tag = "type")]
-pub enum BossTimerTrigger {
-    /// Combat starts
-    CombatStart,
-
-    /// Specific ability is cast
-    AbilityCast {
-        #[serde(default)]
-        ability_ids: Vec<u64>,
-    },
-
-    /// Effect is applied
-    EffectApplied {
-        #[serde(default)]
-        effect_ids: Vec<u64>,
-    },
-
-    /// Effect is removed
-    EffectRemoved {
-        #[serde(default)]
-        effect_ids: Vec<u64>,
-    },
-
-    /// Another timer expires
-    TimerExpires { timer_id: String },
-
-    /// Phase is entered
-    PhaseEntered { phase_id: String },
-
-    /// Boss HP reaches threshold
-    /// If `npc_id` is specified, only that NPC's HP triggers the timer (most reliable).
-    /// If `boss_name` is specified, uses name matching as fallback.
-    BossHpBelow {
-        hp_percent: f32,
-        /// NPC class/template ID (preferred)
-        #[serde(default)]
-        npc_id: Option<i64>,
-        /// Boss name (fallback)
-        #[serde(default)]
-        boss_name: Option<String>,
-    },
-
-    /// Time elapsed since combat start (for timed mechanics)
-    TimeElapsed {
-        /// Seconds into combat when this triggers
-        secs: f32,
-    },
-
-    // ─── Logical Composition ─────────────────────────────────────────────────
-
-    /// Any condition suffices (OR logic)
-    /// Triggers when ANY of the nested conditions fires.
-    /// For AND logic, use the `phases` and `counter_condition` fields as filters.
-    AnyOf {
-        conditions: Vec<BossTimerTrigger>,
-    },
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Counter Conditions

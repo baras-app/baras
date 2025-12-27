@@ -583,12 +583,6 @@ impl TimerManager {
         self.combat_start_time = None;
         self.last_combat_secs = 0.0;
     }
-
-    /// Pause timers for a dead entity
-    fn pause_entity_timers(&mut self, _entity_id: i64) {
-        // For now, we don't pause - just let them expire naturally
-        // Could implement pause/resume logic if needed
-    }
 }
 
 impl SignalHandler for TimerManager {
@@ -599,14 +593,13 @@ impl SignalHandler for TimerManager {
         }
 
         // Skip old events - timers only matter for recent/live events
-        if let Some(ts) = signal_timestamp(signal) {
-            let now = Local::now().naive_local();
-            let age_mins = (now - ts).num_minutes();
-            if age_mins > TIMER_RECENCY_THRESHOLD_MINS {
-                return;
-            }
-            self.last_timestamp = Some(ts);
+        let ts = signal.timestamp();
+        let now = Local::now().naive_local();
+        let age_mins = (now - ts).num_minutes();
+        if age_mins > TIMER_RECENCY_THRESHOLD_MINS {
+            return;
         }
+        self.last_timestamp = Some(ts);
 
         match signal {
             GameSignal::AbilityActivated {
@@ -646,9 +639,7 @@ impl SignalHandler for TimerManager {
                 self.clear_combat_timers();
             }
 
-            GameSignal::EntityDeath { entity_id, npc_id, entity_name, timestamp, .. } => {
-                self.pause_entity_timers(*entity_id);
-                // Check for death-triggered timers
+            GameSignal::EntityDeath { npc_id, entity_name, timestamp, .. } => {
                 self.handle_entity_death(*npc_id, entity_name, *timestamp);
             }
 
@@ -743,78 +734,17 @@ impl SignalHandler for TimerManager {
     }
 }
 
-/// Extract timestamp from a signal (if available)
-fn signal_timestamp(signal: &GameSignal) -> Option<NaiveDateTime> {
-    match signal {
-        GameSignal::CombatStarted { timestamp, .. } => Some(*timestamp),
-        GameSignal::CombatEnded { timestamp, .. } => Some(*timestamp),
-        GameSignal::EntityDeath { timestamp, .. } => Some(*timestamp),
-        GameSignal::EntityRevived { timestamp, .. } => Some(*timestamp),
-        GameSignal::EffectApplied { timestamp, .. } => Some(*timestamp),
-        GameSignal::EffectRemoved { timestamp, .. } => Some(*timestamp),
-        GameSignal::EffectChargesChanged { timestamp, .. } => Some(*timestamp),
-        GameSignal::AbilityActivated { timestamp, .. } => Some(*timestamp),
-        GameSignal::TargetChanged { timestamp, .. } => Some(*timestamp),
-        GameSignal::TargetCleared { timestamp, .. } => Some(*timestamp),
-        GameSignal::AreaEntered { timestamp, .. } => Some(*timestamp),
-        GameSignal::PlayerInitialized { timestamp, .. } => Some(*timestamp),
-        GameSignal::DisciplineChanged { timestamp, .. } => Some(*timestamp),
-        GameSignal::BossEncounterDetected { timestamp, .. } => Some(*timestamp),
-        GameSignal::BossHpChanged { timestamp, .. } => Some(*timestamp),
-        GameSignal::PhaseChanged { timestamp, .. } => Some(*timestamp),
-        GameSignal::CounterChanged { timestamp, .. } => Some(*timestamp),
-        GameSignal::NpcFirstSeen { timestamp, .. } => Some(*timestamp),
-    }
-}
-
 /// Convert a BossTimerDefinition to a TimerDefinition
-/// This bridges the boss-specific timer format to the generic timer system
+/// Adds boss context (area, name, difficulties) to the timer
 fn convert_boss_timer_to_definition(
     boss_timer: &crate::boss::BossTimerDefinition,
     boss: &BossEncounterDefinition,
 ) -> TimerDefinition {
-    use crate::boss::BossTimerTrigger;
-
-    // Convert trigger type
-    let trigger = match &boss_timer.trigger {
-        BossTimerTrigger::CombatStart => super::TimerTrigger::CombatStart,
-        BossTimerTrigger::AbilityCast { ability_ids } => {
-            super::TimerTrigger::AbilityCast { ability_ids: ability_ids.clone() }
-        }
-        BossTimerTrigger::EffectApplied { effect_ids } => {
-            super::TimerTrigger::EffectApplied { effect_ids: effect_ids.clone() }
-        }
-        BossTimerTrigger::EffectRemoved { effect_ids } => {
-            super::TimerTrigger::EffectRemoved { effect_ids: effect_ids.clone() }
-        }
-        BossTimerTrigger::TimerExpires { timer_id } => {
-            super::TimerTrigger::TimerExpires { timer_id: timer_id.clone() }
-        }
-        BossTimerTrigger::PhaseEntered { phase_id } => {
-            super::TimerTrigger::PhaseEntered { phase_id: phase_id.clone() }
-        }
-        BossTimerTrigger::BossHpBelow { hp_percent, npc_id, boss_name } => {
-            super::TimerTrigger::BossHpThreshold {
-                hp_percent: *hp_percent,
-                npc_id: *npc_id,
-                boss_name: boss_name.clone(),
-            }
-        }
-        BossTimerTrigger::TimeElapsed { secs } => {
-            super::TimerTrigger::TimeElapsed { secs: *secs }
-        }
-        BossTimerTrigger::AnyOf { conditions } => {
-            super::TimerTrigger::AnyOf {
-                conditions: conditions.iter().map(convert_boss_trigger).collect()
-            }
-        }
-    };
-
     TimerDefinition {
         id: boss_timer.id.clone(),
         name: boss_timer.name.clone(),
         enabled: boss_timer.enabled,
-        trigger,
+        trigger: boss_timer.trigger.clone(),
         source: Default::default(),
         target: Default::default(),
         duration_secs: boss_timer.duration_secs,
@@ -833,44 +763,5 @@ fn convert_boss_timer_to_definition(
         difficulties: boss_timer.difficulties.clone(),
         phases: boss_timer.phases.clone(),
         counter_condition: boss_timer.counter_condition.clone(),
-    }
-}
-
-/// Convert a single BossTimerTrigger to TimerTrigger (for nested conditions)
-fn convert_boss_trigger(trigger: &crate::boss::BossTimerTrigger) -> super::TimerTrigger {
-    use crate::boss::BossTimerTrigger;
-
-    match trigger {
-        BossTimerTrigger::CombatStart => super::TimerTrigger::CombatStart,
-        BossTimerTrigger::AbilityCast { ability_ids } => {
-            super::TimerTrigger::AbilityCast { ability_ids: ability_ids.clone() }
-        }
-        BossTimerTrigger::EffectApplied { effect_ids } => {
-            super::TimerTrigger::EffectApplied { effect_ids: effect_ids.clone() }
-        }
-        BossTimerTrigger::EffectRemoved { effect_ids } => {
-            super::TimerTrigger::EffectRemoved { effect_ids: effect_ids.clone() }
-        }
-        BossTimerTrigger::TimerExpires { timer_id } => {
-            super::TimerTrigger::TimerExpires { timer_id: timer_id.clone() }
-        }
-        BossTimerTrigger::PhaseEntered { phase_id } => {
-            super::TimerTrigger::PhaseEntered { phase_id: phase_id.clone() }
-        }
-        BossTimerTrigger::BossHpBelow { hp_percent, npc_id, boss_name } => {
-            super::TimerTrigger::BossHpThreshold {
-                hp_percent: *hp_percent,
-                npc_id: *npc_id,
-                boss_name: boss_name.clone(),
-            }
-        }
-        BossTimerTrigger::TimeElapsed { secs } => {
-            super::TimerTrigger::TimeElapsed { secs: *secs }
-        }
-        BossTimerTrigger::AnyOf { conditions } => {
-            super::TimerTrigger::AnyOf {
-                conditions: conditions.iter().map(convert_boss_trigger).collect()
-            }
-        }
     }
 }

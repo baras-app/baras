@@ -162,3 +162,29 @@ pub enum GameSignal {
         timestamp: NaiveDateTime,
     },
 }
+
+impl GameSignal {
+    /// Get the timestamp from any signal variant
+    pub fn timestamp(&self) -> NaiveDateTime {
+        match self {
+            Self::CombatStarted { timestamp, .. }
+            | Self::CombatEnded { timestamp, .. }
+            | Self::EntityDeath { timestamp, .. }
+            | Self::EntityRevived { timestamp, .. }
+            | Self::NpcFirstSeen { timestamp, .. }
+            | Self::EffectApplied { timestamp, .. }
+            | Self::EffectRemoved { timestamp, .. }
+            | Self::EffectChargesChanged { timestamp, .. }
+            | Self::AbilityActivated { timestamp, .. }
+            | Self::TargetChanged { timestamp, .. }
+            | Self::TargetCleared { timestamp, .. }
+            | Self::AreaEntered { timestamp, .. }
+            | Self::PlayerInitialized { timestamp, .. }
+            | Self::DisciplineChanged { timestamp, .. }
+            | Self::BossEncounterDetected { timestamp, .. }
+            | Self::BossHpChanged { timestamp, .. }
+            | Self::PhaseChanged { timestamp, .. }
+            | Self::CounterChanged { timestamp, .. } => *timestamp,
+        }
+    }
+}
