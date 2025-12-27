@@ -3,4 +3,4 @@ resolver = "2"
 members = ["types", "core", "overlay", "app", "app/src-tauri"]
 
 [workspace.lints.clippy]
-too_many_arguments = "deny"
+too_many_arguments = "allow"

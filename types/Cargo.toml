@@ -6,3 +6,6 @@ description = "Shared configuration types for BARAS"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+
+[lints]
+workspace = true
