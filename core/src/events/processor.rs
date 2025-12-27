@@ -54,10 +54,13 @@ impl EventProcessor {
         // 1c. Area transitions
         signals.extend(self.handle_area_transition(&event, cache));
 
-        // 1d. Boss encounter detection
+        // 1d. NPC first seen tracking (for ANY NPC, not just bosses)
+        signals.extend(self.handle_npc_first_seen(&event, cache));
+
+        // 1e. Boss encounter detection
         signals.extend(self.handle_boss_detection(&event, cache));
 
-        // 1e. Boss HP tracking and phase transitions
+        // 1f. Boss HP tracking and phase transitions
         signals.extend(self.handle_boss_hp_and_phases(&event, cache));
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -220,6 +223,33 @@ impl EventProcessor {
         }]
     }
 
+    /// Emit NpcFirstSeen for any NPC instance encountered for the first time.
+    /// Tracks by log_id (instance), so each spawn of the same NPC type fires the signal.
+    /// The signal includes npc_id (class_id) so timers can match on NPC type.
+    fn handle_npc_first_seen(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+        let mut signals = Vec::new();
+
+        for entity in [&event.source_entity, &event.target_entity] {
+            // Only track NPCs with valid IDs
+            if entity.entity_type != EntityType::Npc || entity.class_id == 0 || entity.log_id == 0 {
+                continue;
+            }
+
+            // Track by log_id (instance) so each spawn is detected
+            // Signal includes npc_id (class_id) for timer matching
+            if cache.seen_npc_instances.insert(entity.log_id) {
+                signals.push(GameSignal::NpcFirstSeen {
+                    entity_id: entity.log_id,      // Unique instance
+                    npc_id: entity.class_id,       // NPC type for timer matching
+                    entity_name: resolve(entity.name).to_string(),
+                    timestamp: event.timestamp,
+                });
+            }
+        }
+
+        signals
+    }
+
     /// Detect boss encounters based on NPC class IDs.
     /// When a known boss NPC is first seen in combat, activates the encounter.
     fn handle_boss_detection(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
@@ -320,9 +350,6 @@ impl EventProcessor {
                 continue;
             }
 
-            // Check if this is the first time we see this NPC
-            let is_first_seen = !cache.boss_state.first_seen.contains_key(&entity.class_id);
-
             // Update boss state and check if HP changed
             if let Some((old_hp, new_hp)) = cache.boss_state.update_entity_hp(
                 entity.log_id,
@@ -332,16 +359,7 @@ impl EventProcessor {
                 max_hp,
                 event.timestamp,
             ) {
-                // Emit NpcFirstSeen if this is the first time we see this NPC
-                if is_first_seen {
-                    signals.push(GameSignal::NpcFirstSeen {
-                        entity_id: entity.log_id,
-                        npc_id: entity.class_id,
-                        entity_name: resolve(entity.name).to_string(),
-                        timestamp: event.timestamp,
-                    });
-                }
-
+                // NpcFirstSeen is now emitted globally in handle_npc_first_seen
                 signals.push(GameSignal::BossHpChanged {
                     entity_id: entity.log_id,
                     npc_id: entity.class_id,

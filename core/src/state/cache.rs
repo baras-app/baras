@@ -4,13 +4,13 @@ use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{EncounterHistory, create_summary};
 use crate::state::info::AreaInfo;
 use crate::game_data::lookup_boss;
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
 const CACHE_DEFAULT_CAPACITY: usize = 3;
 
 /// Pure storage for session state.
 /// Routing logic lives in EventProcessor.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SessionCache {
     // Player state
     pub player: PlayerInfo,
@@ -33,6 +33,17 @@ pub struct SessionCache {
     pub active_boss_idx: Option<usize>,
     /// Runtime state for the active boss encounter
     pub boss_state: BossEncounterState,
+
+    // NPC tracking (session-scoped)
+    /// NPC instance log IDs that have been seen in this session (for NpcFirstSeen signals)
+    /// Tracks by log_id (instance) not class_id (template) so each spawn is detected
+    pub seen_npc_instances: HashSet<i64>,
+}
+
+impl Default for SessionCache {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SessionCache {
@@ -47,6 +58,7 @@ impl SessionCache {
             boss_definitions: Vec::new(),
             active_boss_idx: None,
             boss_state: BossEncounterState::new(),
+            seen_npc_instances: HashSet::new(),
         };
         cache.push_new_encounter();
         cache
