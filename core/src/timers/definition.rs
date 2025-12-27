@@ -58,6 +58,12 @@ pub enum TimerTrigger {
         phase_id: String,
     },
 
+    /// Phase ends (transitions to another phase)
+    PhaseEnded {
+        /// Phase ID that triggers this timer when it ends
+        phase_id: String,
+    },
+
     /// Counter reaches a specific value
     CounterReaches {
         /// Counter ID to monitor
@@ -253,6 +259,11 @@ impl TimerDefinition {
         trigger_matches_phase_entered(&self.trigger, phase_id)
     }
 
+    /// Check if this timer triggers when a specific phase ends (handles compound conditions)
+    pub fn matches_phase_ended(&self, phase_id: &str) -> bool {
+        trigger_matches_phase_ended(&self.trigger, phase_id)
+    }
+
     /// Check if this timer triggers when a counter reaches a value (handles compound conditions)
     pub fn matches_counter_reaches(&self, counter_id: &str, old_value: u32, new_value: u32) -> bool {
         trigger_matches_counter_reaches(&self.trigger, counter_id, old_value, new_value)
@@ -408,6 +419,17 @@ fn trigger_matches_phase_entered(trigger: &TimerTrigger, phase_id: &str) -> bool
         TimerTrigger::PhaseEntered { phase_id: trigger_phase } => trigger_phase == phase_id,
         TimerTrigger::AnyOf { conditions } => {
             conditions.iter().any(|c| trigger_matches_phase_entered(c, phase_id))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches phase ended (handles AnyOf recursively)
+fn trigger_matches_phase_ended(trigger: &TimerTrigger, phase_id: &str) -> bool {
+    match trigger {
+        TimerTrigger::PhaseEnded { phase_id: trigger_phase } => trigger_phase == phase_id,
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_phase_ended(c, phase_id))
         }
         _ => false,
     }

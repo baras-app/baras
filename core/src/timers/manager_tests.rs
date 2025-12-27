@@ -436,3 +436,75 @@ fn test_timer_expires_without_chain() {
     // Timer should be gone
     assert!(manager.active_timers().is_empty(), "Expired timer should be removed");
 }
+
+#[test]
+fn test_phase_ended_triggers_timer() {
+    let mut manager = TimerManager::new();
+
+    // Timer that triggers when phase_1 ends
+    let timer = make_timer(
+        "phase_end_timer",
+        "Phase 1 Ended Timer",
+        TimerTrigger::PhaseEnded { phase_id: "phase_1".to_string() },
+        30.0,
+    );
+    manager.load_definitions(vec![timer]);
+
+    // No timers active initially
+    assert!(manager.active_timers().is_empty());
+
+    // Enter phase_1 - should NOT trigger (we're waiting for it to END)
+    manager.handle_signal(&GameSignal::PhaseChanged {
+        boss_id: "test_boss".to_string(),
+        old_phase: None,
+        new_phase: "phase_1".to_string(),
+        timestamp: now(),
+    });
+    assert!(manager.active_timers().is_empty(), "PhaseEntered should not trigger PhaseEnded timer");
+
+    // Transition to phase_2 - phase_1 ended, should trigger
+    manager.handle_signal(&GameSignal::PhaseChanged {
+        boss_id: "test_boss".to_string(),
+        old_phase: Some("phase_1".to_string()),
+        new_phase: "phase_2".to_string(),
+        timestamp: now(),
+    });
+
+    let active = manager.active_timers();
+    assert_eq!(active.len(), 1, "PhaseEnded timer should trigger when phase_1 ends");
+    assert_eq!(active[0].name, "Phase 1 Ended Timer");
+}
+
+#[test]
+fn test_phase_entered_and_ended_both_trigger() {
+    let mut manager = TimerManager::new();
+
+    // Timer for entering phase_2
+    let enter_timer = make_timer(
+        "phase_enter",
+        "Phase 2 Started",
+        TimerTrigger::PhaseEntered { phase_id: "phase_2".to_string() },
+        20.0,
+    );
+
+    // Timer for phase_1 ending
+    let end_timer = make_timer(
+        "phase_end",
+        "Phase 1 Ended",
+        TimerTrigger::PhaseEnded { phase_id: "phase_1".to_string() },
+        15.0,
+    );
+
+    manager.load_definitions(vec![enter_timer, end_timer]);
+
+    // Transition from phase_1 to phase_2 - both should trigger
+    manager.handle_signal(&GameSignal::PhaseChanged {
+        boss_id: "test_boss".to_string(),
+        old_phase: Some("phase_1".to_string()),
+        new_phase: "phase_2".to_string(),
+        timestamp: now(),
+    });
+
+    let active = manager.active_timers();
+    assert_eq!(active.len(), 2, "Both phase entered and ended timers should trigger");
+}

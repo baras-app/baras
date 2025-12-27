@@ -484,6 +484,20 @@ impl TimerManager {
         }
     }
 
+    /// Handle phase ended - check for PhaseEnded triggers
+    fn handle_phase_ended(&mut self, phase_id: &str, timestamp: NaiveDateTime) {
+        let matching: Vec<_> = self.definitions
+            .values()
+            .filter(|d| d.matches_phase_ended(phase_id) && self.is_definition_active(d))
+            .cloned()
+            .collect();
+
+        for def in matching {
+            eprintln!("[TIMER] Starting phase-ended timer '{}' (phase {} ended)", def.name, phase_id);
+            self.start_timer(&def, timestamp, None);
+        }
+    }
+
     /// Handle counter change - check for CounterReaches triggers
     fn handle_counter_change(&mut self, counter_id: &str, old_value: u32, new_value: u32, timestamp: NaiveDateTime) {
         let matching: Vec<_> = self.definitions
@@ -698,10 +712,16 @@ impl SignalHandler for TimerManager {
                 }
             }
 
-            GameSignal::PhaseChanged { new_phase, timestamp, .. } => {
+            GameSignal::PhaseChanged { old_phase, new_phase, timestamp, .. } => {
+                // Handle the old phase ending first (if any)
+                if let Some(ended_phase) = old_phase {
+                    eprintln!("[TIMER] Phase ended: {}", ended_phase);
+                    self.handle_phase_ended(ended_phase, *timestamp);
+                }
+
                 eprintln!("[TIMER] Phase changed to: {}", new_phase);
                 self.current_phase = Some(new_phase.clone());
-                // Trigger phase-based timers
+                // Trigger phase-entered timers
                 self.handle_phase_change(new_phase, *timestamp);
             }
 
