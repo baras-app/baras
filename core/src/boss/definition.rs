@@ -290,7 +290,7 @@ pub struct BossTimerDefinition {
     pub duration_secs: f32,
 
     /// Display color [R, G, B, A]
-    #[serde(default = "default_timer_color")]
+    #[serde(default = "crate::serde_defaults::default_timer_color")]
     pub color: [u8; 4],
 
     /// Only active during these phases (empty = all phases)
@@ -306,7 +306,7 @@ pub struct BossTimerDefinition {
     pub difficulties: Vec<String>,
 
     /// Whether timer is enabled
-    #[serde(default = "default_true")]
+    #[serde(default = "crate::serde_defaults::default_true")]
     pub enabled: bool,
 
     /// Reset duration when triggered again
@@ -374,18 +374,6 @@ impl ComparisonOp {
             ComparisonOp::Ne => left != right,
         }
     }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Serde Helpers
-// ═══════════════════════════════════════════════════════════════════════════
-
-fn default_timer_color() -> [u8; 4] {
-    [200, 200, 200, 255]
-}
-
-fn default_true() -> bool {
-    true
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

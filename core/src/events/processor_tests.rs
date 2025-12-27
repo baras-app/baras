@@ -46,10 +46,9 @@ fn collect_signals_from_fixture_ext(
     let mut cache = SessionCache::default();
 
     // Load boss definitions if provided
-    if let Some(config_path) = boss_config_path {
-        if let Some(config) = load_boss_config(config_path) {
+    if let Some(config_path) = boss_config_path
+        && let Some(config) = load_boss_config(config_path) {
             cache.load_boss_definitions(config.bosses);
-        }
     }
 
     let mut all_signals = Vec::new();

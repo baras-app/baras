@@ -508,3 +508,445 @@ fn test_phase_entered_and_ended_both_trigger() {
     let active = manager.active_timers();
     assert_eq!(active.len(), 2, "Both phase entered and ended timers should trigger");
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Integration Tests with Real Log Data
+// ═══════════════════════════════════════════════════════════════════════════
+
+use std::fs::File;
+use std::io::Read as _;
+use std::path::Path;
+use crate::combat_log::LogParser;
+use crate::events::EventProcessor;
+use crate::state::SessionCache;
+
+/// Parse a fixture file and pipe signals through a TimerManager
+fn run_timer_integration(fixture_path: &Path, timer: TimerDefinition) -> Vec<String> {
+    let mut file = File::open(fixture_path).expect("Failed to open fixture file");
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes).expect("Failed to read file");
+    let content = String::from_utf8_lossy(&bytes);
+
+    let parser = LogParser::new(Local::now().naive_local());
+    let mut processor = EventProcessor::new();
+    let mut cache = SessionCache::default();
+    let mut manager = TimerManager::new();
+
+    manager.load_definitions(vec![timer]);
+
+    let mut activated_timers = Vec::new();
+
+    for (line_num, line) in content.lines().enumerate() {
+        if let Some(event) = parser.parse_line(line_num as u64, line) {
+            let signals = processor.process_event(event, &mut cache);
+            for signal in signals {
+                let before = manager.active_timers().len();
+                manager.handle_signal(&signal);
+                let after = manager.active_timers().len();
+
+                // Track newly activated timers
+                if after > before {
+                    for t in manager.active_timers() {
+                        if !activated_timers.contains(&t.name) {
+                            activated_timers.push(t.name.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    activated_timers
+}
+
+#[test]
+fn test_integration_combat_start_timer_with_real_log() {
+    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    if !fixture_path.exists() {
+        eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
+        return;
+    }
+
+    // Create a timer that triggers on CombatStart
+    let timer = make_timer(
+        "enrage",
+        "Enrage Timer",
+        TimerTrigger::CombatStart,
+        480.0, // 8 minute enrage
+    );
+
+    let activated = run_timer_integration(fixture_path, timer);
+
+    assert!(
+        activated.contains(&"Enrage Timer".to_string()),
+        "CombatStart timer should have activated during bestia_pull. Activated: {:?}",
+        activated
+    );
+}
+
+#[test]
+fn test_integration_ability_timer_with_real_log() {
+    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    if !fixture_path.exists() {
+        eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
+        return;
+    }
+
+    // Dread Scream ability ID from the fixture (known ability in Bestia fight)
+    // We'll use a generic high-frequency ability that should appear in combat
+    let timer = make_timer(
+        "any_ability",
+        "Ability Tracker",
+        TimerTrigger::AbilityCast { ability_ids: vec![807737319514112] }, // Basic Attack
+        10.0,
+    );
+
+    let activated = run_timer_integration(fixture_path, timer);
+
+    // This may or may not trigger depending on what abilities are in the log
+    // The important thing is that the pipeline doesn't crash
+    eprintln!("Ability timers activated: {:?}", activated);
+}
+
+#[test]
+fn test_integration_npc_first_seen_timer() {
+    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    if !fixture_path.exists() {
+        eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
+        return;
+    }
+
+    // Dread Monster NPC ID from Bestia fight
+    let timer = make_timer(
+        "monster_spawn",
+        "Dread Monster Spawned",
+        TimerTrigger::EntityFirstSeen { npc_id: 3291675820556288 },
+        30.0,
+    );
+
+    let activated = run_timer_integration(fixture_path, timer);
+
+    assert!(
+        activated.contains(&"Dread Monster Spawned".to_string()),
+        "EntityFirstSeen timer should trigger when Dread Monster appears. Activated: {:?}",
+        activated
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Timer Expiration and Chaining Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_multi_timer_chain_a_b_c() {
+    let mut manager = TimerManager::new();
+
+    // Chain: A (2s) → B (3s) → C (5s)
+    let timer_a = TimerDefinition {
+        triggers_timer: Some("timer_b".to_string()),
+        ..make_timer("timer_a", "Timer A", TimerTrigger::CombatStart, 2.0)
+    };
+
+    let timer_b = TimerDefinition {
+        triggers_timer: Some("timer_c".to_string()),
+        ..make_timer("timer_b", "Timer B", TimerTrigger::TimerExpires { timer_id: "timer_a".to_string() }, 3.0)
+    };
+
+    let timer_c = make_timer(
+        "timer_c",
+        "Timer C",
+        TimerTrigger::TimerExpires { timer_id: "timer_b".to_string() },
+        5.0,
+    );
+
+    manager.load_definitions(vec![timer_a, timer_b, timer_c]);
+
+    let start_time = now();
+
+    // Start combat - Timer A starts
+    manager.handle_signal(&GameSignal::CombatStarted {
+        timestamp: start_time,
+        encounter_id: 1,
+    });
+
+    assert_eq!(manager.active_timers().len(), 1);
+    assert_eq!(manager.active_timers()[0].name, "Timer A");
+
+    // Advance 3 seconds - Timer A expires, Timer B starts
+    let t1 = start_time + chrono::Duration::seconds(3);
+    manager.handle_signal(&GameSignal::AbilityActivated {
+        ability_id: 0,
+        source_id: 1,
+        source_npc_id: 0,
+        target_id: 0,
+        target_name: crate::context::IStr::default(),
+        target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
+        timestamp: t1,
+    });
+    manager.tick();
+
+    assert_eq!(manager.active_timers().len(), 1, "Timer B should be active");
+    assert_eq!(manager.active_timers()[0].name, "Timer B");
+
+    // Advance another 4 seconds - Timer B expires, Timer C starts
+    let t2 = t1 + chrono::Duration::seconds(4);
+    manager.handle_signal(&GameSignal::AbilityActivated {
+        ability_id: 0,
+        source_id: 1,
+        source_npc_id: 0,
+        target_id: 0,
+        target_name: crate::context::IStr::default(),
+        target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
+        timestamp: t2,
+    });
+    manager.tick();
+
+    assert_eq!(manager.active_timers().len(), 1, "Timer C should be active");
+    assert_eq!(manager.active_timers()[0].name, "Timer C");
+
+    // Advance another 6 seconds - Timer C expires, nothing chains
+    let t3 = t2 + chrono::Duration::seconds(6);
+    manager.handle_signal(&GameSignal::AbilityActivated {
+        ability_id: 0,
+        source_id: 1,
+        source_npc_id: 0,
+        target_id: 0,
+        target_name: crate::context::IStr::default(),
+        target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
+        timestamp: t3,
+    });
+    manager.tick();
+
+    assert!(manager.active_timers().is_empty(), "All timers should have expired");
+}
+
+#[test]
+fn test_cancel_on_timer_with_chain() {
+    let mut manager = TimerManager::new();
+
+    // Setup: Timer A starts on combat
+    //        Timer B starts on combat, but is cancelled when Timer C starts
+    //        Timer C is triggered by Timer A expiring
+
+    let timer_a = TimerDefinition {
+        triggers_timer: Some("timer_c".to_string()),
+        ..make_timer("timer_a", "Timer A", TimerTrigger::CombatStart, 2.0)
+    };
+
+    let timer_b = TimerDefinition {
+        cancel_on_timer: Some("timer_c".to_string()),
+        ..make_timer("timer_b", "Timer B", TimerTrigger::CombatStart, 60.0)
+    };
+
+    let timer_c = make_timer(
+        "timer_c",
+        "Timer C",
+        TimerTrigger::TimerExpires { timer_id: "timer_a".to_string() },
+        10.0,
+    );
+
+    manager.load_definitions(vec![timer_a, timer_b, timer_c]);
+
+    let start_time = now();
+
+    // Start combat - Timer A and Timer B both start
+    manager.handle_signal(&GameSignal::CombatStarted {
+        timestamp: start_time,
+        encounter_id: 1,
+    });
+
+    let active = manager.active_timers();
+    assert_eq!(active.len(), 2, "Both Timer A and Timer B should be active");
+
+    // Advance time - Timer A expires, triggers Timer C
+    // Timer C starting should cancel Timer B
+    let after_expiry = start_time + chrono::Duration::seconds(3);
+    manager.handle_signal(&GameSignal::AbilityActivated {
+        ability_id: 0,
+        source_id: 1,
+        source_npc_id: 0,
+        target_id: 0,
+        target_name: crate::context::IStr::default(),
+        target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
+        timestamp: after_expiry,
+    });
+    manager.tick();
+
+    let active = manager.active_timers();
+    assert_eq!(active.len(), 1, "Only Timer C should remain (Timer B cancelled)");
+    assert_eq!(active[0].name, "Timer C");
+}
+
+#[test]
+fn test_timer_refresh_resets_expiration() {
+    let mut manager = TimerManager::new();
+
+    // Timer that can be refreshed by the same ability
+    let timer = TimerDefinition {
+        can_be_refreshed: true,
+        ..make_timer(
+            "refreshable",
+            "Refreshable Timer",
+            TimerTrigger::AbilityCast { ability_ids: vec![12345] },
+            5.0,
+        )
+    };
+
+    manager.load_definitions(vec![timer]);
+
+    let start_time = now();
+
+    // First cast - timer starts
+    manager.handle_signal(&GameSignal::AbilityActivated {
+        ability_id: 12345,
+        source_id: 1,
+        source_npc_id: 0,
+        target_id: 0,
+        target_name: crate::context::IStr::default(),
+        target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
+        timestamp: start_time,
+    });
+
+    assert_eq!(manager.active_timers().len(), 1);
+    let initial_remaining = manager.active_timers()[0].remaining_secs(start_time);
+
+    // Advance 3 seconds
+    let t1 = start_time + chrono::Duration::seconds(3);
+
+    // Cast again - should refresh
+    manager.handle_signal(&GameSignal::AbilityActivated {
+        ability_id: 12345,
+        source_id: 1,
+        source_npc_id: 0,
+        target_id: 0,
+        target_name: crate::context::IStr::default(),
+        target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
+        timestamp: t1,
+    });
+
+    assert_eq!(manager.active_timers().len(), 1, "Should still be one timer");
+
+    // The timer should have been refreshed (remaining time reset to ~5s)
+    let after_refresh = manager.active_timers()[0].remaining_secs(t1);
+    assert!(
+        after_refresh > 4.0, // Should be close to 5s after refresh
+        "Timer should have been refreshed. Remaining: {:.1}s (expected ~5s)",
+        after_refresh
+    );
+}
+
+#[test]
+fn test_timer_no_refresh_when_disabled() {
+    let mut manager = TimerManager::new();
+
+    // Timer that cannot be refreshed
+    let timer = TimerDefinition {
+        can_be_refreshed: false,
+        ..make_timer(
+            "no_refresh",
+            "No Refresh Timer",
+            TimerTrigger::AbilityCast { ability_ids: vec![12345] },
+            10.0,
+        )
+    };
+
+    manager.load_definitions(vec![timer]);
+
+    let start_time = now();
+
+    // First cast - timer starts
+    manager.handle_signal(&GameSignal::AbilityActivated {
+        ability_id: 12345,
+        source_id: 1,
+        source_npc_id: 0,
+        target_id: 0,
+        target_name: crate::context::IStr::default(),
+        target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
+        timestamp: start_time,
+    });
+
+    // Advance 3 seconds
+    let t1 = start_time + chrono::Duration::seconds(3);
+
+    // Cast again - should NOT start a second timer (can't refresh, can't duplicate)
+    manager.handle_signal(&GameSignal::AbilityActivated {
+        ability_id: 12345,
+        source_id: 1,
+        source_npc_id: 0,
+        target_id: 0,
+        target_name: crate::context::IStr::default(),
+        target_entity_type: crate::combat_log::EntityType::Player,
+        target_npc_id: 0,
+        timestamp: t1,
+    });
+
+    assert_eq!(manager.active_timers().len(), 1, "Should still be one timer (no duplicate)");
+}
+
+#[test]
+fn test_integration_timer_expiration_with_real_log() {
+    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    if !fixture_path.exists() {
+        eprintln!("Skipping test: fixture file not found");
+        return;
+    }
+
+    // Create a very short timer that will expire during the log playback
+    // The bestia_pull.txt log spans several seconds of combat
+    let timer = TimerDefinition {
+        triggers_timer: Some("follow_up".to_string()),
+        ..make_timer("quick_timer", "Quick Timer", TimerTrigger::CombatStart, 0.5)
+    };
+
+    let follow_up = make_timer(
+        "follow_up",
+        "Follow Up Timer",
+        TimerTrigger::TimerExpires { timer_id: "quick_timer".to_string() },
+        30.0,
+    );
+
+    // Run integration with both timers
+    let mut file = File::open(fixture_path).expect("Failed to open fixture file");
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes).expect("Failed to read file");
+    let content = String::from_utf8_lossy(&bytes);
+
+    let parser = LogParser::new(Local::now().naive_local());
+    let mut processor = EventProcessor::new();
+    let mut cache = SessionCache::default();
+    let mut manager = TimerManager::new();
+
+    manager.load_definitions(vec![timer, follow_up]);
+
+    let mut saw_quick_timer = false;
+    let mut saw_follow_up = false;
+
+    for (line_num, line) in content.lines().enumerate() {
+        if let Some(event) = parser.parse_line(line_num as u64, line) {
+            let signals = processor.process_event(event, &mut cache);
+            for signal in signals {
+                manager.handle_signal(&signal);
+                manager.tick();
+
+                for t in manager.active_timers() {
+                    if t.name == "Quick Timer" {
+                        saw_quick_timer = true;
+                    }
+                    if t.name == "Follow Up Timer" {
+                        saw_follow_up = true;
+                    }
+                }
+            }
+        }
+    }
+
+    assert!(saw_quick_timer, "Quick Timer should have been activated");
+    assert!(saw_follow_up, "Follow Up Timer should have been triggered by Quick Timer expiring");
+}

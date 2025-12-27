@@ -5,6 +5,7 @@ pub mod effects;
 pub mod encounter;
 pub mod events;
 pub mod game_data;
+pub mod serde_defaults;
 pub mod state;
 pub mod timers;
 

@@ -983,3 +983,117 @@ fn test_target_tracking_for_ability_refresh() {
         timestamp: later,
     });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Integration Tests with Real Log Data
+// ═══════════════════════════════════════════════════════════════════════════
+
+use std::fs::File;
+use std::io::Read as _;
+use std::path::Path;
+use crate::combat_log::LogParser;
+use crate::events::EventProcessor;
+use crate::state::SessionCache;
+
+/// Parse a fixture file and pipe signals through an EffectTracker
+fn run_effect_integration(fixture_path: &Path, effect: EffectDefinition) -> (usize, usize) {
+    let mut file = File::open(fixture_path).expect("Failed to open fixture file");
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes).expect("Failed to read file");
+    let content = String::from_utf8_lossy(&bytes);
+
+    let parser = LogParser::new(Local::now().naive_local());
+    let mut processor = EventProcessor::new();
+    let mut cache = SessionCache::default();
+
+    let defs = make_definitions(vec![effect]);
+    let mut tracker = EffectTracker::new(defs);
+    tracker.set_live_mode(true);
+
+    let mut total_applied = 0;
+    let mut total_removed = 0;
+
+    for (line_num, line) in content.lines().enumerate() {
+        if let Some(event) = parser.parse_line(line_num as u64, line) {
+            let signals = processor.process_event(event, &mut cache);
+            for signal in signals {
+                let before = tracker.active_effects().count();
+                tracker.handle_signal(&signal);
+                let after = tracker.active_effects().count();
+
+                if after > before {
+                    total_applied += after - before;
+                } else if after < before {
+                    total_removed += before - after;
+                }
+            }
+        }
+    }
+
+    (total_applied, total_removed)
+}
+
+#[test]
+fn test_integration_effect_tracker_with_real_log() {
+    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    if !fixture_path.exists() {
+        eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
+        return;
+    }
+
+    // Track a common buff/debuff - this tests the full pipeline works
+    let effect = make_effect("test_effect", "Test Effect", vec![3283085219856384]);
+
+    let (applied, removed) = run_effect_integration(fixture_path, effect);
+
+    // The pipeline should process without crashing
+    // Actual counts depend on what's in the log
+    eprintln!("Effects applied: {}, removed: {}", applied, removed);
+}
+
+#[test]
+fn test_integration_combat_clears_effects() {
+    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    if !fixture_path.exists() {
+        eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
+        return;
+    }
+
+    let mut file = File::open(fixture_path).expect("Failed to open fixture file");
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes).expect("Failed to read file");
+    let content = String::from_utf8_lossy(&bytes);
+
+    let parser = LogParser::new(Local::now().naive_local());
+    let mut processor = EventProcessor::new();
+    let mut cache = SessionCache::default();
+
+    let effect = make_effect("combat_effect", "Combat Effect", vec![3283085219856384]);
+    let defs = make_definitions(vec![effect]);
+    let mut tracker = EffectTracker::new(defs);
+    tracker.set_live_mode(true);
+
+    let mut saw_combat_end = false;
+    let mut effects_at_combat_end = 0;
+
+    for (line_num, line) in content.lines().enumerate() {
+        if let Some(event) = parser.parse_line(line_num as u64, line) {
+            let signals = processor.process_event(event, &mut cache);
+            for signal in &signals {
+                tracker.handle_signal(signal);
+
+                if matches!(signal, GameSignal::CombatEnded { .. }) {
+                    saw_combat_end = true;
+                    effects_at_combat_end = tracker.active_effects().count();
+                }
+            }
+        }
+    }
+
+    if saw_combat_end {
+        assert_eq!(
+            effects_at_combat_end, 0,
+            "CombatEnded should clear all non-persistent effects"
+        );
+    }
+}

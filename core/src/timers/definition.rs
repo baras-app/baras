@@ -116,7 +116,7 @@ pub struct TimerDefinition {
     pub name: String,
 
     /// Whether this timer is currently enabled
-    #[serde(default = "default_true")]
+    #[serde(default = "crate::serde_defaults::default_true")]
     pub enabled: bool,
 
     // ─── Trigger ────────────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ pub struct TimerDefinition {
 
     // ─── Display ────────────────────────────────────────────────────────────
     /// Display color as RGBA
-    #[serde(default = "default_timer_color")]
+    #[serde(default = "crate::serde_defaults::default_timer_color")]
     pub color: [u8; 4],
 
     /// Show on raid frames instead of timer bar overlay?
@@ -192,18 +192,6 @@ pub struct TimerDefinition {
     /// Only applies when fighting a boss with counter definitions
     #[serde(default)]
     pub counter_condition: Option<CounterCondition>,
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Serde Helpers
-// ═══════════════════════════════════════════════════════════════════════════
-
-fn default_true() -> bool {
-    true
-}
-
-fn default_timer_color() -> [u8; 4] {
-    [200, 200, 200, 255] // Light grey
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -388,10 +376,9 @@ fn trigger_matches_boss_hp(trigger: &TimerTrigger, npc_id: i64, npc_name: Option
     match trigger {
         TimerTrigger::BossHpThreshold { hp_percent, npc_id: filter_npc_id, boss_name } => {
             // Check NPC ID filter first (most reliable)
-            if let Some(required_npc_id) = filter_npc_id {
-                if *required_npc_id != npc_id {
+            if let Some(required_npc_id) = filter_npc_id
+                && *required_npc_id != npc_id {
                     return false;
-                }
             }
             // Fall back to name filter
             if let Some(required_name) = boss_name {
@@ -465,10 +452,9 @@ fn trigger_matches_entity_death(trigger: &TimerTrigger, npc_id: i64, entity_name
     match trigger {
         TimerTrigger::EntityDeath { npc_id: filter_npc_id, entity_name: filter_name } => {
             // Check NPC ID filter first
-            if let Some(required_npc_id) = filter_npc_id {
-                if *required_npc_id != npc_id {
+            if let Some(required_npc_id) = filter_npc_id
+                && *required_npc_id != npc_id {
                     return false;
-                }
             }
             // Check name filter
             if let Some(required_name) = filter_name {

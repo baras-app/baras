@@ -52,9 +52,6 @@ pub struct TimerManager {
     /// Boss definitions indexed by area name (for timer extraction)
     boss_definitions: HashMap<String, Vec<BossEncounterDefinition>>,
 
-    /// Active boss definition ID (set by BossEncounterDetected signal)
-    active_boss_id: Option<String>,
-
     /// Current phase (from PhaseChanged signals)
     current_phase: Option<String>,
 
@@ -87,7 +84,6 @@ impl TimerManager {
             in_combat: false,
             last_timestamp: None,
             boss_definitions: HashMap::new(),
-            active_boss_id: None,
             current_phase: None,
             counters: HashMap::new(),
             boss_hp_by_npc: HashMap::new(),
@@ -590,7 +586,6 @@ impl TimerManager {
     fn clear_combat_timers(&mut self) {
         self.in_combat = false;
         self.active_timers.clear();
-        self.active_boss_id = None;
         self.current_phase = None;
         self.counters.clear();
         self.boss_hp_by_npc.clear();
@@ -685,9 +680,8 @@ impl SignalHandler for TimerManager {
             }
 
             // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────
-            GameSignal::BossEncounterDetected { definition_id, boss_name, timestamp, .. } => {
-                eprintln!("[TIMER] Boss encounter detected: {} ({})", boss_name, definition_id);
-                self.active_boss_id = Some(definition_id.clone());
+            GameSignal::BossEncounterDetected { boss_name, timestamp, .. } => {
+                eprintln!("[TIMER] Boss encounter detected: {}", boss_name);
                 self.context.boss_name = Some(boss_name.clone());
                 // Reset phase and counters for new encounter
                 self.current_phase = None;

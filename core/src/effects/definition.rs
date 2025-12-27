@@ -102,7 +102,7 @@ pub struct EffectDefinition {
     pub name: String,
 
     /// Whether this definition is currently enabled
-    #[serde(default = "default_true")]
+    #[serde(default = "crate::serde_defaults::default_true")]
     pub enabled: bool,
 
     // ─── Matching ───────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ pub struct EffectDefinition {
     pub duration_secs: Option<f32>,
 
     /// Can this effect be refreshed by reapplication?
-    #[serde(default = "default_true")]
+    #[serde(default = "crate::serde_defaults::default_true")]
     pub can_be_refreshed: bool,
 
     // ─── Display ────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ pub struct EffectDefinition {
     pub persist_past_death: bool,
 
     /// Track this effect outside of combat?
-    #[serde(default = "default_true")]
+    #[serde(default = "crate::serde_defaults::default_true")]
     pub track_outside_combat: bool,
 
     // ─── Timer Integration ──────────────────────────────────────────────────
@@ -202,10 +202,6 @@ impl EffectDefinition {
 // ═══════════════════════════════════════════════════════════════════════════
 // Serde Helpers
 // ═══════════════════════════════════════════════════════════════════════════
-
-fn default_true() -> bool {
-    true
-}
 
 fn default_alert_threshold() -> f32 {
     3.0
