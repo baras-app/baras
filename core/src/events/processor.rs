@@ -307,7 +307,7 @@ impl EventProcessor {
 
                 // Activate initial phase (CombatStart trigger)
                 if let Some(initial) = initial_phase {
-                    cache.boss_state.set_phase(&initial.id);
+                    cache.boss_state.set_phase(&initial.id, event.timestamp);
                     cache.boss_state.reset_counters(&initial.resets_counters);
 
                     signals.push(GameSignal::PhaseChanged {
@@ -406,7 +406,7 @@ impl EventProcessor {
                 let boss_id = def.id.clone();
                 let resets = phase.resets_counters.clone();
 
-                cache.boss_state.set_phase(&new_phase_id);
+                cache.boss_state.set_phase(&new_phase_id, timestamp);
                 cache.boss_state.reset_counters(&resets);
 
                 // Update challenge tracker phase for duration tracking
@@ -505,7 +505,7 @@ impl EventProcessor {
                 let boss_id = def.id.clone();
                 let resets = phase.resets_counters.clone();
 
-                cache.boss_state.set_phase(&new_phase_id);
+                cache.boss_state.set_phase(&new_phase_id, event.timestamp);
                 cache.boss_state.reset_counters(&resets);
 
                 // Update challenge tracker phase for duration tracking
@@ -610,7 +610,7 @@ impl EventProcessor {
                 let new_phase_id = phase.id.clone();
                 let resets = phase.resets_counters.clone();
 
-                cache.boss_state.set_phase(&new_phase_id);
+                cache.boss_state.set_phase(&new_phase_id, timestamp);
                 cache.boss_state.reset_counters(&resets);
 
                 // Update challenge tracker phase for duration tracking

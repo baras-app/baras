@@ -20,6 +20,9 @@ pub struct BossEncounterState {
     /// Current phase ID
     pub current_phase: Option<String>,
 
+    /// When the current phase started (for duration display)
+    pub phase_started_at: Option<NaiveDateTime>,
+
     /// Counter values
     pub counters: HashMap<String, u32>,
 
@@ -76,6 +79,7 @@ impl BossEncounterState {
     pub fn reset(&mut self) {
         self.active_boss = None;
         self.current_phase = None;
+        self.phase_started_at = None;
         self.counters.clear();
         self.boss_hp_percent = 100.0;
         self.hp_by_entity.clear();
@@ -241,14 +245,22 @@ impl BossEncounterState {
         false
     }
 
-    /// Set the current phase
-    pub fn set_phase(&mut self, phase_id: &str) {
+    /// Set the current phase with timestamp for duration tracking
+    pub fn set_phase(&mut self, phase_id: &str, timestamp: NaiveDateTime) {
         self.current_phase = Some(phase_id.to_string());
+        self.phase_started_at = Some(timestamp);
     }
 
     /// Get the current phase ID
     pub fn phase(&self) -> Option<&str> {
         self.current_phase.as_deref()
+    }
+
+    /// Get how long we've been in the current phase (in seconds)
+    pub fn phase_duration_secs(&self, current_time: NaiveDateTime) -> f32 {
+        self.phase_started_at
+            .map(|start| (current_time - start).num_milliseconds() as f32 / 1000.0)
+            .unwrap_or(0.0)
     }
 
     /// Check if currently in a specific phase
@@ -369,7 +381,7 @@ mod tests {
         assert!(!state.is_in_phase("p1"));
         assert!(state.is_in_any_phase(&[])); // Empty = all phases
 
-        state.set_phase("p1");
+        state.set_phase("p1", chrono::NaiveDateTime::default());
         assert!(state.is_in_phase("p1"));
         assert!(!state.is_in_phase("p2"));
         assert!(state.is_in_any_phase(&["p1".to_string(), "p2".to_string()]));

@@ -34,6 +34,8 @@ pub struct PersonalStats {
     pub damage_crit_pct: f32,
     pub heal_crit_pct: f32,
     pub effective_heal_pct: f32,
+    pub current_phase: Option<String>,
+    pub phase_time_secs: f32,
 }
 
 /// Base dimensions for scaling calculations
@@ -120,6 +122,13 @@ impl PersonalOverlay {
                     .clone()
                     .unwrap_or_else(|| "Unknown".to_string());
                 ("Spec", value)
+            }
+            PersonalStat::Phase => {
+                let phase = self.stats.current_phase.as_deref().unwrap_or("-");
+                ("Phase", phase.to_string())
+            }
+            PersonalStat::PhaseTime => {
+                ("Phase Time", format_time(self.stats.phase_time_secs as u64))
             }
         }
     }

@@ -132,6 +132,10 @@ pub enum PersonalStat {
     HealCritPct,
     EffectiveHealPct,
     ClassDiscipline,
+    /// Current boss phase (if any)
+    Phase,
+    /// Time in current phase
+    PhaseTime,
 }
 
 impl PersonalStat {
@@ -158,6 +162,8 @@ impl PersonalStat {
             Self::HealCritPct => "Heal Crit %",
             Self::EffectiveHealPct => "Eff Heal %",
             Self::ClassDiscipline => "Spec",
+            Self::Phase => "Phase",
+            Self::PhaseTime => "Phase Time",
         }
     }
 
@@ -184,6 +190,8 @@ impl PersonalStat {
             Self::DamageCritPct,
             Self::HealCritPct,
             Self::EffectiveHealPct,
+            Self::Phase,
+            Self::PhaseTime,
         ]
     }
 }

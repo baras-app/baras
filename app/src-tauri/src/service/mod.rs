@@ -965,6 +965,15 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         None
     };
 
+    // Get phase info from boss state
+    let current_phase = cache.boss_state.current_phase.clone();
+    let phase_time_secs = cache.boss_state.phase_started_at
+        .map(|start| {
+            let now = chrono::Utc::now().naive_utc();
+            (now - start).num_milliseconds() as f32 / 1000.0
+        })
+        .unwrap_or(0.0);
+
     Some(CombatData {
         metrics,
         player_entity_id,
@@ -974,6 +983,8 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         encounter_name,
         difficulty,
         challenges,
+        current_phase,
+        phase_time_secs,
     })
 }
 
@@ -1283,6 +1294,10 @@ pub struct CombatData {
     pub difficulty: Option<String>,
     /// Challenge metrics for boss encounters (polled with other metrics)
     pub challenges: Option<ChallengeData>,
+    /// Current boss phase (if in a defined encounter)
+    pub current_phase: Option<String>,
+    /// Time spent in the current phase (seconds)
+    pub phase_time_secs: f32,
 }
 
 impl CombatData {
@@ -1311,6 +1326,8 @@ impl CombatData {
             damage_crit_pct: player.damage_crit_pct,
             heal_crit_pct: player.heal_crit_pct,
             effective_heal_pct: player.effective_heal_pct,
+            current_phase: self.current_phase.clone(),
+            phase_time_secs: self.phase_time_secs,
         })
     }
 }
