@@ -1,0 +1,459 @@
+# Explosive Conflict
+# 4 bosses
+
+[area]
+name = "Explosive Conflict"
+area_id = 833571547775688
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Zorn & Toth
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "zorn_toth"
+name = "Zorn & Toth"
+difficulties = ["veteran", "master"]
+
+[[boss.entities]]
+name = "Zorn"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Toth"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.phases]]
+id = "p1"
+name = "Main"
+trigger = { type = "combat_start" }
+
+# -- Timers --
+[[boss.timer]]
+id = "zt_shriek"
+name = "Shriek"
+trigger = { type = "ability_cast", ability_ids = [2857132504383488] }
+duration_secs = 45
+color = [219, 100, 32, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_baradium_heave"
+name = "Baradium Heave"
+trigger = { type = "effect_applied", effect_ids = [2857300008108306] }
+duration_secs = 13
+color = [219, 34, 32, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_ground_shatter"
+name = "Ground Shatter"
+trigger = { type = "effect_applied", effect_ids = [2857368727584768] }
+duration_secs = 20
+color = [224, 24, 24, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_smash"
+name = "Smash"
+trigger = { type = "ability_cast", ability_ids = [2917463909990400] }
+duration_secs = 15
+color = [32, 219, 215, 255]
+difficulties = ["veteran", "master"]
+
+# -- Alerts (effects on local player) --
+[[boss.timer]]
+id = "zt_baradium_poisoning"
+name = "Baradium Poisoning"
+is_alert = true
+trigger = { type = "effect_applied", effect_ids = [3004561551785984] }
+target = "local_player"
+alert_text = "Use Medpack!"
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "zt_weakened"
+name = "Weakened"
+is_alert = true
+trigger = { type = "effect_applied", effect_ids = [2857132504383753] }
+target = "local_player"
+alert_text = "Weakened"
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_fearful"
+name = "Fearful"
+is_alert = true
+trigger = { type = "ability_cast", ability_ids = [2857171159089152] }
+source = { specific = "Zorn" }
+alert_text = "Fearful"
+difficulties = ["veteran", "master"]
+
+# -- HP Threshold Alerts (Toth) --
+[[boss.timer]]
+id = "zt_jump_90"
+name = "Jump"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 90.0, boss_name = "Toth" }
+alert_text = "Jump"
+color = [130, 33, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_frenzy_80"
+name = "Frenzy"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 80.0, boss_name = "Toth" }
+alert_text = "Frenzy"
+color = [214, 164, 19, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_jump_70"
+name = "Jump"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 70.0, boss_name = "Toth" }
+alert_text = "Jump"
+color = [130, 33, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_shatter_60"
+name = "Shatter + Sonic"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 60.0, boss_name = "Toth" }
+alert_text = "Shatter + Sonic"
+color = [219, 36, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_jump_50"
+name = "Jump"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 50.0, boss_name = "Toth" }
+alert_text = "Jump"
+color = [130, 33, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_frenzy_40"
+name = "Frenzy"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 40.0, boss_name = "Toth" }
+alert_text = "Frenzy"
+color = [214, 164, 19, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_jump_30"
+name = "Jump"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 30.0, boss_name = "Toth" }
+alert_text = "Jump"
+color = [130, 33, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_shatter_20"
+name = "Shatter + Sonic"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 20.0, boss_name = "Toth" }
+alert_text = "Shatter + Sonic"
+color = [219, 34, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_jump_10"
+name = "Jump"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 10.0, boss_name = "Toth" }
+alert_text = "Jump"
+color = [130, 33, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "zt_soft_enrage"
+name = "Soft Enrage"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 5.0, boss_name = "Toth" }
+alert_text = "Soft Enrage"
+color = [219, 31, 28, 255]
+difficulties = ["veteran", "master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Firebrand & Stormcaller
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "firebrand_stormcaller"
+name = "Firebrand & Stormcaller"
+difficulties = ["veteran", "master"]
+
+[[boss.entities]]
+name = "Firebrand"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Stormcaller"
+ids = []
+is_boss = true
+is_kill_target = true
+
+# -- Phases --
+[[boss.phases]]
+id = "fs_tanks_1"
+name = "Tanks"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "fs_shield_1"
+name = "Defensive Systems"
+preceded_by = "fs_tanks_1"
+trigger = { type = "effect_applied", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+end_trigger = { type = "effect_removed", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+
+[[boss.phases]]
+id = "fs_tanks_2"
+name = "Tanks"
+trigger = { type = "phase_ended", phase_id = "fs_shield_1" }
+
+[[boss.phases]]
+id = "fs_shield_2"
+name = "Defensive Systems"
+preceded_by = "fs_tanks_2"
+trigger = { type = "effect_applied", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+end_trigger = { type = "effect_removed", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+
+[[boss.phases]]
+id = "fs_tanks_3"
+name = "Tanks"
+trigger = { type = "phase_ended", phase_id = "fs_shield_2" }
+
+[[boss.phases]]
+id = "fs_shield_3"
+name = "Defensive Systems"
+preceded_by = "fs_tanks_3"
+trigger = { type = "effect_applied", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+end_trigger = { type = "effect_removed", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+
+[[boss.phases]]
+id = "fs_tanks_4"
+name = "Tanks"
+trigger = { type = "phase_ended", phase_id = "fs_shield_3" }
+
+[[boss.phases]]
+id = "fs_shield_4"
+name = "Defensive Systems"
+preceded_by = "fs_tanks_4"
+trigger = { type = "effect_applied", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+end_trigger = { type = "effect_removed", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+
+[[boss.phases]]
+id = "fs_burn"
+name = "Burn"
+trigger = { type = "phase_ended", phase_id = "fs_shield_4" }
+
+# -- Challenges --
+[[boss.challenge]]
+id = "fs_shield_dps"
+name = "Shield DPS"
+metric = "damage"
+conditions = [
+    { type = "target", match = { npc_ids = [2876425497477120] } }
+]
+color = [100, 210, 237, 255]
+
+# -- Timers --
+[[boss.timer]]
+id = "fs_mortar_volley"
+name = "Mortar Volley"
+trigger = { type = "ability_cast", ability_ids = [2815793444159488] }
+duration_secs = 25
+color = [219, 28, 29, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "fs_firebrand_cleave"
+name = "Firebrand Cleave"
+trigger = { type = "ability_cast", ability_ids = [2876653130743808] }
+duration_secs = 10
+color = [224, 25, 24, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "fs_storm_cleave"
+name = "Storm Cleave"
+trigger = { type = "ability_cast", ability_ids = [2876687490482176] }
+duration_secs = 10
+color = [117, 33, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "fs_targeted_missile"
+name = "Targeted Missile"
+trigger = { type = "ability_cast", ability_ids = [2876648835776512] }
+duration_secs = 16
+color = [224, 24, 164, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "fs_incinerate_armor"
+name = "Incinerate Armor"
+trigger = { type = "ability_cast", ability_ids = [2876661720678400] }
+duration_secs = 46
+color = [219, 94, 32, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "fs_incinerate_armor_vm"
+name = "Incinerate Armor"
+trigger = { type = "ability_cast", ability_ids = [2876661720678400] }
+duration_secs = 49
+color = [219, 94, 32, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "fs_double_destruction"
+name = "Double Destruction"
+trigger = { type = "ability_cast", ability_ids = [2876691785449472] }
+duration_secs = 20
+color = [23, 197, 209, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "fs_double_destruction_vm"
+name = "Double Destruction"
+trigger = { type = "ability_cast", ability_ids = [2876691785449472] }
+duration_secs = 30
+color = [23, 197, 209, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "fs_void_zone"
+name = "Void Zone"
+trigger = { type = "ability_cast", ability_ids = [2876713260285952] }
+duration_secs = 15
+color = [24, 92, 224, 255]
+difficulties = ["veteran", "master"]
+
+# -- Alerts --
+[[boss.timer]]
+id = "fs_defensive_systems"
+name = "Defensive Systems"
+is_alert = true
+trigger = { type = "phase_started", phase_ids = ["fs_shield_1", "fs_shield_2", "fs_shield_3", "fs_shield_4"] }
+alert_text = "Defensive Systems"
+color = [28, 176, 219, 255]
+difficulties = ["veteran", "master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Colonel Vorgath
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "colonel_vorgath"
+name = "Colonel Vorgath"
+difficulties = ["veteran", "master"]
+
+[[boss.entities]]
+name = "Colonel Vorgath"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.phases]]
+id = "cv_main"
+name = "Vorgath"
+trigger = { type = "combat_start" }
+
+# -- Timers --
+[[boss.timer]]
+id = "cv_threat_drop"
+name = "Threat Drop"
+trigger = { type = "ability_cast", ability_ids = [2919121767366656] }
+duration_secs = 20
+color = [39, 209, 208, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "cv_knockback"
+name = "Knockback"
+trigger = { type = "ability_cast", ability_ids = [2853275623751680] }
+duration_secs = 15
+color = [224, 108, 24, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "cv_grenade"
+name = "Grenade"
+trigger = { type = "ability_cast", ability_ids = [2853344343228416] }
+duration_secs = 15
+color = [214, 37, 32, 255]
+difficulties = ["veteran", "master"]
+
+# -- HP Threshold Alerts --
+[[boss.timer]]
+id = "cv_hp_95"
+name = "Threat Drop"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 95.0, boss_name = "Colonel Vorgath" }
+alert_text = "Threat Drop"
+color = [39, 209, 208, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "cv_hp_80"
+name = "Turrets"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 80.0, boss_name = "Colonel Vorgath" }
+alert_text = "Turrets"
+color = [14, 128, 22, 255]
+difficulties = ["veteran", "master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Warlord Kephess
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "warlord_kephess"
+name = "Warlord Kephess"
+difficulties = ["veteran", "master"]
+
+[[boss.entities]]
+name = "Warlord Kephess"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.phases]]
+id = "wk_main"
+name = "Main"
+trigger = { type = "combat_start" }
+
+# -- Timers --
+[[boss.timer]]
+id = "wk_mighty_leap"
+name = "Mighty Leap"
+trigger = { type = "ability_cast", ability_ids = [2877069742571520] }
+duration_secs = 40
+color = [214, 37, 32, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "wk_savage_slash"
+name = "Savage Slash"
+trigger = { type = "ability_cast", ability_ids = [2877048267735040] }
+duration_secs = 18
+color = [219, 28, 29, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "wk_breath_pull"
+name = "Breath Pull"
+trigger = { type = "effect_applied", effect_ids = [2877078332506112] }
+duration_secs = 6
+color = [224, 168, 33, 255]
+difficulties = ["master"]
+
+# TODO: Add Kephess phases and alerts manually - ORBS structure doesn't match well
