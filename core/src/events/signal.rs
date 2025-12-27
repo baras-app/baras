@@ -21,11 +21,23 @@ pub enum GameSignal {
     EntityDeath {
         entity_id: i64,
         entity_type: EntityType,
+        /// NPC class/template ID (0 for players)
+        npc_id: i64,
+        entity_name: String,
         timestamp: NaiveDateTime,
     },
     EntityRevived {
         entity_id: i64,
         entity_type: EntityType,
+        timestamp: NaiveDateTime,
+    },
+
+    /// NPC is first seen in the current encounter (for add spawn detection)
+    NpcFirstSeen {
+        entity_id: i64,
+        /// NPC class/template ID
+        npc_id: i64,
+        entity_name: String,
         timestamp: NaiveDateTime,
     },
 
@@ -143,6 +155,7 @@ pub enum GameSignal {
     /// Counter value has changed
     CounterChanged {
         counter_id: String,
+        old_value: u32,
         new_value: u32,
         timestamp: NaiveDateTime,
     },

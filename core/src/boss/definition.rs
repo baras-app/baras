@@ -183,12 +183,23 @@ pub enum PhaseTrigger {
     /// Time elapsed since combat start
     TimeElapsed { secs: f32 },
 
-    // ─── Logical Composition ─────────────────────────────────────────────────
-
-    /// All conditions must be met (AND logic)
-    AllOf {
-        conditions: Vec<PhaseTrigger>,
+    /// Entity is first seen (add spawn)
+    EntityFirstSeen {
+        /// NPC ID to watch for
+        npc_id: i64,
     },
+
+    /// Entity dies
+    EntityDeath {
+        /// NPC ID to watch for (None = any death)
+        #[serde(default)]
+        npc_id: Option<i64>,
+        /// Entity name fallback
+        #[serde(default)]
+        entity_name: Option<String>,
+    },
+
+    // ─── Logical Composition ─────────────────────────────────────────────────
 
     /// Any condition suffices (OR logic)
     AnyOf {
@@ -235,6 +246,17 @@ pub enum CounterTrigger {
     },
     PhaseEntered {
         phase_id: String,
+    },
+    /// NPC is first seen (add spawn)
+    EntityFirstSeen {
+        npc_id: i64,
+    },
+    /// Entity dies
+    EntityDeath {
+        #[serde(default)]
+        npc_id: Option<i64>,
+        #[serde(default)]
+        entity_name: Option<String>,
     },
 }
 
@@ -298,6 +320,9 @@ pub struct BossTimerDefinition {
     /// Timer to start when this one expires
     pub chains_to: Option<String>,
 
+    /// Cancel this timer when the referenced timer starts
+    pub cancel_on_timer: Option<String>,
+
     /// Alert when this many seconds remain
     pub alert_at_secs: Option<f32>,
 
@@ -350,16 +375,17 @@ pub enum BossTimerTrigger {
         boss_name: Option<String>,
     },
 
-    // ─── Logical Composition ─────────────────────────────────────────────────
-
-    /// All conditions must be met (AND logic)
-    /// Triggers when ALL nested conditions fire within the same event context.
-    AllOf {
-        conditions: Vec<BossTimerTrigger>,
+    /// Time elapsed since combat start (for timed mechanics)
+    TimeElapsed {
+        /// Seconds into combat when this triggers
+        secs: f32,
     },
+
+    // ─── Logical Composition ─────────────────────────────────────────────────
 
     /// Any condition suffices (OR logic)
     /// Triggers when ANY of the nested conditions fires.
+    /// For AND logic, use the `phases` and `counter_condition` fields as filters.
     AnyOf {
         conditions: Vec<BossTimerTrigger>,
     },

@@ -63,6 +63,12 @@ pub struct TimerManager {
 
     /// Boss HP by NPC ID (from BossHpChanged signals)
     boss_hp_by_npc: HashMap<i64, f32>,
+
+    /// Combat start time (for TimeElapsed triggers)
+    combat_start_time: Option<NaiveDateTime>,
+
+    /// Last checked combat time in seconds (for crossing detection)
+    last_combat_secs: f32,
 }
 
 impl Default for TimerManager {
@@ -85,6 +91,8 @@ impl TimerManager {
             current_phase: None,
             counters: HashMap::new(),
             boss_hp_by_npc: HashMap::new(),
+            combat_start_time: None,
+            last_combat_secs: 0.0,
         }
     }
 
@@ -291,6 +299,8 @@ impl TimerManager {
         if let Some(existing) = self.active_timers.get_mut(&key) {
             if def.can_be_refreshed {
                 existing.refresh(timestamp);
+                // Still need to cancel timers that depend on this one
+                self.cancel_timers_on_start(&def.id);
                 return;
             }
             // Timer exists and can't be refreshed - ignore
@@ -311,6 +321,34 @@ impl TimerManager {
         );
 
         self.active_timers.insert(key, timer);
+
+        // Cancel any timers that have cancel_on_timer pointing to this timer
+        self.cancel_timers_on_start(&def.id);
+    }
+
+    /// Cancel active timers that have cancel_on_timer matching the started timer ID
+    fn cancel_timers_on_start(&mut self, started_timer_id: &str) {
+        // Find keys to remove
+        let keys_to_cancel: Vec<_> = self.active_timers
+            .iter()
+            .filter_map(|(key, timer)| {
+                // Look up the definition to check cancel_on_timer
+                if let Some(def) = self.definitions.get(&timer.definition_id)
+                    && let Some(ref cancel_on) = def.cancel_on_timer
+                    && cancel_on == started_timer_id {
+                        Some(key.clone())
+                    } else {
+                        None
+                    }
+            })
+            .collect();
+
+        // Remove cancelled timers
+        for key in keys_to_cancel {
+            if let Some(timer) = self.active_timers.remove(&key) {
+                eprintln!("[TIMER] Cancelled '{}' because '{}' started", timer.name, started_timer_id);
+            }
+        }
     }
 
     /// Process timer expirations and chains
@@ -412,28 +450,116 @@ impl TimerManager {
     }
 
     /// Handle boss HP change - check for HP threshold triggers
-    fn handle_boss_hp_change(&mut self, previous_hp: f32, current_hp: f32, timestamp: NaiveDateTime) {
+    fn handle_boss_hp_change(&mut self, npc_id: i64, npc_name: &str, previous_hp: f32, current_hp: f32, timestamp: NaiveDateTime) {
         let matching: Vec<_> = self.definitions
             .values()
-            .filter(|d| d.matches_boss_hp_threshold(previous_hp, current_hp) && self.is_definition_active(d))
+            .filter(|d| d.matches_boss_hp_threshold(npc_id, Some(npc_name), previous_hp, current_hp) && self.is_definition_active(d))
             .cloned()
             .collect();
 
         for def in matching {
-            eprintln!("[TIMER] Starting HP threshold timer '{}' (HP crossed below {}%)",
+            eprintln!("[TIMER] Starting HP threshold timer '{}' (HP crossed below {}% for {})",
                 def.name,
                 match &def.trigger {
-                    super::TimerTrigger::BossHpThreshold { hp_percent } => *hp_percent,
+                    super::TimerTrigger::BossHpThreshold { hp_percent, .. } => *hp_percent,
                     _ => 0.0,
-                }
+                },
+                npc_name
             );
             self.start_timer(&def, timestamp, None);
         }
     }
 
+    /// Handle phase change - check for PhaseEntered triggers
+    fn handle_phase_change(&mut self, phase_id: &str, timestamp: NaiveDateTime) {
+        let matching: Vec<_> = self.definitions
+            .values()
+            .filter(|d| d.matches_phase_entered(phase_id) && self.is_definition_active(d))
+            .cloned()
+            .collect();
+
+        for def in matching {
+            eprintln!("[TIMER] Starting phase-triggered timer '{}' (phase: {})", def.name, phase_id);
+            self.start_timer(&def, timestamp, None);
+        }
+    }
+
+    /// Handle counter change - check for CounterReaches triggers
+    fn handle_counter_change(&mut self, counter_id: &str, old_value: u32, new_value: u32, timestamp: NaiveDateTime) {
+        let matching: Vec<_> = self.definitions
+            .values()
+            .filter(|d| d.matches_counter_reaches(counter_id, old_value, new_value) && self.is_definition_active(d))
+            .cloned()
+            .collect();
+
+        for def in matching {
+            eprintln!("[TIMER] Starting counter-triggered timer '{}' (counter {} reached {})",
+                def.name, counter_id, new_value);
+            self.start_timer(&def, timestamp, None);
+        }
+    }
+
+    /// Handle NPC first seen - check for EntityFirstSeen triggers
+    fn handle_npc_first_seen(&mut self, npc_id: i64, npc_name: &str, timestamp: NaiveDateTime) {
+        let matching: Vec<_> = self.definitions
+            .values()
+            .filter(|d| d.matches_entity_first_seen(npc_id) && self.is_definition_active(d))
+            .cloned()
+            .collect();
+
+        for def in matching {
+            eprintln!("[TIMER] Starting first-seen timer '{}' (NPC {} spawned)", def.name, npc_name);
+            self.start_timer(&def, timestamp, None);
+        }
+    }
+
+    /// Handle entity death - check for EntityDeath triggers
+    fn handle_entity_death(&mut self, npc_id: i64, entity_name: &str, timestamp: NaiveDateTime) {
+        let matching: Vec<_> = self.definitions
+            .values()
+            .filter(|d| d.matches_entity_death(npc_id, Some(entity_name)) && self.is_definition_active(d))
+            .cloned()
+            .collect();
+
+        for def in matching {
+            eprintln!("[TIMER] Starting death-triggered timer '{}' ({} died)", def.name, entity_name);
+            self.start_timer(&def, timestamp, None);
+        }
+    }
+
+    /// Handle time elapsed - check for TimeElapsed triggers
+    fn handle_time_elapsed(&mut self, timestamp: NaiveDateTime) {
+        let Some(start_time) = self.combat_start_time else {
+            return;
+        };
+
+        let new_combat_secs = (timestamp - start_time).num_milliseconds() as f32 / 1000.0;
+        let old_combat_secs = self.last_combat_secs;
+
+        // Only check if time has progressed
+        if new_combat_secs <= old_combat_secs {
+            return;
+        }
+
+        let matching: Vec<_> = self.definitions
+            .values()
+            .filter(|d| d.matches_time_elapsed(old_combat_secs, new_combat_secs) && self.is_definition_active(d))
+            .cloned()
+            .collect();
+
+        for def in matching {
+            eprintln!("[TIMER] Starting time-triggered timer '{}' ({:.1}s into combat)", def.name, new_combat_secs);
+            self.start_timer(&def, timestamp, None);
+        }
+
+        self.last_combat_secs = new_combat_secs;
+    }
+
     /// Handle combat start - start combat-triggered timers
     fn handle_combat_start(&mut self, timestamp: NaiveDateTime) {
         self.in_combat = true;
+        self.combat_start_time = Some(timestamp);
+        self.last_combat_secs = 0.0;
 
         let matching: Vec<_> = self.definitions
             .values()
@@ -454,6 +580,8 @@ impl TimerManager {
         self.current_phase = None;
         self.counters.clear();
         self.boss_hp_by_npc.clear();
+        self.combat_start_time = None;
+        self.last_combat_secs = 0.0;
     }
 
     /// Pause timers for a dead entity
@@ -518,8 +646,14 @@ impl SignalHandler for TimerManager {
                 self.clear_combat_timers();
             }
 
-            GameSignal::EntityDeath { entity_id, .. } => {
+            GameSignal::EntityDeath { entity_id, npc_id, entity_name, timestamp, .. } => {
                 self.pause_entity_timers(*entity_id);
+                // Check for death-triggered timers
+                self.handle_entity_death(*npc_id, entity_name, *timestamp);
+            }
+
+            GameSignal::NpcFirstSeen { npc_id, entity_name, timestamp, .. } => {
+                self.handle_npc_first_seen(*npc_id, entity_name, *timestamp);
             }
 
             GameSignal::AreaEntered { area_name, difficulty_name, .. } => {
@@ -558,7 +692,7 @@ impl SignalHandler for TimerManager {
                 self.handle_combat_start(*timestamp);
             }
 
-            GameSignal::BossHpChanged { npc_id, current_hp, max_hp, timestamp, .. } => {
+            GameSignal::BossHpChanged { npc_id, entity_name, current_hp, max_hp, timestamp, .. } => {
                 let new_hp = if *max_hp > 0 {
                     (*current_hp as f32 / *max_hp as f32) * 100.0
                 } else {
@@ -569,21 +703,29 @@ impl SignalHandler for TimerManager {
 
                 // Check for HP threshold timer triggers
                 if (old_hp - new_hp).abs() > 0.01 {
-                    self.handle_boss_hp_change(old_hp, new_hp, *timestamp);
+                    self.handle_boss_hp_change(*npc_id, entity_name, old_hp, new_hp, *timestamp);
                 }
             }
 
-            GameSignal::PhaseChanged { new_phase, .. } => {
+            GameSignal::PhaseChanged { new_phase, timestamp, .. } => {
                 eprintln!("[TIMER] Phase changed to: {}", new_phase);
                 self.current_phase = Some(new_phase.clone());
-                // TODO: Could trigger phase-based timers here
+                // Trigger phase-based timers
+                self.handle_phase_change(new_phase, *timestamp);
             }
 
-            GameSignal::CounterChanged { counter_id, new_value, .. } => {
+            GameSignal::CounterChanged { counter_id, old_value, new_value, timestamp, .. } => {
                 self.counters.insert(counter_id.clone(), *new_value);
+                // Trigger counter-based timers
+                self.handle_counter_change(counter_id, *old_value, *new_value, *timestamp);
             }
 
             _ => {}
+        }
+
+        // Check for time-elapsed triggers if we're in combat
+        if let Some(ts) = self.last_timestamp {
+            self.handle_time_elapsed(ts);
         }
 
         // Process expirations after handling signal
@@ -621,6 +763,7 @@ fn signal_timestamp(signal: &GameSignal) -> Option<NaiveDateTime> {
         GameSignal::BossHpChanged { timestamp, .. } => Some(*timestamp),
         GameSignal::PhaseChanged { timestamp, .. } => Some(*timestamp),
         GameSignal::CounterChanged { timestamp, .. } => Some(*timestamp),
+        GameSignal::NpcFirstSeen { timestamp, .. } => Some(*timestamp),
     }
 }
 
@@ -647,17 +790,18 @@ fn convert_boss_timer_to_definition(
         BossTimerTrigger::TimerExpires { timer_id } => {
             super::TimerTrigger::TimerExpires { timer_id: timer_id.clone() }
         }
-        BossTimerTrigger::PhaseEntered { .. } => {
-            // Phase-entered triggers need special handling - not yet implemented
-            super::TimerTrigger::Manual
+        BossTimerTrigger::PhaseEntered { phase_id } => {
+            super::TimerTrigger::PhaseEntered { phase_id: phase_id.clone() }
         }
-        BossTimerTrigger::BossHpBelow { hp_percent, .. } => {
-            super::TimerTrigger::BossHpThreshold { hp_percent: *hp_percent }
-        }
-        BossTimerTrigger::AllOf { conditions } => {
-            super::TimerTrigger::AllOf {
-                conditions: conditions.iter().map(convert_boss_trigger).collect()
+        BossTimerTrigger::BossHpBelow { hp_percent, npc_id, boss_name } => {
+            super::TimerTrigger::BossHpThreshold {
+                hp_percent: *hp_percent,
+                npc_id: *npc_id,
+                boss_name: boss_name.clone(),
             }
+        }
+        BossTimerTrigger::TimeElapsed { secs } => {
+            super::TimerTrigger::TimeElapsed { secs: *secs }
         }
         BossTimerTrigger::AnyOf { conditions } => {
             super::TimerTrigger::AnyOf {
@@ -682,6 +826,7 @@ fn convert_boss_timer_to_definition(
         alert_text: None,
         audio_file: None,
         triggers_timer: boss_timer.chains_to.clone(),
+        cancel_on_timer: boss_timer.cancel_on_timer.clone(),
         // Context: tie to this boss's area and name
         encounters: vec![boss.area_name.clone()],
         boss: Some(boss.name.clone()),
@@ -709,14 +854,18 @@ fn convert_boss_trigger(trigger: &crate::boss::BossTimerTrigger) -> super::Timer
         BossTimerTrigger::TimerExpires { timer_id } => {
             super::TimerTrigger::TimerExpires { timer_id: timer_id.clone() }
         }
-        BossTimerTrigger::PhaseEntered { .. } => super::TimerTrigger::Manual,
-        BossTimerTrigger::BossHpBelow { hp_percent, .. } => {
-            super::TimerTrigger::BossHpThreshold { hp_percent: *hp_percent }
+        BossTimerTrigger::PhaseEntered { phase_id } => {
+            super::TimerTrigger::PhaseEntered { phase_id: phase_id.clone() }
         }
-        BossTimerTrigger::AllOf { conditions } => {
-            super::TimerTrigger::AllOf {
-                conditions: conditions.iter().map(convert_boss_trigger).collect()
+        BossTimerTrigger::BossHpBelow { hp_percent, npc_id, boss_name } => {
+            super::TimerTrigger::BossHpThreshold {
+                hp_percent: *hp_percent,
+                npc_id: *npc_id,
+                boss_name: boss_name.clone(),
             }
+        }
+        BossTimerTrigger::TimeElapsed { secs } => {
+            super::TimerTrigger::TimeElapsed { secs: *secs }
         }
         BossTimerTrigger::AnyOf { conditions } => {
             super::TimerTrigger::AnyOf {

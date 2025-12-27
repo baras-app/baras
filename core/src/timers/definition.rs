@@ -44,6 +44,48 @@ pub enum TimerTrigger {
     BossHpThreshold {
         /// HP percentage (0.0 - 100.0)
         hp_percent: f32,
+        /// Specific NPC ID to monitor (most reliable for multi-boss encounters)
+        #[serde(default)]
+        npc_id: Option<i64>,
+        /// Boss name fallback (may vary by locale)
+        #[serde(default)]
+        boss_name: Option<String>,
+    },
+
+    /// Phase is entered (for boss encounters with phases)
+    PhaseEntered {
+        /// Phase ID that triggers this timer
+        phase_id: String,
+    },
+
+    /// Counter reaches a specific value
+    CounterReaches {
+        /// Counter ID to monitor
+        counter_id: String,
+        /// Value that triggers the timer
+        value: u32,
+    },
+
+    /// Entity is first seen (spawned/detected)
+    EntityFirstSeen {
+        /// Specific NPC ID to watch for (required for meaningful use)
+        npc_id: i64,
+    },
+
+    /// Entity dies
+    EntityDeath {
+        /// Specific NPC ID to watch for (None = any entity death)
+        #[serde(default)]
+        npc_id: Option<i64>,
+        /// Entity name fallback
+        #[serde(default)]
+        entity_name: Option<String>,
+    },
+
+    /// Time elapsed since combat start (for timed mechanics)
+    TimeElapsed {
+        /// Seconds into combat when this triggers
+        secs: f32,
     },
 
     /// Manually triggered (for testing/debug)
@@ -51,12 +93,8 @@ pub enum TimerTrigger {
 
     // ─── Logical Composition ─────────────────────────────────────────────────
 
-    /// All conditions must be met (AND logic)
-    AllOf {
-        conditions: Vec<TimerTrigger>,
-    },
-
     /// Any condition suffices (OR logic)
+    /// For AND logic, use the `phases` and `counter_condition` fields as filters
     AnyOf {
         conditions: Vec<TimerTrigger>,
     },
@@ -118,9 +156,13 @@ pub struct TimerDefinition {
     /// Audio file to play on alert
     pub audio_file: Option<String>,
 
-    // ─── Chaining ───────────────────────────────────────────────────────────
+    // ─── Chaining & Cancellation ────────────────────────────────────────────
     /// Timer ID to trigger when this one expires
     pub triggers_timer: Option<String>,
+
+    /// Cancel this timer when the referenced timer starts
+    /// When the specified timer is triggered, this timer is removed
+    pub cancel_on_timer: Option<String>,
 
     // ─── Context ────────────────────────────────────────────────────────────
     /// Only active in specific encounters (empty = all)
@@ -171,53 +213,65 @@ pub struct TimerConfig {
 }
 
 impl TimerDefinition {
-    /// Check if this timer matches a given ability ID
+    /// Check if this timer matches a given ability ID (handles compound conditions)
     pub fn matches_ability(&self, ability_id: u64) -> bool {
-        match &self.trigger {
-            TimerTrigger::AbilityCast { ability_ids } => ability_ids.contains(&ability_id),
-            _ => false,
-        }
+        trigger_matches_ability(&self.trigger, ability_id)
     }
 
-    /// Check if this timer matches a given effect ID for apply triggers
+    /// Check if this timer matches a given effect ID for apply triggers (handles compound conditions)
     pub fn matches_effect_applied(&self, effect_id: u64) -> bool {
-        match &self.trigger {
-            TimerTrigger::EffectApplied { effect_ids } => effect_ids.contains(&effect_id),
-            _ => false,
-        }
+        trigger_matches_effect_applied(&self.trigger, effect_id)
     }
 
-    /// Check if this timer matches a given effect ID for remove triggers
+    /// Check if this timer matches a given effect ID for remove triggers (handles compound conditions)
     pub fn matches_effect_removed(&self, effect_id: u64) -> bool {
-        match &self.trigger {
-            TimerTrigger::EffectRemoved { effect_ids } => effect_ids.contains(&effect_id),
-            _ => false,
-        }
+        trigger_matches_effect_removed(&self.trigger, effect_id)
     }
 
-    /// Check if this timer is triggered by another timer expiring
+    /// Check if this timer is triggered by another timer expiring (handles compound conditions)
     pub fn matches_timer_expires(&self, timer_id: &str) -> bool {
-        match &self.trigger {
-            TimerTrigger::TimerExpires { timer_id: trigger_id } => trigger_id == timer_id,
-            _ => false,
-        }
+        trigger_matches_timer_expires(&self.trigger, timer_id)
     }
 
-    /// Check if this timer triggers on combat start
+    /// Check if this timer triggers on combat start (handles compound conditions)
     pub fn triggers_on_combat_start(&self) -> bool {
-        matches!(&self.trigger, TimerTrigger::CombatStart)
+        trigger_matches_combat_start(&self.trigger)
     }
 
-    /// Check if this timer triggers when boss HP crosses below a threshold
-    /// Returns true if timer has a BossHpThreshold trigger and current HP just crossed below it
-    pub fn matches_boss_hp_threshold(&self, previous_hp: f32, current_hp: f32) -> bool {
-        match &self.trigger {
-            TimerTrigger::BossHpThreshold { hp_percent } => {
-                // Trigger when HP crosses below threshold (was above, now at or below)
-                previous_hp > *hp_percent && current_hp <= *hp_percent
-            }
-            _ => false,
-        }
+    /// Check if this timer triggers when boss HP crosses below a threshold (handles compound conditions)
+    /// Parameters:
+    /// - `npc_id`: The NPC ID whose HP changed
+    /// - `npc_name`: The NPC name (for fallback matching)
+    /// - `previous_hp`: HP percentage before the change
+    /// - `current_hp`: HP percentage after the change
+    pub fn matches_boss_hp_threshold(&self, npc_id: i64, npc_name: Option<&str>, previous_hp: f32, current_hp: f32) -> bool {
+        trigger_matches_boss_hp(&self.trigger, npc_id, npc_name, previous_hp, current_hp)
+    }
+
+    /// Check if this timer triggers on a specific phase being entered (handles compound conditions)
+    pub fn matches_phase_entered(&self, phase_id: &str) -> bool {
+        trigger_matches_phase_entered(&self.trigger, phase_id)
+    }
+
+    /// Check if this timer triggers when a counter reaches a value (handles compound conditions)
+    pub fn matches_counter_reaches(&self, counter_id: &str, old_value: u32, new_value: u32) -> bool {
+        trigger_matches_counter_reaches(&self.trigger, counter_id, old_value, new_value)
+    }
+
+    /// Check if this timer triggers when an entity is first seen (handles compound conditions)
+    pub fn matches_entity_first_seen(&self, npc_id: i64) -> bool {
+        trigger_matches_entity_first_seen(&self.trigger, npc_id)
+    }
+
+    /// Check if this timer triggers on entity death (handles compound conditions)
+    pub fn matches_entity_death(&self, npc_id: i64, entity_name: Option<&str>) -> bool {
+        trigger_matches_entity_death(&self.trigger, npc_id, entity_name)
+    }
+
+    /// Check if this timer triggers at a specific combat time (handles compound conditions)
+    /// Returns true if combat_time just crossed the threshold
+    pub fn matches_time_elapsed(&self, old_combat_secs: f32, new_combat_secs: f32) -> bool {
+        trigger_matches_time_elapsed(&self.trigger, old_combat_secs, new_combat_secs)
     }
 
     /// Check if this timer is active for a given encounter context
@@ -255,5 +309,174 @@ impl TimerDefinition {
         }
 
         true
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Recursive Trigger Matching (for compound conditions)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Check if trigger matches ability ID (handles AnyOf recursively)
+fn trigger_matches_ability(trigger: &TimerTrigger, ability_id: u64) -> bool {
+    match trigger {
+        TimerTrigger::AbilityCast { ability_ids } => ability_ids.contains(&ability_id),
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_ability(c, ability_id))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches effect applied (handles AnyOf recursively)
+fn trigger_matches_effect_applied(trigger: &TimerTrigger, effect_id: u64) -> bool {
+    match trigger {
+        TimerTrigger::EffectApplied { effect_ids } => effect_ids.contains(&effect_id),
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_effect_applied(c, effect_id))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches effect removed (handles AnyOf recursively)
+fn trigger_matches_effect_removed(trigger: &TimerTrigger, effect_id: u64) -> bool {
+    match trigger {
+        TimerTrigger::EffectRemoved { effect_ids } => effect_ids.contains(&effect_id),
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_effect_removed(c, effect_id))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches timer expiration (handles AnyOf recursively)
+fn trigger_matches_timer_expires(trigger: &TimerTrigger, timer_id: &str) -> bool {
+    match trigger {
+        TimerTrigger::TimerExpires { timer_id: trigger_id } => trigger_id == timer_id,
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_timer_expires(c, timer_id))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches combat start (handles AnyOf recursively)
+fn trigger_matches_combat_start(trigger: &TimerTrigger) -> bool {
+    match trigger {
+        TimerTrigger::CombatStart => true,
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(trigger_matches_combat_start)
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches boss HP threshold crossing (handles AnyOf recursively)
+/// Matches when HP crosses below threshold for the specified NPC (or any NPC if no filter)
+fn trigger_matches_boss_hp(trigger: &TimerTrigger, npc_id: i64, npc_name: Option<&str>, previous_hp: f32, current_hp: f32) -> bool {
+    match trigger {
+        TimerTrigger::BossHpThreshold { hp_percent, npc_id: filter_npc_id, boss_name } => {
+            // Check NPC ID filter first (most reliable)
+            if let Some(required_npc_id) = filter_npc_id {
+                if *required_npc_id != npc_id {
+                    return false;
+                }
+            }
+            // Fall back to name filter
+            if let Some(required_name) = boss_name {
+                if let Some(actual_name) = npc_name {
+                    if !required_name.eq_ignore_ascii_case(actual_name) {
+                        return false;
+                    }
+                } else {
+                    return false; // Name required but not provided
+                }
+            }
+            // Check HP threshold crossing
+            previous_hp > *hp_percent && current_hp <= *hp_percent
+        }
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_boss_hp(c, npc_id, npc_name, previous_hp, current_hp))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches phase entered (handles AnyOf recursively)
+fn trigger_matches_phase_entered(trigger: &TimerTrigger, phase_id: &str) -> bool {
+    match trigger {
+        TimerTrigger::PhaseEntered { phase_id: trigger_phase } => trigger_phase == phase_id,
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_phase_entered(c, phase_id))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches counter reaching a value (handles AnyOf recursively)
+/// Triggers when counter value crosses from below to at/above the target
+fn trigger_matches_counter_reaches(trigger: &TimerTrigger, counter_id: &str, old_value: u32, new_value: u32) -> bool {
+    match trigger {
+        TimerTrigger::CounterReaches { counter_id: trigger_counter, value } => {
+            trigger_counter == counter_id && old_value < *value && new_value >= *value
+        }
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_counter_reaches(c, counter_id, old_value, new_value))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches entity first seen (handles AnyOf recursively)
+fn trigger_matches_entity_first_seen(trigger: &TimerTrigger, npc_id: i64) -> bool {
+    match trigger {
+        TimerTrigger::EntityFirstSeen { npc_id: trigger_npc_id } => *trigger_npc_id == npc_id,
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_entity_first_seen(c, npc_id))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches entity death (handles AnyOf recursively)
+fn trigger_matches_entity_death(trigger: &TimerTrigger, npc_id: i64, entity_name: Option<&str>) -> bool {
+    match trigger {
+        TimerTrigger::EntityDeath { npc_id: filter_npc_id, entity_name: filter_name } => {
+            // Check NPC ID filter first
+            if let Some(required_npc_id) = filter_npc_id {
+                if *required_npc_id != npc_id {
+                    return false;
+                }
+            }
+            // Check name filter
+            if let Some(required_name) = filter_name {
+                if let Some(actual_name) = entity_name {
+                    if !required_name.eq_ignore_ascii_case(actual_name) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+            true
+        }
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_entity_death(c, npc_id, entity_name))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches time elapsed (handles AnyOf recursively)
+/// Triggers when combat time crosses from below to at/above the threshold
+fn trigger_matches_time_elapsed(trigger: &TimerTrigger, old_secs: f32, new_secs: f32) -> bool {
+    match trigger {
+        TimerTrigger::TimeElapsed { secs } => {
+            old_secs < *secs && new_secs >= *secs
+        }
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_time_elapsed(c, old_secs, new_secs))
+        }
+        _ => false,
     }
 }

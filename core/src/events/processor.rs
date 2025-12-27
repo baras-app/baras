@@ -70,7 +70,10 @@ impl EventProcessor {
         // Check for ability/effect-based phase transitions
         signals.extend(self.check_ability_phase_transitions(&event, cache));
 
-        // Check for counter increments based on events
+        // Check for entity-based phase transitions (EntityFirstSeen, EntityDeath)
+        signals.extend(self.check_entity_phase_transitions(cache, &signals, event.timestamp));
+
+        // Check for counter increments based on events and signals
         signals.extend(self.check_counter_increments(&event, cache, &signals));
 
         // Process challenge metrics (accumulates values, polled with combat data)
@@ -178,6 +181,8 @@ impl EventProcessor {
             signals.push(GameSignal::EntityDeath {
                 entity_id: event.target_entity.log_id,
                 entity_type: event.target_entity.entity_type,
+                npc_id: event.target_entity.class_id,
+                entity_name: resolve(event.target_entity.name).to_string(),
                 timestamp: event.timestamp,
             });
         } else if event.effect.effect_id == effect_id::REVIVED {
@@ -315,6 +320,9 @@ impl EventProcessor {
                 continue;
             }
 
+            // Check if this is the first time we see this NPC
+            let is_first_seen = !cache.boss_state.first_seen.contains_key(&entity.class_id);
+
             // Update boss state and check if HP changed
             if let Some((old_hp, new_hp)) = cache.boss_state.update_entity_hp(
                 entity.log_id,
@@ -324,6 +332,16 @@ impl EventProcessor {
                 max_hp,
                 event.timestamp,
             ) {
+                // Emit NpcFirstSeen if this is the first time we see this NPC
+                if is_first_seen {
+                    signals.push(GameSignal::NpcFirstSeen {
+                        entity_id: entity.log_id,
+                        npc_id: entity.class_id,
+                        entity_name: resolve(entity.name).to_string(),
+                        timestamp: event.timestamp,
+                    });
+                }
+
                 signals.push(GameSignal::BossHpChanged {
                     entity_id: entity.log_id,
                     npc_id: entity.class_id,
@@ -440,9 +458,6 @@ impl EventProcessor {
 
                 true
             }
-            PhaseTrigger::AllOf { conditions } => {
-                conditions.iter().all(|c| self.check_hp_trigger(c, old_hp, new_hp, npc_id, state))
-            }
             PhaseTrigger::AnyOf { conditions } => {
                 conditions.iter().any(|c| self.check_hp_trigger(c, old_hp, new_hp, npc_id, state))
             }
@@ -515,14 +530,89 @@ impl EventProcessor {
                 }
                 effect_ids.contains(&(event.effect.effect_id as u64))
             }
-            PhaseTrigger::AllOf { conditions } => {
-                conditions.iter().all(|c| self.check_ability_trigger(c, event))
-            }
             PhaseTrigger::AnyOf { conditions } => {
                 conditions.iter().any(|c| self.check_ability_trigger(c, event))
             }
             _ => false, // HP, timer, counter, time triggers handled elsewhere
         }
+    }
+
+    /// Check if a signal-based phase trigger is satisfied (EntityFirstSeen, EntityDeath).
+    fn check_signal_phase_trigger(&self, trigger: &crate::boss::PhaseTrigger, signals: &[GameSignal]) -> bool {
+        use crate::boss::PhaseTrigger;
+
+        match trigger {
+            PhaseTrigger::EntityFirstSeen { npc_id } => {
+                signals.iter().any(|s| {
+                    matches!(s, GameSignal::NpcFirstSeen { npc_id: sig_npc_id, .. } if sig_npc_id == npc_id)
+                })
+            }
+            PhaseTrigger::EntityDeath { npc_id, entity_name } => {
+                signals.iter().any(|s| {
+                    if let GameSignal::EntityDeath { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {
+                        // Check NPC ID filter
+                        if let Some(required_id) = npc_id {
+                            if sig_npc_id != required_id {
+                                return false;
+                            }
+                        }
+                        // Check name filter
+                        if let Some(required_name) = entity_name {
+                            if !required_name.eq_ignore_ascii_case(sig_name) {
+                                return false;
+                            }
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                })
+            }
+            PhaseTrigger::AnyOf { conditions } => {
+                conditions.iter().any(|c| self.check_signal_phase_trigger(c, signals))
+            }
+            _ => false,
+        }
+    }
+
+    /// Check for phase transitions based on entity signals (EntityFirstSeen, EntityDeath).
+    fn check_entity_phase_transitions(&self, cache: &mut SessionCache, current_signals: &[GameSignal], timestamp: chrono::NaiveDateTime) -> Vec<GameSignal> {
+        let Some(def_idx) = cache.active_boss_idx else {
+            return Vec::new();
+        };
+
+        // Clone what we need before mutable borrow
+        let phases: Vec<_> = cache.boss_definitions[def_idx].phases.clone();
+        let boss_id = cache.boss_definitions[def_idx].id.clone();
+
+        let mut signals = Vec::new();
+
+        for phase in &phases {
+            if self.check_signal_phase_trigger(&phase.trigger, current_signals) {
+                let old_phase = cache.boss_state.current_phase.clone();
+                let new_phase_id = phase.id.clone();
+                let resets = phase.resets_counters.clone();
+
+                cache.boss_state.set_phase(&new_phase_id);
+                cache.boss_state.reset_counters(&resets);
+
+                // Update challenge tracker phase for duration tracking
+                if let Some(enc) = cache.current_encounter_mut() {
+                    enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
+                }
+
+                signals.push(GameSignal::PhaseChanged {
+                    boss_id: boss_id.clone(),
+                    old_phase,
+                    new_phase: new_phase_id,
+                    timestamp,
+                });
+
+                break; // Only one phase transition per event
+            }
+        }
+
+        signals
     }
 
     /// Check for counter increments based on events.
@@ -541,10 +631,12 @@ impl EventProcessor {
 
         for counter in &def.counters {
             if self.check_counter_trigger(&counter.increment_on, event, current_signals) {
+                let old_value = cache.boss_state.get_counter(&counter.id);
                 let new_value = cache.boss_state.increment_counter(&counter.id);
 
                 signals.push(GameSignal::CounterChanged {
                     counter_id: counter.id.clone(),
+                    old_value,
                     new_value,
                     timestamp: event.timestamp,
                 });
@@ -585,6 +677,34 @@ impl EventProcessor {
             CounterTrigger::TimerExpires { .. } => {
                 // Timer expiration handled by TimerManager
                 false
+            }
+            CounterTrigger::EntityFirstSeen { npc_id } => {
+                // Check if we emitted an NpcFirstSeen signal for this NPC
+                current_signals.iter().any(|s| {
+                    matches!(s, GameSignal::NpcFirstSeen { npc_id: sig_npc_id, .. } if sig_npc_id == npc_id)
+                })
+            }
+            CounterTrigger::EntityDeath { npc_id, entity_name } => {
+                // Check if we emitted an EntityDeath signal matching the filter
+                current_signals.iter().any(|s| {
+                    if let GameSignal::EntityDeath { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {
+                        // Check NPC ID filter
+                        if let Some(required_id) = npc_id {
+                            if sig_npc_id != required_id {
+                                return false;
+                            }
+                        }
+                        // Check name filter
+                        if let Some(required_name) = entity_name {
+                            if !required_name.eq_ignore_ascii_case(sig_name) {
+                                return false;
+                            }
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                })
             }
         }
     }
