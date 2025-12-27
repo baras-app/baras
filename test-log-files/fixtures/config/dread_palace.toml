@@ -10,33 +10,69 @@ category = "operations"
 id = "bestia"
 name = "Dread Master Bestia"
 area_name = "Dread Palace"
-npc_ids = [3273941900591104]
+
+# ─── Entity Roster ─────────────────────────────────────────────────────────
+# Define all NPCs once with IDs across difficulties, reference by name in triggers
+
+[[boss.entities]]
+name = "Dread Master Bestia"
+ids = [3273941900591104]  # TODO: Add SM16/HM16 IDs when available
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Dread Larva"
+ids = [3292079547482112]  # Verified from SM8 log
+is_boss = false
+
+[[boss.entities]]
+name = "Dread Monster"
+ids = [3291675820556288]  # Verified from SM8 log
+is_boss = false
+
+[[boss.entities]]
+name = "Dread Tentacle"
+ids = [3292083842449408]  # Verified from SM8 log
+is_boss = false
 
 # ─── Phases ────────────────────────────────────────────────────────────────
 
 [[boss.phase]]
-id = "p1"
-name = "Phase 1"
+id = "monsters"
+name = "Monsters"
 trigger = { type = "combat_start" }
 
 [[boss.phase]]
+id = "bestia"
+name = "Bestia"
+# Transition when 4 monsters die OR 2 minutes elapse
+trigger = { type = "any_of", conditions = [
+    { type = "counter_reaches", counter_id = "monster_deaths", value = 4 },
+    { type = "time_elapsed", secs = 120.0 }
+]}
+
+[[boss.phase]]
 id = "burn"
-name = "Burn Phase"
-trigger = { type = "boss_hp_below", hp_percent = 30.0, npc_id = 3273941900591104 }
+name = "Bestia and Monsters"
+trigger = { type = "boss_hp_below", hp_percent = 50.0, npc_id = 3273941900591104 }
 
 # ─── Counters ──────────────────────────────────────────────────────────────
 
 [[boss.counter]]
 id = "larva_spawns"
-increment_on = { type = "ability_cast", ability_ids = [3292079547482112] }  # Larva spawn ability
+increment_on = { type = "ability_cast", ability_ids = [3292079547482112] }
 
 [[boss.counter]]
 id = "monster_spawns"
-increment_on = { type = "ability_cast", ability_ids = [3291675820556288] }  # Monster spawn ability
+increment_on = { type = "ability_cast", ability_ids = [3291675820556288] }
+
+[[boss.counter]]
+id = "monster_deaths"
+increment_on = { type = "entity_death", entity = "Dread Monster" }
 
 [[boss.counter]]
 id = "dread_scream_casts"
-increment_on = { type = "ability_cast", ability_ids = [3302391763959808] }  # Dread Scream
+increment_on = { type = "ability_cast", ability_ids = [3302391763959808] }
 
 # ─── Challenges ────────────────────────────────────────────────────────────
 
@@ -92,3 +128,60 @@ conditions = [
     { type = "source", match = "local_player" },
     { type = "target", match = "any_boss" }
 ]
+
+# ─── Timers ───────────────────────────────────────────────────────────────────
+
+# Soft enrage timer - starts on combat
+[[boss.timer]]
+id = "soft_enrage"
+name = "Soft Enrage"
+trigger = { type = "combat_start" }
+duration_secs = 495.0
+color = [224, 31, 24, 255]
+
+# Add spawn chain - A1 starts on combat, then chains
+[[boss.timer]]
+id = "a1_tentacle"
+name = "A1: Tentacle"
+trigger = { type = "combat_start" }
+duration_secs = 15.0
+color = [32, 72, 219, 255]
+
+[[boss.timer]]
+id = "a2_monster"
+name = "A2: Monster"
+trigger = { type = "timer_expires", timer_id = "a1_tentacle" }
+duration_secs = 15.0
+color = [32, 72, 219, 255]
+
+[[boss.timer]]
+id = "a3_larva"
+name = "A3: Larva"
+trigger = { type = "timer_expires", timer_id = "a2_monster" }
+duration_secs = 15.0
+color = [32, 72, 219, 255]
+
+# Ability-based timers - refresh on cast
+[[boss.timer]]
+id = "swelling_despair"
+name = "Swelling Despair"
+trigger = { type = "ability_cast", ability_ids = [3294098182111232] }
+duration_secs = 24.0
+color = [98, 21, 163, 255]
+can_be_refreshed = true
+
+[[boss.timer]]
+id = "dread_strike"
+name = "Dread Strike"
+trigger = { type = "ability_cast", ability_ids = [3294841211453440] }
+duration_secs = 24.0
+color = [204, 22, 133, 255]
+can_be_refreshed = true
+
+[[boss.timer]]
+id = "combusting_seed"
+name = "Combusting Seed"
+trigger = { type = "ability_cast", ability_ids = [3294102477078528] }
+duration_secs = 24.0
+color = [224, 97, 24, 255]
+can_be_refreshed = true

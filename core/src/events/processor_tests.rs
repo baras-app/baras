@@ -95,6 +95,7 @@ fn signal_type_name(signal: &GameSignal) -> &'static str {
         GameSignal::BossEncounterDetected { .. } => "BossEncounterDetected",
         GameSignal::BossHpChanged { .. } => "BossHpChanged",
         GameSignal::PhaseChanged { .. } => "PhaseChanged",
+        GameSignal::PhaseEndTriggered { .. } => "PhaseEndTriggered",
         GameSignal::CounterChanged { .. } => "CounterChanged",
     }
 }
@@ -430,4 +431,281 @@ fn test_boss_hp_and_phase_signals() {
             eprintln!("  - {}: {}", id, value);
         }
     }
+}
+
+/// Comprehensive Bestia encounter test using complete pull fixture.
+/// Tests phases, timers, and the full combat lifecycle.
+#[test]
+fn test_bestia_complete_encounter() {
+    use crate::events::handler::SignalHandler;
+    use crate::timers::{TimerDefinition, TimerManager};
+
+    let fixture_path = Path::new("../test-log-files/fixtures/bestia_complete_pull.txt");
+    let config_path = Path::new("../test-log-files/fixtures/config/dread_palace.toml");
+
+    if !fixture_path.exists() {
+        eprintln!("Skipping test: bestia_complete_pull.txt not found");
+        return;
+    }
+    if !config_path.exists() {
+        eprintln!("Skipping test: dread_palace.toml not found");
+        return;
+    }
+
+    // Load fixture
+    let mut file = File::open(fixture_path).expect("Failed to open fixture");
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes).expect("Failed to read file");
+    let content = String::from_utf8_lossy(&bytes);
+
+    // Load boss config
+    let config = load_boss_config(config_path).expect("Failed to load boss config");
+    let bestia_def = &config.bosses[0];
+
+    // Convert BossTimerDefinitions to TimerDefinitions
+    let timer_defs: Vec<TimerDefinition> = bestia_def
+        .timers
+        .iter()
+        .map(|bt| TimerDefinition {
+            id: bt.id.clone(),
+            name: bt.name.clone(),
+            enabled: bt.enabled,
+            trigger: bt.trigger.clone(),
+            source: Default::default(),
+            target: Default::default(),
+            duration_secs: bt.duration_secs,
+            can_be_refreshed: bt.can_be_refreshed,
+            triggers_timer: bt.chains_to.clone(),
+            cancel_on_timer: bt.cancel_on_timer.clone(),
+            color: bt.color,
+            alert_at_secs: None,
+            alert_text: None,
+            audio_file: None,
+            repeats: 0,
+            show_on_raid_frames: false,
+            encounters: Vec::new(),
+            boss: None,
+            difficulties: Vec::new(),
+            phases: Vec::new(),
+            counter_condition: None,
+        })
+        .collect();
+
+    // Setup processor and timer manager
+    let parser = crate::combat_log::LogParser::new(chrono::Local::now().naive_local());
+    let mut processor = super::EventProcessor::new();
+    let mut cache = SessionCache::default();
+    cache.load_boss_definitions(config.bosses);
+
+    let mut timer_manager = TimerManager::new();
+    timer_manager.load_definitions(timer_defs);
+
+    // Track what we observe
+    let mut phase_changes: Vec<(String, String)> = Vec::new(); // (old, new)
+    let mut combat_started = false;
+    let mut combat_ended = false;
+    let mut boss_detected = false;
+    let mut timers_activated: HashSet<String> = HashSet::new();
+    let mut timer_chains_triggered: Vec<String> = Vec::new();
+    let mut ability_timer_triggers = 0;
+
+    // Process all events
+    for (line_num, line) in content.lines().enumerate() {
+        if let Some(event) = parser.parse_line(line_num as u64, line) {
+            let signals = processor.process_event(event, &mut cache);
+
+            for signal in &signals {
+                // Track phase/boss signals
+                match signal {
+                    GameSignal::CombatStarted { .. } => combat_started = true,
+                    GameSignal::CombatEnded { .. } => combat_ended = true,
+                    GameSignal::BossEncounterDetected { definition_id, .. } => {
+                        boss_detected = true;
+                        eprintln!("Boss detected: {}", definition_id);
+                    }
+                    GameSignal::PhaseChanged { old_phase, new_phase, .. } => {
+                        let old = old_phase.clone().unwrap_or_else(|| "none".to_string());
+                        eprintln!("Phase: {} -> {}", old, new_phase);
+                        phase_changes.push((old, new_phase.clone()));
+                    }
+                    GameSignal::AbilityActivated { ability_id, .. } => {
+                        // Track ability-triggered timer activations
+                        let swelling_despair: i64 = 3294098182111232;
+                        let dread_strike: i64 = 3294841211453440;
+                        let combusting_seed: i64 = 3294102477078528;
+                        if *ability_id == swelling_despair
+                            || *ability_id == dread_strike
+                            || *ability_id == combusting_seed
+                        {
+                            ability_timer_triggers += 1;
+                        }
+                    }
+                    _ => {}
+                }
+
+                // Feed to timer manager
+                timer_manager.handle_signal(signal);
+            }
+
+            // Tick timers and check active state
+            timer_manager.tick();
+            for timer in timer_manager.active_timers() {
+                if !timers_activated.contains(&timer.name) {
+                    eprintln!("Timer activated: {}", timer.name);
+                    timers_activated.insert(timer.name.clone());
+
+                    // Track chains
+                    if timer.name.starts_with("A2") || timer.name.starts_with("A3") {
+                        timer_chains_triggered.push(timer.name.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    // ─── Assertions ────────────────────────────────────────────────────────────
+
+    // Combat lifecycle
+    assert!(combat_started, "Expected CombatStarted signal");
+    assert!(combat_ended, "Expected CombatEnded signal");
+    eprintln!("\n✓ Combat lifecycle: Started and Ended");
+
+    // Boss detection
+    assert!(boss_detected, "Expected BossEncounterDetected for Bestia");
+    eprintln!("✓ Boss detected: Dread Master Bestia");
+
+    // Phase transitions
+    assert!(!phase_changes.is_empty(), "Expected at least one phase change");
+    let has_monsters = phase_changes.iter().any(|(_, new)| new == "monsters");
+    let has_burn = phase_changes.iter().any(|(_, new)| new == "burn");
+    assert!(has_monsters, "Expected phase change to 'monsters' (combat start)");
+    assert!(has_burn, "Expected phase change to 'burn' (boss HP < 50%)");
+    eprintln!("✓ Phase transitions: monsters -> burn");
+
+    // Combat start timers
+    assert!(
+        timers_activated.contains("Soft Enrage"),
+        "Expected Soft Enrage timer to activate on combat start"
+    );
+    assert!(
+        timers_activated.contains("A1: Tentacle"),
+        "Expected A1: Tentacle timer to activate on combat start"
+    );
+    eprintln!("✓ Combat start timers: Soft Enrage, A1: Tentacle");
+
+    // Timer chains (A1 -> A2 -> A3)
+    // Note: Timer chains depend on timing - the 15s timers should chain
+    // during the 6+ minute fight
+    assert!(
+        timers_activated.contains("A2: Monster") || timer_chains_triggered.contains(&"A2: Monster".to_string()),
+        "Expected A2: Monster timer to chain from A1. Activated timers: {:?}",
+        timers_activated
+    );
+    eprintln!("✓ Timer chain: A1 -> A2 triggered");
+
+    // Ability-based timer triggers exist in the log
+    assert!(
+        ability_timer_triggers > 0,
+        "Expected ability timer triggers (Swelling Despair, Dread Strike, or Combusting Seed)"
+    );
+    eprintln!("✓ Ability timer triggers: {} events", ability_timer_triggers);
+
+    // Check if ability timers activated
+    let ability_timers_activated = timers_activated.contains("Swelling Despair")
+        || timers_activated.contains("Dread Strike")
+        || timers_activated.contains("Combusting Seed");
+    if ability_timers_activated {
+        eprintln!("✓ Ability-triggered timers activated");
+    } else {
+        eprintln!("Note: Ability timers may not have activated (source filter)");
+    }
+
+    // ─── Challenge Tracking ───────────────────────────────────────────────────
+    eprintln!("\n=== Challenge Metrics ===");
+
+    // Access the encounter's challenge tracker
+    let encounter = cache.current_encounter().expect("Expected active encounter");
+    let tracker = &encounter.challenge_tracker;
+
+    // Boss damage challenge
+    if let Some(boss_dmg) = tracker.get_value("boss_damage") {
+        eprintln!(
+            "boss_damage: {} total ({} events)",
+            boss_dmg.value, boss_dmg.event_count
+        );
+        assert!(boss_dmg.value > 0, "Expected boss damage to be tracked");
+        assert!(boss_dmg.event_count > 0, "Expected boss damage events");
+        eprintln!("✓ boss_damage challenge tracked");
+    } else {
+        panic!("Expected boss_damage challenge to exist");
+    }
+
+    // Add damage challenge (Larva + Monster)
+    if let Some(add_dmg) = tracker.get_value("add_damage") {
+        eprintln!(
+            "add_damage: {} total ({} events)",
+            add_dmg.value, add_dmg.event_count
+        );
+        assert!(add_dmg.value > 0, "Expected add damage to be tracked");
+        assert!(add_dmg.event_count > 0, "Expected add damage events");
+        eprintln!("✓ add_damage challenge tracked");
+    } else {
+        panic!("Expected add_damage challenge to exist");
+    }
+
+    // Burn phase DPS challenge
+    if let Some(burn_dps) = tracker.get_value("burn_phase_dps") {
+        eprintln!(
+            "burn_phase_dps: {} total ({} events)",
+            burn_dps.value, burn_dps.event_count
+        );
+        // Should have damage during burn phase
+        assert!(
+            burn_dps.value > 0,
+            "Expected burn phase damage (boss was below 50% HP)"
+        );
+        eprintln!("✓ burn_phase_dps challenge tracked");
+    } else {
+        panic!("Expected burn_phase_dps challenge to exist");
+    }
+
+    // Boss damage taken challenge
+    if let Some(dmg_taken) = tracker.get_value("boss_damage_taken") {
+        eprintln!(
+            "boss_damage_taken: {} total ({} events)",
+            dmg_taken.value, dmg_taken.event_count
+        );
+        assert!(
+            dmg_taken.value > 0,
+            "Expected damage taken from boss to be tracked"
+        );
+        eprintln!("✓ boss_damage_taken challenge tracked");
+    } else {
+        panic!("Expected boss_damage_taken challenge to exist");
+    }
+
+    // Local player boss damage (depends on having a local player set)
+    if let Some(local_dmg) = tracker.get_value("local_player_boss_damage") {
+        eprintln!(
+            "local_player_boss_damage: {} total ({} events)",
+            local_dmg.value, local_dmg.event_count
+        );
+        // May be 0 if no local player is set in test context
+        eprintln!("✓ local_player_boss_damage challenge exists");
+    }
+
+    // Per-player breakdown for boss damage
+    if let Some(boss_dmg) = tracker.get_value("boss_damage") {
+        if !boss_dmg.by_player.is_empty() {
+            eprintln!("\n  Per-player boss damage:");
+            for (player, value) in &boss_dmg.by_player {
+                eprintln!("    {}: {}", player, value);
+            }
+        }
+    }
+
+    eprintln!("\n=== Summary ===");
+    eprintln!("Total phase changes: {}", phase_changes.len());
+    eprintln!("Total timers activated: {}", timers_activated.len());
+    eprintln!("Activated timers: {:?}", timers_activated);
 }

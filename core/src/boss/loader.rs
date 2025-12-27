@@ -314,9 +314,9 @@ phases = ["p1"]
         assert_eq!(boss.timers.len(), 1);
 
         // Check phase trigger parsing
-        assert!(matches!(boss.phases[0].trigger, super::super::PhaseTrigger::CombatStart));
+        assert!(matches!(boss.phases[0].start_trigger, super::super::PhaseTrigger::CombatStart));
         assert!(matches!(
-            boss.phases[1].trigger,
+            boss.phases[1].start_trigger,
             super::super::PhaseTrigger::BossHpBelow { hp_percent, .. } if (hp_percent - 50.0).abs() < 0.01
         ));
     }
@@ -445,15 +445,20 @@ conditions = [
         let bestia = &bosses[0];
         assert_eq!(bestia.id, "bestia");
         assert_eq!(bestia.name, "Dread Master Bestia");
-        assert_eq!(bestia.npc_ids, vec![3273941900591104_i64]);
+
+        // Entity roster (new format)
+        assert_eq!(bestia.entities.len(), 4); // Bestia, Larva, Monster, Tentacle
+        let boss_ids: Vec<i64> = bestia.boss_npc_ids().collect();
+        assert_eq!(boss_ids, vec![3273941900591104_i64]);
 
         // Phases
-        assert_eq!(bestia.phases.len(), 2);
-        assert_eq!(bestia.phases[0].id, "p1");
-        assert_eq!(bestia.phases[1].id, "burn");
+        assert_eq!(bestia.phases.len(), 3);
+        assert_eq!(bestia.phases[0].id, "monsters");
+        assert_eq!(bestia.phases[1].id, "bestia");
+        assert_eq!(bestia.phases[2].id, "burn");
 
         // Counters
-        assert_eq!(bestia.counters.len(), 3);
+        assert_eq!(bestia.counters.len(), 4); // larva_spawns, monster_spawns, monster_deaths, dread_scream
 
         // Challenges
         assert_eq!(bestia.challenges.len(), 5);
@@ -463,6 +468,35 @@ conditions = [
         assert_eq!(bestia.challenges[3].id, "boss_damage_taken");
         assert_eq!(bestia.challenges[4].id, "local_player_boss_damage");
 
-        eprintln!("Successfully loaded Bestia fixture with {} challenges", bestia.challenges.len());
+        // Timers
+        assert_eq!(bestia.timers.len(), 7);
+
+        // Combat start timers
+        let soft_enrage = &bestia.timers[0];
+        assert_eq!(soft_enrage.id, "soft_enrage");
+        assert_eq!(soft_enrage.duration_secs, 495.0);
+
+        let a1 = &bestia.timers[1];
+        assert_eq!(a1.id, "a1_tentacle");
+        assert_eq!(a1.duration_secs, 15.0);
+
+        // Chained timers
+        let a2 = &bestia.timers[2];
+        assert_eq!(a2.id, "a2_monster");
+        assert!(matches!(
+            &a2.trigger,
+            crate::timers::TimerTrigger::TimerExpires { timer_id } if timer_id == "a1_tentacle"
+        ));
+
+        // Ability-based timers
+        let swelling = &bestia.timers[4];
+        assert_eq!(swelling.id, "swelling_despair");
+        assert!(swelling.can_be_refreshed);
+        assert!(matches!(
+            &swelling.trigger,
+            crate::timers::TimerTrigger::AbilityCast { ability_ids } if ability_ids == &[3294098182111232]
+        ));
+
+        eprintln!("Successfully loaded Bestia fixture with {} timers", bestia.timers.len());
     }
 }

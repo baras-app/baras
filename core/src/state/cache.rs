@@ -170,10 +170,19 @@ impl SessionCache {
     /// Load boss definitions for the current area.
     /// Called when entering a new area (AreaEntered signal).
     /// Also registers NPC IDs in the global boss registry for is_boss() checks.
+    #[allow(deprecated)]
     pub fn load_boss_definitions(&mut self, definitions: Vec<BossEncounterDefinition>) {
-        // Register all boss NPC IDs in the global registry
+        // Register boss NPC IDs in the global registry
+        // Only entities with is_boss = true are registered (for detection)
         for def in &definitions {
-            register_boss_npcs(&def.npc_ids);
+            // New format: use entity roster (boss entities only)
+            let boss_ids: Vec<i64> = def.boss_npc_ids().collect();
+            if !boss_ids.is_empty() {
+                register_boss_npcs(&boss_ids);
+            } else {
+                // Legacy format: use flat npc_ids
+                register_boss_npcs(&def.npc_ids);
+            }
         }
         self.boss_definitions = definitions;
         self.active_boss_idx = None;
@@ -196,9 +205,9 @@ impl SessionCache {
             return self.active_boss_idx;
         }
 
-        // Search definitions for matching NPC ID
+        // Search definitions for matching NPC ID (checks entity roster)
         for (idx, def) in self.boss_definitions.iter().enumerate() {
-            if def.npc_ids.contains(&npc_class_id) {
+            if def.matches_npc_id(npc_class_id) {
                 self.active_boss_idx = Some(idx);
                 return Some(idx);
             }

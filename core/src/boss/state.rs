@@ -17,8 +17,11 @@ pub struct BossEncounterState {
     /// Currently detected boss (if any)
     pub active_boss: Option<ActiveBoss>,
 
-    /// Current phase ID
+    /// Current phase ID (e.g., "walker_1", "kephess_2", "burn")
     pub current_phase: Option<String>,
+
+    /// Previous phase ID (for preceded_by checks)
+    pub previous_phase: Option<String>,
 
     /// When the current phase started (for duration display)
     pub phase_started_at: Option<NaiveDateTime>,
@@ -79,6 +82,7 @@ impl BossEncounterState {
     pub fn reset(&mut self) {
         self.active_boss = None;
         self.current_phase = None;
+        self.previous_phase = None;
         self.phase_started_at = None;
         self.counters.clear();
         self.boss_hp_percent = 100.0;
@@ -247,6 +251,7 @@ impl BossEncounterState {
 
     /// Set the current phase with timestamp for duration tracking
     pub fn set_phase(&mut self, phase_id: &str, timestamp: NaiveDateTime) {
+        self.previous_phase = self.current_phase.take();
         self.current_phase = Some(phase_id.to_string());
         self.phase_started_at = Some(timestamp);
     }

@@ -168,6 +168,12 @@ pub enum GameSignal {
         timestamp: NaiveDateTime,
     },
 
+    /// Phase's end_trigger fired (allows other phases to start via PhaseEnded trigger)
+    PhaseEndTriggered {
+        phase_id: String,
+        timestamp: NaiveDateTime,
+    },
+
     /// Counter value has changed
     CounterChanged {
         counter_id: String,
@@ -198,6 +204,7 @@ impl GameSignal {
             | Self::BossEncounterDetected { timestamp, .. }
             | Self::BossHpChanged { timestamp, .. }
             | Self::PhaseChanged { timestamp, .. }
+            | Self::PhaseEndTriggered { timestamp, .. }
             | Self::CounterChanged { timestamp, .. } => *timestamp,
         }
     }

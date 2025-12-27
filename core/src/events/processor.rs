@@ -71,10 +71,13 @@ impl EventProcessor {
         signals.extend(self.emit_effect_signals(&event));
         signals.extend(self.emit_action_signals(&event));
 
-        // Check for ability/effect-based phase transitions
-        signals.extend(self.check_ability_phase_transitions(&event, cache));
+        // Check if current phase's end_trigger fired (emits PhaseEndTriggered signal)
+        signals.extend(self.check_phase_end_triggers(&event, cache, &signals));
 
-        // Check for entity-based phase transitions (EntityFirstSeen, EntityDeath)
+        // Check for ability/effect-based phase transitions (can now match PhaseEnded)
+        signals.extend(self.check_ability_phase_transitions(&event, cache, &signals));
+
+        // Check for entity-based phase transitions (EntityFirstSeen, EntityDeath, PhaseEnded)
         signals.extend(self.check_entity_phase_transitions(cache, &signals, event.timestamp));
 
         // Check for counter increments based on events and signals
@@ -279,7 +282,7 @@ impl EventProcessor {
                 // Clone data from definition before taking mutable borrows
                 let def = &cache.boss_definitions[idx];
                 let challenges = def.challenges.clone();
-                let npc_ids = def.npc_ids.clone();
+                let npc_ids: Vec<i64> = def.boss_npc_ids().collect();
                 let def_id = def.id.clone();
                 let boss_name = def.name.clone();
                 let initial_phase = def.initial_phase().cloned();
@@ -306,7 +309,7 @@ impl EventProcessor {
                 }];
 
                 // Activate initial phase (CombatStart trigger)
-                if let Some(initial) = initial_phase {
+                if let Some(ref initial) = initial_phase {
                     cache.boss_state.set_phase(&initial.id, event.timestamp);
                     cache.boss_state.reset_counters(&initial.resets_counters);
 
@@ -340,9 +343,9 @@ impl EventProcessor {
                 continue;
             }
 
-            // Check if this NPC is part of the active boss encounter
+            // Check if this NPC is part of the active boss encounter (boss entity)
             let def = &cache.boss_definitions[def_idx];
-            if !def.npc_ids.contains(&entity.class_id) {
+            if !def.matches_npc_id(entity.class_id) {
                 continue;
             }
 
@@ -393,6 +396,7 @@ impl EventProcessor {
 
         let def = &cache.boss_definitions[def_idx];
         let current_phase = cache.boss_state.current_phase.clone();
+        let previous_phase = cache.boss_state.previous_phase.clone();
 
         for phase in &def.phases {
             // Don't re-enter the current phase
@@ -400,7 +404,16 @@ impl EventProcessor {
                 continue;
             }
 
-            if self.check_hp_trigger(&phase.trigger, old_hp, new_hp, npc_id, &cache.boss_state) {
+            // Check preceded_by guard (e.g., walker_2 requires prior phase to be kephess_1)
+            // Use current_phase if set, otherwise fall back to previous_phase for transition periods
+            if let Some(ref required) = phase.preceded_by {
+                let last_phase = current_phase.as_ref().or(previous_phase.as_ref());
+                if last_phase != Some(required) {
+                    continue;
+                }
+            }
+
+            if self.check_hp_trigger(&phase.start_trigger, old_hp, new_hp, npc_id, &cache.boss_state) {
                 let old_phase = cache.boss_state.current_phase.clone();
                 let new_phase_id = phase.id.clone();
                 let boss_id = def.id.clone();
@@ -438,12 +451,15 @@ impl EventProcessor {
         use crate::boss::PhaseTrigger;
 
         match trigger {
-            PhaseTrigger::BossHpBelow { hp_percent, npc_id: trigger_npc, boss_name } => {
+            PhaseTrigger::BossHpBelow { hp_percent, npc_id: trigger_npc, boss_name, .. } => {
                 // Check if we crossed below the threshold
                 let crossed = old_hp > *hp_percent && new_hp <= *hp_percent;
                 if !crossed {
                     return false;
                 }
+
+                // TODO: Support entity reference resolution
+                // For now, entity references need to be resolved at load time
 
                 // Check NPC filter
                 if let Some(required_npc) = trigger_npc {
@@ -458,12 +474,14 @@ impl EventProcessor {
                 // No filter - any boss crossing threshold triggers
                 true
             }
-            PhaseTrigger::BossHpAbove { hp_percent, npc_id: trigger_npc, boss_name } => {
+            PhaseTrigger::BossHpAbove { hp_percent, npc_id: trigger_npc, boss_name, .. } => {
                 // Check if we crossed above the threshold
                 let crossed = old_hp < *hp_percent && new_hp >= *hp_percent;
                 if !crossed {
                     return false;
                 }
+
+                // TODO: Support entity reference resolution
 
                 // Check NPC filter
                 if let Some(required_npc) = trigger_npc {
@@ -484,14 +502,56 @@ impl EventProcessor {
         }
     }
 
+    /// Check if the current phase's end_trigger fired.
+    /// Emits PhaseEndTriggered signal which other phases can use as a start_trigger.
+    fn check_phase_end_triggers(&self, event: &CombatEvent, cache: &SessionCache, current_signals: &[GameSignal]) -> Vec<GameSignal> {
+        let Some(def_idx) = cache.active_boss_idx else {
+            return Vec::new();
+        };
+        let Some(current_phase_id) = &cache.boss_state.current_phase else {
+            return Vec::new();
+        };
+
+        let def = &cache.boss_definitions[def_idx];
+
+        // Find the current phase definition
+        let Some(phase) = def.phases.iter().find(|p| &p.id == current_phase_id) else {
+            return Vec::new();
+        };
+
+        // Check if end_trigger is defined and matches
+        let Some(ref end_trigger) = phase.end_trigger else {
+            return Vec::new();
+        };
+
+        // Check ability/effect triggers
+        if self.check_ability_trigger(end_trigger, event) {
+            return vec![GameSignal::PhaseEndTriggered {
+                phase_id: current_phase_id.clone(),
+                timestamp: event.timestamp,
+            }];
+        }
+
+        // Check signal-based triggers (EntityFirstSeen, EntityDeath)
+        if self.check_signal_phase_trigger(end_trigger, current_signals) {
+            return vec![GameSignal::PhaseEndTriggered {
+                phase_id: current_phase_id.clone(),
+                timestamp: event.timestamp,
+            }];
+        }
+
+        Vec::new()
+    }
+
     /// Check for phase transitions based on ability/effect events.
-    fn check_ability_phase_transitions(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+    fn check_ability_phase_transitions(&self, event: &CombatEvent, cache: &mut SessionCache, current_signals: &[GameSignal]) -> Vec<GameSignal> {
         let Some(def_idx) = cache.active_boss_idx else {
             return Vec::new();
         };
 
         let def = &cache.boss_definitions[def_idx];
         let current_phase = cache.boss_state.current_phase.clone();
+        let previous_phase = cache.boss_state.previous_phase.clone();
 
         for phase in &def.phases {
             // Don't re-enter the current phase
@@ -499,7 +559,20 @@ impl EventProcessor {
                 continue;
             }
 
-            if self.check_ability_trigger(&phase.trigger, event) {
+            // Check preceded_by guard (e.g., walker_2 requires prior phase to be kephess_1)
+            // Use current_phase if set, otherwise fall back to previous_phase for transition periods
+            if let Some(ref required) = phase.preceded_by {
+                let last_phase = current_phase.as_ref().or(previous_phase.as_ref());
+                if last_phase != Some(required) {
+                    continue;
+                }
+            }
+
+            // Check ability/effect triggers OR signal-based triggers (including PhaseEnded)
+            let trigger_matched = self.check_ability_trigger(&phase.start_trigger, event)
+                || self.check_signal_phase_trigger(&phase.start_trigger, current_signals);
+
+            if trigger_matched {
                 let old_phase = cache.boss_state.current_phase.clone();
                 let new_phase_id = phase.id.clone();
                 let boss_id = def.id.clone();
@@ -557,15 +630,30 @@ impl EventProcessor {
     }
 
     /// Check if a signal-based phase trigger is satisfied (EntityFirstSeen, EntityDeath).
+    /// TODO: Support entity reference resolution (requires passing in definition)
     fn check_signal_phase_trigger(&self, trigger: &crate::boss::PhaseTrigger, signals: &[GameSignal]) -> bool {
 
         match trigger {
-            PhaseTrigger::EntityFirstSeen { npc_id } => {
+            PhaseTrigger::EntityFirstSeen { npc_id, entity_name, .. } => {
+                // TODO: Support entity reference resolution
                 signals.iter().any(|s| {
-                    matches!(s, GameSignal::NpcFirstSeen { npc_id: sig_npc_id, .. } if sig_npc_id == npc_id)
+                    if let GameSignal::NpcFirstSeen { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {
+                        // Check NPC ID filter (preferred)
+                        if let Some(required_id) = npc_id {
+                            return sig_npc_id == required_id;
+                        }
+                        // Check name filter (fallback)
+                        if let Some(required_name) = entity_name {
+                            return sig_name.contains(required_name);
+                        }
+                        // No filter specified
+                        false
+                    } else {
+                        false
+                    }
                 })
             }
-            PhaseTrigger::EntityDeath { npc_id, entity_name } => {
+            PhaseTrigger::EntityDeath { npc_id, entity_name, .. } => {
                 signals.iter().any(|s| {
                     if let GameSignal::EntityDeath { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {
                         // Check NPC ID filter
@@ -580,6 +668,25 @@ impl EventProcessor {
                                 return false;
                         }
                         true
+                    } else {
+                        false
+                    }
+                })
+            }
+            PhaseTrigger::PhaseEnded { phase_id, phase_ids } => {
+                signals.iter().any(|s| {
+                    if let GameSignal::PhaseEndTriggered { phase_id: sig_phase_id, .. } = s {
+                        // Check single phase_id
+                        if let Some(required) = phase_id {
+                            if sig_phase_id == required {
+                                return true;
+                            }
+                        }
+                        // Check phase_ids list
+                        if phase_ids.iter().any(|p| p == sig_phase_id) {
+                            return true;
+                        }
+                        false
                     } else {
                         false
                     }
@@ -601,11 +708,27 @@ impl EventProcessor {
         // Clone what we need before mutable borrow
         let phases: Vec<_> = cache.boss_definitions[def_idx].phases.clone();
         let boss_id = cache.boss_definitions[def_idx].id.clone();
+        let current_phase = cache.boss_state.current_phase.clone();
+        let previous_phase = cache.boss_state.previous_phase.clone();
 
         let mut signals = Vec::new();
 
         for phase in &phases {
-            if self.check_signal_phase_trigger(&phase.trigger, current_signals) {
+            // Don't re-enter the current phase
+            if current_phase.as_ref() == Some(&phase.id) {
+                continue;
+            }
+
+            // Check preceded_by guard (e.g., walker_2 requires prior phase to be kephess_1)
+            // Use current_phase if set, otherwise fall back to previous_phase for transition periods
+            if let Some(ref required) = phase.preceded_by {
+                let last_phase = current_phase.as_ref().or(previous_phase.as_ref());
+                if last_phase != Some(required) {
+                    continue;
+                }
+            }
+
+            if self.check_signal_phase_trigger(&phase.start_trigger, current_signals) {
                 let old_phase = cache.boss_state.current_phase.clone();
                 let new_phase_id = phase.id.clone();
                 let resets = phase.resets_counters.clone();
@@ -695,13 +818,26 @@ impl EventProcessor {
                 // Timer expiration handled by TimerManager
                 false
             }
-            CounterTrigger::EntityFirstSeen { npc_id } => {
+            CounterTrigger::EntityFirstSeen { npc_id, entity_name, .. } => {
                 // Check if we emitted an NpcFirstSeen signal for this NPC
+                // TODO: Support entity reference resolution
                 current_signals.iter().any(|s| {
-                    matches!(s, GameSignal::NpcFirstSeen { npc_id: sig_npc_id, .. } if sig_npc_id == npc_id)
+                    if let GameSignal::NpcFirstSeen { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {
+                        // Check NPC ID filter (preferred)
+                        if let Some(required_id) = npc_id {
+                            return sig_npc_id == required_id;
+                        }
+                        // Check name filter (fallback)
+                        if let Some(required_name) = entity_name {
+                            return sig_name.contains(required_name);
+                        }
+                        false
+                    } else {
+                        false
+                    }
                 })
             }
-            CounterTrigger::EntityDeath { npc_id, entity_name } => {
+            CounterTrigger::EntityDeath { npc_id, entity_name, .. } => {
                 // Check if we emitted an EntityDeath signal matching the filter
                 current_signals.iter().any(|s| {
                     if let GameSignal::EntityDeath { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {

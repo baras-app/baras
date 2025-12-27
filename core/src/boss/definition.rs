@@ -71,11 +71,44 @@ pub struct BossConfig {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Entity Definition (NPCs in the encounter)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Definition of an NPC entity in the encounter (boss or add).
+/// Entities are defined once and referenced by name in triggers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EntityDefinition {
+    /// Display name (also used for trigger references)
+    pub name: String,
+
+    /// NPC class IDs across all difficulty modes
+    /// Include all variants: SM8, HM8, SM16, HM16/NiM
+    #[serde(default)]
+    pub ids: Vec<i64>,
+
+    /// Whether this is a boss entity (for detection, health bars, DPS tracking)
+    /// Only `is_boss = true` entities trigger encounter detection
+    #[serde(default)]
+    pub is_boss: bool,
+
+    /// Whether killing this entity ends the encounter
+    #[serde(default)]
+    pub is_kill_target: bool,
+}
+
+impl EntityDefinition {
+    /// Check if an NPC ID matches this entity
+    pub fn matches_id(&self, id: i64) -> bool {
+        self.ids.contains(&id)
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Boss Encounter Definition
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Definition of a boss encounter (e.g., "Dread Guard", "Brontes")
-/// An encounter can have multiple boss NPCs (tracked via npc_ids).
+/// Uses an entity roster pattern: define NPCs once, reference by name.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BossEncounterDefinition {
     /// Unique identifier (e.g., "apex_vanguard")
@@ -94,13 +127,24 @@ pub struct BossEncounterDefinition {
     #[serde(default)]
     pub difficulties: Vec<String>,
 
+    /// Entity roster: all NPCs relevant to this encounter
+    /// Define once with IDs, reference by name in triggers
+    #[serde(default, rename = "entities")]
+    pub entities: Vec<EntityDefinition>,
+
+    // ─── Legacy fields (deprecated, use entities instead) ────────────────────
+
     /// NPC names that identify this boss (for detection, fallback)
+    #[deprecated(note = "Use entities with is_boss = true instead")]
     #[serde(default)]
     pub npc_names: Vec<String>,
 
     /// NPC class IDs for precise detection (preferred over names)
+    #[deprecated(note = "Use entities with is_boss = true instead")]
     #[serde(default)]
     pub npc_ids: Vec<i64>,
+
+    // ─── Mechanics ───────────────────────────────────────────────────────────
 
     /// Phase definitions
     #[serde(default, rename = "phase")]
@@ -126,14 +170,24 @@ pub struct BossEncounterDefinition {
 /// A phase within a boss encounter
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhaseDefinition {
-    /// Phase identifier (e.g., "p1", "intermission", "burn")
+    /// Phase identifier (e.g., "p1", "walker_1", "kephess_2", "burn")
     pub id: String,
 
     /// Display name
     pub name: String,
 
     /// What triggers this phase to start
-    pub trigger: PhaseTrigger,
+    #[serde(alias = "trigger")]
+    pub start_trigger: PhaseTrigger,
+
+    /// What triggers this phase to end (optional - otherwise ends when another phase starts)
+    #[serde(default)]
+    pub end_trigger: Option<PhaseTrigger>,
+
+    /// Phase that must immediately precede this one (guard condition)
+    /// e.g., walker_2 has preceded_by = "kephess_1" so it only fires after kephess_1
+    #[serde(default)]
+    pub preceded_by: Option<String>,
 
     /// Counters to reset when entering this phase
     #[serde(default)]
@@ -148,12 +202,13 @@ pub enum PhaseTrigger {
     CombatStart,
 
     /// Boss HP drops below threshold
-    /// If `npc_id` is specified, only that NPC's HP triggers the phase (most reliable).
-    /// If `boss_name` is specified, uses name matching as fallback.
-    /// If neither is specified, any tracked boss reaching the threshold triggers.
+    /// Priority: entity > npc_id > boss_name > any boss
     BossHpBelow {
         hp_percent: f32,
-        /// NPC class/template ID (preferred - consistent across locales)
+        /// Entity reference from roster (preferred)
+        #[serde(default)]
+        entity: Option<String>,
+        /// NPC class/template ID (legacy/fallback)
         #[serde(default)]
         npc_id: Option<i64>,
         /// Boss name (fallback - may vary by locale)
@@ -162,11 +217,13 @@ pub enum PhaseTrigger {
     },
 
     /// Boss HP rises above threshold
-    /// If `npc_id` is specified, only that NPC's HP triggers the phase (most reliable).
-    /// If `boss_name` is specified, uses name matching as fallback.
+    /// Priority: entity > npc_id > boss_name > any boss
     BossHpAbove {
         hp_percent: f32,
-        /// NPC class/template ID (preferred - consistent across locales)
+        /// Entity reference from roster (preferred)
+        #[serde(default)]
+        entity: Option<String>,
+        /// NPC class/template ID (legacy/fallback)
         #[serde(default)]
         npc_id: Option<i64>,
         /// Boss name (fallback - may vary by locale)
@@ -203,18 +260,38 @@ pub enum PhaseTrigger {
 
     /// Entity is first seen (add spawn)
     EntityFirstSeen {
-        /// NPC ID to watch for
-        npc_id: i64,
+        /// Entity reference from roster (preferred)
+        #[serde(default)]
+        entity: Option<String>,
+        /// NPC ID to watch for (legacy/fallback)
+        #[serde(default)]
+        npc_id: Option<i64>,
+        /// Entity name fallback (runtime matching)
+        #[serde(default)]
+        entity_name: Option<String>,
     },
 
     /// Entity dies
     EntityDeath {
-        /// NPC ID to watch for (None = any death)
+        /// Entity reference from roster (preferred)
+        #[serde(default)]
+        entity: Option<String>,
+        /// NPC ID to watch for (legacy/fallback)
         #[serde(default)]
         npc_id: Option<i64>,
-        /// Entity name fallback
+        /// Entity name fallback (runtime matching)
         #[serde(default)]
         entity_name: Option<String>,
+    },
+
+    /// Another phase's end_trigger fired
+    PhaseEnded {
+        /// Single phase ID (convenience)
+        #[serde(default)]
+        phase_id: Option<String>,
+        /// Multiple phase IDs (any match triggers)
+        #[serde(default)]
+        phase_ids: Vec<String>,
     },
 
     // ─── Logical Composition ─────────────────────────────────────────────────
@@ -267,12 +344,25 @@ pub enum CounterTrigger {
     },
     /// NPC is first seen (add spawn)
     EntityFirstSeen {
-        npc_id: i64,
+        /// Entity reference from roster (preferred)
+        #[serde(default)]
+        entity: Option<String>,
+        /// NPC ID (legacy/fallback)
+        #[serde(default)]
+        npc_id: Option<i64>,
+        /// Entity name fallback (runtime matching)
+        #[serde(default)]
+        entity_name: Option<String>,
     },
     /// Entity dies
     EntityDeath {
+        /// Entity reference from roster (preferred)
+        #[serde(default)]
+        entity: Option<String>,
+        /// NPC ID (legacy/fallback)
         #[serde(default)]
         npc_id: Option<i64>,
+        /// Entity name fallback (runtime matching)
         #[serde(default)]
         entity_name: Option<String>,
     },
@@ -399,21 +489,82 @@ impl ComparisonOp {
 // ═══════════════════════════════════════════════════════════════════════════
 
 impl BossEncounterDefinition {
+    // ─── Entity Roster Methods ───────────────────────────────────────────────
+
+    /// Get an entity by name (case-insensitive)
+    pub fn entity_by_name(&self, name: &str) -> Option<&EntityDefinition> {
+        self.entities
+            .iter()
+            .find(|e| e.name.eq_ignore_ascii_case(name))
+    }
+
+    /// Get the entity that contains a given NPC ID
+    pub fn entity_for_id(&self, id: i64) -> Option<&EntityDefinition> {
+        self.entities.iter().find(|e| e.ids.contains(&id))
+    }
+
+    /// Get all boss entities (is_boss = true)
+    pub fn boss_entities(&self) -> impl Iterator<Item = &EntityDefinition> {
+        self.entities.iter().filter(|e| e.is_boss)
+    }
+
+    /// Get all NPC IDs for boss entities only (for registry/detection)
+    pub fn boss_npc_ids(&self) -> impl Iterator<Item = i64> + '_ {
+        self.entities
+            .iter()
+            .filter(|e| e.is_boss)
+            .flat_map(|e| e.ids.iter().copied())
+    }
+
+    /// Get all NPC IDs from all entities (for trigger matching)
+    pub fn all_entity_ids(&self) -> impl Iterator<Item = i64> + '_ {
+        self.entities.iter().flat_map(|e| e.ids.iter().copied())
+    }
+
+    /// Resolve an entity reference to its NPC IDs
+    /// Returns None if entity not found
+    pub fn resolve_entity_ids(&self, entity_name: &str) -> Option<Vec<i64>> {
+        self.entity_by_name(entity_name).map(|e| e.ids.clone())
+    }
+
+    /// Get kill target entities
+    pub fn kill_targets(&self) -> impl Iterator<Item = &EntityDefinition> {
+        self.entities.iter().filter(|e| e.is_kill_target)
+    }
+
+    // ─── Legacy Compatibility ────────────────────────────────────────────────
+
     /// Check if an NPC name matches any boss in this encounter
+    /// Checks both entity names and legacy npc_names
+    #[allow(deprecated)]
     pub fn matches_npc_name(&self, name: &str) -> bool {
+        // Check entity roster first
+        if self.entities.iter().any(|e| e.is_boss && e.name.eq_ignore_ascii_case(name)) {
+            return true;
+        }
+        // Fall back to legacy field
         self.npc_names.iter().any(|n| n.eq_ignore_ascii_case(name))
     }
 
     /// Check if an NPC ID matches any boss in this encounter
+    /// Checks both entity roster and legacy npc_ids
+    #[allow(deprecated)]
     pub fn matches_npc_id(&self, id: i64) -> bool {
+        // Check entity roster first (boss entities only)
+        if self.entities.iter().any(|e| e.is_boss && e.ids.contains(&id)) {
+            return true;
+        }
+        // Fall back to legacy field
         self.npc_ids.contains(&id)
     }
+
+    // ─── Phase/Counter Methods ───────────────────────────────────────────────
 
     /// Get the initial phase (triggered by CombatStart)
     pub fn initial_phase(&self) -> Option<&PhaseDefinition> {
         self.phases
             .iter()
-            .find(|p| matches!(p.trigger, PhaseTrigger::CombatStart))
+            .find(|p| matches!(p.start_trigger, PhaseTrigger::CombatStart))
     }
 
     /// Get counters that should reset on phase change
