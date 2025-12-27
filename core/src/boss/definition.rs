@@ -394,8 +394,13 @@ pub struct BossTimerDefinition {
     /// What triggers this timer
     pub trigger: crate::timers::TimerTrigger,
 
-    /// Duration in seconds
+    /// Duration in seconds (0 = instant, use with is_alert)
+    #[serde(default)]
     pub duration_secs: f32,
+
+    /// If true, fires as instant alert (no countdown bar)
+    #[serde(default)]
+    pub is_alert: bool,
 
     /// Display color [R, G, B, A]
     #[serde(default = "crate::serde_defaults::default_timer_color")]

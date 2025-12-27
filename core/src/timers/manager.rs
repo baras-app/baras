@@ -762,6 +762,7 @@ fn convert_boss_timer_to_definition(
         source: Default::default(),
         target: Default::default(),
         duration_secs: boss_timer.duration_secs,
+        is_alert: boss_timer.is_alert,
         can_be_refreshed: boss_timer.can_be_refreshed,
         repeats: boss_timer.repeats,
         color: boss_timer.color,

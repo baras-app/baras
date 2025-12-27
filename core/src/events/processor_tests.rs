@@ -474,6 +474,7 @@ fn test_bestia_complete_encounter() {
             source: Default::default(),
             target: Default::default(),
             duration_secs: bt.duration_secs,
+            is_alert: bt.is_alert,
             can_be_refreshed: bt.can_be_refreshed,
             triggers_timer: bt.chains_to.clone(),
             cancel_on_timer: bt.cancel_on_timer.clone(),

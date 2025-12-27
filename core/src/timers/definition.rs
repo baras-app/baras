@@ -132,8 +132,14 @@ pub struct TimerDefinition {
     pub target: EntityFilter,
 
     // ─── Duration ───────────────────────────────────────────────────────────
-    /// Timer duration in seconds
+    /// Timer duration in seconds (0 = instant, use with is_alert)
+    #[serde(default)]
     pub duration_secs: f32,
+
+    /// If true, fires as instant alert (no countdown bar)
+    /// When set, duration_secs defaults to 0 and timer won't appear in countdown overlay
+    #[serde(default)]
+    pub is_alert: bool,
 
     /// If true, resets duration when triggered again
     #[serde(default)]
