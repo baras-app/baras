@@ -1,0 +1,678 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# BARAS Boss Encounter Definition Template
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# This file demonstrates ALL available options for defining boss encounters,
+# including phases, counters, timers, and challenges.
+#
+# Place boss definition files in: ~/.config/baras/bosses/
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Area Header (required for consolidated encounter files)
+# ───────────────────────────────────────────────────────────────────────────────
+[area]
+name = "The Dread Palace"           # Display name in UI
+area_id = 833571547775792           # SWTOR area ID for lazy loading
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BOSS ENCOUNTER DEFINITION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "dread_master_bestia"          # Unique identifier (snake_case)
+name = "Dread Master Bestia"        # Display name of the Boss Encounter
+area_name = "The Dread Palace"      # Area name as it appears in game logs (auto-filled from [area])
+
+# Difficulties this config applies to (empty = all difficulties)
+# Values: "story", "veteran", "master"
+difficulties = []
+
+# NPC identification, if multi-boss encounter place ids for all bosses.
+npc_names = ["Dread Master Bestia"]
+npc_ids = [3273941900591104]        # NPC class/template IDs (preferred)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE DEFINITIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Phases divide the encounter into distinct stages. Only one phase is active at a time.
+# The first phase with trigger = { type = "combat_start" } becomes the initial phase.
+
+[[boss.phase]]
+id = "p1"
+name = "Phase 1"
+resets_counters = []                # Counter IDs to reset when entering this phase
+
+# ─── Phase Trigger Types ──────────────────────────────────────────────────────
+
+# Combat Start - Initial phase
+[boss.phase.trigger]
+type = "combat_start"
+
+# ───────────────────────────────────────────────────────────────────────────────
+
+[[boss.phase]]
+id = "intermission"
+name = "Intermission"
+resets_counters = ["larva_count"]
+
+[boss.phase.trigger]
+type = "boss_hp_below"
+hp_percent = 70.0
+npc_id = 3273941900591104           # Optional: Specific NPC (preferred)
+# boss_name = "Dread Master Bestia" # Optional: Fallback name matching
+
+# ───────────────────────────────────────────────────────────────────────────────
+
+[[boss.phase]]
+id = "p2"
+name = "Phase 2"
+
+[boss.phase.trigger]
+type = "boss_hp_above"              # HP goes back up (e.g., after intermission)
+hp_percent = 70.0
+npc_id = 3273941900591104
+
+# ───────────────────────────────────────────────────────────────────────────────
+
+[[boss.phase]]
+id = "burn"
+name = "Burn Phase"
+
+[boss.phase.trigger]
+type = "boss_hp_below"
+hp_percent = 30.0
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Other Phase Trigger Types (examples)
+# ───────────────────────────────────────────────────────────────────────────────
+
+# Ability Cast trigger
+# [boss.phase.trigger]
+# type = "ability_cast"
+# ability_ids = [3302391763959808]  # Dread Scream
+
+# Effect Applied trigger
+# [boss.phase.trigger]
+# type = "effect_applied"
+# effect_ids = [3302391763959809]
+
+# Effect Removed trigger
+# [boss.phase.trigger]
+# type = "effect_removed"
+# effect_ids = [3302391763959809]
+
+# Timer Expires trigger
+# [boss.phase.trigger]
+# type = "timer_expires"
+# timer_id = "enrage_timer"
+
+# Counter Reaches trigger
+# [boss.phase.trigger]
+# type = "counter_reaches"
+# counter_id = "larva_count"
+# value = 5
+
+# Time Elapsed trigger (seconds since combat start)
+# [boss.phase.trigger]
+# type = "time_elapsed"
+# secs = 180.0
+
+# Entity First Seen (spawn detection)
+# [boss.phase.trigger]
+# type = "entity_first_seen"
+# npc_id = 3291675820556288         # Dread Monster
+
+# Entity Death trigger
+# [boss.phase.trigger]
+# type = "entity_death"
+# npc_id = 3291675820556288         # Optional: Specific NPC
+# entity_name = "Dread Monster"     # Optional: Name fallback
+
+# AnyOf - OR logic for multiple conditions
+# [boss.phase.trigger]
+# type = "any_of"
+# conditions = [
+#     { type = "boss_hp_below", hp_percent = 30.0 },
+#     { type = "timer_expires", timer_id = "hard_enrage" }
+# ]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COUNTER DEFINITIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Counters track occurrences of events during the encounter.
+# Use them for: stack tracking, add counts, mechanic repetitions, etc.
+
+[[boss.counter]]
+id = "larva_count"
+initial_value = 0
+
+# ─── Counter Reset Options ────────────────────────────────────────────────────
+# "combat_end"   - Reset when combat ends (default)
+# "phase_change" - Reset on any phase transition
+# "never"        - Never reset (persists across phases)
+reset_on = "combat_end"
+
+# ─── Counter Increment Triggers ───────────────────────────────────────────────
+
+[boss.counter.increment_on]
+type = "entity_first_seen"
+npc_id = 3292079547482112           # Dread Larva spawns
+
+# ───────────────────────────────────────────────────────────────────────────────
+
+[[boss.counter]]
+id = "dread_scream_count"
+initial_value = 0
+reset_on = "phase_change"
+
+[boss.counter.increment_on]
+type = "ability_cast"
+ability_ids = [3302391763959808]    # Dread Scream
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Other Counter Increment Types (examples)
+# ───────────────────────────────────────────────────────────────────────────────
+
+# Effect Applied
+# [boss.counter.increment_on]
+# type = "effect_applied"
+# effect_ids = [3302391763959809]
+
+# Timer Expires
+# [boss.counter.increment_on]
+# type = "timer_expires"
+# timer_id = "mechanic_timer"
+
+# Phase Entered
+# [boss.counter.increment_on]
+# type = "phase_entered"
+# phase_id = "intermission"
+
+# Entity Death
+# [boss.counter.increment_on]
+# type = "entity_death"
+# npc_id = 3292079547482112         # Optional
+# entity_name = "Dread Larva"       # Optional fallback
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TIMER DEFINITIONS (Boss-Specific)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Timers show countdown bars for boss mechanics. They can be:
+# - Phase-restricted (only active in certain phases)
+# - Counter-conditional (only active when counter meets condition)
+# - Chained (one timer triggers another)
+
+[[boss.timer]]
+id = "dread_scream_cd"
+name = "Dread Scream"
+duration_secs = 20.0
+color = [255, 100, 100, 255]        # RGBA color (default: [200, 200, 200, 255])
+
+# Only active during these phases (empty = all phases)
+phases = ["p1", "p2"]
+
+# Difficulty filter (empty = all difficulties)
+difficulties = []
+
+# Behavior options
+enabled = true                      # Whether timer is enabled (default: true)
+can_be_refreshed = true             # Reset duration if triggered again (default: false)
+repeats = 0                         # Number of repeats after initial (0 = no repeat)
+
+# Chaining & Cancellation
+chains_to = "follow_up_timer"       # Timer ID to start when this one expires
+cancel_on_timer = "phase_change"    # Cancel this timer when another starts
+
+# Alerts
+alert_at_secs = 5.0                 # Show alert when this many seconds remain
+show_on_raid_frames = false         # Show on raid frames instead of timer overlay
+
+# ─── Timer Trigger ────────────────────────────────────────────────────────────
+
+[boss.timer.trigger]
+type = "ability_cast"
+ability_ids = [3302391763959808]    # Dread Scream
+
+# ───────────────────────────────────────────────────────────────────────────────
+
+[[boss.timer]]
+id = "enrage"
+name = "Enrage"
+duration_secs = 480.0               # 8 minutes
+color = [255, 0, 0, 255]
+phases = []                         # Active in all phases
+
+[boss.timer.trigger]
+type = "combat_start"
+
+# ───────────────────────────────────────────────────────────────────────────────
+
+[[boss.timer]]
+id = "add_spawn_timer"
+name = "Next Add Wave"
+duration_secs = 30.0
+color = [200, 150, 50, 255]
+phases = ["intermission"]
+
+# Only active when counter is below a threshold
+[boss.timer.counter_condition]
+counter_id = "larva_count"
+operator = "lt"                     # "eq", "lt", "gt", "lte", "gte", "ne"
+value = 5
+
+[boss.timer.trigger]
+type = "entity_death"
+npc_id = 3292079547482112           # Timer starts when larva dies
+
+# ───────────────────────────────────────────────────────────────────────────────
+# All Timer Trigger Types (reference)
+# ───────────────────────────────────────────────────────────────────────────────
+
+# Combat Start
+# [boss.timer.trigger]
+# type = "combat_start"
+
+# Ability Cast
+# [boss.timer.trigger]
+# type = "ability_cast"
+# ability_ids = [123456789]
+
+# Effect Applied
+# [boss.timer.trigger]
+# type = "effect_applied"
+# effect_ids = [123456789]
+
+# Effect Removed
+# [boss.timer.trigger]
+# type = "effect_removed"
+# effect_ids = [123456789]
+
+# Timer Expires (chaining)
+# [boss.timer.trigger]
+# type = "timer_expires"
+# timer_id = "previous_timer"
+
+# Boss HP Threshold
+# [boss.timer.trigger]
+# type = "boss_hp_threshold"
+# hp_percent = 50.0
+# npc_id = 3273941900591104         # Optional
+# boss_name = "Bestia"              # Optional fallback
+
+# Phase Entered
+# [boss.timer.trigger]
+# type = "phase_entered"
+# phase_id = "burn"
+
+# Phase Ended
+# [boss.timer.trigger]
+# type = "phase_ended"
+# phase_id = "p1"
+
+# Counter Reaches
+# [boss.timer.trigger]
+# type = "counter_reaches"
+# counter_id = "stack_count"
+# value = 5
+
+# Entity First Seen
+# [boss.timer.trigger]
+# type = "entity_first_seen"
+# npc_id = 3291675820556288
+
+# Entity Death
+# [boss.timer.trigger]
+# type = "entity_death"
+# npc_id = 3291675820556288         # Optional
+# entity_name = "Dread Monster"     # Optional fallback
+
+# Time Elapsed
+# [boss.timer.trigger]
+# type = "time_elapsed"
+# secs = 60.0
+
+# Manual (for testing)
+# [boss.timer.trigger]
+# type = "manual"
+
+# AnyOf (OR logic)
+# [boss.timer.trigger]
+# type = "any_of"
+# conditions = [
+#     { type = "ability_cast", ability_ids = [123] },
+#     { type = "effect_applied", effect_ids = [456] }
+# ]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CHALLENGE DEFINITIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Challenges track specific metrics during the encounter with flexible filtering.
+# All conditions use AND logic - event must match ALL conditions to count.
+#
+# ─── Available Metrics ────────────────────────────────────────────────────────
+# "damage"        - Total damage dealt
+# "healing"       - Total healing done
+# "damage_taken"  - Total damage received
+# "healing_taken" - Total healing received
+# "ability_count" - Count of ability activations
+# "effect_count"  - Count of effect applications
+# "deaths"        - Death count
+# "threat"        - Threat generated
+#
+# ─── Available Condition Types ────────────────────────────────────────────────
+# "phase"         - Only count during specific phase(s)
+# "source"        - Filter by who caused the event (entity matcher)
+# "target"        - Filter by who received the event (entity matcher)
+# "ability"       - Only count specific ability ID(s)
+# "effect"        - Only count specific effect ID(s)
+# "counter"       - Only count when counter meets threshold
+# "boss_hp_range" - Only count when boss HP is within range
+#
+# ─── Entity Matcher Values (for source/target) ────────────────────────────────
+# "any"                          - Any entity (player or NPC)
+# "any_player"                   - Any player character
+# "local_player"                 - The log owner only
+# "any_npc"                      - Any NPC (boss or add)
+# "any_boss"                     - Any NPC in the encounter's npc_ids list
+# "any_add"                      - Any NPC NOT in the encounter's npc_ids list
+# { npc_ids = [123, 456] }       - Specific NPC class IDs (most reliable)
+# { npc_names = ["Boss Name"] }  - Specific NPC names (fallback)
+# { player_names = ["Player"] }  - Specific player names
+# ───────────────────────────────────────────────────────────────────────────────
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 1: Phase-Scoped Boss Damage
+# ═══════════════════════════════════════════════════════════════════════════════
+# Track boss damage ONLY during the burn phase
+
+[[boss.challenge]]
+id = "burn_phase_boss_dps"
+name = "Burn Phase DPS"
+description = "Damage to boss during burn phase only"
+metric = "damage"
+
+[[boss.challenge.conditions]]
+type = "phase"
+phase_ids = ["burn"]                # Scoped to burn phase only
+
+[[boss.challenge.conditions]]
+type = "target"
+match = "any_boss"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 2: Multi-Phase Damage (excludes intermission)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "dps_phases_damage"
+name = "DPS Phases Damage"
+description = "Damage during P1 and Burn (excludes intermission)"
+metric = "damage"
+
+[[boss.challenge.conditions]]
+type = "phase"
+phase_ids = ["p1", "burn"]          # Counts during P1 OR Burn (not intermission)
+
+[[boss.challenge.conditions]]
+type = "target"
+match = "any_npc"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 3: Specific Add Damage (by NPC ID)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "add_damage"
+name = "Add Damage"
+description = "Damage dealt to Larva and Monster adds"
+metric = "damage"
+
+[[boss.challenge.conditions]]
+type = "target"
+match = { npc_ids = [3292079547482112, 3291675820556288] }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 4: Adds During Specific Phase
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "intermission_add_damage"
+name = "Intermission Adds"
+description = "Damage to adds specifically during intermission"
+metric = "damage"
+
+[[boss.challenge.conditions]]
+type = "phase"
+phase_ids = ["intermission"]        # Phase-scoped
+
+[[boss.challenge.conditions]]
+type = "target"
+match = "any_add"                   # Only non-boss NPCs
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 5: Player Deaths (entire encounter - no phase filter)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "player_deaths"
+name = "Deaths"
+description = "Total player deaths (all phases)"
+metric = "deaths"
+
+[[boss.challenge.conditions]]
+type = "target"
+match = "any_player"
+# No phase condition = counts across ALL phases
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 6: Counter-Conditional Healing
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "high_stack_healing"
+name = "High Stack Healing"
+description = "Healing done while Dread Scream counter is 3+"
+metric = "healing"
+
+[[boss.challenge.conditions]]
+type = "source"
+match = "any_player"
+
+[[boss.challenge.conditions]]
+type = "counter"
+counter_id = "dread_scream_count"
+operator = "gte"                    # Operators: "eq", "ne", "lt", "gt", "lte", "gte"
+value = 3
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 7: HP Range Condition (Execute Damage)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "execute_damage"
+name = "Execute Damage"
+description = "Damage dealt while boss is below 20% HP"
+metric = "damage"
+
+[[boss.challenge.conditions]]
+type = "target"
+match = "any_boss"
+
+[[boss.challenge.conditions]]
+type = "boss_hp_range"
+# min_hp = 0.0                      # Optional: minimum HP (inclusive)
+max_hp = 20.0                       # HP must be at or below this value
+npc_id = 3273941900591104           # Optional: specific boss to check HP
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 8: Complex Multi-Condition (Phase + HP + Counter)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "final_burn_dps"
+name = "Final Burn DPS"
+description = "Boss damage in burn when HP<10% and counter>=5"
+metric = "damage"
+
+[[boss.challenge.conditions]]
+type = "phase"
+phase_ids = ["burn"]
+
+[[boss.challenge.conditions]]
+type = "target"
+match = "any_boss"
+
+[[boss.challenge.conditions]]
+type = "boss_hp_range"
+max_hp = 10.0
+
+[[boss.challenge.conditions]]
+type = "counter"
+counter_id = "dread_scream_count"
+operator = "gte"
+value = 5
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 9: Specific Ability Count (Local Player)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "my_interrupts"
+name = "My Interrupts"
+description = "Number of times YOU used Jolt"
+metric = "ability_count"
+
+[[boss.challenge.conditions]]
+type = "source"
+match = "local_player"              # Only YOUR ability uses
+
+[[boss.challenge.conditions]]
+type = "ability"
+ability_ids = [810420224327680]     # Jolt ability ID
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 10: Raid-Wide Ability Count
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "raid_interrupts"
+name = "Raid Interrupts"
+description = "Total interrupts by ALL players"
+metric = "ability_count"
+
+[[boss.challenge.conditions]]
+type = "source"
+match = "any_player"                # Count everyone's interrupts
+
+[[boss.challenge.conditions]]
+type = "ability"
+ability_ids = [810420224327680, 810420224327681]  # All interrupt ability IDs
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 11: Effect Applications
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "dot_applications"
+name = "DoT Applications"
+description = "Times your DoT was applied"
+metric = "effect_count"
+
+[[boss.challenge.conditions]]
+type = "source"
+match = "local_player"
+
+[[boss.challenge.conditions]]
+type = "effect"
+effect_ids = [123456789012345]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 12: Damage Taken During Phase
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "intermission_dtps"
+name = "Intermission DTPS"
+description = "Damage taken by players during intermission"
+metric = "damage_taken"
+
+[[boss.challenge.conditions]]
+type = "phase"
+phase_ids = ["intermission"]
+
+[[boss.challenge.conditions]]
+type = "target"
+match = "any_player"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 13: Healing Received by Specific Players
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "tank_healing"
+name = "Tank Healing"
+description = "Total healing received by tanks"
+metric = "healing_taken"
+
+[[boss.challenge.conditions]]
+type = "target"
+match = { player_names = ["TankPlayer1", "TankPlayer2"] }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXAMPLE 14: Threat Generation
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.challenge]]
+id = "my_threat"
+name = "Threat Generated"
+description = "Total threat generated by you"
+metric = "threat"
+
+[[boss.challenge.conditions]]
+type = "source"
+match = "local_player"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NOTES
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Finding IDs:
+# - NPC IDs: Found in combat logs as "class_id" for NPCs
+# - Ability IDs: Found in combat logs as "action_id"
+# - Effect IDs: Found in combat logs when effects are applied/removed
+#
+# Best Practices:
+# - Always prefer npc_id over npc_names (IDs are locale-independent)
+# - Use phases to segment the fight for cleaner metric tracking
+# - Keep timer names short (they appear on overlay bars)
+# - Test with a real combat log to verify triggers fire correctly
+#
+# File Location:
+# - User configs: ~/.config/baras/bosses/*.toml
+# - Built-in configs: Bundled with the application
+#
