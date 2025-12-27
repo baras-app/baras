@@ -47,6 +47,8 @@ pub enum GameSignal {
         /// The ability/action that caused this effect
         action_id: i64,
         source_id: i64,
+        source_name: IStr,
+        source_entity_type: EntityType,
         target_id: i64,
         target_name: IStr,
         target_entity_type: EntityType,

@@ -822,6 +822,8 @@ impl EventProcessor {
                     effect_id: event.effect.effect_id,
                     action_id: event.action.action_id,
                     source_id: event.source_entity.log_id,
+                    source_name: event.source_entity.name,
+                    source_entity_type: event.source_entity.entity_type,
                     target_id: event.target_entity.log_id,
                     target_name: event.target_entity.name,
                     target_entity_type: event.target_entity.entity_type,

@@ -78,6 +78,14 @@ struct EffectInstanceKey {
     target_entity_id: i64,
 }
 
+/// Entity info for filter matching
+#[derive(Debug, Clone, Copy)]
+struct EntityInfo {
+    id: i64,
+    entity_type: EntityType,
+    name: IStr,
+}
+
 /// Info about a newly registered target (for raid frame registration)
 #[derive(Debug, Clone)]
 pub struct NewTargetInfo {
@@ -126,6 +134,10 @@ pub struct EffectTracker {
     /// Current target for each entity (source_id -> target info)
     /// Used to resolve target when AbilityActivated has empty/self target
     current_targets: HashMap<i64, TrackedTarget>,
+
+    /// Boss entity IDs currently in combat (from BossHpChanged signals)
+    /// Used for Boss entity filter matching
+    boss_entity_ids: Vec<i64>,
 }
 
 impl Default for EffectTracker {
@@ -146,6 +158,7 @@ impl EffectTracker {
             live_mode: false, // Start in historical mode
             new_targets: Vec::new(),
             current_targets: HashMap::new(),
+            boss_entity_ids: Vec::new(),
         }
     }
 
@@ -237,6 +250,8 @@ impl EffectTracker {
         effect_id: i64,
         action_id: i64,
         source_id: i64,
+        source_name: IStr,
+        source_entity_type: EntityType,
         target_id: i64,
         target_name: IStr,
         target_entity_type: EntityType,
@@ -253,12 +268,24 @@ impl EffectTracker {
             return;
         }
 
+        // Build entity info for filter matching
+        let source_info = EntityInfo {
+            id: source_id,
+            entity_type: source_entity_type,
+            name: source_name,
+        };
+        let target_info = EntityInfo {
+            id: target_id,
+            entity_type: target_entity_type,
+            name: target_name,
+        };
+
         // Find matching definitions
         let matching_defs: Vec<_> = self
             .definitions
             .find_by_game_id(effect_id as u64)
             .into_iter()
-            .filter(|def| self.matches_filters(def, source_id, target_id))
+            .filter(|def| self.matches_filters(def, source_info, target_info))
             .collect();
 
         let is_from_local = self.local_player_id == Some(source_id);
@@ -454,6 +481,7 @@ impl EffectTracker {
     /// Handle combat end - optionally clear combat-only effects
     fn handle_combat_ended(&mut self) {
         self.in_combat = false;
+        self.boss_entity_ids.clear();
 
         // Mark effects that don't track outside combat as removed
         let outside_combat_ids: std::collections::HashSet<_> = self
@@ -476,35 +504,58 @@ impl EffectTracker {
             effect.mark_removed();
         }
         self.current_targets.clear();
+        self.boss_entity_ids.clear();
         self.in_combat = false;
     }
 
     /// Check if an effect matches source/target filters
-    fn matches_filters(&self, def: &EffectDefinition, source_id: i64, target_id: i64) -> bool {
-        self.matches_entity_filter(&def.source, source_id, true)
-            && self.matches_entity_filter(&def.target, target_id, false)
+    fn matches_filters(
+        &self,
+        def: &EffectDefinition,
+        source: EntityInfo,
+        target: EntityInfo,
+    ) -> bool {
+        self.matches_entity_filter(&def.source, source)
+            && self.matches_entity_filter(&def.target, target)
     }
 
     /// Check if an entity matches a filter
-    fn matches_entity_filter(&self, filter: &EntityFilter, entity_id: i64, _is_source: bool) -> bool {
+    fn matches_entity_filter(&self, filter: &EntityFilter, entity: EntityInfo) -> bool {
         let local_id = self.local_player_id;
+        let is_local = local_id == Some(entity.id);
+        let is_player = matches!(entity.entity_type, EntityType::Player);
+        let is_companion = matches!(entity.entity_type, EntityType::Companion);
+        let is_npc = matches!(entity.entity_type, EntityType::Npc);
 
         match filter {
-            EntityFilter::LocalPlayer => local_id == Some(entity_id),
-            EntityFilter::OtherPlayers => local_id.is_some() && local_id != Some(entity_id),
-            EntityFilter::AnyPlayer => true, // TODO: Check entity type from cache
-            EntityFilter::GroupMembers => true, // TODO: Check group membership
-            EntityFilter::GroupMembersExceptLocal => {
-                local_id.is_some() && local_id != Some(entity_id)
-            }
-            EntityFilter::Any => true,
+            // Player filters
+            EntityFilter::LocalPlayer => is_local && is_player,
+            EntityFilter::OtherPlayers => !is_local && is_player,
+            EntityFilter::AnyPlayer => is_player,
+            // Group filters - for now, treat all players as potential group members
+            EntityFilter::GroupMembers => is_player,
+            EntityFilter::GroupMembersExceptLocal => !is_local && is_player,
+
+            // Companion filters
+            EntityFilter::LocalCompanion => is_companion, // Assume local's companion in solo
+            EntityFilter::OtherCompanions => is_companion && !is_local,
+            EntityFilter::AnyCompanion => is_companion,
+            EntityFilter::LocalPlayerOrCompanion => (is_local && is_player) || is_companion,
+            EntityFilter::AnyPlayerOrCompanion => is_player || is_companion,
+
+            // NPC filters
+            EntityFilter::AnyNpc => is_npc,
+            EntityFilter::Boss => is_npc && self.boss_entity_ids.contains(&entity.id),
+            EntityFilter::NpcExceptBoss => is_npc && !self.boss_entity_ids.contains(&entity.id),
+
+            // Specific entity by name
             EntityFilter::Specific(name) => {
-                // TODO: Look up entity name from cache
-                let _ = name;
-                false
+                let entity_name = crate::context::resolve(entity.name);
+                entity_name.eq_ignore_ascii_case(name)
             }
-            // TODO: Implement companion, NPC, boss filters
-            _ => true,
+
+            // Any entity
+            EntityFilter::Any => true,
         }
     }
 }
@@ -516,13 +567,26 @@ impl SignalHandler for EffectTracker {
                 effect_id,
                 action_id,
                 source_id,
+                source_name,
+                source_entity_type,
                 target_id,
                 target_name,
                 target_entity_type,
                 timestamp,
                 charges,
             } => {
-                self.handle_effect_applied(*effect_id, *action_id, *source_id, *target_id, *target_name, *target_entity_type, *timestamp, *charges);
+                self.handle_effect_applied(
+                    *effect_id,
+                    *action_id,
+                    *source_id,
+                    *source_name,
+                    *source_entity_type,
+                    *target_id,
+                    *target_name,
+                    *target_entity_type,
+                    *timestamp,
+                    *charges,
+                );
             }
             GameSignal::EffectRemoved {
                 effect_id,
@@ -602,6 +666,12 @@ impl SignalHandler for EffectTracker {
             }
             GameSignal::TargetCleared { source_id, .. } => {
                 self.current_targets.remove(source_id);
+            }
+            GameSignal::BossHpChanged { entity_id, .. } => {
+                // Track boss entity IDs for the Boss filter
+                if !self.boss_entity_ids.contains(entity_id) {
+                    self.boss_entity_ids.push(*entity_id);
+                }
             }
             _ => {}
         }
