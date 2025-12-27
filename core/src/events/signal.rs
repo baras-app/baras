@@ -65,7 +65,11 @@ pub enum GameSignal {
     EffectRemoved {
         effect_id: i64,
         source_id: i64,
+        source_entity_type: EntityType,
+        source_name: IStr,
         target_id: i64,
+        target_entity_type: EntityType,
+        target_name: IStr,
         timestamp: NaiveDateTime,
     },
     /// Effect charges/stacks changed (ModifyCharges event)
@@ -83,11 +87,13 @@ pub enum GameSignal {
     AbilityActivated {
         ability_id: i64,
         source_id: i64,
+        source_entity_type: EntityType,
+        source_name: IStr,
         /// NPC class/template ID of source (0 for players/companions)
         source_npc_id: i64,
         target_id: i64,
-        target_name: IStr,
         target_entity_type: EntityType,
+        target_name: IStr,
         /// NPC class/template ID of target (0 for players/companions)
         target_npc_id: i64,
         timestamp: NaiveDateTime,

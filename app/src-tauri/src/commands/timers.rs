@@ -88,6 +88,7 @@ impl TimerListItem {
             name: self.name.clone(),
             trigger: self.trigger.clone(),
             duration_secs: self.duration_secs,
+            is_alert: false, // TODO: Add to UI if needed
             color: self.color,
             phases: self.phases.clone(),
             counter_condition: None, // TODO: Add to UI if needed
@@ -293,6 +294,7 @@ pub async fn create_encounter_timer(
         name: timer.name.clone(),
         trigger: timer.trigger.clone(),
         duration_secs: timer.duration_secs,
+        is_alert: false, // TODO: Add to UI if needed
         color: timer.color,
         phases: timer.phases.clone(),
         counter_condition: None,
@@ -571,12 +573,8 @@ fn collect_areas_recursive(
                         }
                     };
 
-                    // Use category from TOML if provided, otherwise try to determine from path
-                    let category = if !area_config.category.is_empty() {
-                        area_config.category
-                    } else {
-                        determine_category(&path)
-                    };
+                    // Determine category from file path
+                    let category = determine_category(&path);
 
                     areas.push(AreaListItem {
                         name: area_config.name,

@@ -123,7 +123,11 @@ fn test_effect_removed_marks_inactive() {
     tracker.handle_signal(&GameSignal::EffectRemoved {
         effect_id: 999,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         target_id: 2,
+        target_entity_type: crate::combat_log::EntityType::Player,
+        target_name: crate::context::IStr::default(),
         timestamp: ts,
     });
 
@@ -359,6 +363,8 @@ fn test_ability_activated_refreshes_effect() {
     tracker.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 100,
         source_id: 1,
+        source_entity_type: EntityType::Player,
+        source_name: IStr::default(),
         source_npc_id: 0,
         target_id: 2,
         target_name: IStr::default(),
@@ -966,6 +972,8 @@ fn test_target_tracking_for_ability_refresh() {
     tracker.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 200,
         source_id: 1,
+        source_entity_type: EntityType::Player,
+        source_name: IStr::default(),
         source_npc_id: 0,
         target_id: 1, // Self-target
         target_name: IStr::default(),

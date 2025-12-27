@@ -84,6 +84,8 @@ fn test_ability_cast_triggers_timer() {
     let signal = GameSignal::AbilityActivated {
         ability_id: 3302391763959808,
         source_id: 12345,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -179,6 +181,8 @@ fn test_anyof_condition_triggers_on_either() {
     let signal1 = GameSignal::AbilityActivated {
         ability_id: 111,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -199,6 +203,8 @@ fn test_anyof_condition_triggers_on_either() {
     let signal2 = GameSignal::AbilityActivated {
         ability_id: 222,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -277,6 +283,8 @@ fn test_cancel_on_timer() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 444,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -306,6 +314,8 @@ fn test_wrong_ability_does_not_trigger() {
     let signal = GameSignal::AbilityActivated {
         ability_id: 99999, // Different ID
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -383,6 +393,8 @@ fn test_timer_expires_triggers_chain() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 999999, // Non-matching ability just to advance time
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -425,6 +437,8 @@ fn test_timer_expires_without_chain() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 999999,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -678,6 +692,8 @@ fn test_multi_timer_chain_a_b_c() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 0,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -695,6 +711,8 @@ fn test_multi_timer_chain_a_b_c() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 0,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -712,6 +730,8 @@ fn test_multi_timer_chain_a_b_c() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 0,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -768,6 +788,8 @@ fn test_cancel_on_timer_with_chain() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 0,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -805,6 +827,8 @@ fn test_timer_refresh_resets_expiration() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 12345,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -823,6 +847,8 @@ fn test_timer_refresh_resets_expiration() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 12345,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -865,6 +891,8 @@ fn test_timer_no_refresh_when_disabled() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 12345,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),
@@ -880,6 +908,8 @@ fn test_timer_no_refresh_when_disabled() {
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 12345,
         source_id: 1,
+        source_entity_type: crate::combat_log::EntityType::Player,
+        source_name: crate::context::IStr::default(),
         source_npc_id: 0,
         target_id: 0,
         target_name: crate::context::IStr::default(),

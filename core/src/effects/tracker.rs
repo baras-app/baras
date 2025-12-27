@@ -606,6 +606,7 @@ impl SignalHandler for EffectTracker {
                 source_id,
                 target_id,
                 timestamp,
+                ..
             } => {
                 self.handle_effect_removed(*effect_id, *source_id, *target_id, *timestamp);
             }

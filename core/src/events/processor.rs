@@ -991,7 +991,11 @@ impl EventProcessor {
                 vec![GameSignal::EffectRemoved {
                     effect_id: event.effect.effect_id,
                     source_id: event.source_entity.log_id,
+                    source_entity_type: event.source_entity.entity_type,
+                    source_name: event.source_entity.name,
                     target_id: event.target_entity.log_id,
+                    target_entity_type: event.target_entity.entity_type,
+                    target_name: event.target_entity.name,
                     timestamp: event.timestamp,
                 }]
             }
@@ -1022,10 +1026,12 @@ impl EventProcessor {
             signals.push(GameSignal::AbilityActivated {
                 ability_id: event.action.action_id,
                 source_id: event.source_entity.log_id,
+                source_entity_type: event.source_entity.entity_type,
+                source_name: event.source_entity.name,
                 source_npc_id: event.source_entity.class_id,
                 target_id: event.target_entity.log_id,
-                target_name: event.target_entity.name,
                 target_entity_type: event.target_entity.entity_type,
+                target_name: event.target_entity.name,
                 target_npc_id: event.target_entity.class_id,
                 timestamp: event.timestamp,
             });

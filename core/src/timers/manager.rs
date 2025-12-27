@@ -3,14 +3,17 @@
 //! Manages boss mechanic and ability cooldown timers.
 //! Reacts to signals to start, refresh, and expire timers.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use chrono::{Local, NaiveDateTime};
 
 use crate::boss::BossEncounterDefinition;
+use crate::combat_log::EntityType;
+use crate::effects::EntityFilter;
 use crate::events::{GameSignal, SignalHandler};
 use crate::game_data::Difficulty;
+use crate::context::IStr;
 
 use super::{ActiveTimer, TimerDefinition, TimerKey};
 
@@ -66,6 +69,13 @@ pub struct TimerManager {
 
     /// Last checked combat time in seconds (for crossing detection)
     last_combat_secs: f32,
+
+    // ─── Entity Filter State ─────────────────────────────────────────────────
+    /// Local player's entity ID (for LocalPlayer filter)
+    local_player_id: Option<i64>,
+
+    /// Boss entity IDs currently in combat (for Boss filter)
+    boss_entity_ids: HashSet<i64>,
 }
 
 impl Default for TimerManager {
@@ -89,6 +99,8 @@ impl TimerManager {
             boss_hp_by_npc: HashMap::new(),
             combat_start_time: None,
             last_combat_secs: 0.0,
+            local_player_id: None,
+            boss_entity_ids: HashSet::new(),
         }
     }
 
@@ -387,8 +399,78 @@ impl TimerManager {
         }
     }
 
+    // ─── Entity Filter Matching ───────────────────────────────────────────────
+
+    /// Check if an entity matches an EntityFilter
+    fn matches_entity_filter(&self, filter: &EntityFilter, entity_id: i64, entity_type: EntityType, _entity_name: IStr) -> bool {
+        let is_local = self.local_player_id == Some(entity_id);
+        let is_player = matches!(entity_type, EntityType::Player);
+        let is_companion = matches!(entity_type, EntityType::Companion);
+        let is_npc = matches!(entity_type, EntityType::Npc);
+
+        match filter {
+            // Player filters
+            EntityFilter::LocalPlayer => is_local && is_player,
+            EntityFilter::OtherPlayers => !is_local && is_player,
+            EntityFilter::AnyPlayer => is_player,
+            EntityFilter::GroupMembers => is_player,
+            EntityFilter::GroupMembersExceptLocal => !is_local && is_player,
+
+            // Companion filters
+            EntityFilter::LocalCompanion => is_companion,
+            EntityFilter::OtherCompanions => is_companion && !is_local,
+            EntityFilter::AnyCompanion => is_companion,
+            EntityFilter::LocalPlayerOrCompanion => (is_local && is_player) || is_companion,
+            EntityFilter::AnyPlayerOrCompanion => is_player || is_companion,
+
+            // NPC filters
+            EntityFilter::AnyNpc => is_npc,
+            EntityFilter::Boss => is_npc && self.boss_entity_ids.contains(&entity_id),
+            EntityFilter::NpcExceptBoss => is_npc && !self.boss_entity_ids.contains(&entity_id),
+
+            // Specific entity by name
+            EntityFilter::Specific(name) => {
+                let entity_name = crate::context::resolve(_entity_name);
+                entity_name.eq_ignore_ascii_case(name)
+            }
+
+            // Specific NPC by class/template ID - would need npc_id passed in
+            EntityFilter::SpecificNpc(_npc_id) => false, // TODO: needs npc_id
+
+            // Any entity
+            EntityFilter::Any => true,
+        }
+    }
+
+    /// Check if source/target filters pass for a timer definition
+    fn matches_source_target_filters(
+        &self,
+        def: &TimerDefinition,
+        source_id: i64,
+        source_type: EntityType,
+        source_name: IStr,
+        target_id: i64,
+        target_type: EntityType,
+        target_name: IStr,
+    ) -> bool {
+        self.matches_entity_filter(&def.source, source_id, source_type, source_name)
+            && self.matches_entity_filter(&def.target, target_id, target_type, target_name)
+    }
+
+    // ─── Signal Handlers ─────────────────────────────────────────────────────
+
     /// Handle ability activation
-    fn handle_ability(&mut self, ability_id: i64, _source_id: i64, target_id: i64, timestamp: NaiveDateTime) {
+    fn handle_ability(
+        &mut self,
+        ability_id: i64,
+        source_id: i64,
+        source_type: EntityType,
+        source_name: IStr,
+        target_id: i64,
+        target_type: EntityType,
+        target_name: IStr,
+        timestamp: NaiveDateTime,
+    ) {
         // Convert i64 to u64 for matching (game IDs are always positive)
         let ability_id = ability_id as u64;
 
@@ -397,12 +479,15 @@ impl TimerManager {
             .filter(|d| {
                 let matches_ability = d.matches_ability(ability_id);
                 let is_active = self.is_definition_active(d);
+                let matches_filters = self.matches_source_target_filters(
+                    d, source_id, source_type, source_name, target_id, target_type, target_name
+                );
                 if matches_ability && !is_active {
                     let diff_str = self.context.difficulty.map(|d| d.config_key()).unwrap_or("none");
                     eprintln!("[TIMER] Ability {} matches timer '{}' but context filter failed (enc={:?}, boss={:?}, diff={})",
                         ability_id, d.name, self.context.encounter_name, self.context.boss_name, diff_str);
                 }
-                matches_ability && is_active
+                matches_ability && is_active && matches_filters
             })
             .cloned()
             .collect();
@@ -414,13 +499,29 @@ impl TimerManager {
     }
 
     /// Handle effect applied
-    fn handle_effect_applied(&mut self, effect_id: i64, _source_id: i64, target_id: i64, timestamp: NaiveDateTime) {
+    fn handle_effect_applied(
+        &mut self,
+        effect_id: i64,
+        source_id: i64,
+        source_type: EntityType,
+        source_name: IStr,
+        target_id: i64,
+        target_type: EntityType,
+        target_name: IStr,
+        timestamp: NaiveDateTime,
+    ) {
         // Convert i64 to u64 for matching (game IDs are always positive)
         let effect_id = effect_id as u64;
 
         let matching: Vec<_> = self.definitions
             .values()
-            .filter(|d| d.matches_effect_applied(effect_id) && self.is_definition_active(d))
+            .filter(|d| {
+                d.matches_effect_applied(effect_id)
+                    && self.is_definition_active(d)
+                    && self.matches_source_target_filters(
+                        d, source_id, source_type, source_name, target_id, target_type, target_name
+                    )
+            })
             .cloned()
             .collect();
 
@@ -430,13 +531,29 @@ impl TimerManager {
     }
 
     /// Handle effect removed
-    fn handle_effect_removed(&mut self, effect_id: i64, target_id: i64, timestamp: NaiveDateTime) {
+    fn handle_effect_removed(
+        &mut self,
+        effect_id: i64,
+        source_id: i64,
+        source_type: EntityType,
+        source_name: IStr,
+        target_id: i64,
+        target_type: EntityType,
+        target_name: IStr,
+        timestamp: NaiveDateTime,
+    ) {
         // Convert i64 to u64 for matching (game IDs are always positive)
         let effect_id = effect_id as u64;
 
         let matching: Vec<_> = self.definitions
             .values()
-            .filter(|d| d.matches_effect_removed(effect_id) && self.is_definition_active(d))
+            .filter(|d| {
+                d.matches_effect_removed(effect_id)
+                    && self.is_definition_active(d)
+                    && self.matches_source_target_filters(
+                        d, source_id, source_type, source_name, target_id, target_type, target_name
+                    )
+            })
             .cloned()
             .collect();
 
@@ -611,33 +728,65 @@ impl SignalHandler for TimerManager {
         self.last_timestamp = Some(ts);
 
         match signal {
+            GameSignal::PlayerInitialized { entity_id, .. } => {
+                self.local_player_id = Some(*entity_id);
+            }
+
             GameSignal::AbilityActivated {
                 ability_id,
                 source_id,
+                source_entity_type,
+                source_name,
                 target_id,
+                target_entity_type,
+                target_name,
                 timestamp,
                 ..
             } => {
-                self.handle_ability(*ability_id, *source_id, *target_id, *timestamp);
+                self.handle_ability(
+                    *ability_id,
+                    *source_id, *source_entity_type, *source_name,
+                    *target_id, *target_entity_type, *target_name,
+                    *timestamp,
+                );
             }
 
             GameSignal::EffectApplied {
                 effect_id,
                 source_id,
+                source_entity_type,
+                source_name,
                 target_id,
+                target_entity_type,
+                target_name,
                 timestamp,
                 ..
             } => {
-                self.handle_effect_applied(*effect_id, *source_id, *target_id, *timestamp);
+                self.handle_effect_applied(
+                    *effect_id,
+                    *source_id, *source_entity_type, *source_name,
+                    *target_id, *target_entity_type, *target_name,
+                    *timestamp,
+                );
             }
 
             GameSignal::EffectRemoved {
                 effect_id,
+                source_id,
+                source_entity_type,
+                source_name,
                 target_id,
+                target_entity_type,
+                target_name,
                 timestamp,
                 ..
             } => {
-                self.handle_effect_removed(*effect_id, *target_id, *timestamp);
+                self.handle_effect_removed(
+                    *effect_id,
+                    *source_id, *source_entity_type, *source_name,
+                    *target_id, *target_entity_type, *target_name,
+                    *timestamp,
+                );
             }
 
             GameSignal::CombatStarted { timestamp, .. } => {
