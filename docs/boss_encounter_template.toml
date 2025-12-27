@@ -8,6 +8,15 @@
 # Place boss definition files in: ~/.config/baras/bosses/
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# REQUIRED: [area] - Only 1 per file
+# REQUIRED: [[boss]] - multiple per file. Keep relevant subfields in order
+# OPTIONAL - [[boss.timer]] - arbitrary number per boss
+# OPTIONAL - [[boss.counter]] - arbitrary number per boss
+# OPTIONAL - [[boss.phase]] - arbitrary number per boss
+# OPTIONAL - [[boss.challenge]] - arbitrary number per boss
+
+
+
 # ───────────────────────────────────────────────────────────────────────────────
 # Area Header (required for consolidated encounter files)
 # ───────────────────────────────────────────────────────────────────────────────
