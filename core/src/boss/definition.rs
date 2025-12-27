@@ -433,8 +433,11 @@ pub struct BossTimerDefinition {
     /// Timer to start when this one expires
     pub chains_to: Option<String>,
 
-    /// Cancel this timer when the referenced timer starts
-    pub cancel_on_timer: Option<String>,
+    /// Cancel this timer when this trigger fires
+    /// Uses the same trigger types as the start trigger, including:
+    /// - effect_removed, phase_ended, ability_cast, etc.
+    /// - timer_started: cancel when another timer starts
+    pub cancel_trigger: Option<crate::timers::TimerTrigger>,
 
     /// Alert when this many seconds remain
     pub alert_at_secs: Option<f32>,

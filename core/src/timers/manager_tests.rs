@@ -20,7 +20,7 @@ fn make_timer(id: &str, name: &str, trigger: TimerTrigger, duration: f32) -> Tim
         enabled: true,
         can_be_refreshed: false,
         triggers_timer: None,
-        cancel_on_timer: None,
+        cancel_trigger: None,
         repeats: 0,
         alert_at_secs: None,
         alert_text: None,
@@ -255,7 +255,7 @@ fn test_cancel_on_timer() {
         name: "Timer A".to_string(),
         trigger: TimerTrigger::CombatStart,
         duration_secs: 60.0,
-        cancel_on_timer: Some("timer_b".to_string()),
+        cancel_trigger: Some(TimerTrigger::TimerStarted { timer_id: "timer_b".to_string() }),
         ..make_timer("", "", TimerTrigger::CombatStart, 0.0)
     };
 
@@ -758,7 +758,7 @@ fn test_cancel_on_timer_with_chain() {
     };
 
     let timer_b = TimerDefinition {
-        cancel_on_timer: Some("timer_c".to_string()),
+        cancel_trigger: Some(TimerTrigger::TimerStarted { timer_id: "timer_c".to_string() }),
         ..make_timer("timer_b", "Timer B", TimerTrigger::CombatStart, 60.0)
     };
 

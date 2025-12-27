@@ -97,7 +97,7 @@ impl TimerListItem {
             can_be_refreshed: self.can_be_refreshed,
             repeats: self.repeats,
             chains_to: self.chains_to.clone(),
-            cancel_on_timer: None, // TODO: Add to UI if needed
+            cancel_trigger: None, // TODO: Add to UI if needed
             alert_at_secs: self.alert_at_secs,
             show_on_raid_frames: self.show_on_raid_frames,
         }
@@ -303,7 +303,7 @@ pub async fn create_encounter_timer(
         can_be_refreshed: timer.can_be_refreshed,
         repeats: timer.repeats,
         chains_to: timer.chains_to.clone(),
-        cancel_on_timer: None,
+        cancel_trigger: None,
         alert_at_secs: timer.alert_at_secs,
         show_on_raid_frames: timer.show_on_raid_frames,
     };

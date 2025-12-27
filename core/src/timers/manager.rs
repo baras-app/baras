@@ -15,7 +15,7 @@ use crate::events::{GameSignal, SignalHandler};
 use crate::game_data::Difficulty;
 use crate::context::IStr;
 
-use super::{ActiveTimer, TimerDefinition, TimerKey};
+use super::{ActiveTimer, TimerDefinition, TimerKey, TimerTrigger};
 
 /// Maximum age (in minutes) for events to be processed by timers.
 /// Events older than this are skipped since timers are only useful for recent/live events.
@@ -336,14 +336,13 @@ impl TimerManager {
 
     /// Cancel active timers that have cancel_on_timer matching the started timer ID
     fn cancel_timers_on_start(&mut self, started_timer_id: &str) {
-        // Find keys to remove
+        // Find keys to remove - check for TimerStarted cancel triggers
         let keys_to_cancel: Vec<_> = self.active_timers
             .iter()
             .filter_map(|(key, timer)| {
-                // Look up the definition to check cancel_on_timer
                 if let Some(def) = self.definitions.get(&timer.definition_id)
-                    && let Some(ref cancel_on) = def.cancel_on_timer
-                    && cancel_on == started_timer_id {
+                    && let Some(ref cancel_trigger) = def.cancel_trigger
+                    && matches!(cancel_trigger, TimerTrigger::TimerStarted { timer_id } if timer_id == started_timer_id) {
                         Some(key.clone())
                     } else {
                         None
@@ -355,6 +354,31 @@ impl TimerManager {
         for key in keys_to_cancel {
             if let Some(timer) = self.active_timers.remove(&key) {
                 eprintln!("[TIMER] Cancelled '{}' because '{}' started", timer.name, started_timer_id);
+            }
+        }
+    }
+
+    /// Cancel active timers whose cancel_trigger matches the given predicate
+    fn cancel_timers_matching<F>(&mut self, trigger_matches: F, reason: &str)
+    where
+        F: Fn(&TimerTrigger) -> bool,
+    {
+        let keys_to_cancel: Vec<_> = self.active_timers
+            .iter()
+            .filter_map(|(key, timer)| {
+                if let Some(def) = self.definitions.get(&timer.definition_id)
+                    && let Some(ref cancel_trigger) = def.cancel_trigger
+                    && trigger_matches(cancel_trigger) {
+                        Some(key.clone())
+                    } else {
+                        None
+                    }
+            })
+            .collect();
+
+        for key in keys_to_cancel {
+            if let Some(timer) = self.active_timers.remove(&key) {
+                eprintln!("[TIMER] Cancelled '{}' ({})", timer.name, reason);
             }
         }
     }
@@ -496,6 +520,12 @@ impl TimerManager {
             eprintln!("[TIMER] Starting timer '{}' (ability {})", def.name, ability_id);
             self.start_timer(&def, timestamp, Some(target_id));
         }
+
+        // Check for cancel triggers on ability cast
+        self.cancel_timers_matching(
+            |t| matches!(t, TimerTrigger::AbilityCast { ability_ids } if ability_ids.contains(&ability_id)),
+            &format!("ability {} cast", ability_id)
+        );
     }
 
     /// Handle effect applied
@@ -528,6 +558,12 @@ impl TimerManager {
         for def in matching {
             self.start_timer(&def, timestamp, Some(target_id));
         }
+
+        // Check for cancel triggers on effect applied
+        self.cancel_timers_matching(
+            |t| matches!(t, TimerTrigger::EffectApplied { effect_ids } if effect_ids.contains(&effect_id)),
+            &format!("effect {} applied", effect_id)
+        );
     }
 
     /// Handle effect removed
@@ -560,6 +596,12 @@ impl TimerManager {
         for def in matching {
             self.start_timer(&def, timestamp, Some(target_id));
         }
+
+        // Check for cancel triggers on effect removed
+        self.cancel_timers_matching(
+            |t| matches!(t, TimerTrigger::EffectRemoved { effect_ids } if effect_ids.contains(&effect_id)),
+            &format!("effect {} removed", effect_id)
+        );
     }
 
     /// Handle boss HP change - check for HP threshold triggers
@@ -595,6 +637,13 @@ impl TimerManager {
             eprintln!("[TIMER] Starting phase-triggered timer '{}' (phase: {})", def.name, phase_id);
             self.start_timer(&def, timestamp, None);
         }
+
+        // Check for cancel triggers on phase entered
+        let phase_id_owned = phase_id.to_string();
+        self.cancel_timers_matching(
+            |t| matches!(t, TimerTrigger::PhaseEntered { phase_id: pid } if pid == &phase_id_owned),
+            &format!("phase {} entered", phase_id)
+        );
     }
 
     /// Handle phase ended - check for PhaseEnded triggers
@@ -609,6 +658,13 @@ impl TimerManager {
             eprintln!("[TIMER] Starting phase-ended timer '{}' (phase {} ended)", def.name, phase_id);
             self.start_timer(&def, timestamp, None);
         }
+
+        // Check for cancel triggers on phase ended
+        let phase_id_owned = phase_id.to_string();
+        self.cancel_timers_matching(
+            |t| matches!(t, TimerTrigger::PhaseEnded { phase_id: pid } if pid == &phase_id_owned),
+            &format!("phase {} ended", phase_id)
+        );
     }
 
     /// Handle counter change - check for CounterReaches triggers
@@ -920,7 +976,7 @@ fn convert_boss_timer_to_definition(
         alert_text: None,
         audio_file: None,
         triggers_timer: boss_timer.chains_to.clone(),
-        cancel_on_timer: boss_timer.cancel_on_timer.clone(),
+        cancel_trigger: boss_timer.cancel_trigger.clone(),
         // Context: tie to this boss's area and name
         encounters: vec![boss.area_name.clone()],
         boss: Some(boss.name.clone()),

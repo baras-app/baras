@@ -97,6 +97,12 @@ pub enum TimerTrigger {
     /// Manually triggered (for testing/debug)
     Manual,
 
+    /// Another timer starts (for cancel_trigger chaining)
+    TimerStarted {
+        /// ID of the timer whose start cancels this one
+        timer_id: String,
+    },
+
     // ─── Logical Composition ─────────────────────────────────────────────────
 
     /// Any condition suffices (OR logic)
@@ -172,9 +178,11 @@ pub struct TimerDefinition {
     /// Timer ID to trigger when this one expires
     pub triggers_timer: Option<String>,
 
-    /// Cancel this timer when the referenced timer starts
-    /// When the specified timer is triggered, this timer is removed
-    pub cancel_on_timer: Option<String>,
+    /// Cancel this timer when this trigger fires
+    /// Uses the same trigger types as the start trigger, including:
+    /// - effect_removed, phase_ended, ability_cast, etc.
+    /// - timer_started: cancel when another timer starts (replaces cancel_on_timer)
+    pub cancel_trigger: Option<TimerTrigger>,
 
     // ─── Context ────────────────────────────────────────────────────────────
     /// Only active in specific encounters (empty = all)
