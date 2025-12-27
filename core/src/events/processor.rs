@@ -796,17 +796,74 @@ impl EventProcessor {
         use crate::boss::CounterTrigger;
 
         match trigger {
-            CounterTrigger::AbilityCast { ability_ids } => {
+            CounterTrigger::CombatStart => {
+                current_signals.iter().any(|s| matches!(s, GameSignal::CombatStarted { .. }))
+            }
+            CounterTrigger::CombatEnd => {
+                current_signals.iter().any(|s| matches!(s, GameSignal::CombatEnded { .. }))
+            }
+            CounterTrigger::AbilityCast { ability_ids, source } => {
                 if event.effect.effect_id != effect_id::ABILITYACTIVATE {
                     return false;
                 }
-                ability_ids.contains(&(event.action.action_id as u64))
+                // Check ability ID matches
+                if !ability_ids.contains(&(event.action.action_id as u64)) {
+                    return false;
+                }
+                // Optional source filter
+                if let Some(source_name) = source {
+                    let resolved_name = crate::context::resolve(event.source_entity.name);
+                    if !resolved_name.eq_ignore_ascii_case(source_name) {
+                        return false;
+                    }
+                }
+                true
             }
-            CounterTrigger::EffectApplied { effect_ids } => {
+            CounterTrigger::EffectApplied { effect_ids, target } => {
                 if event.effect.type_id != effect_type_id::APPLYEFFECT {
                     return false;
                 }
-                effect_ids.contains(&(event.effect.effect_id as u64))
+                // Check effect ID matches
+                if !effect_ids.contains(&(event.effect.effect_id as u64)) {
+                    return false;
+                }
+                // Optional target filter
+                if let Some(target_name) = target {
+                    if target_name == "local_player" {
+                        if event.target_entity.entity_type != EntityType::Player {
+                            return false;
+                        }
+                    } else {
+                        let resolved_name = crate::context::resolve(event.target_entity.name);
+                        if !resolved_name.eq_ignore_ascii_case(target_name) {
+                            return false;
+                        }
+                    }
+                }
+                true
+            }
+            CounterTrigger::EffectRemoved { effect_ids, target } => {
+                if event.effect.type_id != effect_type_id::REMOVEEFFECT {
+                    return false;
+                }
+                // Check effect ID matches
+                if !effect_ids.contains(&(event.effect.effect_id as u64)) {
+                    return false;
+                }
+                // Optional target filter
+                if let Some(target_name) = target {
+                    if target_name == "local_player" {
+                        if event.target_entity.entity_type != EntityType::Player {
+                            return false;
+                        }
+                    } else {
+                        let resolved_name = crate::context::resolve(event.target_entity.name);
+                        if !resolved_name.eq_ignore_ascii_case(target_name) {
+                            return false;
+                        }
+                    }
+                }
+                true
             }
             CounterTrigger::PhaseEntered { phase_id } => {
                 // Check if we emitted a PhaseChanged signal with this phase
@@ -814,8 +871,23 @@ impl EventProcessor {
                     matches!(s, GameSignal::PhaseChanged { new_phase, .. } if new_phase == phase_id)
                 })
             }
+            CounterTrigger::PhaseEnded { phase_id } => {
+                // Check if we emitted a PhaseChanged signal where this phase ended
+                // Or PhaseEndTriggered for explicit end triggers
+                current_signals.iter().any(|s| {
+                    matches!(s, GameSignal::PhaseChanged { old_phase: Some(old), .. } if old == phase_id)
+                        || matches!(s, GameSignal::PhaseEndTriggered { phase_id: p, .. } if p == phase_id)
+                })
+            }
+            CounterTrigger::AnyPhaseChange => {
+                current_signals.iter().any(|s| matches!(s, GameSignal::PhaseChanged { .. }))
+            }
             CounterTrigger::TimerExpires { .. } => {
-                // Timer expiration handled by TimerManager
+                // Timer expiration handled by TimerManager, not event stream
+                false
+            }
+            CounterTrigger::TimerStarts { .. } => {
+                // Timer starts handled by TimerManager, not event stream
                 false
             }
             CounterTrigger::EntityFirstSeen { npc_id, entity_name, .. } => {
@@ -857,6 +929,40 @@ impl EventProcessor {
                     }
                 })
             }
+            CounterTrigger::CounterReaches { counter_id, value } => {
+                // Check if a CounterChanged signal shows the counter reached the target value
+                current_signals.iter().any(|s| {
+                    matches!(s, GameSignal::CounterChanged { counter_id: cid, new_value, .. }
+                        if cid == counter_id && *new_value == *value)
+                })
+            }
+            CounterTrigger::BossHpBelow { hp_percent, entity, boss_name } => {
+                // Check HP threshold from BossHpChanged signals
+                current_signals.iter().any(|s| {
+                    if let GameSignal::BossHpChanged { current_hp, max_hp, entity_name, .. } = s {
+                        // Calculate HP percentage
+                        let hp_pct = if *max_hp > 0 {
+                            (*current_hp as f32 / *max_hp as f32) * 100.0
+                        } else {
+                            100.0
+                        };
+                        // Check HP threshold
+                        if hp_pct > *hp_percent {
+                            return false;
+                        }
+                        // Optional entity/boss name filter
+                        if let Some(name) = entity.as_ref().or(boss_name.as_ref()) {
+                            if !entity_name.eq_ignore_ascii_case(name) {
+                                return false;
+                            }
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                })
+            }
+            CounterTrigger::Never => false,
         }
     }
 

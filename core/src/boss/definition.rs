@@ -315,33 +315,85 @@ pub struct CounterDefinition {
     /// What increments this counter
     pub increment_on: CounterTrigger,
 
-    /// When to reset (default: combat end)
+    /// When to reset to initial_value (default: combat_end)
+    /// Uses the same trigger types as increment_on for consistency
     #[serde(default)]
-    pub reset_on: CounterReset,
+    pub reset_on: CounterTrigger,
 
-    /// Starting value
+    /// Starting value (and value after reset)
     #[serde(default)]
     pub initial_value: u32,
+
+    /// Optional: decrement instead of increment (for countdown patterns)
+    #[serde(default)]
+    pub decrement: bool,
+
+    /// Optional: set to specific value instead of increment/decrement
+    #[serde(default)]
+    pub set_value: Option<u32>,
 }
 
-/// Events that increment a counter
+/// Events that increment or modify a counter
+/// Used for both `increment_on` and `reset_on` triggers
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum CounterTrigger {
+    /// Combat starts (useful for reset_on to reset at fight start)
+    CombatStart,
+
+    /// Combat ends (default reset behavior)
+    CombatEnd,
+
+    /// Ability is cast
     AbilityCast {
         #[serde(default)]
         ability_ids: Vec<u64>,
+        /// Optional source filter (entity name from roster)
+        #[serde(default)]
+        source: Option<String>,
     },
+
+    /// Effect/buff is applied
     EffectApplied {
         #[serde(default)]
         effect_ids: Vec<u64>,
+        /// Optional target filter ("local_player" or entity name)
+        #[serde(default)]
+        target: Option<String>,
     },
+
+    /// Effect/buff is removed
+    EffectRemoved {
+        #[serde(default)]
+        effect_ids: Vec<u64>,
+        /// Optional target filter ("local_player" or entity name)
+        #[serde(default)]
+        target: Option<String>,
+    },
+
+    /// Timer expires
     TimerExpires {
         timer_id: String,
     },
+
+    /// Timer starts (for cancellation patterns)
+    TimerStarts {
+        timer_id: String,
+    },
+
+    /// Phase is entered
     PhaseEntered {
         phase_id: String,
     },
+
+    /// Phase ends
+    PhaseEnded {
+        phase_id: String,
+    },
+
+    /// Any phase change occurs
+    AnyPhaseChange,
+
     /// NPC is first seen (add spawn)
     EntityFirstSeen {
         /// Entity reference from roster (preferred)
@@ -354,6 +406,7 @@ pub enum CounterTrigger {
         #[serde(default)]
         entity_name: Option<String>,
     },
+
     /// Entity dies
     EntityDeath {
         /// Entity reference from roster (preferred)
@@ -366,16 +419,30 @@ pub enum CounterTrigger {
         #[serde(default)]
         entity_name: Option<String>,
     },
+
+    /// Counter reaches a specific value (for chained counter logic)
+    CounterReaches {
+        counter_id: String,
+        value: u32,
+    },
+
+    /// HP threshold crossed (for HP-based counter triggers)
+    BossHpBelow {
+        hp_percent: f32,
+        #[serde(default)]
+        entity: Option<String>,
+        #[serde(default)]
+        boss_name: Option<String>,
+    },
+
+    /// Never triggers (use for counters that should never auto-reset)
+    Never,
 }
 
-/// When a counter resets
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum CounterReset {
-    #[default]
-    CombatEnd,
-    PhaseChange,
-    Never,
+impl Default for CounterTrigger {
+    fn default() -> Self {
+        CounterTrigger::CombatEnd
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -575,11 +642,29 @@ impl BossEncounterDefinition {
             .find(|p| matches!(p.start_trigger, PhaseTrigger::CombatStart))
     }
 
-    /// Get counters that should reset on phase change
+    /// Get counters that should reset on any phase change
     pub fn counters_reset_on_phase(&self) -> Vec<&str> {
         self.counters
             .iter()
-            .filter(|c| matches!(c.reset_on, CounterReset::PhaseChange))
+            .filter(|c| matches!(c.reset_on, CounterTrigger::AnyPhaseChange))
+            .map(|c| c.id.as_str())
+            .collect()
+    }
+
+    /// Get counters that reset on a specific phase
+    pub fn counters_reset_on_specific_phase(&self, phase_id: &str) -> Vec<&str> {
+        self.counters
+            .iter()
+            .filter(|c| matches!(&c.reset_on, CounterTrigger::PhaseEntered { phase_id: p } if p == phase_id))
+            .map(|c| c.id.as_str())
+            .collect()
+    }
+
+    /// Get counters that reset when a specific timer expires
+    pub fn counters_reset_on_timer(&self, timer_id: &str) -> Vec<&str> {
+        self.counters
+            .iter()
+            .filter(|c| matches!(&c.reset_on, CounterTrigger::TimerExpires { timer_id: t } if t == timer_id))
             .map(|c| c.id.as_str())
             .collect()
     }
