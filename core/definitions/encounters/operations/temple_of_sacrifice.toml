@@ -561,11 +561,12 @@ preceded_by = "revan_resonance"
 trigger = { type = "effect_removed", effect_ids = [3447578838433792] }
 
 # -- Phase 5: Burn Phase - Machine Core --
+# Triggers when Machine Core spawns (at ~10% Revan HP)
 [[boss.phases]]
 id = "revan_core"
 name = "Core"
 preceded_by = "revan_p4"
-trigger = { type = "boss_hp_below", hp_percent = 9.1, boss_name = "Revan" }
+trigger = { type = "entity_first_seen", npc_id = 3447583133401088 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Timers - Phase 1 (Floor 1 - Revan)
@@ -765,7 +766,7 @@ trigger = { type = "any_of", conditions = [
 duration_secs = 12
 color = [28, 219, 214, 255]
 difficulties = ["veteran"]
-phases = ["revan_p4"]
+phases = ["revan_p4", "revan_core"]
 
 # Push follows Pull (loops back)
 [[boss.timer]]
@@ -775,7 +776,7 @@ trigger = { type = "timer_expires", timer_id = "rev_pull_p4" }
 duration_secs = 12
 color = [219, 36, 32, 255]
 difficulties = ["veteran"]
-phases = ["revan_p4"]
+phases = ["revan_p4", "revan_core"]
 
 # -- Heave in Phase 4 --
 [[boss.timer]]
@@ -793,6 +794,24 @@ difficulties = ["veteran"]
 # -- Core exposed: Essence Shear stacks reduce max HP --
 # Core has Charged Barrier - reflects attacks from outside blue circle
 # Push/Pull and Unstable Aberrations continue
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Challenges
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Track DPS during the Machine Core burn phase
+[[boss.challenge]]
+id = "rev_core_dps"
+name = "Machine Core Burn"
+metric = "damage"
+
+[[boss.challenge.conditions]]
+type = "phase"
+phase_ids = ["revan_core"]
+
+[[boss.challenge.conditions]]
+type = "target"
+match = { npc_ids = [3447583133401088] }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HP Threshold Alerts
