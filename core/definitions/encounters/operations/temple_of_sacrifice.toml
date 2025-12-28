@@ -1,0 +1,853 @@
+# Temple of Sacrifice
+# 5 bosses
+
+[area]
+name = "Temple of Sacrifice"
+area_id = 0  # TODO: Need area ID
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Malaphar the Savage
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "malaphar"
+name = "Malaphar the Savage"
+difficulties = ["veteran", "master"]
+
+[[boss.entities]]
+name = "Malaphar the Savage"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.phases]]
+id = "mal_main"
+name = "Main"
+trigger = { type = "combat_start" }
+
+# -- Combat Start Timers --
+[[boss.timer]]
+id = "mal_adds_cs"
+name = "Adds"
+trigger = { type = "combat_start" }
+duration_secs = 30
+color = [21, 153, 20, 255]
+difficulties = ["veteran", "master"]
+
+# -- Ability Timers --
+[[boss.timer]]
+id = "mal_adds"
+name = "Adds"
+trigger = { type = "ability_cast", ability_ids = [3469470286741504] }
+duration_secs = 45
+color = [21, 153, 20, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "mal_hammer_smash"
+name = "Hammer Smash"
+trigger = { type = "ability_cast", ability_ids = [3437760543195136] }
+duration_secs = 5
+color = [229, 123, 29, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "mal_spear_toss"
+name = "Spear Toss"
+trigger = { type = "ability_cast", ability_ids = [3440333228605440] }
+duration_secs = 10
+color = [164, 29, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "mal_spear_fixate"
+name = "Spear Fixate"
+trigger = { type = "effect_applied", effect_ids = [3437799197900800] }
+duration_secs = 3
+color = [164, 29, 224, 255]
+difficulties = ["veteran", "master"]
+
+# -- Alerts --
+[[boss.timer]]
+id = "mal_savagery"
+name = "Savagery"
+is_alert = true
+trigger = { type = "effect_applied", effect_ids = [3434788425826304] }
+target = "local_player"
+alert_text = "Savagery!"
+color = [224, 34, 33, 255]
+difficulties = ["veteran", "master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Sword Squadron
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "sword_squadron"
+name = "Sword Squadron"
+difficulties = ["veteran", "master"]
+
+[[boss.entities]]
+name = "Sword Squadron Unit 1"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Sword Squadron Unit 2"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.phases]]
+id = "ss_main"
+name = "Main"
+trigger = { type = "combat_start" }
+
+# -- Combat Start Timers --
+[[boss.timer]]
+id = "ss_shield_cs"
+name = "Shield"
+trigger = { type = "combat_start" }
+duration_secs = 30
+color = [32, 34, 219, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "ss_gravity_cs"
+name = "Gravity"
+trigger = { type = "combat_start" }
+duration_secs = 45  # Guide: "every 40 seconds starting 45 seconds into the fight"
+color = [36, 214, 210, 255]
+difficulties = ["veteran"]  # HM only per guide (no master in ToS)
+
+[[boss.timer]]
+id = "ss_rapid_fire_cs"
+name = "Rapid Fire"
+trigger = { type = "combat_start" }
+duration_secs = 15
+color = [224, 123, 29, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "ss_ground_grenade_cs"
+name = "Ground/Grenade"
+trigger = { type = "combat_start" }
+duration_secs = 20
+color = [36, 214, 210, 255]
+difficulties = ["veteran", "master"]
+
+# -- Ability Timers --
+[[boss.timer]]
+id = "ss_shield"
+name = "Shield"
+trigger = { type = "ability_cast", ability_ids = [3498933762392064] }
+duration_secs = 45  # ORBS screenshot shows 45s (not 60s from extraction)
+color = [29, 39, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "ss_gravity"
+name = "Gravity"
+trigger = { type = "ability_cast", ability_ids = [3519549605412864] }
+duration_secs = 40
+color = [33, 224, 218, 255]
+difficulties = ["veteran"]  # HM only per guide (no master in ToS)
+
+[[boss.timer]]
+id = "ss_mine_droid"
+name = "Mine + Droid"
+trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
+duration_secs = 45
+color = [21, 153, 20, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "ss_huge_grenade"
+name = "Huge Grenade"
+trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
+duration_secs = 30
+color = [153, 153, 21, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "ss_mega_blast"
+name = "Mega Blast"
+trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
+duration_secs = 17
+color = [189, 24, 185, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "ss_rapid_fire"
+name = "Rapid Fire"
+trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
+duration_secs = 25
+color = [224, 123, 29, 255]
+difficulties = ["veteran", "master"]
+
+# -- Alerts --
+[[boss.timer]]
+id = "ss_shield_removed"
+name = "Shield Removed"
+is_alert = true
+trigger = { type = "effect_removed", effect_ids = [3498933762392064] }
+target = { specific = "Sword Squadron Unit 1" }
+alert_text = "Shield Removed"
+color = [42, 32, 219, 255]
+difficulties = ["veteran", "master"]
+
+# -- Rain of Missiles (counter-gated repeating timer) --
+# Logic: Timer only fires when counter is 0, then locks (counter=1) until timer expires
+# This prevents the timer from re-triggering on every Rain of Missiles cast during cooldown
+# When timer expires, counter resets to 0, allowing next cast to start timer again
+
+# Counter: Tracks if Rain of Missiles timer is active (0 = can trigger, 1 = locked)
+[[boss.counter]]
+id = "rain_lock"
+increment_on = { type = "ability_cast", ability_ids = [3448064169738240], source = "Sword Squadron Unit 2" }
+reset_on = { type = "timer_expires", timer_id = "ss_rain_of_missiles" }
+initial_value = 0
+set_value = 1  # Set to 1 (not increment) when ability is cast
+
+# Timer: 19s countdown until next Rain of Missiles
+[[boss.timer]]
+id = "ss_rain_of_missiles"
+name = "Rain of Missiles"
+trigger = { type = "ability_cast", ability_ids = [3448064169738240] }
+source = { specific = "Sword Squadron Unit 2" }
+counter_condition = { counter_id = "rain_lock", operator = "eq", value = 0 }
+duration_secs = 19
+color = [219, 32, 28, 255]
+difficulties = ["veteran", "master"]
+
+# Alert: Notify when Rain of Missiles timer expires (next cast incoming)
+[[boss.timer]]
+id = "ss_rain_reset"
+name = "Rain Reset"
+is_alert = true
+trigger = { type = "timer_expires", timer_id = "ss_rain_of_missiles" }
+alert_text = "Rain Incoming!"
+color = [219, 32, 28, 255]
+difficulties = ["veteran", "master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# The Underlurker
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "underlurker"
+name = "The Underlurker"
+difficulties = ["veteran", "master"]
+
+[[boss.entities]]
+name = "The Underlurker"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.phases]]
+id = "ul_main"
+name = "Main"
+trigger = { type = "combat_start" }
+
+# -- Ability Timers --
+[[boss.timer]]
+id = "ul_collapse"
+name = "Collapse"
+trigger = { type = "ability_cast", ability_ids = [3512467204341760] }
+duration_secs = 15
+color = [41, 29, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "ul_rage_storm"
+name = "Rage Storm"
+trigger = { type = "ability_cast", ability_ids = [3411423803736064] }
+duration_secs = 10.5
+color = [224, 35, 33, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "ul_leap"
+name = "Leap"
+trigger = { type = "ability_cast", ability_ids = [3411569832624128] }
+duration_secs = 9
+color = [180, 184, 23, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "ul_adds"
+name = "Adds"
+trigger = { type = "ability_cast", ability_ids = [3413575582351360] }
+duration_secs = 10
+color = [24, 173, 19, 255]
+difficulties = ["veteran", "master"]
+
+# -- HP Threshold Alerts --
+[[boss.timer]]
+id = "ul_adds_hp"
+name = "Adds"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 90.0, boss_name = "The Underlurker" }
+alert_text = "Adds Spawn"
+color = [24, 173, 19, 255]
+difficulties = ["veteran", "master"]
+
+# NOTE from guide: The encounter has 5 cycles (enrage at 4:50min / 290s)
+# Each cycle: Lurkerlings spawn → Collapse (9s channel) → Rage Storm (7s channel) → Cross Phase (Devastation 7s cast)
+# The Cross Phase requires equal distribution of players on each side of the cross (HM)
+# Front player receives Full-bore debuff and must swap positions next Cross Phase
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Revanite Commanders
+# ═══════════════════════════════════════════════════════════════════════════════
+# From guide: 3 phases
+#   Phase 1: First 30 seconds - 6 adds spawn (Outlaw/Mando/Sith Revanites)
+#   Phase 2: Each commander jumps down for ~30s twice, adds spawn between
+#            Order is RANDOM. Sano has reflective shield, Deron spams Tracer Missile,
+#            Kurse has Soaring Smash (3s cast purple AoE)
+#   Phase 3: Burn Phase - all commanders jump down together
+[[boss]]
+id = "revanite_commanders"
+name = "Revanite Commanders"
+difficulties = ["veteran", "master"]
+
+[[boss.entities]]
+name = "Deron Cadoruso"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Sano Thrica"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Lord Kurse"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.phases]]
+id = "rc_main"
+name = "Main"
+trigger = { type = "combat_start" }
+
+# -- Ability Timers --
+[[boss.timer]]
+id = "rc_sano_kick"
+name = "Sano Kick"
+trigger = { type = "ability_cast", ability_ids = [3461713575804928] }
+duration_secs = 14
+color = [179, 175, 23, 255]
+difficulties = ["veteran", "master"]
+
+# -- Alerts --
+[[boss.timer]]
+id = "rc_burn_phase"
+name = "Burn Phase"
+is_alert = true
+trigger = { type = "ability_cast", ability_ids = [3462744367955968] }
+source = { specific = "Deron Cadoruso" }
+alert_text = "Burn Phase"
+color = [36, 214, 213, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "rc_deron_reset"
+name = "Deron Reset"
+is_alert = true
+trigger = { type = "ability_cast", ability_ids = [3476930644934656] }
+alert_text = "Deron Reset"
+color = [224, 168, 33, 255]
+difficulties = ["veteran", "master"]
+
+# -- HP Threshold Alerts (66%) --
+[[boss.timer]]
+id = "rc_deron_66"
+name = "Deron 66%"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 66.0, boss_name = "Deron Cadoruso" }
+alert_text = "Deron 66%"
+color = [219, 31, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "rc_sano_66"
+name = "Sano 66%"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 66.0, boss_name = "Sano Thrica" }
+alert_text = "Sano 66%"
+color = [219, 32, 36, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "rc_kurse_66"
+name = "Kurse 66%"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 66.0, boss_name = "Lord Kurse" }
+alert_text = "Kurse 66%"
+color = [219, 29, 28, 255]
+difficulties = ["veteran", "master"]
+
+# -- HP Threshold Alerts (31%) --
+[[boss.timer]]
+id = "rc_deron_31"
+name = "Deron 31%"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 31.0, boss_name = "Deron Cadoruso" }
+alert_text = "Deron 31%"
+color = [219, 29, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "rc_sano_31"
+name = "Sano 31%"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 31.0, boss_name = "Sano Thrica" }
+alert_text = "Sano 31%"
+color = [219, 33, 32, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "rc_kurse_31"
+name = "Kurse 31%"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 31.0, boss_name = "Lord Kurse" }
+alert_text = "Kurse 31%"
+color = [224, 24, 24, 255]
+difficulties = ["veteran", "master"]
+
+# TODO: The following timers use complex AND logic tracking add deaths (entity_died triggers):
+#
+# Jump Out (31s) - Triggers when Mandalorian Revanite OR Outlaw Revanite dies
+#   ORBS: TriggerType=And with nested Or clauses checking entity deaths
+#   Requires: counter to track add death count
+#   NOTE from guide: Commanders jump down in RANDOM order for ~30s each
+#
+# Volley/Knock/TP (10s) - Phase-dependent timer
+# Kurse Smash (18s) - Phase-dependent timer (guide: "Soaring Smash, 3 second cast")
+# Deron Teleport (15s) - Phase-dependent timer
+# Deron Knockback (24s) - Phase-dependent timer
+# Deron Volley (21s) - Phase-dependent timer (guide: "Guided Missile Volley")
+# Sano Kick initial (15s) - Phase-dependent (different from ability-triggered version above)
+#
+# These require counter system with:
+#   - CounterDefinition to track add deaths or phase state
+#   - counter_condition on timers to check counter value
+#
+# Additional mechanics from guide not yet tracked:
+# - Sano's reflective shield (absorbs 25% from outside)
+# - Deron's Tracer Missile → Heat Signature + Sundered debuffs
+# - Outlaw Revanite's Saturation Fire (frontal cone)
+# - Mando Revanite's Death from Above (orange AoE)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Revan, the Returned
+# ═══════════════════════════════════════════════════════════════════════════════
+# Encounter spans 3 floors and 5 phases:
+#   Floor 1: Phase 1 (Revan 100%-64%) → Phase 2 (HK-47)
+#   Floor 2: Foci Transition → Phase 3 (Revan 64%-28%)
+#   Floor 3: Resonance Transition → Phase 4 (Revan 28%-9%) → Phase 5 (Machine Core)
+[[boss]]
+id = "revan"
+name = "Revan"
+difficulties = ["story", "veteran"]
+
+# -- Entities --
+[[boss.entities]]
+name = "Revan"
+ids = []
+is_boss = true
+is_kill_target = false  # Core is the actual kill target
+
+[[boss.entities]]
+name = "HK-47"
+ids = []
+is_boss = true
+is_kill_target = false
+
+[[boss.entities]]
+name = "Machine Focus"
+ids = []
+is_boss = false
+is_kill_target = false
+
+[[boss.entities]]
+name = "Machine Core"
+ids = []
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Force Aberration"
+ids = []
+is_boss = false
+is_kill_target = false
+
+[[boss.entities]]
+name = "Unstable Aberration"
+ids = []
+is_boss = false
+is_kill_target = false
+
+[[boss.entities]]
+name = "Entropic Surprise Probe"
+ids = []
+is_boss = false
+is_kill_target = false
+
+[[boss.entities]]
+name = "Meatbag Entropy Enhancer"
+ids = []
+is_boss = false
+is_kill_target = false
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Counters
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Track Machine Focus deaths for Foci phase transition
+[[boss.counter]]
+id = "foci_deaths"
+increment_on = { type = "entity_death", entity_name = "Machine Focus" }
+reset_on = { type = "combat_end" }
+initial_value = 0
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Phases
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# -- Phase 1: First Floor - Revan 100% to 64% --
+[[boss.phases]]
+id = "revan_p1"
+name = "Floor 1 - Revan"
+trigger = { type = "combat_start" }
+
+# -- Phase 2: HK-47 --
+[[boss.phases]]
+id = "revan_hk47"
+name = "HK-47"
+preceded_by = "revan_p1"
+trigger = { type = "boss_hp_below", hp_percent = 64.0, boss_name = "Revan" }
+
+# -- Foci Transition (runs to Floor 2) --
+[[boss.phases]]
+id = "revan_foci"
+name = "Foci"
+preceded_by = "revan_hk47"
+trigger = { type = "boss_hp_below", hp_percent = 10.0, boss_name = "HK-47" }
+
+# -- Phase 3: Second Floor - Revan 64% to 28% --
+# Triggers when all 4 Machine Foci are destroyed
+[[boss.phases]]
+id = "revan_p3"
+name = "Floor 2 - Revan"
+preceded_by = "revan_foci"
+trigger = { type = "counter_reaches", counter_id = "foci_deaths", value = 4 }
+
+# -- Resonance Transition (Revan channels for 120s) --
+[[boss.phases]]
+id = "revan_resonance"
+name = "Resonance"
+preceded_by = "revan_p3"
+trigger = { type = "boss_hp_below", hp_percent = 28.0, boss_name = "Revan" }
+
+# -- Phase 4: Third Floor - Revan 28% to 9% --
+# Triggers when Resonance shield effect is removed (interrupted by damage)
+[[boss.phases]]
+id = "revan_p4"
+name = "Floor 3 - Revan"
+preceded_by = "revan_resonance"
+trigger = { type = "effect_removed", effect_ids = [3447578838433792] }
+
+# -- Phase 5: Burn Phase - Machine Core --
+[[boss.phases]]
+id = "revan_core"
+name = "Core"
+preceded_by = "revan_p4"
+trigger = { type = "boss_hp_below", hp_percent = 9.0, boss_name = "Revan" }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Timers - Phase 1 (Floor 1 - Revan)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# -- Impel: Frontal cone knockback, aimed at pillars --
+[[boss.timer]]
+id = "rev_impel"
+name = "Impel"
+trigger = { type = "ability_cast", ability_ids = [3514803666550784] }
+duration_secs = 20
+color = [219, 32, 28, 255]
+difficulties = ["story", "veteran"]
+
+# -- Force Wield: Spawns two Blades --
+[[boss.timer]]
+id = "rev_blades"
+name = "Blades"
+trigger = { type = "ability_cast", ability_ids = [3453089281474560] }
+duration_secs = 60
+color = [20, 138, 32, 255]
+difficulties = ["story", "veteran"]
+
+# -- Saber Overcharge: Next 3 attacks cleave --
+[[boss.timer]]
+id = "rev_overcharge"
+name = "Saber Overcharge"
+trigger = { type = "ability_cast", ability_ids = [3442094165196800] }
+duration_secs = 16
+color = [185, 24, 189, 255]
+difficulties = ["story", "veteran"]
+
+# -- Heave: 2s raid-wide damage channel, every 30s (HM) --
+[[boss.timer]]
+id = "rev_heave"
+name = "Heave"
+trigger = { type = "ability_cast", ability_ids = [3462632698806272] }
+duration_secs = 30
+color = [173, 168, 22, 255]
+difficulties = ["veteran"]
+
+# -- Trail of Agony: Tank drops pink circles for 10s (HM) --
+[[boss.timer]]
+id = "rev_trail"
+name = "Trail of Agony"
+trigger = { type = "ability_cast", ability_ids = [3443275281203200] }
+duration_secs = 32
+color = [219, 112, 32, 255]
+difficulties = ["veteran"]
+
+# -- Essence Corruption: DPS debuff, 60s until death, must cleanse (HM) --
+[[boss.timer]]
+id = "rev_corruption"
+name = "Essence Corruption"
+trigger = { type = "ability_cast", ability_ids = [3447359795101696] }
+duration_secs = 11
+color = [104, 33, 224, 255]
+difficulties = ["veteran"]
+
+# -- Essence Corruption Alert on local player --
+[[boss.timer]]
+id = "rev_corruption_alert"
+name = "Corrupted"
+is_alert = true
+trigger = { type = "effect_applied", effect_ids = [3447359795101696] }
+target = "local_player"
+alert_text = "Corrupted! Move out and cleanse!"
+color = [104, 33, 224, 255]
+difficulties = ["veteran"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Timers - Phase 2 (HK-47)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# -- Force Imbue → Force-Imbued Killshot: Tank must hide behind beam (HM) --
+[[boss.timer]]
+id = "rev_killshot"
+name = "Force Imbue"
+trigger = { type = "ability_cast", ability_ids = [3447677622681600] }
+duration_secs = 5
+color = [224, 29, 29, 255]
+difficulties = ["veteran"]
+
+# -- Force-Imbued Killshot follow-up timer --
+[[boss.timer]]
+id = "rev_force_imbue"
+name = "Force Imbue"
+trigger = { type = "timer_expires", timer_id = "rev_killshot" }
+duration_secs = 40
+color = [224, 31, 29, 255]
+difficulties = ["veteran"]
+
+# -- Handful of Grenades: Planted on everyone, explode after 5s --
+[[boss.timer]]
+id = "rev_grenades"
+name = "Grenades"
+is_alert = true
+trigger = { type = "ability_cast", ability_ids = [3447669032747008] }
+alert_text = "Grenades! Spread!"
+color = [224, 168, 33, 255]
+difficulties = ["story", "veteran"]
+
+# -- Reactive Shield: HK reflects damage from >10m (at 80% HP in HM) --
+[[boss.timer]]
+id = "rev_reactive_hp"
+name = "Reactive Shield"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 80.0, boss_name = "HK-47" }
+alert_text = "Reactive Shield"
+color = [224, 29, 30, 255]
+difficulties = ["veteran"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Timers - Phase 3 (Floor 2 - Revan)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# -- Force Aberration: Four spawn, two inner, two outer --
+[[boss.timer]]
+id = "rev_aberration_p3"
+name = "Force Aberration"
+trigger = { type = "ability_cast", ability_ids = [3447523003858944] }
+duration_secs = 23.5
+color = [104, 33, 224, 255]
+difficulties = ["story", "veteran"]
+
+# -- Floor 2 Push/Pull Chain (HM) --
+# Guide: "After a Push comes a Pull, then again a Push and so on. It starts with Push."
+# Push knocks outwards, Pull knocks inwards
+
+# Initial Push (triggered by ability)
+[[boss.timer]]
+id = "rev_push_p3"
+name = "Push"
+trigger = { type = "ability_cast", ability_ids = [3455881010216960] }
+duration_secs = 9.5
+color = [214, 33, 32, 255]
+difficulties = ["veteran"]
+
+# Pull follows Push
+[[boss.timer]]
+id = "rev_pull_p3"
+name = "Pull"
+trigger = { type = "timer_expires", timer_id = "rev_push_p3" }
+duration_secs = 15
+color = [32, 214, 214, 255]
+difficulties = ["veteran"]
+
+# Push follows Pull (chain continues)
+[[boss.timer]]
+id = "rev_push_p3_chain"
+name = "Push"
+trigger = { type = "timer_expires", timer_id = "rev_pull_p3" }
+duration_secs = 15
+color = [214, 33, 32, 255]
+difficulties = ["veteran"]
+
+# Pull follows Push (continues the loop)
+[[boss.timer]]
+id = "rev_pull_p3_chain"
+name = "Pull"
+trigger = { type = "timer_expires", timer_id = "rev_push_p3_chain" }
+duration_secs = 15
+color = [32, 214, 214, 255]
+difficulties = ["veteran"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Timers - Phase 4 (Floor 3 - Revan)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# -- Unstable Aberration: Stationary, explode - must face them --
+[[boss.timer]]
+id = "rev_unstable"
+name = "Unstable Aberration"
+trigger = { type = "ability_cast", ability_ids = [3449073487052800] }
+duration_secs = 40
+color = [104, 33, 224, 255]
+difficulties = ["story", "veteran"]
+
+# -- Floor 3 Push/Pull Chain (HM) - every 12 seconds --
+# Guide: "Push and Pull are on the third floor as well. This time, they happen every 12 seconds."
+
+# Initial Push after Resonance ends
+[[boss.timer]]
+id = "rev_push_p4"
+name = "Push"
+trigger = { type = "effect_removed", effect_ids = [3447578838433792] }
+duration_secs = 16
+color = [219, 30, 28, 255]
+difficulties = ["veteran"]
+
+# Pull follows Push
+[[boss.timer]]
+id = "rev_pull_p4"
+name = "Pull"
+trigger = { type = "timer_expires", timer_id = "rev_push_p4" }
+duration_secs = 12
+color = [28, 219, 214, 255]
+difficulties = ["veteran"]
+
+# Push follows Pull (every 12s)
+[[boss.timer]]
+id = "rev_push_p4_chain"
+name = "Push"
+trigger = { type = "timer_expires", timer_id = "rev_pull_p4" }
+duration_secs = 12
+color = [219, 36, 32, 255]
+difficulties = ["veteran"]
+
+# Pull follows Push (chain continues)
+[[boss.timer]]
+id = "rev_pull_p4_chain"
+name = "Pull"
+trigger = { type = "timer_expires", timer_id = "rev_push_p4_chain" }
+duration_secs = 12
+color = [28, 219, 214, 255]
+difficulties = ["veteran"]
+
+# -- Heave in Phase 4 --
+[[boss.timer]]
+id = "rev_heave_p4"
+name = "Heave"
+trigger = { type = "effect_removed", effect_ids = [3449047717249024] }
+duration_secs = 25
+color = [173, 168, 22, 255]
+difficulties = ["veteran"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Timers - Phase 5 (Machine Core)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# -- Core exposed: Essence Shear stacks reduce max HP --
+# Core has Charged Barrier - reflects attacks from outside blue circle
+# Push/Pull and Unstable Aberrations continue
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HP Threshold Alerts
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.timer]]
+id = "rev_hp_64"
+name = "Phase 2"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 64.0, boss_name = "Revan" }
+alert_text = "64% - HK-47 Phase"
+color = [24, 224, 219, 255]
+difficulties = ["story", "veteran"]
+
+[[boss.timer]]
+id = "rev_hp_28"
+name = "Phase 4"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 28.0, boss_name = "Revan" }
+alert_text = "28% - Floor 3"
+color = [33, 224, 223, 255]
+difficulties = ["story", "veteran"]
+
+[[boss.timer]]
+id = "rev_hp_9"
+name = "Burn Phase"
+is_alert = true
+trigger = { type = "boss_hp_threshold", hp_percent = 9.0, boss_name = "Revan" }
+alert_text = "Core Burn"
+color = [29, 224, 217, 255]
+difficulties = ["story", "veteran"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Combat Start Timers
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.timer]]
+id = "rev_corruption_cs"
+name = "Essence Corruption"
+trigger = { type = "combat_start" }
+duration_secs = 10
+color = [104, 33, 224, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "rev_cleanse_pools_cs"
+name = "Cleanse Pools"
+trigger = { type = "combat_start" }
+duration_secs = 50
+color = [112, 158, 17, 255]
+difficulties = ["veteran"]

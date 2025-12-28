@@ -147,11 +147,11 @@ pub struct BossEncounterDefinition {
     // ─── Mechanics ───────────────────────────────────────────────────────────
 
     /// Phase definitions
-    #[serde(default, rename = "phase")]
+    #[serde(default, alias = "phase")]
     pub phases: Vec<PhaseDefinition>,
 
     /// Counter definitions
-    #[serde(default, rename = "counter")]
+    #[serde(default, alias = "counter")]
     pub counters: Vec<CounterDefinition>,
 
     /// Boss-specific timers
@@ -188,6 +188,11 @@ pub struct PhaseDefinition {
     /// e.g., walker_2 has preceded_by = "kephess_1" so it only fires after kephess_1
     #[serde(default)]
     pub preceded_by: Option<String>,
+
+    /// Only activate when counter meets condition (guard)
+    /// e.g., trandos phase only fires when siege_droid_deaths >= 3
+    #[serde(default)]
+    pub counter_condition: Option<CounterCondition>,
 
     /// Counters to reset when entering this phase
     #[serde(default)]
@@ -462,11 +467,13 @@ pub struct BossTimerDefinition {
     pub trigger: crate::timers::TimerTrigger,
 
     /// Source filter for trigger events (who casts/applies)
-    #[serde(default)]
+    /// Defaults to Any for boss timers since abilities come from NPCs
+    #[serde(default = "crate::serde_defaults::default_entity_filter_any")]
     pub source: crate::effects::EntityFilter,
 
     /// Target filter for trigger events (who receives)
-    #[serde(default)]
+    /// Defaults to Any for boss timers (mechanic could affect anyone)
+    #[serde(default = "crate::serde_defaults::default_entity_filter_any")]
     pub target: crate::effects::EntityFilter,
 
     /// Duration in seconds (0 = instant, use with is_alert)

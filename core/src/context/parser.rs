@@ -160,6 +160,14 @@ impl ParsingSession {
         }
     }
 
+    /// Enable/disable live mode for timer tracking.
+    /// Call with `true` after initial file load to filter stale events.
+    pub fn set_timer_live_mode(&self, enabled: bool) {
+        if let Ok(mut timer_mgr) = self.timer_manager.lock() {
+            timer_mgr.set_live_mode(enabled);
+        }
+    }
+
     /// Update timer definitions (e.g., after config reload).
     pub fn set_timer_definitions(&self, definitions: Vec<TimerDefinition>) {
         if let Ok(mut timer_mgr) = self.timer_manager.lock() {

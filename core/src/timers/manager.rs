@@ -17,8 +17,9 @@ use crate::context::IStr;
 
 use super::{ActiveTimer, TimerDefinition, TimerKey, TimerTrigger};
 
-/// Maximum age (in minutes) for events to be processed by timers.
+/// Maximum age (in minutes) for events to be processed by timers in live mode.
 /// Events older than this are skipped since timers are only useful for recent/live events.
+/// This is only checked when `live_mode` is true (after initial batch load).
 const TIMER_RECENCY_THRESHOLD_MINS: i64 = 5;
 
 /// Current encounter context for filtering timers
@@ -29,6 +30,16 @@ pub struct EncounterContext {
     pub difficulty: Option<Difficulty>,
 }
 
+/// A fired alert (ephemeral notification, not a countdown timer)
+#[derive(Debug, Clone)]
+pub struct FiredAlert {
+    pub id: String,
+    pub name: String,
+    pub text: String,
+    pub color: Option<[u8; 4]>,
+    pub timestamp: NaiveDateTime,
+}
+
 /// Manages ability cooldown and buff timers.
 /// Reacts to signals to start, pause, and reset timers.
 #[derive(Debug)]
@@ -36,8 +47,12 @@ pub struct TimerManager {
     /// Timer definitions indexed by ID
     definitions: HashMap<String, TimerDefinition>,
 
-    /// Currently active timers
+    /// Currently active timers (countdown timers with duration > 0)
     active_timers: HashMap<TimerKey, ActiveTimer>,
+
+    /// Fired alerts (ephemeral notifications, not countdown timers)
+    /// Alerts are captured here when triggered, then cleared on next query.
+    fired_alerts: Vec<FiredAlert>,
 
     /// Timers that expired this tick (for chaining)
     expired_this_tick: Vec<String>,
@@ -50,6 +65,11 @@ pub struct TimerManager {
 
     /// Last known game timestamp
     last_timestamp: Option<NaiveDateTime>,
+
+    /// When true, apply recency threshold to skip old events.
+    /// Set to true after initial batch load to filter stale events during live tailing.
+    /// When false (historical/validation mode), process all events regardless of age.
+    live_mode: bool,
 
     // ─── Boss Encounter State (from signals) ───────────────────────────────────
     /// Boss definitions indexed by area name (for timer extraction)
@@ -89,10 +109,12 @@ impl TimerManager {
         Self {
             definitions: HashMap::new(),
             active_timers: HashMap::new(),
+            fired_alerts: Vec::new(),
             expired_this_tick: Vec::new(),
             context: EncounterContext::default(),
             in_combat: false,
             last_timestamp: None,
+            live_mode: true, // Default: apply recency threshold (skip old events)
             boss_definitions: HashMap::new(),
             current_phase: None,
             counters: HashMap::new(),
@@ -200,6 +222,18 @@ impl TimerManager {
         self.validate_timer_chains();
     }
 
+    /// Enable live mode (apply recency threshold to skip old events).
+    /// Call this after the initial batch load to prevent stale log events from triggering timers.
+    pub fn set_live_mode(&mut self, enabled: bool) {
+        self.live_mode = enabled;
+    }
+
+    /// Set the local player's entity ID (for LocalPlayer filter matching).
+    /// Call this when the local player is identified during log parsing.
+    pub fn set_local_player_id(&mut self, entity_id: i64) {
+        self.local_player_id = Some(entity_id);
+    }
+
     /// Validate that all timer chain references (triggers_timer/chains_to) point to existing timers
     fn validate_timer_chains(&self) {
         let mut broken_chains = Vec::new();
@@ -257,6 +291,17 @@ impl TimerManager {
             .collect()
     }
 
+    /// Take all fired alerts, clearing the internal buffer.
+    /// Call this after processing signals to capture ephemeral notifications.
+    pub fn take_fired_alerts(&mut self) -> Vec<FiredAlert> {
+        std::mem::take(&mut self.fired_alerts)
+    }
+
+    /// Peek at fired alerts without clearing (for validation/debugging)
+    pub fn fired_alerts(&self) -> &[FiredAlert] {
+        &self.fired_alerts
+    }
+
     /// Set encounter context for filtering
     pub fn set_context(&mut self, encounter: Option<String>, boss: Option<String>, difficulty: Option<Difficulty>) {
         self.context = EncounterContext {
@@ -301,6 +346,19 @@ impl TimerManager {
 
     /// Start a timer from a definition
     fn start_timer(&mut self, def: &TimerDefinition, timestamp: NaiveDateTime, target_id: Option<i64>) {
+        // Alerts are ephemeral notifications, not countdown timers
+        if def.is_alert {
+            eprintln!("[ALERT] Fired: {} - {}", def.name, def.alert_text.as_deref().unwrap_or(&def.name));
+            self.fired_alerts.push(FiredAlert {
+                id: def.id.clone(),
+                name: def.name.clone(),
+                text: def.alert_text.clone().unwrap_or_else(|| def.name.clone()),
+                color: Some(def.color),
+                timestamp,
+            });
+            return;
+        }
+
         let key = TimerKey::new(&def.id, target_id);
 
         // Check if timer already exists and can be refreshed
@@ -328,7 +386,8 @@ impl TimerManager {
             def.show_on_raid_frames,
         );
 
-        self.active_timers.insert(key, timer);
+        self.active_timers.insert(key.clone(), timer);
+        eprintln!("[TIMER] Added to active_timers: {} (key={:?}, total={})", def.name, key, self.active_timers.len());
 
         // Cancel any timers that have cancel_on_timer pointing to this timer
         self.cancel_timers_on_start(&def.id);
@@ -606,6 +665,12 @@ impl TimerManager {
 
     /// Handle boss HP change - check for HP threshold triggers
     fn handle_boss_hp_change(&mut self, npc_id: i64, npc_name: &str, previous_hp: f32, current_hp: f32, timestamp: NaiveDateTime) {
+        // Don't fire HP threshold alerts when boss is dead (HP = 0)
+        // This prevents all thresholds from firing on death
+        if current_hp <= 0.0 {
+            return;
+        }
+
         let matching: Vec<_> = self.definitions
             .values()
             .filter(|d| d.matches_boss_hp_threshold(npc_id, Some(npc_name), previous_hp, current_hp) && self.is_definition_active(d))
@@ -686,7 +751,20 @@ impl TimerManager {
     fn handle_npc_first_seen(&mut self, npc_id: i64, npc_name: &str, timestamp: NaiveDateTime) {
         let matching: Vec<_> = self.definitions
             .values()
-            .filter(|d| d.matches_entity_first_seen(npc_id) && self.is_definition_active(d))
+            .filter(|d| {
+                // Check if timer matches this entity (by NPC ID or name)
+                let matches = d.matches_entity_first_seen(npc_id, Some(npc_name));
+                if matches {
+                    let is_active = self.is_definition_active(d);
+                    if !is_active {
+                        let diff_str = self.context.difficulty.map(|x| x.config_key()).unwrap_or("none");
+                        eprintln!("[TIMER] Entity first seen {} matches timer '{}' but context filter failed (enc={:?}, boss={:?}, diff={}, timer_diffs={:?})",
+                            npc_name, d.id, self.context.encounter_name, self.context.boss_name, diff_str, d.difficulties);
+                    }
+                    return is_active;
+                }
+                false
+            })
             .cloned()
             .collect();
 
@@ -759,6 +837,7 @@ impl TimerManager {
     fn clear_combat_timers(&mut self) {
         self.in_combat = false;
         self.active_timers.clear();
+        self.fired_alerts.clear();
         self.current_phase = None;
         self.counters.clear();
         self.boss_hp_by_npc.clear();
@@ -774,12 +853,15 @@ impl SignalHandler for TimerManager {
             return;
         }
 
-        // Skip old events - timers only matter for recent/live events
+        // In live mode, skip old events - timers only matter for recent/live events.
+        // In historical mode (validation), process all events regardless of age.
         let ts = signal.timestamp();
-        let now = Local::now().naive_local();
-        let age_mins = (now - ts).num_minutes();
-        if age_mins > TIMER_RECENCY_THRESHOLD_MINS {
-            return;
+        if self.live_mode {
+            let now = Local::now().naive_local();
+            let age_mins = (now - ts).num_minutes();
+            if age_mins > TIMER_RECENCY_THRESHOLD_MINS {
+                return;
+            }
         }
         self.last_timestamp = Some(ts);
 
@@ -872,16 +954,13 @@ impl SignalHandler for TimerManager {
                 eprintln!("[TIMER] Area entered: {} (difficulty: {:?})", area_name, self.context.difficulty);
             }
 
-            GameSignal::TargetChanged { target_name, target_entity_type, .. } => {
-                // Update boss context when targeting an NPC
-                if matches!(target_entity_type, crate::EntityType::Npc) {
-                    let name = crate::context::resolve(*target_name);
-                    self.context.boss_name = Some(name.to_string());
-                }
-            }
-
-            GameSignal::TargetCleared { .. } => {
-                self.context.boss_name = None;
+            // Note: We intentionally DON'T update boss_name from TargetChanged/TargetCleared.
+            // The boss encounter context (set by BossEncounterDetected) should persist
+            // throughout the fight, regardless of what the player is currently targeting.
+            // This ensures timers like "Mighty Leap" work even when the player isn't
+            // targeting the boss.
+            GameSignal::TargetChanged { .. } | GameSignal::TargetCleared { .. } => {
+                // No-op for timer manager - boss context comes from BossEncounterDetected
             }
 
             // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────

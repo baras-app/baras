@@ -413,6 +413,13 @@ impl EventProcessor {
                 }
             }
 
+            // Check counter_condition guard (e.g., trandos only fires when siege_droid_deaths >= 3)
+            if let Some(ref cond) = phase.counter_condition {
+                if !cache.boss_state.check_counter_condition(cond) {
+                    continue;
+                }
+            }
+
             if self.check_hp_trigger(&phase.start_trigger, old_hp, new_hp, npc_id, &cache.boss_state) {
                 let old_phase = cache.boss_state.current_phase.clone();
                 let new_phase_id = phase.id.clone();
@@ -564,6 +571,13 @@ impl EventProcessor {
             if let Some(ref required) = phase.preceded_by {
                 let last_phase = current_phase.as_ref().or(previous_phase.as_ref());
                 if last_phase != Some(required) {
+                    continue;
+                }
+            }
+
+            // Check counter_condition guard (e.g., trandos only fires when siege_droid_deaths >= 3)
+            if let Some(ref cond) = phase.counter_condition {
+                if !cache.boss_state.check_counter_condition(cond) {
                     continue;
                 }
             }
@@ -728,6 +742,13 @@ impl EventProcessor {
                 }
             }
 
+            // Check counter_condition guard (e.g., trandos only fires when siege_droid_deaths >= 3)
+            if let Some(ref cond) = phase.counter_condition {
+                if !cache.boss_state.check_counter_condition(cond) {
+                    continue;
+                }
+            }
+
             if self.check_signal_phase_trigger(&phase.start_trigger, current_signals) {
                 let old_phase = cache.boss_state.current_phase.clone();
                 let new_phase_id = phase.id.clone();
@@ -770,7 +791,7 @@ impl EventProcessor {
         let mut signals = Vec::new();
 
         for counter in &def.counters {
-            if self.check_counter_trigger(&counter.increment_on, event, current_signals) {
+            if self.check_counter_trigger(&counter.increment_on, event, current_signals, def) {
                 let old_value = cache.boss_state.get_counter(&counter.id);
                 let new_value = cache.boss_state.increment_counter(&counter.id);
 
@@ -792,6 +813,7 @@ impl EventProcessor {
         trigger: &crate::boss::CounterTrigger,
         event: &CombatEvent,
         current_signals: &[GameSignal],
+        boss_def: &crate::boss::BossEncounterDefinition,
     ) -> bool {
         use crate::boss::CounterTrigger;
 
@@ -913,15 +935,27 @@ impl EventProcessor {
                 // Check if we emitted an EntityDeath signal matching the filter
                 current_signals.iter().any(|s| {
                     if let GameSignal::EntityDeath { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {
-                        // Check NPC ID filter
+                        // Check NPC ID filter (direct)
                         if let Some(required_id) = npc_id
                             && sig_npc_id != required_id {
                                 return false;
                         }
-                        // Check name filter
-                        if let Some(required_name) = entity_name
-                            && !required_name.eq_ignore_ascii_case(sig_name) {
-                                return false;
+                        // Check entity name filter - resolve through entity roster first
+                        if let Some(required_name) = entity_name {
+                            // Look up entity in boss definition to get NPC IDs
+                            if let Some(entity_def) = boss_def.entities.iter()
+                                .find(|e| e.name.eq_ignore_ascii_case(required_name))
+                            {
+                                // Match by NPC ID from entity roster
+                                if !entity_def.ids.contains(sig_npc_id) {
+                                    return false;
+                                }
+                            } else {
+                                // Fallback: direct name comparison (for game log names)
+                                if !required_name.eq_ignore_ascii_case(sig_name) {
+                                    return false;
+                                }
+                            }
                         }
                         true
                     } else {

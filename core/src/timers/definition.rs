@@ -74,12 +74,22 @@ pub enum TimerTrigger {
 
     /// Entity is first seen (spawned/detected)
     EntityFirstSeen {
-        /// Specific NPC ID to watch for (required for meaningful use)
-        npc_id: i64,
+        /// Entity reference from roster (preferred)
+        #[serde(default)]
+        entity: Option<String>,
+        /// NPC ID to watch for (legacy/fallback)
+        #[serde(default)]
+        npc_id: Option<i64>,
+        /// Entity name fallback (runtime matching)
+        #[serde(default)]
+        entity_name: Option<String>,
     },
 
     /// Entity dies
     EntityDeath {
+        /// Entity reference from roster (preferred)
+        #[serde(default)]
+        entity: Option<String>,
         /// Specific NPC ID to watch for (None = any entity death)
         #[serde(default)]
         npc_id: Option<i64>,
@@ -272,8 +282,8 @@ impl TimerDefinition {
     }
 
     /// Check if this timer triggers when an entity is first seen (handles compound conditions)
-    pub fn matches_entity_first_seen(&self, npc_id: i64) -> bool {
-        trigger_matches_entity_first_seen(&self.trigger, npc_id)
+    pub fn matches_entity_first_seen(&self, npc_id: i64, entity_name: Option<&str>) -> bool {
+        trigger_matches_entity_first_seen(&self.trigger, npc_id, entity_name)
     }
 
     /// Check if this timer triggers on entity death (handles compound conditions)
@@ -451,20 +461,36 @@ fn trigger_matches_counter_reaches(trigger: &TimerTrigger, counter_id: &str, old
 }
 
 /// Check if trigger matches entity first seen (handles AnyOf recursively)
-fn trigger_matches_entity_first_seen(trigger: &TimerTrigger, npc_id: i64) -> bool {
+/// Note: `entity` roster resolution happens at a higher level (TimerManager)
+fn trigger_matches_entity_first_seen(trigger: &TimerTrigger, npc_id: i64, entity_name: Option<&str>) -> bool {
     match trigger {
-        TimerTrigger::EntityFirstSeen { npc_id: trigger_npc_id } => *trigger_npc_id == npc_id,
+        TimerTrigger::EntityFirstSeen { entity: _, npc_id: filter_npc_id, entity_name: filter_name } => {
+            // Check NPC ID filter first (most reliable)
+            if let Some(required_npc_id) = filter_npc_id {
+                return *required_npc_id == npc_id;
+            }
+            // Check entity name filter
+            if let Some(required_name) = filter_name {
+                if let Some(actual_name) = entity_name {
+                    return required_name.eq_ignore_ascii_case(actual_name);
+                }
+                return false;
+            }
+            // No filter specified = match nothing (require at least one filter)
+            false
+        }
         TimerTrigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| trigger_matches_entity_first_seen(c, npc_id))
+            conditions.iter().any(|c| trigger_matches_entity_first_seen(c, npc_id, entity_name))
         }
         _ => false,
     }
 }
 
 /// Check if trigger matches entity death (handles AnyOf recursively)
+/// Note: `entity` roster resolution happens at a higher level (TimerManager)
 fn trigger_matches_entity_death(trigger: &TimerTrigger, npc_id: i64, entity_name: Option<&str>) -> bool {
     match trigger {
-        TimerTrigger::EntityDeath { npc_id: filter_npc_id, entity_name: filter_name } => {
+        TimerTrigger::EntityDeath { entity: _, npc_id: filter_npc_id, entity_name: filter_name } => {
             // Check NPC ID filter first
             if let Some(required_npc_id) = filter_npc_id
                 && *required_npc_id != npc_id {

@@ -649,10 +649,11 @@ impl CombatService {
             }
         }
 
-        // Enable live mode for effect tracking (skip historical effects)
+        // Enable live mode for effect/timer tracking (skip historical events)
         {
             let session_guard = session.read().await;
             session_guard.set_effect_live_mode(true);
+            session_guard.set_timer_live_mode(true);
         }
 
         // Spawn the tail task to watch for new lines

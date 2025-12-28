@@ -11,3 +11,9 @@ pub fn default_true() -> bool {
 pub fn default_timer_color() -> [u8; 4] {
     [200, 200, 200, 255]
 }
+
+/// Default entity filter for boss timer source/target (matches any entity)
+/// Boss timers need permissive defaults since abilities come from NPCs, not players.
+pub fn default_entity_filter_any() -> crate::effects::EntityFilter {
+    crate::effects::EntityFilter::Any
+}

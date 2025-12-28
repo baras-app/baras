@@ -56,7 +56,7 @@ trigger = { type = "combat_start" }
 [[boss.timer]]
 id = "lord_kherus_drain_25"
 name = "Drain 25"
-trigger = { type = "boss_hp_below", hp_percent = 25.0, boss_name = "Lord Kherus" }
+trigger = { type = "boss_hp_threshold", hp_percent = 25.0, boss_name = "Lord Kherus" }
 duration_secs = 25.0
 color = [39, 217, 220, 255]
 difficulties = ["veteran", "master"]
