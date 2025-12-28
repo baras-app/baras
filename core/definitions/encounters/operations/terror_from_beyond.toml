@@ -602,26 +602,55 @@ id = "the_terror_from_beyond"
 name = "The Terror From Beyond"
 difficulties = ["story", "veteran", "master"]
 
+# ─── Phases ─────────────────────────────────────────────────────────────────────
+
+[[boss.phases]]
+id = "tfb_phase1"
+name = "Tunneling Tentacles"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "tfb_phase2"
+name = "Platforms"
+trigger = { type = "entity_first_seen", npc_id = 3025233229381632 }
+preceded_by = "tfb_phase1"
+
+[[boss.phases]]
+id = "tfb_burn"
+name = "Burn"
+trigger = { type = "counter_reaches", counter_id = "grasping_death_count", value = 6}
+# ─── Counters ───────────────────────────────────────────────────────────────────
+
 # Counter for Grasping Tentacle deaths (for phase 2 respawn timing)
 [[boss.counters]]
 id = "grasping_death_count"
 increment_on = { type = "entity_death", entity_name = "Grasping Tentacle" }
 
+# ─── Entities ───────────────────────────────────────────────────────────────────
+
+# Phase 1 - push to 50% to trigger transition
 [[boss.entities]]
-name = "The Terror From Beyond"
-ids = [3025220344479744, 3025233229381632]
+name = "Terror (P1)"
+ids = [3025220344479744]
+is_boss = true
+triggers_encounter = true
+
+# Phase 2 - the kill target
+[[boss.entities]]
+name = "Terror (P2)"
+ids = [3025233229381632]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Grasping Tentacle"
 ids = [3025284768989184]
-is_boss = false
+is_boss = true
 
 [[boss.entities]]
 name = "Tunneling Tentacle"
 ids = [3025258999185408, 3025271884087296]
-is_boss = false
+is_boss = true
 triggers_encounter = true
 
 [[boss.entities]]
