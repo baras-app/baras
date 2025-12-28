@@ -1210,6 +1210,8 @@ impl EventProcessor {
         if effect_id == effect_id::TARGETSET {
             signals.push(GameSignal::TargetChanged {
                 source_id: event.source_entity.log_id,
+                source_npc_id: event.source_entity.class_id,
+                source_name: event.source_entity.name,
                 target_id: event.target_entity.log_id,
                 target_name: event.target_entity.name,
                 target_npc_id: event.target_entity.class_id,

@@ -804,6 +804,37 @@ impl TimerManager {
         }
     }
 
+    /// Handle target set - check for TargetSet triggers (e.g., sphere targeting player)
+    fn handle_target_set(
+        &mut self,
+        _source_id: i64,
+        source_npc_id: i64,
+        source_name: IStr,
+        target_id: i64,
+        target_entity_type: EntityType,
+        target_name: IStr,
+        timestamp: NaiveDateTime,
+    ) {
+        // Resolve source name for matching
+        let source_name_str = crate::context::resolve(source_name);
+
+        // Find matching TargetSet timers
+        let matching: Vec<_> = self.definitions
+            .values()
+            .filter(|d| d.matches_target_set(source_npc_id, Some(&source_name_str)) && self.is_definition_active(d))
+            .cloned()
+            .collect();
+
+        for def in matching {
+            // Check target filter (e.g., local_player, any_player, etc.)
+            if !self.matches_entity_filter(&def.target, target_id, target_entity_type, target_name) {
+                continue;
+            }
+            eprintln!("[TIMER] Starting target-set timer '{}' (targeted by {} [{}])", def.name, source_name_str, source_npc_id);
+            self.start_timer(&def, timestamp, None);
+        }
+    }
+
     /// Handle time elapsed - check for TimeElapsed triggers
     fn handle_time_elapsed(&mut self, timestamp: NaiveDateTime) {
         let Some(start_time) = self.combat_start_time else {
@@ -975,8 +1006,29 @@ impl SignalHandler for TimerManager {
             // throughout the fight, regardless of what the player is currently targeting.
             // This ensures timers like "Mighty Leap" work even when the player isn't
             // targeting the boss.
-            GameSignal::TargetChanged { .. } | GameSignal::TargetCleared { .. } => {
-                // No-op for timer manager - boss context comes from BossEncounterDetected
+            GameSignal::TargetChanged {
+                source_id,
+                source_npc_id,
+                source_name,
+                target_id,
+                target_entity_type,
+                target_name,
+                timestamp,
+                ..
+            } => {
+                // Check for TargetSet triggers (e.g., sphere targeting player)
+                self.handle_target_set(
+                    *source_id,
+                    *source_npc_id,
+                    *source_name,
+                    *target_id,
+                    *target_entity_type,
+                    *target_name,
+                    *timestamp,
+                );
+            }
+            GameSignal::TargetCleared { .. } => {
+                // No-op for timer manager
             }
 
             // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────

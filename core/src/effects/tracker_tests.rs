@@ -944,6 +944,8 @@ fn test_target_tracking_for_ability_refresh() {
     // Track target
     tracker.handle_signal(&GameSignal::TargetChanged {
         source_id: 1,
+        source_npc_id: 0,
+        source_name: IStr::default(),
         target_id: 99,
         target_name: IStr::default(),
         target_npc_id: 0,

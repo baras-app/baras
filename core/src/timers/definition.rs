@@ -113,6 +113,19 @@ pub enum TimerTrigger {
         timer_id: String,
     },
 
+    /// NPC sets its target to someone (e.g., sphere targeting player)
+    TargetSet {
+        /// Entity reference from roster (preferred)
+        #[serde(default)]
+        entity: Option<String>,
+        /// NPC ID of the entity doing the targeting
+        #[serde(default)]
+        npc_id: Option<i64>,
+        /// Entity name fallback for the targeter
+        #[serde(default)]
+        entity_name: Option<String>,
+    },
+
     // ─── Logical Composition ─────────────────────────────────────────────────
 
     /// Any condition suffices (OR logic)
@@ -295,6 +308,11 @@ impl TimerDefinition {
     /// Returns true if combat_time just crossed the threshold
     pub fn matches_time_elapsed(&self, old_combat_secs: f32, new_combat_secs: f32) -> bool {
         trigger_matches_time_elapsed(&self.trigger, old_combat_secs, new_combat_secs)
+    }
+
+    /// Check if this timer triggers when an NPC sets its target (handles compound conditions)
+    pub fn matches_target_set(&self, source_npc_id: i64, source_name: Option<&str>) -> bool {
+        trigger_matches_target_set(&self.trigger, source_npc_id, source_name)
     }
 
     /// Check if this timer is active for a given encounter context
@@ -524,6 +542,33 @@ fn trigger_matches_time_elapsed(trigger: &TimerTrigger, old_secs: f32, new_secs:
         }
         TimerTrigger::AnyOf { conditions } => {
             conditions.iter().any(|c| trigger_matches_time_elapsed(c, old_secs, new_secs))
+        }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches target set (handles AnyOf recursively)
+/// Triggers when an NPC sets its target to someone
+/// Note: `entity` roster resolution happens at a higher level (TimerManager)
+fn trigger_matches_target_set(trigger: &TimerTrigger, source_npc_id: i64, source_name: Option<&str>) -> bool {
+    match trigger {
+        TimerTrigger::TargetSet { entity: _, npc_id: filter_npc_id, entity_name: filter_name } => {
+            // Check NPC ID filter first (most reliable)
+            if let Some(required_npc_id) = filter_npc_id {
+                return *required_npc_id == source_npc_id;
+            }
+            // Check entity name filter
+            if let Some(required_name) = filter_name {
+                if let Some(actual_name) = source_name {
+                    return required_name.eq_ignore_ascii_case(actual_name);
+                }
+                return false;
+            }
+            // No filter specified = match nothing (require at least one filter)
+            false
+        }
+        TimerTrigger::AnyOf { conditions } => {
+            conditions.iter().any(|c| trigger_matches_target_set(c, source_npc_id, source_name))
         }
         _ => false,
     }

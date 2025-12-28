@@ -102,6 +102,9 @@ pub enum GameSignal {
     /// Entity changed their target (TARGETSET effect)
     TargetChanged {
         source_id: i64,
+        /// NPC class/template ID of source (for timer triggers when NPC targets player)
+        source_npc_id: i64,
+        source_name: IStr,
         target_id: i64,
         target_name: IStr,
         /// NPC class/template ID (for boss detection)
