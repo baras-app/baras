@@ -728,6 +728,13 @@ impl EventProcessor {
                     }
                 })
             }
+            PhaseTrigger::CounterReaches { counter_id, value } => {
+                // Check if a CounterChanged signal shows the counter reached the target value
+                signals.iter().any(|s| {
+                    matches!(s, GameSignal::CounterChanged { counter_id: cid, new_value, .. }
+                        if cid == counter_id && *new_value == *value)
+                })
+            }
             PhaseTrigger::AnyOf { conditions } => {
                 conditions.iter().any(|c| self.check_signal_phase_trigger(c, signals))
             }
