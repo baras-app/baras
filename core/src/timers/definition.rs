@@ -188,13 +188,14 @@ pub struct TimerDefinition {
     pub show_on_raid_frames: bool,
 
     // ─── Alerts ─────────────────────────────────────────────────────────────
+    // TODO: Wire up alert functionality - should_alert() exists but is never called
     /// Alert when this many seconds remain (None = no alert)
     pub alert_at_secs: Option<f32>,
 
     /// Custom alert text (None = use timer name)
     pub alert_text: Option<String>,
 
-    /// Audio file to play on alert
+    /// Audio file to play on alert (TODO: audio playback not yet implemented)
     pub audio_file: Option<String>,
 
     // ─── Chaining & Cancellation ────────────────────────────────────────────

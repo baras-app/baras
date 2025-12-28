@@ -85,6 +85,9 @@ impl EventProcessor {
         // Check for entity-based phase transitions (EntityFirstSeen, EntityDeath, PhaseEnded)
         signals.extend(self.check_entity_phase_transitions(cache, &signals, event.timestamp));
 
+        // Update combat time and check for TimeElapsed phase transitions
+        signals.extend(self.check_time_phase_transitions(cache, event.timestamp));
+
         // Process challenge metrics (accumulates values, polled with combat data)
         self.process_challenge_events(&event, cache);
 
@@ -304,6 +307,7 @@ impl EventProcessor {
                 // Clone data from definition before taking mutable borrows
                 let def = &cache.boss_definitions[idx];
                 let challenges = def.challenges.clone();
+                let counters = def.counters.clone();
                 let npc_ids: Vec<i64> = def.boss_npc_ids().collect();
                 let def_id = def.id.clone();
                 let boss_name = def.name.clone();
@@ -333,7 +337,7 @@ impl EventProcessor {
                 // Activate initial phase (CombatStart trigger)
                 if let Some(ref initial) = initial_phase {
                     cache.boss_state.set_phase(&initial.id, event.timestamp);
-                    cache.boss_state.reset_counters(&initial.resets_counters);
+                    cache.boss_state.reset_counters_to_initial(&initial.resets_counters, &counters);
 
                     signals.push(GameSignal::PhaseChanged {
                         boss_id: def_id,
@@ -417,6 +421,7 @@ impl EventProcessor {
         };
 
         let def = &cache.boss_definitions[def_idx];
+        let counter_defs = def.counters.clone();
         let current_phase = cache.boss_state.current_phase.clone();
         let previous_phase = cache.boss_state.previous_phase.clone();
 
@@ -449,7 +454,7 @@ impl EventProcessor {
                 let resets = phase.resets_counters.clone();
 
                 cache.boss_state.set_phase(&new_phase_id, timestamp);
-                cache.boss_state.reset_counters(&resets);
+                cache.boss_state.reset_counters_to_initial(&resets, &counter_defs);
 
                 // Update challenge tracker phase for duration tracking
                 if let Some(enc) = cache.current_encounter_mut() {
@@ -579,6 +584,7 @@ impl EventProcessor {
         };
 
         let def = &cache.boss_definitions[def_idx];
+        let counter_defs = def.counters.clone();
         let current_phase = cache.boss_state.current_phase.clone();
         let previous_phase = cache.boss_state.previous_phase.clone();
 
@@ -615,7 +621,7 @@ impl EventProcessor {
                 let resets = phase.resets_counters.clone();
 
                 cache.boss_state.set_phase(&new_phase_id, event.timestamp);
-                cache.boss_state.reset_counters(&resets);
+                cache.boss_state.reset_counters_to_initial(&resets, &counter_defs);
 
                 // Update challenge tracker phase for duration tracking
                 if let Some(enc) = cache.current_encounter_mut() {
@@ -750,6 +756,7 @@ impl EventProcessor {
 
         // Clone what we need before mutable borrow
         let phases: Vec<_> = cache.boss_definitions[def_idx].phases.clone();
+        let counter_defs = cache.boss_definitions[def_idx].counters.clone();
         let boss_id = cache.boss_definitions[def_idx].id.clone();
         let current_phase = cache.boss_state.current_phase.clone();
         let previous_phase = cache.boss_state.previous_phase.clone();
@@ -784,7 +791,7 @@ impl EventProcessor {
                 let resets = phase.resets_counters.clone();
 
                 cache.boss_state.set_phase(&new_phase_id, timestamp);
-                cache.boss_state.reset_counters(&resets);
+                cache.boss_state.reset_counters_to_initial(&resets, &counter_defs);
 
                 // Update challenge tracker phase for duration tracking
                 if let Some(enc) = cache.current_encounter_mut() {
@@ -805,6 +812,93 @@ impl EventProcessor {
         signals
     }
 
+    /// Check for phase transitions based on combat time (TimeElapsed triggers).
+    fn check_time_phase_transitions(
+        &self,
+        cache: &mut SessionCache,
+        timestamp: chrono::NaiveDateTime,
+    ) -> Vec<GameSignal> {
+        let Some(def_idx) = cache.active_boss_idx else {
+            return Vec::new();
+        };
+
+        // Update combat time and get old/new values for threshold detection
+        let (old_time, new_time) = cache.boss_state.update_combat_time(timestamp);
+
+        // No time progression means no threshold crossings
+        if new_time <= old_time {
+            return Vec::new();
+        }
+
+        // Clone what we need before mutable borrow
+        let phases: Vec<_> = cache.boss_definitions[def_idx].phases.clone();
+        let counter_defs = cache.boss_definitions[def_idx].counters.clone();
+        let boss_id = cache.boss_definitions[def_idx].id.clone();
+        let current_phase = cache.boss_state.current_phase.clone();
+        let previous_phase = cache.boss_state.previous_phase.clone();
+
+        for phase in &phases {
+            // Don't re-enter the current phase
+            if current_phase.as_ref() == Some(&phase.id) {
+                continue;
+            }
+
+            // Check preceded_by guard
+            if let Some(ref required) = phase.preceded_by {
+                let last_phase = current_phase.as_ref().or(previous_phase.as_ref());
+                if last_phase != Some(required) {
+                    continue;
+                }
+            }
+
+            // Check counter_condition guard
+            if let Some(ref cond) = phase.counter_condition {
+                if !cache.boss_state.check_counter_condition(cond) {
+                    continue;
+                }
+            }
+
+            // Check TimeElapsed trigger
+            if self.check_time_trigger(&phase.start_trigger, old_time, new_time) {
+                let old_phase = cache.boss_state.current_phase.clone();
+                let new_phase_id = phase.id.clone();
+                let resets = phase.resets_counters.clone();
+
+                cache.boss_state.set_phase(&new_phase_id, timestamp);
+                cache.boss_state.reset_counters_to_initial(&resets, &counter_defs);
+
+                // Update challenge tracker phase for duration tracking
+                if let Some(enc) = cache.current_encounter_mut() {
+                    enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
+                }
+
+                return vec![GameSignal::PhaseChanged {
+                    boss_id,
+                    old_phase,
+                    new_phase: new_phase_id,
+                    timestamp,
+                }];
+            }
+        }
+
+        Vec::new()
+    }
+
+    /// Check if a TimeElapsed trigger is satisfied (time crossed threshold).
+    fn check_time_trigger(&self, trigger: &crate::boss::PhaseTrigger, old_time: f32, new_time: f32) -> bool {
+        use crate::boss::PhaseTrigger;
+
+        match trigger {
+            PhaseTrigger::TimeElapsed { secs } => {
+                old_time < *secs && new_time >= *secs
+            }
+            PhaseTrigger::AnyOf { conditions } => {
+                conditions.iter().any(|c| self.check_time_trigger(c, old_time, new_time))
+            }
+            _ => false,
+        }
+    }
+
     /// Check for counter increments based on events.
     fn check_counter_increments(
         &self,
@@ -821,8 +915,11 @@ impl EventProcessor {
 
         for counter in &def.counters {
             if self.check_counter_trigger(&counter.increment_on, event, current_signals, def) {
-                let old_value = cache.boss_state.get_counter(&counter.id);
-                let new_value = cache.boss_state.increment_counter(&counter.id);
+                let (old_value, new_value) = cache.boss_state.modify_counter(
+                    &counter.id,
+                    counter.decrement,
+                    counter.set_value,
+                );
 
                 signals.push(GameSignal::CounterChanged {
                     counter_id: counter.id.clone(),

@@ -266,9 +266,6 @@ pub enum PhaseTrigger {
         effect_ids: Vec<u64>,
     },
 
-    /// Timer expires
-    TimerExpires { timer_id: String },
-
     /// Counter reaches value
     CounterReaches { counter_id: String, value: u32 },
 
@@ -550,7 +547,7 @@ pub struct BossTimerDefinition {
     /// - timer_started: cancel when another timer starts
     pub cancel_trigger: Option<crate::timers::TimerTrigger>,
 
-    /// Alert when this many seconds remain
+    /// Alert when this many seconds remain (TODO: not yet wired up)
     pub alert_at_secs: Option<f32>,
 
     /// Show on raid frames instead of timer bar

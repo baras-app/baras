@@ -8,7 +8,7 @@
 use chrono::NaiveDateTime;
 use std::collections::{HashMap, HashSet};
 
-use super::CounterCondition;
+use super::{CounterCondition, CounterDefinition};
 use super::ChallengeContext;
 
 /// Runtime state for a boss encounter
@@ -52,6 +52,9 @@ pub struct BossEncounterState {
 
     /// Elapsed combat time in seconds
     pub combat_time_secs: f32,
+
+    /// Previous combat time (for TimeElapsed threshold detection)
+    pub prev_combat_time_secs: f32,
 
     /// NPC IDs of kill targets that have died during this encounter
     /// Used to determine if combat should end when all kill targets are dead
@@ -97,6 +100,7 @@ impl BossEncounterState {
         self.hp_by_name.clear();
         self.combat_start = None;
         self.combat_time_secs = 0.0;
+        self.prev_combat_time_secs = 0.0;
         self.dead_kill_targets.clear();
     }
 
@@ -297,6 +301,28 @@ impl BossEncounterState {
         *count
     }
 
+    /// Modify a counter based on definition (supports increment, decrement, or set_value)
+    /// Returns (old_value, new_value)
+    pub fn modify_counter(&mut self, counter_id: &str, decrement: bool, set_value: Option<u32>) -> (u32, u32) {
+        let old_value = self.get_counter(counter_id);
+        let new_value = if let Some(val) = set_value {
+            val
+        } else if decrement {
+            old_value.saturating_sub(1)
+        } else {
+            old_value + 1
+        };
+        self.counters.insert(counter_id.to_string(), new_value);
+        (old_value, new_value)
+    }
+
+    /// Decrement a counter (saturates at 0) and return the new value
+    pub fn decrement_counter(&mut self, counter_id: &str) -> u32 {
+        let count = self.counters.entry(counter_id.to_string()).or_insert(0);
+        *count = count.saturating_sub(1);
+        *count
+    }
+
     /// Get the current value of a counter
     pub fn get_counter(&self, counter_id: &str) -> u32 {
         self.counters.get(counter_id).copied().unwrap_or(0)
@@ -312,10 +338,22 @@ impl BossEncounterState {
         self.counters.insert(counter_id.to_string(), 0);
     }
 
-    /// Reset multiple counters
+    /// Reset multiple counters (to 0)
     pub fn reset_counters(&mut self, counter_ids: &[String]) {
         for id in counter_ids {
             self.counters.insert(id.clone(), 0);
+        }
+    }
+
+    /// Reset multiple counters to their initial values (using definitions)
+    pub fn reset_counters_to_initial(&mut self, counter_ids: &[String], definitions: &[CounterDefinition]) {
+        for id in counter_ids {
+            let initial = definitions
+                .iter()
+                .find(|d| d.id == *id)
+                .map(|d| d.initial_value)
+                .unwrap_or(0);
+            self.counters.insert(id.clone(), initial);
         }
     }
 
@@ -334,14 +372,18 @@ impl BossEncounterState {
     pub fn start_combat(&mut self, timestamp: NaiveDateTime) {
         self.combat_start = Some(timestamp);
         self.combat_time_secs = 0.0;
+        self.prev_combat_time_secs = 0.0;
     }
 
-    /// Update combat time
-    pub fn update_combat_time(&mut self, current_timestamp: NaiveDateTime) {
+    /// Update combat time and return (old_time, new_time) for threshold checking
+    pub fn update_combat_time(&mut self, current_timestamp: NaiveDateTime) -> (f32, f32) {
+        let old_time = self.combat_time_secs;
         if let Some(start) = self.combat_start {
             let duration = current_timestamp - start;
             self.combat_time_secs = duration.num_milliseconds() as f32 / 1000.0;
         }
+        self.prev_combat_time_secs = old_time;
+        (old_time, self.combat_time_secs)
     }
 
     /// Check if boss is below HP threshold
