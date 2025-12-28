@@ -68,7 +68,7 @@ difficulties = ["veteran", "master"]
 id = "zt_baradium_poisoning"
 name = "Baradium Poisoning"
 is_alert = true
-trigger = { type = "ability_cast", ability_ids = [3004561551785984] }
+trigger = { type = "effect_applied", effect_ids = [3004561551786240] }
 target = "local_player"
 alert_text = "Use Medpack!"
 difficulties = ["master"]
@@ -150,19 +150,19 @@ difficulties = ["veteran", "master"]
 
 [[boss.entities]]
 name = "Firebrand"
-ids = []
+ids = [2876434087411712]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Stormcaller"
-ids = []
+ids = [2876438382379008]
 is_boss = true
 is_kill_target = true
 
 [[boss.counters]]
 id = "fs_defensive_systems_ct"
-increment_on = { type = "effect_removed", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+increment_on = { type = "phase_ended", phase_id="fs_shield"}
 reset_on = { type = "combat_end" }
 initial_value = 0
 
@@ -321,20 +321,6 @@ color = [24, 92, 224, 255]
 difficulties = ["veteran", "master"]
 
 # -- Alerts --
-[[boss.timer]]
-id = "fs_defensive_systems"
-name = "Defensive Systems"
-is_alert = true
-trigger = { type = "any_of", conditions = [
-    { type = "phase_entered", phase_id = "fs_shield_1" },
-    { type = "phase_entered", phase_id = "fs_shield_2" },
-    { type = "phase_entered", phase_id = "fs_shield_3" },
-    { type = "phase_entered", phase_id = "fs_shield_4" }
-]}
-alert_text = "Defensive Systems"
-color = [28, 176, 219, 255]
-difficulties = ["veteran", "master"]
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Colonel Vorgath
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -345,14 +331,29 @@ difficulties = ["veteran", "master"]
 
 [[boss.entities]]
 name = "Colonel Vorgath"
-ids = []
+ids = [2854117437341696]
 is_boss = true
 is_kill_target = true
 
+[[boss.entities]]
+name = "Vorgath Hologram"
+ids = [2813182104043520]
+is_boss = true
+is_kill_target = false
+
+[[boss.entities]]
+name = "Imperial Demolitions Probe"
+ids = [2854151797080064]
+
 [[boss.phases]]
 id = "cv_main"
-name = "Vorgath"
+name = "Minefield"
 trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "cv_vorgath"
+name = "Vorgath"
+trigger = {type = "boss_hp_below", hp_percent = 99.9, boss_name = "Colonel Vorgath"}
 
 # -- Timers --
 [[boss.timer]]
@@ -423,6 +424,8 @@ is_kill_target = true
 [[boss.entities]]
 name = "Warstrider Battlewalker"
 ids = [2876532871659520]
+is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Siege Droid"
@@ -436,7 +439,7 @@ initial_value = 0
 
 [[boss.counters]]
 id = "walker_burns"
-increment_on = {type = "effect_applied", effect_ids = [2815376832331776] }
+increment_on = {type = "phase_ended", phase_id = "walker_burn"}
 reset_on = { type = "combat_end" }
 initial_value = 0
 
@@ -478,7 +481,7 @@ end_trigger = {type = "effect_removed", effect_ids = [2815376832331776] }
 [[boss.phases]]
 id = "wk_kephess_burn"
 name = "Kephess Burn"
-trigger = {type = "boss_hp_below", hp_percent = 59.0, name = "Warlord Kephess"}
+trigger = {type = "boss_hp_below", hp_percent = 59.0, boss_name = "Warlord Kephess"}
 
 # -- Timers --
 [[boss.timer]]

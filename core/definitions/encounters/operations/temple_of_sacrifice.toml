@@ -3,7 +3,7 @@
 
 [area]
 name = "Temple of Sacrifice"
-area_id = 0  # TODO: Need area ID
+area_id = 3367426158755840
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Malaphar the Savage
@@ -11,7 +11,7 @@ area_id = 0  # TODO: Need area ID
 [[boss]]
 id = "malaphar"
 name = "Malaphar the Savage"
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.entities]]
 name = "Malaphar the Savage"
@@ -31,7 +31,7 @@ name = "Adds"
 trigger = { type = "combat_start" }
 duration_secs = 30
 color = [21, 153, 20, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # -- Ability Timers --
 [[boss.timer]]
@@ -40,7 +40,7 @@ name = "Adds"
 trigger = { type = "ability_cast", ability_ids = [3469470286741504] }
 duration_secs = 45
 color = [21, 153, 20, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "mal_hammer_smash"
@@ -48,7 +48,7 @@ name = "Hammer Smash"
 trigger = { type = "ability_cast", ability_ids = [3437760543195136] }
 duration_secs = 5
 color = [229, 123, 29, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "mal_spear_toss"
@@ -56,7 +56,7 @@ name = "Spear Toss"
 trigger = { type = "ability_cast", ability_ids = [3440333228605440] }
 duration_secs = 10
 color = [164, 29, 224, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "mal_spear_fixate"
@@ -64,7 +64,7 @@ name = "Spear Fixate"
 trigger = { type = "effect_applied", effect_ids = [3437799197900800] }
 duration_secs = 3
 color = [164, 29, 224, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # -- Alerts --
 [[boss.timer]]
@@ -75,7 +75,7 @@ trigger = { type = "effect_applied", effect_ids = [3434788425826304] }
 target = "local_player"
 alert_text = "Savagery!"
 color = [224, 34, 33, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Sword Squadron
@@ -83,7 +83,7 @@ difficulties = ["veteran", "master"]
 [[boss]]
 id = "sword_squadron"
 name = "Sword Squadron"
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.entities]]
 name = "Sword Squadron Unit 1"
@@ -109,7 +109,7 @@ name = "Shield"
 trigger = { type = "combat_start" }
 duration_secs = 30
 color = [32, 34, 219, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "ss_gravity_cs"
@@ -125,7 +125,7 @@ name = "Rapid Fire"
 trigger = { type = "combat_start" }
 duration_secs = 15
 color = [224, 123, 29, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "ss_ground_grenade_cs"
@@ -133,7 +133,7 @@ name = "Ground/Grenade"
 trigger = { type = "combat_start" }
 duration_secs = 20
 color = [36, 214, 210, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # -- Ability Timers --
 [[boss.timer]]
@@ -142,7 +142,7 @@ name = "Shield"
 trigger = { type = "ability_cast", ability_ids = [3498933762392064] }
 duration_secs = 45  # ORBS screenshot shows 45s (not 60s from extraction)
 color = [29, 39, 224, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "ss_gravity"
@@ -158,7 +158,7 @@ name = "Mine + Droid"
 trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
 duration_secs = 45
 color = [21, 153, 20, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "ss_huge_grenade"
@@ -166,7 +166,7 @@ name = "Huge Grenade"
 trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
 duration_secs = 30
 color = [153, 153, 21, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "ss_mega_blast"
@@ -174,7 +174,7 @@ name = "Mega Blast"
 trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
 duration_secs = 17
 color = [189, 24, 185, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "ss_rapid_fire"
@@ -182,7 +182,7 @@ name = "Rapid Fire"
 trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
 duration_secs = 25
 color = [224, 123, 29, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # -- Alerts --
 [[boss.timer]]
@@ -193,7 +193,7 @@ trigger = { type = "effect_removed", effect_ids = [3498933762392064] }
 target = { specific = "Sword Squadron Unit 1" }
 alert_text = "Shield Removed"
 color = [42, 32, 219, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # -- Rain of Missiles (counter-gated repeating timer) --
 # Logic: Timer only fires when counter is 0, then locks (counter=1) until timer expires
@@ -217,7 +217,7 @@ source = { specific = "Sword Squadron Unit 2" }
 counter_condition = { counter_id = "rain_lock", operator = "eq", value = 0 }
 duration_secs = 19
 color = [219, 32, 28, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # Alert: Notify when Rain of Missiles timer expires (next cast incoming)
 [[boss.timer]]
@@ -227,7 +227,7 @@ is_alert = true
 trigger = { type = "timer_expires", timer_id = "ss_rain_of_missiles" }
 alert_text = "Rain Incoming!"
 color = [219, 32, 28, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # The Underlurker
@@ -235,7 +235,7 @@ difficulties = ["veteran", "master"]
 [[boss]]
 id = "underlurker"
 name = "The Underlurker"
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.entities]]
 name = "The Underlurker"
@@ -255,7 +255,7 @@ name = "Collapse"
 trigger = { type = "ability_cast", ability_ids = [3512467204341760] }
 duration_secs = 15
 color = [41, 29, 224, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "ul_rage_storm"
@@ -263,7 +263,7 @@ name = "Rage Storm"
 trigger = { type = "ability_cast", ability_ids = [3411423803736064] }
 duration_secs = 10.5
 color = [224, 35, 33, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "ul_leap"
@@ -271,7 +271,7 @@ name = "Leap"
 trigger = { type = "ability_cast", ability_ids = [3411569832624128] }
 duration_secs = 9
 color = [180, 184, 23, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "ul_adds"
@@ -279,7 +279,7 @@ name = "Adds"
 trigger = { type = "ability_cast", ability_ids = [3413575582351360] }
 duration_secs = 10
 color = [24, 173, 19, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # -- HP Threshold Alerts --
 [[boss.timer]]
@@ -289,7 +289,7 @@ is_alert = true
 trigger = { type = "boss_hp_threshold", hp_percent = 90.0, boss_name = "The Underlurker" }
 alert_text = "Adds Spawn"
 color = [24, 173, 19, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # NOTE from guide: The encounter has 5 cycles (enrage at 4:50min / 290s)
 # Each cycle: Lurkerlings spawn → Collapse (9s channel) → Rage Storm (7s channel) → Cross Phase (Devastation 7s cast)
@@ -308,7 +308,7 @@ difficulties = ["veteran", "master"]
 [[boss]]
 id = "revanite_commanders"
 name = "Revanite Commanders"
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.entities]]
 name = "Deron Cadoruso"
@@ -340,7 +340,7 @@ name = "Sano Kick"
 trigger = { type = "ability_cast", ability_ids = [3461713575804928] }
 duration_secs = 14
 color = [179, 175, 23, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # -- Alerts --
 [[boss.timer]]
@@ -351,7 +351,7 @@ trigger = { type = "ability_cast", ability_ids = [3462744367955968] }
 source = { specific = "Deron Cadoruso" }
 alert_text = "Burn Phase"
 color = [36, 214, 213, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "rc_deron_reset"
@@ -360,7 +360,7 @@ is_alert = true
 trigger = { type = "ability_cast", ability_ids = [3476930644934656] }
 alert_text = "Deron Reset"
 color = [224, 168, 33, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # -- HP Threshold Alerts (66%) --
 [[boss.timer]]
@@ -370,7 +370,7 @@ is_alert = true
 trigger = { type = "boss_hp_threshold", hp_percent = 66.0, boss_name = "Deron Cadoruso" }
 alert_text = "Deron 66%"
 color = [219, 31, 28, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "rc_sano_66"
@@ -379,7 +379,7 @@ is_alert = true
 trigger = { type = "boss_hp_threshold", hp_percent = 66.0, boss_name = "Sano Thrica" }
 alert_text = "Sano 66%"
 color = [219, 32, 36, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "rc_kurse_66"
@@ -388,7 +388,7 @@ is_alert = true
 trigger = { type = "boss_hp_threshold", hp_percent = 66.0, boss_name = "Lord Kurse" }
 alert_text = "Kurse 66%"
 color = [219, 29, 28, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # -- HP Threshold Alerts (31%) --
 [[boss.timer]]
@@ -398,7 +398,7 @@ is_alert = true
 trigger = { type = "boss_hp_threshold", hp_percent = 31.0, boss_name = "Deron Cadoruso" }
 alert_text = "Deron 31%"
 color = [219, 29, 28, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "rc_sano_31"
@@ -407,7 +407,7 @@ is_alert = true
 trigger = { type = "boss_hp_threshold", hp_percent = 31.0, boss_name = "Sano Thrica" }
 alert_text = "Sano 31%"
 color = [219, 33, 32, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "rc_kurse_31"
@@ -416,7 +416,7 @@ is_alert = true
 trigger = { type = "boss_hp_threshold", hp_percent = 31.0, boss_name = "Lord Kurse" }
 alert_text = "Kurse 31%"
 color = [224, 24, 24, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 # TODO: The following timers use complex AND logic tracking add deaths (entity_died triggers):
 #
@@ -457,25 +457,25 @@ difficulties = ["story", "veteran"]
 # -- Entities --
 [[boss.entities]]
 name = "Revan"
-ids = []
+ids = [3431605855059968]
 is_boss = true
 is_kill_target = false  # Core is the actual kill target
 
 [[boss.entities]]
 name = "HK-47"
-ids = []
+ids = [3444310368321536]
 is_boss = true
 is_kill_target = false
 
 [[boss.entities]]
 name = "Machine Focus"
-ids = []
+ids = [3440805675008000]
 is_boss = false
 is_kill_target = false
 
 [[boss.entities]]
 name = "Machine Core"
-ids = []
+ids = [3447583133401088]
 is_boss = true
 is_kill_target = true
 
@@ -529,7 +529,7 @@ trigger = { type = "combat_start" }
 id = "revan_hk47"
 name = "HK-47"
 preceded_by = "revan_p1"
-trigger = { type = "boss_hp_below", hp_percent = 64.0, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 64.1, boss_name = "Revan" }
 
 # -- Foci Transition (runs to Floor 2) --
 [[boss.phases]]
@@ -543,7 +543,6 @@ trigger = { type = "boss_hp_below", hp_percent = 10.0, boss_name = "HK-47" }
 [[boss.phases]]
 id = "revan_p3"
 name = "Floor 2 - Revan"
-preceded_by = "revan_foci"
 trigger = { type = "counter_reaches", counter_id = "foci_deaths", value = 4 }
 
 # -- Resonance Transition (Revan channels for 120s) --
@@ -551,7 +550,7 @@ trigger = { type = "counter_reaches", counter_id = "foci_deaths", value = 4 }
 id = "revan_resonance"
 name = "Resonance"
 preceded_by = "revan_p3"
-trigger = { type = "boss_hp_below", hp_percent = 28.0, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 28.1, boss_name = "Revan" }
 
 # -- Phase 4: Third Floor - Revan 28% to 9% --
 # Triggers when Resonance shield effect is removed (interrupted by damage)
@@ -566,7 +565,7 @@ trigger = { type = "effect_removed", effect_ids = [3447578838433792] }
 id = "revan_core"
 name = "Core"
 preceded_by = "revan_p4"
-trigger = { type = "boss_hp_below", hp_percent = 9.0, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 9.1, boss_name = "Revan" }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Timers - Phase 1 (Floor 1 - Revan)
@@ -704,17 +703,22 @@ trigger = { type = "ability_cast", ability_ids = [3455881010216960] }
 duration_secs = 9.5
 color = [214, 33, 32, 255]
 difficulties = ["veteran"]
+phases = ["revan_p3"]
 
-# Pull follows Push
+# Pull follows Push (loops back with push_chain)
 [[boss.timer]]
 id = "rev_pull_p3"
 name = "Pull"
-trigger = { type = "timer_expires", timer_id = "rev_push_p3" }
+trigger = { type = "any_of", conditions = [
+    { type = "timer_expires", timer_id = "rev_push_p3" },
+    { type = "timer_expires", timer_id = "rev_push_p3_chain" }
+]}
 duration_secs = 15
 color = [32, 214, 214, 255]
 difficulties = ["veteran"]
+phases = ["revan_p3"]
 
-# Push follows Pull (chain continues)
+# Push follows Pull (loops back)
 [[boss.timer]]
 id = "rev_push_p3_chain"
 name = "Push"
@@ -722,15 +726,7 @@ trigger = { type = "timer_expires", timer_id = "rev_pull_p3" }
 duration_secs = 15
 color = [214, 33, 32, 255]
 difficulties = ["veteran"]
-
-# Pull follows Push (continues the loop)
-[[boss.timer]]
-id = "rev_pull_p3_chain"
-name = "Pull"
-trigger = { type = "timer_expires", timer_id = "rev_push_p3_chain" }
-duration_secs = 15
-color = [32, 214, 214, 255]
-difficulties = ["veteran"]
+phases = ["revan_p3"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Timers - Phase 4 (Floor 3 - Revan)
@@ -749,6 +745,7 @@ difficulties = ["story", "veteran"]
 # Guide: "Push and Pull are on the third floor as well. This time, they happen every 12 seconds."
 
 # Initial Push after Resonance ends
+# Note: No phase restriction - this timer's trigger IS the phase transition
 [[boss.timer]]
 id = "rev_push_p4"
 name = "Push"
@@ -757,16 +754,20 @@ duration_secs = 16
 color = [219, 30, 28, 255]
 difficulties = ["veteran"]
 
-# Pull follows Push
+# Pull follows Push (loops back with push_chain)
 [[boss.timer]]
 id = "rev_pull_p4"
 name = "Pull"
-trigger = { type = "timer_expires", timer_id = "rev_push_p4" }
+trigger = { type = "any_of", conditions = [
+    { type = "timer_expires", timer_id = "rev_push_p4" },
+    { type = "timer_expires", timer_id = "rev_push_p4_chain" }
+]}
 duration_secs = 12
 color = [28, 219, 214, 255]
 difficulties = ["veteran"]
+phases = ["revan_p4"]
 
-# Push follows Pull (every 12s)
+# Push follows Pull (loops back)
 [[boss.timer]]
 id = "rev_push_p4_chain"
 name = "Push"
@@ -774,15 +775,7 @@ trigger = { type = "timer_expires", timer_id = "rev_pull_p4" }
 duration_secs = 12
 color = [219, 36, 32, 255]
 difficulties = ["veteran"]
-
-# Pull follows Push (chain continues)
-[[boss.timer]]
-id = "rev_pull_p4_chain"
-name = "Pull"
-trigger = { type = "timer_expires", timer_id = "rev_push_p4_chain" }
-duration_secs = 12
-color = [28, 219, 214, 255]
-difficulties = ["veteran"]
+phases = ["revan_p4"]
 
 # -- Heave in Phase 4 --
 [[boss.timer]]
