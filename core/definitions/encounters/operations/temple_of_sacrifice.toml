@@ -478,31 +478,6 @@ name = "Machine Core"
 ids = [3447583133401088]
 is_boss = true
 is_kill_target = true
-
-[[boss.entities]]
-name = "Force Aberration"
-ids = []
-is_boss = false
-is_kill_target = false
-
-[[boss.entities]]
-name = "Unstable Aberration"
-ids = []
-is_boss = false
-is_kill_target = false
-
-[[boss.entities]]
-name = "Entropic Surprise Probe"
-ids = []
-is_boss = false
-is_kill_target = false
-
-[[boss.entities]]
-name = "Meatbag Entropy Enhancer"
-ids = []
-is_boss = false
-is_kill_target = false
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Counters
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -695,8 +670,9 @@ difficulties = ["story", "veteran"]
 # -- Floor 2 Push/Pull Chain (HM) --
 # Guide: "After a Push comes a Pull, then again a Push and so on. It starts with Push."
 # Push knocks outwards, Pull knocks inwards
+# Uses chains_to for clean timer loops
 
-# Initial Push (triggered by ability)
+# Initial Push (triggered by ability) → chains to Pull
 [[boss.timer]]
 id = "rev_push_p3"
 name = "Push"
@@ -705,29 +681,29 @@ duration_secs = 9.5
 color = [214, 33, 32, 255]
 difficulties = ["veteran"]
 phases = ["revan_p3"]
+chains_to = "rev_pull_p3"
 
-# Pull follows Push (loops back with push_chain)
+# Pull (started via chain) → chains to Push loop
 [[boss.timer]]
 id = "rev_pull_p3"
 name = "Pull"
-trigger = { type = "any_of", conditions = [
-    { type = "timer_expires", timer_id = "rev_push_p3" },
-    { type = "timer_expires", timer_id = "rev_push_p3_chain" }
-]}
+trigger = { type = "manual" }
 duration_secs = 15
 color = [32, 214, 214, 255]
 difficulties = ["veteran"]
 phases = ["revan_p3"]
+chains_to = "rev_push_p3_loop"
 
-# Push follows Pull (loops back)
+# Push loop (started via chain) → chains back to Pull
 [[boss.timer]]
-id = "rev_push_p3_chain"
+id = "rev_push_p3_loop"
 name = "Push"
-trigger = { type = "timer_expires", timer_id = "rev_pull_p3" }
+trigger = { type = "manual" }
 duration_secs = 15
 color = [214, 33, 32, 255]
 difficulties = ["veteran"]
 phases = ["revan_p3"]
+chains_to = "rev_pull_p3"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Timers - Phase 4 (Floor 3 - Revan)
@@ -744,8 +720,9 @@ difficulties = ["story", "veteran"]
 
 # -- Floor 3 Push/Pull Chain (HM) - every 12 seconds --
 # Guide: "Push and Pull are on the third floor as well. This time, they happen every 12 seconds."
+# Uses chains_to for clean timer loops
 
-# Initial Push after Resonance ends
+# Initial Push after Resonance ends → chains to Pull
 # Note: No phase restriction - this timer's trigger IS the phase transition
 [[boss.timer]]
 id = "rev_push_p4"
@@ -754,29 +731,29 @@ trigger = { type = "effect_removed", effect_ids = [3447578838433792] }
 duration_secs = 16
 color = [219, 30, 28, 255]
 difficulties = ["veteran"]
+chains_to = "rev_pull_p4"
 
-# Pull follows Push (loops back with push_chain)
+# Pull (started via chain) → chains to Push loop
 [[boss.timer]]
 id = "rev_pull_p4"
 name = "Pull"
-trigger = { type = "any_of", conditions = [
-    { type = "timer_expires", timer_id = "rev_push_p4" },
-    { type = "timer_expires", timer_id = "rev_push_p4_chain" }
-]}
+trigger = { type = "manual" }
 duration_secs = 12
 color = [28, 219, 214, 255]
 difficulties = ["veteran"]
 phases = ["revan_p4", "revan_core"]
+chains_to = "rev_push_p4_loop"
 
-# Push follows Pull (loops back)
+# Push loop (started via chain) → chains back to Pull
 [[boss.timer]]
-id = "rev_push_p4_chain"
+id = "rev_push_p4_loop"
 name = "Push"
-trigger = { type = "timer_expires", timer_id = "rev_pull_p4" }
+trigger = { type = "manual" }
 duration_secs = 12
 color = [219, 36, 32, 255]
 difficulties = ["veteran"]
 phases = ["revan_p4", "revan_core"]
+chains_to = "rev_pull_p4"
 
 # -- Heave in Phase 4 --
 [[boss.timer]]

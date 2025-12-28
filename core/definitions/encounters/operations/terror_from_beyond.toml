@@ -1,0 +1,765 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Terror From Beyond - Operation
+# ═══════════════════════════════════════════════════════════════════════════════
+# Asation (TFB) - 5 boss operation
+# Source: ORBS timer/phase data + manual verification
+
+[area]
+name = "Asation"
+id = 137438992720
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 1: The Writhing Horror
+# ═══════════════════════════════════════════════════════════════════════════════
+# Giant plant boss in the first area. Teleports around, spawns adds.
+# Key mechanics: Teleport (reposition), Male Flopping + Puddle (add spawns)
+
+[[boss]]
+id = "writhing_horror"
+name = "The Writhing Horror"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "The Writhing Horror"
+ids = [3010424182145024]
+is_boss = true
+is_kill_target = true
+
+# ─── Phases ─────────────────────────────────────────────────────────────────────
+
+[[boss.phases]]
+id = "wh_main"
+name = "Main"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "wh_burn"
+name = "Burn"
+preceded_by = "wh_main"
+trigger = { type = "boss_hp_below", hp_percent = 15.0, boss_name = "The Writhing Horror" }
+
+# ─── Timers ─────────────────────────────────────────────────────────────────────
+
+# -- Teleport --
+# Boss teleports to a random player. First one is faster.
+
+# Initial teleport (20s after combat start)
+[[boss.timer]]
+id = "wh_burrow_cs"
+name = "Burrow"
+trigger = { type = "combat_start" }
+duration_secs = 20.0
+color = [26, 220, 212, 255]
+difficulties = ["veteran", "master"]
+chains_to = "wh_burrow"
+
+# Teleport loop (45s cooldown, triggered by ability cast)
+[[boss.timer]]
+id = "wh_burrow"
+name = "Burrow"
+trigger = { type = "ability_cast", ability_ids = [3016484380999680] }
+duration_secs = 45.0
+color = [26, 220, 212, 255]
+difficulties = ["veteran", "master"]
+
+# -- Jelly Male + Puddle --
+# Spawns a Jealous Male add and creates poison puddles.
+# First spawn at 45s, then every 90s.
+
+# Initial spawn timer (45s after combat start)
+[[boss.timer]]
+id = "wh_jelly_male_cs"
+name = "Jelly Male"
+trigger = { type = "combat_start" }
+duration_secs = 45.0
+color = [197, 17, 188, 255]
+difficulties = ["veteran", "master"]
+chains_to = "wh_jelly_male"
+
+# Jelly Male loop (90s interval, self-repeating)
+[[boss.timer]]
+id = "wh_jelly_male"
+name = "Jelly Male"
+trigger = { type = "manual" }
+duration_secs = 90.0
+color = [197, 17, 188, 255]
+difficulties = ["veteran", "master"]
+repeats = 10
+
+[[boss.timer]]
+id = "wh_corrosive_slime"
+name = "Corrosive Slime"
+alert_text = "Slime on you"
+target = "local_player"
+trigger = {type = "effect_applied", effect_ids = [3010686175150344]}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 2: The Dread Guard
+# ═══════════════════════════════════════════════════════════════════════════════
+# Council fight: Heirad → Ciphas → Kel'sara. Phase ends when named boss dies.
+
+[[boss]]
+id = "dread_guard"
+name = "The Dread Guard"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Heirad"
+ids = [3013327580037120]
+is_boss = true
+
+[[boss.entities]]
+name = "Ciphas"
+ids = [3013336169971712]
+is_boss = true
+
+[[boss.entities]]
+name = "Kel'sara"
+ids = [3013331875004416]
+is_boss = true
+is_kill_target = true
+
+# ─── Phases ─────────────────────────────────────────────────────────────────────
+
+[[boss.phases]]
+id = "dg_heirad"
+name = "Heirad"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "dg_ciphas"
+name = "Ciphas"
+preceded_by = "dg_heirad"
+trigger = { type = "entity_death", entity_name = "Heirad" }
+
+[[boss.phases]]
+id = "dg_kelsara"
+name = "Kel'sara"
+preceded_by = "dg_ciphas"
+trigger = { type = "entity_death", entity_name = "Ciphas" }
+
+# -- Empowered Barrier --
+[[boss.timer]]
+id = "dg_barrier_cs"
+name = "Barrier"
+trigger = { type = "combat_start" }
+duration_secs = 15.0
+color = [40, 30, 222, 255]
+difficulties = ["story", "veteran"]
+chains_to = "dg_barrier"
+
+[[boss.timer]]
+id = "dg_barrier_cs_mm"
+name = "Barrier"
+trigger = { type = "combat_start" }
+duration_secs = 10.0
+color = [40, 30, 222, 255]
+difficulties = ["master"]
+chains_to = "dg_barrier_mm"
+
+[[boss.timer]]
+id = "dg_barrier"
+name = "Barrier"
+trigger = { type = "ability_cast", ability_ids = [2988107532075008] }
+duration_secs = 55.0
+color = [40, 30, 222, 255]
+difficulties = ["story", "veteran"]
+
+[[boss.timer]]
+id = "dg_barrier_mm"
+name = "Barrier"
+trigger = { type = "ability_cast", ability_ids = [2988107532075008] }
+duration_secs = 45.0
+color = [40, 30, 222, 255]
+difficulties = ["master"]
+
+# -- Lightning Field --
+[[boss.timer]]
+id = "dg_lightning_cs"
+name = "Lightning"
+trigger = { type = "combat_start" }
+duration_secs = 45.0
+color = [28, 177, 195, 255]
+difficulties = ["story", "veteran"]
+chains_to = "dg_lightning"
+
+[[boss.timer]]
+id = "dg_lightning_cs_mm"
+name = "Lightning"
+trigger = { type = "combat_start" }
+duration_secs = 30.0
+color = [28, 177, 195, 255]
+difficulties = ["master"]
+chains_to = "dg_lightning_mm"
+
+[[boss.timer]]
+id = "dg_lightning"
+name = "Lightning"
+trigger = { type = "ability_cast", ability_ids = [2988369525080064] }
+duration_secs = 55.0
+color = [28, 177, 195, 255]
+difficulties = ["story", "veteran"]
+
+[[boss.timer]]
+id = "dg_lightning_mm"
+name = "Lightning"
+trigger = { type = "ability_cast", ability_ids = [2988369525080064] }
+duration_secs = 45.0
+color = [28, 177, 195, 255]
+difficulties = ["master"]
+
+
+# -- Force Choke --
+[[boss.timer]]
+id = "dg_choke_cs"
+name = "Choke"
+trigger = { type = "phase_entered", phase_id = "dg_ciphas" }
+duration_secs = 15.0
+color = [20, 131, 18, 255]
+difficulties = ["veteran", "master"]
+chains_to = "dg_choke"
+
+[[boss.timer]]
+id = "dg_choke"
+name = "Choke"
+trigger = { type = "ability_cast", ability_ids = [3014616070225920] }
+duration_secs = 30.0
+color = [20, 131, 18, 255]
+difficulties = ["veteran", "master"]
+
+# -- Force Leech --
+[[boss.timer]]
+id = "dg_leech"
+name = "Force Leech"
+trigger = { type = "ability_cast", ability_ids = [3007065517719552] }
+duration_secs = 14.0
+color = [128, 30, 222, 255]
+difficulties = ["veteran", "master"]
+
+# -- Overload --
+[[boss.timer]]
+id = "dg_overload"
+name = "Overload"
+trigger = { type = "ability_cast", ability_ids = [3014530170880000] }
+duration_secs = 19.0
+color = [222, 117, 30, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "dg_doom"
+name = "Doom"
+trigger = { type = "effect_applied", effect_ids = [3014573120552960] }
+duration_secs = 24.0
+color = [227, 27, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "dg_doom_sm"
+name = "Doom"
+trigger = { type = "effect_applied", effect_ids = [3014573120552960] }
+duration_secs = 34.0
+color = [227, 27, 28, 255]
+difficulties = ["story"]
+
+[[boss.timer]]
+id = "dg_vitality_ext"
+name = "Vitality Extraction"
+is_alert = true
+trigger = { type = "ability_cast", ability_ids = [3014512991010816] }
+alert_text = "Vitality Extraction"
+source = { specific =  "Kel'sara"}
+target = "local_player"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 3: Operator IX
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "op_ix"
+name = "Operator IX"
+
+[[boss.entities]]
+name = "Operator IX"
+ids = [2994837745827840]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Master Control"
+ids = [2994915055239168]
+triggers_encounter = true
+is_boss = false
+is_kill_target = false
+
+[[boss.entities]]
+name = "Data Core"
+ids = [2994867810598912]
+is_boss = false
+
+[[boss.counters]]
+id = "op_ix_data_cores"
+increment_on = { type = "entity_death", entity_name = "Data Core" }
+reset_on = { type = "combat_end" }
+initial_value = 0
+
+
+[[boss.phases]]
+id = "op_ix_blue"
+name = "Blue"
+trigger = {type = "ability_cast", ability_ids = [3036833936048128] }
+
+[[boss.phases]]
+id = "op_ix_orange"
+name = "Orange"
+trigger = {type = "ability_cast", ability_ids = [3036838231015424] }
+
+[[boss.phases]]
+id = "op_ix_purple"
+name = "Purple"
+trigger = {type = "ability_cast", ability_ids = [3036842525982720] }
+
+[[boss.phases]]
+id = "op_ix_yellow"
+name = "Yellow"
+trigger = {type = "ability_cast", ability_ids = [3036846820950016] }
+
+[[boss.phases]]
+id = "op_ix_main"
+name = "Operator IX"
+trigger = { type = "entity_first_seen", entity_name = "Operator IX" }
+
+[[boss.timer]]
+id = "op_ix_blue_cd"
+name = "Blue Scalene"
+trigger = {type = "phase_entered", phase_id = "op_ix_blue"}
+duration_secs = 70.0
+color = [20, 131, 18, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "op_ix_orange_cd"
+name = "Orange Scalene"
+trigger = {type = "phase_entered", phase_id = "op_ix_orange"}
+duration_secs = 60.0
+color = [20, 131, 18, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "op_ix_purple_scalene"
+name = "Purple Scalene"
+trigger = {type = "phase_entered", phase_id = "op_ix_purple"}
+cancel_trigger = {type = "phase_ended", phase_id = "op_ix_purple"}
+duration_secs = 55.0
+color = [20, 131, 18, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "op_ix_yellow_scalene"
+name = "Yellow Scalene"
+trigger = {type = "phase_entered", phase_id = "op_ix_yellow"}
+cancel_trigger = {type = "phase_ended", phase_id = "op_ix_yellow"}
+duration_secs = 50.0
+color = [20, 131, 18, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "op_ix_black_obtuse"
+name = "Black Obtuse"
+trigger = {type = "ability_cast", ability_ids = [2998471288160256]}
+duration_secs = 30.0
+color = [20, 131, 18, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "op_ix_adds"
+name = "Adds"
+trigger = { type = "any_of", conditions = [
+    { type = "boss_hp_threshold", hp_percent = 90.0, boss_name = "Operator IX" },
+    { type = "boss_hp_threshold", hp_percent = 70.0, boss_name = "Operator IX" },
+    { type = "boss_hp_threshold", hp_percent = 50.0, boss_name = "Operator IX" },
+    { type = "boss_hp_threshold", hp_percent = 30.0, boss_name = "Operator IX" },
+]}
+is_alert = true
+alert_text = "Adds Incoming!"
+difficulties = ["veteran", "master"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: Kephess the Undying
+# ═══════════════════════════════════════════════════════════════════════════════
+# Kephess returns! Key mechanics:
+# - Invulnerable: Boss shields, must DPS down the shield
+# - Nanites: 3-cast rotation with different behaviors each cast
+# - Laser Blast: Cone attack after Overcharge
+# - Cascade/Burn: HP threshold phases
+
+[[boss]]
+id = "kephess_the_undying"
+name = "Kephess the Undying"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Kephess the Undying"
+ids = [3013134306508800, 2937620191510528, 3013138601476096, 3013121421606912]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Energy Distortion"
+ids = [3013095651803136]
+is_boss = false
+
+# ─── Phases ─────────────────────────────────────────────────────────────────────
+
+[[boss.phases]]
+id = "kephess_main"
+name = "Main"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "kephess_cascade"
+name = "Cascade"
+preceded_by = "kephess_main"
+trigger = { type = "boss_hp_below", hp_percent = 50.0, boss_name = "Kephess the Undying" }
+
+[[boss.phases]]
+id = "kephess_burn"
+name = "Burn"
+preceded_by = "kephess_cascade"
+trigger = { type = "boss_hp_below", hp_percent = 10.0, boss_name = "Kephess the Undying" }
+
+# ─── Counters ───────────────────────────────────────────────────────────────────
+
+# Tracks Overcharge casts - Laser Blast only fires on first cast
+[[boss.counters]]
+id = "overcharge_count"
+increment_on = { type = "ability_cast", ability_ids = [3012687629910016], source = "Kephess the Undying" }
+reset_on = { type = "combat_end" }
+
+# Tracks Nanites casts - different timers fire at count 1, 2, 3 then resets
+# Counter cycles 1→2→3→reset (resets when it would hit 4)
+[[boss.counters]]
+id = "nanites_count"
+increment_on = { type = "ability_cast", ability_ids = [2977765250826240], source = "Kephess the Undying" }
+reset_on = { type = "counter_reaches", counter_id = "nanites_count", value = 4 }
+
+# ─── Simple Timers ──────────────────────────────────────────────────────────────
+
+# Invulnerable shield phase - 9 second duration
+[[boss.timer]]
+id = "kephess_invulnerable"
+name = "Invulnerable"
+trigger = { type = "ability_cast", ability_ids = [3008070540066816] }
+source = { specific = "Kephess the Undying" }
+duration_secs = 9.0
+color = [20, 154, 174, 255]
+difficulties = ["veteran", "master"]
+
+# First Nanites + Jump - triggered by Invulnerable ability
+[[boss.timer]]
+id = "kephess_first_nanites"
+name = "1st Nanites + Jump"
+trigger = { type = "ability_cast", ability_ids = [3008070540066816] }
+source = { specific = "Kephess the Undying" }
+duration_secs = 15.0
+color = [222, 31, 30, 255]
+difficulties = ["veteran", "master"]
+
+# Cascade Jump - alert when Cascade phase timer would expire
+[[boss.timer]]
+id = "kephess_cascade_jump"
+name = "Cascade Jump"
+trigger = { type = "phase_entered", phase_id = "kephess_cascade" }
+is_alert = true
+alert_text = "Cascade Jump!"
+color = [219, 29, 28, 255]
+difficulties = ["veteran", "master"]
+
+# ─── Alerts ─────────────────────────────────────────────────────────────────────
+
+# Targeted by boss - Overcharge effect signals incoming Laser Blast
+[[boss.timer]]
+id = "kephess_targeted"
+name = "Targeted by Boss"
+trigger = { type = "effect_applied", effect_ids = [3012687629910274] }
+source = { specific = "Kephess the Undying" }
+target = "local_player"
+is_alert = true
+alert_text = "Targeted by boss!"
+color = [217, 76, 30, 255]
+
+# Targeted by sphere - Energy Distortion sphere sets its target on the player
+[[boss.timer]]
+id = "kephess_sphere_target"
+name = "Targeted by Sphere"
+trigger = { type = "target_set", npc_id = 3013095651803136 }
+target = "local_player"
+is_alert = true
+alert_text = "Targeted by sphere!"
+color = [195, 30, 222, 255]
+
+# Nanites dropped alert (effect lost)
+[[boss.timer]]
+id = "kephess_nanites_alert"
+name = "Nanites"
+trigger = { type = "effect_removed", effect_ids = [3012588845662464] }
+source = { specific = "Kephess the Undying" }
+target = "local_player"
+is_alert = true
+alert_text = "Nanites dropped!"
+color = [34, 190, 28, 255]
+difficulties = ["veteran", "master"]
+
+# ─── Counter-Based Timers (Rotating Mechanics) ──────────────────────────────────
+# NOTE: counter_condition checks value BEFORE increment (0-based)
+#   value = 0 → first cast, value = 1 → second cast, etc.
+
+# Laser Blast - only fires on FIRST Overcharge cast (counter == 0)
+[[boss.timer]]
+id = "kephess_laser_blast"
+name = "Laser Blast"
+trigger = { type = "ability_cast", ability_ids = [3012687629910016] }
+source = { specific = "Kephess the Undying" }
+counter_condition = { counter_id = "overcharge_count", operator = "eq", value = 0 }
+duration_secs = 4.5
+color = [46, 34, 228, 255]
+difficulties = ["veteran", "master"]
+
+# Corrupted Nanites - fires on nanites cast #1 (counter == 0)
+[[boss.timer]]
+id = "kephess_nanites_1"
+name = "Corrupted Nanites"
+trigger = { type = "ability_cast", ability_ids = [2977765250826240] }
+source = { specific = "Kephess the Undying" }
+counter_condition = { counter_id = "nanites_count", operator = "eq", value = 0 }
+duration_secs = 15.0
+color = [49, 190, 28, 255]
+difficulties = ["veteran", "master"]
+
+# Corrupted Nanites - fires on nanites cast #2 (Master Mode only)
+[[boss.timer]]
+id = "kephess_nanites_2_mm"
+name = "Corrupted Nanites"
+trigger = { type = "ability_cast", ability_ids = [2977765250826240] }
+source = { specific = "Kephess the Undying" }
+counter_condition = { counter_id = "nanites_count", operator = "eq", value = 1 }
+duration_secs = 15.0
+color = [39, 197, 29, 255]
+difficulties = ["master"]
+
+# Nanites + Jump - fires on nanites cast #2 (Veteran Mode only)
+[[boss.timer]]
+id = "kephess_nanites_2_vm"
+name = "Nanites + Jump"
+trigger = { type = "ability_cast", ability_ids = [2977765250826240] }
+source = { specific = "Kephess the Undying" }
+counter_condition = { counter_id = "nanites_count", operator = "eq", value = 1 }
+duration_secs = 15.0
+color = [220, 45, 32, 255]
+difficulties = ["veteran"]
+
+# Nanites + Jump - fires on nanites cast #3 (counter == 2)
+[[boss.timer]]
+id = "kephess_nanites_3"
+name = "Nanites + Jump"
+trigger = { type = "ability_cast", ability_ids = [2977765250826240] }
+source = { specific = "Kephess the Undying" }
+counter_condition = { counter_id = "nanites_count", operator = "eq", value = 2 }
+duration_secs = 15.0
+color = [220, 36, 26, 255]
+difficulties = ["veteran", "master"]
+
+# Jump alert - fires on nanites cast #1 (counter == 0)
+[[boss.timer]]
+id = "kephess_jump_1"
+name = "Jump"
+trigger = { type = "ability_cast", ability_ids = [2977765250826240] }
+source = { specific = "Kephess the Undying" }
+counter_condition = { counter_id = "nanites_count", operator = "eq", value = 0 }
+is_alert = true
+alert_text = "Jump!"
+color = [220, 34, 26, 255]
+difficulties = ["veteran", "master"]
+
+# Jump alert - fires on nanites cast #3 (counter == 2)
+[[boss.timer]]
+id = "kephess_jump_3"
+name = "Jump"
+trigger = { type = "ability_cast", ability_ids = [2977765250826240] }
+source = { specific = "Kephess the Undying" }
+counter_condition = { counter_id = "nanites_count", operator = "eq", value = 2 }
+is_alert = true
+alert_text = "Jump!"
+color = [220, 34, 26, 255]
+difficulties = ["veteran", "master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: The Terror From Beyond
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "the_terror_from_beyond"
+name = "The Terror From Beyond"
+difficulties = ["story", "veteran", "master"]
+
+# Counter for Grasping Tentacle deaths (for phase 2 respawn timing)
+[[boss.counters]]
+id = "grasping_death_count"
+increment_on = { type = "entity_death", entity_name = "Grasping Tentacle" }
+
+[[boss.entities]]
+name = "The Terror From Beyond"
+ids = [3025220344479744, 3025233229381632]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Grasping Tentacle"
+ids = [3025284768989184]
+is_boss = false
+
+[[boss.entities]]
+name = "Tunneling Tentacle"
+ids = [3025258999185408, 3025271884087296]
+is_boss = false
+triggers_encounter = true
+
+[[boss.entities]]
+name = "Hypergate Anomaly"
+ids = [3025211754545152]
+is_boss = false
+
+[[boss.entities]]
+name = "Hypergate Irregularity"
+ids = [3051204896620544]
+is_boss = false
+
+[[boss.entities]]
+name = "Hypergate Beacon"
+ids = [3025194574675968, 3025405028073472]
+is_boss = false
+
+# ─── Simple Timers ──────────────────────────────────────────────────────────────
+
+# First Tunneling Slam - 19 seconds from combat start
+[[boss.timer]]
+id = "tfb_tunneling_slam_first"
+name = "Tunneling Slam"
+trigger = { type = "combat_start" }
+duration_secs = 19.0
+color = [213, 45, 38, 255]
+difficulties = ["veteran", "master"]
+
+# Grasping Slam - repeating timer when Grasping Tentacle uses Slam
+[[boss.timer]]
+id = "tfb_grasping_slam"
+name = "Grasping Slam"
+trigger = { type = "ability_cast", ability_ids = [3041137493278720] }
+source = { specific = "Grasping Tentacle" }
+duration_secs = 19.0
+color = [229, 26, 25, 255]
+difficulties = ["veteran", "master"]
+
+# Tunneling Slam - timer when Tunneling Tentacle uses Slam
+[[boss.timer]]
+id = "tfb_tunneling_slam"
+name = "Tunneling Slam"
+trigger = { type = "ability_cast", ability_ids = [3025877474476032] }
+source = { specific = "Tunneling Tentacle" }
+duration_secs = 15.0
+color = [220, 33, 32, 255]
+difficulties = ["veteran", "master"]
+
+# Burn alert - when "Faded Reality" buff is lost (player returns from scream)
+[[boss.timer]]
+id = "tfb_burn"
+name = "Burn"
+trigger = { type = "effect_removed", effect_ids = [3052914293604611] }
+target = "local_player"
+is_alert = true
+alert_text = "Burn!"
+color = [220, 26, 26, 255]
+difficulties = ["veteran", "master"]
+
+# Grasping Death alert - when Grasping Tentacle dies
+[[boss.timer]]
+id = "tfb_grasping_death"
+name = "Grasping Death"
+trigger = { type = "entity_death", entity_name = "Grasping Tentacle" }
+is_alert = true
+alert_text = "Grasping Tentacle down!"
+color = [39, 220, 220, 255]
+difficulties = ["veteran", "master"]
+
+# Tentacle respawn timer - fires on deaths 1, 3, 5 (counter 0, 2, 4 before increment)
+[[boss.timer]]
+id = "tfb_tentacle_respawn_1"
+name = "Tentacle Respawn"
+trigger = { type = "entity_death", entity_name = "Grasping Tentacle" }
+counter_condition = { counter_id = "grasping_death_count", operator = "eq", value = 0 }
+duration_secs = 35.0
+color = [213, 40, 38, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "tfb_tentacle_respawn_3"
+name = "Tentacle Respawn"
+trigger = { type = "entity_death", entity_name = "Grasping Tentacle" }
+counter_condition = { counter_id = "grasping_death_count", operator = "eq", value = 2 }
+duration_secs = 35.0
+color = [213, 40, 38, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "tfb_tentacle_respawn_5"
+name = "Tentacle Respawn"
+trigger = { type = "entity_death", entity_name = "Grasping Tentacle" }
+counter_condition = { counter_id = "grasping_death_count", operator = "eq", value = 4 }
+duration_secs = 35.0
+color = [213, 40, 38, 255]
+difficulties = ["veteran", "master"]
+
+# Spit Pool + Scream - triggered when "The Beyond" effect is lost
+[[boss.timer]]
+id = "tfb_spit_pool_first"
+name = "Spit Pool + Scream"
+trigger = { type = "effect_removed", effect_ids = [3009973210578944] }
+target = "local_player"
+duration_secs = 42.0
+color = [228, 127, 40, 255]
+difficulties = ["veteran", "master"]
+
+# Spit Pool + Scream (repeating) - chains from tentacles timer
+[[boss.timer]]
+id = "tfb_spit_pool"
+name = "Spit Pool + Scream"
+trigger = { type = "effect_removed", effect_ids = [3052914293604611] }
+duration_secs = 28.0
+color = [228, 127, 40, 255]
+difficulties = ["veteran", "master"]
+
+# Void Disturbance debuff - when buff removed from local player
+[[boss.timer]]
+id = "tfb_void_disturbance_debuff"
+name = "Void Disturbance"
+trigger = { type = "any_of", conditions = [
+    { type = "effect_removed", effect_ids = [3246243656499200] },
+    { type = "effect_removed", effect_ids = [3250010342817792] }
+]}
+target = "local_player"
+duration_secs = 20.0
+color = [222, 26, 32, 255]
+difficulties = ["veteran", "master"]
+
+# Adds spawn - triggered by abilities
+[[boss.timer]]
+id = "tfb_adds"
+name = "Adds"
+trigger = { type = "any_of", conditions = [
+    { type = "ability_cast", ability_ids = [3025903244279808] },
+    { type = "ability_cast", ability_ids = [3025916129181696] }
+]}
+duration_secs = 30.0
+color = [20, 136, 30, 255]
+difficulties = ["veteran", "master"]
+

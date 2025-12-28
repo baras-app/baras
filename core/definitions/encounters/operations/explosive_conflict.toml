@@ -338,7 +338,8 @@ is_kill_target = true
 [[boss.entities]]
 name = "Vorgath Hologram"
 ids = [2813182104043520]
-is_boss = true
+is_boss = false
+triggers_encounter = true
 is_kill_target = false
 
 [[boss.entities]]
