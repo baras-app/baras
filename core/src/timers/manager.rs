@@ -442,28 +442,44 @@ impl TimerManager {
         }
     }
 
-    /// Process timer expirations and chains
+    /// Process timer expirations, repeats, and chains
     fn process_expirations(&mut self, current_time: NaiveDateTime) {
         self.expired_this_tick.clear();
 
-        // Find expired timers
+        // Find expired timer keys
         let expired_keys: Vec<_> = self.active_timers
             .iter()
             .filter(|(_, timer)| timer.has_expired(current_time))
-            .map(|(key, timer)| (key.clone(), timer.triggers_timer.clone()))
+            .map(|(key, _)| key.clone())
             .collect();
 
-        // Remove expired timers and collect chain triggers
-        for (key, chain_timer_id) in expired_keys {
-            if let Some(timer) = self.active_timers.remove(&key) {
-                self.expired_this_tick.push(timer.definition_id.clone());
+        // Collect chain triggers from timers that won't repeat
+        let mut chains_to_start: Vec<(String, Option<i64>)> = Vec::new();
 
-                // Handle chaining
-                if let Some(next_timer_id) = chain_timer_id
-                    && let Some(next_def) = self.definitions.get(&next_timer_id).cloned()
-                        && self.is_definition_active(&next_def) {
-                            self.start_timer(&next_def, current_time, timer.target_entity_id);
+        for key in expired_keys {
+            // Always record the expiration for TimerExpires triggers
+            self.expired_this_tick.push(key.definition_id.clone());
+
+            // Check if timer can repeat
+            if let Some(timer) = self.active_timers.get_mut(&key)
+                && timer.can_repeat()
+            {
+                timer.repeat(current_time);
+                eprintln!("[TIMER] Repeated '{}' ({}/{})", timer.name, timer.repeat_count, timer.max_repeats);
+            } else if let Some(timer) = self.active_timers.remove(&key) {
+                // Timer exhausted repeats - remove and prepare chain
+                if let Some(next_timer_id) = timer.triggers_timer.clone() {
+                    chains_to_start.push((next_timer_id, timer.target_entity_id));
                 }
+            }
+        }
+
+        // Start chained timers (outside the borrow)
+        for (next_timer_id, target_id) in chains_to_start {
+            if let Some(next_def) = self.definitions.get(&next_timer_id).cloned()
+                && self.is_definition_active(&next_def)
+            {
+                self.start_timer(&next_def, current_time, target_id);
             }
         }
 

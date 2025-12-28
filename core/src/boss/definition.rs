@@ -86,10 +86,16 @@ pub struct EntityDefinition {
     #[serde(default)]
     pub ids: Vec<i64>,
 
-    /// Whether this is a boss entity (for detection, health bars, DPS tracking)
-    /// Only `is_boss = true` entities trigger encounter detection
+    /// Whether this is a boss entity (for health bars, DPS tracking)
     #[serde(default)]
     pub is_boss: bool,
+
+    /// Whether this entity triggers encounter detection when seen.
+    /// Defaults to `is_boss` value if not specified.
+    /// Use `triggers_encounter = true` with `is_boss = false` for entities
+    /// that should load the encounter but not show on the health bar.
+    #[serde(default)]
+    triggers_encounter: Option<bool>,
 
     /// Whether killing this entity ends the encounter
     #[serde(default)]
@@ -100,6 +106,12 @@ impl EntityDefinition {
     /// Check if an NPC ID matches this entity
     pub fn matches_id(&self, id: i64) -> bool {
         self.ids.contains(&id)
+    }
+
+    /// Whether this entity triggers encounter detection.
+    /// Defaults to `is_boss` if not explicitly set.
+    pub fn triggers_encounter(&self) -> bool {
+        self.triggers_encounter.unwrap_or(self.is_boss)
     }
 }
 
@@ -610,12 +622,20 @@ impl BossEncounterDefinition {
         self.entities.iter().find(|e| e.ids.contains(&id))
     }
 
-    /// Get all boss entities (is_boss = true)
+    /// Get all boss entities (is_boss = true) for health bar display
     pub fn boss_entities(&self) -> impl Iterator<Item = &EntityDefinition> {
         self.entities.iter().filter(|e| e.is_boss)
     }
 
-    /// Get all NPC IDs for boss entities only (for registry/detection)
+    /// Get all NPC IDs that trigger encounter detection
+    pub fn encounter_trigger_ids(&self) -> impl Iterator<Item = i64> + '_ {
+        self.entities
+            .iter()
+            .filter(|e| e.triggers_encounter())
+            .flat_map(|e| e.ids.iter().copied())
+    }
+
+    /// Get all NPC IDs for boss entities only (for health bar tracking)
     pub fn boss_npc_ids(&self) -> impl Iterator<Item = i64> + '_ {
         self.entities
             .iter()
@@ -641,24 +661,24 @@ impl BossEncounterDefinition {
 
     // ─── Legacy Compatibility ────────────────────────────────────────────────
 
-    /// Check if an NPC name matches any boss in this encounter
+    /// Check if an NPC name matches any encounter-triggering entity
     /// Checks both entity names and legacy npc_names
     #[allow(deprecated)]
     pub fn matches_npc_name(&self, name: &str) -> bool {
         // Check entity roster first
-        if self.entities.iter().any(|e| e.is_boss && e.name.eq_ignore_ascii_case(name)) {
+        if self.entities.iter().any(|e| e.triggers_encounter() && e.name.eq_ignore_ascii_case(name)) {
             return true;
         }
         // Fall back to legacy field
         self.npc_names.iter().any(|n| n.eq_ignore_ascii_case(name))
     }
 
-    /// Check if an NPC ID matches any boss in this encounter
+    /// Check if an NPC ID matches any encounter-triggering entity
     /// Checks both entity roster and legacy npc_ids
     #[allow(deprecated)]
     pub fn matches_npc_id(&self, id: i64) -> bool {
-        // Check entity roster first (boss entities only)
-        if self.entities.iter().any(|e| e.is_boss && e.ids.contains(&id)) {
+        // Check entity roster first (encounter-triggering entities)
+        if self.entities.iter().any(|e| e.triggers_encounter() && e.ids.contains(&id)) {
             return true;
         }
         // Fall back to legacy field

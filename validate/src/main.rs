@@ -211,6 +211,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Track player names by entity_id for challenge breakdown
     let mut player_names: HashMap<i64, String> = HashMap::new();
 
+    // Debug: Track damage events by phase for challenge debugging
+    let mut damage_by_phase: HashMap<String, (u32, i64)> = HashMap::new(); // phase -> (count, total)
+    let mut machine_core_damage_total: u32 = 0;
+    let mut kill_target_death_time: Option<NaiveDateTime> = None; // Track when kill target dies (fight end)
+    const MACHINE_CORE_NPC_ID: i64 = 3447583133401088;
+
     let mut event_count = 0;
     let mut local_player_id: i64 = 0;
     for (line_num, line) in lines.iter().enumerate() {
@@ -271,6 +277,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     GameSignal::CounterChanged { counter_id, new_value, .. } => {
                         challenge_ctx.counters.insert(counter_id.clone(), *new_value);
                     }
+                    GameSignal::EntityDeath { npc_id, timestamp, .. } => {
+                        // Track kill target death (Machine Core) as fight end
+                        if *npc_id == MACHINE_CORE_NPC_ID {
+                            kill_target_death_time = Some(*timestamp);
+                        }
+                    }
                     _ => {}
                 }
                 track_signal(&mut state, signal);
@@ -287,6 +299,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let source = entity_to_info(&event.source_entity, local_player_id);
                 let target = entity_to_info(&event.target_entity, local_player_id);
                 let damage = event.details.dmg_effective as i64;
+
+                // Debug: Track Machine Core damage by phase
+                if target.npc_id == Some(MACHINE_CORE_NPC_ID) && damage > 0 {
+                    machine_core_damage_total += 1;
+                    let phase = challenge_ctx.current_phase.clone().unwrap_or_else(|| "none".to_string());
+                    let entry = damage_by_phase.entry(phase).or_insert((0, 0));
+                    entry.0 += 1;
+                    entry.1 += damage;
+                }
 
                 // Update boss HP in context
                 if target.npc_id.is_some() && event.target_entity.health.1 > 0 {
@@ -305,13 +326,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Finalize challenge tracker
-    let combat_duration = if let (Some(start), Some(last_event)) = (state.combat_start, state.phase_changes.last().map(|p| p.timestamp)) {
-        (last_event - start).num_milliseconds() as f32 / 1000.0
+    // Finalize challenge tracker - must call finalize() to record final phase duration
+    // Use kill target death time if available (fight end), otherwise last entity seen
+    let end_time = kill_target_death_time
+        .or_else(|| state.entities.values().filter_map(|e| e.last_seen).max())
+        .or_else(|| state.phase_changes.last().map(|p| p.timestamp));
+
+    let combat_duration = if let (Some(start), Some(end)) = (state.combat_start, end_time) {
+        (end - start).num_milliseconds() as f32 / 1000.0
     } else {
         0.0
     };
-    challenge_tracker.set_duration(combat_duration);
+
+    // finalize() ends the current phase and records its duration
+    if let Some(end) = end_time {
+        challenge_tracker.finalize(end, combat_duration);
+    } else {
+        challenge_tracker.set_duration(combat_duration);
+    }
+
+    // Debug: Print Machine Core damage breakdown by phase
+    if machine_core_damage_total > 0 {
+        eprintln!();
+        eprintln!("=== DEBUG: Machine Core Damage by Phase ===");
+        eprintln!("Total Machine Core damage events: {}", machine_core_damage_total);
+        let mut phases: Vec<_> = damage_by_phase.iter().collect();
+        phases.sort_by_key(|(phase, _)| phase.clone());
+        for (phase, (count, total)) in phases {
+            eprintln!("  {:20} {:6} events  {:>12} damage", phase, count, total);
+        }
+        eprintln!();
+    }
 
     // Output report
     print_report(&args, &state, boss_def, event_count, &challenge_tracker, &player_names);

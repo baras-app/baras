@@ -141,7 +141,7 @@ fn test_npc_first_seen_triggers_timer() {
     let timer = make_timer(
         "monster_spawn",
         "Dread Monster Spawned",
-        TimerTrigger::EntityFirstSeen { npc_id: 3291675820556288 },
+        TimerTrigger::EntityFirstSeen { entity: None, npc_id: Some(3291675820556288), entity_name: None },
         30.0,
     );
     manager.load_definitions(vec![timer]);
@@ -635,7 +635,7 @@ fn test_integration_npc_first_seen_timer() {
     let timer = make_timer(
         "monster_spawn",
         "Dread Monster Spawned",
-        TimerTrigger::EntityFirstSeen { npc_id: 3291675820556288 },
+        TimerTrigger::EntityFirstSeen { entity: None, npc_id: Some(3291675820556288), entity_name: None },
         30.0,
     );
 

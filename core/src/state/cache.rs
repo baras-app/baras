@@ -172,13 +172,13 @@ impl SessionCache {
     /// Also registers NPC IDs in the global boss registry for is_boss() checks.
     #[allow(deprecated)]
     pub fn load_boss_definitions(&mut self, definitions: Vec<BossEncounterDefinition>) {
-        // Register boss NPC IDs in the global registry
-        // Only entities with is_boss = true are registered (for detection)
+        // Register encounter-triggering NPC IDs in the global registry
+        // Entities with triggers_encounter = true (or is_boss = true) are registered
         for def in &definitions {
-            // New format: use entity roster (boss entities only)
-            let boss_ids: Vec<i64> = def.boss_npc_ids().collect();
-            if !boss_ids.is_empty() {
-                register_boss_npcs(&boss_ids);
+            // New format: use entity roster (encounter-triggering entities)
+            let trigger_ids: Vec<i64> = def.encounter_trigger_ids().collect();
+            if !trigger_ids.is_empty() {
+                register_boss_npcs(&trigger_ids);
             } else {
                 // Legacy format: use flat npc_ids
                 register_boss_npcs(&def.npc_ids);
