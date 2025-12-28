@@ -307,6 +307,19 @@ pub enum PhaseTrigger {
     },
 }
 
+impl PhaseTrigger {
+    /// Check if this trigger contains CombatStart (directly or nested in AnyOf)
+    pub fn contains_combat_start(&self) -> bool {
+        match self {
+            PhaseTrigger::CombatStart => true,
+            PhaseTrigger::AnyOf { conditions } => {
+                conditions.iter().any(|c| c.contains_combat_start())
+            }
+            _ => false,
+        }
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Counter Definitions
 // ═══════════════════════════════════════════════════════════════════════════
@@ -658,7 +671,7 @@ impl BossEncounterDefinition {
     pub fn initial_phase(&self) -> Option<&PhaseDefinition> {
         self.phases
             .iter()
-            .find(|p| matches!(p.start_trigger, PhaseTrigger::CombatStart))
+            .find(|p| p.start_trigger.contains_combat_start())
     }
 
     /// Get counters that should reset on any phase change

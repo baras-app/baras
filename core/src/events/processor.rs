@@ -74,14 +74,16 @@ impl EventProcessor {
         // Check if current phase's end_trigger fired (emits PhaseEndTriggered signal)
         signals.extend(self.check_phase_end_triggers(&event, cache, &signals));
 
+        // Check for counter increments based on events and signals
+        // IMPORTANT: This must happen BEFORE phase transitions so counter_conditions
+        // see the updated values (e.g., fs_burn needs counter=4 after 4th shield phase)
+        signals.extend(self.check_counter_increments(&event, cache, &signals));
+
         // Check for ability/effect-based phase transitions (can now match PhaseEnded)
         signals.extend(self.check_ability_phase_transitions(&event, cache, &signals));
 
         // Check for entity-based phase transitions (EntityFirstSeen, EntityDeath, PhaseEnded)
         signals.extend(self.check_entity_phase_transitions(cache, &signals, event.timestamp));
-
-        // Check for counter increments based on events and signals
-        signals.extend(self.check_counter_increments(&event, cache, &signals));
 
         // Process challenge metrics (accumulates values, polled with combat data)
         self.process_challenge_events(&event, cache);
@@ -185,6 +187,20 @@ impl EventProcessor {
                 );
                 enc.check_all_players_dead();
             }
+
+            // Track kill target deaths for boss encounters
+            let npc_id = event.target_entity.class_id;
+            if event.target_entity.entity_type == EntityType::Npc
+                && npc_id != 0
+                && let Some(def_idx) = cache.active_boss_idx
+            {
+                let def = &cache.boss_definitions[def_idx];
+                // Check if this NPC is a kill target
+                if def.kill_targets().any(|e| e.ids.contains(&npc_id)) {
+                    cache.boss_state.mark_kill_target_dead(npc_id);
+                }
+            }
+
             signals.push(GameSignal::EntityDeath {
                 entity_id: event.target_entity.log_id,
                 entity_type: event.target_entity.entity_type,
@@ -260,6 +276,12 @@ impl EventProcessor {
     fn handle_boss_detection(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
         // Already tracking a boss encounter
         if cache.active_boss_idx.is_some() {
+            return Vec::new();
+        }
+
+        // Only detect bosses when actually in combat (prevents spurious detection
+        // from post-combat DoT ticks hitting dead bosses)
+        if !cache.current_encounter().is_some_and(|e| e.state == EncounterState::InCombat) {
             return Vec::new();
         }
 
@@ -1332,6 +1354,15 @@ impl EventProcessor {
             .map(|e| e.all_players_dead)
             .unwrap_or(false);
 
+        // Check if all kill targets are dead (boss encounter victory condition)
+        let all_kill_targets_dead = cache.active_boss_idx.map_or(false, |idx| {
+            let kill_target_ids: Vec<i64> = cache.boss_definitions[idx]
+                .kill_targets()
+                .flat_map(|e| e.ids.iter().copied())
+                .collect();
+            cache.boss_state.all_kill_targets_dead(&kill_target_ids)
+        });
+
         if effect_id == effect_id::ENTERCOMBAT {
             // Unexpected EnterCombat while in combat - terminate and restart
             let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
@@ -1352,7 +1383,7 @@ impl EventProcessor {
 
             cache.push_new_encounter();
             signals.extend(self.advance_combat_state(event, cache));
-        } else if effect_id == effect_id::EXITCOMBAT || all_players_dead {
+        } else if effect_id == effect_id::EXITCOMBAT || all_players_dead || all_kill_targets_dead {
             let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
             if let Some(enc) = cache.current_encounter_mut() {
                 enc.flush_pending_absorptions();

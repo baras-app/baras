@@ -6,7 +6,7 @@
 //! - Counter values
 
 use chrono::NaiveDateTime;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::CounterCondition;
 use super::ChallengeContext;
@@ -52,6 +52,10 @@ pub struct BossEncounterState {
 
     /// Elapsed combat time in seconds
     pub combat_time_secs: f32,
+
+    /// NPC IDs of kill targets that have died during this encounter
+    /// Used to determine if combat should end when all kill targets are dead
+    pub dead_kill_targets: HashSet<i64>,
 }
 
 /// Information about the currently active boss
@@ -93,6 +97,7 @@ impl BossEncounterState {
         self.hp_by_name.clear();
         self.combat_start = None;
         self.combat_time_secs = 0.0;
+        self.dead_kill_targets.clear();
     }
 
     /// Build a ChallengeContext snapshot for condition matching
@@ -347,6 +352,27 @@ impl BossEncounterState {
     /// Check if boss is above HP threshold
     pub fn is_hp_above(&self, threshold: f32) -> bool {
         self.boss_hp_percent >= threshold
+    }
+
+    /// Record that a kill target NPC has died
+    pub fn mark_kill_target_dead(&mut self, npc_id: i64) {
+        self.dead_kill_targets.insert(npc_id);
+    }
+
+    /// Check if all required kill targets are dead
+    ///
+    /// Returns `true` if:
+    /// - `kill_target_npc_ids` is non-empty AND
+    /// - Every NPC ID in the list has been marked as dead
+    ///
+    /// Returns `false` if no kill targets are defined (empty list)
+    pub fn all_kill_targets_dead(&self, kill_target_npc_ids: &[i64]) -> bool {
+        if kill_target_npc_ids.is_empty() {
+            return false; // No kill targets defined
+        }
+        kill_target_npc_ids
+            .iter()
+            .all(|id| self.dead_kill_targets.contains(id))
     }
 }
 
