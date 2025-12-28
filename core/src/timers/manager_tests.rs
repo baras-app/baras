@@ -4,7 +4,7 @@
 
 use chrono::Local;
 
-use crate::events::{GameSignal, SignalHandler};
+use crate::signal_processor::{GameSignal, SignalHandler};
 use crate::effects::EntityFilter;
 use super::{TimerDefinition, TimerManager, TimerTrigger};
 
@@ -532,7 +532,7 @@ use std::fs::File;
 use std::io::Read as _;
 use std::path::Path;
 use crate::combat_log::LogParser;
-use crate::events::EventProcessor;
+use crate::signal_processor::EventProcessor;
 use crate::state::SessionCache;
 
 /// Parse a fixture file and pipe signals through a TimerManager

@@ -3,7 +3,7 @@ pub mod combat_log;
 pub mod context;
 pub mod effects;
 pub mod encounter;
-pub mod events;
+pub mod signal_processor;
 pub mod game_data;
 pub mod serde_defaults;
 pub mod state;
@@ -19,7 +19,7 @@ pub use effects::{ActiveEffect, DefinitionConfig, DefinitionSet, EffectCategory,
 pub use encounter::metrics::PlayerMetrics;
 pub use encounter::summary::{EncounterSummary, EncounterHistory};
 pub use encounter::{PhaseType, BossHealthEntry};
-pub use events::{EventProcessor, GameSignal, SignalHandler};
+pub use signal_processor::{EventProcessor, GameSignal, SignalHandler};
 pub use game_data::*;
 pub use state::SessionCache;
 pub use timers::{ActiveTimer, TimerDefinition, TimerKey, TimerManager, TimerTrigger};

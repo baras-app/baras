@@ -467,7 +467,7 @@ fn test_boss_hp_and_phase_signals() {
 /// Tests phases, timers, and the full combat lifecycle.
 #[test]
 fn test_bestia_complete_encounter() {
-    use crate::events::handler::SignalHandler;
+    use crate::signal_processor::handler::SignalHandler;
     use crate::timers::{TimerDefinition, TimerManager};
 
     let fixture_path = Path::new("../test-log-files/fixtures/bestia_complete_pull.txt");

@@ -2,7 +2,7 @@ use crate::combat_log::{CombatEvent, EntityType};
 use crate::context::resolve;
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::EncounterState;
-use crate::events::signal::GameSignal;
+use crate::signal_processor::signal::GameSignal;
 use crate::game_data::{effect_id, effect_type_id, correct_apply_charges};
 use crate::state::cache::SessionCache;
 

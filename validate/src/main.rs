@@ -20,7 +20,7 @@ use baras_core::boss::{load_bosses_with_paths, BossEncounterDefinition, Challeng
 use baras_core::combat_log::{CombatEvent, EntityType, LogParser};
 use baras_core::context::resolve;
 use baras_core::encounter::ChallengeTracker;
-use baras_core::events::{EventProcessor, GameSignal, SignalHandler};
+use baras_core::signal_processor::{EventProcessor, GameSignal, SignalHandler};
 use baras_core::game_data::{effect_id, effect_type_id};
 use baras_core::state::SessionCache;
 use baras_core::timers::{FiredAlert, TimerManager};

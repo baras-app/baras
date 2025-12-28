@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 use crate::combat_log::{CombatEvent, Reader};
 use crate::context::{AppConfig, parse_log_filename};
 use crate::effects::{DefinitionSet, EffectTracker};
-use crate::events::{EventProcessor, GameSignal, SignalHandler};
+use crate::signal_processor::{EventProcessor, GameSignal, SignalHandler};
 use crate::state::SessionCache;
 use crate::boss::BossEncounterDefinition;
 use crate::timers::{TimerDefinition, TimerManager};

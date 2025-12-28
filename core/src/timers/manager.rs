@@ -11,7 +11,7 @@ use chrono::{Local, NaiveDateTime};
 use crate::boss::BossEncounterDefinition;
 use crate::combat_log::EntityType;
 use crate::effects::EntityFilter;
-use crate::events::{GameSignal, SignalHandler};
+use crate::signal_processor::{GameSignal, SignalHandler};
 use crate::game_data::Difficulty;
 use crate::context::IStr;
 

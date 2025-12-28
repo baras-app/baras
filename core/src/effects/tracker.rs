@@ -11,7 +11,7 @@ use chrono::NaiveDateTime;
 
 use crate::combat_log::EntityType;
 use crate::context::IStr;
-use crate::events::{GameSignal, SignalHandler};
+use crate::signal_processor::{GameSignal, SignalHandler};
 
 use super::{ActiveEffect, EffectDefinition, EntityFilter};
 
