@@ -1,0 +1,13 @@
+[package]
+name = "baras-validate"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "baras-validate"
+path = "src/main.rs"
+
+[dependencies]
+baras-core = { path = "../core" }
+clap = { version = "4", features = ["derive"] }
+chrono = "0.4"
