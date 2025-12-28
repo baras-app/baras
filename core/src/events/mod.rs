@@ -2,6 +2,12 @@ pub mod handler;
 pub mod processor;
 pub mod signal;
 
+// Refactored modules for processor logic
+mod challenge;
+mod combat_state;
+mod counter;
+mod phase;
+
 #[cfg(test)]
 mod processor_tests;
 

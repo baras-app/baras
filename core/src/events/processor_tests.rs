@@ -366,7 +366,11 @@ fn test_boss_signals_with_definitions() {
 
 #[test]
 fn test_boss_hp_and_phase_signals() {
+    use crate::encounter::EncounterState;
+
     // Use burn phase fixture which has active combat with HP changes
+    // NOTE: This fixture is a mid-fight snippet without EnterCombat, so we manually
+    // initialize the encounter to InCombat state and detect the boss
     let fixture_path = Path::new("../test-log-files/fixtures/bestia_burn_phase.txt");
     let config_path = Path::new("../test-log-files/fixtures/config/dread_palace.toml");
 
@@ -375,7 +379,33 @@ fn test_boss_hp_and_phase_signals() {
         return;
     }
 
-    let signals = collect_signals_with_boss_defs(fixture_path, config_path);
+    // Custom processing with pre-initialized combat state
+    let mut file = File::open(fixture_path).expect("Failed to open fixture file");
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes).expect("Failed to read file");
+    let content = String::from_utf8_lossy(&bytes);
+
+    let parser = LogParser::new(chrono::Local::now().naive_local());
+    let mut processor = EventProcessor::new();
+    let mut cache = SessionCache::default();
+
+    // Load boss definitions
+    if let Some(config) = load_boss_config(config_path) {
+        cache.load_boss_definitions(config.bosses);
+    }
+
+    // Pre-initialize encounter to InCombat state (since fixture lacks EnterCombat)
+    if let Some(enc) = cache.current_encounter_mut() {
+        enc.state = EncounterState::InCombat;
+        enc.enter_combat_time = Some(chrono::Local::now().naive_local());
+    }
+
+    let mut signals = Vec::new();
+    for (line_num, line) in content.lines().enumerate() {
+        if let Some(event) = parser.parse_line(line_num as u64, line) {
+            signals.extend(processor.process_event(event, &mut cache));
+        }
+    }
 
     let signal_types: HashSet<&str> = signals.iter().map(signal_type_name).collect();
     eprintln!("Burn phase fixture signals:");

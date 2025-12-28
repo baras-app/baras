@@ -293,7 +293,7 @@ resets_counters = ["add_count"]
 [[boss.counter]]
 id = "add_count"
 increment_on = { type = "ability_cast", ability_ids = [12345] }
-reset_on = "phase_change"
+reset_on = { type = "any_phase_change" }
 
 [[boss.timer]]
 id = "test_timer"
