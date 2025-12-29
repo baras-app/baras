@@ -9,6 +9,90 @@ use serde::{Deserialize, Serialize};
 use crate::boss::EntityDefinition;
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Selectors (ID or Name)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Selector for effects - can match by ID or name.
+///
+/// Uses untagged serde representation for clean config:
+/// - `3211234567890` → Id(3211234567890)
+/// - `"Burn"` → Name("Burn")
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EffectSelector {
+    /// Match by effect ID (preferred, locale-independent)
+    Id(u64),
+    /// Match by effect name (fallback, locale-dependent)
+    Name(String),
+}
+
+impl EffectSelector {
+    /// Parse from user input - tries ID first, falls back to name.
+    pub fn from_input(input: &str) -> Self {
+        match input.trim().parse::<u64>() {
+            Ok(id) => Self::Id(id),
+            Err(_) => Self::Name(input.trim().to_string()),
+        }
+    }
+
+    /// Check if this selector matches the given effect ID and name.
+    pub fn matches(&self, effect_id: u64, effect_name: Option<&str>) -> bool {
+        match self {
+            Self::Id(id) => *id == effect_id,
+            Self::Name(name) => effect_name
+                .map(|n| n.eq_ignore_ascii_case(name))
+                .unwrap_or(false),
+        }
+    }
+
+    /// Returns the display string for this selector.
+    pub fn display(&self) -> String {
+        match self {
+            Self::Id(id) => id.to_string(),
+            Self::Name(name) => name.clone(),
+        }
+    }
+}
+
+/// Selector for abilities - can match by ID or name.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AbilitySelector {
+    /// Match by ability ID (preferred, locale-independent)
+    Id(u64),
+    /// Match by ability name (fallback, locale-dependent)
+    Name(String),
+}
+
+impl AbilitySelector {
+    /// Parse from user input - tries ID first, falls back to name.
+    pub fn from_input(input: &str) -> Self {
+        match input.trim().parse::<u64>() {
+            Ok(id) => Self::Id(id),
+            Err(_) => Self::Name(input.trim().to_string()),
+        }
+    }
+
+    /// Check if this selector matches the given ability ID and name.
+    pub fn matches(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+        match self {
+            Self::Id(id) => *id == ability_id,
+            Self::Name(name) => ability_name
+                .map(|n| n.eq_ignore_ascii_case(name))
+                .unwrap_or(false),
+        }
+    }
+
+    /// Returns the display string for this selector.
+    pub fn display(&self) -> String {
+        match self {
+            Self::Id(id) => id.to_string(),
+            Self::Name(name) => name.clone(),
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Entity Matcher
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -121,12 +205,13 @@ impl EntityMatcher {
 // Effect Matcher
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Matches effects/abilities by ID with optional source/target filters.
+/// Matches effects by ID or name with optional source/target filters.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct EffectMatcher {
-    /// Effect/ability IDs that trigger a match (any match suffices)
-    #[serde(default)]
-    pub effect_ids: Vec<u64>,
+    /// Effect selectors that trigger a match (any match suffices).
+    /// Supports both IDs and names.
+    #[serde(default, alias = "effect_ids")]
+    pub effects: Vec<EffectSelector>,
 
     /// Optional filter for the source entity
     #[serde(default)]
@@ -141,7 +226,15 @@ impl EffectMatcher {
     /// Create a matcher for specific effect IDs.
     pub fn by_ids(ids: impl IntoIterator<Item = u64>) -> Self {
         Self {
-            effect_ids: ids.into_iter().collect(),
+            effects: ids.into_iter().map(EffectSelector::Id).collect(),
+            ..Default::default()
+        }
+    }
+
+    /// Create a matcher for specific effect selectors.
+    pub fn by_selectors(selectors: impl IntoIterator<Item = EffectSelector>) -> Self {
+        Self {
+            effects: selectors.into_iter().collect(),
             ..Default::default()
         }
     }
@@ -158,9 +251,14 @@ impl EffectMatcher {
         self
     }
 
-    /// Check if the effect ID matches (source/target checked separately).
+    /// Check if the effect matches by ID only (for backwards compatibility).
     pub fn matches_effect_id(&self, effect_id: u64) -> bool {
-        self.effect_ids.is_empty() || self.effect_ids.contains(&effect_id)
+        self.matches_effect(effect_id, None)
+    }
+
+    /// Check if the effect matches by ID and/or name.
+    pub fn matches_effect(&self, effect_id: u64, effect_name: Option<&str>) -> bool {
+        self.effects.is_empty() || self.effects.iter().any(|s| s.matches(effect_id, effect_name))
     }
 }
 
@@ -168,12 +266,13 @@ impl EffectMatcher {
 // Ability Matcher (simpler variant for ability casts)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Matches abilities by ID with optional source filter.
+/// Matches abilities by ID or name with optional source filter.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AbilityMatcher {
-    /// Ability IDs that trigger a match (any match suffices)
-    #[serde(default)]
-    pub ability_ids: Vec<u64>,
+    /// Ability selectors that trigger a match (any match suffices).
+    /// Supports both IDs and names.
+    #[serde(default, alias = "ability_ids")]
+    pub abilities: Vec<AbilitySelector>,
 
     /// Optional filter for the source entity (who cast it)
     #[serde(default)]
@@ -184,7 +283,15 @@ impl AbilityMatcher {
     /// Create a matcher for specific ability IDs.
     pub fn by_ids(ids: impl IntoIterator<Item = u64>) -> Self {
         Self {
-            ability_ids: ids.into_iter().collect(),
+            abilities: ids.into_iter().map(AbilitySelector::Id).collect(),
+            ..Default::default()
+        }
+    }
+
+    /// Create a matcher for specific ability selectors.
+    pub fn by_selectors(selectors: impl IntoIterator<Item = AbilitySelector>) -> Self {
+        Self {
+            abilities: selectors.into_iter().collect(),
             ..Default::default()
         }
     }
@@ -195,9 +302,14 @@ impl AbilityMatcher {
         self
     }
 
-    /// Check if the ability ID matches (source checked separately).
+    /// Check if the ability matches by ID only (for backwards compatibility).
     pub fn matches_ability_id(&self, ability_id: u64) -> bool {
-        self.ability_ids.is_empty() || self.ability_ids.contains(&ability_id)
+        self.matches_ability(ability_id, None)
+    }
+
+    /// Check if the ability matches by ID and/or name.
+    pub fn matches_ability(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+        self.abilities.is_empty() || self.abilities.iter().any(|s| s.matches(ability_id, ability_name))
     }
 }
 
@@ -248,5 +360,64 @@ mod tests {
         let matcher = EffectMatcher::by_ids([100, 200, 300]);
         assert!(matcher.matches_effect_id(200));
         assert!(!matcher.matches_effect_id(999));
+    }
+
+    #[test]
+    fn effect_selector_from_input_parses_id() {
+        let selector = EffectSelector::from_input("12345");
+        assert_eq!(selector, EffectSelector::Id(12345));
+    }
+
+    #[test]
+    fn effect_selector_from_input_parses_name() {
+        let selector = EffectSelector::from_input("Burn");
+        assert_eq!(selector, EffectSelector::Name("Burn".to_string()));
+    }
+
+    #[test]
+    fn effect_matcher_matches_by_name() {
+        let matcher = EffectMatcher::by_selectors([
+            EffectSelector::Name("Burn".to_string()),
+        ]);
+        assert!(matcher.matches_effect(999, Some("Burn")));
+        assert!(matcher.matches_effect(999, Some("burn"))); // case insensitive
+        assert!(!matcher.matches_effect(999, Some("Freeze")));
+        assert!(!matcher.matches_effect(999, None));
+    }
+
+    #[test]
+    fn effect_matcher_matches_mixed() {
+        let matcher = EffectMatcher::by_selectors([
+            EffectSelector::Id(100),
+            EffectSelector::Name("Burn".to_string()),
+        ]);
+        // Matches by ID
+        assert!(matcher.matches_effect(100, None));
+        // Matches by name
+        assert!(matcher.matches_effect(999, Some("Burn")));
+        // Neither matches
+        assert!(!matcher.matches_effect(999, Some("Freeze")));
+    }
+
+    #[test]
+    fn ability_selector_from_input() {
+        assert_eq!(
+            AbilitySelector::from_input("12345"),
+            AbilitySelector::Id(12345)
+        );
+        assert_eq!(
+            AbilitySelector::from_input("Force Lightning"),
+            AbilitySelector::Name("Force Lightning".to_string())
+        );
+    }
+
+    #[test]
+    fn ability_matcher_matches_by_name() {
+        let matcher = AbilityMatcher::by_selectors([
+            AbilitySelector::Name("Force Lightning".to_string()),
+        ]);
+        assert!(matcher.matches_ability(999, Some("Force Lightning")));
+        assert!(matcher.matches_ability(999, Some("force lightning")));
+        assert!(!matcher.matches_ability(999, Some("Saber Strike")));
     }
 }

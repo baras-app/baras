@@ -58,11 +58,15 @@ pub fn check_counter_trigger(
         Trigger::CombatEnd => {
             current_signals.iter().any(|s| matches!(s, GameSignal::CombatEnded { .. }))
         }
-        Trigger::AbilityCast { ability_ids, source } => {
+        Trigger::AbilityCast { abilities, source } => {
             if event.effect.effect_id != effect_id::ABILITYACTIVATE {
                 return false;
             }
-            if !ability_ids.contains(&(event.action.action_id as u64)) {
+            let ability_id = event.action.action_id as u64;
+            let ability_name = crate::context::resolve(event.action.name);
+            if !abilities.is_empty()
+                && !abilities.iter().any(|s| s.matches(ability_id, Some(&ability_name)))
+            {
                 return false;
             }
             // Check source filter if specified
@@ -76,11 +80,13 @@ pub fn check_counter_trigger(
             }
             true
         }
-        Trigger::EffectApplied { effect_ids, target, .. } => {
+        Trigger::EffectApplied { effects, target, .. } => {
             if event.effect.type_id != effect_type_id::APPLYEFFECT {
                 return false;
             }
-            if !effect_ids.contains(&(event.effect.effect_id as u64)) {
+            let eff_id = event.effect.effect_id as u64;
+            let eff_name = crate::context::resolve(event.effect.effect_name);
+            if !effects.is_empty() && !effects.iter().any(|s| s.matches(eff_id, Some(&eff_name))) {
                 return false;
             }
             // Check target filter if specified
@@ -101,11 +107,13 @@ pub fn check_counter_trigger(
             }
             true
         }
-        Trigger::EffectRemoved { effect_ids, target, .. } => {
+        Trigger::EffectRemoved { effects, target, .. } => {
             if event.effect.type_id != effect_type_id::REMOVEEFFECT {
                 return false;
             }
-            if !effect_ids.contains(&(event.effect.effect_id as u64)) {
+            let eff_id = event.effect.effect_id as u64;
+            let eff_name = crate::context::resolve(event.effect.effect_name);
+            if !effects.is_empty() && !effects.iter().any(|s| s.matches(eff_id, Some(&eff_name))) {
                 return false;
             }
             // Check target filter if specified

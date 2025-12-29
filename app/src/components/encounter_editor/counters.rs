@@ -353,7 +353,7 @@ fn NewCounterForm(
 ) -> Element {
     let mut id = use_signal(|| "new_counter".to_string());
     let mut increment_on = use_signal(|| CounterTrigger::AbilityCast {
-        ability_ids: vec![],
+        abilities: vec![],
         source: None,
     });
     let mut reset_on = use_signal(|| CounterTrigger::CombatEnd);

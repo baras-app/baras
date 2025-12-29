@@ -54,7 +54,7 @@ pub(super) fn handle_ability(
 
     // Check for cancel triggers on ability cast
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::AbilityCast { ability_ids, .. } if ability_ids.contains(&ability_id)),
+        |t| matches!(t, TimerTrigger::AbilityCast { abilities, .. } if abilities.iter().any(|s| s.matches(ability_id, None))),
         &format!("ability {} cast", ability_id)
     );
 }
@@ -95,7 +95,7 @@ pub(super) fn handle_effect_applied(
 
     // Check for cancel triggers on effect applied
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::EffectApplied { effect_ids, .. } if effect_ids.contains(&effect_id)),
+        |t| matches!(t, TimerTrigger::EffectApplied { effects, .. } if effects.iter().any(|s| s.matches(effect_id, None))),
         &format!("effect {} applied", effect_id)
     );
 }
@@ -139,7 +139,7 @@ pub(super) fn handle_effect_removed(
 
     // Check for cancel triggers on effect removed
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::EffectRemoved { effect_ids, .. } if effect_ids.contains(&effect_id)),
+        |t| matches!(t, TimerTrigger::EffectRemoved { effects, .. } if effects.iter().any(|s| s.matches(effect_id, None))),
         &format!("effect {} removed", effect_id)
     );
 }

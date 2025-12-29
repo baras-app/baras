@@ -369,23 +369,30 @@ pub fn check_hp_trigger(
 /// Check if an ability/effect-based phase trigger is satisfied.
 pub fn check_ability_trigger(trigger: &Trigger, event: &CombatEvent) -> bool {
     match trigger {
-        Trigger::AbilityCast { ability_ids, .. } => {
+        Trigger::AbilityCast { abilities, .. } => {
             if event.effect.effect_id != effect_id::ABILITYACTIVATE {
                 return false;
             }
-            ability_ids.contains(&(event.action.action_id as u64))
+            let ability_id = event.action.action_id as u64;
+            let ability_name = crate::context::resolve(event.action.name);
+            abilities.is_empty()
+                || abilities.iter().any(|s| s.matches(ability_id, Some(&ability_name)))
         }
-        Trigger::EffectApplied { effect_ids, .. } => {
+        Trigger::EffectApplied { effects, .. } => {
             if event.effect.type_id != effect_type_id::APPLYEFFECT {
                 return false;
             }
-            effect_ids.contains(&(event.effect.effect_id as u64))
+            let eff_id = event.effect.effect_id as u64;
+            let eff_name = crate::context::resolve(event.effect.effect_name);
+            effects.is_empty() || effects.iter().any(|s| s.matches(eff_id, Some(&eff_name)))
         }
-        Trigger::EffectRemoved { effect_ids, .. } => {
+        Trigger::EffectRemoved { effects, .. } => {
             if event.effect.type_id != effect_type_id::REMOVEEFFECT {
                 return false;
             }
-            effect_ids.contains(&(event.effect.effect_id as u64))
+            let eff_id = event.effect.effect_id as u64;
+            let eff_name = crate::context::resolve(event.effect.effect_name);
+            effects.is_empty() || effects.iter().any(|s| s.matches(eff_id, Some(&eff_name)))
         }
         Trigger::AnyOf { conditions } => {
             conditions.iter().any(|c| check_ability_trigger(c, event))

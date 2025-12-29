@@ -498,7 +498,8 @@ conditions = [
         assert!(swelling.can_be_refreshed);
         assert!(matches!(
             &swelling.trigger,
-            crate::timers::TimerTrigger::AbilityCast { ability_ids, .. } if ability_ids == &[3294098182111232]
+            crate::timers::TimerTrigger::AbilityCast { abilities, .. }
+                if abilities.len() == 1 && matches!(&abilities[0], crate::triggers::AbilitySelector::Id(3294098182111232))
         ));
 
         eprintln!("Successfully loaded Bestia fixture with {} timers", bestia.timers.len());

@@ -6,7 +6,9 @@
 
 mod matchers;
 
-pub use matchers::{AbilityMatcher, EffectMatcher, EntityMatcher};
+pub use matchers::{
+    AbilityMatcher, AbilitySelector, EffectMatcher, EffectSelector, EntityMatcher,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -63,16 +65,18 @@ pub enum Trigger {
 
     /// Ability is cast. [TPC]
     AbilityCast {
-        #[serde(default)]
-        ability_ids: Vec<u64>,
+        /// Ability selectors (ID or name). Alias for backwards compat.
+        #[serde(default, alias = "ability_ids")]
+        abilities: Vec<AbilitySelector>,
         #[serde(default)]
         source: EntityMatcher,
     },
 
     /// Effect/buff is applied. [TPC]
     EffectApplied {
-        #[serde(default)]
-        effect_ids: Vec<u64>,
+        /// Effect selectors (ID or name). Alias for backwards compat.
+        #[serde(default, alias = "effect_ids")]
+        effects: Vec<EffectSelector>,
         #[serde(default)]
         source: EntityMatcher,
         #[serde(default)]
@@ -81,8 +85,9 @@ pub enum Trigger {
 
     /// Effect/buff is removed. [TPC]
     EffectRemoved {
-        #[serde(default)]
-        effect_ids: Vec<u64>,
+        /// Effect selectors (ID or name). Alias for backwards compat.
+        #[serde(default, alias = "effect_ids")]
+        effects: Vec<EffectSelector>,
         #[serde(default)]
         source: EntityMatcher,
         #[serde(default)]
@@ -273,7 +278,7 @@ mod tests {
     fn contains_combat_start_nested() {
         let trigger = Trigger::AnyOf {
             conditions: vec![
-                Trigger::AbilityCast { ability_ids: vec![123], source: EntityMatcher::default() },
+                Trigger::AbilityCast { abilities: vec![AbilitySelector::Id(123)], source: EntityMatcher::default() },
                 Trigger::CombatStart,
             ],
         };
@@ -283,8 +288,39 @@ mod tests {
     #[test]
     fn serde_round_trip() {
         let trigger = Trigger::AbilityCast {
-            ability_ids: vec![123, 456],
+            abilities: vec![AbilitySelector::Id(123), AbilitySelector::Id(456)],
             source: EntityMatcher::by_npc_id(789),
+        };
+        let toml = toml::to_string(&trigger).unwrap();
+        let parsed: Trigger = toml::from_str(&toml).unwrap();
+        assert_eq!(trigger, parsed);
+    }
+
+    #[test]
+    fn serde_backwards_compat_ability_ids() {
+        // Old config format with ability_ids should still work
+        let toml = r#"
+            type = "ability_cast"
+            ability_ids = [123, 456]
+        "#;
+        let parsed: Trigger = toml::from_str(toml).unwrap();
+        match parsed {
+            Trigger::AbilityCast { abilities, .. } => {
+                assert_eq!(abilities.len(), 2);
+            }
+            _ => panic!("Wrong trigger type"),
+        }
+    }
+
+    #[test]
+    fn serde_mixed_selectors() {
+        let trigger = Trigger::EffectApplied {
+            effects: vec![
+                EffectSelector::Id(100),
+                EffectSelector::Name("Burn".to_string()),
+            ],
+            source: EntityMatcher::default(),
+            target: EntityMatcher::default(),
         };
         let toml = toml::to_string(&trigger).unwrap();
         let parsed: Trigger = toml::from_str(&toml).unwrap();

@@ -6,7 +6,7 @@ use chrono::Local;
 
 use crate::signal_processor::{GameSignal, SignalHandler};
 use crate::entity_filter::EntityFilter;
-use crate::triggers::EntityMatcher;
+use crate::triggers::{EntityMatcher, AbilitySelector, EffectSelector};
 use super::{TimerDefinition, TimerManager, TimerTrigger};
 
 /// Create a test timer with the given trigger
@@ -77,7 +77,7 @@ fn test_ability_cast_triggers_timer() {
     let timer = make_timer(
         "dread_scream",
         "Dread Scream",
-        TimerTrigger::AbilityCast { ability_ids: vec![3302391763959808], source: EntityMatcher::default() },
+        TimerTrigger::AbilityCast { abilities: vec![AbilitySelector::Id(3302391763959808)], source: EntityMatcher::default() },
         15.0,
     );
     manager.load_definitions(vec![timer]);
@@ -109,7 +109,7 @@ fn test_effect_applied_triggers_timer() {
     let timer = make_timer(
         "debuff_tracker",
         "Debuff Active",
-        TimerTrigger::EffectApplied { effect_ids: vec![999999], source: EntityMatcher::default(), target: EntityMatcher::default() },
+        TimerTrigger::EffectApplied { effects: vec![EffectSelector::Id(999999)], source: EntityMatcher::default(), target: EntityMatcher::default() },
         10.0,
     );
     manager.load_definitions(vec![timer]);
@@ -171,8 +171,8 @@ fn test_anyof_condition_triggers_on_either() {
         "Multi Trigger",
         TimerTrigger::AnyOf {
             conditions: vec![
-                TimerTrigger::AbilityCast { ability_ids: vec![111], source: EntityMatcher::default() },
-                TimerTrigger::AbilityCast { ability_ids: vec![222], source: EntityMatcher::default() },
+                TimerTrigger::AbilityCast { abilities: vec![AbilitySelector::Id(111)], source: EntityMatcher::default() },
+                TimerTrigger::AbilityCast { abilities: vec![AbilitySelector::Id(222)], source: EntityMatcher::default() },
             ],
         },
         10.0,
@@ -230,7 +230,7 @@ fn test_anyof_mixed_trigger_types() {
         TimerTrigger::AnyOf {
             conditions: vec![
                 TimerTrigger::CombatStart,
-                TimerTrigger::AbilityCast { ability_ids: vec![333], source: EntityMatcher::default() },
+                TimerTrigger::AbilityCast { abilities: vec![AbilitySelector::Id(333)], source: EntityMatcher::default() },
             ],
         },
         20.0,
@@ -265,7 +265,7 @@ fn test_cancel_on_timer() {
     let timer_b = make_timer(
         "timer_b",
         "Timer B",
-        TimerTrigger::AbilityCast { ability_ids: vec![444], source: EntityMatcher::default() },
+        TimerTrigger::AbilityCast { abilities: vec![AbilitySelector::Id(444)], source: EntityMatcher::default() },
         30.0,
     );
 
@@ -307,7 +307,7 @@ fn test_wrong_ability_does_not_trigger() {
     let timer = make_timer(
         "specific",
         "Specific Ability",
-        TimerTrigger::AbilityCast { ability_ids: vec![12345], source: EntityMatcher::default() },
+        TimerTrigger::AbilityCast { abilities: vec![AbilitySelector::Id(12345)], source: EntityMatcher::default() },
         10.0,
     );
     manager.load_definitions(vec![timer]);
@@ -614,7 +614,7 @@ fn test_integration_ability_timer_with_real_log() {
     let timer = make_timer(
         "any_ability",
         "Ability Tracker",
-        TimerTrigger::AbilityCast { ability_ids: vec![807737319514112], source: EntityMatcher::default() }, // Basic Attack
+        TimerTrigger::AbilityCast { abilities: vec![AbilitySelector::Id(807737319514112)], source: EntityMatcher::default() }, // Basic Attack
         10.0,
     );
 
@@ -816,7 +816,7 @@ fn test_timer_refresh_resets_expiration() {
         ..make_timer(
             "refreshable",
             "Refreshable Timer",
-            TimerTrigger::AbilityCast { ability_ids: vec![12345], source: EntityMatcher::default() },
+            TimerTrigger::AbilityCast { abilities: vec![AbilitySelector::Id(12345)], source: EntityMatcher::default() },
             5.0,
         )
     };
@@ -880,7 +880,7 @@ fn test_timer_no_refresh_when_disabled() {
         ..make_timer(
             "no_refresh",
             "No Refresh Timer",
-            TimerTrigger::AbilityCast { ability_ids: vec![12345], source: EntityMatcher::default() },
+            TimerTrigger::AbilityCast { abilities: vec![AbilitySelector::Id(12345)], source: EntityMatcher::default() },
             10.0,
         )
     };

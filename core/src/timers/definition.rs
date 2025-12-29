@@ -254,35 +254,68 @@ impl TimerDefinition {
 // Trigger Matching Functions
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Check if trigger matches ability ID (handles AnyOf recursively)
+/// Check if trigger matches ability cast (handles AnyOf recursively)
 pub fn trigger_matches_ability(trigger: &Trigger, ability_id: u64) -> bool {
+    trigger_matches_ability_with_name(trigger, ability_id, None)
+}
+
+/// Check if trigger matches ability cast with optional name (handles AnyOf recursively)
+pub fn trigger_matches_ability_with_name(
+    trigger: &Trigger,
+    ability_id: u64,
+    ability_name: Option<&str>,
+) -> bool {
     match trigger {
-        Trigger::AbilityCast { ability_ids, .. } => ability_ids.contains(&ability_id),
-        Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| trigger_matches_ability(c, ability_id))
+        Trigger::AbilityCast { abilities, .. } => {
+            abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
         }
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| trigger_matches_ability_with_name(c, ability_id, ability_name)),
         _ => false,
     }
 }
 
 /// Check if trigger matches effect applied (handles AnyOf recursively)
 pub fn trigger_matches_effect_applied(trigger: &Trigger, effect_id: u64) -> bool {
+    trigger_matches_effect_applied_with_name(trigger, effect_id, None)
+}
+
+/// Check if trigger matches effect applied with optional name (handles AnyOf recursively)
+pub fn trigger_matches_effect_applied_with_name(
+    trigger: &Trigger,
+    effect_id: u64,
+    effect_name: Option<&str>,
+) -> bool {
     match trigger {
-        Trigger::EffectApplied { effect_ids, .. } => effect_ids.contains(&effect_id),
-        Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| trigger_matches_effect_applied(c, effect_id))
+        Trigger::EffectApplied { effects, .. } => {
+            effects.is_empty() || effects.iter().any(|s| s.matches(effect_id, effect_name))
         }
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| trigger_matches_effect_applied_with_name(c, effect_id, effect_name)),
         _ => false,
     }
 }
 
 /// Check if trigger matches effect removed (handles AnyOf recursively)
 pub fn trigger_matches_effect_removed(trigger: &Trigger, effect_id: u64) -> bool {
+    trigger_matches_effect_removed_with_name(trigger, effect_id, None)
+}
+
+/// Check if trigger matches effect removed with optional name (handles AnyOf recursively)
+pub fn trigger_matches_effect_removed_with_name(
+    trigger: &Trigger,
+    effect_id: u64,
+    effect_name: Option<&str>,
+) -> bool {
     match trigger {
-        Trigger::EffectRemoved { effect_ids, .. } => effect_ids.contains(&effect_id),
-        Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| trigger_matches_effect_removed(c, effect_id))
+        Trigger::EffectRemoved { effects, .. } => {
+            effects.is_empty() || effects.iter().any(|s| s.matches(effect_id, effect_name))
         }
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| trigger_matches_effect_removed_with_name(c, effect_id, effect_name)),
         _ => false,
     }
 }

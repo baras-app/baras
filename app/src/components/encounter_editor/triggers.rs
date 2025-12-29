@@ -4,7 +4,7 @@
 
 use dioxus::prelude::*;
 
-use crate::types::{CounterTrigger, PhaseTrigger, TimerTrigger};
+use crate::types::{AbilitySelector, CounterTrigger, EffectSelector, PhaseTrigger, TimerTrigger};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Timer Trigger Editor
@@ -173,9 +173,9 @@ pub fn SimpleTriggerEditor(
                 onchange: move |e| {
                     let new_trigger = match e.value().as_str() {
                         "combat_start" => TimerTrigger::CombatStart,
-                        "ability_cast" => TimerTrigger::AbilityCast { ability_ids: vec![] },
-                        "effect_applied" => TimerTrigger::EffectApplied { effect_ids: vec![] },
-                        "effect_removed" => TimerTrigger::EffectRemoved { effect_ids: vec![] },
+                        "ability_cast" => TimerTrigger::AbilityCast { abilities: vec![] },
+                        "effect_applied" => TimerTrigger::EffectApplied { effects: vec![] },
+                        "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![] },
                         "timer_expires" => TimerTrigger::TimerExpires { timer_id: String::new() },
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
                         "phase_entered" => TimerTrigger::PhaseEntered { phase_id: String::new() },
@@ -213,25 +213,25 @@ pub fn SimpleTriggerEditor(
                 match trigger.clone() {
                     TimerTrigger::CombatStart => rsx! {},
                     TimerTrigger::Manual => rsx! {},
-                    TimerTrigger::AbilityCast { ability_ids } => rsx! {
-                        IdListEditor {
-                            label: "Ability IDs",
-                            ids: ability_ids,
-                            on_change: move |ids| on_change.call(TimerTrigger::AbilityCast { ability_ids: ids })
+                    TimerTrigger::AbilityCast { abilities } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities",
+                            selectors: abilities,
+                            on_change: move |sels| on_change.call(TimerTrigger::AbilityCast { abilities: sels })
                         }
                     },
-                    TimerTrigger::EffectApplied { effect_ids } => rsx! {
-                        IdListEditor {
-                            label: "Effect IDs",
-                            ids: effect_ids,
-                            on_change: move |ids| on_change.call(TimerTrigger::EffectApplied { effect_ids: ids })
+                    TimerTrigger::EffectApplied { effects } => rsx! {
+                        EffectSelectorEditor {
+                            label: "Effects",
+                            selectors: effects,
+                            on_change: move |sels| on_change.call(TimerTrigger::EffectApplied { effects: sels })
                         }
                     },
-                    TimerTrigger::EffectRemoved { effect_ids } => rsx! {
-                        IdListEditor {
-                            label: "Effect IDs",
-                            ids: effect_ids,
-                            on_change: move |ids| on_change.call(TimerTrigger::EffectRemoved { effect_ids: ids })
+                    TimerTrigger::EffectRemoved { effects } => rsx! {
+                        EffectSelectorEditor {
+                            label: "Effects",
+                            selectors: effects,
+                            on_change: move |sels| on_change.call(TimerTrigger::EffectRemoved { effects: sels })
                         }
                     },
                     TimerTrigger::TimerExpires { timer_id } => rsx! {
@@ -477,39 +477,40 @@ fn EntityTriggerFields(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ID List Editor (for ability/effect IDs)
+// Selector List Editors (for ability/effect IDs or names)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Editor for a list of u64 IDs (ability or effect)
+/// Editor for a list of effect selectors (ID or name)
 #[component]
-pub fn IdListEditor(
+pub fn EffectSelectorEditor(
     label: &'static str,
-    ids: Vec<u64>,
-    on_change: EventHandler<Vec<u64>>,
+    selectors: Vec<EffectSelector>,
+    on_change: EventHandler<Vec<EffectSelector>>,
 ) -> Element {
-    let mut new_id_input = use_signal(String::new);
+    let mut new_input = use_signal(String::new);
 
-    let ids_for_keydown = ids.clone();
-    let ids_for_click = ids.clone();
+    let selectors_for_keydown = selectors.clone();
+    let selectors_for_click = selectors.clone();
 
     rsx! {
         div { class: "flex-col gap-xs items-start",
             span { class: "text-sm text-secondary text-left", "{label}:" }
 
-            // ID chips
+            // Selector chips
             div { class: "flex flex-wrap gap-xs",
-                for (idx, id) in ids.iter().enumerate() {
+                for (idx, sel) in selectors.iter().enumerate() {
                     {
-                        let ids_clone = ids.clone();
+                        let selectors_clone = selectors.clone();
+                        let display = sel.display();
                         rsx! {
                             span { class: "chip",
-                                "{id}"
+                                "{display}"
                                 button {
                                     class: "chip-remove",
                                     onclick: move |_| {
-                                        let mut new_ids = ids_clone.clone();
-                                        new_ids.remove(idx);
-                                        on_change.call(new_ids);
+                                        let mut new_sels = selectors_clone.clone();
+                                        new_sels.remove(idx);
+                                        on_change.call(new_sels);
                                     },
                                     "×"
                                 }
@@ -519,37 +520,119 @@ pub fn IdListEditor(
                 }
             }
 
-            // Add new ID
+            // Add new selector
             div { class: "flex gap-xs",
                 input {
                     r#type: "text",
                     class: "input-inline",
                     style: "width: 180px;",
-                    placeholder: "ID (Enter to add)",
-                    value: "{new_id_input}",
-                    oninput: move |e| new_id_input.set(e.value()),
+                    placeholder: "ID or Name (Enter)",
+                    value: "{new_input}",
+                    oninput: move |e| new_input.set(e.value()),
                     onkeydown: move |e| {
-                        if e.key() == Key::Enter
-                            && let Ok(id) = new_id_input().parse::<u64>() {
-                                let mut new_ids = ids_for_keydown.clone();
-                                if !new_ids.contains(&id) {
-                                    new_ids.push(id);
-                                    on_change.call(new_ids);
-                                }
-                                new_id_input.set(String::new());
+                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
+                            let selector = EffectSelector::from_input(&new_input());
+                            let mut new_sels = selectors_for_keydown.clone();
+                            if !new_sels.contains(&selector) {
+                                new_sels.push(selector);
+                                on_change.call(new_sels);
                             }
+                            new_input.set(String::new());
+                        }
                     }
                 }
                 button {
                     class: "btn btn-sm",
                     onclick: move |_| {
-                        if let Ok(id) = new_id_input().parse::<u64>() {
-                            let mut new_ids = ids_for_click.clone();
-                            if !new_ids.contains(&id) {
-                                new_ids.push(id);
-                                on_change.call(new_ids);
+                        if !new_input().trim().is_empty() {
+                            let selector = EffectSelector::from_input(&new_input());
+                            let mut new_sels = selectors_for_click.clone();
+                            if !new_sels.contains(&selector) {
+                                new_sels.push(selector);
+                                on_change.call(new_sels);
                             }
-                            new_id_input.set(String::new());
+                            new_input.set(String::new());
+                        }
+                    },
+                    "Add"
+                }
+            }
+        }
+    }
+}
+
+/// Editor for a list of ability selectors (ID or name)
+#[component]
+pub fn AbilitySelectorEditor(
+    label: &'static str,
+    selectors: Vec<AbilitySelector>,
+    on_change: EventHandler<Vec<AbilitySelector>>,
+) -> Element {
+    let mut new_input = use_signal(String::new);
+
+    let selectors_for_keydown = selectors.clone();
+    let selectors_for_click = selectors.clone();
+
+    rsx! {
+        div { class: "flex-col gap-xs items-start",
+            span { class: "text-sm text-secondary text-left", "{label}:" }
+
+            // Selector chips
+            div { class: "flex flex-wrap gap-xs",
+                for (idx, sel) in selectors.iter().enumerate() {
+                    {
+                        let selectors_clone = selectors.clone();
+                        let display = sel.display();
+                        rsx! {
+                            span { class: "chip",
+                                "{display}"
+                                button {
+                                    class: "chip-remove",
+                                    onclick: move |_| {
+                                        let mut new_sels = selectors_clone.clone();
+                                        new_sels.remove(idx);
+                                        on_change.call(new_sels);
+                                    },
+                                    "×"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Add new selector
+            div { class: "flex gap-xs",
+                input {
+                    r#type: "text",
+                    class: "input-inline",
+                    style: "width: 180px;",
+                    placeholder: "ID or Name (Enter)",
+                    value: "{new_input}",
+                    oninput: move |e| new_input.set(e.value()),
+                    onkeydown: move |e| {
+                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
+                            let selector = AbilitySelector::from_input(&new_input());
+                            let mut new_sels = selectors_for_keydown.clone();
+                            if !new_sels.contains(&selector) {
+                                new_sels.push(selector);
+                                on_change.call(new_sels);
+                            }
+                            new_input.set(String::new());
+                        }
+                    }
+                }
+                button {
+                    class: "btn btn-sm",
+                    onclick: move |_| {
+                        if !new_input().trim().is_empty() {
+                            let selector = AbilitySelector::from_input(&new_input());
+                            let mut new_sels = selectors_for_click.clone();
+                            if !new_sels.contains(&selector) {
+                                new_sels.push(selector);
+                                on_change.call(new_sels);
+                            }
+                            new_input.set(String::new());
                         }
                     },
                     "Add"
@@ -737,9 +820,9 @@ fn SimplePhaseTriggerEditor(
                             npc_id: None,
                             boss_name: None,
                         },
-                        "ability_cast" => PhaseTrigger::AbilityCast { ability_ids: vec![] },
-                        "effect_applied" => PhaseTrigger::EffectApplied { effect_ids: vec![] },
-                        "effect_removed" => PhaseTrigger::EffectRemoved { effect_ids: vec![] },
+                        "ability_cast" => PhaseTrigger::AbilityCast { abilities: vec![] },
+                        "effect_applied" => PhaseTrigger::EffectApplied { effects: vec![] },
+                        "effect_removed" => PhaseTrigger::EffectRemoved { effects: vec![] },
                         "counter_reaches" => PhaseTrigger::CounterReaches {
                             counter_id: String::new(),
                             value: 1,
@@ -804,25 +887,25 @@ fn SimplePhaseTriggerEditor(
                             })
                         }
                     },
-                    PhaseTrigger::AbilityCast { ability_ids } => rsx! {
-                        IdListEditor {
-                            label: "Ability IDs",
-                            ids: ability_ids,
-                            on_change: move |ids| on_change.call(PhaseTrigger::AbilityCast { ability_ids: ids })
+                    PhaseTrigger::AbilityCast { abilities } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities",
+                            selectors: abilities,
+                            on_change: move |sels| on_change.call(PhaseTrigger::AbilityCast { abilities: sels })
                         }
                     },
-                    PhaseTrigger::EffectApplied { effect_ids } => rsx! {
-                        IdListEditor {
-                            label: "Effect IDs",
-                            ids: effect_ids,
-                            on_change: move |ids| on_change.call(PhaseTrigger::EffectApplied { effect_ids: ids })
+                    PhaseTrigger::EffectApplied { effects } => rsx! {
+                        EffectSelectorEditor {
+                            label: "Effects",
+                            selectors: effects,
+                            on_change: move |sels| on_change.call(PhaseTrigger::EffectApplied { effects: sels })
                         }
                     },
-                    PhaseTrigger::EffectRemoved { effect_ids } => rsx! {
-                        IdListEditor {
-                            label: "Effect IDs",
-                            ids: effect_ids,
-                            on_change: move |ids| on_change.call(PhaseTrigger::EffectRemoved { effect_ids: ids })
+                    PhaseTrigger::EffectRemoved { effects } => rsx! {
+                        EffectSelectorEditor {
+                            label: "Effects",
+                            selectors: effects,
+                            on_change: move |sels| on_change.call(PhaseTrigger::EffectRemoved { effects: sels })
                         }
                     },
                     PhaseTrigger::CounterReaches { counter_id, value } => rsx! {
@@ -1005,15 +1088,15 @@ pub fn CounterTriggerEditor(
                         "combat_start" => CounterTrigger::CombatStart,
                         "combat_end" => CounterTrigger::CombatEnd,
                         "ability_cast" => CounterTrigger::AbilityCast {
-                            ability_ids: vec![],
+                            abilities: vec![],
                             source: None,
                         },
                         "effect_applied" => CounterTrigger::EffectApplied {
-                            effect_ids: vec![],
+                            effects: vec![],
                             target: None,
                         },
                         "effect_removed" => CounterTrigger::EffectRemoved {
-                            effect_ids: vec![],
+                            effects: vec![],
                             target: None,
                         },
                         "timer_expires" => CounterTrigger::TimerExpires {
@@ -1076,16 +1159,16 @@ pub fn CounterTriggerEditor(
                     CounterTrigger::CombatStart | CounterTrigger::CombatEnd
                     | CounterTrigger::AnyPhaseChange | CounterTrigger::Never => rsx! {},
 
-                    CounterTrigger::AbilityCast { ability_ids, source } => {
-                        let source_for_ids = source.clone();
+                    CounterTrigger::AbilityCast { abilities, source } => {
+                        let source_for_sels = source.clone();
                         let source_display = source.clone().unwrap_or_default();
                         rsx! {
-                            IdListEditor {
-                                label: "Ability IDs",
-                                ids: ability_ids.clone(),
-                                on_change: move |ids| on_change.call(CounterTrigger::AbilityCast {
-                                    ability_ids: ids,
-                                    source: source_for_ids.clone(),
+                            AbilitySelectorEditor {
+                                label: "Abilities",
+                                selectors: abilities.clone(),
+                                on_change: move |sels| on_change.call(CounterTrigger::AbilityCast {
+                                    abilities: sels,
+                                    source: source_for_sels.clone(),
                                 })
                             }
                             div { class: "flex items-center gap-xs",
@@ -1096,9 +1179,9 @@ pub fn CounterTriggerEditor(
                                     placeholder: "Entity (optional)",
                                     value: "{source_display}",
                                     oninput: {
-                                        let ability_ids = ability_ids.clone();
+                                        let abilities = abilities.clone();
                                         move |e| on_change.call(CounterTrigger::AbilityCast {
-                                            ability_ids: ability_ids.clone(),
+                                            abilities: abilities.clone(),
                                             source: if e.value().is_empty() { None } else { Some(e.value()) },
                                         })
                                     }
@@ -1107,16 +1190,16 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
-                    CounterTrigger::EffectApplied { effect_ids, target } => {
-                        let target_for_ids = target.clone();
+                    CounterTrigger::EffectApplied { effects, target } => {
+                        let target_for_sels = target.clone();
                         let target_display = target.clone().unwrap_or_default();
                         rsx! {
-                            IdListEditor {
-                                label: "Effect IDs",
-                                ids: effect_ids.clone(),
-                                on_change: move |ids| on_change.call(CounterTrigger::EffectApplied {
-                                    effect_ids: ids,
-                                    target: target_for_ids.clone(),
+                            EffectSelectorEditor {
+                                label: "Effects",
+                                selectors: effects.clone(),
+                                on_change: move |sels| on_change.call(CounterTrigger::EffectApplied {
+                                    effects: sels,
+                                    target: target_for_sels.clone(),
                                 })
                             }
                             div { class: "flex items-center gap-xs",
@@ -1127,9 +1210,9 @@ pub fn CounterTriggerEditor(
                                     placeholder: "Entity (optional)",
                                     value: "{target_display}",
                                     oninput: {
-                                        let effect_ids = effect_ids.clone();
+                                        let effects = effects.clone();
                                         move |e| on_change.call(CounterTrigger::EffectApplied {
-                                            effect_ids: effect_ids.clone(),
+                                            effects: effects.clone(),
                                             target: if e.value().is_empty() { None } else { Some(e.value()) },
                                         })
                                     }
@@ -1138,16 +1221,16 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
-                    CounterTrigger::EffectRemoved { effect_ids, target } => {
-                        let target_for_ids = target.clone();
+                    CounterTrigger::EffectRemoved { effects, target } => {
+                        let target_for_sels = target.clone();
                         let target_display = target.clone().unwrap_or_default();
                         rsx! {
-                            IdListEditor {
-                                label: "Effect IDs",
-                                ids: effect_ids.clone(),
-                                on_change: move |ids| on_change.call(CounterTrigger::EffectRemoved {
-                                    effect_ids: ids,
-                                    target: target_for_ids.clone(),
+                            EffectSelectorEditor {
+                                label: "Effects",
+                                selectors: effects.clone(),
+                                on_change: move |sels| on_change.call(CounterTrigger::EffectRemoved {
+                                    effects: sels,
+                                    target: target_for_sels.clone(),
                                 })
                             }
                             div { class: "flex items-center gap-xs",
@@ -1158,9 +1241,9 @@ pub fn CounterTriggerEditor(
                                     placeholder: "Entity (optional)",
                                     value: "{target_display}",
                                     oninput: {
-                                        let effect_ids = effect_ids.clone();
+                                        let effects = effects.clone();
                                         move |e| on_change.call(CounterTrigger::EffectRemoved {
-                                            effect_ids: effect_ids.clone(),
+                                            effects: effects.clone(),
                                             target: if e.value().is_empty() { None } else { Some(e.value()) },
                                         })
                                     }
