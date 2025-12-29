@@ -9,11 +9,15 @@
 //! alongside the ChallengeDefinition it consumes.
 
 mod challenge;
+mod counter;
 mod definition;
 mod loader;
+mod phase;
 mod state;
 
 pub use challenge::*;
+pub use counter::*;
 pub use definition::*;
 pub use loader::*;
+pub use phase::*;
 pub use state::*;

@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::ChallengeDefinition;
+use super::{ChallengeDefinition, CounterCondition, CounterDefinition, CounterTrigger, PhaseDefinition};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Root Config Structure
@@ -176,307 +176,16 @@ pub struct BossEncounterDefinition {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Phase Definitions
+// Boss Timer Definition
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// A phase within a boss encounter
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PhaseDefinition {
-    /// Phase identifier (e.g., "p1", "walker_1", "kephess_2", "burn")
-    pub id: String,
-
-    /// Display name
-    pub name: String,
-
-    /// What triggers this phase to start
-    #[serde(alias = "trigger")]
-    pub start_trigger: PhaseTrigger,
-
-    /// What triggers this phase to end (optional - otherwise ends when another phase starts)
-    #[serde(default)]
-    pub end_trigger: Option<PhaseTrigger>,
-
-    /// Phase that must immediately precede this one (guard condition)
-    /// e.g., walker_2 has preceded_by = "kephess_1" so it only fires after kephess_1
-    #[serde(default)]
-    pub preceded_by: Option<String>,
-
-    /// Only activate when counter meets condition (guard)
-    /// e.g., trandos phase only fires when siege_droid_deaths >= 3
-    #[serde(default)]
-    pub counter_condition: Option<CounterCondition>,
-
-    /// Counters to reset when entering this phase
-    #[serde(default)]
-    pub resets_counters: Vec<String>,
-}
-
-/// Triggers for phase transitions
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case", tag = "type")]
-pub enum PhaseTrigger {
-    /// Combat start (initial phase)
-    CombatStart,
-
-    /// Boss HP drops below threshold
-    /// Priority: entity > npc_id > boss_name > any boss
-    BossHpBelow {
-        hp_percent: f32,
-        /// Entity reference from roster (preferred)
-        #[serde(default)]
-        entity: Option<String>,
-        /// NPC class/template ID (legacy/fallback)
-        #[serde(default)]
-        npc_id: Option<i64>,
-        /// Boss name (fallback - may vary by locale)
-        #[serde(default)]
-        boss_name: Option<String>,
-    },
-
-    /// Boss HP rises above threshold
-    /// Priority: entity > npc_id > boss_name > any boss
-    BossHpAbove {
-        hp_percent: f32,
-        /// Entity reference from roster (preferred)
-        #[serde(default)]
-        entity: Option<String>,
-        /// NPC class/template ID (legacy/fallback)
-        #[serde(default)]
-        npc_id: Option<i64>,
-        /// Boss name (fallback - may vary by locale)
-        #[serde(default)]
-        boss_name: Option<String>,
-    },
-
-    /// Specific ability is cast
-    AbilityCast {
-        #[serde(default)]
-        ability_ids: Vec<u64>,
-    },
-
-    /// Effect applied to boss or players
-    EffectApplied {
-        #[serde(default)]
-        effect_ids: Vec<u64>,
-    },
-
-    /// Effect removed
-    EffectRemoved {
-        #[serde(default)]
-        effect_ids: Vec<u64>,
-    },
-
-    /// Counter reaches value
-    CounterReaches { counter_id: String, value: u32 },
-
-    /// Time elapsed since combat start
-    TimeElapsed { secs: f32 },
-
-    /// Entity is first seen (add spawn)
-    EntityFirstSeen {
-        /// Entity reference from roster (preferred)
-        #[serde(default)]
-        entity: Option<String>,
-        /// NPC ID to watch for (legacy/fallback)
-        #[serde(default)]
-        npc_id: Option<i64>,
-        /// Entity name fallback (runtime matching)
-        #[serde(default)]
-        entity_name: Option<String>,
-    },
-
-    /// Entity dies
-    EntityDeath {
-        /// Entity reference from roster (preferred)
-        #[serde(default)]
-        entity: Option<String>,
-        /// NPC ID to watch for (legacy/fallback)
-        #[serde(default)]
-        npc_id: Option<i64>,
-        /// Entity name fallback (runtime matching)
-        #[serde(default)]
-        entity_name: Option<String>,
-    },
-
-    /// Another phase's end_trigger fired
-    PhaseEnded {
-        /// Single phase ID (convenience)
-        #[serde(default)]
-        phase_id: Option<String>,
-        /// Multiple phase IDs (any match triggers)
-        #[serde(default)]
-        phase_ids: Vec<String>,
-    },
-
-    // ─── Logical Composition ─────────────────────────────────────────────────
-
-    /// Any condition suffices (OR logic)
-    AnyOf {
-        conditions: Vec<PhaseTrigger>,
-    },
-}
-
-impl PhaseTrigger {
-    /// Check if this trigger contains CombatStart (directly or nested in AnyOf)
-    pub fn contains_combat_start(&self) -> bool {
-        match self {
-            PhaseTrigger::CombatStart => true,
-            PhaseTrigger::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.contains_combat_start())
-            }
-            _ => false,
-        }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Counter Definitions
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// A counter that tracks occurrences during a boss fight
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CounterDefinition {
-    /// Counter identifier (e.g., "bull_count")
-    pub id: String,
-
-    /// What increments this counter
-    pub increment_on: CounterTrigger,
-
-    /// When to reset to initial_value (default: combat_end)
-    /// Uses the same trigger types as increment_on for consistency
-    #[serde(default)]
-    pub reset_on: CounterTrigger,
-
-    /// Starting value (and value after reset)
-    #[serde(default)]
-    pub initial_value: u32,
-
-    /// Optional: decrement instead of increment (for countdown patterns)
-    #[serde(default)]
-    pub decrement: bool,
-
-    /// Optional: set to specific value instead of increment/decrement
-    #[serde(default)]
-    pub set_value: Option<u32>,
-}
-
-/// Events that increment or modify a counter
-/// Used for both `increment_on` and `reset_on` triggers
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case", tag = "type")]
-pub enum CounterTrigger {
-    /// Combat starts (useful for reset_on to reset at fight start)
-    CombatStart,
-
-    /// Combat ends (default reset behavior)
-    CombatEnd,
-
-    /// Ability is cast
-    AbilityCast {
-        #[serde(default)]
-        ability_ids: Vec<u64>,
-        /// Optional source filter (entity name from roster)
-        #[serde(default)]
-        source: Option<String>,
-    },
-
-    /// Effect/buff is applied
-    EffectApplied {
-        #[serde(default)]
-        effect_ids: Vec<u64>,
-        /// Optional target filter ("local_player" or entity name)
-        #[serde(default)]
-        target: Option<String>,
-    },
-
-    /// Effect/buff is removed
-    EffectRemoved {
-        #[serde(default)]
-        effect_ids: Vec<u64>,
-        /// Optional target filter ("local_player" or entity name)
-        #[serde(default)]
-        target: Option<String>,
-    },
-
-    /// Timer expires
-    TimerExpires {
-        timer_id: String,
-    },
-
-    /// Timer starts (for cancellation patterns)
-    TimerStarts {
-        timer_id: String,
-    },
-
-    /// Phase is entered
-    PhaseEntered {
-        phase_id: String,
-    },
-
-    /// Phase ends
-    PhaseEnded {
-        phase_id: String,
-    },
-
-    /// Any phase change occurs
-    AnyPhaseChange,
-
-    /// NPC is first seen (add spawn)
-    EntityFirstSeen {
-        /// Entity reference from roster (preferred)
-        #[serde(default)]
-        entity: Option<String>,
-        /// NPC ID (legacy/fallback)
-        #[serde(default)]
-        npc_id: Option<i64>,
-        /// Entity name fallback (runtime matching)
-        #[serde(default)]
-        entity_name: Option<String>,
-    },
-
-    /// Entity dies
-    EntityDeath {
-        /// Entity reference from roster (preferred)
-        #[serde(default)]
-        entity: Option<String>,
-        /// NPC ID (legacy/fallback)
-        #[serde(default)]
-        npc_id: Option<i64>,
-        /// Entity name fallback (runtime matching)
-        #[serde(default)]
-        entity_name: Option<String>,
-    },
-
-    /// Counter reaches a specific value (for chained counter logic)
-    CounterReaches {
-        counter_id: String,
-        value: u32,
-    },
-
-    /// HP threshold crossed (for HP-based counter triggers)
-    BossHpBelow {
-        hp_percent: f32,
-        #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        boss_name: Option<String>,
-    },
-
-    /// Never triggers (use for counters that should never auto-reset)
-    Never,
-}
-
-impl Default for CounterTrigger {
-    fn default() -> Self {
-        CounterTrigger::CombatEnd
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Boss Timer Definitions
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// Timer definition with phase/counter conditions
+/// Timer definition embedded in boss configs.
+///
+/// This is a thin wrapper around TimerDefinition with different serde defaults:
+/// - `source` and `target` default to `Any` (boss abilities come from NPCs)
+/// - `encounters` and `boss` are implicit from parent context
+///
+/// Use `to_timer_definition()` to convert with full context.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BossTimerDefinition {
     /// Unique identifier
@@ -491,12 +200,12 @@ pub struct BossTimerDefinition {
     /// Source filter for trigger events (who casts/applies)
     /// Defaults to Any for boss timers since abilities come from NPCs
     #[serde(default = "crate::serde_defaults::default_entity_filter_any")]
-    pub source: crate::effects::EntityFilter,
+    pub source: crate::entity_filter::EntityFilter,
 
     /// Target filter for trigger events (who receives)
     /// Defaults to Any for boss timers (mechanic could affect anyone)
     #[serde(default = "crate::serde_defaults::default_entity_filter_any")]
-    pub target: crate::effects::EntityFilter,
+    pub target: crate::entity_filter::EntityFilter,
 
     /// Duration in seconds (0 = instant, use with is_alert)
     #[serde(default)]
@@ -542,12 +251,9 @@ pub struct BossTimerDefinition {
     pub chains_to: Option<String>,
 
     /// Cancel this timer when this trigger fires
-    /// Uses the same trigger types as the start trigger, including:
-    /// - effect_removed, phase_ended, ability_cast, etc.
-    /// - timer_started: cancel when another timer starts
     pub cancel_trigger: Option<crate::timers::TimerTrigger>,
 
-    /// Alert when this many seconds remain (TODO: not yet wired up)
+    /// Alert when this many seconds remain
     pub alert_at_secs: Option<f32>,
 
     /// Show on raid frames instead of timer bar
@@ -555,47 +261,35 @@ pub struct BossTimerDefinition {
     pub show_on_raid_frames: bool,
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Counter Conditions
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// Condition for counter-based timer activation
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CounterCondition {
-    /// Counter to check
-    pub counter_id: String,
-
-    /// Comparison operator
-    #[serde(default)]
-    pub operator: ComparisonOp,
-
-    /// Value to compare against
-    pub value: u32,
-}
-
-/// Comparison operators for counter conditions
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ComparisonOp {
-    #[default]
-    Eq,
-    Lt,
-    Gt,
-    Lte,
-    Gte,
-    Ne,
-}
-
-impl ComparisonOp {
-    pub fn evaluate(&self, left: u32, right: u32) -> bool {
-        match self {
-            ComparisonOp::Eq => left == right,
-            ComparisonOp::Lt => left < right,
-            ComparisonOp::Gt => left > right,
-            ComparisonOp::Lte => left <= right,
-            ComparisonOp::Gte => left >= right,
-            ComparisonOp::Ne => left != right,
+impl BossTimerDefinition {
+    /// Convert to a full TimerDefinition with boss context.
+    ///
+    /// Fills in the `encounters` and `boss` fields from the parent encounter.
+    pub fn to_timer_definition(&self, area_name: &str, boss_name: &str) -> crate::timers::TimerDefinition {
+        crate::timers::TimerDefinition {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            enabled: self.enabled,
+            trigger: self.trigger.clone(),
+            source: self.source.clone(),
+            target: self.target.clone(),
+            duration_secs: self.duration_secs,
+            is_alert: self.is_alert,
+            can_be_refreshed: self.can_be_refreshed,
+            repeats: self.repeats,
+            color: self.color,
+            show_on_raid_frames: self.show_on_raid_frames,
+            alert_at_secs: self.alert_at_secs,
+            alert_text: self.alert_text.clone(),
+            audio_file: None,
+            triggers_timer: self.chains_to.clone(),
+            cancel_trigger: self.cancel_trigger.clone(),
+            // Context from parent boss encounter
+            encounters: vec![area_name.to_string()],
+            boss: Some(boss_name.to_string()),
+            difficulties: self.difficulties.clone(),
+            phases: self.phases.clone(),
+            counter_condition: self.counter_condition.clone(),
         }
     }
 }

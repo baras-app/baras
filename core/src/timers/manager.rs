@@ -172,7 +172,7 @@ impl TimerManager {
             // Extract boss timers and convert to TimerDefinition
             for boss_timer in &boss.timers {
                 if boss_timer.enabled {
-                    let timer_def = convert_boss_timer_to_definition(boss_timer, &boss);
+                    let timer_def = boss_timer.to_timer_definition(&boss.area_name, &boss.name);
 
                     // Check for duplicate ID - warn and skip instead of silent overwrite
                     if let Some(existing) = self.definitions.get(&timer_def.id) {
@@ -705,35 +705,3 @@ impl SignalHandler for TimerManager {
     }
 }
 
-/// Convert a BossTimerDefinition to a TimerDefinition
-/// Adds boss context (area, name, difficulties) to the timer
-fn convert_boss_timer_to_definition(
-    boss_timer: &crate::boss::BossTimerDefinition,
-    boss: &BossEncounterDefinition,
-) -> TimerDefinition {
-    TimerDefinition {
-        id: boss_timer.id.clone(),
-        name: boss_timer.name.clone(),
-        enabled: boss_timer.enabled,
-        trigger: boss_timer.trigger.clone(),
-        source: boss_timer.source.clone(),
-        target: boss_timer.target.clone(),
-        duration_secs: boss_timer.duration_secs,
-        is_alert: boss_timer.is_alert,
-        can_be_refreshed: boss_timer.can_be_refreshed,
-        repeats: boss_timer.repeats,
-        color: boss_timer.color,
-        show_on_raid_frames: boss_timer.show_on_raid_frames,
-        alert_at_secs: boss_timer.alert_at_secs,
-        alert_text: boss_timer.alert_text.clone(),
-        audio_file: None,
-        triggers_timer: boss_timer.chains_to.clone(),
-        cancel_trigger: boss_timer.cancel_trigger.clone(),
-        // Context: tie to this boss's area and name
-        encounters: vec![boss.area_name.clone()],
-        boss: Some(boss.name.clone()),
-        difficulties: boss_timer.difficulties.clone(),
-        phases: boss_timer.phases.clone(),
-        counter_condition: boss_timer.counter_condition.clone(),
-    }
-}
