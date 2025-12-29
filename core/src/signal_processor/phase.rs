@@ -332,8 +332,8 @@ pub fn check_hp_trigger(
                 return true;
             }
 
-            // Check by name in hp_by_name
-            if let Some(ref name) = entity.name {
+            // Check by name in hp_by_name (for name-based selectors)
+            if let Some(name) = entity.first_name() {
                 return state.hp_by_name.contains_key(name);
             }
 
@@ -353,7 +353,8 @@ pub fn check_hp_trigger(
                 return true;
             }
 
-            if let Some(ref name) = entity.name {
+            // Check by name in hp_by_name (for name-based selectors)
+            if let Some(name) = entity.first_name() {
                 return state.hp_by_name.contains_key(name);
             }
 

@@ -92,7 +92,7 @@ pub fn check_counter_trigger(
             // Check target filter if specified
             if !target.is_empty() {
                 // Special case: "local_player" matches player entities
-                if target.name.as_deref() == Some("local_player") {
+                if target.is_local_player_filter() {
                     if event.target_entity.entity_type != EntityType::Player {
                         return false;
                     }
@@ -118,7 +118,7 @@ pub fn check_counter_trigger(
             }
             // Check target filter if specified
             if !target.is_empty() {
-                if target.name.as_deref() == Some("local_player") {
+                if target.is_local_player_filter() {
                     if event.target_entity.entity_type != EntityType::Player {
                         return false;
                     }
@@ -150,14 +150,11 @@ pub fn check_counter_trigger(
         Trigger::EntitySpawned { entity } => {
             current_signals.iter().any(|s| {
                 if let GameSignal::NpcFirstSeen { npc_id, entity_name, .. } = s {
-                    if entity.matches_npc_id(*npc_id) {
-                        return true;
-                    }
-                    if entity.matches_name(entity_name) {
-                        return true;
-                    }
+                    // Use unified matching: roster alias → NPC ID → name
+                    entity.matches(&boss_def.entities, *npc_id, Some(entity_name))
+                } else {
+                    false
                 }
-                false
             })
         }
         Trigger::EntityDeath { entity } => {
@@ -167,31 +164,11 @@ pub fn check_counter_trigger(
                     if entity.is_empty() {
                         return true;
                     }
-
-                    // Check by NPC ID
-                    if entity.matches_npc_id(*npc_id) {
-                        return true;
-                    }
-
-                    // Check by entity roster reference
-                    if let Some(ref entity_ref) = entity.entity {
-                        if let Some(entity_def) = boss_def
-                            .entities
-                            .iter()
-                            .find(|e| e.name.eq_ignore_ascii_case(entity_ref))
-                        {
-                            if entity_def.ids.contains(npc_id) {
-                                return true;
-                            }
-                        }
-                    }
-
-                    // Check by name
-                    if entity.matches_name(entity_name) {
-                        return true;
-                    }
+                    // Use unified matching: roster alias → NPC ID → name
+                    entity.matches(&boss_def.entities, *npc_id, Some(entity_name))
+                } else {
+                    false
                 }
-                false
             })
         }
         Trigger::CounterReaches { counter_id, value } => {

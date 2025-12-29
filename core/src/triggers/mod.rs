@@ -7,7 +7,8 @@
 mod matchers;
 
 pub use matchers::{
-    AbilityMatcher, AbilitySelector, EffectMatcher, EffectSelector, EntityMatcher,
+    AbilityMatcher, AbilitySelector, EffectMatcher, EffectSelector, EntityMatcher, EntitySelector,
+    EntitySelectorExt,
 };
 
 use serde::{Deserialize, Serialize};

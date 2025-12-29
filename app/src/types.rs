@@ -10,67 +10,13 @@ use serde::{Deserialize, Serialize};
 // ─────────────────────────────────────────────────────────────────────────────
 
 pub use baras_types::{
+    // Config types
     AppConfig, AudioSettings, BossHealthConfig, Color, EntityFilter, OverlayAppearanceConfig,
     OverlaySettings, PersonalOverlayConfig, PersonalStat, RaidOverlaySettings,
     TimerOverlayConfig, MAX_PROFILES,
+    // Selectors (unified ID-or-Name matching)
+    AbilitySelector, EffectSelector, EntitySelector,
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Selectors (ID or Name)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Selector for effects - can match by ID or name.
-/// Uses untagged serde for clean serialization: numbers as IDs, strings as names.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum EffectSelector {
-    Id(u64),
-    Name(String),
-}
-
-impl EffectSelector {
-    /// Parse from user input - tries ID first, falls back to name.
-    pub fn from_input(input: &str) -> Self {
-        match input.trim().parse::<u64>() {
-            Ok(id) => Self::Id(id),
-            Err(_) => Self::Name(input.trim().to_string()),
-        }
-    }
-
-    /// Returns the display string for this selector.
-    pub fn display(&self) -> String {
-        match self {
-            Self::Id(id) => id.to_string(),
-            Self::Name(name) => name.clone(),
-        }
-    }
-}
-
-/// Selector for abilities - can match by ID or name.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum AbilitySelector {
-    Id(u64),
-    Name(String),
-}
-
-impl AbilitySelector {
-    /// Parse from user input - tries ID first, falls back to name.
-    pub fn from_input(input: &str) -> Self {
-        match input.trim().parse::<u64>() {
-            Ok(id) => Self::Id(id),
-            Err(_) => Self::Name(input.trim().to_string()),
-        }
-    }
-
-    /// Returns the display string for this selector.
-    pub fn display(&self) -> String {
-        match self {
-            Self::Id(id) => id.to_string(),
-            Self::Name(name) => name.clone(),
-        }
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Frontend-Only Types (mirror backend structures)
@@ -290,9 +236,7 @@ pub enum TimerTrigger {
     BossHpThreshold {
         hp_percent: f32,
         #[serde(default)]
-        npc_id: Option<i64>,
-        #[serde(default)]
-        boss_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     CounterReaches {
         counter_id: String,
@@ -300,27 +244,15 @@ pub enum TimerTrigger {
     },
     EntityFirstSeen {
         #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        npc_id: Option<i64>,
-        #[serde(default)]
-        entity_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     EntityDeath {
         #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        npc_id: Option<i64>,
-        #[serde(default)]
-        entity_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     TargetSet {
         #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        npc_id: Option<i64>,
-        #[serde(default)]
-        entity_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     TimeElapsed {
         secs: f32,
@@ -540,20 +472,12 @@ pub enum PhaseTrigger {
     BossHpBelow {
         hp_percent: f32,
         #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        npc_id: Option<i64>,
-        #[serde(default)]
-        boss_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     BossHpAbove {
         hp_percent: f32,
         #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        npc_id: Option<i64>,
-        #[serde(default)]
-        boss_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     AbilityCast {
         #[serde(default, alias = "ability_ids")]
@@ -576,19 +500,11 @@ pub enum PhaseTrigger {
     },
     EntityFirstSeen {
         #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        npc_id: Option<i64>,
-        #[serde(default)]
-        entity_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     EntityDeath {
         #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        npc_id: Option<i64>,
-        #[serde(default)]
-        entity_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     PhaseEnded {
         #[serde(default)]
@@ -647,19 +563,19 @@ pub enum CounterTrigger {
         #[serde(default, alias = "ability_ids")]
         abilities: Vec<AbilitySelector>,
         #[serde(default)]
-        source: Option<String>,
+        source: Vec<EntitySelector>,
     },
     EffectApplied {
         #[serde(default, alias = "effect_ids")]
         effects: Vec<EffectSelector>,
         #[serde(default)]
-        target: Option<String>,
+        target: Vec<EntitySelector>,
     },
     EffectRemoved {
         #[serde(default, alias = "effect_ids")]
         effects: Vec<EffectSelector>,
         #[serde(default)]
-        target: Option<String>,
+        target: Vec<EntitySelector>,
     },
     TimerExpires {
         timer_id: String,
@@ -676,19 +592,11 @@ pub enum CounterTrigger {
     AnyPhaseChange,
     EntityFirstSeen {
         #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        npc_id: Option<i64>,
-        #[serde(default)]
-        entity_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     EntityDeath {
         #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        npc_id: Option<i64>,
-        #[serde(default)]
-        entity_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     CounterReaches {
         counter_id: String,
@@ -697,9 +605,7 @@ pub enum CounterTrigger {
     BossHpBelow {
         hp_percent: f32,
         #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        boss_name: Option<String>,
+        entities: Vec<EntitySelector>,
     },
     Never,
 }

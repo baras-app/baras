@@ -14,6 +14,111 @@ use std::collections::HashMap;
 pub type Color = [u8; 4];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Selectors (unified ID-or-Name matching)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Selector for effects - can match by ID or name.
+/// Uses untagged serde for clean serialization: numbers as IDs, strings as names.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EffectSelector {
+    Id(u64),
+    Name(String),
+}
+
+impl EffectSelector {
+    /// Parse from user input - tries ID first, falls back to name.
+    pub fn from_input(input: &str) -> Self {
+        match input.trim().parse::<u64>() {
+            Ok(id) => Self::Id(id),
+            Err(_) => Self::Name(input.trim().to_string()),
+        }
+    }
+
+    /// Returns the display string for this selector.
+    pub fn display(&self) -> String {
+        match self {
+            Self::Id(id) => id.to_string(),
+            Self::Name(name) => name.clone(),
+        }
+    }
+
+    /// Check if this selector matches the given ID or name.
+    pub fn matches(&self, id: u64, name: Option<&str>) -> bool {
+        match self {
+            Self::Id(expected) => *expected == id,
+            Self::Name(expected) => {
+                name.map(|n| n.eq_ignore_ascii_case(expected)).unwrap_or(false)
+            }
+        }
+    }
+}
+
+/// Selector for abilities - can match by ID or name.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AbilitySelector {
+    Id(u64),
+    Name(String),
+}
+
+impl AbilitySelector {
+    /// Parse from user input - tries ID first, falls back to name.
+    pub fn from_input(input: &str) -> Self {
+        match input.trim().parse::<u64>() {
+            Ok(id) => Self::Id(id),
+            Err(_) => Self::Name(input.trim().to_string()),
+        }
+    }
+
+    /// Returns the display string for this selector.
+    pub fn display(&self) -> String {
+        match self {
+            Self::Id(id) => id.to_string(),
+            Self::Name(name) => name.clone(),
+        }
+    }
+
+    /// Check if this selector matches the given ID or name.
+    pub fn matches(&self, id: u64, name: Option<&str>) -> bool {
+        match self {
+            Self::Id(expected) => *expected == id,
+            Self::Name(expected) => {
+                name.map(|n| n.eq_ignore_ascii_case(expected)).unwrap_or(false)
+            }
+        }
+    }
+}
+
+/// Selector for entities - can match by NPC ID, roster alias, or name.
+/// Uses untagged serde: numbers as IDs, strings as roster alias or name.
+/// Priority when matching: Roster Alias → NPC ID → Name (resolved at runtime).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EntitySelector {
+    Id(i64),
+    Name(String),
+}
+
+impl EntitySelector {
+    /// Parse from user input - tries NPC ID first, falls back to name/alias.
+    pub fn from_input(input: &str) -> Self {
+        match input.trim().parse::<i64>() {
+            Ok(id) => Self::Id(id),
+            Err(_) => Self::Name(input.trim().to_string()),
+        }
+    }
+
+    /// Returns the display string for this selector.
+    pub fn display(&self) -> String {
+        match self {
+            Self::Id(id) => id.to_string(),
+            Self::Name(name) => name.clone(),
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Default Color Constants
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -8,86 +8,68 @@ use serde::{Deserialize, Serialize};
 
 use crate::boss::EntityDefinition;
 
+// Re-export selectors from the shared types crate
+pub use baras_types::{AbilitySelector, EffectSelector, EntitySelector};
+
 // ═══════════════════════════════════════════════════════════════════════════
-// Selectors (ID or Name)
+// Entity Selector Extension (core-specific matching with EntityDefinition)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Selector for effects - can match by ID or name.
-///
-/// Uses untagged serde representation for clean config:
-/// - `3211234567890` → Id(3211234567890)
-/// - `"Burn"` → Name("Burn")
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum EffectSelector {
-    /// Match by effect ID (preferred, locale-independent)
-    Id(u64),
-    /// Match by effect name (fallback, locale-dependent)
-    Name(String),
+/// Extension trait for EntitySelector that provides core-specific matching.
+/// These methods need EntityDefinition which lives in core.
+pub trait EntitySelectorExt {
+    /// Check if this selector matches the given entity.
+    ///
+    /// For `Name` selectors, resolution priority is:
+    /// 1. Roster alias match (if entities provided and name matches a roster entry)
+    /// 2. Direct name match (case-insensitive)
+    fn matches_with_roster(
+        &self,
+        entities: &[EntityDefinition],
+        npc_id: i64,
+        entity_name: Option<&str>,
+    ) -> bool;
+
+    /// Check if this selector matches by NPC ID only (ignores roster and name).
+    fn matches_npc_id(&self, npc_id: i64) -> bool;
+
+    /// Check if this selector matches by name only (ignores roster and NPC ID).
+    fn matches_name_only(&self, name: &str) -> bool;
 }
 
-impl EffectSelector {
-    /// Parse from user input - tries ID first, falls back to name.
-    pub fn from_input(input: &str) -> Self {
-        match input.trim().parse::<u64>() {
-            Ok(id) => Self::Id(id),
-            Err(_) => Self::Name(input.trim().to_string()),
-        }
-    }
-
-    /// Check if this selector matches the given effect ID and name.
-    pub fn matches(&self, effect_id: u64, effect_name: Option<&str>) -> bool {
+impl EntitySelectorExt for EntitySelector {
+    fn matches_with_roster(
+        &self,
+        entities: &[EntityDefinition],
+        npc_id: i64,
+        entity_name: Option<&str>,
+    ) -> bool {
         match self {
-            Self::Id(id) => *id == effect_id,
-            Self::Name(name) => effect_name
-                .map(|n| n.eq_ignore_ascii_case(name))
-                .unwrap_or(false),
+            Self::Id(expected_id) => *expected_id == npc_id,
+            Self::Name(name) => {
+                // Priority 1: Try roster alias lookup
+                if let Some(entity_def) = entities.iter().find(|e| e.name.eq_ignore_ascii_case(name)) {
+                    return entity_def.ids.contains(&npc_id);
+                }
+                // Priority 2: Fall back to name matching
+                entity_name
+                    .map(|n| n.eq_ignore_ascii_case(name))
+                    .unwrap_or(false)
+            }
         }
     }
 
-    /// Returns the display string for this selector.
-    pub fn display(&self) -> String {
+    fn matches_npc_id(&self, npc_id: i64) -> bool {
         match self {
-            Self::Id(id) => id.to_string(),
-            Self::Name(name) => name.clone(),
-        }
-    }
-}
-
-/// Selector for abilities - can match by ID or name.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum AbilitySelector {
-    /// Match by ability ID (preferred, locale-independent)
-    Id(u64),
-    /// Match by ability name (fallback, locale-dependent)
-    Name(String),
-}
-
-impl AbilitySelector {
-    /// Parse from user input - tries ID first, falls back to name.
-    pub fn from_input(input: &str) -> Self {
-        match input.trim().parse::<u64>() {
-            Ok(id) => Self::Id(id),
-            Err(_) => Self::Name(input.trim().to_string()),
+            Self::Id(expected_id) => *expected_id == npc_id,
+            Self::Name(_) => false,
         }
     }
 
-    /// Check if this selector matches the given ability ID and name.
-    pub fn matches(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+    fn matches_name_only(&self, name: &str) -> bool {
         match self {
-            Self::Id(id) => *id == ability_id,
-            Self::Name(name) => ability_name
-                .map(|n| n.eq_ignore_ascii_case(name))
-                .unwrap_or(false),
-        }
-    }
-
-    /// Returns the display string for this selector.
-    pub fn display(&self) -> String {
-        match self {
-            Self::Id(id) => id.to_string(),
-            Self::Name(name) => name.clone(),
+            Self::Id(_) => false,
+            Self::Name(expected) => expected.eq_ignore_ascii_case(name),
         }
     }
 }
@@ -96,58 +78,127 @@ impl AbilitySelector {
 // Entity Matcher
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Matches entities by roster reference, NPC ID, or name.
+/// Matches entities using a list of selectors.
 ///
-/// Priority order (first match wins):
-/// 1. `entity` - roster reference (most reliable, locale-independent)
-/// 2. `npc_id` - NPC class/template ID (stable across locales)
-/// 3. `name` - runtime name matching (fallback, locale-dependent)
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+/// Any selector matching means the entity matches (OR logic).
+/// Empty selector list matches nothing (require explicit filter).
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct EntityMatcher {
-    /// Entity reference from roster (preferred)
-    /// e.g., "huntmaster", "adds.siege_droid"
+    /// Entity selectors - any match suffices.
+    /// Supports NPC IDs and names/roster aliases.
     #[serde(default)]
-    pub entity: Option<String>,
+    pub entities: Vec<EntitySelector>,
+}
 
-    /// NPC class/template ID (stable across locales)
-    #[serde(default)]
-    pub npc_id: Option<i64>,
+/// Custom deserializer for EntityMatcher to handle backwards compatibility.
+/// Supports:
+/// - New format: `entities = [...]`
+/// - Old formats: `entity = "name"`, `npc_id = 123`, `name = "name"`
+impl<'de> Deserialize<'de> for EntityMatcher {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{MapAccess, Visitor};
 
-    /// Entity name for runtime matching (locale-dependent fallback)
-    #[serde(default)]
-    pub name: Option<String>,
+        struct EntityMatcherVisitor;
+
+        impl<'de> Visitor<'de> for EntityMatcherVisitor {
+            type Value = EntityMatcher;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("an entity matcher with 'entities', 'entity', 'npc_id', or 'name' field")
+            }
+
+            fn visit_map<M>(self, mut map: M) -> Result<EntityMatcher, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut entities: Option<Vec<EntitySelector>> = None;
+                let mut entity: Option<String> = None;
+                let mut npc_id: Option<i64> = None;
+                let mut name: Option<String> = None;
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "entities" => {
+                            entities = Some(map.next_value()?);
+                        }
+                        "entity" => {
+                            entity = Some(map.next_value()?);
+                        }
+                        "npc_id" => {
+                            npc_id = Some(map.next_value()?);
+                        }
+                        "name" => {
+                            name = Some(map.next_value()?);
+                        }
+                        _ => {
+                            // Skip unknown fields
+                            let _ = map.next_value::<serde::de::IgnoredAny>()?;
+                        }
+                    }
+                }
+
+                // Priority: new format > old formats
+                let selectors = if let Some(e) = entities {
+                    e
+                } else {
+                    let mut selectors = Vec::new();
+                    // Add entity (roster alias) first
+                    if let Some(e) = entity {
+                        selectors.push(EntitySelector::Name(e));
+                    }
+                    // Add npc_id
+                    if let Some(id) = npc_id {
+                        selectors.push(EntitySelector::Id(id));
+                    }
+                    // Add name (if different from entity)
+                    if let Some(n) = name {
+                        if !selectors.iter().any(|s| matches!(s, EntitySelector::Name(x) if x == &n)) {
+                            selectors.push(EntitySelector::Name(n));
+                        }
+                    }
+                    selectors
+                };
+
+                Ok(EntityMatcher { entities: selectors })
+            }
+        }
+
+        deserializer.deserialize_map(EntityMatcherVisitor)
+    }
 }
 
 impl EntityMatcher {
     /// Create a matcher that matches by NPC ID.
     pub fn by_npc_id(npc_id: i64) -> Self {
-        Self { npc_id: Some(npc_id), ..Default::default() }
+        Self { entities: vec![EntitySelector::Id(npc_id)] }
     }
 
-    /// Create a matcher that matches by entity roster reference.
+    /// Create a matcher that matches by entity roster reference or name.
     pub fn by_entity(entity: impl Into<String>) -> Self {
-        Self { entity: Some(entity.into()), ..Default::default() }
+        Self { entities: vec![EntitySelector::Name(entity.into())] }
     }
 
-    /// Create a matcher that matches by name.
+    /// Create a matcher that matches by name (same as by_entity for unified API).
     pub fn by_name(name: impl Into<String>) -> Self {
-        Self { name: Some(name.into()), ..Default::default() }
+        Self::by_entity(name)
+    }
+
+    /// Create a matcher from multiple selectors.
+    pub fn by_selectors(selectors: impl IntoIterator<Item = EntitySelector>) -> Self {
+        Self { entities: selectors.into_iter().collect() }
     }
 
     /// Returns true if no filters are set (matches nothing by design).
     pub fn is_empty(&self) -> bool {
-        self.entity.is_none() && self.npc_id.is_none() && self.name.is_none()
+        self.entities.is_empty()
     }
 
     /// Check if this matcher matches the given entity.
     ///
-    /// # Arguments
-    /// * `entities` - Entity definitions for resolving entity references
-    /// * `npc_id` - The NPC ID of the entity being checked
-    /// * `name` - The name of the entity being checked
-    ///
-    /// # Returns
-    /// `true` if the entity matches, `false` otherwise.
+    /// Returns true if any selector matches, false if none match.
     /// Empty matchers match nothing (require explicit filter).
     pub fn matches(
         &self,
@@ -155,49 +206,38 @@ impl EntityMatcher {
         npc_id: i64,
         name: Option<&str>,
     ) -> bool {
-        // 1. Entity reference (highest priority)
-        if let Some(ref entity_ref) = self.entity {
-            // Look up entity by name in the roster
-            if let Some(entity_def) = entities.iter().find(|e| e.name.eq_ignore_ascii_case(entity_ref)) {
-                return entity_def.ids.contains(&npc_id);
-            }
-            // Entity ref specified but not found in roster - can't match
+        if self.entities.is_empty() {
             return false;
         }
-
-        // 2. NPC ID match
-        if let Some(required_id) = self.npc_id {
-            return required_id == npc_id;
-        }
-
-        // 3. Name fallback (case-insensitive)
-        if let Some(ref required_name) = self.name {
-            if let Some(actual_name) = name {
-                return required_name.eq_ignore_ascii_case(actual_name);
-            }
-            return false;
-        }
-
-        // No filters = match nothing (require explicit filter)
-        false
+        self.entities.iter().any(|s| s.matches_with_roster(entities, npc_id, name))
     }
 
     /// Check if this matcher matches by NPC ID only (ignores roster and name).
     /// Useful when roster isn't available.
     pub fn matches_npc_id(&self, npc_id: i64) -> bool {
-        if let Some(required_id) = self.npc_id {
-            return required_id == npc_id;
-        }
-        false
+        self.entities.iter().any(|s| s.matches_npc_id(npc_id))
     }
 
     /// Check if this matcher matches by name only (ignores roster and NPC ID).
     /// Useful for simple name comparisons.
     pub fn matches_name(&self, name: &str) -> bool {
-        if let Some(ref required_name) = self.name {
-            return required_name.eq_ignore_ascii_case(name);
-        }
-        false
+        self.entities.iter().any(|s| s.matches_name_only(name))
+    }
+
+    /// Check if this matcher has "local_player" as a filter.
+    /// This is a special value used to match player entities.
+    pub fn is_local_player_filter(&self) -> bool {
+        self.entities.iter().any(|s| {
+            matches!(s, EntitySelector::Name(name) if name.eq_ignore_ascii_case("local_player"))
+        })
+    }
+
+    /// Get the first name selector (if any) for display purposes.
+    pub fn first_name(&self) -> Option<&str> {
+        self.entities.iter().find_map(|s| match s {
+            EntitySelector::Name(name) => Some(name.as_str()),
+            EntitySelector::Id(_) => None,
+        })
     }
 }
 
@@ -419,5 +459,60 @@ mod tests {
         assert!(matcher.matches_ability(999, Some("Force Lightning")));
         assert!(matcher.matches_ability(999, Some("force lightning")));
         assert!(!matcher.matches_ability(999, Some("Saber Strike")));
+    }
+
+    #[test]
+    fn entity_selector_from_input_parses_id() {
+        let selector = EntitySelector::from_input("12345");
+        assert_eq!(selector, EntitySelector::Id(12345));
+    }
+
+    #[test]
+    fn entity_selector_from_input_parses_name() {
+        let selector = EntitySelector::from_input("Huntmaster");
+        assert_eq!(selector, EntitySelector::Name("Huntmaster".to_string()));
+    }
+
+    #[test]
+    fn entity_selector_resolves_roster_before_name() {
+        let entities = vec![
+            EntityDefinition {
+                name: "Boss".to_string(),
+                ids: vec![1001, 1002],
+                is_boss: true,
+                triggers_encounter: None,
+                is_kill_target: true,
+            },
+        ];
+
+        // "Boss" should match via roster (ID 1001)
+        let selector = EntitySelector::Name("Boss".to_string());
+        assert!(selector.matches_with_roster(&entities, 1001, Some("Different Name")));
+        assert!(selector.matches_with_roster(&entities, 1002, None));
+        // Doesn't match other IDs even if name matches
+        assert!(!selector.matches_with_roster(&entities, 9999, Some("Boss")));
+    }
+
+    #[test]
+    fn entity_selector_falls_back_to_name_match() {
+        // When roster is empty, falls back to name matching
+        let selector = EntitySelector::Name("Boss".to_string());
+        assert!(selector.matches_with_roster(&[], 9999, Some("Boss")));
+        assert!(selector.matches_with_roster(&[], 9999, Some("boss"))); // case insensitive
+        assert!(!selector.matches_with_roster(&[], 9999, Some("Other")));
+    }
+
+    #[test]
+    fn entity_matcher_with_multiple_selectors() {
+        let matcher = EntityMatcher::by_selectors([
+            EntitySelector::Id(1001),
+            EntitySelector::Name("Boss".to_string()),
+        ]);
+        // Matches by ID
+        assert!(matcher.matches(&[], 1001, None));
+        // Matches by name
+        assert!(matcher.matches(&[], 9999, Some("Boss")));
+        // Neither matches
+        assert!(!matcher.matches(&[], 9999, Some("Other")));
     }
 }
