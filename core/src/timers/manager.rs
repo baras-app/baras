@@ -26,7 +26,10 @@ const TIMER_RECENCY_THRESHOLD_MINS: i64 = 5;
 /// Current encounter context for filtering timers
 #[derive(Debug, Clone, Default)]
 pub struct EncounterContext {
+    /// Area name from game (for display/logging)
     pub encounter_name: Option<String>,
+    /// Area ID from game (primary matching key - more reliable than name)
+    pub area_id: Option<i64>,
     pub boss_name: Option<String>,
     pub difficulty: Option<Difficulty>,
 }
@@ -172,7 +175,7 @@ impl TimerManager {
             // Extract boss timers and convert to TimerDefinition
             for boss_timer in &boss.timers {
                 if boss_timer.enabled {
-                    let timer_def = boss_timer.to_timer_definition(&boss.area_name, &boss.name);
+                    let timer_def = boss_timer.to_timer_definition(boss.area_id, &boss.area_name, &boss.name);
 
                     // Check for duplicate ID - warn and skip instead of silent overwrite
                     if let Some(existing) = self.definitions.get(&timer_def.id) {
@@ -300,10 +303,11 @@ impl TimerManager {
         &self.fired_alerts
     }
 
-    /// Set encounter context for filtering
+    /// Set encounter context for filtering (legacy - prefer using signals)
     pub fn set_context(&mut self, encounter: Option<String>, boss: Option<String>, difficulty: Option<Difficulty>) {
         self.context = EncounterContext {
             encounter_name: encounter,
+            area_id: None, // Not available in legacy API
             boss_name: boss,
             difficulty,
         };
@@ -596,15 +600,16 @@ impl SignalHandler for TimerManager {
                 signal_handlers::handle_npc_first_seen(self, *npc_id, entity_name, *timestamp);
             }
 
-            GameSignal::AreaEntered { area_name, difficulty_name, .. } => {
-                // Update encounter context from area
+            GameSignal::AreaEntered { area_id, area_name, difficulty_name, .. } => {
+                // Update encounter context from area (area_id is primary match key)
+                self.context.area_id = Some(*area_id);
                 self.context.encounter_name = Some(area_name.clone());
                 self.context.difficulty = if difficulty_name.is_empty() {
                     None
                 } else {
                     Difficulty::from_game_string(difficulty_name)
                 };
-                eprintln!("[TIMER] Area entered: {} (difficulty: {:?})", area_name, self.context.difficulty);
+                eprintln!("[TIMER] Area entered: {} (id: {}, difficulty: {:?})", area_name, area_id, self.context.difficulty);
             }
 
             // Note: We intentionally DON'T update boss_name from TargetChanged/TargetCleared.

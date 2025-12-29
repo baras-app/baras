@@ -514,6 +514,7 @@ fn test_bestia_complete_encounter() {
             audio_file: None,
             repeats: 0,
             show_on_raid_frames: false,
+            area_ids: Vec::new(),
             encounters: Vec::new(),
             boss: None,
             difficulties: Vec::new(),

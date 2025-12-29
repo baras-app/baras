@@ -28,6 +28,7 @@ fn make_timer(id: &str, name: &str, trigger: TimerTrigger, duration: f32) -> Tim
         show_on_raid_frames: false,
         source: EntityFilter::Any,
         target: EntityFilter::Any,
+        area_ids: Vec::new(),
         encounters: Vec::new(),
         boss: None,
         difficulties: Vec::new(),

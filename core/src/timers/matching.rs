@@ -34,8 +34,9 @@ pub(super) fn is_definition_active(
     current_phase: Option<&str>,
     counters: &HashMap<String, u32>,
 ) -> bool {
-    // First check basic context (encounter, boss, difficulty)
+    // First check basic context (area, boss, difficulty)
     if !def.enabled || !def.is_active_for_context(
+        context.area_id,
         context.encounter_name.as_deref(),
         context.boss_name.as_deref(),
         context.difficulty,

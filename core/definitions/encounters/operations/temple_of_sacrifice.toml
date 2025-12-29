@@ -299,148 +299,17 @@ difficulties = ["veteran"]
 # ═══════════════════════════════════════════════════════════════════════════════
 # Revanite Commanders
 # ═══════════════════════════════════════════════════════════════════════════════
-# From guide: 3 phases
-#   Phase 1: First 30 seconds - 6 adds spawn (Outlaw/Mando/Sith Revanites)
-#   Phase 2: Each commander jumps down for ~30s twice, adds spawn between
-#            Order is RANDOM. Sano has reflective shield, Deron spams Tracer Missile,
-#            Kurse has Soaring Smash (3s cast purple AoE)
-#   Phase 3: Burn Phase - all commanders jump down together
 [[boss]]
 id = "revanite_commanders"
 name = "Revanite Commanders"
 difficulties = ["veteran"]
 
-[[boss.entities]]
-name = "Deron Cadoruso"
-ids = []
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Sano Thrica"
-ids = []
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Lord Kurse"
-ids = []
-is_boss = true
-is_kill_target = true
-
 [[boss.phases]]
-id = "rc_main"
+id = "three_musketeers_p1"
 name = "Main"
 trigger = { type = "combat_start" }
 
-# -- Ability Timers --
-[[boss.timer]]
-id = "rc_sano_kick"
-name = "Sano Kick"
-trigger = { type = "ability_cast", ability_ids = [3461713575804928] }
-duration_secs = 14
-color = [179, 175, 23, 255]
-difficulties = ["veteran"]
-
-# -- Alerts --
-[[boss.timer]]
-id = "rc_burn_phase"
-name = "Burn Phase"
-is_alert = true
-trigger = { type = "ability_cast", ability_ids = [3462744367955968] }
-source = { specific = "Deron Cadoruso" }
-alert_text = "Burn Phase"
-color = [36, 214, 213, 255]
-difficulties = ["veteran"]
-
-[[boss.timer]]
-id = "rc_deron_reset"
-name = "Deron Reset"
-is_alert = true
-trigger = { type = "ability_cast", ability_ids = [3476930644934656] }
-alert_text = "Deron Reset"
-color = [224, 168, 33, 255]
-difficulties = ["veteran"]
-
-# -- HP Threshold Alerts (66%) --
-[[boss.timer]]
-id = "rc_deron_66"
-name = "Deron 66%"
-is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 66.0, boss_name = "Deron Cadoruso" }
-alert_text = "Deron 66%"
-color = [219, 31, 28, 255]
-difficulties = ["veteran"]
-
-[[boss.timer]]
-id = "rc_sano_66"
-name = "Sano 66%"
-is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 66.0, boss_name = "Sano Thrica" }
-alert_text = "Sano 66%"
-color = [219, 32, 36, 255]
-difficulties = ["veteran"]
-
-[[boss.timer]]
-id = "rc_kurse_66"
-name = "Kurse 66%"
-is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 66.0, boss_name = "Lord Kurse" }
-alert_text = "Kurse 66%"
-color = [219, 29, 28, 255]
-difficulties = ["veteran"]
-
-# -- HP Threshold Alerts (31%) --
-[[boss.timer]]
-id = "rc_deron_31"
-name = "Deron 31%"
-is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 31.0, boss_name = "Deron Cadoruso" }
-alert_text = "Deron 31%"
-color = [219, 29, 28, 255]
-difficulties = ["veteran"]
-
-[[boss.timer]]
-id = "rc_sano_31"
-name = "Sano 31%"
-is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 31.0, boss_name = "Sano Thrica" }
-alert_text = "Sano 31%"
-color = [219, 33, 32, 255]
-difficulties = ["veteran"]
-
-[[boss.timer]]
-id = "rc_kurse_31"
-name = "Kurse 31%"
-is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 31.0, boss_name = "Lord Kurse" }
-alert_text = "Kurse 31%"
-color = [224, 24, 24, 255]
-difficulties = ["veteran"]
-
-# TODO: The following timers use complex AND logic tracking add deaths (entity_died triggers):
-#
-# Jump Out (31s) - Triggers when Mandalorian Revanite OR Outlaw Revanite dies
-#   ORBS: TriggerType=And with nested Or clauses checking entity deaths
-#   Requires: counter to track add death count
-#   NOTE from guide: Commanders jump down in RANDOM order for ~30s each
-#
-# Volley/Knock/TP (10s) - Phase-dependent timer
-# Kurse Smash (18s) - Phase-dependent timer (guide: "Soaring Smash, 3 second cast")
-# Deron Teleport (15s) - Phase-dependent timer
-# Deron Knockback (24s) - Phase-dependent timer
-# Deron Volley (21s) - Phase-dependent timer (guide: "Guided Missile Volley")
-# Sano Kick initial (15s) - Phase-dependent (different from ability-triggered version above)
-#
-# These require counter system with:
-#   - CounterDefinition to track add deaths or phase state
-#   - counter_condition on timers to check counter value
-#
-# Additional mechanics from guide not yet tracked:
-# - Sano's reflective shield (absorbs 25% from outside)
-# - Deron's Tracer Missile → Heat Signature + Sundered debuffs
-# - Outlaw Revanite's Saturation Fire (frontal cone)
-# - Mando Revanite's Death from Above (orange AoE)
+# its a faceroll do you really need timers ??
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Revan, the Returned

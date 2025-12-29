@@ -129,11 +129,16 @@ pub struct BossEncounterDefinition {
     /// Display name
     pub name: String,
 
-    /// Area name as it appears in the game log (for matching)
-    /// E.g., "Dxun", "Blood Hunt"
+    /// Area name as it appears in the game log (for display/logging)
+    /// E.g., "Dxun - The CI-004 Facility", "Blood Hunt"
     /// In consolidated format, this is populated from the [area] header
     #[serde(default)]
     pub area_name: String,
+
+    /// Area ID from game (primary matching key - more reliable than name)
+    /// In consolidated format, this is populated from the [area] header
+    #[serde(default)]
+    pub area_id: i64,
 
     /// Difficulties this boss config applies to (empty = all)
     #[serde(default)]
@@ -264,8 +269,9 @@ pub struct BossTimerDefinition {
 impl BossTimerDefinition {
     /// Convert to a full TimerDefinition with boss context.
     ///
-    /// Fills in the `encounters` and `boss` fields from the parent encounter.
-    pub fn to_timer_definition(&self, area_name: &str, boss_name: &str) -> crate::timers::TimerDefinition {
+    /// Fills in the `area_ids` and `boss` fields from the parent encounter.
+    /// Uses area_id for reliable matching (area_name kept for logging/fallback).
+    pub fn to_timer_definition(&self, area_id: i64, area_name: &str, boss_name: &str) -> crate::timers::TimerDefinition {
         crate::timers::TimerDefinition {
             id: self.id.clone(),
             name: self.name.clone(),
@@ -285,7 +291,8 @@ impl BossTimerDefinition {
             triggers_timer: self.chains_to.clone(),
             cancel_trigger: self.cancel_trigger.clone(),
             // Context from parent boss encounter
-            encounters: vec![area_name.to_string()],
+            area_ids: vec![area_id],
+            encounters: vec![area_name.to_string()], // Kept for logging/legacy
             boss: Some(boss_name.to_string()),
             difficulties: self.difficulties.clone(),
             phases: self.phases.clone(),

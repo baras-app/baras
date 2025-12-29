@@ -41,12 +41,15 @@ pub fn load_bosses_from_file(path: &Path) -> Result<Vec<BossEncounterDefinition>
     let config: BossConfig = toml::from_str(&content)
         .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
 
-    // If file has [area] header, populate area_name on bosses that don't have it
+    // If file has [area] header, populate area fields on bosses that don't have them
     let mut bosses = config.bosses;
     if let Some(ref area) = config.area {
         for boss in &mut bosses {
             if boss.area_name.is_empty() {
                 boss.area_name = area.name.clone();
+            }
+            if boss.area_id == 0 {
+                boss.area_id = area.area_id;
             }
         }
     }

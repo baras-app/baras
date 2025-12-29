@@ -209,7 +209,12 @@ pub struct TimerDefinition {
     pub cancel_trigger: Option<TimerTrigger>,
 
     // ─── Context ────────────────────────────────────────────────────────────
-    /// Only active in specific encounters (empty = all)
+    /// Area IDs for matching (primary key - more reliable than names)
+    /// If non-empty, uses ID matching. If empty, falls back to encounters string list.
+    #[serde(default)]
+    pub area_ids: Vec<i64>,
+
+    /// Only active in specific encounters by name (fallback when area_ids empty)
     #[serde(default)]
     pub encounters: Vec<String>,
 
@@ -317,9 +322,25 @@ impl TimerDefinition {
     }
 
     /// Check if this timer is active for a given encounter context
-    pub fn is_active_for_context(&self, encounter: Option<&str>, boss: Option<&str>, difficulty: Option<Difficulty>) -> bool {
-        // Check encounter filter
-        if !self.encounters.is_empty() {
+    pub fn is_active_for_context(
+        &self,
+        area_id: Option<i64>,
+        encounter: Option<&str>,
+        boss: Option<&str>,
+        difficulty: Option<Difficulty>,
+    ) -> bool {
+        // Check area filter - prefer area_ids (numeric) over encounters (string)
+        if !self.area_ids.is_empty() {
+            // Use area_id matching (more reliable)
+            if let Some(id) = area_id {
+                if !self.area_ids.contains(&id) {
+                    return false;
+                }
+            } else {
+                return false; // Timer requires specific area but none provided
+            }
+        } else if !self.encounters.is_empty() {
+            // Fall back to string matching for legacy/manual timers
             if let Some(enc) = encounter {
                 if !self.encounters.iter().any(|e| e.eq_ignore_ascii_case(enc)) {
                     return false;

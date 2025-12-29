@@ -24,7 +24,7 @@ is_kill_target = true
 
 [[boss.phase]]
 id = "p1"
-name = "Phase 1"
+name = "Main"
 trigger = { type = "combat_start" }
 
 # Bull spawn chain - 60 second intervals (7 bulls, then enrage at 7 min)
