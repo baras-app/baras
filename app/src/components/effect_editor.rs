@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{EffectCategory, EffectListItem, EffectSelector, EntityFilter};
+use crate::types::{EffectCategory, EffectListItem, EffectSelector, EffectTriggerMode, EntityFilter};
 use super::encounter_editor::triggers::EffectSelectorEditor;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -402,6 +402,25 @@ fn EffectEditForm(
                 }
 
                 div { class: "form-field",
+                    label { "Trigger" }
+                    select {
+                        value: "{draft().trigger.label()}",
+                        onchange: move |e| {
+                            let mut d = draft();
+                            d.trigger = match e.value().as_str() {
+                                "Effect Applied" => EffectTriggerMode::EffectApplied,
+                                "Effect Removed" => EffectTriggerMode::EffectRemoved,
+                                _ => d.trigger,
+                            };
+                            draft.set(d);
+                        },
+                        for trigger in EffectTriggerMode::all() {
+                            option { value: "{trigger.label()}", "{trigger.label()}" }
+                        }
+                    }
+                }
+
+                div { class: "form-field",
                     label { "Color" }
                     input {
                         r#type: "color",
@@ -704,6 +723,7 @@ fn NewEffectForm(
     let mut selected_file = use_signal(String::new);
     let mut name = use_signal(String::new);
     let mut category = use_signal(|| EffectCategory::Hot);
+    let mut trigger = use_signal(|| EffectTriggerMode::EffectApplied);
     let mut color = use_signal(|| [80u8, 200, 80, 255]);
     let mut source = use_signal(|| EntityFilter::LocalPlayer);
     let mut target = use_signal(|| EntityFilter::GroupMembers);
@@ -775,6 +795,23 @@ fn NewEffectForm(
                             },
                             for cat in EffectCategory::all() {
                                 option { value: "{cat.label()}", "{cat.label()}" }
+                            }
+                        }
+                    }
+
+                    div { class: "form-field",
+                        label { "Trigger" }
+                        select {
+                            value: "{trigger().label()}",
+                            onchange: move |e| {
+                                trigger.set(match e.value().as_str() {
+                                    "Effect Applied" => EffectTriggerMode::EffectApplied,
+                                    "Effect Removed" => EffectTriggerMode::EffectRemoved,
+                                    _ => trigger(),
+                                });
+                            },
+                            for t in EffectTriggerMode::all() {
+                                option { value: "{t.label()}", "{t.label()}" }
                             }
                         }
                     }
@@ -892,6 +929,7 @@ fn NewEffectForm(
                                 file_path: selected_file(),
                                 enabled: true,
                                 category: category(),
+                                trigger: trigger(),
                                 effects: effects(),
                                 refresh_abilities: refresh_abilities(),
                                 source: source(),

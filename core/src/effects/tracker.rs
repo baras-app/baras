@@ -14,7 +14,7 @@ use crate::context::IStr;
 use crate::entity_filter::EntityFilterMatching;
 use crate::signal_processor::{GameSignal, SignalHandler};
 
-use super::{ActiveEffect, EffectDefinition};
+use super::{ActiveEffect, EffectDefinition, EffectTriggerMode};
 
 /// Combined set of effect definitions
 #[derive(Debug, Clone, Default)]
@@ -287,11 +287,12 @@ impl EffectTracker {
             name: target_name,
         };
 
-        // Find matching definitions
+        // Find matching definitions (only those that trigger on EffectApplied)
         let matching_defs: Vec<_> = self
             .definitions
             .find_matching(effect_id as u64, None) // TODO: pass effect name when available
             .into_iter()
+            .filter(|def| def.trigger == EffectTriggerMode::EffectApplied)
             .filter(|def| self.matches_filters(def, source_info, target_info))
             .collect();
 
@@ -399,28 +400,59 @@ impl EffectTracker {
     fn handle_effect_removed(
         &mut self,
         effect_id: i64,
-        _source_id: i64,
+        source_id: i64,
         target_id: i64,
+        target_name: IStr,
         timestamp: NaiveDateTime,
     ) {
         self.current_game_time = Some(timestamp);
 
-        // Find matching definitions and mark their effects as removed
-        let matching_def_ids: Vec<_> = self
+        // Skip when processing historical data
+        if !self.live_mode {
+            return;
+        }
+
+        let matching_defs: Vec<_> = self
             .definitions
             .find_matching(effect_id as u64, None)
             .into_iter()
-            .map(|def| def.id.clone())
             .collect();
 
-        for def_id in matching_def_ids {
+        let is_from_local = self.local_player_id == Some(source_id);
+
+        for def in matching_defs {
             let key = EffectInstanceKey {
-                definition_id: def_id,
+                definition_id: def.id.clone(),
                 target_entity_id: target_id,
             };
 
-            if let Some(effect) = self.active_effects.get_mut(&key) {
-                effect.mark_removed();
+            match def.trigger {
+                EffectTriggerMode::EffectApplied => {
+                    // Mark existing effect as removed (normal behavior)
+                    if let Some(effect) = self.active_effects.get_mut(&key) {
+                        effect.mark_removed();
+                    }
+                }
+                EffectTriggerMode::EffectRemoved => {
+                    // Create new effect when the game effect is removed (cooldown tracking)
+                    let duration = def.duration_secs.map(Duration::from_secs_f32);
+                    let effect = ActiveEffect::new(
+                        def.id.clone(),
+                        effect_id as u64,
+                        def.name.clone(),
+                        source_id,
+                        target_id,
+                        target_name,
+                        is_from_local,
+                        timestamp,
+                        duration,
+                        def.effective_color(),
+                        def.category,
+                        def.show_on_raid_frames,
+                        def.show_on_effects_overlay,
+                    );
+                    self.active_effects.insert(key, effect);
+                }
             }
         }
     }
@@ -563,10 +595,11 @@ impl SignalHandler for EffectTracker {
                 effect_id,
                 source_id,
                 target_id,
+                target_name,
                 timestamp,
                 ..
             } => {
-                self.handle_effect_removed(*effect_id, *source_id, *target_id, *timestamp);
+                self.handle_effect_removed(*effect_id, *source_id, *target_id, *target_name, *timestamp);
             }
             GameSignal::EffectChargesChanged {
                 effect_id,

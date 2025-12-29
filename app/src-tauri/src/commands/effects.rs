@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
-use baras_core::effects::{DefinitionConfig, EffectCategory, EffectDefinition, EntityFilter, EffectSelector};
+use baras_core::effects::{DefinitionConfig, EffectCategory, EffectDefinition, EffectSelector, EffectTriggerMode, EntityFilter};
 
 use crate::service::ServiceHandle;
 
@@ -30,6 +30,7 @@ pub struct EffectListItem {
     // Effect data
     pub enabled: bool,
     pub category: EffectCategory,
+    pub trigger: EffectTriggerMode,
     pub effects: Vec<EffectSelector>,
     pub refresh_abilities: Vec<u64>,
     pub source: EntityFilter,
@@ -65,6 +66,7 @@ impl EffectListItem {
             file_path: file_path.to_string_lossy().to_string(),
             enabled: def.enabled,
             category: def.category,
+            trigger: def.trigger,
             effects: def.effects.clone(),
             refresh_abilities: def.refresh_abilities.clone(),
             source: def.source.clone(),
@@ -91,6 +93,7 @@ impl EffectListItem {
             name: self.name.clone(),
             enabled: self.enabled,
             category: self.category,
+            trigger: self.trigger,
             effects: self.effects.clone(),
             refresh_abilities: self.refresh_abilities.clone(),
             source: self.source.clone(),

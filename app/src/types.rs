@@ -375,6 +375,30 @@ impl EffectCategory {
     }
 }
 
+/// When the effect tracking should start
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EffectTriggerMode {
+    /// Track starts when effect is applied (default)
+    #[default]
+    EffectApplied,
+    /// Track starts when effect is removed
+    EffectRemoved,
+}
+
+impl EffectTriggerMode {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::EffectApplied => "Effect Applied",
+            Self::EffectRemoved => "Effect Removed",
+        }
+    }
+
+    pub fn all() -> &'static [EffectTriggerMode] {
+        &[Self::EffectApplied, Self::EffectRemoved]
+    }
+}
+
 /// Effect item for the effect editor list view (matches backend EffectListItem)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EffectListItem {
@@ -386,6 +410,7 @@ pub struct EffectListItem {
     // Core
     pub enabled: bool,
     pub category: EffectCategory,
+    pub trigger: EffectTriggerMode,
 
     // Matching
     pub effects: Vec<EffectSelector>,
