@@ -1,0 +1,80 @@
+# Dxun - The Nature of Progress
+# 4 bosses: Red (Titax), Apex Vanguard, Huntmaster, Pack Leader
+
+[area]
+name = "Dxun - The CI-004 Facility"
+area_id = 833571547775792
+
+# ─── Red (Titax) ─────────────────────────────────────────────────────────────
+[[boss]]
+id = "red"
+name = "Red"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Red"
+ids = [
+4246176467517440,
+4246176467517440,
+4330233272467456,
+4330233272467456,
+]
+is_boss = true
+is_kill_target = true
+
+[[boss.phase]]
+id = "p1"
+name = "Phase 1"
+trigger = { type = "combat_start" }
+
+# Bull spawn chain - 60 second intervals (7 bulls, then enrage at 7 min)
+[[boss.timer]]
+id = "red_bull"
+name = "Bull"
+trigger = { type = "combat_start" }
+duration_secs = 60.0
+color = [219, 93, 28, 255]
+repeats = 6
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "red_enrage"
+name = "Enrage"
+trigger = { type = "time_elapsed", secs = 360.0 }
+duration_secs = 60.0
+color = [219, 28, 180, 255]
+difficulties = ["veteran", "master"]
+
+# Hydrochloric Pool - acid puddles
+[[boss.timer]]
+id = "red_hydrochloric_pool_1st"
+name = "Hydrochloric Pool"
+trigger = { type = "combat_start" }
+duration_secs = 15.0
+color = [23, 123, 8, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "red_hydrochloric_pool"
+name = "Hydrochloric Pool"
+trigger = { type = "ability_cast", ability_ids = [4250097772658688] }
+duration_secs = 47.0
+color = [23, 123, 8, 255]
+difficulties = ["veteran", "master"]
+
+# Acidic Jet - frontal cone
+[[boss.timer]]
+id = "red_acidic_jet_1st"
+name = "Acidic Jet"
+trigger = { type = "combat_start" }
+duration_secs = 20.0
+color = [224, 25, 24, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "red_acidic_jet"
+name = "Acidic Jet"
+trigger = { type = "ability_cast", ability_ids = [4250089182724096] }
+duration_secs = 30.0
+color = [224, 25, 24, 255]
+difficulties = ["veteran", "master"]
