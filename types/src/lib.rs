@@ -519,7 +519,45 @@ impl OverlaySettings {
 // App Config
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Application configuration.
+/// Audio settings for timer alerts and countdowns
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AudioSettings {
+    /// Master enable for all audio
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+
+    /// Volume level (0-100)
+    #[serde(default = "default_audio_volume")]
+    pub volume: u8,
+
+    /// Enable countdown sounds (e.g., "Shield 3... 2... 1...")
+    #[serde(default = "default_true")]
+    pub countdown_enabled: bool,
+
+    /// Start countdown at N seconds remaining (1-10)
+    #[serde(default = "default_countdown_seconds")]
+    pub countdown_seconds: u8,
+
+    /// Enable alert speech when timers fire
+    #[serde(default = "default_true")]
+    pub alerts_enabled: bool,
+}
+
+fn default_audio_volume() -> u8 { 80 }
+fn default_countdown_seconds() -> u8 { 3 }
+
+impl Default for AudioSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            volume: 80,
+            countdown_enabled: true,
+            countdown_seconds: 3,
+            alerts_enabled: true,
+        }
+    }
+}
+
 /// Parsely.io upload settings
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ParselySettings {
@@ -557,6 +595,8 @@ pub struct AppConfig {
     pub active_profile_name: Option<String>,
     #[serde(default)]
     pub parsely: ParselySettings,
+    #[serde(default)]
+    pub audio: AudioSettings,
 }
 
 fn default_retention_days() -> u32 { 21 }
@@ -576,6 +616,7 @@ impl AppConfig {
             profiles: Vec::new(),
             active_profile_name: None,
             parsely: ParselySettings::default(),
+            audio: AudioSettings::default(),
         }
     }
 }

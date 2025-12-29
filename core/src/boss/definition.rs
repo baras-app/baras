@@ -37,7 +37,7 @@ pub struct AreaConfig {
 
     /// SWTOR area ID for this operation/flashpoint
     /// Used to match AreaEntered signals for lazy loading
-    #[serde(default)]
+    #[serde(default, alias = "id")]
     pub area_id: i64,
 
     /// Type of content (operation, flashpoint, lair_boss, etc.)
@@ -95,7 +95,7 @@ pub struct EntityDefinition {
     /// Use `triggers_encounter = true` with `is_boss = false` for entities
     /// that should load the encounter but not show on the health bar.
     #[serde(default)]
-    triggers_encounter: Option<bool>,
+    pub triggers_encounter: Option<bool>,
 
     /// Whether killing this entity ends the encounter
     #[serde(default)]
@@ -146,7 +146,7 @@ pub struct BossEncounterDefinition {
 
     /// Entity roster: all NPCs relevant to this encounter
     /// Define once with IDs, reference by name in triggers
-    #[serde(default, rename = "entities")]
+    #[serde(default, alias = "entity")]
     pub entities: Vec<EntityDefinition>,
 
     // ─── Legacy fields (deprecated, use entities instead) ────────────────────
@@ -176,7 +176,7 @@ pub struct BossEncounterDefinition {
     pub timers: Vec<BossTimerDefinition>,
 
     /// Challenge definitions for tracking metrics
-    #[serde(default, rename = "challenge")]
+    #[serde(default, alias = "challenge")]
     pub challenges: Vec<ChallengeDefinition>,
 }
 

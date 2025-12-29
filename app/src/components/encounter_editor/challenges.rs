@@ -1,0 +1,800 @@
+//! Challenge editing tab
+//!
+//! CRUD for boss challenge definitions.
+
+use dioxus::prelude::*;
+
+use crate::api;
+use crate::types::{
+    BossListItem, ChallengeCondition, ChallengeListItem, ChallengeMetric, ComparisonOp,
+    EntityMatcher,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Challenges Tab
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[component]
+pub fn ChallengesTab(
+    boss: BossListItem,
+    on_status: EventHandler<(String, bool)>,
+) -> Element {
+    let mut challenges = use_signal(Vec::<ChallengeListItem>::new);
+    let mut loading = use_signal(|| true);
+    let mut expanded_challenge = use_signal(|| None::<String>);
+    let mut show_new_challenge = use_signal(|| false);
+
+    let file_path = boss.file_path.clone();
+    let boss_id = boss.id.clone();
+
+    // Load challenges on mount
+    use_effect(move || {
+        let file_path = file_path.clone();
+        let boss_id = boss_id.clone();
+        spawn(async move {
+            if let Some(c) = api::get_challenges_for_area(&file_path).await {
+                let boss_challenges: Vec<_> = c.into_iter().filter(|c| c.boss_id == boss_id).collect();
+                challenges.set(boss_challenges);
+            }
+            loading.set(false);
+        });
+    });
+
+    rsx! {
+        div { class: "challenges-tab",
+            // Header
+            div { class: "flex items-center justify-between mb-sm",
+                span { class: "text-sm text-secondary",
+                    if loading() { "Loading..." } else { "{challenges().len()} challenges" }
+                }
+                button {
+                    class: "btn btn-success btn-sm",
+                    onclick: move |_| show_new_challenge.set(true),
+                    "+ New Challenge"
+                }
+            }
+
+            // New challenge form
+            if show_new_challenge() {
+                NewChallengeForm {
+                    boss: boss.clone(),
+                    on_create: move |new_challenge: ChallengeListItem| {
+                        spawn(async move {
+                            if let Some(created) = api::create_challenge(&new_challenge).await {
+                                let mut current = challenges();
+                                current.push(created);
+                                challenges.set(current);
+                                on_status.call(("Created".to_string(), false));
+                            } else {
+                                on_status.call(("Failed to create".to_string(), true));
+                            }
+                        });
+                        show_new_challenge.set(false);
+                    },
+                    on_cancel: move |_| show_new_challenge.set(false),
+                }
+            }
+
+            // Challenge list
+            if loading() {
+                div { class: "empty-state text-sm", "Loading challenges..." }
+            } else if challenges().is_empty() {
+                div { class: "empty-state text-sm", "No challenges defined" }
+            } else {
+                for challenge in challenges() {
+                    {
+                        let challenge_key = challenge.id.clone();
+                        let is_expanded = expanded_challenge() == Some(challenge_key.clone());
+                        let challenges_for_row = challenges();
+
+                        rsx! {
+                            ChallengeRow {
+                                key: "{challenge_key}",
+                                challenge: challenge.clone(),
+                                expanded: is_expanded,
+                                on_toggle: move |_| {
+                                    expanded_challenge.set(if is_expanded { None } else { Some(challenge_key.clone()) });
+                                },
+                                on_change: move |updated: Vec<ChallengeListItem>| {
+                                    challenges.set(updated);
+                                },
+                                on_status: on_status,
+                                on_collapse: move |_| expanded_challenge.set(None),
+                                all_challenges: challenges_for_row,
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Challenge Row
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[component]
+fn ChallengeRow(
+    challenge: ChallengeListItem,
+    expanded: bool,
+    all_challenges: Vec<ChallengeListItem>,
+    on_toggle: EventHandler<()>,
+    on_change: EventHandler<Vec<ChallengeListItem>>,
+    on_status: EventHandler<(String, bool)>,
+    on_collapse: EventHandler<()>,
+) -> Element {
+    let metric_label = challenge.metric.label();
+    let condition_count = challenge.conditions.len();
+
+    rsx! {
+        div { class: "list-item",
+            // Header row
+            div {
+                class: "list-item-header",
+                onclick: move |_| on_toggle.call(()),
+                span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
+                span { class: "font-medium text-mono", "{challenge.id}" }
+                span { class: "tag", "{metric_label}" }
+                if condition_count > 0 {
+                    span { class: "tag tag-secondary", "{condition_count} conditions" }
+                }
+            }
+
+            // Expanded content
+            if expanded {
+                div { class: "list-item-body",
+                    ChallengeEditForm {
+                        challenge: challenge.clone(),
+                        on_save: move |updated: ChallengeListItem| {
+                            on_status.call(("Saving...".to_string(), false));
+                            spawn(async move {
+                                if api::update_challenge(&updated).await {
+                                    on_status.call(("Saved".to_string(), false));
+                                } else {
+                                    on_status.call(("Failed to save".to_string(), true));
+                                }
+                            });
+                        },
+                        on_delete: {
+                            let all_challenges = all_challenges.clone();
+                            move |challenge_to_delete: ChallengeListItem| {
+                                let all_challenges = all_challenges.clone();
+                                spawn(async move {
+                                    if api::delete_challenge(
+                                        &challenge_to_delete.id,
+                                        &challenge_to_delete.boss_id,
+                                        &challenge_to_delete.file_path
+                                    ).await {
+                                        let updated: Vec<_> = all_challenges.iter()
+                                            .filter(|c| c.id != challenge_to_delete.id)
+                                            .cloned()
+                                            .collect();
+                                        on_change.call(updated);
+                                        on_collapse.call(());
+                                        on_status.call(("Deleted".to_string(), false));
+                                    } else {
+                                        on_status.call(("Failed to delete".to_string(), true));
+                                    }
+                                });
+                            }
+                        },
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Challenge Edit Form
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[component]
+fn ChallengeEditForm(
+    challenge: ChallengeListItem,
+    on_save: EventHandler<ChallengeListItem>,
+    on_delete: EventHandler<ChallengeListItem>,
+) -> Element {
+    let mut draft = use_signal(|| challenge.clone());
+    let original = challenge.clone();
+
+    let has_changes = use_memo(move || draft() != original);
+
+    let handle_save = move |_| {
+        let updated = draft();
+        on_save.call(updated);
+    };
+
+    let handle_delete = move |_| {
+        on_delete.call(challenge.clone());
+    };
+
+    rsx! {
+        div { class: "challenge-edit-form",
+            // ─── ID ──────────────────────────────────────────────────────────
+            div { class: "form-row-hz",
+                label { "Challenge ID" }
+                input {
+                    class: "input-inline text-mono",
+                    style: "width: 200px;",
+                    value: "{draft().id}",
+                    oninput: move |e| {
+                        let mut d = draft();
+                        d.id = e.value();
+                        draft.set(d);
+                    }
+                }
+            }
+
+            // ─── Name ────────────────────────────────────────────────────────
+            div { class: "form-row-hz",
+                label { "Name" }
+                input {
+                    class: "input-inline",
+                    style: "width: 300px;",
+                    value: "{draft().name}",
+                    oninput: move |e| {
+                        let mut d = draft();
+                        d.name = e.value();
+                        draft.set(d);
+                    }
+                }
+            }
+
+            // ─── Description ─────────────────────────────────────────────────
+            div { class: "form-row-hz",
+                label { "Description" }
+                input {
+                    class: "input-inline",
+                    style: "width: 400px;",
+                    placeholder: "(optional)",
+                    value: "{draft().description.clone().unwrap_or_default()}",
+                    oninput: move |e| {
+                        let mut d = draft();
+                        d.description = if e.value().is_empty() { None } else { Some(e.value()) };
+                        draft.set(d);
+                    }
+                }
+            }
+
+            // ─── Metric ──────────────────────────────────────────────────────
+            div { class: "form-row-hz",
+                label { "Metric" }
+                select {
+                    class: "input-inline",
+                    value: "{draft().metric:?}",
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.metric = match e.value().as_str() {
+                            "Damage" => ChallengeMetric::Damage,
+                            "Healing" => ChallengeMetric::Healing,
+                            "DamageTaken" => ChallengeMetric::DamageTaken,
+                            "HealingTaken" => ChallengeMetric::HealingTaken,
+                            "AbilityCount" => ChallengeMetric::AbilityCount,
+                            "EffectCount" => ChallengeMetric::EffectCount,
+                            "Deaths" => ChallengeMetric::Deaths,
+                            "Threat" => ChallengeMetric::Threat,
+                            _ => ChallengeMetric::Damage,
+                        };
+                        draft.set(d);
+                    },
+                    for metric in ChallengeMetric::all() {
+                        option {
+                            value: "{metric:?}",
+                            selected: draft().metric == *metric,
+                            "{metric.label()}"
+                        }
+                    }
+                }
+            }
+
+            // ─── Conditions ──────────────────────────────────────────────────
+            div { class: "form-section",
+                div { class: "flex items-center justify-between mb-xs",
+                    span { class: "font-bold text-sm", "Conditions (AND logic)" }
+                    button {
+                        class: "btn btn-success btn-xs",
+                        onclick: move |_| {
+                            let mut d = draft();
+                            d.conditions.push(ChallengeCondition::Phase { phase_ids: vec![] });
+                            draft.set(d);
+                        },
+                        "+ Add"
+                    }
+                }
+
+                if draft().conditions.is_empty() {
+                    div { class: "text-sm text-muted", "No conditions (matches all events)" }
+                } else {
+                    for (idx, condition) in draft().conditions.iter().enumerate() {
+                        ChallengeConditionRow {
+                            condition: condition.clone(),
+                            on_change: move |updated| {
+                                let mut d = draft();
+                                d.conditions[idx] = updated;
+                                draft.set(d);
+                            },
+                            on_remove: move |_| {
+                                let mut d = draft();
+                                d.conditions.remove(idx);
+                                draft.set(d);
+                            },
+                        }
+                    }
+                }
+            }
+
+            // ─── Actions ─────────────────────────────────────────────────────
+            div { class: "form-actions",
+                button {
+                    class: if has_changes() { "btn btn-success btn-sm" } else { "btn btn-sm" },
+                    disabled: !has_changes(),
+                    onclick: handle_save,
+                    "Save"
+                }
+                button {
+                    class: "btn btn-danger btn-sm",
+                    onclick: handle_delete,
+                    "Delete"
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Challenge Condition Row
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[component]
+fn ChallengeConditionRow(
+    condition: ChallengeCondition,
+    on_change: EventHandler<ChallengeCondition>,
+    on_remove: EventHandler<()>,
+) -> Element {
+    let condition_type = condition.label();
+
+    rsx! {
+        div { class: "condition-row",
+            // Condition type selector
+            select {
+                class: "input-inline",
+                style: "width: 120px;",
+                value: "{condition_type}",
+                onchange: move |e| {
+                    let new_condition = match e.value().as_str() {
+                        "Phase" => ChallengeCondition::Phase { phase_ids: vec![] },
+                        "Source" => ChallengeCondition::Source { matcher: EntityMatcher::AnyBoss },
+                        "Target" => ChallengeCondition::Target { matcher: EntityMatcher::AnyBoss },
+                        "Ability" => ChallengeCondition::Ability { ability_ids: vec![] },
+                        "Effect" => ChallengeCondition::Effect { effect_ids: vec![] },
+                        "Counter" => ChallengeCondition::Counter {
+                            counter_id: String::new(),
+                            operator: ComparisonOp::Eq,
+                            value: 0,
+                        },
+                        "Boss HP Range" => ChallengeCondition::BossHpRange {
+                            min_hp: None,
+                            max_hp: None,
+                            npc_id: None,
+                        },
+                        _ => condition.clone(),
+                    };
+                    on_change.call(new_condition);
+                },
+                option { value: "Phase", "Phase" }
+                option { value: "Source", "Source" }
+                option { value: "Target", "Target" }
+                option { value: "Ability", "Ability" }
+                option { value: "Effect", "Effect" }
+                option { value: "Counter", "Counter" }
+                option { value: "Boss HP Range", "Boss HP Range" }
+            }
+
+            // Condition-specific editor
+            {
+                match &condition {
+                    ChallengeCondition::Phase { phase_ids } => {
+                        let phase_ids_str = phase_ids.join(", ");
+                        rsx! {
+                            input {
+                                class: "input-inline flex-1",
+                                placeholder: "phase_id1, phase_id2, ...",
+                                value: "{phase_ids_str}",
+                                oninput: move |e| {
+                                    let ids: Vec<String> = e.value()
+                                        .split(',')
+                                        .map(|s| s.trim().to_string())
+                                        .filter(|s| !s.is_empty())
+                                        .collect();
+                                    on_change.call(ChallengeCondition::Phase { phase_ids: ids });
+                                }
+                            }
+                        }
+                    }
+                    ChallengeCondition::Source { matcher } => {
+                        rsx! {
+                            EntityMatcherSelect {
+                                matcher: matcher.clone(),
+                                on_change: move |m| {
+                                    on_change.call(ChallengeCondition::Source { matcher: m });
+                                }
+                            }
+                        }
+                    }
+                    ChallengeCondition::Target { matcher } => {
+                        rsx! {
+                            EntityMatcherSelect {
+                                matcher: matcher.clone(),
+                                on_change: move |m| {
+                                    on_change.call(ChallengeCondition::Target { matcher: m });
+                                }
+                            }
+                        }
+                    }
+                    ChallengeCondition::Ability { ability_ids } => {
+                        let ids_str = ability_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+                        rsx! {
+                            input {
+                                class: "input-inline flex-1 text-mono",
+                                placeholder: "ability_id1, ability_id2, ...",
+                                value: "{ids_str}",
+                                oninput: move |e| {
+                                    let ids: Vec<u64> = e.value()
+                                        .split(',')
+                                        .filter_map(|s| s.trim().parse().ok())
+                                        .collect();
+                                    on_change.call(ChallengeCondition::Ability { ability_ids: ids });
+                                }
+                            }
+                        }
+                    }
+                    ChallengeCondition::Effect { effect_ids } => {
+                        let ids_str = effect_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+                        rsx! {
+                            input {
+                                class: "input-inline flex-1 text-mono",
+                                placeholder: "effect_id1, effect_id2, ...",
+                                value: "{ids_str}",
+                                oninput: move |e| {
+                                    let ids: Vec<u64> = e.value()
+                                        .split(',')
+                                        .filter_map(|s| s.trim().parse().ok())
+                                        .collect();
+                                    on_change.call(ChallengeCondition::Effect { effect_ids: ids });
+                                }
+                            }
+                        }
+                    }
+                    ChallengeCondition::Counter { counter_id, operator, value } => {
+                        let counter_id_for_select = counter_id.clone();
+                        let counter_id_for_input = counter_id.clone();
+                        let current_op = *operator;
+                        let current_val = *value;
+                        rsx! {
+                            input {
+                                class: "input-inline text-mono",
+                                style: "width: 150px;",
+                                placeholder: "counter_id",
+                                value: "{counter_id}",
+                                oninput: move |e| {
+                                    on_change.call(ChallengeCondition::Counter {
+                                        counter_id: e.value(),
+                                        operator: current_op,
+                                        value: current_val,
+                                    });
+                                }
+                            }
+                            select {
+                                class: "input-inline",
+                                style: "width: 60px;",
+                                value: "{current_op:?}",
+                                onchange: move |e| {
+                                    let op = match e.value().as_str() {
+                                        "Eq" => ComparisonOp::Eq,
+                                        "Lt" => ComparisonOp::Lt,
+                                        "Gt" => ComparisonOp::Gt,
+                                        "Lte" => ComparisonOp::Lte,
+                                        "Gte" => ComparisonOp::Gte,
+                                        "Ne" => ComparisonOp::Ne,
+                                        _ => ComparisonOp::Eq,
+                                    };
+                                    on_change.call(ChallengeCondition::Counter {
+                                        counter_id: counter_id_for_select.clone(),
+                                        operator: op,
+                                        value: current_val,
+                                    });
+                                },
+                                for op in ComparisonOp::all() {
+                                    option {
+                                        value: "{op:?}",
+                                        selected: current_op == *op,
+                                        "{op.label()}"
+                                    }
+                                }
+                            }
+                            input {
+                                r#type: "number",
+                                min: "0",
+                                class: "input-inline",
+                                style: "width: 70px;",
+                                value: "{current_val}",
+                                oninput: move |e| {
+                                    if let Ok(v) = e.value().parse::<u32>() {
+                                        on_change.call(ChallengeCondition::Counter {
+                                            counter_id: counter_id_for_input.clone(),
+                                            operator: current_op,
+                                            value: v,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    ChallengeCondition::BossHpRange { min_hp, max_hp, npc_id } => {
+                        let current_min = *min_hp;
+                        let current_max = *max_hp;
+                        let current_npc = *npc_id;
+                        rsx! {
+                            span { class: "text-sm", "HP:" }
+                            input {
+                                r#type: "number",
+                                min: "0",
+                                max: "100",
+                                class: "input-inline",
+                                style: "width: 70px;",
+                                placeholder: "min",
+                                value: "{current_min.map(|v| v.to_string()).unwrap_or_default()}",
+                                oninput: move |e| {
+                                    let min = e.value().parse().ok();
+                                    on_change.call(ChallengeCondition::BossHpRange {
+                                        min_hp: min,
+                                        max_hp: current_max,
+                                        npc_id: current_npc,
+                                    });
+                                }
+                            }
+                            span { class: "text-sm", "to" }
+                            input {
+                                r#type: "number",
+                                min: "0",
+                                max: "100",
+                                class: "input-inline",
+                                style: "width: 70px;",
+                                placeholder: "max",
+                                value: "{current_max.map(|v| v.to_string()).unwrap_or_default()}",
+                                oninput: move |e| {
+                                    let max = e.value().parse().ok();
+                                    on_change.call(ChallengeCondition::BossHpRange {
+                                        min_hp: current_min,
+                                        max_hp: max,
+                                        npc_id: current_npc,
+                                    });
+                                }
+                            }
+                            span { class: "text-sm", "%" }
+                        }
+                    }
+                }
+            }
+
+            // Remove button
+            button {
+                class: "btn btn-danger btn-xs",
+                onclick: move |_| on_remove.call(()),
+                "×"
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Entity Matcher Select
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[component]
+fn EntityMatcherSelect(
+    matcher: EntityMatcher,
+    on_change: EventHandler<EntityMatcher>,
+) -> Element {
+    let matcher_type = match &matcher {
+        EntityMatcher::AnyBoss => "any_boss",
+        EntityMatcher::AnyAdd => "any_add",
+        EntityMatcher::AnyNpc => "any_npc",
+        EntityMatcher::AnyPlayer => "any_player",
+        EntityMatcher::LocalPlayer => "local_player",
+        EntityMatcher::Any => "any",
+        EntityMatcher::NpcIds(_) => "npc_ids",
+        EntityMatcher::NpcNames(_) => "npc_names",
+        EntityMatcher::PlayerNames(_) => "player_names",
+    };
+
+    rsx! {
+        select {
+            class: "input-inline",
+            value: "{matcher_type}",
+            onchange: move |e| {
+                let new_matcher = match e.value().as_str() {
+                    "any_boss" => EntityMatcher::AnyBoss,
+                    "any_add" => EntityMatcher::AnyAdd,
+                    "any_npc" => EntityMatcher::AnyNpc,
+                    "any_player" => EntityMatcher::AnyPlayer,
+                    "local_player" => EntityMatcher::LocalPlayer,
+                    "any" => EntityMatcher::Any,
+                    "npc_ids" => EntityMatcher::NpcIds(vec![]),
+                    "npc_names" => EntityMatcher::NpcNames(vec![]),
+                    "player_names" => EntityMatcher::PlayerNames(vec![]),
+                    _ => EntityMatcher::Any,
+                };
+                on_change.call(new_matcher);
+            },
+            option { value: "any_boss", "Any Boss" }
+            option { value: "any_add", "Any Add" }
+            option { value: "any_npc", "Any NPC" }
+            option { value: "any_player", "Any Player" }
+            option { value: "local_player", "Local Player" }
+            option { value: "any", "Any" }
+            option { value: "npc_ids", "Specific NPC IDs" }
+            option { value: "npc_names", "Specific NPC Names" }
+            option { value: "player_names", "Specific Players" }
+        }
+
+        // Additional input for specific matchers
+        {
+            match &matcher {
+                EntityMatcher::NpcIds(ids) => {
+                    let ids_str = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+                    rsx! {
+                        input {
+                            class: "input-inline flex-1 text-mono",
+                            placeholder: "npc_id1, npc_id2, ...",
+                            value: "{ids_str}",
+                            oninput: move |e| {
+                                let new_ids: Vec<i64> = e.value()
+                                    .split(',')
+                                    .filter_map(|s| s.trim().parse().ok())
+                                    .collect();
+                                on_change.call(EntityMatcher::NpcIds(new_ids));
+                            }
+                        }
+                    }
+                }
+                EntityMatcher::NpcNames(names) => {
+                    let names_str = names.join(", ");
+                    rsx! {
+                        input {
+                            class: "input-inline flex-1",
+                            placeholder: "name1, name2, ...",
+                            value: "{names_str}",
+                            oninput: move |e| {
+                                let new_names: Vec<String> = e.value()
+                                    .split(',')
+                                    .map(|s| s.trim().to_string())
+                                    .filter(|s| !s.is_empty())
+                                    .collect();
+                                on_change.call(EntityMatcher::NpcNames(new_names));
+                            }
+                        }
+                    }
+                }
+                EntityMatcher::PlayerNames(names) => {
+                    let names_str = names.join(", ");
+                    rsx! {
+                        input {
+                            class: "input-inline flex-1",
+                            placeholder: "player1, player2, ...",
+                            value: "{names_str}",
+                            oninput: move |e| {
+                                let new_names: Vec<String> = e.value()
+                                    .split(',')
+                                    .map(|s| s.trim().to_string())
+                                    .filter(|s| !s.is_empty())
+                                    .collect();
+                                on_change.call(EntityMatcher::PlayerNames(new_names));
+                            }
+                        }
+                    }
+                }
+                _ => rsx! {}
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// New Challenge Form
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[component]
+fn NewChallengeForm(
+    boss: BossListItem,
+    on_create: EventHandler<ChallengeListItem>,
+    on_cancel: EventHandler<()>,
+) -> Element {
+    let mut id = use_signal(|| "new_challenge".to_string());
+    let mut name = use_signal(|| "New Challenge".to_string());
+    let mut description = use_signal(|| None::<String>);
+    let mut metric = use_signal(|| ChallengeMetric::Damage);
+    let mut conditions = use_signal(Vec::<ChallengeCondition>::new);
+
+    let handle_create = move |_| {
+        let new_challenge = ChallengeListItem {
+            id: id(),
+            name: name(),
+            description: description(),
+            boss_id: boss.id.clone(),
+            boss_name: boss.name.clone(),
+            file_path: boss.file_path.clone(),
+            metric: metric(),
+            conditions: conditions(),
+        };
+        on_create.call(new_challenge);
+    };
+
+    rsx! {
+        div { class: "new-item-form mb-md",
+            div { class: "form-row-hz",
+                label { "Challenge ID" }
+                input {
+                    class: "input-inline text-mono",
+                    style: "width: 200px;",
+                    value: "{id}",
+                    oninput: move |e| id.set(e.value())
+                }
+            }
+
+            div { class: "form-row-hz",
+                label { "Name" }
+                input {
+                    class: "input-inline",
+                    style: "width: 300px;",
+                    value: "{name}",
+                    oninput: move |e| name.set(e.value())
+                }
+            }
+
+            div { class: "form-row-hz",
+                label { "Metric" }
+                select {
+                    class: "input-inline",
+                    value: "{metric():?}",
+                    onchange: move |e| {
+                        let m = match e.value().as_str() {
+                            "Damage" => ChallengeMetric::Damage,
+                            "Healing" => ChallengeMetric::Healing,
+                            "DamageTaken" => ChallengeMetric::DamageTaken,
+                            "HealingTaken" => ChallengeMetric::HealingTaken,
+                            "AbilityCount" => ChallengeMetric::AbilityCount,
+                            "EffectCount" => ChallengeMetric::EffectCount,
+                            "Deaths" => ChallengeMetric::Deaths,
+                            "Threat" => ChallengeMetric::Threat,
+                            _ => ChallengeMetric::Damage,
+                        };
+                        metric.set(m);
+                    },
+                    for m in ChallengeMetric::all() {
+                        option {
+                            value: "{m:?}",
+                            selected: metric() == *m,
+                            "{m.label()}"
+                        }
+                    }
+                }
+            }
+
+            div { class: "flex gap-xs mt-sm",
+                button {
+                    class: "btn btn-success btn-sm",
+                    onclick: handle_create,
+                    "Create Challenge"
+                }
+                button {
+                    class: "btn btn-sm",
+                    onclick: move |_| on_cancel.call(()),
+                    "Cancel"
+                }
+            }
+        }
+    }
+}

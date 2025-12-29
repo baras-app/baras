@@ -42,6 +42,8 @@ pub struct FiredAlert {
     pub text: String,
     pub color: Option<[u8; 4]>,
     pub timestamp: NaiveDateTime,
+    /// Optional custom audio file for this alert (relative path)
+    pub audio_file: Option<String>,
 }
 
 /// Manages ability cooldown and buff timers.
@@ -292,6 +294,20 @@ impl TimerManager {
             .collect()
     }
 
+    /// Check all active timers for countdown announcements
+    ///
+    /// Returns a list of (timer_name, seconds) for each countdown that should be announced.
+    /// This mutates the timers to mark countdowns as announced so they won't repeat.
+    pub fn check_all_countdowns(&mut self, current_time: NaiveDateTime) -> Vec<(String, u8)> {
+        self.active_timers
+            .values_mut()
+            .filter_map(|timer| {
+                timer.check_countdown(current_time)
+                    .map(|secs| (timer.name.clone(), secs))
+            })
+            .collect()
+    }
+
     /// Take all fired alerts, clearing the internal buffer.
     /// Call this after processing signals to capture ephemeral notifications.
     pub fn take_fired_alerts(&mut self) -> Vec<FiredAlert> {
@@ -329,6 +345,7 @@ impl TimerManager {
                 text: def.alert_text.clone().unwrap_or_else(|| def.name.clone()),
                 color: Some(def.color),
                 timestamp,
+                audio_file: def.audio_file.clone(),
             });
             return;
         }

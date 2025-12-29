@@ -9,6 +9,7 @@
 //! - `router` - Routes service updates to overlay threads
 //! - `hotkeys` - Global hotkey registration (Windows/macOS only)
 
+mod audio;
 mod commands;
 #[cfg(not(target_os = "linux"))]
 mod hotkeys;
@@ -24,6 +25,7 @@ use tokio::sync::mpsc;
 use router::spawn_overlay_router;
 use overlay::{OverlayManager, OverlayState, SharedOverlayState};
 use service::{CombatService, OverlayUpdate, ServiceHandle};
+use audio::create_audio_channel;
 use tauri::Manager;
 
 /// Auto-show all enabled overlays on startup (if overlays_visible is true)
@@ -70,8 +72,11 @@ pub fn run() {
                 // Create channel for overlay updates
                 let (overlay_tx, overlay_rx) = mpsc::channel::<OverlayUpdate>(64);
 
-                // Create and spawn the combat service
-                let (service, handle) = CombatService::new(app.handle().clone(), overlay_tx);
+                // Create channel for audio events
+                let (audio_tx, audio_rx) = create_audio_channel();
+
+                // Create and spawn the combat service (includes audio service)
+                let (service, handle) = CombatService::new(app.handle().clone(), overlay_tx, audio_tx, audio_rx);
                 tauri::async_runtime::spawn(service.run());
 
                 // Store the service handle for commands
@@ -160,7 +165,7 @@ pub fn run() {
             commands::load_profile,
             commands::delete_profile,
             commands::rename_profile,
-            // Timer editor commands
+            // Encounter editor commands
             commands::get_encounter_timers,
             commands::update_encounter_timer,
             commands::create_encounter_timer,
@@ -170,6 +175,24 @@ pub fn run() {
             commands::get_area_index,
             commands::get_timers_for_area,
             commands::get_bosses_for_area,
+            commands::create_boss,
+            commands::create_area,
+            commands::get_phases_for_area,
+            commands::create_phase,
+            commands::update_phase,
+            commands::delete_phase,
+            commands::get_counters_for_area,
+            commands::create_counter,
+            commands::update_counter,
+            commands::delete_counter,
+            commands::get_challenges_for_area,
+            commands::create_challenge,
+            commands::update_challenge,
+            commands::delete_challenge,
+            commands::get_entities_for_area,
+            commands::create_entity,
+            commands::update_entity,
+            commands::delete_entity,
             // Effect editor commands
             commands::get_effect_definitions,
             commands::update_effect_definition,
@@ -179,6 +202,8 @@ pub fn run() {
             commands::get_effect_files,
             // Parsely upload
             commands::upload_to_parsely,
+            // Audio picker
+            commands::pick_audio_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

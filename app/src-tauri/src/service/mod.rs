@@ -22,8 +22,11 @@ use baras_core::encounter::EncounterState;
 use baras_core::encounter::summary::classify_encounter;
 use baras_core::directory_watcher::DirectoryWatcher;
 use baras_core::game_data::{Discipline, Role};
+use baras_core::timers::FiredAlert;
 use baras_core::{ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, EffectCategory, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler};
 use baras_overlay::{BossHealthData, ChallengeData, ChallengeEntry, PersonalStats, PlayerContribution, PlayerRole, RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry};
+
+use crate::audio::{AudioEvent, AudioSender, AudioService};
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +163,7 @@ pub struct CombatService {
     app_handle: AppHandle,
     shared: Arc<SharedState>,
     overlay_tx: mpsc::Sender<OverlayUpdate>,
+    audio_tx: AudioSender,
     cmd_rx: mpsc::Receiver<ServiceCommand>,
     cmd_tx: mpsc::Sender<ServiceCommand>,
     tail_handle: Option<tokio::task::JoinHandle<()>>,
@@ -177,7 +181,12 @@ pub struct CombatService {
 
 impl CombatService {
     /// Create a new combat service and return a handle to communicate with it
-    pub fn new(app_handle: AppHandle, overlay_tx: mpsc::Sender<OverlayUpdate>) -> (Self, ServiceHandle) {
+    pub fn new(
+        app_handle: AppHandle,
+        overlay_tx: mpsc::Sender<OverlayUpdate>,
+        audio_tx: AudioSender,
+        audio_rx: mpsc::Receiver<AudioEvent>,
+    ) -> (Self, ServiceHandle) {
         let (cmd_tx, cmd_rx) = mpsc::channel(32);
 
         let config = AppConfig::load();
@@ -192,10 +201,21 @@ impl CombatService {
 
         let shared = Arc::new(SharedState::new(config, directory_index));
 
+        // Spawn the audio service (shares audio settings with config)
+        let user_sounds_dir = dirs::config_dir()
+            .map(|p| p.join("baras").join("sounds"))
+            .unwrap_or_else(|| PathBuf::from("."));
+        let audio_settings = Arc::new(tokio::sync::RwLock::new(
+            shared.config.blocking_read().audio.clone()
+        ));
+        let audio_service = AudioService::new(audio_rx, audio_settings, user_sounds_dir);
+        tauri::async_runtime::spawn(audio_service.run());
+
         let service = Self {
             app_handle,
             shared: shared.clone(),
             overlay_tx,
+            audio_tx,
             cmd_rx,
             cmd_tx: cmd_tx.clone(),
             tail_handle: None,
@@ -704,10 +724,11 @@ impl CombatService {
             }
         });
 
-        // Spawn effects + boss health sampling task (polls continuously)
+        // Spawn effects + boss health + audio sampling task (polls continuously)
         // Checks overlay status flags and combat state to skip unnecessary work
         let shared = self.shared.clone();
         let overlay_tx = self.overlay_tx.clone();
+        let audio_tx = self.audio_tx.clone();
         let effects_handle = tokio::spawn(async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_millis(150)).await;
@@ -742,11 +763,32 @@ impl CombatService {
                         let _ = overlay_tx.try_send(OverlayUpdate::BossHealthUpdated(data));
                 }
 
-                // Timers: only poll when in combat and in live mode
-                if timer_active && in_combat && shared.is_live_tailing.load(Ordering::SeqCst)
-                    && let Some(data) = build_timer_data(&shared).await {
-                        let _ = overlay_tx.try_send(OverlayUpdate::TimersUpdated(data));
+                // Timers + Audio: poll when in combat and in live mode
+                if in_combat && shared.is_live_tailing.load(Ordering::SeqCst) {
+                    // Process timer audio and get timer data
+                    if let Some((data, countdowns, alerts)) = build_timer_data_with_audio(&shared).await {
+                        // Send timer overlay data
+                        if timer_active {
+                            let _ = overlay_tx.try_send(OverlayUpdate::TimersUpdated(data));
+                        }
+
+                        // Send countdown audio events
+                        for (name, seconds) in countdowns {
+                            let _ = audio_tx.try_send(AudioEvent::Countdown {
+                                timer_name: name,
+                                seconds,
+                            });
+                        }
+
+                        // Send alert audio events
+                        for alert in alerts {
+                            let _ = audio_tx.try_send(AudioEvent::Alert {
+                                text: alert.text,
+                                custom_sound: alert.audio_file,
+                            });
+                        }
                     }
+                }
             }
         });
 
@@ -1107,25 +1149,35 @@ async fn build_boss_health_data(shared: &Arc<SharedState>) -> Option<BossHealthD
     Some(BossHealthData { entries })
 }
 
-/// Build timer data from active timers
-async fn build_timer_data(shared: &Arc<SharedState>) -> Option<TimerData> {
+/// Build timer data with audio events (countdowns and alerts)
+///
+/// Returns (TimerData, countdowns_to_announce, fired_alerts)
+async fn build_timer_data_with_audio(
+    shared: &Arc<SharedState>,
+) -> Option<(TimerData, Vec<(String, u8)>, Vec<FiredAlert>)> {
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
 
-    // Get active timers from timer manager
+    // Get active timers from timer manager (mutable for countdown checking)
     let timer_mgr = session.timer_manager();
-    let timer_mgr = timer_mgr.lock().ok()?;
+    let mut timer_mgr = timer_mgr.lock().ok()?;
 
     // If not in combat, return empty data
     let in_combat = shared.in_combat.load(Ordering::SeqCst);
     if !in_combat {
-        return Some(TimerData::default());
+        return Some((TimerData::default(), Vec::new(), Vec::new()));
     }
 
     // Get current time for remaining calculations
     use chrono::Local;
     let now = Local::now().naive_local();
+
+    // Check for countdowns to announce (mutates timer state)
+    let countdowns = timer_mgr.check_all_countdowns(now);
+
+    // Take any fired alerts
+    let alerts = timer_mgr.take_fired_alerts();
 
     // Convert active timers to TimerEntry format
     let entries: Vec<TimerEntry> = timer_mgr
@@ -1145,7 +1197,7 @@ async fn build_timer_data(shared: &Arc<SharedState>) -> Option<TimerData> {
         })
         .collect();
 
-    Some(TimerData { entries })
+    Some((TimerData { entries }, countdowns, alerts))
 }
 
 /// Build effects countdown overlay data from active effects

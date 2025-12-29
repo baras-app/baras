@@ -723,3 +723,951 @@ pub async fn get_bosses_for_area(file_path: String) -> Result<Vec<BossListItem>,
 
     Ok(items)
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Boss & Area Creation Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Request to create a new boss
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BossEditItem {
+    pub id: String,
+    pub name: String,
+    pub area_name: String,
+    pub area_id: i64,
+    pub file_path: String,
+    pub difficulties: Vec<String>,
+}
+
+/// Request to create a new area file
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewAreaRequest {
+    pub name: String,
+    pub area_id: i64,
+    pub area_type: String,
+}
+
+/// Create a new boss in an existing area file
+#[tauri::command]
+pub async fn create_boss(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    boss: BossEditItem,
+) -> Result<BossEditItem, String> {
+    use baras_core::boss::{load_bosses_from_file, BossEncounterDefinition};
+
+    let file_path = PathBuf::from(&boss.file_path);
+
+    if !file_path.exists() {
+        return Err(format!("Area file not found: {}", boss.file_path));
+    }
+
+    // Load existing bosses from the file
+    let mut bosses = load_bosses_from_file(&file_path)
+        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+
+    // Check for duplicate boss ID
+    if bosses.iter().any(|b| b.id == boss.id) {
+        return Err(format!("Boss with ID '{}' already exists in this area", boss.id));
+    }
+
+    // Create new boss definition
+    #[allow(deprecated)]
+    let new_boss = BossEncounterDefinition {
+        id: boss.id.clone(),
+        name: boss.name.clone(),
+        area_name: boss.area_name.clone(),
+        area_id: boss.area_id,
+        difficulties: boss.difficulties.clone(),
+        timers: vec![],
+        phases: vec![],
+        counters: vec![],
+        challenges: vec![],
+        entities: vec![],
+        // Legacy fields (deprecated)
+        npc_names: vec![],
+        npc_ids: vec![],
+    };
+
+    bosses.push(new_boss);
+
+    // Save back to file
+    save_bosses_to_file(&bosses, &file_path)?;
+
+    // Reload definitions
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(boss)
+}
+
+/// Create a new area file
+#[tauri::command]
+pub async fn create_area(
+    app_handle: AppHandle,
+    area: NewAreaRequest,
+) -> Result<String, String> {
+    let user_dir = ensure_user_encounters_dir(&app_handle)?;
+
+    // Determine subdirectory based on area type
+    let subdir = match area.area_type.as_str() {
+        "operation" => "operations",
+        "flashpoint" => "flashpoints",
+        "lair_boss" => "lair_bosses",
+        _ => "other",
+    };
+
+    let target_dir = user_dir.join(subdir);
+    std::fs::create_dir_all(&target_dir)
+        .map_err(|e| format!("Failed to create directory: {}", e))?;
+
+    // Generate filename from area name (snake_case)
+    let filename: String = area.name
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect::<String>()
+        .split('_')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("_");
+
+    let file_path = target_dir.join(format!("{}.toml", filename));
+
+    if file_path.exists() {
+        return Err(format!("Area file already exists: {:?}", file_path));
+    }
+
+    // Create minimal TOML content with area config
+    let content = format!(
+        r#"# {}
+# Area type: {}
+
+[area]
+name = "{}"
+area_id = {}
+
+# Add bosses below using [[boss]] sections
+"#,
+        area.name, area.area_type, area.name, area.area_id
+    );
+
+    std::fs::write(&file_path, content)
+        .map_err(|e| format!("Failed to write area file: {}", e))?;
+
+    Ok(file_path.to_string_lossy().to_string())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Audio File Picker
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Open a file picker dialog to select an audio file
+#[tauri::command]
+pub async fn pick_audio_file(app_handle: AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let file_path = app_handle
+        .dialog()
+        .file()
+        .add_filter("Audio Files", &["mp3", "wav", "ogg", "flac", "m4a"])
+        .blocking_pick_file();
+
+    match file_path {
+        Some(path) => Ok(Some(path.to_string())),
+        None => Ok(None), // User cancelled
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase CRUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+use baras_core::boss::{CounterCondition, PhaseDefinition, PhaseTrigger};
+
+/// Flattened phase item for the frontend list view
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhaseListItem {
+    pub id: String,
+    pub name: String,
+    pub boss_id: String,
+    pub boss_name: String,
+    pub file_path: String,
+    pub start_trigger: PhaseTrigger,
+    pub end_trigger: Option<PhaseTrigger>,
+    pub preceded_by: Option<String>,
+    pub counter_condition: Option<CounterCondition>,
+    pub resets_counters: Vec<String>,
+}
+
+impl PhaseListItem {
+    fn from_boss_phase(boss_with_path: &BossWithPath, phase: &PhaseDefinition) -> Self {
+        Self {
+            id: phase.id.clone(),
+            name: phase.name.clone(),
+            boss_id: boss_with_path.boss.id.clone(),
+            boss_name: boss_with_path.boss.name.clone(),
+            file_path: boss_with_path.file_path.to_string_lossy().to_string(),
+            start_trigger: phase.start_trigger.clone(),
+            end_trigger: phase.end_trigger.clone(),
+            preceded_by: phase.preceded_by.clone(),
+            counter_condition: phase.counter_condition.clone(),
+            resets_counters: phase.resets_counters.clone(),
+        }
+    }
+
+    fn to_phase_definition(&self) -> PhaseDefinition {
+        PhaseDefinition {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            start_trigger: self.start_trigger.clone(),
+            end_trigger: self.end_trigger.clone(),
+            preceded_by: self.preceded_by.clone(),
+            counter_condition: self.counter_condition.clone(),
+            resets_counters: self.resets_counters.clone(),
+        }
+    }
+}
+
+/// Get phases for a specific area file
+#[tauri::command]
+pub async fn get_phases_for_area(file_path: String) -> Result<Vec<PhaseListItem>, String> {
+    let path = PathBuf::from(&file_path);
+
+    if !path.exists() {
+        return Err(format!("File not found: {}", file_path));
+    }
+
+    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
+        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+
+    let mut items = Vec::new();
+    for boss_with_path in &bosses {
+        if boss_with_path.file_path == path {
+            for phase in &boss_with_path.boss.phases {
+                items.push(PhaseListItem::from_boss_phase(boss_with_path, phase));
+            }
+        }
+    }
+
+    items.sort_by(|a, b| a.boss_name.cmp(&b.boss_name).then(a.name.cmp(&b.name)));
+
+    Ok(items)
+}
+
+/// Update an existing phase
+#[tauri::command]
+pub async fn update_phase(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    phase: PhaseListItem,
+) -> Result<PhaseListItem, String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&phase.file_path);
+
+    let mut updated_item = None;
+
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == phase.boss_id && boss_with_path.file_path == file_path_buf {
+            if let Some(existing) = boss_with_path.boss.phases.iter_mut().find(|p| p.id == phase.id)
+            {
+                *existing = phase.to_phase_definition();
+                updated_item = Some(phase.clone());
+            }
+            break;
+        }
+    }
+
+    let item = updated_item.ok_or_else(|| format!("Phase '{}' not found", phase.id))?;
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(item)
+}
+
+/// Create a new phase
+#[tauri::command]
+pub async fn create_phase(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    phase: PhaseListItem,
+) -> Result<PhaseListItem, String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&phase.file_path);
+    let boss_id = phase.boss_id.clone();
+
+    // Generate phase ID
+    let phase_id = generate_phase_id(&phase.boss_id, &phase.name);
+    let mut new_phase = phase.to_phase_definition();
+    new_phase.id = phase_id.clone();
+
+    let mut created_item = None;
+
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+            boss_with_path.boss.phases.push(new_phase.clone());
+            created_item = Some(PhaseListItem::from_boss_phase(boss_with_path, &new_phase));
+            break;
+        }
+    }
+
+    let item = created_item.ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(item)
+}
+
+/// Delete a phase
+#[tauri::command]
+pub async fn delete_phase(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    phase_id: String,
+    boss_id: String,
+    file_path: String,
+) -> Result<(), String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&file_path);
+
+    let mut found = false;
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+            let original_len = boss_with_path.boss.phases.len();
+            boss_with_path.boss.phases.retain(|p| p.id != phase_id);
+            found = boss_with_path.boss.phases.len() < original_len;
+            break;
+        }
+    }
+
+    if !found {
+        return Err(format!("Phase '{}' not found in boss '{}'", phase_id, boss_id));
+    }
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(())
+}
+
+/// Generate a phase ID from boss ID and phase name
+fn generate_phase_id(boss_id: &str, name: &str) -> String {
+    let name_part: String = name
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect::<String>()
+        .split('_')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("_");
+
+    format!("{}_{}", boss_id, name_part)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Counter CRUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+use baras_core::boss::{
+    ChallengeCondition, ChallengeDefinition, ChallengeMetric, CounterDefinition, CounterTrigger,
+    EntityDefinition,
+};
+
+/// Flattened counter item for the frontend list view
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CounterListItem {
+    pub id: String,
+    pub boss_id: String,
+    pub boss_name: String,
+    pub file_path: String,
+    pub increment_on: CounterTrigger,
+    pub reset_on: CounterTrigger,
+    #[serde(default)]
+    pub initial_value: u32,
+    #[serde(default)]
+    pub decrement: bool,
+    #[serde(default)]
+    pub set_value: Option<u32>,
+}
+
+impl CounterListItem {
+    fn from_boss_counter(boss_with_path: &BossWithPath, counter: &CounterDefinition) -> Self {
+        Self {
+            id: counter.id.clone(),
+            boss_id: boss_with_path.boss.id.clone(),
+            boss_name: boss_with_path.boss.name.clone(),
+            file_path: boss_with_path.file_path.to_string_lossy().to_string(),
+            increment_on: counter.increment_on.clone(),
+            reset_on: counter.reset_on.clone(),
+            initial_value: counter.initial_value,
+            decrement: counter.decrement,
+            set_value: counter.set_value,
+        }
+    }
+
+    fn to_counter_definition(&self) -> CounterDefinition {
+        CounterDefinition {
+            id: self.id.clone(),
+            increment_on: self.increment_on.clone(),
+            reset_on: self.reset_on.clone(),
+            initial_value: self.initial_value,
+            decrement: self.decrement,
+            set_value: self.set_value,
+        }
+    }
+}
+
+/// Get counters for a specific area file
+#[tauri::command]
+pub async fn get_counters_for_area(file_path: String) -> Result<Vec<CounterListItem>, String> {
+    let path = PathBuf::from(&file_path);
+
+    if !path.exists() {
+        return Err(format!("File not found: {}", file_path));
+    }
+
+    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
+        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+
+    let mut items = Vec::new();
+    for boss_with_path in &bosses {
+        if boss_with_path.file_path == path {
+            for counter in &boss_with_path.boss.counters {
+                items.push(CounterListItem::from_boss_counter(boss_with_path, counter));
+            }
+        }
+    }
+
+    items.sort_by(|a, b| a.boss_name.cmp(&b.boss_name).then(a.id.cmp(&b.id)));
+
+    Ok(items)
+}
+
+/// Update an existing counter
+#[tauri::command]
+pub async fn update_counter(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    counter: CounterListItem,
+) -> Result<CounterListItem, String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&counter.file_path);
+
+    let mut updated_item = None;
+
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == counter.boss_id && boss_with_path.file_path == file_path_buf {
+            if let Some(existing) = boss_with_path
+                .boss
+                .counters
+                .iter_mut()
+                .find(|c| c.id == counter.id)
+            {
+                *existing = counter.to_counter_definition();
+                updated_item = Some(counter.clone());
+            }
+            break;
+        }
+    }
+
+    let item = updated_item.ok_or_else(|| format!("Counter '{}' not found", counter.id))?;
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(item)
+}
+
+/// Create a new counter
+#[tauri::command]
+pub async fn create_counter(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    counter: CounterListItem,
+) -> Result<CounterListItem, String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&counter.file_path);
+    let boss_id = counter.boss_id.clone();
+
+    let new_counter = counter.to_counter_definition();
+    let mut created_item = None;
+
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+            boss_with_path.boss.counters.push(new_counter.clone());
+            created_item = Some(CounterListItem::from_boss_counter(boss_with_path, &new_counter));
+            break;
+        }
+    }
+
+    let item = created_item.ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(item)
+}
+
+/// Delete a counter
+#[tauri::command]
+pub async fn delete_counter(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    counter_id: String,
+    boss_id: String,
+    file_path: String,
+) -> Result<(), String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&file_path);
+
+    let mut found = false;
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+            let original_len = boss_with_path.boss.counters.len();
+            boss_with_path.boss.counters.retain(|c| c.id != counter_id);
+            found = boss_with_path.boss.counters.len() < original_len;
+            break;
+        }
+    }
+
+    if !found {
+        return Err(format!(
+            "Counter '{}' not found in boss '{}'",
+            counter_id, boss_id
+        ));
+    }
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Challenge CRUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+use baras_core::boss::EntityMatcher;
+
+/// Flattened challenge item for the frontend list view
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChallengeListItem {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    pub boss_id: String,
+    pub boss_name: String,
+    pub file_path: String,
+    pub metric: ChallengeMetric,
+    #[serde(default)]
+    pub conditions: Vec<ChallengeCondition>,
+}
+
+impl ChallengeListItem {
+    fn from_boss_challenge(boss_with_path: &BossWithPath, challenge: &ChallengeDefinition) -> Self {
+        Self {
+            id: challenge.id.clone(),
+            name: challenge.name.clone(),
+            description: challenge.description.clone(),
+            boss_id: boss_with_path.boss.id.clone(),
+            boss_name: boss_with_path.boss.name.clone(),
+            file_path: boss_with_path.file_path.to_string_lossy().to_string(),
+            metric: challenge.metric,
+            conditions: challenge.conditions.clone(),
+        }
+    }
+
+    fn to_challenge_definition(&self) -> ChallengeDefinition {
+        ChallengeDefinition {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            description: self.description.clone(),
+            metric: self.metric,
+            conditions: self.conditions.clone(),
+        }
+    }
+}
+
+/// Get challenges for a specific area file
+#[tauri::command]
+pub async fn get_challenges_for_area(file_path: String) -> Result<Vec<ChallengeListItem>, String> {
+    let path = PathBuf::from(&file_path);
+
+    if !path.exists() {
+        return Err(format!("File not found: {}", file_path));
+    }
+
+    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
+        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+
+    let mut items = Vec::new();
+    for boss_with_path in &bosses {
+        if boss_with_path.file_path == path {
+            for challenge in &boss_with_path.boss.challenges {
+                items.push(ChallengeListItem::from_boss_challenge(boss_with_path, challenge));
+            }
+        }
+    }
+
+    items.sort_by(|a, b| a.boss_name.cmp(&b.boss_name).then(a.id.cmp(&b.id)));
+
+    Ok(items)
+}
+
+/// Update an existing challenge
+#[tauri::command]
+pub async fn update_challenge(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    challenge: ChallengeListItem,
+) -> Result<ChallengeListItem, String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&challenge.file_path);
+
+    let mut updated_item = None;
+
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == challenge.boss_id && boss_with_path.file_path == file_path_buf {
+            if let Some(existing) = boss_with_path
+                .boss
+                .challenges
+                .iter_mut()
+                .find(|c| c.id == challenge.id)
+            {
+                *existing = challenge.to_challenge_definition();
+                updated_item = Some(challenge.clone());
+            }
+            break;
+        }
+    }
+
+    let item = updated_item.ok_or_else(|| format!("Challenge '{}' not found", challenge.id))?;
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(item)
+}
+
+/// Create a new challenge
+#[tauri::command]
+pub async fn create_challenge(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    challenge: ChallengeListItem,
+) -> Result<ChallengeListItem, String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&challenge.file_path);
+    let boss_id = challenge.boss_id.clone();
+
+    let new_challenge = challenge.to_challenge_definition();
+    let mut created_item = None;
+
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+            boss_with_path.boss.challenges.push(new_challenge.clone());
+            created_item = Some(ChallengeListItem::from_boss_challenge(boss_with_path, &new_challenge));
+            break;
+        }
+    }
+
+    let item = created_item.ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(item)
+}
+
+/// Delete a challenge
+#[tauri::command]
+pub async fn delete_challenge(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    challenge_id: String,
+    boss_id: String,
+    file_path: String,
+) -> Result<(), String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&file_path);
+
+    let mut found = false;
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+            let original_len = boss_with_path.boss.challenges.len();
+            boss_with_path.boss.challenges.retain(|c| c.id != challenge_id);
+            found = boss_with_path.boss.challenges.len() < original_len;
+            break;
+        }
+    }
+
+    if !found {
+        return Err(format!(
+            "Challenge '{}' not found in boss '{}'",
+            challenge_id, boss_id
+        ));
+    }
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Entity CRUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Flattened entity item for the frontend list view
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EntityListItem {
+    pub name: String,
+    pub boss_id: String,
+    pub boss_name: String,
+    pub file_path: String,
+    #[serde(default)]
+    pub ids: Vec<i64>,
+    #[serde(default)]
+    pub is_boss: bool,
+    #[serde(default)]
+    pub triggers_encounter: bool,
+    #[serde(default)]
+    pub is_kill_target: bool,
+}
+
+impl EntityListItem {
+    fn from_boss_entity(boss_with_path: &BossWithPath, entity: &EntityDefinition) -> Self {
+        Self {
+            name: entity.name.clone(),
+            boss_id: boss_with_path.boss.id.clone(),
+            boss_name: boss_with_path.boss.name.clone(),
+            file_path: boss_with_path.file_path.to_string_lossy().to_string(),
+            ids: entity.ids.clone(),
+            is_boss: entity.is_boss,
+            triggers_encounter: entity.triggers_encounter(),
+            is_kill_target: entity.is_kill_target,
+        }
+    }
+
+    fn to_entity_definition(&self) -> EntityDefinition {
+        EntityDefinition {
+            name: self.name.clone(),
+            ids: self.ids.clone(),
+            is_boss: self.is_boss,
+            triggers_encounter: Some(self.triggers_encounter),
+            is_kill_target: self.is_kill_target,
+        }
+    }
+}
+
+/// Get entities for a specific area file
+#[tauri::command]
+pub async fn get_entities_for_area(file_path: String) -> Result<Vec<EntityListItem>, String> {
+    let path = PathBuf::from(&file_path);
+
+    if !path.exists() {
+        return Err(format!("File not found: {}", file_path));
+    }
+
+    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
+        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+
+    let mut items = Vec::new();
+    for boss_with_path in &bosses {
+        if boss_with_path.file_path == path {
+            for entity in &boss_with_path.boss.entities {
+                items.push(EntityListItem::from_boss_entity(boss_with_path, entity));
+            }
+        }
+    }
+
+    items.sort_by(|a, b| a.boss_name.cmp(&b.boss_name).then(a.name.cmp(&b.name)));
+
+    Ok(items)
+}
+
+/// Update an existing entity
+#[tauri::command]
+pub async fn update_entity(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    entity: EntityListItem,
+    original_name: String,
+) -> Result<EntityListItem, String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&entity.file_path);
+
+    let mut updated_item = None;
+
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == entity.boss_id && boss_with_path.file_path == file_path_buf {
+            if let Some(existing) = boss_with_path
+                .boss
+                .entities
+                .iter_mut()
+                .find(|e| e.name == original_name)
+            {
+                *existing = entity.to_entity_definition();
+                updated_item = Some(entity.clone());
+            }
+            break;
+        }
+    }
+
+    let item = updated_item.ok_or_else(|| format!("Entity '{}' not found", original_name))?;
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(item)
+}
+
+/// Create a new entity
+#[tauri::command]
+pub async fn create_entity(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    entity: EntityListItem,
+) -> Result<EntityListItem, String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&entity.file_path);
+    let boss_id = entity.boss_id.clone();
+
+    let new_entity = entity.to_entity_definition();
+    let mut created_item = None;
+
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+            // Check for duplicate name
+            if boss_with_path.boss.entities.iter().any(|e| e.name == entity.name) {
+                return Err(format!("Entity '{}' already exists in this boss", entity.name));
+            }
+            boss_with_path.boss.entities.push(new_entity.clone());
+            created_item = Some(EntityListItem::from_boss_entity(boss_with_path, &new_entity));
+            break;
+        }
+    }
+
+    let item = created_item.ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(item)
+}
+
+/// Delete an entity
+#[tauri::command]
+pub async fn delete_entity(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    entity_name: String,
+    boss_id: String,
+    file_path: String,
+) -> Result<(), String> {
+    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path_buf = PathBuf::from(&file_path);
+
+    let mut found = false;
+    for boss_with_path in &mut bosses {
+        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+            let original_len = boss_with_path.boss.entities.len();
+            boss_with_path.boss.entities.retain(|e| e.name != entity_name);
+            found = boss_with_path.boss.entities.len() < original_len;
+            break;
+        }
+    }
+
+    if !found {
+        return Err(format!(
+            "Entity '{}' not found in boss '{}'",
+            entity_name, boss_id
+        ));
+    }
+
+    let file_bosses: Vec<_> = bosses
+        .iter()
+        .filter(|b| b.file_path == file_path_buf)
+        .map(|b| b.boss.clone())
+        .collect();
+
+    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    let _ = service.reload_timer_definitions().await;
+
+    Ok(())
+}

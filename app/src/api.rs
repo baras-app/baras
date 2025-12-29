@@ -366,6 +366,178 @@ pub async fn get_bosses_for_area(file_path: &str) -> Option<Vec<BossListItem>> {
     from_js(result)
 }
 
+use crate::types::{BossEditItem, NewAreaRequest};
+
+/// Create a new boss in an area file
+pub async fn create_boss(boss: &BossEditItem) -> Option<BossEditItem> {
+    let args = build_args("boss", boss);
+    let result = invoke("create_boss", args).await;
+    from_js(result)
+}
+
+/// Create a new area file
+pub async fn create_area(area: &NewAreaRequest) -> Option<String> {
+    let args = build_args("area", area);
+    let result = invoke("create_area", args).await;
+    from_js(result)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase Editor Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+use crate::types::PhaseListItem;
+
+/// Get phases for a specific area file
+pub async fn get_phases_for_area(file_path: &str) -> Option<Vec<PhaseListItem>> {
+    let args = build_args("filePath", file_path);
+    let result = invoke("get_phases_for_area", args).await;
+    from_js(result)
+}
+
+/// Update an existing phase
+pub async fn update_phase(phase: &PhaseListItem) -> bool {
+    let args = build_args("phase", phase);
+    let result = invoke("update_phase", args).await;
+    !result.is_null() && !result.is_undefined()
+}
+
+/// Create a new phase
+pub async fn create_phase(phase: &PhaseListItem) -> Option<PhaseListItem> {
+    let args = build_args("phase", phase);
+    let result = invoke("create_phase", args).await;
+    from_js(result)
+}
+
+/// Delete a phase
+pub async fn delete_phase(phase_id: &str, boss_id: &str, file_path: &str) -> bool {
+    let obj = js_sys::Object::new();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("phaseId"), &JsValue::from_str(phase_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
+
+    let result = invoke("delete_phase", obj.into()).await;
+    result.is_null() || result.is_undefined()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Counter Editor Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+use crate::types::CounterListItem;
+
+/// Get counters for a specific area file
+pub async fn get_counters_for_area(file_path: &str) -> Option<Vec<CounterListItem>> {
+    let args = build_args("filePath", file_path);
+    let result = invoke("get_counters_for_area", args).await;
+    from_js(result)
+}
+
+/// Update an existing counter
+pub async fn update_counter(counter: &CounterListItem) -> bool {
+    let args = build_args("counter", counter);
+    let result = invoke("update_counter", args).await;
+    !result.is_null() && !result.is_undefined()
+}
+
+/// Create a new counter
+pub async fn create_counter(counter: &CounterListItem) -> Option<CounterListItem> {
+    let args = build_args("counter", counter);
+    let result = invoke("create_counter", args).await;
+    from_js(result)
+}
+
+/// Delete a counter
+pub async fn delete_counter(counter_id: &str, boss_id: &str, file_path: &str) -> bool {
+    let obj = js_sys::Object::new();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("counterId"), &JsValue::from_str(counter_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
+
+    let result = invoke("delete_counter", obj.into()).await;
+    result.is_null() || result.is_undefined()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Challenge Editor Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+use crate::types::ChallengeListItem;
+
+/// Get challenges for a specific area file
+pub async fn get_challenges_for_area(file_path: &str) -> Option<Vec<ChallengeListItem>> {
+    let args = build_args("filePath", file_path);
+    let result = invoke("get_challenges_for_area", args).await;
+    from_js(result)
+}
+
+/// Update an existing challenge
+pub async fn update_challenge(challenge: &ChallengeListItem) -> bool {
+    let args = build_args("challenge", challenge);
+    let result = invoke("update_challenge", args).await;
+    !result.is_null() && !result.is_undefined()
+}
+
+/// Create a new challenge
+pub async fn create_challenge(challenge: &ChallengeListItem) -> Option<ChallengeListItem> {
+    let args = build_args("challenge", challenge);
+    let result = invoke("create_challenge", args).await;
+    from_js(result)
+}
+
+/// Delete a challenge
+pub async fn delete_challenge(challenge_id: &str, boss_id: &str, file_path: &str) -> bool {
+    let obj = js_sys::Object::new();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("challengeId"), &JsValue::from_str(challenge_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
+
+    let result = invoke("delete_challenge", obj.into()).await;
+    result.is_null() || result.is_undefined()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Entity Editor Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+use crate::types::EntityListItem;
+
+/// Get entities for a specific area file
+pub async fn get_entities_for_area(file_path: &str) -> Option<Vec<EntityListItem>> {
+    let args = build_args("filePath", file_path);
+    let result = invoke("get_entities_for_area", args).await;
+    from_js(result)
+}
+
+/// Update an existing entity
+pub async fn update_entity(entity: &EntityListItem, original_name: &str) -> bool {
+    let obj = js_sys::Object::new();
+    let entity_js = serde_wasm_bindgen::to_value(entity).unwrap_or(JsValue::NULL);
+    js_sys::Reflect::set(&obj, &JsValue::from_str("entity"), &entity_js).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("originalName"), &JsValue::from_str(original_name)).unwrap();
+
+    let result = invoke("update_entity", obj.into()).await;
+    !result.is_null() && !result.is_undefined()
+}
+
+/// Create a new entity
+pub async fn create_entity(entity: &EntityListItem) -> Option<EntityListItem> {
+    let args = build_args("entity", entity);
+    let result = invoke("create_entity", args).await;
+    from_js(result)
+}
+
+/// Delete an entity
+pub async fn delete_entity(entity_name: &str, boss_id: &str, file_path: &str) -> bool {
+    let obj = js_sys::Object::new();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("entityName"), &JsValue::from_str(entity_name)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
+
+    let result = invoke("delete_entity", obj.into()).await;
+    result.is_null() || result.is_undefined()
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Effect Editor Commands
 // ─────────────────────────────────────────────────────────────────────────────
@@ -438,4 +610,14 @@ pub struct ParselyUploadResponse {
 pub async fn upload_to_parsely(path: &str) -> Option<ParselyUploadResponse> {
     let result = invoke("upload_to_parsely", build_args("path", &path)).await;
     from_js(result)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Audio File Picker
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Open a file picker for audio files, returns the selected path or None
+pub async fn pick_audio_file() -> Option<String> {
+    let result = invoke("pick_audio_file", JsValue::NULL).await;
+    from_js(result).unwrap_or(None)
 }

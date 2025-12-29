@@ -62,6 +62,11 @@ pub struct ActiveTimer {
 
     /// Show on raid frames instead of timer bar?
     pub show_on_raid_frames: bool,
+
+    // ─── Audio (countdown tracking) ───────────────────────────────────────
+    /// Tracks which countdown seconds have been announced (5, 4, 3, 2, 1)
+    /// Index 0 = 1 second, index 4 = 5 seconds
+    countdown_announced: [bool; 5],
 }
 
 impl ActiveTimer {
@@ -95,6 +100,7 @@ impl ActiveTimer {
             color,
             triggers_timer,
             show_on_raid_frames,
+            countdown_announced: [false; 5],
         }
     }
 
@@ -105,6 +111,7 @@ impl ActiveTimer {
         self.expires_at = event_timestamp
             + chrono::Duration::milliseconds(self.duration.as_millis() as i64);
         self.alert_fired = false;
+        self.countdown_announced = [false; 5];
     }
 
     /// Repeat the timer (increment count, restart)
@@ -161,6 +168,35 @@ impl ActiveTimer {
     /// Check if this timer can repeat
     pub fn can_repeat(&self) -> bool {
         self.max_repeats > 0 && self.repeat_count < self.max_repeats
+    }
+
+    /// Check for countdown seconds to announce (5, 4, 3, 2, 1)
+    ///
+    /// Returns Some(seconds) if we've crossed into a new second boundary
+    /// that hasn't been announced yet. Returns None otherwise.
+    ///
+    /// This uses floor to determine the current second window:
+    /// - remaining 5.2s → announces 5
+    /// - remaining 4.8s → announces 4
+    pub fn check_countdown(&mut self, current_game_time: NaiveDateTime) -> Option<u8> {
+        let remaining = self.remaining_secs(current_game_time);
+
+        // Floor to get whole seconds remaining
+        let remaining_floor = remaining.floor() as i32;
+
+        // Only announce 5, 4, 3, 2, 1 (index 0-4)
+        if remaining_floor >= 1 && remaining_floor <= 5 {
+            let seconds = remaining_floor as u8;
+            // Index: 1 → 0, 2 → 1, 3 → 2, 4 → 3, 5 → 4
+            let index = (seconds - 1) as usize;
+
+            if !self.countdown_announced[index] {
+                self.countdown_announced[index] = true;
+                return Some(seconds);
+            }
+        }
+
+        None
     }
 }
 

@@ -681,6 +681,12 @@ button:active {
   flex-shrink: 0;
 }
 
+.subsection {
+  border-left: 2px solid var(--border-light);
+  padding-left: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
 .subsection-title {
   font-size: clamp(0.5rem, 1.2vh, 0.75rem);
   color: var(--text-disabled);
@@ -4280,3 +4286,574 @@ details[open] .collapsible-summary::before {
   color: var(--text-primary);
   font-size: 0.9em;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   Generic reusable utilities for layout, text, and spacing
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Flexbox Layout ─────────────────────────────────────────────────────────── */
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-row { display: flex; flex-direction: row; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-1 { flex: 1; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+
+/* ─── Gap Utilities ──────────────────────────────────────────────────────────── */
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+
+/* ─── Margin/Padding Utilities ───────────────────────────────────────────────── */
+.mb-xs { margin-bottom: var(--space-xs); }
+.mb-sm { margin-bottom: var(--space-sm); }
+.mb-md { margin-bottom: var(--space-md); }
+.mt-sm { margin-top: var(--space-sm); }
+.ml-auto { margin-left: auto; }
+.p-sm { padding: var(--space-sm); }
+.p-md { padding: var(--space-md); }
+.px-sm { padding-left: var(--space-sm); padding-right: var(--space-sm); }
+.py-xs { padding-top: var(--space-xs); padding-bottom: var(--space-xs); }
+
+/* ─── Text Utilities ─────────────────────────────────────────────────────────── */
+.text-xs { font-size: 0.75em; }
+.text-sm { font-size: 0.85em; }
+.text-lg { font-size: 1.1em; }
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+.text-primary { color: var(--text-primary); }
+.text-accent { color: var(--swtor-blue); }
+.text-success { color: var(--color-success); }
+.text-error { color: var(--color-error); }
+.text-mono { font-family: var(--font-mono); }
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.font-medium { font-weight: 500; }
+.font-bold { font-weight: 600; }
+.capitalize { text-transform: capitalize; }
+
+/* ─── Conditions Section ─────────────────────────────────────────────────────── */
+.conditions-section {
+  border-top: 1px solid var(--border-light);
+  padding-top: var(--space-sm);
+}
+
+/* ─── Timer Edit 2-Column Grid ───────────────────────────────────────────────── */
+.timer-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: var(--space-md);
+}
+
+.timer-edit-left {
+  /* Main timer settings */
+}
+
+.timer-edit-right {
+  border-left: 1px solid var(--border-light);
+  padding-left: var(--space-md);
+}
+
+.timer-edit-right .form-row-hz > label {
+  min-width: 60px;
+}
+
+/* Phase selector dropdown */
+.phase-selector {
+  position: relative;
+}
+
+.phase-dropdown {
+  margin-top: var(--space-xs);
+}
+
+/* Row toggle buttons (enable/audio in timer list) */
+.row-toggle {
+  cursor: pointer;
+  padding: 2px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.row-toggle:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-medium);
+}
+
+/* ─── Width Utilities ────────────────────────────────────────────────────────── */
+.w-full { width: 100%; }
+.w-auto { width: auto; }
+
+/* ─── Cursor ─────────────────────────────────────────────────────────────────── */
+.cursor-pointer { cursor: pointer; }
+.cursor-not-allowed { cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ENCOUNTER EDITOR
+   Reusable components for the encounter/timer/effect editors
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Editor Layout ──────────────────────────────────────────────────────────── */
+.editor-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
+  padding: 1em;
+  border: 1px solid var(--border-accent);
+}
+
+.editor-sidebar {
+  width: 220px;
+  min-width: 220px;
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-sidebar-header {
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editor-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xs);
+}
+
+.editor-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-md);
+}
+
+/* ─── Category Groups (collapsible sections) ─────────────────────────────────── */
+.category-group {
+  margin-bottom: var(--space-xs);
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-dark);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.category-header:hover {
+  background: var(--bg-light);
+  color: var(--text-secondary);
+}
+
+.category-items {
+  padding-left: var(--space-xs);
+}
+
+/* ─── Sidebar Items ──────────────────────────────────────────────────────────── */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  transition: background var(--transition-fast);
+}
+
+.sidebar-item:hover {
+  background: var(--blue-alpha-10);
+  color: var(--text-primary);
+}
+
+.sidebar-item.active {
+  background: var(--blue-alpha-15);
+  color: var(--swtor-blue);
+  border-left: 2px solid var(--swtor-blue);
+}
+
+.sidebar-item-count {
+  margin-left: auto;
+  font-size: 0.75em;
+  color: var(--text-muted);
+  background: var(--bg-dark);
+  padding: 0.1em 0.4em;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Tab Navigation ─────────────────────────────────────────────────────────── */
+.tab-nav {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-dark);
+}
+
+.tab-btn {
+  padding: var(--space-xs) var(--space-md);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tab-btn:hover {
+  background: var(--blue-alpha-10);
+  color: var(--text-secondary);
+}
+
+.tab-btn.active {
+  background: var(--blue-alpha-15);
+  border-color: var(--border-accent-medium);
+  color: var(--swtor-blue);
+}
+
+/* ─── Expandable List Items ──────────────────────────────────────────────────── */
+.list-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-xs);
+  overflow: hidden;
+}
+
+.list-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.list-item-header:hover {
+  background: var(--blue-alpha-5);
+}
+
+.list-item-expand {
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+.list-item-body {
+  padding: var(--space-md);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-mid);
+}
+
+/* ─── Color Swatch ───────────────────────────────────────────────────────────── */
+.color-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── Tags/Badges ────────────────────────────────────────────────────────────── */
+.tag {
+  padding: 2px 6px;
+  background: var(--blue-alpha-10);
+  border-radius: var(--radius-sm);
+  font-size: 0.75em;
+  color: var(--swtor-blue);
+}
+
+.tag-success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.tag-muted {
+  background: var(--bg-dark);
+  color: var(--text-muted);
+}
+
+/* ─── Toggle Buttons (difficulty selectors, etc.) ────────────────────────────── */
+.toggle-btn {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: capitalize;
+}
+
+.toggle-btn:hover {
+  border-color: var(--border-accent);
+  color: var(--text-secondary);
+}
+
+.toggle-btn.active {
+  background: var(--blue-alpha-15);
+  border-color: var(--border-accent-medium);
+  color: var(--swtor-blue);
+}
+
+/* ─── Inline Form Row ────────────────────────────────────────────────────────── */
+.form-row-hz {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.form-row-hz > label {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+/* ─── Form Section (grouped fields) ────────────────────────────────────────────── */
+.form-section {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ─── New Item Form ──────────────────────────────────────────────────────────── */
+.new-item-form {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+
+/* ─── Inline Input (smaller, fits in rows) ───────────────────────────────────── */
+.input-inline {
+  padding: var(--space-xs);
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9em;
+}
+
+.input-inline:focus {
+  outline: none;
+  border-color: var(--swtor-blue-dim);
+}
+
+/* ─── Modal Overlay ──────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--bg-mid);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  min-width: 400px;
+  max-width: 90vw;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+/* ─── Empty State ────────────────────────────────────────────────────────────── */
+.empty-state {
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.empty-state-icon {
+  font-size: 1.5em;
+  margin-bottom: var(--space-sm);
+}
+
+/* ─── Status Messages ────────────────────────────────────────────────────────── */
+.status-message {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  font-size: 0.85em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.status-message.success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.status-message.error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+/* ─── Form Elements ──────────────────────────────────────────────────────────── */
+.input {
+  padding: var(--space-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.85em;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--border-accent-medium);
+}
+
+.input-sm {
+  padding: var(--space-xs);
+  font-size: 0.85em;
+}
+
+.select {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.85em;
+}
+
+.form-field {
+  margin-bottom: var(--space-sm);
+}
+
+.form-label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+}
+
+.hint {
+  font-size: 0.75em;
+  color: var(--text-muted);
+}
+
+/* ─── Chips (removable tags) ─────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--blue-alpha-10);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  font-size: 0.75em;
+  color: var(--text-secondary);
+}
+
+.chip-remove {
+  background: none;
+  border: none;
+  color: var(--color-error);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9em;
+}
+
+/* ─── Button Variants ────────────────────────────────────────────────────────── */
+.btn-dashed {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-input);
+  border: 1px dashed var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 100%;
+}
+
+.btn-dashed:hover {
+  border-color: var(--border-accent);
+  color: var(--swtor-blue);
+}
+
+.btn-compose {
+  padding: 2px 6px;
+  font-size: 0.75em;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.btn-compose:hover {
+  border-color: var(--border-accent);
+  color: var(--swtor-blue);
+}
+
+/* ─── Trigger Editor ─────────────────────────────────────────────────────────── */
+.composite-trigger {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+}
+
+.composite-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.composite-label {
+  font-size: 0.8em;
+  color: var(--swtor-blue);
+  font-weight: 500;
+}
+
+.condition-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+/* ─── Extra Spacing Utilities ────────────────────────────────────────────────── */
+.pl-lg { padding-left: var(--space-lg); }
+.pl-md { padding-left: var(--space-md); }
