@@ -423,6 +423,7 @@ impl EventProcessor {
                 };
                 vec![GameSignal::EffectApplied {
                     effect_id: event.effect.effect_id,
+                    effect_name: event.effect.effect_name,
                     action_id: event.action.action_id,
                     source_id: event.source_entity.log_id,
                     source_name: event.source_entity.name,
@@ -442,6 +443,7 @@ impl EventProcessor {
                 }
                 vec![GameSignal::EffectRemoved {
                     effect_id: event.effect.effect_id,
+                    effect_name: event.effect.effect_name,
                     source_id: event.source_entity.log_id,
                     source_entity_type: event.source_entity.entity_type,
                     source_name: event.source_entity.name,
@@ -477,6 +479,7 @@ impl EventProcessor {
         if effect_id == effect_id::ABILITYACTIVATE {
             signals.push(GameSignal::AbilityActivated {
                 ability_id: event.action.action_id,
+                ability_name: event.action.name,
                 source_id: event.source_entity.log_id,
                 source_entity_type: event.source_entity.entity_type,
                 source_name: event.source_entity.name,

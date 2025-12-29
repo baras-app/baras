@@ -549,6 +549,7 @@ impl SignalHandler for TimerManager {
                 target_name,
                 target_npc_id,
                 timestamp,
+                ..
             } => {
                 signal_handlers::handle_ability(
                     self,
@@ -590,6 +591,7 @@ impl SignalHandler for TimerManager {
                 target_entity_type,
                 target_name,
                 timestamp,
+                ..
             } => {
                 // EffectRemoved doesn't include npc_ids in the game log, pass 0
                 signal_handlers::handle_effect_removed(

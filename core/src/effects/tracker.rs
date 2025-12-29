@@ -251,6 +251,7 @@ impl EffectTracker {
     fn handle_effect_applied(
         &mut self,
         effect_id: i64,
+        effect_name: IStr,
         action_id: i64,
         source_id: i64,
         source_name: IStr,
@@ -287,10 +288,13 @@ impl EffectTracker {
             name: target_name,
         };
 
+        // Resolve effect name for matching
+        let effect_name_str = crate::context::resolve(effect_name);
+
         // Find matching definitions (only those that trigger on EffectApplied)
         let matching_defs: Vec<_> = self
             .definitions
-            .find_matching(effect_id as u64, None) // TODO: pass effect name when available
+            .find_matching(effect_id as u64, Some(&effect_name_str))
             .into_iter()
             .filter(|def| def.trigger == EffectTriggerMode::EffectApplied)
             .filter(|def| self.matches_filters(def, source_info, target_info))
@@ -400,6 +404,7 @@ impl EffectTracker {
     fn handle_effect_removed(
         &mut self,
         effect_id: i64,
+        effect_name: IStr,
         source_id: i64,
         target_id: i64,
         target_name: IStr,
@@ -412,9 +417,12 @@ impl EffectTracker {
             return;
         }
 
+        // Resolve effect name for matching
+        let effect_name_str = crate::context::resolve(effect_name);
+
         let matching_defs: Vec<_> = self
             .definitions
-            .find_matching(effect_id as u64, None)
+            .find_matching(effect_id as u64, Some(&effect_name_str))
             .into_iter()
             .collect();
 
@@ -564,6 +572,7 @@ impl SignalHandler for EffectTracker {
         match signal {
             GameSignal::EffectApplied {
                 effect_id,
+                effect_name,
                 action_id,
                 source_id,
                 source_name,
@@ -578,6 +587,7 @@ impl SignalHandler for EffectTracker {
             } => {
                 self.handle_effect_applied(
                     *effect_id,
+                    *effect_name,
                     *action_id,
                     *source_id,
                     *source_name,
@@ -593,13 +603,14 @@ impl SignalHandler for EffectTracker {
             }
             GameSignal::EffectRemoved {
                 effect_id,
+                effect_name,
                 source_id,
                 target_id,
                 target_name,
                 timestamp,
                 ..
             } => {
-                self.handle_effect_removed(*effect_id, *source_id, *target_id, *target_name, *timestamp);
+                self.handle_effect_removed(*effect_id, *effect_name, *source_id, *target_id, *target_name, *timestamp);
             }
             GameSignal::EffectChargesChanged {
                 effect_id,

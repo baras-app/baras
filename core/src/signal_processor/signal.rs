@@ -46,6 +46,7 @@ pub enum GameSignal {
     // Effect tracking
     EffectApplied {
         effect_id: i64,
+        effect_name: IStr,
         /// The ability/action that caused this effect
         action_id: i64,
         source_id: i64,
@@ -64,6 +65,7 @@ pub enum GameSignal {
     },
     EffectRemoved {
         effect_id: i64,
+        effect_name: IStr,
         source_id: i64,
         source_entity_type: EntityType,
         source_name: IStr,
@@ -86,6 +88,7 @@ pub enum GameSignal {
     // Ability activation (for timer triggers and raid frame registration)
     AbilityActivated {
         ability_id: i64,
+        ability_name: IStr,
         source_id: i64,
         source_entity_type: EntityType,
         source_name: IStr,
