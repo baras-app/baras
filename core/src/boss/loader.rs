@@ -296,13 +296,13 @@ resets_counters = ["add_count"]
 
 [[boss.counter]]
 id = "add_count"
-increment_on = { type = "ability_cast", ability_ids = [12345] }
+increment_on = { type = "ability_cast", abilities = [12345] }
 reset_on = { type = "any_phase_change" }
 
 [[boss.timer]]
 id = "test_timer"
 name = "Test Timer"
-trigger = { type = "ability_cast", ability_ids = [12345] }
+trigger = { type = "ability_cast", abilities = [12345] }
 duration_secs = 30.0
 phases = ["p1"]
 "#;
@@ -350,7 +350,7 @@ trigger = { type = "boss_hp_below", hp_percent = 30.0, npc_id = 3273941900591104
 
 [[boss.counter]]
 id = "dread_scream_casts"
-increment_on = { type = "ability_cast", ability_ids = [3302391763959808] }
+increment_on = { type = "ability_cast", abilities = [3302391763959808] }
 
 [[boss.challenge]]
 id = "boss_damage"

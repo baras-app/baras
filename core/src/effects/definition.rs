@@ -5,8 +5,9 @@
 
 use serde::{Deserialize, Serialize};
 
-// Re-export EntityFilter from shared module for backwards compatibility
+// Re-export EntityFilter from shared module
 pub use crate::entity_filter::EntityFilter;
+pub use crate::triggers::EffectSelector;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Effect Definitions
@@ -66,9 +67,9 @@ pub struct EffectDefinition {
     pub enabled: bool,
 
     // ─── Matching ───────────────────────────────────────────────────────────
-    /// Game effect IDs that match this definition
+    /// Effect selectors (ID or name) that match this definition
     #[serde(default)]
-    pub effect_ids: Vec<u64>,
+    pub effects: Vec<EffectSelector>,
 
     /// Ability IDs that can apply or refresh this effect
     #[serde(default)]
@@ -148,9 +149,9 @@ impl EffectDefinition {
         self.color.unwrap_or_else(|| self.category.default_color())
     }
 
-    /// Check if an effect ID matches this definition
-    pub fn matches_effect(&self, effect_id: u64) -> bool {
-        self.effect_ids.contains(&effect_id)
+    /// Check if an effect ID/name matches this definition
+    pub fn matches_effect(&self, effect_id: u64, effect_name: Option<&str>) -> bool {
+        self.effects.iter().any(|s| s.matches(effect_id, effect_name))
     }
 
     /// Check if an ability can refresh this effect

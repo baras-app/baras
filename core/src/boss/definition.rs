@@ -392,6 +392,3 @@ impl BossEncounterDefinition {
     }
 }
 
-/// Type alias for backward compatibility
-#[deprecated(note = "Use BossEncounterDefinition instead")]
-pub type BossDefinition = BossEncounterDefinition;

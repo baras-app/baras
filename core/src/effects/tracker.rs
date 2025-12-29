@@ -34,9 +34,9 @@ impl DefinitionSet {
         let mut duplicates = Vec::new();
         for def in definitions {
             // Warn about effects that will never match anything
-            if def.effect_ids.is_empty() && def.refresh_abilities.is_empty() {
+            if def.effects.is_empty() && def.refresh_abilities.is_empty() {
                 eprintln!(
-                    "[EFFECT WARNING] Effect '{}' has no effect_ids or refresh_abilities - it will never match anything!",
+                    "[EFFECT WARNING] Effect '{}' has no effects or refresh_abilities - it will never match anything!",
                     def.id
                 );
             }
@@ -58,11 +58,11 @@ impl DefinitionSet {
         self.effects.get(id)
     }
 
-    /// Find effect definitions that match a game effect ID
-    pub fn find_by_game_id(&self, effect_id: u64) -> Vec<&EffectDefinition> {
+    /// Find effect definitions that match a game effect ID/name
+    pub fn find_matching(&self, effect_id: u64, effect_name: Option<&str>) -> Vec<&EffectDefinition> {
         self.effects
             .values()
-            .filter(|def| def.enabled && def.matches_effect(effect_id))
+            .filter(|def| def.enabled && def.matches_effect(effect_id, effect_name))
             .collect()
     }
 
@@ -290,7 +290,7 @@ impl EffectTracker {
         // Find matching definitions
         let matching_defs: Vec<_> = self
             .definitions
-            .find_by_game_id(effect_id as u64)
+            .find_matching(effect_id as u64, None) // TODO: pass effect name when available
             .into_iter()
             .filter(|def| self.matches_filters(def, source_info, target_info))
             .collect();
@@ -408,7 +408,7 @@ impl EffectTracker {
         // Find matching definitions and mark their effects as removed
         let matching_def_ids: Vec<_> = self
             .definitions
-            .find_by_game_id(effect_id as u64)
+            .find_matching(effect_id as u64, None)
             .into_iter()
             .map(|def| def.id.clone())
             .collect();
@@ -439,7 +439,7 @@ impl EffectTracker {
         // Find matching definitions
         let matching_defs: Vec<_> = self
             .definitions
-            .find_by_game_id(effect_id as u64)
+            .find_matching(effect_id as u64, None)
             .into_iter()
             .collect();
 

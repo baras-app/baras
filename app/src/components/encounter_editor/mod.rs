@@ -10,7 +10,7 @@ mod new_forms;
 mod phases;
 mod tabs;
 mod timers;
-mod triggers;
+pub mod triggers;
 
 use dioxus::prelude::*;
 

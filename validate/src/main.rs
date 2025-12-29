@@ -400,14 +400,26 @@ fn populate_tracked_ids(state: &mut ValidationState, boss: &BossEncounterDefinit
     // Collect all ability IDs from timers
     for timer in &boss.timers {
         match &timer.trigger {
-            baras_core::timers::TimerTrigger::AbilityCast { ability_ids, .. } => {
-                state.tracked_ability_ids.extend(ability_ids.iter().copied());
+            baras_core::timers::TimerTrigger::AbilityCast { abilities, .. } => {
+                for selector in abilities {
+                    if let baras_core::AbilitySelector::Id(id) = selector {
+                        state.tracked_ability_ids.insert(*id);
+                    }
+                }
             }
-            baras_core::timers::TimerTrigger::EffectApplied { effect_ids, .. } => {
-                state.tracked_effect_ids.extend(effect_ids.iter().copied());
+            baras_core::timers::TimerTrigger::EffectApplied { effects, .. } => {
+                for selector in effects {
+                    if let baras_core::EffectSelector::Id(id) = selector {
+                        state.tracked_effect_ids.insert(*id);
+                    }
+                }
             }
-            baras_core::timers::TimerTrigger::EffectRemoved { effect_ids, .. } => {
-                state.tracked_effect_ids.extend(effect_ids.iter().copied());
+            baras_core::timers::TimerTrigger::EffectRemoved { effects, .. } => {
+                for selector in effects {
+                    if let baras_core::EffectSelector::Id(id) = selector {
+                        state.tracked_effect_ids.insert(*id);
+                    }
+                }
             }
             _ => {}
         }

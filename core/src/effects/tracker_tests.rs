@@ -11,7 +11,7 @@ use crate::combat_log::EntityType;
 use crate::context::IStr;
 use crate::signal_processor::{GameSignal, SignalHandler};
 
-use super::{DefinitionSet, EffectCategory, EffectDefinition, EffectTracker, EntityFilter};
+use super::{DefinitionSet, EffectCategory, EffectDefinition, EffectTracker, EntityFilter, EffectSelector};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Helpers
@@ -27,7 +27,7 @@ fn make_effect(id: &str, name: &str, effect_ids: Vec<u64>) -> EffectDefinition {
         id: id.to_string(),
         name: name.to_string(),
         enabled: true,
-        effect_ids,
+        effects: effect_ids.into_iter().map(EffectSelector::Id).collect(),
         refresh_abilities: Vec::new(),
         source: EntityFilter::Any,
         target: EntityFilter::Any,

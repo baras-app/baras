@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
-use baras_core::effects::{DefinitionConfig, EffectCategory, EffectDefinition, EntityFilter};
+use baras_core::effects::{DefinitionConfig, EffectCategory, EffectDefinition, EntityFilter, EffectSelector};
 
 use crate::service::ServiceHandle;
 
@@ -30,7 +30,7 @@ pub struct EffectListItem {
     // Effect data
     pub enabled: bool,
     pub category: EffectCategory,
-    pub effect_ids: Vec<u64>,
+    pub effects: Vec<EffectSelector>,
     pub refresh_abilities: Vec<u64>,
     pub source: EntityFilter,
     pub target: EntityFilter,
@@ -65,7 +65,7 @@ impl EffectListItem {
             file_path: file_path.to_string_lossy().to_string(),
             enabled: def.enabled,
             category: def.category,
-            effect_ids: def.effect_ids.clone(),
+            effects: def.effects.clone(),
             refresh_abilities: def.refresh_abilities.clone(),
             source: def.source.clone(),
             target: def.target.clone(),
@@ -91,7 +91,7 @@ impl EffectListItem {
             name: self.name.clone(),
             enabled: self.enabled,
             category: self.category,
-            effect_ids: self.effect_ids.clone(),
+            effects: self.effects.clone(),
             refresh_abilities: self.refresh_abilities.clone(),
             source: self.source.clone(),
             target: self.target.clone(),
@@ -295,7 +295,7 @@ pub async fn update_effect_definition(
     effect: EffectListItem,
 ) -> Result<(), String> {
     // Validate effect has at least one way to match
-    if effect.effect_ids.is_empty() && effect.refresh_abilities.is_empty() {
+    if effect.effects.is_empty() && effect.refresh_abilities.is_empty() {
         return Err(
             "Effect must have at least one effect ID or refresh ability to match against. \
             Without these, the effect will never trigger.".to_string()
@@ -342,7 +342,7 @@ pub async fn create_effect_definition(
     mut effect: EffectListItem,
 ) -> Result<EffectListItem, String> {
     // Validate effect has at least one way to match
-    if effect.effect_ids.is_empty() && effect.refresh_abilities.is_empty() {
+    if effect.effects.is_empty() && effect.refresh_abilities.is_empty() {
         return Err(
             "Effect must have at least one effect ID or refresh ability to match against. \
             Without these, the effect will never trigger.".to_string()

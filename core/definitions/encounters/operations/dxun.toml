@@ -57,7 +57,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "red_hydrochloric_pool"
 name = "Hydrochloric Pool"
-trigger = { type = "ability_cast", ability_ids = [4250097772658688] }
+trigger = { type = "ability_cast", abilities = [4250097772658688] }
 duration_secs = 47.0
 color = [23, 123, 8, 255]
 difficulties = ["veteran", "master"]
@@ -74,7 +74,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "red_acidic_jet"
 name = "Acidic Jet"
-trigger = { type = "ability_cast", ability_ids = [4250089182724096] }
+trigger = { type = "ability_cast", abilities = [4250089182724096] }
 duration_secs = 30.0
 color = [224, 25, 24, 255]
 difficulties = ["veteran", "master"]

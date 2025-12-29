@@ -66,8 +66,8 @@ pub enum Trigger {
 
     /// Ability is cast. [TPC]
     AbilityCast {
-        /// Ability selectors (ID or name). Alias for backwards compat.
-        #[serde(default, alias = "ability_ids")]
+        /// Ability selectors (ID or name).
+        #[serde(default)]
         abilities: Vec<AbilitySelector>,
         #[serde(default)]
         source: EntityMatcher,
@@ -75,8 +75,8 @@ pub enum Trigger {
 
     /// Effect/buff is applied. [TPC]
     EffectApplied {
-        /// Effect selectors (ID or name). Alias for backwards compat.
-        #[serde(default, alias = "effect_ids")]
+        /// Effect selectors (ID or name).
+        #[serde(default)]
         effects: Vec<EffectSelector>,
         #[serde(default)]
         source: EntityMatcher,
@@ -86,8 +86,8 @@ pub enum Trigger {
 
     /// Effect/buff is removed. [TPC]
     EffectRemoved {
-        /// Effect selectors (ID or name). Alias for backwards compat.
-        #[serde(default, alias = "effect_ids")]
+        /// Effect selectors (ID or name).
+        #[serde(default)]
         effects: Vec<EffectSelector>,
         #[serde(default)]
         source: EntityMatcher,
@@ -295,22 +295,6 @@ mod tests {
         let toml = toml::to_string(&trigger).unwrap();
         let parsed: Trigger = toml::from_str(&toml).unwrap();
         assert_eq!(trigger, parsed);
-    }
-
-    #[test]
-    fn serde_backwards_compat_ability_ids() {
-        // Old config format with ability_ids should still work
-        let toml = r#"
-            type = "ability_cast"
-            ability_ids = [123, 456]
-        "#;
-        let parsed: Trigger = toml::from_str(toml).unwrap();
-        match parsed {
-            Trigger::AbilityCast { abilities, .. } => {
-                assert_eq!(abilities.len(), 2);
-            }
-            _ => panic!("Wrong trigger type"),
-        }
     }
 
     #[test]

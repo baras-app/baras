@@ -60,11 +60,11 @@ trigger = { type = "boss_hp_below", hp_percent = 50.0, npc_id = 3273941900591104
 
 [[boss.counter]]
 id = "larva_spawns"
-increment_on = { type = "ability_cast", ability_ids = [3292079547482112] }
+increment_on = { type = "ability_cast", abilities = [3292079547482112] }
 
 [[boss.counter]]
 id = "monster_spawns"
-increment_on = { type = "ability_cast", ability_ids = [3291675820556288] }
+increment_on = { type = "ability_cast", abilities = [3291675820556288] }
 
 [[boss.counter]]
 id = "monster_deaths"
@@ -72,7 +72,7 @@ increment_on = { type = "entity_death", entity = "Dread Monster" }
 
 [[boss.counter]]
 id = "dread_scream_casts"
-increment_on = { type = "ability_cast", ability_ids = [3302391763959808] }
+increment_on = { type = "ability_cast", abilities = [3302391763959808] }
 
 # ─── Challenges ────────────────────────────────────────────────────────────
 
@@ -165,7 +165,7 @@ color = [32, 72, 219, 255]
 [[boss.timer]]
 id = "swelling_despair"
 name = "Swelling Despair"
-trigger = { type = "ability_cast", ability_ids = [3294098182111232] }
+trigger = { type = "ability_cast", abilities = [3294098182111232] }
 duration_secs = 24.0
 color = [98, 21, 163, 255]
 can_be_refreshed = true
@@ -173,7 +173,7 @@ can_be_refreshed = true
 [[boss.timer]]
 id = "dread_strike"
 name = "Dread Strike"
-trigger = { type = "ability_cast", ability_ids = [3294841211453440] }
+trigger = { type = "ability_cast", abilities = [3294841211453440] }
 duration_secs = 24.0
 color = [204, 22, 133, 255]
 can_be_refreshed = true
@@ -181,7 +181,7 @@ can_be_refreshed = true
 [[boss.timer]]
 id = "combusting_seed"
 name = "Combusting Seed"
-trigger = { type = "ability_cast", ability_ids = [3294102477078528] }
+trigger = { type = "ability_cast", abilities = [3294102477078528] }
 duration_secs = 24.0
 color = [224, 97, 24, 255]
 can_be_refreshed = true

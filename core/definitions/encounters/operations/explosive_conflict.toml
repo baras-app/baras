@@ -34,7 +34,7 @@ trigger = { type = "combat_start" }
 [[boss.timer]]
 id = "zt_shriek"
 name = "Shriek"
-trigger = { type = "ability_cast", ability_ids = [2857132504383488] }
+trigger = { type = "ability_cast", abilities = [2857132504383488] }
 duration_secs = 45
 color = [219, 100, 32, 255]
 difficulties = ["veteran", "master"]
@@ -42,7 +42,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "zt_baradium_heave"
 name = "Baradium Heave"
-trigger = { type = "effect_applied", effect_ids = [2857300008108306] }
+trigger = { type = "effect_applied", effects = [2857300008108306] }
 duration_secs = 13
 color = [219, 34, 32, 255]
 difficulties = ["veteran", "master"]
@@ -50,7 +50,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "zt_ground_shatter"
 name = "Ground Shatter"
-trigger = { type = "effect_applied", effect_ids = [2857368727584768] }
+trigger = { type = "effect_applied", effects = [2857368727584768] }
 duration_secs = 20
 color = [224, 24, 24, 255]
 difficulties = ["veteran", "master"]
@@ -58,7 +58,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "zt_smash"
 name = "Smash"
-trigger = { type = "ability_cast", ability_ids = [2917463909990400] }
+trigger = { type = "ability_cast", abilities = [2917463909990400] }
 duration_secs = 15
 color = [32, 219, 215, 255]
 difficulties = ["veteran", "master"]
@@ -68,7 +68,7 @@ difficulties = ["veteran", "master"]
 id = "zt_baradium_poisoning"
 name = "Baradium Poisoning"
 is_alert = true
-trigger = { type = "effect_applied", effect_ids = [3004561551786240] }
+trigger = { type = "effect_applied", effects = [3004561551786240] }
 target = "local_player"
 alert_text = "Use Medpack!"
 difficulties = ["master"]
@@ -77,7 +77,7 @@ difficulties = ["master"]
 id = "zt_weakened"
 name = "Weakened"
 is_alert = true
-trigger = { type = "effect_applied", effect_ids = [2857132504383753] }
+trigger = { type = "effect_applied", effects = [2857132504383753] }
 target = "local_player"
 alert_text = "Weakened"
 difficulties = ["veteran", "master"]
@@ -86,7 +86,7 @@ difficulties = ["veteran", "master"]
 id = "zt_fearful"
 name = "Fearful"
 is_alert = true
-trigger = { type = "effect_applied", effect_ids = [2857171159089412] }
+trigger = { type = "effect_applied", effects = [2857171159089412] }
 target = "local_player"
 alert_text = "Fearful"
 difficulties = ["veteran", "master"]
@@ -97,11 +97,11 @@ id = "zt_jump"
 name = "Jump"
 is_alert = true
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_threshold", hp_percent = 90.0, boss_name = "Toth" },
-    { type = "boss_hp_threshold", hp_percent = 70.0, boss_name = "Toth" },
-    { type = "boss_hp_threshold", hp_percent = 50.0, boss_name = "Toth" },
-    { type = "boss_hp_threshold", hp_percent = 30.0, boss_name = "Toth" },
-    { type = "boss_hp_threshold", hp_percent = 10.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 90.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 70.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 50.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 30.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 10.0, boss_name = "Toth" },
 ]}
 alert_text = "Jump"
 color = [130, 33, 224, 255]
@@ -112,8 +112,8 @@ id = "zt_frenzy"
 name = "Frenzy"
 is_alert = true
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_threshold", hp_percent = 80.0, boss_name = "Toth" },
-    { type = "boss_hp_threshold", hp_percent = 40.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 80.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 40.0, boss_name = "Toth" },
 ]}
 alert_text = "Frenzy"
 color = [214, 164, 19, 255]
@@ -124,8 +124,8 @@ id = "zt_shatter"
 name = "Shatter + Sonic"
 is_alert = true
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_threshold", hp_percent = 60.0, boss_name = "Toth" },
-    { type = "boss_hp_threshold", hp_percent = 20.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 60.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 20.0, boss_name = "Toth" },
 ]}
 alert_text = "Shatter + Sonic"
 color = [219, 36, 28, 255]
@@ -135,7 +135,7 @@ difficulties = ["veteran", "master"]
 id = "zt_soft_enrage"
 name = "Soft Enrage"
 is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 5.0, boss_name = "Toth" }
+trigger = { type = "boss_hp_below", hp_percent = 5.0, boss_name = "Toth" }
 alert_text = "Soft Enrage"
 color = [219, 31, 28, 255]
 difficulties = ["veteran", "master"]
@@ -179,8 +179,8 @@ trigger = { type = "any_of", conditions = [
 [[boss.phases]]
 id = "fs_shield"
 name = "Defensive Systems"
-trigger = { type = "effect_applied", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
-end_trigger = { type = "effect_removed", effect_ids = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+trigger = { type = "effect_applied", effects = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+end_trigger = { type = "effect_removed", effects = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
 
 [[boss.phases]]
 id = "fs_burn"
@@ -251,7 +251,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "fs_mortar_volley"
 name = "Mortar Volley"
-trigger = { type = "ability_cast", ability_ids = [2815793444159488] }
+trigger = { type = "ability_cast", abilities = [2815793444159488] }
 duration_secs = 25
 color = [219, 28, 29, 255]
 difficulties = ["veteran", "master"]
@@ -259,7 +259,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "fs_firebrand_cleave"
 name = "Firebrand Cleave"
-trigger = { type = "ability_cast", ability_ids = [2876653130743808] }
+trigger = { type = "ability_cast", abilities = [2876653130743808] }
 duration_secs = 10
 color = [224, 25, 24, 255]
 difficulties = ["veteran", "master"]
@@ -267,7 +267,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "fs_storm_cleave"
 name = "Storm Cleave"
-trigger = { type = "ability_cast", ability_ids = [2876687490482176] }
+trigger = { type = "ability_cast", abilities = [2876687490482176] }
 duration_secs = 10
 color = [117, 33, 224, 255]
 difficulties = ["veteran", "master"]
@@ -275,7 +275,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "fs_targeted_missile"
 name = "Targeted Missile"
-trigger = { type = "ability_cast", ability_ids = [2876648835776512] }
+trigger = { type = "ability_cast", abilities = [2876648835776512] }
 duration_secs = 16
 color = [224, 24, 164, 255]
 difficulties = ["veteran", "master"]
@@ -283,7 +283,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "fs_incinerate_armor"
 name = "Incinerate Armor"
-trigger = { type = "ability_cast", ability_ids = [2876661720678400] }
+trigger = { type = "ability_cast", abilities = [2876661720678400] }
 duration_secs = 46
 color = [219, 94, 32, 255]
 difficulties = ["master"]
@@ -291,7 +291,7 @@ difficulties = ["master"]
 [[boss.timer]]
 id = "fs_incinerate_armor_vm"
 name = "Incinerate Armor"
-trigger = { type = "ability_cast", ability_ids = [2876661720678400] }
+trigger = { type = "ability_cast", abilities = [2876661720678400] }
 duration_secs = 49
 color = [219, 94, 32, 255]
 difficulties = ["veteran"]
@@ -299,7 +299,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "fs_double_destruction"
 name = "Double Destruction"
-trigger = { type = "ability_cast", ability_ids = [2876691785449472] }
+trigger = { type = "ability_cast", abilities = [2876691785449472] }
 duration_secs = 20
 color = [23, 197, 209, 255]
 difficulties = ["master"]
@@ -307,7 +307,7 @@ difficulties = ["master"]
 [[boss.timer]]
 id = "fs_double_destruction_vm"
 name = "Double Destruction"
-trigger = { type = "ability_cast", ability_ids = [2876691785449472] }
+trigger = { type = "ability_cast", abilities = [2876691785449472] }
 duration_secs = 30
 color = [23, 197, 209, 255]
 difficulties = ["veteran"]
@@ -315,7 +315,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "fs_void_zone"
 name = "Void Zone"
-trigger = { type = "ability_cast", ability_ids = [2876713260285952] }
+trigger = { type = "ability_cast", abilities = [2876713260285952] }
 duration_secs = 15
 color = [24, 92, 224, 255]
 difficulties = ["veteran", "master"]
@@ -360,7 +360,7 @@ trigger = {type = "boss_hp_below", hp_percent = 99.9, boss_name = "Colonel Vorga
 [[boss.timer]]
 id = "cv_threat_drop"
 name = "Threat Drop"
-trigger = { type = "ability_cast", ability_ids = [2919121767366656] }
+trigger = { type = "ability_cast", abilities = [2919121767366656] }
 duration_secs = 20
 color = [39, 209, 208, 255]
 difficulties = ["veteran", "master"]
@@ -368,7 +368,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "cv_knockback"
 name = "Knockback"
-trigger = { type = "ability_cast", ability_ids = [2853275623751680] }
+trigger = { type = "ability_cast", abilities = [2853275623751680] }
 duration_secs = 15
 color = [224, 108, 24, 255]
 difficulties = ["veteran", "master"]
@@ -376,7 +376,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "cv_grenade"
 name = "Grenade"
-trigger = { type = "ability_cast", ability_ids = [2853344343228416] }
+trigger = { type = "ability_cast", abilities = [2853344343228416] }
 duration_secs = 15
 color = [214, 37, 32, 255]
 difficulties = ["veteran", "master"]
@@ -386,7 +386,7 @@ difficulties = ["veteran", "master"]
 id = "cv_hp_95"
 name = "Threat Drop"
 is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 95.0, boss_name = "Colonel Vorgath" }
+trigger = { type = "boss_hp_below", hp_percent = 95.0, boss_name = "Colonel Vorgath" }
 alert_text = "Threat Drop"
 color = [39, 209, 208, 255]
 difficulties = ["veteran", "master"]
@@ -395,7 +395,7 @@ difficulties = ["veteran", "master"]
 id = "cv_hp_80"
 name = "Turrets"
 is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 80.0, boss_name = "Colonel Vorgath" }
+trigger = { type = "boss_hp_below", hp_percent = 80.0, boss_name = "Colonel Vorgath" }
 alert_text = "Turrets"
 color = [14, 128, 22, 255]
 difficulties = ["veteran", "master"]
@@ -452,10 +452,10 @@ trigger = { type = "combat_start" }
 [[boss.phases]]
 id = "walker_burn"
 name = "Walker Burn"
-trigger = {type = "effect_removed", effect_ids = [2815376832331776] }
+trigger = {type = "effect_removed", effects = [2815376832331776] }
 end_trigger = {type = "any_of", conditions = [
   {type = "entity_death", entity = "Warstrider Battlewalker"},
-  {type = "effect_applied", effect_ids = [2815376832331776] }
+  {type = "effect_applied", effects = [2815376832331776] }
 ]}
 
 [[boss.phases]]
@@ -477,7 +477,7 @@ id = "wk_kephess"
 name = "Kephess"
 counter_condition = {counter_id = "walker_burns", operator = "gte", value = 3}
 trigger = {type = "phase_ended", phase_id = "walker_burn"}
-end_trigger = {type = "effect_removed", effect_ids = [2815376832331776] }
+end_trigger = {type = "effect_removed", effects = [2815376832331776] }
 
 [[boss.phases]]
 id = "wk_kephess_burn"
@@ -488,7 +488,7 @@ trigger = {type = "boss_hp_below", hp_percent = 59.0, boss_name = "Warlord Kephe
 [[boss.timer]]
 id = "wk_mighty_leap"
 name = "Mighty Leap"
-trigger = { type = "ability_cast", ability_ids = [2877069742571520] }
+trigger = { type = "ability_cast", abilities = [2877069742571520] }
 duration_secs = 40
 color = [214, 37, 32, 255]
 difficulties = ["veteran", "master"]
@@ -496,7 +496,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "wk_savage_slash"
 name = "Savage Slash"
-trigger = { type = "ability_cast", ability_ids = [2877048267735040] }
+trigger = { type = "ability_cast", abilities = [2877048267735040] }
 duration_secs = 18
 color = [219, 28, 29, 255]
 difficulties = ["veteran", "master"]
@@ -504,7 +504,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "wk_breath_pull"
 name = "Breath Pull"
-trigger = { type = "effect_applied", effect_ids = [2877078332506112] }
+trigger = { type = "effect_applied", effects = [2877078332506112] }
 duration_secs = 6
 color = [224, 168, 33, 255]
 difficulties = ["master"]
@@ -520,6 +520,6 @@ phase_ids = ["walker_burn"]
 
 [[boss.challenge.conditions]]
 type = "target"
-match = { npc_names = ["Warstrider Battlewalker"] }
+match = { names = ["Warstrider Battlewalker"] }
 
 

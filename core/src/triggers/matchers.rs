@@ -82,92 +82,12 @@ impl EntitySelectorExt for EntitySelector {
 ///
 /// Any selector matching means the entity matches (OR logic).
 /// Empty selector list matches nothing (require explicit filter).
-#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityMatcher {
     /// Entity selectors - any match suffices.
     /// Supports NPC IDs and names/roster aliases.
     #[serde(default)]
     pub entities: Vec<EntitySelector>,
-}
-
-/// Custom deserializer for EntityMatcher to handle backwards compatibility.
-/// Supports:
-/// - New format: `entities = [...]`
-/// - Old formats: `entity = "name"`, `npc_id = 123`, `name = "name"`
-impl<'de> Deserialize<'de> for EntityMatcher {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        use serde::de::{MapAccess, Visitor};
-
-        struct EntityMatcherVisitor;
-
-        impl<'de> Visitor<'de> for EntityMatcherVisitor {
-            type Value = EntityMatcher;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("an entity matcher with 'entities', 'entity', 'npc_id', or 'name' field")
-            }
-
-            fn visit_map<M>(self, mut map: M) -> Result<EntityMatcher, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                let mut entities: Option<Vec<EntitySelector>> = None;
-                let mut entity: Option<String> = None;
-                let mut npc_id: Option<i64> = None;
-                let mut name: Option<String> = None;
-
-                while let Some(key) = map.next_key::<String>()? {
-                    match key.as_str() {
-                        "entities" => {
-                            entities = Some(map.next_value()?);
-                        }
-                        "entity" => {
-                            entity = Some(map.next_value()?);
-                        }
-                        "npc_id" => {
-                            npc_id = Some(map.next_value()?);
-                        }
-                        "name" => {
-                            name = Some(map.next_value()?);
-                        }
-                        _ => {
-                            // Skip unknown fields
-                            let _ = map.next_value::<serde::de::IgnoredAny>()?;
-                        }
-                    }
-                }
-
-                // Priority: new format > old formats
-                let selectors = if let Some(e) = entities {
-                    e
-                } else {
-                    let mut selectors = Vec::new();
-                    // Add entity (roster alias) first
-                    if let Some(e) = entity {
-                        selectors.push(EntitySelector::Name(e));
-                    }
-                    // Add npc_id
-                    if let Some(id) = npc_id {
-                        selectors.push(EntitySelector::Id(id));
-                    }
-                    // Add name (if different from entity)
-                    if let Some(n) = name {
-                        if !selectors.iter().any(|s| matches!(s, EntitySelector::Name(x) if x == &n)) {
-                            selectors.push(EntitySelector::Name(n));
-                        }
-                    }
-                    selectors
-                };
-
-                Ok(EntityMatcher { entities: selectors })
-            }
-        }
-
-        deserializer.deserialize_map(EntityMatcherVisitor)
-    }
 }
 
 impl EntityMatcher {
@@ -249,8 +169,7 @@ impl EntityMatcher {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct EffectMatcher {
     /// Effect selectors that trigger a match (any match suffices).
-    /// Supports both IDs and names.
-    #[serde(default, alias = "effect_ids")]
+    #[serde(default)]
     pub effects: Vec<EffectSelector>,
 
     /// Optional filter for the source entity
@@ -291,7 +210,7 @@ impl EffectMatcher {
         self
     }
 
-    /// Check if the effect matches by ID only (for backwards compatibility).
+    /// Check if the effect matches by ID only.
     pub fn matches_effect_id(&self, effect_id: u64) -> bool {
         self.matches_effect(effect_id, None)
     }
@@ -310,8 +229,7 @@ impl EffectMatcher {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AbilityMatcher {
     /// Ability selectors that trigger a match (any match suffices).
-    /// Supports both IDs and names.
-    #[serde(default, alias = "ability_ids")]
+    #[serde(default)]
     pub abilities: Vec<AbilitySelector>,
 
     /// Optional filter for the source entity (who cast it)
@@ -342,7 +260,7 @@ impl AbilityMatcher {
         self
     }
 
-    /// Check if the ability matches by ID only (for backwards compatibility).
+    /// Check if the ability matches by ID only.
     pub fn matches_ability_id(&self, ability_id: u64) -> bool {
         self.matches_ability(ability_id, None)
     }

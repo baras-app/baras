@@ -42,7 +42,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "mal_adds"
 name = "Adds"
-trigger = { type = "ability_cast", ability_ids = [3469470286741504] }
+trigger = { type = "ability_cast", abilities = [3469470286741504] }
 duration_secs = 45.0
 color = [21, 153, 20, 255]
 difficulties = ["veteran"]
@@ -50,7 +50,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "mal_hammer_smash"
 name = "Hammer Smash"
-trigger = { type = "ability_cast", ability_ids = [3437760543195136] }
+trigger = { type = "ability_cast", abilities = [3437760543195136] }
 duration_secs = 5.0
 color = [229, 123, 29, 255]
 difficulties = ["veteran"]
@@ -58,7 +58,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "mal_spear_toss"
 name = "Spear Toss"
-trigger = { type = "ability_cast", ability_ids = [3437799197900800] }
+trigger = { type = "ability_cast", abilities = [3437799197900800] }
 duration_secs = 10.0
 color = [164, 29, 224, 255]
 difficulties = ["veteran"]
@@ -67,7 +67,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "mal_spear_fixate"
 name = "Spear Fixate"
-trigger = { type = "effect_removed", effect_ids = [3437799197900800] }
+trigger = { type = "effect_removed", effects = [3437799197900800] }
 target = "local_player"
 duration_secs = 3.0
 color = [164, 29, 224, 255]
@@ -78,7 +78,7 @@ difficulties = ["veteran"]
 id = "mal_savagery"
 name = "Savagery"
 is_alert = true
-trigger = { type = "effect_applied", effect_ids = [3434788425826304] }
+trigger = { type = "effect_applied", effects = [3434788425826304] }
 target = "local_player"
 alert_text = "Savagery!"
 color = [224, 34, 33, 255]
@@ -138,7 +138,7 @@ difficulties = ["veteran"]
 id = "ss_shield"
 name = "Shield"
 trigger = { type = "any_of", conditions = [
-    { type = "ability_cast", ability_ids = [3498933762392064] },
+    { type = "ability_cast", abilities = [3498933762392064] },
     { type = "timer_expires", timer_id = "ss_shield_cs" },
     { type = "timer_expires", timer_id = "ss_shield" },
 ]}
@@ -149,7 +149,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "ss_gravity"
 name = "Gravity"
-trigger = { type = "ability_cast", ability_ids = [3519549605412864] }
+trigger = { type = "ability_cast", abilities = [3519549605412864] }
 duration_secs = 40.0
 color = [33, 224, 218, 255]
 difficulties = ["veteran"]
@@ -162,7 +162,7 @@ difficulties = ["veteran"]
 # Counter: Tracks if Rain of Missiles timer is active (0 = can trigger, 1 = locked)
 [[boss.counter]]
 id = "rain_lock"
-increment_on = { type = "ability_cast", ability_ids = [3448064169738240] }
+increment_on = { type = "ability_cast", abilities = [3448064169738240] }
 reset_on = { type = "timer_expires", timer_id = "ss_rain_of_missiles" }
 initial_value = 0
 set_value = 1
@@ -171,7 +171,7 @@ set_value = 1
 [[boss.timer]]
 id = "ss_rain_of_missiles"
 name = "Rain of Missiles"
-trigger = { type = "ability_cast", ability_ids = [3448064169738240] }
+trigger = { type = "ability_cast", abilities = [3448064169738240] }
 counter_condition = { counter_id = "rain_lock", operator = "eq", value = 0 }
 duration_secs = 19.0
 color = [219, 32, 28, 255]
@@ -216,7 +216,7 @@ trigger = { type = "combat_start" }
 [[boss.timer]]
 id = "ul_collapse"
 name = "Collapse"
-trigger = { type = "ability_cast", ability_ids = [3512467204341760] }
+trigger = { type = "ability_cast", abilities = [3512467204341760] }
 duration_secs = 15
 color = [41, 29, 224, 255]
 difficulties = ["veteran"]
@@ -224,7 +224,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "ul_rage_storm"
 name = "Rage Storm"
-trigger = { type = "ability_cast", ability_ids = [3411423803736064] }  # Collapse → Rage Storm coming
+trigger = { type = "ability_cast", abilities = [3411423803736064] }  # Collapse → Rage Storm coming
 duration_secs = 10.5
 color = [224, 35, 33, 255]
 difficulties = ["veteran"]
@@ -232,7 +232,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "ul_leap"
 name = "Leap"
-trigger = { type = "ability_cast", ability_ids = [3411569832624128] }  # Rage Storm → Leap coming
+trigger = { type = "ability_cast", abilities = [3411569832624128] }  # Rage Storm → Leap coming
 duration_secs = 9
 color = [180, 184, 23, 255]
 difficulties = ["veteran"]
@@ -240,7 +240,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "ul_devastation"
 name = "Cross"
-trigger = { type = "ability_cast", ability_ids = [3413575582351360] }
+trigger = { type = "ability_cast", abilities = [3413575582351360] }
 duration_secs = 10
 color = [24, 173, 19, 255]
 difficulties = ["veteran"]
@@ -250,7 +250,7 @@ difficulties = ["veteran"]
 id = "ul_adds_hp"
 name = "Adds"
 is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 90.0, boss_name = "The Underlurker" }
+trigger = { type = "boss_hp_below", hp_percent = 90.0, boss_name = "The Underlurker" }
 alert_text = "Adds Spawn"
 color = [24, 173, 19, 255]
 difficulties = ["veteran"]
@@ -361,7 +361,7 @@ trigger = { type = "boss_hp_below", hp_percent = 28.1, boss_name = "Revan" }
 id = "revan_p4"
 name = "Floor 3 - Revan"
 preceded_by = "revan_resonance"
-trigger = { type = "effect_removed", effect_ids = [3447578838433792] }
+trigger = { type = "effect_removed", effects = [3447578838433792] }
 
 # -- Phase 5: Burn Phase - Machine Core --
 # Triggers when Machine Core spawns (at ~10% Revan HP)
@@ -369,7 +369,7 @@ trigger = { type = "effect_removed", effect_ids = [3447578838433792] }
 id = "revan_core"
 name = "Core"
 preceded_by = "revan_p4"
-trigger = { type = "entity_first_seen", npc_id = 3447583133401088 }
+trigger = { type = "entity_spawned", npc_id = 3447583133401088 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Timers - Phase 1 (Floor 1 - Revan)
@@ -379,7 +379,7 @@ trigger = { type = "entity_first_seen", npc_id = 3447583133401088 }
 [[boss.timer]]
 id = "rev_impel"
 name = "Impel"
-trigger = { type = "ability_cast", ability_ids = [3514803666550784] }
+trigger = { type = "ability_cast", abilities = [3514803666550784] }
 duration_secs = 20
 color = [219, 32, 28, 255]
 difficulties = ["story", "veteran"]
@@ -388,7 +388,7 @@ difficulties = ["story", "veteran"]
 [[boss.timer]]
 id = "rev_blades"
 name = "Blades"
-trigger = { type = "ability_cast", ability_ids = [3453089281474560] }
+trigger = { type = "ability_cast", abilities = [3453089281474560] }
 duration_secs = 60
 color = [20, 138, 32, 255]
 difficulties = ["story", "veteran"]
@@ -397,7 +397,7 @@ difficulties = ["story", "veteran"]
 [[boss.timer]]
 id = "rev_overcharge"
 name = "Saber Overcharge"
-trigger = { type = "ability_cast", ability_ids = [3442094165196800] }
+trigger = { type = "ability_cast", abilities = [3442094165196800] }
 duration_secs = 16
 color = [185, 24, 189, 255]
 difficulties = ["story", "veteran"]
@@ -406,7 +406,7 @@ difficulties = ["story", "veteran"]
 [[boss.timer]]
 id = "rev_heave"
 name = "Heave"
-trigger = { type = "ability_cast", ability_ids = [3462632698806272] }
+trigger = { type = "ability_cast", abilities = [3462632698806272] }
 duration_secs = 30
 color = [173, 168, 22, 255]
 difficulties = ["veteran"]
@@ -415,7 +415,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "rev_trail"
 name = "Trail of Agony"
-trigger = { type = "ability_cast", ability_ids = [3443275281203200] }
+trigger = { type = "ability_cast", abilities = [3443275281203200] }
 duration_secs = 32
 color = [219, 112, 32, 255]
 difficulties = ["veteran"]
@@ -424,7 +424,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "rev_corruption"
 name = "Essence Corruption"
-trigger = { type = "ability_cast", ability_ids = [3447359795101696] }
+trigger = { type = "ability_cast", abilities = [3447359795101696] }
 duration_secs = 11
 color = [104, 33, 224, 255]
 difficulties = ["veteran"]
@@ -434,7 +434,7 @@ difficulties = ["veteran"]
 id = "rev_corruption_alert"
 name = "Corrupted"
 is_alert = true
-trigger = { type = "effect_applied", effect_ids = [3447359795101696] }
+trigger = { type = "effect_applied", effects = [3447359795101696] }
 target = "local_player"
 alert_text = "Corrupted! Move out and cleanse!"
 color = [104, 33, 224, 255]
@@ -448,7 +448,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "rev_killshot"
 name = "Force Imbue"
-trigger = { type = "ability_cast", ability_ids = [3447677622681600] }
+trigger = { type = "ability_cast", abilities = [3447677622681600] }
 duration_secs = 5
 color = [224, 29, 29, 255]
 difficulties = ["veteran"]
@@ -467,7 +467,7 @@ difficulties = ["veteran"]
 id = "rev_grenades"
 name = "Grenades"
 is_alert = true
-trigger = { type = "ability_cast", ability_ids = [3447669032747008] }
+trigger = { type = "ability_cast", abilities = [3447669032747008] }
 alert_text = "Grenades! Spread!"
 color = [224, 168, 33, 255]
 difficulties = ["story", "veteran"]
@@ -477,7 +477,7 @@ difficulties = ["story", "veteran"]
 id = "rev_reactive_hp"
 name = "Reactive Shield"
 is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 80.0, boss_name = "HK-47" }
+trigger = { type = "boss_hp_below", hp_percent = 80.0, boss_name = "HK-47" }
 alert_text = "Reactive Shield"
 color = [224, 29, 30, 255]
 difficulties = ["veteran"]
@@ -490,7 +490,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "rev_aberration_p3"
 name = "Force Aberration"
-trigger = { type = "ability_cast", ability_ids = [3447523003858944] }
+trigger = { type = "ability_cast", abilities = [3447523003858944] }
 duration_secs = 23.5
 color = [104, 33, 224, 255]
 difficulties = ["story", "veteran"]
@@ -504,7 +504,7 @@ difficulties = ["story", "veteran"]
 [[boss.timer]]
 id = "rev_push_p3"
 name = "Push"
-trigger = { type = "ability_cast", ability_ids = [3455881010216960] }
+trigger = { type = "ability_cast", abilities = [3455881010216960] }
 duration_secs = 9.5
 color = [214, 33, 32, 255]
 difficulties = ["veteran"]
@@ -541,7 +541,7 @@ chains_to = "rev_pull_p3"
 [[boss.timer]]
 id = "rev_unstable"
 name = "Unstable Aberration"
-trigger = { type = "ability_cast", ability_ids = [3449073487052800] }
+trigger = { type = "ability_cast", abilities = [3449073487052800] }
 duration_secs = 40
 color = [104, 33, 224, 255]
 difficulties = ["story", "veteran"]
@@ -555,7 +555,7 @@ difficulties = ["story", "veteran"]
 [[boss.timer]]
 id = "rev_push_p4"
 name = "Push"
-trigger = { type = "effect_removed", effect_ids = [3447578838433792] }
+trigger = { type = "effect_removed", effects = [3447578838433792] }
 duration_secs = 16
 color = [219, 30, 28, 255]
 difficulties = ["veteran"]
@@ -587,7 +587,7 @@ chains_to = "rev_pull_p4"
 [[boss.timer]]
 id = "rev_heave_p4"
 name = "Heave"
-trigger = { type = "effect_removed", effect_ids = [3449047717249024] }
+trigger = { type = "effect_removed", effects = [3449047717249024] }
 duration_secs = 25
 color = [173, 168, 22, 255]
 difficulties = ["veteran"]
@@ -626,7 +626,7 @@ match = { npc_ids = [3447583133401088] }
 id = "rev_hp_64"
 name = "Phase 2"
 is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 64.0, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 64.0, boss_name = "Revan" }
 alert_text = "64% - HK-47 Phase"
 color = [24, 224, 219, 255]
 difficulties = ["story", "veteran"]
@@ -635,7 +635,7 @@ difficulties = ["story", "veteran"]
 id = "rev_hp_28"
 name = "Phase 4"
 is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 28.0, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 28.0, boss_name = "Revan" }
 alert_text = "28% - Floor 3"
 color = [33, 224, 223, 255]
 difficulties = ["story", "veteran"]
@@ -644,7 +644,7 @@ difficulties = ["story", "veteran"]
 id = "rev_hp_9"
 name = "Burn Phase"
 is_alert = true
-trigger = { type = "boss_hp_threshold", hp_percent = 9.0, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 9.0, boss_name = "Revan" }
 alert_text = "Core Burn"
 color = [29, 224, 217, 255]
 difficulties = ["story", "veteran"]

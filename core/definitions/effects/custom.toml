@@ -7,7 +7,7 @@
 # id = "my_custom_effect"
 # name = "My Custom Effect"
 # category = "buff"                    # hot, shield, buff, debuff, cleansable, proc, mechanic
-# effect_ids = [123456789012345]       # SWTOR effect ID(s)
+# effects = [123456789012345]       # SWTOR effect ID(s)
 # refresh_abilities = [123456789012345] # Abilities that refresh this effect
 # source = "local_player"              # Who applies: local_player, other_players, any_player, boss, any_npc, any
 # target = "group_members"             # Who receives: local_player, group_members, any_player, boss, any_npc, any

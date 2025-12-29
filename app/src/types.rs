@@ -209,15 +209,15 @@ pub struct TimerListItem {
 pub enum TimerTrigger {
     CombatStart,
     AbilityCast {
-        #[serde(default, alias = "ability_ids")]
+        #[serde(default)]
         abilities: Vec<AbilitySelector>,
     },
     EffectApplied {
-        #[serde(default, alias = "effect_ids")]
+        #[serde(default)]
         effects: Vec<EffectSelector>,
     },
     EffectRemoved {
-        #[serde(default, alias = "effect_ids")]
+        #[serde(default)]
         effects: Vec<EffectSelector>,
     },
     TimerExpires {
@@ -388,7 +388,7 @@ pub struct EffectListItem {
     pub category: EffectCategory,
 
     // Matching
-    pub effect_ids: Vec<u64>,
+    pub effects: Vec<EffectSelector>,
     pub refresh_abilities: Vec<u64>,
 
     // Filtering
@@ -480,15 +480,15 @@ pub enum PhaseTrigger {
         entities: Vec<EntitySelector>,
     },
     AbilityCast {
-        #[serde(default, alias = "ability_ids")]
+        #[serde(default)]
         abilities: Vec<AbilitySelector>,
     },
     EffectApplied {
-        #[serde(default, alias = "effect_ids")]
+        #[serde(default)]
         effects: Vec<EffectSelector>,
     },
     EffectRemoved {
-        #[serde(default, alias = "effect_ids")]
+        #[serde(default)]
         effects: Vec<EffectSelector>,
     },
     CounterReaches {
@@ -560,19 +560,19 @@ pub enum CounterTrigger {
     CombatStart,
     CombatEnd,
     AbilityCast {
-        #[serde(default, alias = "ability_ids")]
+        #[serde(default)]
         abilities: Vec<AbilitySelector>,
         #[serde(default)]
         source: Vec<EntitySelector>,
     },
     EffectApplied {
-        #[serde(default, alias = "effect_ids")]
+        #[serde(default)]
         effects: Vec<EffectSelector>,
         #[serde(default)]
         target: Vec<EntitySelector>,
     },
     EffectRemoved {
-        #[serde(default, alias = "effect_ids")]
+        #[serde(default)]
         effects: Vec<EffectSelector>,
         #[serde(default)]
         target: Vec<EntitySelector>,

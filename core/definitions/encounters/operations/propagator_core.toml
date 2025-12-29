@@ -25,41 +25,41 @@ trigger = { type = "combat_start" }
 [[boss.timer]]
 id = "propagator_lethal_strike"
 name = "Lethal Strike"
-trigger = { type = "ability_cast", ability_ids = [4826160261234688] }
+trigger = { type = "ability_cast", abilities = [4826160261234688] }
 duration_secs = 30.0
 color = [237, 33, 33, 255]
 
 [[boss.timer]]
 id = "propagator_acidic_rocketry"
 name = "Acidic Rocketry"
-trigger = { type = "ability_cast", ability_ids = [4827160988614656] }
+trigger = { type = "ability_cast", abilities = [4827160988614656] }
 duration_secs = 20.0
 color = [23, 152, 0, 255]
 
 [[boss.timer]]
 id = "propagator_cleanse_flood_add"
 name = "Cleanse Flood Add"
-trigger = { type = "ability_cast", ability_ids = [4832241934925824] }
+trigger = { type = "ability_cast", abilities = [4832241934925824] }
 duration_secs = 90.0
 color = [51, 200, 237, 255]
 
 [[boss.timer]]
 id = "propagator_extraneous_expulsion"
 name = "Extraneous Expulsion"
-trigger = { type = "ability_cast", ability_ids = [4825717879603200] }
+trigger = { type = "ability_cast", abilities = [4825717879603200] }
 duration_secs = 25.0
 color = [182, 237, 40, 255]
 
 [[boss.timer]]
 id = "propagator_hunting_grounds"
 name = "Hunting Grounds"
-trigger = { type = "ability_cast", ability_ids = [4828045751877632] }
+trigger = { type = "ability_cast", abilities = [4828045751877632] }
 duration_secs = 30.0
 color = [237, 165, 0, 255]
 
 [[boss.timer]]
 id = "propagator_hungering_bite"
 name = "Hungering Bite"
-trigger = { type = "ability_cast", ability_ids = [4825876793393152] }
+trigger = { type = "ability_cast", abilities = [4825876793393152] }
 duration_secs = 22.5
 color = [237, 23, 93, 255]
