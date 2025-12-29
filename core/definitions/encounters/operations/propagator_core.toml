@@ -1,0 +1,65 @@
+# Propagator Core (R-4 Anomaly)
+# 1 boss
+
+[area]
+name = "Ilum"
+area_id = 137438955315
+
+# ─── Propagator Core XR-53 ───────────────────────────────────────────────────
+[[boss]]
+id = "propagator_core_xr53"
+name = "Propagator Core XR-53"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Propagator Core XR-53"
+ids = [4847325860069376]
+is_boss = true
+is_kill_target = true
+
+[[boss.phase]]
+id = "p1"
+name = "Phase 1"
+trigger = { type = "combat_start" }
+
+[[boss.timer]]
+id = "propagator_lethal_strike"
+name = "Lethal Strike"
+trigger = { type = "ability_cast", ability_ids = [4826160261234688] }
+duration_secs = 30.0
+color = [237, 33, 33, 255]
+
+[[boss.timer]]
+id = "propagator_acidic_rocketry"
+name = "Acidic Rocketry"
+trigger = { type = "ability_cast", ability_ids = [4827160988614656] }
+duration_secs = 20.0
+color = [23, 152, 0, 255]
+
+[[boss.timer]]
+id = "propagator_cleanse_flood_add"
+name = "Cleanse Flood Add"
+trigger = { type = "ability_cast", ability_ids = [4832241934925824] }
+duration_secs = 90.0
+color = [51, 200, 237, 255]
+
+[[boss.timer]]
+id = "propagator_extraneous_expulsion"
+name = "Extraneous Expulsion"
+trigger = { type = "ability_cast", ability_ids = [4825717879603200] }
+duration_secs = 25.0
+color = [182, 237, 40, 255]
+
+[[boss.timer]]
+id = "propagator_hunting_grounds"
+name = "Hunting Grounds"
+trigger = { type = "ability_cast", ability_ids = [4828045751877632] }
+duration_secs = 30.0
+color = [237, 165, 0, 255]
+
+[[boss.timer]]
+id = "propagator_hungering_bite"
+name = "Hungering Bite"
+trigger = { type = "ability_cast", ability_ids = [4825876793393152] }
+duration_secs = 22.5
+color = [237, 23, 93, 255]
