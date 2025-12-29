@@ -167,6 +167,9 @@ pub struct TimerListItem {
 
     // Timer data
     pub name: String,
+    /// Optional in-game display text (defaults to name if not set)
+    #[serde(default)]
+    pub display_text: Option<String>,
     pub enabled: bool,
     pub duration_secs: f32,
     pub color: [u8; 4],
@@ -396,6 +399,9 @@ pub struct CounterCondition {
 pub struct PhaseListItem {
     pub id: String,
     pub name: String,
+    /// Optional in-game display text (defaults to name if not set)
+    #[serde(default)]
+    pub display_text: Option<String>,
     pub boss_id: String,
     pub boss_name: String,
     pub file_path: String,
@@ -415,6 +421,12 @@ pub struct PhaseListItem {
 #[serde(rename_all = "camelCase")]
 pub struct CounterListItem {
     pub id: String,
+    /// Display name (used for ID generation)
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Optional in-game display text (defaults to name if not set)
+    #[serde(default)]
+    pub display_text: Option<String>,
     pub boss_id: String,
     pub boss_name: String,
     pub file_path: String,
@@ -527,6 +539,9 @@ impl ChallengeCondition {
 pub struct ChallengeListItem {
     pub id: String,
     pub name: String,
+    /// Optional in-game display text (defaults to name if not set)
+    #[serde(default)]
+    pub display_text: Option<String>,
     #[serde(default)]
     pub description: Option<String>,
     pub boss_id: String,

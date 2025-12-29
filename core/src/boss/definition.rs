@@ -181,11 +181,15 @@ pub struct BossEncounterDefinition {
 /// Use `to_timer_definition()` to convert with full context.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BossTimerDefinition {
-    /// Unique identifier
+    /// Unique identifier (auto-generated from name if empty)
     pub id: String,
 
-    /// Display name
+    /// Display name (used for ID generation, must be unique within encounter)
     pub name: String,
+
+    /// Optional in-game display text (defaults to name if not set)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_text: Option<String>,
 
     /// What triggers this timer
     pub trigger: crate::timers::TimerTrigger,
@@ -201,15 +205,15 @@ pub struct BossTimerDefinition {
     pub target: crate::entity_filter::EntityFilter,
 
     /// Duration in seconds (0 = instant, use with is_alert)
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_f32")]
     pub duration_secs: f32,
 
     /// If true, fires as instant alert (no countdown bar)
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
     pub is_alert: bool,
 
     /// Custom alert text (None = use timer name)
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alert_text: Option<String>,
 
     /// Display color [R, G, B, A]
@@ -217,15 +221,15 @@ pub struct BossTimerDefinition {
     pub color: [u8; 4],
 
     /// Only active during these phases (empty = all phases)
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_empty_vec")]
     pub phases: Vec<String>,
 
     /// Only active when counter meets condition
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub counter_condition: Option<CounterCondition>,
 
     /// Difficulties this timer applies to
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_empty_vec")]
     pub difficulties: Vec<String>,
 
     /// Whether timer is enabled
@@ -233,24 +237,27 @@ pub struct BossTimerDefinition {
     pub enabled: bool,
 
     /// Reset duration when triggered again
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
     pub can_be_refreshed: bool,
 
     /// Number of repeats after initial (0 = no repeat)
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_u8")]
     pub repeats: u8,
 
     /// Timer to start when this one expires
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chains_to: Option<String>,
 
     /// Cancel this timer when this trigger fires
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cancel_trigger: Option<crate::timers::TimerTrigger>,
 
     /// Alert when this many seconds remain
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alert_at_secs: Option<f32>,
 
     /// Show on raid frames instead of timer bar
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
     pub show_on_raid_frames: bool,
 }
 

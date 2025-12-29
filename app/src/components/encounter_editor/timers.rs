@@ -316,6 +316,22 @@ fn TimerEditForm(
                     }
 
                     div { class: "form-row-hz",
+                        label { "Display Text" }
+                        input {
+                            class: "input-inline",
+                            r#type: "text",
+                            style: "width: 200px;",
+                            placeholder: "(defaults to name)",
+                            value: "{draft().display_text.clone().unwrap_or_default()}",
+                            oninput: move |e| {
+                                let mut d = draft();
+                                d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
+                                draft.set(d);
+                            }
+                        }
+                    }
+
+                    div { class: "form-row-hz",
                         label { "Difficulties" }
                         div { class: "flex gap-xs",
                             for diff in ["story", "veteran", "master"] {
@@ -802,6 +818,7 @@ fn NewTimerForm(
                             category: boss.category.clone(),
                             file_path: boss.file_path.clone(),
                             name: name(),
+                            display_text: None,
                             enabled: true,
                             duration_secs: duration(),
                             color: color(),

@@ -100,6 +100,7 @@ impl TimerListItem {
         BossTimerDefinition {
             id: self.timer_id.clone(),
             name: self.name.clone(),
+            display_text: None,
             trigger: self.trigger.clone(),
             source: self.source.clone(),
             target: self.target.clone(),
@@ -300,7 +301,7 @@ pub async fn create_encounter_timer(
 
     // Generate a unique timer ID if not provided (prefixed with boss_id)
     let timer_id = if timer.timer_id.is_empty() {
-        generate_timer_id(boss_id, &timer.name)
+        generate_dsl_id(boss_id, &timer.name)
     } else {
         timer.timer_id.clone()
     };
@@ -309,6 +310,7 @@ pub async fn create_encounter_timer(
     let new_timer = BossTimerDefinition {
         id: timer_id.clone(),
         name: timer.name.clone(),
+        display_text: None,
         trigger: timer.trigger.clone(),
         source: timer.source.clone(),
         target: timer.target.clone(),
@@ -328,12 +330,12 @@ pub async fn create_encounter_timer(
         show_on_raid_frames: timer.show_on_raid_frames,
     };
 
-    // Check for duplicate ID across ALL bosses (not just the target boss)
+    // Check for duplicate ID within the target boss only (per-encounter uniqueness)
     for boss_with_path in &bosses {
-        if boss_with_path.boss.timers.iter().any(|t| t.id == timer_id) {
+        if boss_with_path.boss.id == timer.boss_id && boss_with_path.boss.timers.iter().any(|t| t.id == timer_id) {
             return Err(format!(
-                "Timer with ID '{}' already exists in boss '{}'. Timer IDs must be globally unique.",
-                timer_id, boss_with_path.boss.name
+                "Timer with ID '{}' already exists in this encounter. Timer IDs must be unique within each encounter.",
+                timer_id
             ));
         }
     }
@@ -365,9 +367,10 @@ pub async fn create_encounter_timer(
     Ok(item)
 }
 
-/// Generate a timer ID from boss ID and timer name (snake_case, safe for TOML)
-/// Format: {boss_id}_{timer_name_snake_case}
-fn generate_timer_id(boss_id: &str, name: &str) -> String {
+/// Generate a DSL object ID from boss ID and object name (snake_case, safe for TOML)
+/// Used for timers, phases, counters, and challenges.
+/// Format: {boss_id}_{name_snake_case}
+fn generate_dsl_id(boss_id: &str, name: &str) -> String {
     let name_part: String = name
         .to_lowercase()
         .chars()
@@ -391,15 +394,24 @@ pub async fn delete_encounter_timer(
     file_path: String,
 ) -> Result<(), String> {
     let mut bosses = load_user_bosses(&app_handle)?;
+
+    // Canonicalize paths for reliable comparison
     let file_path_buf = PathBuf::from(&file_path);
+    let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
 
     // Find the boss and remove the timer
     let mut found = false;
+    let mut matched_file_path: Option<PathBuf> = None;
+
     for boss_with_path in &mut bosses {
-        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+        let boss_canonical = boss_with_path.file_path.canonicalize()
+            .unwrap_or_else(|_| boss_with_path.file_path.clone());
+
+        if boss_with_path.boss.id == boss_id && boss_canonical == canonical_path {
             let original_len = boss_with_path.boss.timers.len();
             boss_with_path.boss.timers.retain(|t| t.id != timer_id);
             found = boss_with_path.boss.timers.len() < original_len;
+            matched_file_path = Some(boss_with_path.file_path.clone());
             break;
         }
     }
@@ -411,17 +423,24 @@ pub async fn delete_encounter_timer(
         ));
     }
 
+    // Use the actual file path from the matched boss (ensures consistency)
+    let save_path = matched_file_path.unwrap_or(file_path_buf);
+
     // Save the modified file
     let file_bosses: Vec<_> = bosses
         .iter()
-        .filter(|b| b.file_path == file_path_buf)
+        .filter(|b| {
+            let b_canonical = b.file_path.canonicalize().unwrap_or_else(|_| b.file_path.clone());
+            b_canonical == canonical_path
+        })
         .map(|b| b.boss.clone())
         .collect();
 
-    save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    save_bosses_to_file(&file_bosses, &save_path)?;
 
-    // Reload definitions into the running session
-    let _ = service.reload_timer_definitions().await;
+    // Reload definitions into the running session (propagate errors)
+    service.reload_timer_definitions().await
+        .map_err(|e| format!("Failed to reload after delete: {}", e))?;
 
     Ok(())
 }
@@ -919,6 +938,7 @@ impl PhaseListItem {
         PhaseDefinition {
             id: self.id.clone(),
             name: self.name.clone(),
+            display_text: None,
             start_trigger: self.start_trigger.clone(),
             end_trigger: self.end_trigger.clone(),
             preceded_by: self.preceded_by.clone(),
@@ -1003,7 +1023,7 @@ pub async fn create_phase(
     let boss_id = phase.boss_id.clone();
 
     // Generate phase ID
-    let phase_id = generate_phase_id(&phase.boss_id, &phase.name);
+    let phase_id = generate_dsl_id(&phase.boss_id, &phase.name);
     let mut new_phase = phase.to_phase_definition();
     new_phase.id = phase_id.clone();
 
@@ -1042,13 +1062,20 @@ pub async fn delete_phase(
 ) -> Result<(), String> {
     let mut bosses = load_user_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&file_path);
+    let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
 
     let mut found = false;
+    let mut matched_file_path: Option<PathBuf> = None;
+
     for boss_with_path in &mut bosses {
-        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+        let boss_canonical = boss_with_path.file_path.canonicalize()
+            .unwrap_or_else(|_| boss_with_path.file_path.clone());
+
+        if boss_with_path.boss.id == boss_id && boss_canonical == canonical_path {
             let original_len = boss_with_path.boss.phases.len();
             boss_with_path.boss.phases.retain(|p| p.id != phase_id);
             found = boss_with_path.boss.phases.len() < original_len;
+            matched_file_path = Some(boss_with_path.file_path.clone());
             break;
         }
     }
@@ -1057,31 +1084,21 @@ pub async fn delete_phase(
         return Err(format!("Phase '{}' not found in boss '{}'", phase_id, boss_id));
     }
 
+    let save_path = matched_file_path.unwrap_or(file_path_buf);
     let file_bosses: Vec<_> = bosses
         .iter()
-        .filter(|b| b.file_path == file_path_buf)
+        .filter(|b| {
+            let b_canonical = b.file_path.canonicalize().unwrap_or_else(|_| b.file_path.clone());
+            b_canonical == canonical_path
+        })
         .map(|b| b.boss.clone())
         .collect();
 
-    save_bosses_to_file(&file_bosses, &file_path_buf)?;
-    let _ = service.reload_timer_definitions().await;
+    save_bosses_to_file(&file_bosses, &save_path)?;
+    service.reload_timer_definitions().await
+        .map_err(|e| format!("Failed to reload after delete: {}", e))?;
 
     Ok(())
-}
-
-/// Generate a phase ID from boss ID and phase name
-fn generate_phase_id(boss_id: &str, name: &str) -> String {
-    let name_part: String = name
-        .to_lowercase()
-        .chars()
-        .map(|c| if c.is_alphanumeric() { c } else { '_' })
-        .collect::<String>()
-        .split('_')
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join("_");
-
-    format!("{}_{}", boss_id, name_part)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1098,6 +1115,12 @@ use baras_core::boss::{
 #[serde(rename_all = "camelCase")]
 pub struct CounterListItem {
     pub id: String,
+    /// Display name (used for ID generation if id is empty)
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Optional in-game display text (defaults to name if not set)
+    #[serde(default)]
+    pub display_text: Option<String>,
     pub boss_id: String,
     pub boss_name: String,
     pub file_path: String,
@@ -1115,6 +1138,8 @@ impl CounterListItem {
     fn from_boss_counter(boss_with_path: &BossWithPath, counter: &CounterDefinition) -> Self {
         Self {
             id: counter.id.clone(),
+            name: counter.name.clone(),
+            display_text: counter.display_text.clone(),
             boss_id: boss_with_path.boss.id.clone(),
             boss_name: boss_with_path.boss.name.clone(),
             file_path: boss_with_path.file_path.to_string_lossy().to_string(),
@@ -1129,6 +1154,8 @@ impl CounterListItem {
     fn to_counter_definition(&self) -> CounterDefinition {
         CounterDefinition {
             id: self.id.clone(),
+            name: self.name.clone(),
+            display_text: self.display_text.clone(),
             increment_on: self.increment_on.clone(),
             reset_on: self.reset_on.clone(),
             initial_value: self.initial_value,
@@ -1216,7 +1243,19 @@ pub async fn create_counter(
     let file_path_buf = PathBuf::from(&counter.file_path);
     let boss_id = counter.boss_id.clone();
 
-    let new_counter = counter.to_counter_definition();
+    // Generate ID from name if id is empty
+    let counter_id = if counter.id.is_empty() {
+        if let Some(ref name) = counter.name {
+            generate_dsl_id(&boss_id, name)
+        } else {
+            return Err("Counter must have either an id or a name".to_string());
+        }
+    } else {
+        counter.id.clone()
+    };
+
+    let mut new_counter = counter.to_counter_definition();
+    new_counter.id = counter_id;
     let mut created_item = None;
 
     for boss_with_path in &mut bosses {
@@ -1252,13 +1291,20 @@ pub async fn delete_counter(
 ) -> Result<(), String> {
     let mut bosses = load_user_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&file_path);
+    let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
 
     let mut found = false;
+    let mut matched_file_path: Option<PathBuf> = None;
+
     for boss_with_path in &mut bosses {
-        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+        let boss_canonical = boss_with_path.file_path.canonicalize()
+            .unwrap_or_else(|_| boss_with_path.file_path.clone());
+
+        if boss_with_path.boss.id == boss_id && boss_canonical == canonical_path {
             let original_len = boss_with_path.boss.counters.len();
             boss_with_path.boss.counters.retain(|c| c.id != counter_id);
             found = boss_with_path.boss.counters.len() < original_len;
+            matched_file_path = Some(boss_with_path.file_path.clone());
             break;
         }
     }
@@ -1270,14 +1316,19 @@ pub async fn delete_counter(
         ));
     }
 
+    let save_path = matched_file_path.unwrap_or(file_path_buf);
     let file_bosses: Vec<_> = bosses
         .iter()
-        .filter(|b| b.file_path == file_path_buf)
+        .filter(|b| {
+            let b_canonical = b.file_path.canonicalize().unwrap_or_else(|_| b.file_path.clone());
+            b_canonical == canonical_path
+        })
         .map(|b| b.boss.clone())
         .collect();
 
-    save_bosses_to_file(&file_bosses, &file_path_buf)?;
-    let _ = service.reload_timer_definitions().await;
+    save_bosses_to_file(&file_bosses, &save_path)?;
+    service.reload_timer_definitions().await
+        .map_err(|e| format!("Failed to reload after delete: {}", e))?;
 
     Ok(())
 }
@@ -1293,6 +1344,9 @@ pub async fn delete_counter(
 pub struct ChallengeListItem {
     pub id: String,
     pub name: String,
+    /// Optional in-game display text (defaults to name if not set)
+    #[serde(default)]
+    pub display_text: Option<String>,
     #[serde(default)]
     pub description: Option<String>,
     pub boss_id: String,
@@ -1308,6 +1362,7 @@ impl ChallengeListItem {
         Self {
             id: challenge.id.clone(),
             name: challenge.name.clone(),
+            display_text: challenge.display_text.clone(),
             description: challenge.description.clone(),
             boss_id: boss_with_path.boss.id.clone(),
             boss_name: boss_with_path.boss.name.clone(),
@@ -1321,6 +1376,7 @@ impl ChallengeListItem {
         ChallengeDefinition {
             id: self.id.clone(),
             name: self.name.clone(),
+            display_text: self.display_text.clone(),
             description: self.description.clone(),
             metric: self.metric,
             conditions: self.conditions.clone(),
@@ -1406,7 +1462,15 @@ pub async fn create_challenge(
     let file_path_buf = PathBuf::from(&challenge.file_path);
     let boss_id = challenge.boss_id.clone();
 
-    let new_challenge = challenge.to_challenge_definition();
+    // Generate ID from name if id is empty
+    let challenge_id = if challenge.id.is_empty() {
+        generate_dsl_id(&boss_id, &challenge.name)
+    } else {
+        challenge.id.clone()
+    };
+
+    let mut new_challenge = challenge.to_challenge_definition();
+    new_challenge.id = challenge_id;
     let mut created_item = None;
 
     for boss_with_path in &mut bosses {
@@ -1442,13 +1506,20 @@ pub async fn delete_challenge(
 ) -> Result<(), String> {
     let mut bosses = load_user_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&file_path);
+    let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
 
     let mut found = false;
+    let mut matched_file_path: Option<PathBuf> = None;
+
     for boss_with_path in &mut bosses {
-        if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
+        let boss_canonical = boss_with_path.file_path.canonicalize()
+            .unwrap_or_else(|_| boss_with_path.file_path.clone());
+
+        if boss_with_path.boss.id == boss_id && boss_canonical == canonical_path {
             let original_len = boss_with_path.boss.challenges.len();
             boss_with_path.boss.challenges.retain(|c| c.id != challenge_id);
             found = boss_with_path.boss.challenges.len() < original_len;
+            matched_file_path = Some(boss_with_path.file_path.clone());
             break;
         }
     }
@@ -1460,14 +1531,19 @@ pub async fn delete_challenge(
         ));
     }
 
+    let save_path = matched_file_path.unwrap_or(file_path_buf);
     let file_bosses: Vec<_> = bosses
         .iter()
-        .filter(|b| b.file_path == file_path_buf)
+        .filter(|b| {
+            let b_canonical = b.file_path.canonicalize().unwrap_or_else(|_| b.file_path.clone());
+            b_canonical == canonical_path
+        })
         .map(|b| b.boss.clone())
         .collect();
 
-    save_bosses_to_file(&file_bosses, &file_path_buf)?;
-    let _ = service.reload_timer_definitions().await;
+    save_bosses_to_file(&file_bosses, &save_path)?;
+    service.reload_timer_definitions().await
+        .map_err(|e| format!("Failed to reload after delete: {}", e))?;
 
     Ok(())
 }

@@ -12,6 +12,20 @@ use crate::types::{
 
 use super::tabs::EncounterData;
 
+/// Generate a preview of the ID that will be created (mirrors backend logic)
+fn preview_id(boss_id: &str, name: &str) -> String {
+    let name_part: String = name
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect::<String>()
+        .split('_')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("_");
+    format!("{}_{}", boss_id, name_part)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Challenges Tab
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,7 +60,6 @@ pub fn ChallengesTab(
                     rsx! {
                         NewChallengeForm {
                             boss: boss.clone(),
-                            encounter_data: encounter_data.clone(),
                             on_create: move |new_challenge: ChallengeListItem| {
                                 let challenges_clone = challenges_for_create.clone();
                                 spawn(async move {
@@ -188,6 +201,10 @@ fn ChallengeEditForm(
     on_save: EventHandler<ChallengeListItem>,
     on_delete: EventHandler<ChallengeListItem>,
 ) -> Element {
+    // Clone values needed for closures and display
+    let challenge_id_display = challenge.id.clone();
+    let challenge_for_delete = challenge.clone();
+
     let mut draft = use_signal(|| challenge.clone());
     let original = challenge.clone();
 
@@ -199,24 +216,15 @@ fn ChallengeEditForm(
     };
 
     let handle_delete = move |_| {
-        on_delete.call(challenge.clone());
+        on_delete.call(challenge_for_delete.clone());
     };
 
     rsx! {
         div { class: "challenge-edit-form",
-            // ─── ID ──────────────────────────────────────────────────────────
+            // ─── ID (read-only) ─────────────────────────────────────────────
             div { class: "form-row-hz",
                 label { "Challenge ID" }
-                input {
-                    class: "input-inline text-mono",
-                    style: "width: 200px;",
-                    value: "{draft().id}",
-                    oninput: move |e| {
-                        let mut d = draft();
-                        d.id = e.value();
-                        draft.set(d);
-                    }
-                }
+                code { class: "tag-muted text-mono text-xs", "{challenge_id_display}" }
             }
 
             // ─── Name ────────────────────────────────────────────────────────
@@ -229,6 +237,22 @@ fn ChallengeEditForm(
                     oninput: move |e| {
                         let mut d = draft();
                         d.name = e.value();
+                        draft.set(d);
+                    }
+                }
+            }
+
+            // ─── Display Text ────────────────────────────────────────────────
+            div { class: "form-row-hz",
+                label { "Display Text" }
+                input {
+                    class: "input-inline",
+                    style: "width: 300px;",
+                    placeholder: "(defaults to name)",
+                    value: "{draft().display_text.clone().unwrap_or_default()}",
+                    oninput: move |e| {
+                        let mut d = draft();
+                        d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
                         draft.set(d);
                     }
                 }
@@ -681,42 +705,33 @@ fn EntityFilterSelect(
 #[component]
 fn NewChallengeForm(
     boss: BossListItem,
-    encounter_data: EncounterData,
     on_create: EventHandler<ChallengeListItem>,
     on_cancel: EventHandler<()>,
 ) -> Element {
-    let mut id = use_signal(|| "new_challenge".to_string());
     let mut name = use_signal(|| "New Challenge".to_string());
-    let mut description = use_signal(|| None::<String>);
     let mut metric = use_signal(|| ChallengeMetric::Damage);
-    let mut conditions = use_signal(Vec::<ChallengeCondition>::new);
+
+    // Preview the ID that will be generated
+    let boss_id_for_preview = boss.id.clone();
+    let generated_id = use_memo(move || preview_id(&boss_id_for_preview, &name()));
 
     let handle_create = move |_| {
         let new_challenge = ChallengeListItem {
-            id: id(),
+            id: String::new(), // Backend will generate
             name: name(),
-            description: description(),
+            display_text: None,
+            description: None,
             boss_id: boss.id.clone(),
             boss_name: boss.name.clone(),
             file_path: boss.file_path.clone(),
             metric: metric(),
-            conditions: conditions(),
+            conditions: vec![],
         };
         on_create.call(new_challenge);
     };
 
     rsx! {
         div { class: "new-item-form mb-md",
-            div { class: "form-row-hz",
-                label { "Challenge ID" }
-                input {
-                    class: "input-inline text-mono",
-                    style: "width: 200px;",
-                    value: "{id}",
-                    oninput: move |e| id.set(e.value())
-                }
-            }
-
             div { class: "form-row-hz",
                 label { "Name" }
                 input {
@@ -725,6 +740,12 @@ fn NewChallengeForm(
                     value: "{name}",
                     oninput: move |e| name.set(e.value())
                 }
+            }
+
+            div { class: "form-row-hz",
+                label { "ID" }
+                code { class: "tag-muted text-mono text-xs", "{generated_id}" }
+                span { class: "text-xs text-muted ml-xs", "(auto-generated)" }
             }
 
             div { class: "form-row-hz",
@@ -758,7 +779,8 @@ fn NewChallengeForm(
 
             div { class: "flex gap-xs mt-sm",
                 button {
-                    class: "btn btn-success btn-sm",
+                    class: if name().is_empty() { "btn btn-sm" } else { "btn btn-success btn-sm" },
+                    disabled: name().is_empty(),
                     onclick: handle_create,
                     "Create Challenge"
                 }

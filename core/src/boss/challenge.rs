@@ -21,14 +21,18 @@ use crate::entity_filter::{EntityFilter, EntityFilterMatching};
 /// A challenge metric to track during a boss encounter
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChallengeDefinition {
-    /// Unique identifier (e.g., "burn_dps")
+    /// Unique identifier (auto-generated from name if empty)
     pub id: String,
 
-    /// Display name (e.g., "Burn Phase DPS")
+    /// Display name (used for ID generation, must be unique within encounter)
     pub name: String,
 
+    /// Optional in-game display text (defaults to name if not set)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_text: Option<String>,
+
     /// Optional description for UI tooltips
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 
     /// What metric to accumulate

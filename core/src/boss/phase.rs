@@ -13,11 +13,15 @@ pub use crate::triggers::Trigger as PhaseTrigger;
 /// A phase within a boss encounter
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhaseDefinition {
-    /// Phase identifier (e.g., "p1", "walker_1", "kephess_2", "burn")
+    /// Phase identifier (auto-generated from name if empty)
     pub id: String,
 
-    /// Display name
+    /// Display name (used for ID generation, must be unique within encounter)
     pub name: String,
+
+    /// Optional in-game display text (defaults to name if not set)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_text: Option<String>,
 
     /// What triggers this phase to start
     #[serde(alias = "trigger")]

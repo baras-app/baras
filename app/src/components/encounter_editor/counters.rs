@@ -10,6 +10,20 @@ use crate::types::{BossListItem, CounterListItem, CounterTrigger, EntityMatcher}
 use super::tabs::EncounterData;
 use super::triggers::CounterTriggerEditor;
 
+/// Generate a preview of the ID that will be created (mirrors backend logic)
+fn preview_id(boss_id: &str, name: &str) -> String {
+    let name_part: String = name
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect::<String>()
+        .split('_')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("_");
+    format!("{}_{}", boss_id, name_part)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Counters Tab
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,6 +199,10 @@ fn CounterEditForm(
     on_save: EventHandler<CounterListItem>,
     on_delete: EventHandler<CounterListItem>,
 ) -> Element {
+    // Clone values needed for closures and display
+    let counter_id_display = counter.id.clone();
+    let counter_for_delete = counter.clone();
+
     let mut draft = use_signal(|| counter.clone());
     let original = counter.clone();
 
@@ -196,21 +214,44 @@ fn CounterEditForm(
     };
 
     let handle_delete = move |_| {
-        on_delete.call(counter.clone());
+        on_delete.call(counter_for_delete.clone());
     };
 
     rsx! {
         div { class: "counter-edit-form",
-            // ─── ID ──────────────────────────────────────────────────────────
+            // ─── ID (read-only) ─────────────────────────────────────────────
             div { class: "form-row-hz",
                 label { "Counter ID" }
+                code { class: "tag-muted text-mono text-xs", "{counter_id_display}" }
+            }
+
+            // ─── Name ────────────────────────────────────────────────────────
+            div { class: "form-row-hz",
+                label { "Name" }
                 input {
-                    class: "input-inline text-mono",
+                    class: "input-inline",
                     style: "width: 200px;",
-                    value: "{draft().id}",
+                    placeholder: "(optional)",
+                    value: "{draft().name.clone().unwrap_or_default()}",
                     oninput: move |e| {
                         let mut d = draft();
-                        d.id = e.value();
+                        d.name = if e.value().is_empty() { None } else { Some(e.value()) };
+                        draft.set(d);
+                    }
+                }
+            }
+
+            // ─── Display Text ────────────────────────────────────────────────
+            div { class: "form-row-hz",
+                label { "Display Text" }
+                input {
+                    class: "input-inline",
+                    style: "width: 200px;",
+                    placeholder: "(defaults to name)",
+                    value: "{draft().display_text.clone().unwrap_or_default()}",
+                    oninput: move |e| {
+                        let mut d = draft();
+                        d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
                         draft.set(d);
                     }
                 }
@@ -345,16 +386,22 @@ fn NewCounterForm(
     on_create: EventHandler<CounterListItem>,
     on_cancel: EventHandler<()>,
 ) -> Element {
-    let mut id = use_signal(|| "new_counter".to_string());
+    let mut name = use_signal(|| "New Counter".to_string());
     let mut increment_on = use_signal(|| CounterTrigger::AbilityCast {
         abilities: vec![],
         source: EntityMatcher::default(),
     });
     let mut reset_on = use_signal(|| CounterTrigger::CombatEnd);
 
+    // Preview the ID that will be generated
+    let boss_id_for_preview = boss.id.clone();
+    let generated_id = use_memo(move || preview_id(&boss_id_for_preview, &name()));
+
     let handle_create = move |_| {
         let new_counter = CounterListItem {
-            id: id(),
+            id: String::new(), // Backend will generate
+            name: Some(name()),
+            display_text: None,
             boss_id: boss.id.clone(),
             boss_name: boss.name.clone(),
             file_path: boss.file_path.clone(),
@@ -370,13 +417,19 @@ fn NewCounterForm(
     rsx! {
         div { class: "new-item-form mb-md",
             div { class: "form-row-hz",
-                label { "Counter ID" }
+                label { "Name" }
                 input {
-                    class: "input-inline text-mono",
+                    class: "input-inline",
                     style: "width: 200px;",
-                    value: "{id}",
-                    oninput: move |e| id.set(e.value())
+                    value: "{name}",
+                    oninput: move |e| name.set(e.value())
                 }
+            }
+
+            div { class: "form-row-hz",
+                label { "ID" }
+                code { class: "tag-muted text-mono text-xs", "{generated_id}" }
+                span { class: "text-xs text-muted ml-xs", "(auto-generated)" }
             }
 
             div { class: "form-section",
@@ -399,7 +452,8 @@ fn NewCounterForm(
 
             div { class: "flex gap-xs mt-sm",
                 button {
-                    class: "btn btn-success btn-sm",
+                    class: if name().is_empty() { "btn btn-sm" } else { "btn btn-success btn-sm" },
+                    disabled: name().is_empty(),
                     onclick: handle_create,
                     "Create Counter"
                 }

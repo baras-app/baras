@@ -12,8 +12,16 @@ pub use crate::triggers::Trigger as CounterTrigger;
 /// A counter that tracks occurrences during a boss fight
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CounterDefinition {
-    /// Counter identifier (e.g., "bull_count")
+    /// Counter identifier (auto-generated from name if empty)
     pub id: String,
+
+    /// Display name (used for ID generation, must be unique within encounter)
+    #[serde(default)]
+    pub name: Option<String>,
+
+    /// Optional in-game display text (defaults to name, then id)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_text: Option<String>,
 
     /// What increments this counter
     pub increment_on: Trigger,
