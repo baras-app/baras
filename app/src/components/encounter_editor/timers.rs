@@ -8,6 +8,7 @@ use crate::api;
 use crate::types::{BossListItem, EntityFilter, TimerListItem, TimerTrigger};
 
 use super::conditions::CounterConditionEditor;
+use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,6 +19,7 @@ use super::triggers::ComposableTriggerEditor;
 pub fn TimersTab(
     boss: BossListItem,
     timers: Vec<TimerListItem>,
+    encounter_data: EncounterData,
     on_change: EventHandler<Vec<TimerListItem>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
@@ -43,6 +45,7 @@ pub fn TimersTab(
                     rsx! {
                         NewTimerForm {
                             boss: boss.clone(),
+                            encounter_data: encounter_data.clone(),
                             on_create: move |new_timer: TimerListItem| {
                                 let timers_clone = timers_for_create.clone();
                                 spawn(async move {
@@ -78,6 +81,7 @@ pub fn TimersTab(
                                 key: "{timer_key}",
                                 timer: timer.clone(),
                                 all_timers: timers_for_row,
+                                encounter_data: encounter_data.clone(),
                                 expanded: is_expanded,
                                 on_toggle: move |_| {
                                     expanded_timer.set(if is_expanded { None } else { Some(timer_key.clone()) });
@@ -102,6 +106,7 @@ pub fn TimersTab(
 fn TimerRow(
     timer: TimerListItem,
     all_timers: Vec<TimerListItem>,
+    encounter_data: EncounterData,
     expanded: bool,
     on_toggle: EventHandler<()>,
     on_change: EventHandler<Vec<TimerListItem>>,
@@ -186,6 +191,7 @@ fn TimerRow(
                 TimerEditForm {
                     timer: timer.clone(),
                     all_timers: all_timers,
+                    encounter_data: encounter_data,
                     on_change: on_change,
                     on_status: on_status,
                     on_collapse: on_collapse,
@@ -203,6 +209,7 @@ fn TimerRow(
 fn TimerEditForm(
     timer: TimerListItem,
     all_timers: Vec<TimerListItem>,
+    encounter_data: EncounterData,
     on_change: EventHandler<Vec<TimerListItem>>,
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
@@ -386,6 +393,7 @@ fn TimerEditForm(
                         label { style: "padding-top: 6px;", "Trigger" }
                         ComposableTriggerEditor {
                             trigger: draft().trigger.clone(),
+                            encounter_data: encounter_data.clone(),
                             on_change: move |t| {
                                 let mut d = draft();
                                 d.trigger = t;
@@ -479,6 +487,7 @@ fn TimerEditForm(
                             if draft().cancel_trigger.is_some() {
                                 ComposableTriggerEditor {
                                     trigger: draft().cancel_trigger.clone().unwrap(),
+                                    encounter_data: encounter_data.clone(),
                                     on_change: move |t| {
                                         let mut d = draft();
                                         d.cancel_trigger = Some(t);
@@ -525,7 +534,7 @@ fn TimerEditForm(
                         label { "Phases" }
                         PhaseSelector {
                             selected: draft().phases.clone(),
-                            available: vec![], // TODO: Load from boss phases
+                            available: encounter_data.phase_ids(),
                             on_change: move |p| {
                                 let mut d = draft();
                                 d.phases = p;
@@ -538,7 +547,7 @@ fn TimerEditForm(
                         label { "Counter" }
                         CounterConditionEditor {
                             condition: draft().counter_condition.clone(),
-                            counters: vec![], // TODO: Load from boss
+                            counters: encounter_data.counter_ids(),
                             on_change: move |c| {
                                 let mut d = draft();
                                 d.counter_condition = c;
@@ -671,6 +680,7 @@ fn TimerEditForm(
 #[component]
 fn NewTimerForm(
     boss: BossListItem,
+    encounter_data: EncounterData,
     on_create: EventHandler<TimerListItem>,
     on_cancel: EventHandler<()>,
 ) -> Element {
@@ -773,6 +783,7 @@ fn NewTimerForm(
                 label { "Trigger" }
                 ComposableTriggerEditor {
                     trigger: trigger(),
+                    encounter_data: encounter_data.clone(),
                     on_change: move |t| trigger.set(t)
                 }
             }
@@ -836,7 +847,7 @@ fn EntityFilterSelector(
     let specific_value = if let EntityFilter::Specific(s) = &value { s.clone() } else { String::new() };
 
     rsx! {
-        div { class: "flex gap-xs items-center",
+        div { class: "flex-col gap-xs",
             select {
                 class: "select",
                 style: "width: 160px;",
@@ -878,7 +889,7 @@ fn EntityFilterSelector(
                 input {
                     class: "input-inline",
                     r#type: "text",
-                    style: "width: 150px;",
+                    style: "width: 100%;",
                     placeholder: "Entity name",
                     value: "{specific_value}",
                     oninput: move |e| on_change.call(EntityFilter::Specific(e.value()))
@@ -910,7 +921,9 @@ fn PhaseSelector(
     };
 
     rsx! {
-        div { class: "phase-selector",
+        div {
+            class: "phase-selector",
+            style: "position: relative;",
             // Dropdown trigger
             button {
                 class: "select",
@@ -924,7 +937,7 @@ fn PhaseSelector(
             if dropdown_open() {
                 div {
                     class: "phase-dropdown",
-                    style: "position: absolute; z-index: 100; background: var(--bg-secondary); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); padding: var(--space-xs); min-width: 160px; max-height: 200px; overflow-y: auto;",
+                    style: "position: absolute; top: 100%; left: 0; z-index: 1000; background: #1e1e2e; border: 1px solid var(--border-medium); border-radius: var(--radius-sm); padding: var(--space-xs); min-width: 160px; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5);",
 
                     if available.is_empty() {
                         span { class: "text-muted text-sm", "No phases defined" }

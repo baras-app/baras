@@ -5,8 +5,132 @@
 use dioxus::prelude::*;
 
 use crate::types::{
-    AbilitySelector, CounterTrigger, EffectSelector, EntitySelector, PhaseTrigger, TimerTrigger,
+    AbilitySelector, CounterTrigger, EffectSelector, EntityMatcher, EntitySelector, PhaseTrigger,
+    TimerTrigger,
 };
+
+use super::tabs::EncounterData;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reusable ID Selector
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Generic dropdown selector for IDs (timers, phases, counters)
+#[component]
+fn IdSelector(
+    label: &'static str,
+    value: String,
+    available: Vec<String>,
+    on_change: EventHandler<String>,
+) -> Element {
+    rsx! {
+        div { class: "flex items-center gap-xs",
+            label { class: "text-sm text-secondary", "{label}" }
+            select {
+                class: "select flex-1",
+                value: "{value}",
+                onchange: move |e| on_change.call(e.value()),
+                if value.is_empty() {
+                    option { value: "", selected: true, "(select)" }
+                }
+                for id in &available {
+                    option {
+                        value: "{id}",
+                        selected: *id == value,
+                        "{id}"
+                    }
+                }
+                // Allow current value even if not in list (backwards compat)
+                if !value.is_empty() && !available.contains(&value) {
+                    option {
+                        value: "{value}",
+                        selected: true,
+                        "{value} (not found)"
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Boss Entity Selector (for HP threshold triggers)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Dropdown selector for boss entities with chip display
+#[component]
+fn BossSelector(
+    selected: Vec<EntitySelector>,
+    available_bosses: Vec<String>,
+    on_change: EventHandler<Vec<EntitySelector>>,
+) -> Element {
+    rsx! {
+        div { class: "flex-col gap-xs",
+            // Selected boss chips
+            if !selected.is_empty() {
+                div { class: "flex flex-wrap gap-xs",
+                    for (idx, sel) in selected.iter().enumerate() {
+                        {
+                            let selected_clone = selected.clone();
+                            let display = sel.display();
+                            rsx! {
+                                span { class: "chip",
+                                    "{display}"
+                                    button {
+                                        class: "chip-remove",
+                                        onclick: move |_| {
+                                            let mut new_sels = selected_clone.clone();
+                                            new_sels.remove(idx);
+                                            on_change.call(new_sels);
+                                        },
+                                        "×"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Dropdown to add boss
+            div { class: "flex items-center gap-xs",
+                label { class: "text-sm text-secondary", "Boss" }
+                select {
+                    class: "select flex-1",
+                    onchange: move |e| {
+                        let val = e.value();
+                        if !val.is_empty() {
+                            let selector = EntitySelector::Name(val);
+                            let mut new_sels = selected.clone();
+                            if !new_sels.iter().any(|s| s.display() == selector.display()) {
+                                new_sels.push(selector);
+                                on_change.call(new_sels);
+                            }
+                        }
+                    },
+                    option { value: "", "(add boss...)" }
+                    for boss in &available_bosses {
+                        {
+                            let already_selected = selected.iter().any(|s| s.display() == *boss);
+                            rsx! {
+                                option {
+                                    value: "{boss}",
+                                    disabled: already_selected,
+                                    "{boss}"
+                                    if already_selected { " ✓" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if selected.is_empty() {
+                span { class: "hint", "No boss selected (triggers for any boss)" }
+            }
+        }
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Timer Trigger Editor
@@ -16,12 +140,14 @@ use crate::types::{
 #[component]
 pub fn ComposableTriggerEditor(
     trigger: TimerTrigger,
+    encounter_data: EncounterData,
     on_change: EventHandler<TimerTrigger>,
 ) -> Element {
     rsx! {
         div { class: "composable-trigger-editor",
             TriggerNode {
                 trigger: trigger,
+                encounter_data: encounter_data,
                 on_change: on_change,
                 depth: 0,
             }
@@ -33,6 +159,7 @@ pub fn ComposableTriggerEditor(
 #[component]
 fn TriggerNode(
     trigger: TimerTrigger,
+    encounter_data: EncounterData,
     on_change: EventHandler<TimerTrigger>,
     depth: u8,
 ) -> Element {
@@ -49,12 +176,14 @@ fn TriggerNode(
             if is_composite {
                 CompositeEditor {
                     trigger: trigger.clone(),
+                    encounter_data: encounter_data.clone(),
                     on_change: on_change,
                     depth: depth,
                 }
             } else {
                 SimpleTriggerEditor {
                     trigger: trigger.clone(),
+                    encounter_data: encounter_data,
                     on_change: on_change,
                 }
             }
@@ -81,6 +210,7 @@ fn TriggerNode(
 #[component]
 fn CompositeEditor(
     trigger: TimerTrigger,
+    encounter_data: EncounterData,
     on_change: EventHandler<TimerTrigger>,
     depth: u8,
 ) -> Element {
@@ -116,11 +246,13 @@ fn CompositeEditor(
                         let conditions_for_update = conditions.clone();
                         let conditions_for_remove = conditions.clone();
                         let condition_clone = condition.clone();
+                        let encounter_data_for_node = encounter_data.clone();
 
                         rsx! {
                             div { class: "condition-item",
                                 TriggerNode {
                                     trigger: condition_clone,
+                                    encounter_data: encounter_data_for_node,
                                     on_change: move |new_cond| {
                                         let mut new_conditions = conditions_for_update.clone();
                                         new_conditions[idx] = new_cond;
@@ -162,6 +294,7 @@ fn CompositeEditor(
 #[component]
 pub fn SimpleTriggerEditor(
     trigger: TimerTrigger,
+    encounter_data: EncounterData,
     on_change: EventHandler<TimerTrigger>,
 ) -> Element {
     let trigger_type = trigger.type_name();
@@ -175,16 +308,16 @@ pub fn SimpleTriggerEditor(
                 onchange: move |e| {
                     let new_trigger = match e.value().as_str() {
                         "combat_start" => TimerTrigger::CombatStart,
-                        "ability_cast" => TimerTrigger::AbilityCast { abilities: vec![] },
-                        "effect_applied" => TimerTrigger::EffectApplied { effects: vec![] },
-                        "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![] },
+                        "ability_cast" => TimerTrigger::AbilityCast { abilities: vec![], source: EntityMatcher::default() },
+                        "effect_applied" => TimerTrigger::EffectApplied { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
+                        "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
                         "timer_expires" => TimerTrigger::TimerExpires { timer_id: String::new() },
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
                         "phase_entered" => TimerTrigger::PhaseEntered { phase_id: String::new() },
                         "phase_ended" => TimerTrigger::PhaseEnded { phase_id: String::new() },
-                        "boss_hp_threshold" => TimerTrigger::BossHpThreshold { hp_percent: 50.0, entities: vec![] },
+                        "boss_hp_below" => TimerTrigger::BossHpBelow { hp_percent: 50.0, entities: vec![] },
                         "counter_reaches" => TimerTrigger::CounterReaches { counter_id: String::new(), value: 1 },
-                        "entity_first_seen" => TimerTrigger::EntityFirstSeen { entities: vec![] },
+                        "entity_spawned" => TimerTrigger::EntitySpawned { entities: vec![] },
                         "entity_death" => TimerTrigger::EntityDeath { entities: vec![] },
                         "target_set" => TimerTrigger::TargetSet { entities: vec![] },
                         "time_elapsed" => TimerTrigger::TimeElapsed { secs: 30.0 },
@@ -201,9 +334,9 @@ pub fn SimpleTriggerEditor(
                 option { value: "timer_started", "Timer Started" }
                 option { value: "phase_entered", "Phase Entered" }
                 option { value: "phase_ended", "Phase Ended" }
-                option { value: "boss_hp_threshold", "Boss HP Threshold" }
+                option { value: "boss_hp_below", "Boss HP Below" }
                 option { value: "counter_reaches", "Counter Reaches" }
-                option { value: "entity_first_seen", "Entity First Seen" }
+                option { value: "entity_spawned", "Entity Spawned" }
                 option { value: "entity_death", "Entity Death" }
                 option { value: "target_set", "Target Set" }
                 option { value: "time_elapsed", "Time Elapsed" }
@@ -215,138 +348,139 @@ pub fn SimpleTriggerEditor(
                 match trigger.clone() {
                     TimerTrigger::CombatStart => rsx! {},
                     TimerTrigger::Manual => rsx! {},
-                    TimerTrigger::AbilityCast { abilities } => rsx! {
+                    TimerTrigger::AbilityCast { abilities, .. } => rsx! {
                         AbilitySelectorEditor {
                             label: "Abilities",
                             selectors: abilities,
-                            on_change: move |sels| on_change.call(TimerTrigger::AbilityCast { abilities: sels })
+                            on_change: move |sels| on_change.call(TimerTrigger::AbilityCast { abilities: sels, source: EntityMatcher::default() })
                         }
                     },
-                    TimerTrigger::EffectApplied { effects } => rsx! {
+                    TimerTrigger::EffectApplied { effects, .. } => rsx! {
                         EffectSelectorEditor {
                             label: "Effects",
                             selectors: effects,
-                            on_change: move |sels| on_change.call(TimerTrigger::EffectApplied { effects: sels })
+                            on_change: move |sels| on_change.call(TimerTrigger::EffectApplied { effects: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
                         }
                     },
-                    TimerTrigger::EffectRemoved { effects } => rsx! {
+                    TimerTrigger::EffectRemoved { effects, .. } => rsx! {
                         EffectSelectorEditor {
                             label: "Effects",
                             selectors: effects,
-                            on_change: move |sels| on_change.call(TimerTrigger::EffectRemoved { effects: sels })
+                            on_change: move |sels| on_change.call(TimerTrigger::EffectRemoved { effects: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
                         }
                     },
-                    TimerTrigger::TimerExpires { timer_id } => rsx! {
-                        div { class: "flex items-center gap-xs",
-                            label { class: "text-sm text-secondary", "Timer ID" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline flex-1",
-                                value: "{timer_id}",
-                                oninput: move |e| on_change.call(TimerTrigger::TimerExpires { timer_id: e.value() })
+                    TimerTrigger::TimerExpires { timer_id } => {
+                        let available_timers = encounter_data.timer_ids();
+                        rsx! {
+                            IdSelector {
+                                label: "Timer",
+                                value: timer_id,
+                                available: available_timers,
+                                on_change: move |id| on_change.call(TimerTrigger::TimerExpires { timer_id: id })
                             }
                         }
                     },
-                    TimerTrigger::TimerStarted { timer_id } => rsx! {
-                        div { class: "flex items-center gap-xs",
-                            label { class: "text-sm text-secondary", "Timer ID" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline flex-1",
-                                value: "{timer_id}",
-                                oninput: move |e| on_change.call(TimerTrigger::TimerStarted { timer_id: e.value() })
+                    TimerTrigger::TimerStarted { timer_id } => {
+                        let available_timers = encounter_data.timer_ids();
+                        rsx! {
+                            IdSelector {
+                                label: "Timer",
+                                value: timer_id,
+                                available: available_timers,
+                                on_change: move |id| on_change.call(TimerTrigger::TimerStarted { timer_id: id })
                             }
                         }
                     },
-                    TimerTrigger::PhaseEntered { phase_id } => rsx! {
-                        div { class: "flex items-center gap-xs",
-                            label { class: "text-sm text-secondary", "Phase ID" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline flex-1",
-                                value: "{phase_id}",
-                                oninput: move |e| on_change.call(TimerTrigger::PhaseEntered { phase_id: e.value() })
+                    TimerTrigger::PhaseEntered { phase_id } => {
+                        let available_phases = encounter_data.phase_ids();
+                        rsx! {
+                            IdSelector {
+                                label: "Phase",
+                                value: phase_id,
+                                available: available_phases,
+                                on_change: move |id| on_change.call(TimerTrigger::PhaseEntered { phase_id: id })
                             }
                         }
                     },
-                    TimerTrigger::PhaseEnded { phase_id } => rsx! {
-                        div { class: "flex items-center gap-xs",
-                            label { class: "text-sm text-secondary", "Phase ID" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline flex-1",
-                                value: "{phase_id}",
-                                oninput: move |e| on_change.call(TimerTrigger::PhaseEnded { phase_id: e.value() })
+                    TimerTrigger::PhaseEnded { phase_id } => {
+                        let available_phases = encounter_data.phase_ids();
+                        rsx! {
+                            IdSelector {
+                                label: "Phase",
+                                value: phase_id,
+                                available: available_phases,
+                                on_change: move |id| on_change.call(TimerTrigger::PhaseEnded { phase_id: id })
                             }
                         }
                     },
-                    TimerTrigger::BossHpThreshold { hp_percent, entities } => rsx! {
-                        div { class: "flex-col gap-xs",
-                            div { class: "flex items-center gap-xs",
-                                label { class: "text-sm text-secondary", "HP %" }
-                                input {
-                                    r#type: "number",
-                                    step: "0.1",
-                                    min: "0",
-                                    max: "100",
-                                    class: "input-inline",
-                                    style: "width: 70px;",
-                                    value: "{hp_percent}",
-                                    oninput: {
-                                        let entities = entities.clone();
-                                        move |e| {
-                                            if let Ok(val) = e.value().parse::<f32>() {
-                                                on_change.call(TimerTrigger::BossHpThreshold {
-                                                    hp_percent: val,
-                                                    entities: entities.clone(),
-                                                });
+                    TimerTrigger::BossHpBelow { hp_percent, entities } => {
+                        let available_bosses = encounter_data.boss_entity_names();
+                        rsx! {
+                            div { class: "flex-col gap-xs",
+                                div { class: "flex items-center gap-xs",
+                                    label { class: "text-sm text-secondary", "HP %" }
+                                    input {
+                                        r#type: "number",
+                                        step: "0.1",
+                                        min: "0",
+                                        max: "100",
+                                        class: "input-inline",
+                                        style: "width: 70px;",
+                                        value: "{hp_percent}",
+                                        oninput: {
+                                            let entities = entities.clone();
+                                            move |e| {
+                                                if let Ok(val) = e.value().parse::<f32>() {
+                                                    on_change.call(TimerTrigger::BossHpBelow {
+                                                        hp_percent: val,
+                                                        entities: entities.clone(),
+                                                    });
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                            EntitySelectorEditor {
-                                label: "Boss Filter",
-                                selectors: entities.clone(),
-                                on_change: move |sels| on_change.call(TimerTrigger::BossHpThreshold {
-                                    hp_percent,
-                                    entities: sels,
-                                })
-                            }
-                            span { class: "hint", "Triggers when HP drops below threshold" }
-                        }
-                    },
-                    TimerTrigger::CounterReaches { counter_id, value } => rsx! {
-                        div { class: "flex-col gap-xs",
-                            div { class: "flex items-center gap-xs",
-                                label { class: "text-sm text-secondary", "Counter" }
-                                input {
-                                    r#type: "text",
-                                    class: "input-inline flex-1",
-                                    placeholder: "counter_id",
-                                    value: "{counter_id}",
-                                    oninput: move |e| on_change.call(TimerTrigger::CounterReaches {
-                                        counter_id: e.value(),
-                                        value
+                                BossSelector {
+                                    selected: entities.clone(),
+                                    available_bosses: available_bosses,
+                                    on_change: move |sels| on_change.call(TimerTrigger::BossHpBelow {
+                                        hp_percent,
+                                        entities: sels,
                                     })
                                 }
                             }
-                            div { class: "flex items-center gap-xs",
-                                label { class: "text-sm text-secondary", "Value" }
-                                input {
-                                    r#type: "number",
-                                    min: "0",
-                                    class: "input-inline",
-                                    style: "width: 70px;",
-                                    value: "{value}",
-                                    oninput: {
-                                        let counter_id = counter_id.clone();
-                                        move |e| {
-                                            if let Ok(val) = e.value().parse::<u32>() {
-                                                on_change.call(TimerTrigger::CounterReaches {
-                                                    counter_id: counter_id.clone(),
-                                                    value: val
-                                                });
+                        }
+                    },
+                    TimerTrigger::CounterReaches { counter_id, value } => {
+                        let available_counters = encounter_data.counter_ids();
+                        rsx! {
+                            div { class: "flex-col gap-xs",
+                                IdSelector {
+                                    label: "Counter",
+                                    value: counter_id.clone(),
+                                    available: available_counters,
+                                    on_change: move |id| on_change.call(TimerTrigger::CounterReaches {
+                                        counter_id: id,
+                                        value
+                                    })
+                                }
+                                div { class: "flex items-center gap-xs",
+                                    label { class: "text-sm text-secondary", "Value" }
+                                    input {
+                                        r#type: "number",
+                                        min: "0",
+                                        class: "input-inline",
+                                        style: "width: 70px;",
+                                        value: "{value}",
+                                        oninput: {
+                                            let counter_id = counter_id.clone();
+                                            move |e| {
+                                                if let Ok(val) = e.value().parse::<u32>() {
+                                                    on_change.call(TimerTrigger::CounterReaches {
+                                                        counter_id: counter_id.clone(),
+                                                        value: val
+                                                    });
+                                                }
                                             }
                                         }
                                     }
@@ -354,11 +488,11 @@ pub fn SimpleTriggerEditor(
                             }
                         }
                     },
-                    TimerTrigger::EntityFirstSeen { entities } => rsx! {
+                    TimerTrigger::EntitySpawned { entities } => rsx! {
                         EntitySelectorEditor {
-                            label: "Entity (First Seen)",
+                            label: "Entity (Spawned)",
                             selectors: entities.clone(),
-                            on_change: move |sels| on_change.call(TimerTrigger::EntityFirstSeen {
+                            on_change: move |sels| on_change.call(TimerTrigger::EntitySpawned {
                                 entities: sels
                             })
                         }
@@ -664,12 +798,14 @@ pub fn EntitySelectorEditor(
 #[component]
 pub fn PhaseTriggerEditor(
     trigger: PhaseTrigger,
+    encounter_data: EncounterData,
     on_change: EventHandler<PhaseTrigger>,
 ) -> Element {
     rsx! {
         div { class: "composable-trigger-editor",
             PhaseTriggerNode {
                 trigger: trigger,
+                encounter_data: encounter_data,
                 on_change: on_change,
                 depth: 0,
             }
@@ -681,6 +817,7 @@ pub fn PhaseTriggerEditor(
 #[component]
 fn PhaseTriggerNode(
     trigger: PhaseTrigger,
+    encounter_data: EncounterData,
     on_change: EventHandler<PhaseTrigger>,
     depth: u8,
 ) -> Element {
@@ -696,12 +833,14 @@ fn PhaseTriggerNode(
             if is_composite {
                 PhaseCompositeEditor {
                     trigger: trigger.clone(),
+                    encounter_data: encounter_data.clone(),
                     on_change: on_change,
                     depth: depth,
                 }
             } else {
                 SimplePhaseTriggerEditor {
                     trigger: trigger.clone(),
+                    encounter_data: encounter_data,
                     on_change: on_change,
                 }
             }
@@ -728,6 +867,7 @@ fn PhaseTriggerNode(
 #[component]
 fn PhaseCompositeEditor(
     trigger: PhaseTrigger,
+    encounter_data: EncounterData,
     on_change: EventHandler<PhaseTrigger>,
     depth: u8,
 ) -> Element {
@@ -763,11 +903,13 @@ fn PhaseCompositeEditor(
                         let conditions_for_update = conditions.clone();
                         let conditions_for_remove = conditions.clone();
                         let condition_clone = condition.clone();
+                        let encounter_data_for_node = encounter_data.clone();
 
                         rsx! {
                             div { class: "condition-item",
                                 PhaseTriggerNode {
                                     trigger: condition_clone,
+                                    encounter_data: encounter_data_for_node,
                                     on_change: move |new_cond| {
                                         let mut new_conditions = conditions_for_update.clone();
                                         new_conditions[idx] = new_cond;
@@ -809,6 +951,7 @@ fn PhaseCompositeEditor(
 #[component]
 fn SimplePhaseTriggerEditor(
     trigger: PhaseTrigger,
+    encounter_data: EncounterData,
     on_change: EventHandler<PhaseTrigger>,
 ) -> Element {
     let trigger_type = trigger.type_name();
@@ -830,23 +973,22 @@ fn SimplePhaseTriggerEditor(
                             hp_percent: 50.0,
                             entities: vec![],
                         },
-                        "ability_cast" => PhaseTrigger::AbilityCast { abilities: vec![] },
-                        "effect_applied" => PhaseTrigger::EffectApplied { effects: vec![] },
-                        "effect_removed" => PhaseTrigger::EffectRemoved { effects: vec![] },
+                        "ability_cast" => PhaseTrigger::AbilityCast { abilities: vec![], source: EntityMatcher::default() },
+                        "effect_applied" => PhaseTrigger::EffectApplied { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
+                        "effect_removed" => PhaseTrigger::EffectRemoved { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
                         "counter_reaches" => PhaseTrigger::CounterReaches {
                             counter_id: String::new(),
                             value: 1,
                         },
                         "time_elapsed" => PhaseTrigger::TimeElapsed { secs: 30.0 },
-                        "entity_first_seen" => PhaseTrigger::EntityFirstSeen {
+                        "entity_spawned" => PhaseTrigger::EntitySpawned {
                             entities: vec![],
                         },
                         "entity_death" => PhaseTrigger::EntityDeath {
                             entities: vec![],
                         },
                         "phase_ended" => PhaseTrigger::PhaseEnded {
-                            phase_id: None,
-                            phase_ids: vec![],
+                            phase_id: String::new(),
                         },
                         _ => trigger.clone(),
                     };
@@ -860,7 +1002,7 @@ fn SimplePhaseTriggerEditor(
                 option { value: "effect_removed", "Effect Removed" }
                 option { value: "counter_reaches", "Counter Reaches" }
                 option { value: "time_elapsed", "Time Elapsed" }
-                option { value: "entity_first_seen", "Entity First Seen" }
+                option { value: "entity_spawned", "Entity Spawned" }
                 option { value: "entity_death", "Entity Death" }
                 option { value: "phase_ended", "Phase Ended" }
             }
@@ -869,128 +1011,133 @@ fn SimplePhaseTriggerEditor(
             {
                 match trigger.clone() {
                     PhaseTrigger::CombatStart => rsx! {},
-                    PhaseTrigger::BossHpBelow { hp_percent, entities } => rsx! {
-                        div { class: "flex-col gap-xs",
-                            div { class: "flex items-center gap-xs",
-                                label { class: "text-sm text-secondary", "HP % Below" }
-                                input {
-                                    r#type: "number",
-                                    step: "0.1",
-                                    min: "0",
-                                    max: "100",
-                                    class: "input-inline",
-                                    style: "width: 70px;",
-                                    value: "{hp_percent}",
-                                    oninput: {
-                                        let entities = entities.clone();
-                                        move |e| {
-                                            if let Ok(val) = e.value().parse::<f32>() {
-                                                on_change.call(PhaseTrigger::BossHpBelow {
-                                                    hp_percent: val,
-                                                    entities: entities.clone(),
-                                                });
+                    PhaseTrigger::BossHpBelow { hp_percent, entities } => {
+                        let available_bosses = encounter_data.boss_entity_names();
+                        rsx! {
+                            div { class: "flex-col gap-xs",
+                                div { class: "flex items-center gap-xs",
+                                    label { class: "text-sm text-secondary", "HP % Below" }
+                                    input {
+                                        r#type: "number",
+                                        step: "0.1",
+                                        min: "0",
+                                        max: "100",
+                                        class: "input-inline",
+                                        style: "width: 70px;",
+                                        value: "{hp_percent}",
+                                        oninput: {
+                                            let entities = entities.clone();
+                                            move |e| {
+                                                if let Ok(val) = e.value().parse::<f32>() {
+                                                    on_change.call(PhaseTrigger::BossHpBelow {
+                                                        hp_percent: val,
+                                                        entities: entities.clone(),
+                                                    });
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                            EntitySelectorEditor {
-                                label: "Boss Filter",
-                                selectors: entities.clone(),
-                                on_change: move |sels| on_change.call(PhaseTrigger::BossHpBelow {
-                                    hp_percent,
-                                    entities: sels,
-                                })
-                            }
-                        }
-                    },
-                    PhaseTrigger::BossHpAbove { hp_percent, entities } => rsx! {
-                        div { class: "flex-col gap-xs",
-                            div { class: "flex items-center gap-xs",
-                                label { class: "text-sm text-secondary", "HP % Above" }
-                                input {
-                                    r#type: "number",
-                                    step: "0.1",
-                                    min: "0",
-                                    max: "100",
-                                    class: "input-inline",
-                                    style: "width: 70px;",
-                                    value: "{hp_percent}",
-                                    oninput: {
-                                        let entities = entities.clone();
-                                        move |e| {
-                                            if let Ok(val) = e.value().parse::<f32>() {
-                                                on_change.call(PhaseTrigger::BossHpAbove {
-                                                    hp_percent: val,
-                                                    entities: entities.clone(),
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            EntitySelectorEditor {
-                                label: "Boss Filter",
-                                selectors: entities.clone(),
-                                on_change: move |sels| on_change.call(PhaseTrigger::BossHpAbove {
-                                    hp_percent,
-                                    entities: sels,
-                                })
-                            }
-                        }
-                    },
-                    PhaseTrigger::AbilityCast { abilities } => rsx! {
-                        AbilitySelectorEditor {
-                            label: "Abilities",
-                            selectors: abilities,
-                            on_change: move |sels| on_change.call(PhaseTrigger::AbilityCast { abilities: sels })
-                        }
-                    },
-                    PhaseTrigger::EffectApplied { effects } => rsx! {
-                        EffectSelectorEditor {
-                            label: "Effects",
-                            selectors: effects,
-                            on_change: move |sels| on_change.call(PhaseTrigger::EffectApplied { effects: sels })
-                        }
-                    },
-                    PhaseTrigger::EffectRemoved { effects } => rsx! {
-                        EffectSelectorEditor {
-                            label: "Effects",
-                            selectors: effects,
-                            on_change: move |sels| on_change.call(PhaseTrigger::EffectRemoved { effects: sels })
-                        }
-                    },
-                    PhaseTrigger::CounterReaches { counter_id, value } => rsx! {
-                        div { class: "flex-col gap-xs",
-                            div { class: "flex items-center gap-xs",
-                                label { class: "text-sm text-secondary", "Counter" }
-                                input {
-                                    r#type: "text",
-                                    class: "input-inline flex-1",
-                                    placeholder: "counter_id",
-                                    value: "{counter_id}",
-                                    oninput: move |e| on_change.call(PhaseTrigger::CounterReaches {
-                                        counter_id: e.value(),
-                                        value
+                                BossSelector {
+                                    selected: entities.clone(),
+                                    available_bosses: available_bosses,
+                                    on_change: move |sels| on_change.call(PhaseTrigger::BossHpBelow {
+                                        hp_percent,
+                                        entities: sels,
                                     })
                                 }
                             }
-                            div { class: "flex items-center gap-xs",
-                                label { class: "text-sm text-secondary", "Value" }
-                                input {
-                                    r#type: "number",
-                                    min: "0",
-                                    class: "input-inline",
-                                    style: "width: 70px;",
-                                    value: "{value}",
-                                    oninput: {
-                                        let counter_id = counter_id.clone();
-                                        move |e| {
-                                            if let Ok(val) = e.value().parse::<u32>() {
-                                                on_change.call(PhaseTrigger::CounterReaches {
-                                                    counter_id: counter_id.clone(),
-                                                    value: val
-                                                });
+                        }
+                    },
+                    PhaseTrigger::BossHpAbove { hp_percent, entities } => {
+                        let available_bosses = encounter_data.boss_entity_names();
+                        rsx! {
+                            div { class: "flex-col gap-xs",
+                                div { class: "flex items-center gap-xs",
+                                    label { class: "text-sm text-secondary", "HP % Above" }
+                                    input {
+                                        r#type: "number",
+                                        step: "0.1",
+                                        min: "0",
+                                        max: "100",
+                                        class: "input-inline",
+                                        style: "width: 70px;",
+                                        value: "{hp_percent}",
+                                        oninput: {
+                                            let entities = entities.clone();
+                                            move |e| {
+                                                if let Ok(val) = e.value().parse::<f32>() {
+                                                    on_change.call(PhaseTrigger::BossHpAbove {
+                                                        hp_percent: val,
+                                                        entities: entities.clone(),
+                                                    });
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                BossSelector {
+                                    selected: entities.clone(),
+                                    available_bosses: available_bosses,
+                                    on_change: move |sels| on_change.call(PhaseTrigger::BossHpAbove {
+                                        hp_percent,
+                                        entities: sels,
+                                    })
+                                }
+                            }
+                        }
+                    },
+                    PhaseTrigger::AbilityCast { abilities, .. } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities",
+                            selectors: abilities,
+                            on_change: move |sels| on_change.call(PhaseTrigger::AbilityCast { abilities: sels, source: EntityMatcher::default() })
+                        }
+                    },
+                    PhaseTrigger::EffectApplied { effects, .. } => rsx! {
+                        EffectSelectorEditor {
+                            label: "Effects",
+                            selectors: effects,
+                            on_change: move |sels| on_change.call(PhaseTrigger::EffectApplied { effects: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
+                        }
+                    },
+                    PhaseTrigger::EffectRemoved { effects, .. } => rsx! {
+                        EffectSelectorEditor {
+                            label: "Effects",
+                            selectors: effects,
+                            on_change: move |sels| on_change.call(PhaseTrigger::EffectRemoved { effects: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
+                        }
+                    },
+                    PhaseTrigger::CounterReaches { counter_id, value } => {
+                        let available_counters = encounter_data.counter_ids();
+                        rsx! {
+                            div { class: "flex-col gap-xs",
+                                IdSelector {
+                                    label: "Counter",
+                                    value: counter_id.clone(),
+                                    available: available_counters,
+                                    on_change: move |id| on_change.call(PhaseTrigger::CounterReaches {
+                                        counter_id: id,
+                                        value
+                                    })
+                                }
+                                div { class: "flex items-center gap-xs",
+                                    label { class: "text-sm text-secondary", "Value" }
+                                    input {
+                                        r#type: "number",
+                                        min: "0",
+                                        class: "input-inline",
+                                        style: "width: 70px;",
+                                        value: "{value}",
+                                        oninput: {
+                                            let counter_id = counter_id.clone();
+                                            move |e| {
+                                                if let Ok(val) = e.value().parse::<u32>() {
+                                                    on_change.call(PhaseTrigger::CounterReaches {
+                                                        counter_id: counter_id.clone(),
+                                                        value: val
+                                                    });
+                                                }
                                             }
                                         }
                                     }
@@ -1017,11 +1164,11 @@ fn SimplePhaseTriggerEditor(
                             span { class: "hint", "into combat" }
                         }
                     },
-                    PhaseTrigger::EntityFirstSeen { entities } => rsx! {
+                    PhaseTrigger::EntitySpawned { entities } => rsx! {
                         EntitySelectorEditor {
-                            label: "Entity (First Seen)",
+                            label: "Entity (Spawned)",
                             selectors: entities.clone(),
-                            on_change: move |sels| on_change.call(PhaseTrigger::EntityFirstSeen {
+                            on_change: move |sels| on_change.call(PhaseTrigger::EntitySpawned {
                                 entities: sels
                             })
                         }
@@ -1035,16 +1182,15 @@ fn SimplePhaseTriggerEditor(
                             })
                         }
                     },
-                    PhaseTrigger::PhaseEnded { phase_id, phase_ids } => rsx! {
-                        div { class: "flex items-center gap-xs",
-                            label { class: "text-sm text-secondary", "Phase ID" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline flex-1",
-                                value: "{phase_id.clone().unwrap_or_default()}",
-                                oninput: move |e| on_change.call(PhaseTrigger::PhaseEnded {
-                                    phase_id: if e.value().is_empty() { None } else { Some(e.value()) },
-                                    phase_ids: phase_ids.clone()
+                    PhaseTrigger::PhaseEnded { phase_id } => {
+                        let available_phases = encounter_data.phase_ids();
+                        rsx! {
+                            IdSelector {
+                                label: "Phase",
+                                value: phase_id.clone(),
+                                available: available_phases,
+                                on_change: move |id: String| on_change.call(PhaseTrigger::PhaseEnded {
+                                    phase_id: id,
                                 })
                             }
                         }
@@ -1066,6 +1212,7 @@ fn SimplePhaseTriggerEditor(
 #[component]
 pub fn CounterTriggerEditor(
     trigger: CounterTrigger,
+    encounter_data: EncounterData,
     on_change: EventHandler<CounterTrigger>,
 ) -> Element {
     let trigger_type = trigger.type_name();
@@ -1082,20 +1229,22 @@ pub fn CounterTriggerEditor(
                         "combat_end" => CounterTrigger::CombatEnd,
                         "ability_cast" => CounterTrigger::AbilityCast {
                             abilities: vec![],
-                            source: vec![],
+                            source: EntityMatcher::default(),
                         },
                         "effect_applied" => CounterTrigger::EffectApplied {
                             effects: vec![],
-                            target: vec![],
+                            source: EntityMatcher::default(),
+                            target: EntityMatcher::default(),
                         },
                         "effect_removed" => CounterTrigger::EffectRemoved {
                             effects: vec![],
-                            target: vec![],
+                            source: EntityMatcher::default(),
+                            target: EntityMatcher::default(),
                         },
                         "timer_expires" => CounterTrigger::TimerExpires {
                             timer_id: String::new(),
                         },
-                        "timer_starts" => CounterTrigger::TimerStarts {
+                        "timer_started" => CounterTrigger::TimerStarted {
                             timer_id: String::new(),
                         },
                         "phase_entered" => CounterTrigger::PhaseEntered {
@@ -1105,7 +1254,7 @@ pub fn CounterTriggerEditor(
                             phase_id: String::new(),
                         },
                         "any_phase_change" => CounterTrigger::AnyPhaseChange,
-                        "entity_first_seen" => CounterTrigger::EntityFirstSeen {
+                        "entity_spawned" => CounterTrigger::EntitySpawned {
                             entities: vec![],
                         },
                         "entity_death" => CounterTrigger::EntityDeath {
@@ -1130,11 +1279,11 @@ pub fn CounterTriggerEditor(
                 option { value: "effect_applied", "Effect Applied" }
                 option { value: "effect_removed", "Effect Removed" }
                 option { value: "timer_expires", "Timer Expires" }
-                option { value: "timer_starts", "Timer Starts" }
+                option { value: "timer_started", "Timer Started" }
                 option { value: "phase_entered", "Phase Entered" }
                 option { value: "phase_ended", "Phase Ended" }
                 option { value: "any_phase_change", "Any Phase Change" }
-                option { value: "entity_first_seen", "Entity First Seen" }
+                option { value: "entity_spawned", "Entity Spawned" }
                 option { value: "entity_death", "Entity Death" }
                 option { value: "counter_reaches", "Counter Reaches" }
                 option { value: "boss_hp_below", "Boss HP Below" }
@@ -1147,7 +1296,7 @@ pub fn CounterTriggerEditor(
                     CounterTrigger::CombatStart | CounterTrigger::CombatEnd
                     | CounterTrigger::AnyPhaseChange | CounterTrigger::Never => rsx! {},
 
-                    CounterTrigger::AbilityCast { abilities, source } => {
+                    CounterTrigger::AbilityCast { abilities, source, .. } => {
                         let source_for_sels = source.clone();
                         rsx! {
                             AbilitySelectorEditor {
@@ -1160,19 +1309,19 @@ pub fn CounterTriggerEditor(
                             }
                             EntitySelectorEditor {
                                 label: "Source Filter",
-                                selectors: source.clone(),
+                                selectors: source.entities.clone(),
                                 on_change: {
                                     let abilities = abilities.clone();
                                     move |sels| on_change.call(CounterTrigger::AbilityCast {
                                         abilities: abilities.clone(),
-                                        source: sels,
+                                        source: EntityMatcher::new(sels),
                                     })
                                 }
                             }
                         }
                     },
 
-                    CounterTrigger::EffectApplied { effects, target } => {
+                    CounterTrigger::EffectApplied { effects, target, .. } => {
                         let target_for_sels = target.clone();
                         rsx! {
                             EffectSelectorEditor {
@@ -1180,24 +1329,26 @@ pub fn CounterTriggerEditor(
                                 selectors: effects.clone(),
                                 on_change: move |sels| on_change.call(CounterTrigger::EffectApplied {
                                     effects: sels,
+                                    source: EntityMatcher::default(),
                                     target: target_for_sels.clone(),
                                 })
                             }
                             EntitySelectorEditor {
                                 label: "Target Filter",
-                                selectors: target.clone(),
+                                selectors: target.entities.clone(),
                                 on_change: {
                                     let effects = effects.clone();
                                     move |sels| on_change.call(CounterTrigger::EffectApplied {
                                         effects: effects.clone(),
-                                        target: sels,
+                                        source: EntityMatcher::default(),
+                                        target: EntityMatcher::new(sels),
                                     })
                                 }
                             }
                         }
                     },
 
-                    CounterTrigger::EffectRemoved { effects, target } => {
+                    CounterTrigger::EffectRemoved { effects, target, .. } => {
                         let target_for_sels = target.clone();
                         rsx! {
                             EffectSelectorEditor {
@@ -1205,76 +1356,78 @@ pub fn CounterTriggerEditor(
                                 selectors: effects.clone(),
                                 on_change: move |sels| on_change.call(CounterTrigger::EffectRemoved {
                                     effects: sels,
+                                    source: EntityMatcher::default(),
                                     target: target_for_sels.clone(),
                                 })
                             }
                             EntitySelectorEditor {
                                 label: "Target Filter",
-                                selectors: target.clone(),
+                                selectors: target.entities.clone(),
                                 on_change: {
                                     let effects = effects.clone();
                                     move |sels| on_change.call(CounterTrigger::EffectRemoved {
                                         effects: effects.clone(),
-                                        target: sels,
+                                        source: EntityMatcher::default(),
+                                        target: EntityMatcher::new(sels),
                                     })
                                 }
                             }
                         }
                     },
 
-                    CounterTrigger::TimerExpires { timer_id } => rsx! {
-                        div { class: "flex items-center gap-xs",
-                            label { class: "text-sm text-secondary", "Timer ID" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline flex-1",
-                                value: "{timer_id}",
-                                oninput: move |e| on_change.call(CounterTrigger::TimerExpires { timer_id: e.value() })
+                    CounterTrigger::TimerExpires { timer_id } => {
+                        let available_timers = encounter_data.timer_ids();
+                        rsx! {
+                            IdSelector {
+                                label: "Timer",
+                                value: timer_id.clone(),
+                                available: available_timers,
+                                on_change: move |id: String| on_change.call(CounterTrigger::TimerExpires { timer_id: id })
                             }
                         }
                     },
 
-                    CounterTrigger::TimerStarts { timer_id } => rsx! {
-                        div { class: "flex items-center gap-xs",
-                            label { class: "text-sm text-secondary", "Timer ID" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline flex-1",
-                                value: "{timer_id}",
-                                oninput: move |e| on_change.call(CounterTrigger::TimerStarts { timer_id: e.value() })
+                    CounterTrigger::TimerStarted { timer_id } => {
+                        let available_timers = encounter_data.timer_ids();
+                        rsx! {
+                            IdSelector {
+                                label: "Timer",
+                                value: timer_id.clone(),
+                                available: available_timers,
+                                on_change: move |id: String| on_change.call(CounterTrigger::TimerStarted { timer_id: id })
                             }
                         }
                     },
 
-                    CounterTrigger::PhaseEntered { phase_id } => rsx! {
-                        div { class: "flex items-center gap-xs",
-                            label { class: "text-sm text-secondary", "Phase ID" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline flex-1",
-                                value: "{phase_id}",
-                                oninput: move |e| on_change.call(CounterTrigger::PhaseEntered { phase_id: e.value() })
+                    CounterTrigger::PhaseEntered { phase_id } => {
+                        let available_phases = encounter_data.phase_ids();
+                        rsx! {
+                            IdSelector {
+                                label: "Phase",
+                                value: phase_id.clone(),
+                                available: available_phases,
+                                on_change: move |id: String| on_change.call(CounterTrigger::PhaseEntered { phase_id: id })
                             }
                         }
                     },
 
-                    CounterTrigger::PhaseEnded { phase_id } => rsx! {
-                        div { class: "flex items-center gap-xs",
-                            label { class: "text-sm text-secondary", "Phase ID" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline flex-1",
-                                value: "{phase_id}",
-                                oninput: move |e| on_change.call(CounterTrigger::PhaseEnded { phase_id: e.value() })
+                    CounterTrigger::PhaseEnded { phase_id } => {
+                        let available_phases = encounter_data.phase_ids();
+                        rsx! {
+                            IdSelector {
+                                label: "Phase",
+                                value: phase_id.clone(),
+                                available: available_phases,
+                                on_change: move |id: String| on_change.call(CounterTrigger::PhaseEnded { phase_id: id })
                             }
                         }
                     },
 
-                    CounterTrigger::EntityFirstSeen { entities } => rsx! {
+                    CounterTrigger::EntitySpawned { entities } => rsx! {
                         EntitySelectorEditor {
-                            label: "Entity (First Seen)",
+                            label: "Entity (Spawned)",
                             selectors: entities.clone(),
-                            on_change: move |sels| on_change.call(CounterTrigger::EntityFirstSeen {
+                            on_change: move |sels| on_change.call(CounterTrigger::EntitySpawned {
                                 entities: sels
                             })
                         }
@@ -1290,37 +1443,36 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
-                    CounterTrigger::CounterReaches { counter_id, value } => rsx! {
-                        div { class: "flex-col gap-xs",
-                            div { class: "flex items-center gap-xs",
-                                label { class: "text-sm text-secondary", "Counter" }
-                                input {
-                                    r#type: "text",
-                                    class: "input-inline flex-1",
-                                    placeholder: "counter_id",
-                                    value: "{counter_id}",
-                                    oninput: move |e| on_change.call(CounterTrigger::CounterReaches {
-                                        counter_id: e.value(),
+                    CounterTrigger::CounterReaches { counter_id, value } => {
+                        let available_counters = encounter_data.counter_ids();
+                        rsx! {
+                            div { class: "flex-col gap-xs",
+                                IdSelector {
+                                    label: "Counter",
+                                    value: counter_id.clone(),
+                                    available: available_counters,
+                                    on_change: move |id: String| on_change.call(CounterTrigger::CounterReaches {
+                                        counter_id: id,
                                         value
                                     })
                                 }
-                            }
-                            div { class: "flex items-center gap-xs",
-                                label { class: "text-sm text-secondary", "Value" }
-                                input {
-                                    r#type: "number",
-                                    min: "0",
-                                    class: "input-inline",
-                                    style: "width: 70px;",
-                                    value: "{value}",
-                                    oninput: {
-                                        let counter_id = counter_id.clone();
-                                        move |e| {
-                                            if let Ok(val) = e.value().parse::<u32>() {
-                                                on_change.call(CounterTrigger::CounterReaches {
-                                                    counter_id: counter_id.clone(),
-                                                    value: val
-                                                });
+                                div { class: "flex items-center gap-xs",
+                                    label { class: "text-sm text-secondary", "Value" }
+                                    input {
+                                        r#type: "number",
+                                        min: "0",
+                                        class: "input-inline",
+                                        style: "width: 70px;",
+                                        value: "{value}",
+                                        oninput: {
+                                            let counter_id = counter_id.clone();
+                                            move |e| {
+                                                if let Ok(val) = e.value().parse::<u32>() {
+                                                    on_change.call(CounterTrigger::CounterReaches {
+                                                        counter_id: counter_id.clone(),
+                                                        value: val
+                                                    });
+                                                }
                                             }
                                         }
                                     }
@@ -1329,41 +1481,47 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
-                    CounterTrigger::BossHpBelow { hp_percent, entities } => rsx! {
-                        div { class: "flex-col gap-xs",
-                            div { class: "flex items-center gap-xs",
-                                label { class: "text-sm text-secondary", "HP % Below" }
-                                input {
-                                    r#type: "number",
-                                    step: "0.1",
-                                    min: "0",
-                                    max: "100",
-                                    class: "input-inline",
-                                    style: "width: 70px;",
-                                    value: "{hp_percent}",
-                                    oninput: {
-                                        let entities = entities.clone();
-                                        move |e| {
-                                            if let Ok(val) = e.value().parse::<f32>() {
-                                                on_change.call(CounterTrigger::BossHpBelow {
-                                                    hp_percent: val,
-                                                    entities: entities.clone(),
-                                                });
+                    CounterTrigger::BossHpBelow { hp_percent, entities } => {
+                        let available_bosses = encounter_data.boss_entity_names();
+                        rsx! {
+                            div { class: "flex-col gap-xs",
+                                div { class: "flex items-center gap-xs",
+                                    label { class: "text-sm text-secondary", "HP % Below" }
+                                    input {
+                                        r#type: "number",
+                                        step: "0.1",
+                                        min: "0",
+                                        max: "100",
+                                        class: "input-inline",
+                                        style: "width: 70px;",
+                                        value: "{hp_percent}",
+                                        oninput: {
+                                            let entities = entities.clone();
+                                            move |e| {
+                                                if let Ok(val) = e.value().parse::<f32>() {
+                                                    on_change.call(CounterTrigger::BossHpBelow {
+                                                        hp_percent: val,
+                                                        entities: entities.clone(),
+                                                    });
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                            EntitySelectorEditor {
-                                label: "Boss Filter",
-                                selectors: entities.clone(),
-                                on_change: move |sels| on_change.call(CounterTrigger::BossHpBelow {
-                                    hp_percent,
-                                    entities: sels,
-                                })
+                                BossSelector {
+                                    selected: entities.clone(),
+                                    available_bosses: available_bosses,
+                                    on_change: move |sels| on_change.call(CounterTrigger::BossHpBelow {
+                                        hp_percent,
+                                        entities: sels,
+                                    })
+                                }
                             }
                         }
                     },
+
+                    // Catch-all for trigger types not commonly used in counters
+                    _ => rsx! {},
                 }
             }
         }

@@ -15,36 +15,18 @@ use crate::types::{BossListItem, EntityListItem};
 #[component]
 pub fn EntitiesTab(
     boss: BossListItem,
+    entities: Vec<EntityListItem>,
+    on_change: EventHandler<Vec<EntityListItem>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
-    let mut entities = use_signal(Vec::<EntityListItem>::new);
-    let mut loading = use_signal(|| true);
     let mut expanded_entity = use_signal(|| None::<String>);
     let mut show_new_entity = use_signal(|| false);
-
-    let file_path = boss.file_path.clone();
-    let boss_id = boss.id.clone();
-
-    // Load entities on mount
-    use_effect(move || {
-        let file_path = file_path.clone();
-        let boss_id = boss_id.clone();
-        spawn(async move {
-            if let Some(e) = api::get_entities_for_area(&file_path).await {
-                let boss_entities: Vec<_> = e.into_iter().filter(|e| e.boss_id == boss_id).collect();
-                entities.set(boss_entities);
-            }
-            loading.set(false);
-        });
-    });
 
     rsx! {
         div { class: "entities-tab",
             // Header
             div { class: "flex items-center justify-between mb-sm",
-                span { class: "text-sm text-secondary",
-                    if loading() { "Loading..." } else { "{entities().len()} entities" }
-                }
+                span { class: "text-sm text-secondary", "{entities.len()} entities" }
                 button {
                     class: "btn btn-success btn-sm",
                     onclick: move |_| show_new_entity.set(true),
@@ -59,36 +41,40 @@ pub fn EntitiesTab(
 
             // New entity form
             if show_new_entity() {
-                NewEntityForm {
-                    boss: boss.clone(),
-                    on_create: move |new_entity: EntityListItem| {
-                        spawn(async move {
-                            if let Some(created) = api::create_entity(&new_entity).await {
-                                let mut current = entities();
-                                current.push(created);
-                                entities.set(current);
-                                on_status.call(("Created".to_string(), false));
-                            } else {
-                                on_status.call(("Failed to create".to_string(), true));
-                            }
-                        });
-                        show_new_entity.set(false);
-                    },
-                    on_cancel: move |_| show_new_entity.set(false),
+                {
+                    let entities_for_create = entities.clone();
+                    rsx! {
+                        NewEntityForm {
+                            boss: boss.clone(),
+                            on_create: move |new_entity: EntityListItem| {
+                                let entities_clone = entities_for_create.clone();
+                                spawn(async move {
+                                    if let Some(created) = api::create_entity(&new_entity).await {
+                                        let mut current = entities_clone;
+                                        current.push(created);
+                                        on_change.call(current);
+                                        on_status.call(("Created".to_string(), false));
+                                    } else {
+                                        on_status.call(("Failed to create".to_string(), true));
+                                    }
+                                });
+                                show_new_entity.set(false);
+                            },
+                            on_cancel: move |_| show_new_entity.set(false),
+                        }
+                    }
                 }
             }
 
             // Entity list
-            if loading() {
-                div { class: "empty-state text-sm", "Loading entities..." }
-            } else if entities().is_empty() {
+            if entities.is_empty() {
                 div { class: "empty-state text-sm", "No entities defined" }
             } else {
-                for entity in entities() {
+                for entity in entities.clone() {
                     {
                         let entity_key = entity.name.clone();
                         let is_expanded = expanded_entity() == Some(entity_key.clone());
-                        let entities_for_row = entities();
+                        let entities_for_row = entities.clone();
 
                         rsx! {
                             EntityRow {
@@ -98,9 +84,7 @@ pub fn EntitiesTab(
                                 on_toggle: move |_| {
                                     expanded_entity.set(if is_expanded { None } else { Some(entity_key.clone()) });
                                 },
-                                on_change: move |updated: Vec<EntityListItem>| {
-                                    entities.set(updated);
-                                },
+                                on_change: on_change,
                                 on_status: on_status,
                                 on_collapse: move |_| expanded_entity.set(None),
                                 all_entities: entities_for_row,

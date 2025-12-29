@@ -97,11 +97,11 @@ id = "zt_jump"
 name = "Jump"
 is_alert = true
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_below", hp_percent = 90.0, boss_name = "Toth" },
-    { type = "boss_hp_below", hp_percent = 70.0, boss_name = "Toth" },
-    { type = "boss_hp_below", hp_percent = 50.0, boss_name = "Toth" },
-    { type = "boss_hp_below", hp_percent = 30.0, boss_name = "Toth" },
-    { type = "boss_hp_below", hp_percent = 10.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 90.0, entities = ["Toth"] },
+    { type = "boss_hp_below", hp_percent = 70.0, entities = ["Toth"] },
+    { type = "boss_hp_below", hp_percent = 50.0, entities = ["Toth"] },
+    { type = "boss_hp_below", hp_percent = 30.0, entities = ["Toth"] },
+    { type = "boss_hp_below", hp_percent = 10.0, entities = ["Toth"] },
 ]}
 alert_text = "Jump"
 color = [130, 33, 224, 255]
@@ -112,8 +112,8 @@ id = "zt_frenzy"
 name = "Frenzy"
 is_alert = true
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_below", hp_percent = 80.0, boss_name = "Toth" },
-    { type = "boss_hp_below", hp_percent = 40.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 80.0, entities = ["Toth"] },
+    { type = "boss_hp_below", hp_percent = 40.0, entities = ["Toth"] },
 ]}
 alert_text = "Frenzy"
 color = [214, 164, 19, 255]
@@ -124,8 +124,8 @@ id = "zt_shatter"
 name = "Shatter + Sonic"
 is_alert = true
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_below", hp_percent = 60.0, boss_name = "Toth" },
-    { type = "boss_hp_below", hp_percent = 20.0, boss_name = "Toth" },
+    { type = "boss_hp_below", hp_percent = 60.0, entities = ["Toth"] },
+    { type = "boss_hp_below", hp_percent = 20.0, entities = ["Toth"] },
 ]}
 alert_text = "Shatter + Sonic"
 color = [219, 36, 28, 255]
@@ -135,7 +135,7 @@ difficulties = ["veteran", "master"]
 id = "zt_soft_enrage"
 name = "Soft Enrage"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 5.0, boss_name = "Toth" }
+trigger = { type = "boss_hp_below", hp_percent = 5.0, entities = ["Toth"] }
 alert_text = "Soft Enrage"
 color = [219, 31, 28, 255]
 difficulties = ["veteran", "master"]
@@ -354,7 +354,7 @@ trigger = { type = "combat_start" }
 [[boss.phases]]
 id = "cv_vorgath"
 name = "Vorgath"
-trigger = {type = "boss_hp_below", hp_percent = 99.9, boss_name = "Colonel Vorgath"}
+trigger = {type = "boss_hp_below", hp_percent = 99.9, entities = ["Colonel Vorgath"]}
 
 # -- Timers --
 [[boss.timer]]
@@ -386,7 +386,7 @@ difficulties = ["veteran", "master"]
 id = "cv_hp_95"
 name = "Threat Drop"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 95.0, boss_name = "Colonel Vorgath" }
+trigger = { type = "boss_hp_below", hp_percent = 95.0, entities = ["Colonel Vorgath"] }
 alert_text = "Threat Drop"
 color = [39, 209, 208, 255]
 difficulties = ["veteran", "master"]
@@ -395,7 +395,7 @@ difficulties = ["veteran", "master"]
 id = "cv_hp_80"
 name = "Turrets"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 80.0, boss_name = "Colonel Vorgath" }
+trigger = { type = "boss_hp_below", hp_percent = 80.0, entities = ["Colonel Vorgath"] }
 alert_text = "Turrets"
 color = [14, 128, 22, 255]
 difficulties = ["veteran", "master"]
@@ -434,7 +434,7 @@ ids = [2876515691790336]
 
 [[boss.counters]]
 id = "siege_droid_deaths"
-increment_on = { type = "entity_death", entity_name = "Siege Droid" }
+increment_on = { type = "entity_death", entities = ["Siege Droid"] }
 reset_on = { type = "combat_end" }
 initial_value = 0
 
@@ -454,7 +454,7 @@ id = "walker_burn"
 name = "Walker Burn"
 trigger = {type = "effect_removed", effects = [2815376832331776] }
 end_trigger = {type = "any_of", conditions = [
-  {type = "entity_death", entity = "Warstrider Battlewalker"},
+  {type = "entity_death", entities = ["Warstrider Battlewalker"]},
   {type = "effect_applied", effects = [2815376832331776] }
 ]}
 
@@ -482,7 +482,7 @@ end_trigger = {type = "effect_removed", effects = [2815376832331776] }
 [[boss.phases]]
 id = "wk_kephess_burn"
 name = "Kephess Burn"
-trigger = {type = "boss_hp_below", hp_percent = 59.0, boss_name = "Warlord Kephess"}
+trigger = {type = "boss_hp_below", hp_percent = 59.0, entities = ["Warlord Kephess"]}
 
 # -- Timers --
 [[boss.timer]]

@@ -10,6 +10,8 @@ use crate::types::{
     EntityFilter,
 };
 
+use super::tabs::EncounterData;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Challenges Tab
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,36 +19,19 @@ use crate::types::{
 #[component]
 pub fn ChallengesTab(
     boss: BossListItem,
+    challenges: Vec<ChallengeListItem>,
+    encounter_data: EncounterData,
+    on_change: EventHandler<Vec<ChallengeListItem>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
-    let mut challenges = use_signal(Vec::<ChallengeListItem>::new);
-    let mut loading = use_signal(|| true);
     let mut expanded_challenge = use_signal(|| None::<String>);
     let mut show_new_challenge = use_signal(|| false);
-
-    let file_path = boss.file_path.clone();
-    let boss_id = boss.id.clone();
-
-    // Load challenges on mount
-    use_effect(move || {
-        let file_path = file_path.clone();
-        let boss_id = boss_id.clone();
-        spawn(async move {
-            if let Some(c) = api::get_challenges_for_area(&file_path).await {
-                let boss_challenges: Vec<_> = c.into_iter().filter(|c| c.boss_id == boss_id).collect();
-                challenges.set(boss_challenges);
-            }
-            loading.set(false);
-        });
-    });
 
     rsx! {
         div { class: "challenges-tab",
             // Header
             div { class: "flex items-center justify-between mb-sm",
-                span { class: "text-sm text-secondary",
-                    if loading() { "Loading..." } else { "{challenges().len()} challenges" }
-                }
+                span { class: "text-sm text-secondary", "{challenges.len()} challenges" }
                 button {
                     class: "btn btn-success btn-sm",
                     onclick: move |_| show_new_challenge.set(true),
@@ -56,48 +41,52 @@ pub fn ChallengesTab(
 
             // New challenge form
             if show_new_challenge() {
-                NewChallengeForm {
-                    boss: boss.clone(),
-                    on_create: move |new_challenge: ChallengeListItem| {
-                        spawn(async move {
-                            if let Some(created) = api::create_challenge(&new_challenge).await {
-                                let mut current = challenges();
-                                current.push(created);
-                                challenges.set(current);
-                                on_status.call(("Created".to_string(), false));
-                            } else {
-                                on_status.call(("Failed to create".to_string(), true));
-                            }
-                        });
-                        show_new_challenge.set(false);
-                    },
-                    on_cancel: move |_| show_new_challenge.set(false),
+                {
+                    let challenges_for_create = challenges.clone();
+                    rsx! {
+                        NewChallengeForm {
+                            boss: boss.clone(),
+                            encounter_data: encounter_data.clone(),
+                            on_create: move |new_challenge: ChallengeListItem| {
+                                let challenges_clone = challenges_for_create.clone();
+                                spawn(async move {
+                                    if let Some(created) = api::create_challenge(&new_challenge).await {
+                                        let mut current = challenges_clone;
+                                        current.push(created);
+                                        on_change.call(current);
+                                        on_status.call(("Created".to_string(), false));
+                                    } else {
+                                        on_status.call(("Failed to create".to_string(), true));
+                                    }
+                                });
+                                show_new_challenge.set(false);
+                            },
+                            on_cancel: move |_| show_new_challenge.set(false),
+                        }
+                    }
                 }
             }
 
             // Challenge list
-            if loading() {
-                div { class: "empty-state text-sm", "Loading challenges..." }
-            } else if challenges().is_empty() {
+            if challenges.is_empty() {
                 div { class: "empty-state text-sm", "No challenges defined" }
             } else {
-                for challenge in challenges() {
+                for challenge in challenges.clone() {
                     {
                         let challenge_key = challenge.id.clone();
                         let is_expanded = expanded_challenge() == Some(challenge_key.clone());
-                        let challenges_for_row = challenges();
+                        let challenges_for_row = challenges.clone();
 
                         rsx! {
                             ChallengeRow {
                                 key: "{challenge_key}",
                                 challenge: challenge.clone(),
                                 expanded: is_expanded,
+                                encounter_data: encounter_data.clone(),
                                 on_toggle: move |_| {
                                     expanded_challenge.set(if is_expanded { None } else { Some(challenge_key.clone()) });
                                 },
-                                on_change: move |updated: Vec<ChallengeListItem>| {
-                                    challenges.set(updated);
-                                },
+                                on_change: on_change,
                                 on_status: on_status,
                                 on_collapse: move |_| expanded_challenge.set(None),
                                 all_challenges: challenges_for_row,
@@ -119,6 +108,7 @@ fn ChallengeRow(
     challenge: ChallengeListItem,
     expanded: bool,
     all_challenges: Vec<ChallengeListItem>,
+    encounter_data: EncounterData,
     on_toggle: EventHandler<()>,
     on_change: EventHandler<Vec<ChallengeListItem>>,
     on_status: EventHandler<(String, bool)>,
@@ -146,6 +136,7 @@ fn ChallengeRow(
                 div { class: "list-item-body",
                     ChallengeEditForm {
                         challenge: challenge.clone(),
+                        encounter_data: encounter_data,
                         on_save: move |updated: ChallengeListItem| {
                             on_status.call(("Saving...".to_string(), false));
                             spawn(async move {
@@ -193,6 +184,7 @@ fn ChallengeRow(
 #[component]
 fn ChallengeEditForm(
     challenge: ChallengeListItem,
+    encounter_data: EncounterData,
     on_save: EventHandler<ChallengeListItem>,
     on_delete: EventHandler<ChallengeListItem>,
 ) -> Element {
@@ -689,6 +681,7 @@ fn EntityFilterSelect(
 #[component]
 fn NewChallengeForm(
     boss: BossListItem,
+    encounter_data: EncounterData,
     on_create: EventHandler<ChallengeListItem>,
     on_cancel: EventHandler<()>,
 ) -> Element {

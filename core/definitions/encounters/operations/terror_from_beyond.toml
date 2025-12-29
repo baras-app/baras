@@ -36,7 +36,7 @@ trigger = { type = "combat_start" }
 id = "wh_burn"
 name = "Burn"
 preceded_by = "wh_main"
-trigger = { type = "boss_hp_below", hp_percent = 15.0, boss_name = "The Writhing Horror" }
+trigger = { type = "boss_hp_below", hp_percent = 15.0, entities = ["The Writhing Horror"] }
 
 # ─── Timers ─────────────────────────────────────────────────────────────────────
 
@@ -130,13 +130,13 @@ trigger = { type = "combat_start" }
 id = "dg_ciphas"
 name = "Ciphas"
 preceded_by = "dg_heirad"
-trigger = { type = "entity_death", entity_name = "Heirad" }
+trigger = { type = "entity_death", entities = ["Heirad"] }
 
 [[boss.phases]]
 id = "dg_kelsara"
 name = "Kel'sara"
 preceded_by = "dg_ciphas"
-trigger = { type = "entity_death", entity_name = "Ciphas" }
+trigger = { type = "entity_death", entities = ["Ciphas"] }
 
 # -- Empowered Barrier --
 [[boss.timer]]
@@ -298,7 +298,7 @@ is_boss = false
 
 [[boss.counters]]
 id = "op_ix_data_cores"
-increment_on = { type = "entity_death", entity_name = "Data Core" }
+increment_on = { type = "entity_death", entities = ["Data Core"] }
 reset_on = { type = "combat_end" }
 initial_value = 0
 
@@ -326,7 +326,7 @@ trigger = {type = "ability_cast", abilities = [3036846820950016] }
 [[boss.phases]]
 id = "op_ix_main"
 name = "Operator IX"
-trigger = { type = "entity_spawned", entity_name = "Operator IX" }
+trigger = { type = "entity_spawned", entities = ["Operator IX"] }
 
 [[boss.timer]]
 id = "op_ix_blue_cd"
@@ -374,10 +374,10 @@ difficulties = ["veteran", "master"]
 id = "op_ix_adds"
 name = "Adds"
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_below", hp_percent = 90.0, boss_name = "Operator IX" },
-    { type = "boss_hp_below", hp_percent = 70.0, boss_name = "Operator IX" },
-    { type = "boss_hp_below", hp_percent = 50.0, boss_name = "Operator IX" },
-    { type = "boss_hp_below", hp_percent = 30.0, boss_name = "Operator IX" },
+    { type = "boss_hp_below", hp_percent = 90.0, entities = ["Operator IX"] },
+    { type = "boss_hp_below", hp_percent = 70.0, entities = ["Operator IX"] },
+    { type = "boss_hp_below", hp_percent = 50.0, entities = ["Operator IX"] },
+    { type = "boss_hp_below", hp_percent = 30.0, entities = ["Operator IX"] },
 ]}
 is_alert = true
 alert_text = "Adds Incoming!"
@@ -420,13 +420,13 @@ trigger = { type = "combat_start" }
 id = "kephess_cascade"
 name = "Cascade"
 preceded_by = "kephess_main"
-trigger = { type = "boss_hp_below", hp_percent = 50.0, boss_name = "Kephess the Undying" }
+trigger = { type = "boss_hp_below", hp_percent = 50.0, entities = ["Kephess the Undying"] }
 
 [[boss.phases]]
 id = "kephess_burn"
 name = "Burn"
 preceded_by = "kephess_cascade"
-trigger = { type = "boss_hp_below", hp_percent = 10.0, boss_name = "Kephess the Undying" }
+trigger = { type = "boss_hp_below", hp_percent = 10.0, entities = ["Kephess the Undying"] }
 
 # ─── Counters ───────────────────────────────────────────────────────────────────
 
@@ -492,7 +492,7 @@ color = [217, 76, 30, 255]
 [[boss.timer]]
 id = "kephess_sphere_target"
 name = "Targeted by Sphere"
-trigger = { type = "target_set", npc_id = 3013095651803136 }
+trigger = { type = "target_set", entities = [3013095651803136] }
 target = "local_player"
 is_alert = true
 alert_text = "Targeted by sphere!"
@@ -612,7 +612,7 @@ trigger = { type = "combat_start" }
 [[boss.phases]]
 id = "tfb_phase2"
 name = "Platforms"
-trigger = { type = "entity_spawned", npc_id = 3025233229381632 }
+trigger = { type = "entity_spawned", entities = [3025233229381632] }
 preceded_by = "tfb_phase1"
 
 [[boss.phases]]
@@ -624,7 +624,7 @@ trigger = { type = "counter_reaches", counter_id = "grasping_death_count", value
 # Counter for Grasping Tentacle deaths (for phase 2 respawn timing)
 [[boss.counters]]
 id = "grasping_death_count"
-increment_on = { type = "entity_death", entity_name = "Grasping Tentacle" }
+increment_on = { type = "entity_death", entities = ["Grasping Tentacle"] }
 
 # ─── Entities ───────────────────────────────────────────────────────────────────
 
@@ -714,7 +714,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "tfb_grasping_death"
 name = "Grasping Death"
-trigger = { type = "entity_death", entity_name = "Grasping Tentacle" }
+trigger = { type = "entity_death", entities = ["Grasping Tentacle"] }
 is_alert = true
 alert_text = "Grasping Tentacle down!"
 color = [39, 220, 220, 255]
@@ -724,7 +724,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "tfb_tentacle_respawn_1"
 name = "Tentacle Respawn"
-trigger = { type = "entity_death", entity_name = "Grasping Tentacle" }
+trigger = { type = "entity_death", entities = ["Grasping Tentacle"] }
 counter_condition = { counter_id = "grasping_death_count", operator = "eq", value = 0 }
 duration_secs = 35.0
 color = [213, 40, 38, 255]
@@ -733,7 +733,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "tfb_tentacle_respawn_3"
 name = "Tentacle Respawn"
-trigger = { type = "entity_death", entity_name = "Grasping Tentacle" }
+trigger = { type = "entity_death", entities = ["Grasping Tentacle"] }
 counter_condition = { counter_id = "grasping_death_count", operator = "eq", value = 2 }
 duration_secs = 35.0
 color = [213, 40, 38, 255]
@@ -742,7 +742,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "tfb_tentacle_respawn_5"
 name = "Tentacle Respawn"
-trigger = { type = "entity_death", entity_name = "Grasping Tentacle" }
+trigger = { type = "entity_death", entities = ["Grasping Tentacle"] }
 counter_condition = { counter_id = "grasping_death_count", operator = "eq", value = 4 }
 duration_secs = 35.0
 color = [213, 40, 38, 255]

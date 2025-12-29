@@ -24,7 +24,7 @@ ids = [
 is_boss = true
 is_kill_target = true
 
-[[boss.phase]]
+[[boss.phases]]
 id = "p1"
 name = "Phase 1"
 trigger = { type = "combat_start" }
@@ -109,7 +109,7 @@ ids = [3447789291831296]  # All difficulties
 is_boss = true
 is_kill_target = true
 
-[[boss.phase]]
+[[boss.phases]]
 id = "p1"
 name = "Phase 1"
 trigger = { type = "combat_start" }
@@ -160,7 +160,7 @@ difficulties = ["veteran"]
 # When timer expires, counter resets to 0, allowing next cast to start timer again
 
 # Counter: Tracks if Rain of Missiles timer is active (0 = can trigger, 1 = locked)
-[[boss.counter]]
+[[boss.counters]]
 id = "rain_lock"
 increment_on = { type = "ability_cast", abilities = [3448064169738240] }
 reset_on = { type = "timer_expires", timer_id = "ss_rain_of_missiles" }
@@ -206,7 +206,7 @@ ids = [
 is_boss = true
 is_kill_target = true
 
-[[boss.phase]]
+[[boss.phases]]
 id = "ul_main"
 name = "Main"
 trigger = { type = "combat_start" }
@@ -250,7 +250,7 @@ difficulties = ["veteran"]
 id = "ul_adds_hp"
 name = "Adds"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 90.0, boss_name = "The Underlurker" }
+trigger = { type = "boss_hp_below", hp_percent = 90.0, entities = ["The Underlurker"] }
 alert_text = "Adds Spawn"
 color = [24, 173, 19, 255]
 difficulties = ["veteran"]
@@ -311,9 +311,9 @@ is_kill_target = true
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Track Machine Focus deaths for Foci phase transition
-[[boss.counter]]
+[[boss.counters]]
 id = "foci_deaths"
-increment_on = { type = "entity_death", entity_name = "Machine Focus" }
+increment_on = { type = "entity_death", entities = ["Machine Focus"] }
 reset_on = { type = "combat_end" }
 initial_value = 0
 
@@ -332,14 +332,14 @@ trigger = { type = "combat_start" }
 id = "revan_hk47"
 name = "HK-47"
 preceded_by = "revan_p1"
-trigger = { type = "boss_hp_below", hp_percent = 64.1, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 64.1, entities = ["Revan"] }
 
 # -- Foci Transition (runs to Floor 2) --
 [[boss.phases]]
 id = "revan_foci"
 name = "Foci"
 preceded_by = "revan_hk47"
-trigger = { type = "boss_hp_below", hp_percent = 10.0, boss_name = "HK-47" }
+trigger = { type = "boss_hp_below", hp_percent = 10.0, entities = ["HK-47"] }
 
 # -- Phase 3: Second Floor - Revan 64% to 28% --
 # Triggers when all 4 Machine Foci are destroyed
@@ -353,7 +353,7 @@ trigger = { type = "counter_reaches", counter_id = "foci_deaths", value = 4 }
 id = "revan_resonance"
 name = "Resonance"
 preceded_by = "revan_p3"
-trigger = { type = "boss_hp_below", hp_percent = 28.1, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 28.1, entities = ["Revan"] }
 
 # -- Phase 4: Third Floor - Revan 28% to 9% --
 # Triggers when Resonance shield effect is removed (interrupted by damage)
@@ -369,7 +369,7 @@ trigger = { type = "effect_removed", effects = [3447578838433792] }
 id = "revan_core"
 name = "Core"
 preceded_by = "revan_p4"
-trigger = { type = "entity_spawned", npc_id = 3447583133401088 }
+trigger = { type = "entity_spawned", entities = [3447583133401088] }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Timers - Phase 1 (Floor 1 - Revan)
@@ -477,7 +477,7 @@ difficulties = ["story", "veteran"]
 id = "rev_reactive_hp"
 name = "Reactive Shield"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 80.0, boss_name = "HK-47" }
+trigger = { type = "boss_hp_below", hp_percent = 80.0, entities = ["HK-47"] }
 alert_text = "Reactive Shield"
 color = [224, 29, 30, 255]
 difficulties = ["veteran"]
@@ -626,7 +626,7 @@ match = { npc_ids = [3447583133401088] }
 id = "rev_hp_64"
 name = "Phase 2"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 64.0, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 64.0, entities = ["Revan"] }
 alert_text = "64% - HK-47 Phase"
 color = [24, 224, 219, 255]
 difficulties = ["story", "veteran"]
@@ -635,7 +635,7 @@ difficulties = ["story", "veteran"]
 id = "rev_hp_28"
 name = "Phase 4"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 28.0, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 28.0, entities = ["Revan"] }
 alert_text = "28% - Floor 3"
 color = [33, 224, 223, 255]
 difficulties = ["story", "veteran"]
@@ -644,7 +644,7 @@ difficulties = ["story", "veteran"]
 id = "rev_hp_9"
 name = "Burn Phase"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 9.0, boss_name = "Revan" }
+trigger = { type = "boss_hp_below", hp_percent = 9.0, entities = ["Revan"] }
 alert_text = "Core Burn"
 color = [29, 224, 217, 255]
 difficulties = ["story", "veteran"]

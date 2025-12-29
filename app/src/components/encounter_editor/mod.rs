@@ -17,7 +17,7 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::types::{AreaListItem, BossListItem, TimerListItem};
 
-pub use tabs::BossTabs;
+pub use tabs::{BossTabs, EncounterData};
 pub use timers::TimersTab;
 
 // ─────────────────────────────────────────────────────────────────────────────

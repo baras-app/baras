@@ -118,6 +118,215 @@ impl EntitySelector {
     }
 }
 
+/// Wrapper for entity selectors used in source/target filters.
+/// Matches the backend's EntityMatcher serialization format.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct EntityMatcher {
+    #[serde(default)]
+    pub entities: Vec<EntitySelector>,
+}
+
+impl EntityMatcher {
+    pub fn new(entities: Vec<EntitySelector>) -> Self {
+        Self { entities }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entities.is_empty()
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trigger Types (shared across timers, phases, counters)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Unified trigger type for timers, phases, and counters.
+///
+/// Different systems use different subsets:
+/// - `[T]` = Timer only
+/// - `[P]` = Phase only
+/// - `[C]` = Counter only
+/// - `[TPC]` = All systems
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Trigger {
+    // ─── Combat State [TPC] ────────────────────────────────────────────────
+
+    /// Combat starts. [TPC]
+    CombatStart,
+
+    /// Combat ends. [C only]
+    CombatEnd,
+
+    // ─── Abilities & Effects [TPC] ─────────────────────────────────────────
+
+    /// Ability is cast. [TPC]
+    AbilityCast {
+        #[serde(default)]
+        abilities: Vec<AbilitySelector>,
+        #[serde(default)]
+        source: EntityMatcher,
+    },
+
+    /// Effect/buff is applied. [TPC]
+    EffectApplied {
+        #[serde(default)]
+        effects: Vec<EffectSelector>,
+        #[serde(default)]
+        source: EntityMatcher,
+        #[serde(default)]
+        target: EntityMatcher,
+    },
+
+    /// Effect/buff is removed. [TPC]
+    EffectRemoved {
+        #[serde(default)]
+        effects: Vec<EffectSelector>,
+        #[serde(default)]
+        source: EntityMatcher,
+        #[serde(default)]
+        target: EntityMatcher,
+    },
+
+    // ─── HP Thresholds [TPC] ───────────────────────────────────────────────
+
+    /// Boss HP drops below threshold. [TPC]
+    BossHpBelow {
+        hp_percent: f32,
+        #[serde(default)]
+        entities: Vec<EntitySelector>,
+    },
+
+    /// Boss HP rises above threshold. [P only]
+    BossHpAbove {
+        hp_percent: f32,
+        #[serde(default)]
+        entities: Vec<EntitySelector>,
+    },
+
+    // ─── Entity Lifecycle [TPC] ────────────────────────────────────────────
+
+    /// Entity spawns (first seen in combat). [TPC]
+    EntitySpawned {
+        #[serde(default)]
+        entities: Vec<EntitySelector>,
+    },
+
+    /// Entity dies. [TPC]
+    EntityDeath {
+        #[serde(default)]
+        entities: Vec<EntitySelector>,
+    },
+
+    /// NPC sets its target. [T only]
+    TargetSet {
+        #[serde(default)]
+        entities: Vec<EntitySelector>,
+    },
+
+    // ─── Phase Events [TPC] ────────────────────────────────────────────────
+
+    /// Phase is entered. [TC]
+    PhaseEntered { phase_id: String },
+
+    /// Phase ends. [TPC]
+    PhaseEnded { phase_id: String },
+
+    /// Any phase change occurs. [C only]
+    AnyPhaseChange,
+
+    // ─── Counter Events [TP] ───────────────────────────────────────────────
+
+    /// Counter reaches a specific value. [TP]
+    CounterReaches { counter_id: String, value: u32 },
+
+    // ─── Timer Events [T only] ─────────────────────────────────────────────
+
+    /// Another timer expires (chaining). [T only]
+    TimerExpires { timer_id: String },
+
+    /// Another timer starts (for cancellation). [T only]
+    TimerStarted { timer_id: String },
+
+    // ─── Time-based [TP] ───────────────────────────────────────────────────
+
+    /// Time elapsed since combat start. [TP]
+    TimeElapsed { secs: f32 },
+
+    // ─── System-specific ───────────────────────────────────────────────────
+
+    /// Manual/debug trigger. [T only]
+    Manual,
+
+    /// Never triggers. [C only]
+    Never,
+
+    // ─── Composition [TPC] ─────────────────────────────────────────────────
+
+    /// Any condition suffices (OR logic). [TPC]
+    AnyOf { conditions: Vec<Trigger> },
+}
+
+impl Trigger {
+    /// Returns a human-readable label for this trigger type.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::CombatStart => "Combat Start",
+            Self::CombatEnd => "Combat End",
+            Self::AbilityCast { .. } => "Ability Cast",
+            Self::EffectApplied { .. } => "Effect Applied",
+            Self::EffectRemoved { .. } => "Effect Removed",
+            Self::BossHpBelow { .. } => "Boss HP Below",
+            Self::BossHpAbove { .. } => "Boss HP Above",
+            Self::EntitySpawned { .. } => "Entity Spawned",
+            Self::EntityDeath { .. } => "Entity Death",
+            Self::TargetSet { .. } => "Target Set",
+            Self::PhaseEntered { .. } => "Phase Entered",
+            Self::PhaseEnded { .. } => "Phase Ended",
+            Self::AnyPhaseChange => "Any Phase Change",
+            Self::CounterReaches { .. } => "Counter Reaches",
+            Self::TimerExpires { .. } => "Timer Expires",
+            Self::TimerStarted { .. } => "Timer Started",
+            Self::TimeElapsed { .. } => "Time Elapsed",
+            Self::Manual => "Manual",
+            Self::Never => "Never",
+            Self::AnyOf { .. } => "Any Of (OR)",
+        }
+    }
+
+    /// Returns the snake_case type name for this trigger.
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Self::CombatStart => "combat_start",
+            Self::CombatEnd => "combat_end",
+            Self::AbilityCast { .. } => "ability_cast",
+            Self::EffectApplied { .. } => "effect_applied",
+            Self::EffectRemoved { .. } => "effect_removed",
+            Self::BossHpBelow { .. } => "boss_hp_below",
+            Self::BossHpAbove { .. } => "boss_hp_above",
+            Self::EntitySpawned { .. } => "entity_spawned",
+            Self::EntityDeath { .. } => "entity_death",
+            Self::TargetSet { .. } => "target_set",
+            Self::PhaseEntered { .. } => "phase_entered",
+            Self::PhaseEnded { .. } => "phase_ended",
+            Self::AnyPhaseChange => "any_phase_change",
+            Self::CounterReaches { .. } => "counter_reaches",
+            Self::TimerExpires { .. } => "timer_expires",
+            Self::TimerStarted { .. } => "timer_started",
+            Self::TimeElapsed { .. } => "time_elapsed",
+            Self::Manual => "manual",
+            Self::Never => "never",
+            Self::AnyOf { .. } => "any_of",
+        }
+    }
+}
+
+impl Default for Trigger {
+    fn default() -> Self {
+        Self::CombatStart
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Default Color Constants
 // ─────────────────────────────────────────────────────────────────────────────

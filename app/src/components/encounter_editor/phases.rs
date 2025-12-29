@@ -8,6 +8,7 @@ use crate::api;
 use crate::types::{BossListItem, PhaseListItem, PhaseTrigger};
 
 use super::conditions::CounterConditionEditor;
+use super::tabs::EncounterData;
 use super::triggers::PhaseTriggerEditor;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,42 +18,22 @@ use super::triggers::PhaseTriggerEditor;
 #[component]
 pub fn PhasesTab(
     boss: BossListItem,
+    phases: Vec<PhaseListItem>,
+    encounter_data: EncounterData,
+    on_change: EventHandler<Vec<PhaseListItem>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
-    let mut phases = use_signal(Vec::<PhaseListItem>::new);
-    let mut loading = use_signal(|| true);
     let mut expanded_phase = use_signal(|| None::<String>);
     let mut show_new_phase = use_signal(|| false);
 
-    let file_path = boss.file_path.clone();
-    let boss_id = boss.id.clone();
-
-    // Load phases on mount
-    use_effect(move || {
-        let file_path = file_path.clone();
-        let boss_id = boss_id.clone();
-        spawn(async move {
-            if let Some(p) = api::get_phases_for_area(&file_path).await {
-                let boss_phases: Vec<_> = p.into_iter().filter(|p| p.boss_id == boss_id).collect();
-                phases.set(boss_phases);
-            }
-            loading.set(false);
-        });
-    });
-
-    // Get counter IDs for condition editor
-    let counter_ids: Vec<String> = vec![]; // TODO: Load from counters
-
     // Get phase IDs for preceded_by dropdown
-    let phase_ids: Vec<String> = phases().iter().map(|p| p.id.clone()).collect();
+    let phase_ids: Vec<String> = phases.iter().map(|p| p.id.clone()).collect();
 
     rsx! {
         div { class: "phases-tab",
             // Header
             div { class: "flex items-center justify-between mb-sm",
-                span { class: "text-sm text-secondary",
-                    if loading() { "Loading..." } else { "{phases().len()} phases" }
-                }
+                span { class: "text-sm text-secondary", "{phases.len()} phases" }
                 button {
                     class: "btn btn-success btn-sm",
                     onclick: move |_| show_new_phase.set(true),
@@ -62,38 +43,42 @@ pub fn PhasesTab(
 
             // New phase form
             if show_new_phase() {
-                NewPhaseForm {
-                    boss: boss.clone(),
-                    phase_ids: phase_ids.clone(),
-                    counter_ids: counter_ids.clone(),
-                    on_create: move |new_phase: PhaseListItem| {
-                        spawn(async move {
-                            if let Some(created) = api::create_phase(&new_phase).await {
-                                let mut current = phases();
-                                current.push(created);
-                                phases.set(current);
-                                on_status.call(("Created".to_string(), false));
-                            } else {
-                                on_status.call(("Failed to create".to_string(), true));
-                            }
-                        });
-                        show_new_phase.set(false);
-                    },
-                    on_cancel: move |_| show_new_phase.set(false),
+                {
+                    let phases_for_create = phases.clone();
+                    rsx! {
+                        NewPhaseForm {
+                            boss: boss.clone(),
+                            phase_ids: phase_ids.clone(),
+                            encounter_data: encounter_data.clone(),
+                            on_create: move |new_phase: PhaseListItem| {
+                                let phases_clone = phases_for_create.clone();
+                                spawn(async move {
+                                    if let Some(created) = api::create_phase(&new_phase).await {
+                                        let mut current = phases_clone;
+                                        current.push(created);
+                                        on_change.call(current);
+                                        on_status.call(("Created".to_string(), false));
+                                    } else {
+                                        on_status.call(("Failed to create".to_string(), true));
+                                    }
+                                });
+                                show_new_phase.set(false);
+                            },
+                            on_cancel: move |_| show_new_phase.set(false),
+                        }
+                    }
                 }
             }
 
             // Phase list
-            if loading() {
-                div { class: "empty-state text-sm", "Loading phases..." }
-            } else if phases().is_empty() {
+            if phases.is_empty() {
                 div { class: "empty-state text-sm", "No phases defined" }
             } else {
-                for phase in phases() {
+                for phase in phases.clone() {
                     {
                         let phase_key = phase.id.clone();
                         let is_expanded = expanded_phase() == Some(phase_key.clone());
-                        let phases_for_row = phases();
+                        let phases_for_row = phases.clone();
 
                         rsx! {
                             PhaseRow {
@@ -101,13 +86,11 @@ pub fn PhasesTab(
                                 phase: phase.clone(),
                                 all_phases: phases_for_row,
                                 expanded: is_expanded,
-                                counter_ids: counter_ids.clone(),
+                                encounter_data: encounter_data.clone(),
                                 on_toggle: move |_| {
                                     expanded_phase.set(if is_expanded { None } else { Some(phase_key.clone()) });
                                 },
-                                on_change: move |updated: Vec<PhaseListItem>| {
-                                    phases.set(updated);
-                                },
+                                on_change: on_change,
                                 on_status: on_status,
                                 on_collapse: move |_| expanded_phase.set(None),
                             }
@@ -128,7 +111,7 @@ fn PhaseRow(
     phase: PhaseListItem,
     all_phases: Vec<PhaseListItem>,
     expanded: bool,
-    counter_ids: Vec<String>,
+    encounter_data: EncounterData,
     on_toggle: EventHandler<()>,
     on_change: EventHandler<Vec<PhaseListItem>>,
     on_status: EventHandler<(String, bool)>,
@@ -157,7 +140,7 @@ fn PhaseRow(
                             PhaseEditForm {
                                 phase: phase.clone(),
                                 all_phases: all_phases,
-                                counter_ids: counter_ids,
+                                encounter_data: encounter_data,
                                 on_save: move |updated: PhaseListItem| {
                                     on_status.call(("Saving...".to_string(), false));
                                     spawn(async move {
@@ -204,7 +187,7 @@ fn PhaseRow(
 fn PhaseEditForm(
     phase: PhaseListItem,
     all_phases: Vec<PhaseListItem>,
-    counter_ids: Vec<String>,
+    encounter_data: EncounterData,
     on_save: EventHandler<PhaseListItem>,
     on_delete: EventHandler<PhaseListItem>,
 ) -> Element {
@@ -261,6 +244,7 @@ fn PhaseEditForm(
                 div { class: "font-bold text-sm mb-xs", "Start Trigger" }
                 PhaseTriggerEditor {
                     trigger: draft().start_trigger,
+                    encounter_data: encounter_data.clone(),
                     on_change: move |t| {
                         let mut d = draft();
                         d.start_trigger = t;
@@ -279,6 +263,7 @@ fn PhaseEditForm(
                 if draft().end_trigger.is_some() {
                     PhaseTriggerEditor {
                         trigger: draft().end_trigger.clone().unwrap(),
+                        encounter_data: encounter_data.clone(),
                         on_change: move |t| {
                             let mut d = draft();
                             d.end_trigger = Some(t);
@@ -333,7 +318,7 @@ fn PhaseEditForm(
                     label { "Counter" }
                     CounterConditionEditor {
                         condition: draft().counter_condition.clone(),
-                        counters: counter_ids.clone(),
+                        counters: encounter_data.counter_ids(),
                         on_change: move |cond| {
                             let mut d = draft();
                             d.counter_condition = cond;
@@ -348,6 +333,7 @@ fn PhaseEditForm(
                 div { class: "font-bold text-sm mb-xs", "Resets Counters" }
                 CounterListEditor {
                     counters: draft().resets_counters.clone(),
+                    available_counters: encounter_data.counter_ids(),
                     on_change: move |counters| {
                         let mut d = draft();
                         d.resets_counters = counters;
@@ -382,7 +368,7 @@ fn PhaseEditForm(
 fn NewPhaseForm(
     boss: BossListItem,
     phase_ids: Vec<String>,
-    counter_ids: Vec<String>,
+    encounter_data: EncounterData,
     on_create: EventHandler<PhaseListItem>,
     on_cancel: EventHandler<()>,
 ) -> Element {
@@ -438,6 +424,7 @@ fn NewPhaseForm(
                 div { class: "font-bold text-sm mb-xs", "Start Trigger" }
                 PhaseTriggerEditor {
                     trigger: start_trigger(),
+                    encounter_data: encounter_data.clone(),
                     on_change: move |t| start_trigger.set(t),
                 }
             }
@@ -465,9 +452,17 @@ fn NewPhaseForm(
 #[component]
 fn CounterListEditor(
     counters: Vec<String>,
+    available_counters: Vec<String>,
     on_change: EventHandler<Vec<String>>,
 ) -> Element {
-    let mut new_counter = use_signal(String::new);
+    let mut selected_counter = use_signal(String::new);
+
+    // Filter available counters to exclude already selected ones
+    let remaining: Vec<_> = available_counters
+        .iter()
+        .filter(|c| !counters.contains(c))
+        .cloned()
+        .collect();
 
     let counters_for_add = counters.clone();
 
@@ -496,29 +491,36 @@ fn CounterListEditor(
                 }
             }
 
-            // Add new counter
-            div { class: "flex gap-xs",
-                input {
-                    r#type: "text",
-                    class: "input-inline",
-                    style: "width: 150px;",
-                    placeholder: "counter_id",
-                    value: "{new_counter}",
-                    oninput: move |e| new_counter.set(e.value())
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| {
-                        let val = new_counter();
-                        if !val.is_empty() && !counters_for_add.contains(&val) {
-                            let mut new_counters = counters_for_add.clone();
-                            new_counters.push(val);
-                            on_change.call(new_counters);
-                            new_counter.set(String::new());
+            // Add from dropdown
+            if !remaining.is_empty() {
+                div { class: "flex gap-xs",
+                    select {
+                        class: "select",
+                        style: "width: 150px;",
+                        value: "{selected_counter}",
+                        onchange: move |e| selected_counter.set(e.value()),
+                        option { value: "", "Select counter..." }
+                        for counter_id in &remaining {
+                            option { value: "{counter_id}", "{counter_id}" }
                         }
-                    },
-                    "Add"
+                    }
+                    button {
+                        class: "btn btn-sm",
+                        disabled: selected_counter().is_empty(),
+                        onclick: move |_| {
+                            let val = selected_counter();
+                            if !val.is_empty() && !counters_for_add.contains(&val) {
+                                let mut new_counters = counters_for_add.clone();
+                                new_counters.push(val);
+                                on_change.call(new_counters);
+                                selected_counter.set(String::new());
+                            }
+                        },
+                        "Add"
+                    }
                 }
+            } else if available_counters.is_empty() {
+                span { class: "text-xs text-muted", "No counters defined" }
             }
         }
     }

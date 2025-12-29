@@ -5,8 +5,9 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{BossListItem, CounterListItem, CounterTrigger};
+use crate::types::{BossListItem, CounterListItem, CounterTrigger, EntityMatcher};
 
+use super::tabs::EncounterData;
 use super::triggers::CounterTriggerEditor;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -16,36 +17,19 @@ use super::triggers::CounterTriggerEditor;
 #[component]
 pub fn CountersTab(
     boss: BossListItem,
+    counters: Vec<CounterListItem>,
+    encounter_data: EncounterData,
+    on_change: EventHandler<Vec<CounterListItem>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
-    let mut counters = use_signal(Vec::<CounterListItem>::new);
-    let mut loading = use_signal(|| true);
     let mut expanded_counter = use_signal(|| None::<String>);
     let mut show_new_counter = use_signal(|| false);
-
-    let file_path = boss.file_path.clone();
-    let boss_id = boss.id.clone();
-
-    // Load counters on mount
-    use_effect(move || {
-        let file_path = file_path.clone();
-        let boss_id = boss_id.clone();
-        spawn(async move {
-            if let Some(c) = api::get_counters_for_area(&file_path).await {
-                let boss_counters: Vec<_> = c.into_iter().filter(|c| c.boss_id == boss_id).collect();
-                counters.set(boss_counters);
-            }
-            loading.set(false);
-        });
-    });
 
     rsx! {
         div { class: "counters-tab",
             // Header
             div { class: "flex items-center justify-between mb-sm",
-                span { class: "text-sm text-secondary",
-                    if loading() { "Loading..." } else { "{counters().len()} counters" }
-                }
+                span { class: "text-sm text-secondary", "{counters.len()} counters" }
                 button {
                     class: "btn btn-success btn-sm",
                     onclick: move |_| show_new_counter.set(true),
@@ -55,48 +39,52 @@ pub fn CountersTab(
 
             // New counter form
             if show_new_counter() {
-                NewCounterForm {
-                    boss: boss.clone(),
-                    on_create: move |new_counter: CounterListItem| {
-                        spawn(async move {
-                            if let Some(created) = api::create_counter(&new_counter).await {
-                                let mut current = counters();
-                                current.push(created);
-                                counters.set(current);
-                                on_status.call(("Created".to_string(), false));
-                            } else {
-                                on_status.call(("Failed to create".to_string(), true));
-                            }
-                        });
-                        show_new_counter.set(false);
-                    },
-                    on_cancel: move |_| show_new_counter.set(false),
+                {
+                    let counters_for_create = counters.clone();
+                    rsx! {
+                        NewCounterForm {
+                            boss: boss.clone(),
+                            encounter_data: encounter_data.clone(),
+                            on_create: move |new_counter: CounterListItem| {
+                                let counters_clone = counters_for_create.clone();
+                                spawn(async move {
+                                    if let Some(created) = api::create_counter(&new_counter).await {
+                                        let mut current = counters_clone;
+                                        current.push(created);
+                                        on_change.call(current);
+                                        on_status.call(("Created".to_string(), false));
+                                    } else {
+                                        on_status.call(("Failed to create".to_string(), true));
+                                    }
+                                });
+                                show_new_counter.set(false);
+                            },
+                            on_cancel: move |_| show_new_counter.set(false),
+                        }
+                    }
                 }
             }
 
             // Counter list
-            if loading() {
-                div { class: "empty-state text-sm", "Loading counters..." }
-            } else if counters().is_empty() {
+            if counters.is_empty() {
                 div { class: "empty-state text-sm", "No counters defined" }
             } else {
-                for counter in counters() {
+                for counter in counters.clone() {
                     {
                         let counter_key = counter.id.clone();
                         let is_expanded = expanded_counter() == Some(counter_key.clone());
-                        let counters_for_row = counters();
+                        let counters_for_row = counters.clone();
 
                         rsx! {
                             CounterRow {
                                 key: "{counter_key}",
                                 counter: counter.clone(),
                                 expanded: is_expanded,
+                                encounter_data: encounter_data.clone(),
                                 on_toggle: move |_| {
                                     expanded_counter.set(if is_expanded { None } else { Some(counter_key.clone()) });
                                 },
-                                on_change: move |updated: Vec<CounterListItem>| {
-                                    counters.set(updated);
-                                },
+                                on_change: on_change,
                                 on_status: on_status,
                                 on_collapse: move |_| expanded_counter.set(None),
                                 all_counters: counters_for_row,
@@ -118,6 +106,7 @@ fn CounterRow(
     counter: CounterListItem,
     expanded: bool,
     all_counters: Vec<CounterListItem>,
+    encounter_data: EncounterData,
     on_toggle: EventHandler<()>,
     on_change: EventHandler<Vec<CounterListItem>>,
     on_status: EventHandler<(String, bool)>,
@@ -144,6 +133,7 @@ fn CounterRow(
                 div { class: "list-item-body",
                     CounterEditForm {
                         counter: counter.clone(),
+                        encounter_data: encounter_data,
                         on_save: move |updated: CounterListItem| {
                             on_status.call(("Saving...".to_string(), false));
                             spawn(async move {
@@ -191,6 +181,7 @@ fn CounterRow(
 #[component]
 fn CounterEditForm(
     counter: CounterListItem,
+    encounter_data: EncounterData,
     on_save: EventHandler<CounterListItem>,
     on_delete: EventHandler<CounterListItem>,
 ) -> Element {
@@ -230,6 +221,7 @@ fn CounterEditForm(
                 div { class: "font-bold text-sm mb-xs", "Increment On" }
                 CounterTriggerEditor {
                     trigger: draft().increment_on,
+                    encounter_data: encounter_data.clone(),
                     on_change: move |t| {
                         let mut d = draft();
                         d.increment_on = t;
@@ -243,6 +235,7 @@ fn CounterEditForm(
                 div { class: "font-bold text-sm mb-xs", "Reset On" }
                 CounterTriggerEditor {
                     trigger: draft().reset_on,
+                    encounter_data: encounter_data.clone(),
                     on_change: move |t| {
                         let mut d = draft();
                         d.reset_on = t;
@@ -348,13 +341,14 @@ fn CounterEditForm(
 #[component]
 fn NewCounterForm(
     boss: BossListItem,
+    encounter_data: EncounterData,
     on_create: EventHandler<CounterListItem>,
     on_cancel: EventHandler<()>,
 ) -> Element {
     let mut id = use_signal(|| "new_counter".to_string());
     let mut increment_on = use_signal(|| CounterTrigger::AbilityCast {
         abilities: vec![],
-        source: vec![],
+        source: EntityMatcher::default(),
     });
     let mut reset_on = use_signal(|| CounterTrigger::CombatEnd);
 
@@ -389,6 +383,7 @@ fn NewCounterForm(
                 div { class: "font-bold text-sm mb-xs", "Increment On" }
                 CounterTriggerEditor {
                     trigger: increment_on(),
+                    encounter_data: encounter_data.clone(),
                     on_change: move |t| increment_on.set(t),
                 }
             }
@@ -397,6 +392,7 @@ fn NewCounterForm(
                 div { class: "font-bold text-sm mb-xs", "Reset On" }
                 CounterTriggerEditor {
                     trigger: reset_on(),
+                    encounter_data: encounter_data.clone(),
                     on_change: move |t| reset_on.set(t),
                 }
             }
