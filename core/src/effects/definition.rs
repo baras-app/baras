@@ -5,48 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Entity Filter (shared by effects and timers)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// Filter for matching entities (used for both source and target)
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EntityFilter {
-    /// The local player only
-    #[default]
-    LocalPlayer,
-    /// Local player's companion
-    LocalCompanion,
-    /// Local player OR their companion
-    LocalPlayerOrCompanion,
-    /// Other players (not local)
-    OtherPlayers,
-    /// Other players' companions
-    OtherCompanions,
-    /// Any player (including local)
-    AnyPlayer,
-    /// Any companion (any player's)
-    AnyCompanion,
-    /// Any player or companion
-    AnyPlayerOrCompanion,
-    /// Group members (players in the local player's group)
-    GroupMembers,
-    /// Group members except local player
-    GroupMembersExceptLocal,
-    /// Boss NPCs specifically
-    Boss,
-    /// Non-boss NPCs (trash mobs)
-    NpcExceptBoss,
-    /// Any NPC (boss or trash)
-    AnyNpc,
-    /// Specific entity by name
-    Specific(String),
-    /// Specific NPC by class/template ID
-    SpecificNpc(i64),
-    /// Any entity whatsoever
-    Any,
-}
+// Re-export EntityFilter from shared module for backwards compatibility
+pub use crate::entity_filter::EntityFilter;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Effect Definitions

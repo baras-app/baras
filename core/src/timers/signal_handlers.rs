@@ -8,7 +8,6 @@ use chrono::NaiveDateTime;
 use crate::combat_log::EntityType;
 use crate::context::IStr;
 
-use super::matching::matches_entity_filter;
 use super::{TimerManager, TimerTrigger};
 
 /// Handle ability activation
@@ -18,9 +17,11 @@ pub(super) fn handle_ability(
     source_id: i64,
     source_type: EntityType,
     source_name: IStr,
+    source_npc_id: i64,
     target_id: i64,
     target_type: EntityType,
     target_name: IStr,
+    target_npc_id: i64,
     timestamp: NaiveDateTime,
 ) {
     // Convert i64 to u64 for matching (game IDs are always positive)
@@ -32,7 +33,8 @@ pub(super) fn handle_ability(
             let matches_ability = d.matches_ability(ability_id);
             let is_active = manager.is_definition_active(d);
             let matches_filters = manager.matches_source_target_filters(
-                d, source_id, source_type, source_name, target_id, target_type, target_name
+                d, source_id, source_type, source_name, source_npc_id,
+                target_id, target_type, target_name, target_npc_id,
             );
             if matches_ability && !is_active {
                 let diff_str = manager.context.difficulty.map(|d| d.config_key()).unwrap_or("none");
@@ -63,9 +65,11 @@ pub(super) fn handle_effect_applied(
     source_id: i64,
     source_type: EntityType,
     source_name: IStr,
+    source_npc_id: i64,
     target_id: i64,
     target_type: EntityType,
     target_name: IStr,
+    target_npc_id: i64,
     timestamp: NaiveDateTime,
 ) {
     // Convert i64 to u64 for matching (game IDs are always positive)
@@ -77,7 +81,8 @@ pub(super) fn handle_effect_applied(
             d.matches_effect_applied(effect_id)
                 && manager.is_definition_active(d)
                 && manager.matches_source_target_filters(
-                    d, source_id, source_type, source_name, target_id, target_type, target_name
+                    d, source_id, source_type, source_name, source_npc_id,
+                    target_id, target_type, target_name, target_npc_id,
                 )
         })
         .cloned()
@@ -95,15 +100,20 @@ pub(super) fn handle_effect_applied(
 }
 
 /// Handle effect removed
+///
+/// Note: EffectRemoved signals don't include NPC IDs in the game log,
+/// so npc_id params will typically be 0.
 pub(super) fn handle_effect_removed(
     manager: &mut TimerManager,
     effect_id: i64,
     source_id: i64,
     source_type: EntityType,
     source_name: IStr,
+    source_npc_id: i64,
     target_id: i64,
     target_type: EntityType,
     target_name: IStr,
+    target_npc_id: i64,
     timestamp: NaiveDateTime,
 ) {
     // Convert i64 to u64 for matching (game IDs are always positive)
@@ -115,7 +125,8 @@ pub(super) fn handle_effect_removed(
             d.matches_effect_removed(effect_id)
                 && manager.is_definition_active(d)
                 && manager.matches_source_target_filters(
-                    d, source_id, source_type, source_name, target_id, target_type, target_name
+                    d, source_id, source_type, source_name, source_npc_id,
+                    target_id, target_type, target_name, target_npc_id,
                 )
         })
         .cloned()
@@ -288,7 +299,7 @@ pub(super) fn handle_target_set(
 
     for def in matching {
         // Check target filter (e.g., local_player, any_player, etc.)
-        if !matches_entity_filter(&def.target, target_id, target_entity_type, target_name, manager.local_player_id, &manager.boss_entity_ids) {
+        if !def.target.matches(target_id, target_entity_type, target_name, 0, manager.local_player_id, &manager.boss_entity_ids) {
             continue;
         }
         eprintln!("[TIMER] Starting target-set timer '{}' (targeted by {} [{}])", def.name, source_name_str, source_npc_id);

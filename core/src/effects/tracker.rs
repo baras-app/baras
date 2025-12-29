@@ -4,7 +4,7 @@
 //! configured effect definitions. Produces `ActiveEffect` instances
 //! that can be fed to overlay renderers.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use chrono::NaiveDateTime;
@@ -13,7 +13,7 @@ use crate::combat_log::EntityType;
 use crate::context::IStr;
 use crate::signal_processor::{GameSignal, SignalHandler};
 
-use super::{ActiveEffect, EffectDefinition, EntityFilter};
+use super::{ActiveEffect, EffectDefinition};
 
 /// Combined set of effect definitions
 #[derive(Debug, Clone, Default)]
@@ -139,7 +139,7 @@ pub struct EffectTracker {
 
     /// Boss entity IDs currently in combat (from BossHpChanged signals)
     /// Used for Boss entity filter matching
-    boss_entity_ids: Vec<i64>,
+    boss_entity_ids: HashSet<i64>,
 }
 
 impl Default for EffectTracker {
@@ -160,7 +160,7 @@ impl EffectTracker {
             live_mode: false, // Start in historical mode
             new_targets: Vec::new(),
             current_targets: HashMap::new(),
-            boss_entity_ids: Vec::new(),
+            boss_entity_ids: HashSet::new(),
         }
     }
 
@@ -521,51 +521,8 @@ impl EffectTracker {
         source: EntityInfo,
         target: EntityInfo,
     ) -> bool {
-        self.matches_entity_filter(&def.source, source)
-            && self.matches_entity_filter(&def.target, target)
-    }
-
-    /// Check if an entity matches a filter
-    fn matches_entity_filter(&self, filter: &EntityFilter, entity: EntityInfo) -> bool {
-        let local_id = self.local_player_id;
-        let is_local = local_id == Some(entity.id);
-        let is_player = matches!(entity.entity_type, EntityType::Player);
-        let is_companion = matches!(entity.entity_type, EntityType::Companion);
-        let is_npc = matches!(entity.entity_type, EntityType::Npc);
-
-        match filter {
-            // Player filters
-            EntityFilter::LocalPlayer => is_local && is_player,
-            EntityFilter::OtherPlayers => !is_local && is_player,
-            EntityFilter::AnyPlayer => is_player,
-            // Group filters - for now, treat all players as potential group members
-            EntityFilter::GroupMembers => is_player,
-            EntityFilter::GroupMembersExceptLocal => !is_local && is_player,
-
-            // Companion filters
-            EntityFilter::LocalCompanion => is_companion, // Assume local's companion in solo
-            EntityFilter::OtherCompanions => is_companion && !is_local,
-            EntityFilter::AnyCompanion => is_companion,
-            EntityFilter::LocalPlayerOrCompanion => (is_local && is_player) || is_companion,
-            EntityFilter::AnyPlayerOrCompanion => is_player || is_companion,
-
-            // NPC filters
-            EntityFilter::AnyNpc => is_npc,
-            EntityFilter::Boss => is_npc && self.boss_entity_ids.contains(&entity.id),
-            EntityFilter::NpcExceptBoss => is_npc && !self.boss_entity_ids.contains(&entity.id),
-
-            // Specific entity by name
-            EntityFilter::Specific(name) => {
-                let entity_name = crate::context::resolve(entity.name);
-                entity_name.eq_ignore_ascii_case(name)
-            }
-
-            // Specific NPC by class/template ID
-            EntityFilter::SpecificNpc(npc_id) => is_npc && entity.npc_id == *npc_id,
-
-            // Any entity
-            EntityFilter::Any => true,
-        }
+        def.source.matches(source.id, source.entity_type, source.name, source.npc_id, self.local_player_id, &self.boss_entity_ids)
+            && def.target.matches(target.id, target.entity_type, target.name, target.npc_id, self.local_player_id, &self.boss_entity_ids)
     }
 }
 
@@ -684,15 +641,11 @@ impl SignalHandler for EffectTracker {
             }
             GameSignal::BossEncounterDetected { entity_id, .. } => {
                 // Track boss entity ID immediately when encounter is detected
-                if !self.boss_entity_ids.contains(entity_id) {
-                    self.boss_entity_ids.push(*entity_id);
-                }
+                self.boss_entity_ids.insert(*entity_id);
             }
             GameSignal::BossHpChanged { entity_id, .. } => {
                 // Track boss entity IDs for the Boss filter
-                if !self.boss_entity_ids.contains(entity_id) {
-                    self.boss_entity_ids.push(*entity_id);
-                }
+                self.boss_entity_ids.insert(*entity_id);
             }
             _ => {}
         }

@@ -5,7 +5,7 @@
 use chrono::Local;
 
 use crate::signal_processor::{GameSignal, SignalHandler};
-use crate::effects::EntityFilter;
+use crate::entity_filter::EntityFilter;
 use super::{TimerDefinition, TimerManager, TimerTrigger};
 
 /// Create a test timer with the given trigger

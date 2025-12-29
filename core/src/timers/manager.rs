@@ -477,14 +477,16 @@ impl TimerManager {
         source_id: i64,
         source_type: EntityType,
         source_name: IStr,
+        source_npc_id: i64,
         target_id: i64,
         target_type: EntityType,
         target_name: IStr,
+        target_npc_id: i64,
     ) -> bool {
         matches_source_target_filters(
             def,
-            source_id, source_type, source_name,
-            target_id, target_type, target_name,
+            source_id, source_type, source_name, source_npc_id,
+            target_id, target_type, target_name, target_npc_id,
             self.local_player_id, &self.boss_entity_ids,
         )
     }
@@ -520,17 +522,18 @@ impl SignalHandler for TimerManager {
                 source_id,
                 source_entity_type,
                 source_name,
+                source_npc_id,
                 target_id,
                 target_entity_type,
                 target_name,
+                target_npc_id,
                 timestamp,
-                ..
             } => {
                 signal_handlers::handle_ability(
                     self,
                     *ability_id,
-                    *source_id, *source_entity_type, *source_name,
-                    *target_id, *target_entity_type, *target_name,
+                    *source_id, *source_entity_type, *source_name, *source_npc_id,
+                    *target_id, *target_entity_type, *target_name, *target_npc_id,
                     *timestamp,
                 );
             }
@@ -540,17 +543,19 @@ impl SignalHandler for TimerManager {
                 source_id,
                 source_entity_type,
                 source_name,
+                source_npc_id,
                 target_id,
                 target_entity_type,
                 target_name,
+                target_npc_id,
                 timestamp,
                 ..
             } => {
                 signal_handlers::handle_effect_applied(
                     self,
                     *effect_id,
-                    *source_id, *source_entity_type, *source_name,
-                    *target_id, *target_entity_type, *target_name,
+                    *source_id, *source_entity_type, *source_name, *source_npc_id,
+                    *target_id, *target_entity_type, *target_name, *target_npc_id,
                     *timestamp,
                 );
             }
@@ -564,13 +569,13 @@ impl SignalHandler for TimerManager {
                 target_entity_type,
                 target_name,
                 timestamp,
-                ..
             } => {
+                // EffectRemoved doesn't include npc_ids in the game log, pass 0
                 signal_handlers::handle_effect_removed(
                     self,
                     *effect_id,
-                    *source_id, *source_entity_type, *source_name,
-                    *target_id, *target_entity_type, *target_name,
+                    *source_id, *source_entity_type, *source_name, 0,
+                    *target_id, *target_entity_type, *target_name, 0,
                     *timestamp,
                 );
             }

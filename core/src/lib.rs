@@ -3,6 +3,7 @@ pub mod combat_log;
 pub mod context;
 pub mod effects;
 pub mod encounter;
+pub mod entity_filter;
 pub mod signal_processor;
 pub mod game_data;
 pub mod serde_defaults;
@@ -15,7 +16,8 @@ pub use game_data as swtor_data;
 // Re-exports for convenience
 pub use combat_log::*;
 pub use context::watcher as directory_watcher;
-pub use effects::{ActiveEffect, DefinitionConfig, DefinitionSet, EffectCategory, EffectDefinition, EffectTracker, EntityFilter, NewTargetInfo};
+pub use effects::{ActiveEffect, DefinitionConfig, DefinitionSet, EffectCategory, EffectDefinition, EffectTracker, NewTargetInfo};
+pub use entity_filter::EntityFilter;
 pub use encounter::metrics::PlayerMetrics;
 pub use encounter::summary::{EncounterSummary, EncounterHistory};
 pub use encounter::{PhaseType, BossHealthEntry};

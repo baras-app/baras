@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::effects::EntityFilter;
+use crate::entity_filter::EntityFilter;
 use crate::boss::CounterCondition;
 use crate::game_data::Difficulty;
 
