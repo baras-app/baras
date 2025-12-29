@@ -11,17 +11,22 @@ area_id = 3367426158755840
 [[boss]]
 id = "malaphar"
 name = "Malaphar the Savage"
-difficulties = ["veteran"]
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
 name = "Malaphar the Savage"
-ids = []
+ids = [
+    3469281308180480,  # Story 16
+    3431245077807104,  # Story 8
+    3469285603147776,  # Veteran 16
+    3469277013213184,  # Veteran 8
+]
 is_boss = true
 is_kill_target = true
 
-[[boss.phases]]
-id = "mal_main"
-name = "Main"
+[[boss.phase]]
+id = "p1"
+name = "Phase 1"
 trigger = { type = "combat_start" }
 
 # -- Combat Start Timers --
@@ -29,7 +34,7 @@ trigger = { type = "combat_start" }
 id = "mal_adds_cs"
 name = "Adds"
 trigger = { type = "combat_start" }
-duration_secs = 30
+duration_secs = 30.0
 color = [21, 153, 20, 255]
 difficulties = ["veteran"]
 
@@ -38,7 +43,7 @@ difficulties = ["veteran"]
 id = "mal_adds"
 name = "Adds"
 trigger = { type = "ability_cast", ability_ids = [3469470286741504] }
-duration_secs = 45
+duration_secs = 45.0
 color = [21, 153, 20, 255]
 difficulties = ["veteran"]
 
@@ -46,23 +51,25 @@ difficulties = ["veteran"]
 id = "mal_hammer_smash"
 name = "Hammer Smash"
 trigger = { type = "ability_cast", ability_ids = [3437760543195136] }
-duration_secs = 5
+duration_secs = 5.0
 color = [229, 123, 29, 255]
 difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "mal_spear_toss"
 name = "Spear Toss"
-trigger = { type = "ability_cast", ability_ids = [3440333228605440] }
-duration_secs = 10
+trigger = { type = "ability_cast", ability_ids = [3437799197900800] }
+duration_secs = 10.0
 color = [164, 29, 224, 255]
 difficulties = ["veteran"]
 
+# Spear Fixate: 3s warning when fixate wears off (player needs to move)
 [[boss.timer]]
 id = "mal_spear_fixate"
 name = "Spear Fixate"
-trigger = { type = "effect_applied", effect_ids = [3437799197900800] }
-duration_secs = 3
+trigger = { type = "effect_removed", effect_ids = [3437799197900800] }
+target = "local_player"
+duration_secs = 3.0
 color = [164, 29, 224, 255]
 difficulties = ["veteran"]
 
@@ -83,23 +90,28 @@ difficulties = ["veteran"]
 [[boss]]
 id = "sword_squadron"
 name = "Sword Squadron"
-difficulties = ["veteran"]
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
 name = "Sword Squadron Unit 1"
-ids = []
+ids = [
+    3468765912104960,  # Veteran 8
+    3468774502039552,  # Veteran 16
+    3468770207072256,  # Story 16
+    3447784996864000,  # Story 8
+]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Sword Squadron Unit 2"
-ids = []
+ids = [3447789291831296]  # All difficulties
 is_boss = true
 is_kill_target = true
 
-[[boss.phases]]
-id = "ss_main"
-name = "Main"
+[[boss.phase]]
+id = "p1"
+name = "Phase 1"
 trigger = { type = "combat_start" }
 
 # -- Combat Start Timers --
@@ -107,7 +119,7 @@ trigger = { type = "combat_start" }
 id = "ss_shield_cs"
 name = "Shield"
 trigger = { type = "combat_start" }
-duration_secs = 30
+duration_secs = 30.0
 color = [32, 34, 219, 255]
 difficulties = ["veteran"]
 
@@ -115,32 +127,22 @@ difficulties = ["veteran"]
 id = "ss_gravity_cs"
 name = "Gravity"
 trigger = { type = "combat_start" }
-duration_secs = 45  # Guide: "every 40 seconds starting 45 seconds into the fight"
-color = [36, 214, 210, 255]
-difficulties = ["veteran"]  # HM only per guide (no master in ToS)
-
-[[boss.timer]]
-id = "ss_rapid_fire_cs"
-name = "Rapid Fire"
-trigger = { type = "combat_start" }
-duration_secs = 15
-color = [224, 123, 29, 255]
-difficulties = ["veteran"]
-
-[[boss.timer]]
-id = "ss_ground_grenade_cs"
-name = "Ground/Grenade"
-trigger = { type = "combat_start" }
-duration_secs = 20
+duration_secs = 40.0  # ORBS: 40s
 color = [36, 214, 210, 255]
 difficulties = ["veteran"]
 
 # -- Ability Timers --
+# Shield: self-chaining timer for scripted 60s mechanic
+# Triggers on ability cast OR when previous Shield timer expires (for when cast isn't logged)
 [[boss.timer]]
 id = "ss_shield"
 name = "Shield"
-trigger = { type = "ability_cast", ability_ids = [3498933762392064] }
-duration_secs = 45  # ORBS screenshot shows 45s (not 60s from extraction)
+trigger = { type = "any_of", conditions = [
+    { type = "ability_cast", ability_ids = [3498933762392064] },
+    { type = "timer_expires", timer_id = "ss_shield_cs" },
+    { type = "timer_expires", timer_id = "ss_shield" },
+]}
+duration_secs = 60.0
 color = [29, 39, 224, 255]
 difficulties = ["veteran"]
 
@@ -148,51 +150,8 @@ difficulties = ["veteran"]
 id = "ss_gravity"
 name = "Gravity"
 trigger = { type = "ability_cast", ability_ids = [3519549605412864] }
-duration_secs = 40
+duration_secs = 40.0
 color = [33, 224, 218, 255]
-difficulties = ["veteran"]  # HM only per guide (no master in ToS)
-
-[[boss.timer]]
-id = "ss_mine_droid"
-name = "Mine + Droid"
-trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
-duration_secs = 45
-color = [21, 153, 20, 255]
-difficulties = ["veteran"]
-
-[[boss.timer]]
-id = "ss_huge_grenade"
-name = "Huge Grenade"
-trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
-duration_secs = 30
-color = [153, 153, 21, 255]
-difficulties = ["veteran"]
-
-[[boss.timer]]
-id = "ss_mega_blast"
-name = "Mega Blast"
-trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
-duration_secs = 17
-color = [189, 24, 185, 255]
-difficulties = ["veteran"]
-
-[[boss.timer]]
-id = "ss_rapid_fire"
-name = "Rapid Fire"
-trigger = { type = "ability_cast", ability_ids = [] }  # TODO: Get ability ID from logs
-duration_secs = 25
-color = [224, 123, 29, 255]
-difficulties = ["veteran"]
-
-# -- Alerts --
-[[boss.timer]]
-id = "ss_shield_removed"
-name = "Shield Removed"
-is_alert = true
-trigger = { type = "effect_removed", effect_ids = [3498933762392064] }
-target = { specific = "Sword Squadron Unit 1" }
-alert_text = "Shield Removed"
-color = [42, 32, 219, 255]
 difficulties = ["veteran"]
 
 # -- Rain of Missiles (counter-gated repeating timer) --
@@ -203,19 +162,18 @@ difficulties = ["veteran"]
 # Counter: Tracks if Rain of Missiles timer is active (0 = can trigger, 1 = locked)
 [[boss.counter]]
 id = "rain_lock"
-increment_on = { type = "ability_cast", ability_ids = [3448064169738240], source = "Sword Squadron Unit 2" }
+increment_on = { type = "ability_cast", ability_ids = [3448064169738240] }
 reset_on = { type = "timer_expires", timer_id = "ss_rain_of_missiles" }
 initial_value = 0
-set_value = 1  # Set to 1 (not increment) when ability is cast
+set_value = 1
 
 # Timer: 19s countdown until next Rain of Missiles
 [[boss.timer]]
 id = "ss_rain_of_missiles"
 name = "Rain of Missiles"
 trigger = { type = "ability_cast", ability_ids = [3448064169738240] }
-source = { specific = "Sword Squadron Unit 2" }
 counter_condition = { counter_id = "rain_lock", operator = "eq", value = 0 }
-duration_secs = 19
+duration_secs = 19.0
 color = [219, 32, 28, 255]
 difficulties = ["veteran"]
 
@@ -235,20 +193,26 @@ difficulties = ["veteran"]
 [[boss]]
 id = "underlurker"
 name = "The Underlurker"
-difficulties = ["veteran"]
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
 name = "The Underlurker"
-ids = []
+ids = [
+    3411402328899584,  # Story 8
+    3462267626586112,  # Story 16
+    3462263331618816,  # Veteran 8
+    3462271921553408,  # Veteran 16
+]
 is_boss = true
 is_kill_target = true
 
-[[boss.phases]]
+[[boss.phase]]
 id = "ul_main"
 name = "Main"
 trigger = { type = "combat_start" }
 
 # -- Ability Timers --
+# PREDICTIVE timers: trigger fires on current ability, timer shows what's COMING next
 [[boss.timer]]
 id = "ul_collapse"
 name = "Collapse"
@@ -260,7 +224,7 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "ul_rage_storm"
 name = "Rage Storm"
-trigger = { type = "ability_cast", ability_ids = [3411423803736064] }
+trigger = { type = "ability_cast", ability_ids = [3411423803736064] }  # Collapse → Rage Storm coming
 duration_secs = 10.5
 color = [224, 35, 33, 255]
 difficulties = ["veteran"]
@@ -268,14 +232,14 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "ul_leap"
 name = "Leap"
-trigger = { type = "ability_cast", ability_ids = [3411569832624128] }
+trigger = { type = "ability_cast", ability_ids = [3411569832624128] }  # Rage Storm → Leap coming
 duration_secs = 9
 color = [180, 184, 23, 255]
 difficulties = ["veteran"]
 
 [[boss.timer]]
-id = "ul_adds"
-name = "Adds"
+id = "ul_devastation"
+name = "Cross"
 trigger = { type = "ability_cast", ability_ids = [3413575582351360] }
 duration_secs = 10
 color = [24, 173, 19, 255]
@@ -290,11 +254,6 @@ trigger = { type = "boss_hp_threshold", hp_percent = 90.0, boss_name = "The Unde
 alert_text = "Adds Spawn"
 color = [24, 173, 19, 255]
 difficulties = ["veteran"]
-
-# NOTE from guide: The encounter has 5 cycles (enrage at 4:50min / 290s)
-# Each cycle: Lurkerlings spawn → Collapse (9s channel) → Rage Storm (7s channel) → Cross Phase (Devastation 7s cast)
-# The Cross Phase requires equal distribution of players on each side of the cross (HM)
-# Front player receives Full-bore debuff and must swap positions next Cross Phase
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Revanite Commanders
