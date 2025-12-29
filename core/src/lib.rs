@@ -9,6 +9,7 @@ pub mod game_data;
 pub mod serde_defaults;
 pub mod state;
 pub mod timers;
+pub mod triggers;
 
 // Backward compatibility aliases
 pub use game_data as swtor_data;

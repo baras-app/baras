@@ -845,12 +845,9 @@ fn EntityFilterSelector(
                     let new_filter = match e.value().as_str() {
                         "any" => EntityFilter::Any,
                         "local_player" => EntityFilter::LocalPlayer,
-                        "local_companion" => EntityFilter::LocalCompanion,
-                        "local_player_or_companion" => EntityFilter::LocalPlayerOrCompanion,
                         "other_players" => EntityFilter::OtherPlayers,
                         "any_player" => EntityFilter::AnyPlayer,
                         "any_companion" => EntityFilter::AnyCompanion,
-                        "any_player_or_companion" => EntityFilter::AnyPlayerOrCompanion,
                         "group_members" => EntityFilter::GroupMembers,
                         "group_members_except_local" => EntityFilter::GroupMembersExceptLocal,
                         "boss" => EntityFilter::Boss,

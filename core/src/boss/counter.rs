@@ -4,6 +4,11 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::triggers::Trigger;
+
+// Re-export Trigger as CounterTrigger for backward compatibility during migration
+pub use crate::triggers::Trigger as CounterTrigger;
+
 /// A counter that tracks occurrences during a boss fight
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CounterDefinition {
@@ -11,12 +16,12 @@ pub struct CounterDefinition {
     pub id: String,
 
     /// What increments this counter
-    pub increment_on: CounterTrigger,
+    pub increment_on: Trigger,
 
     /// When to reset to initial_value (default: combat_end)
     /// Uses the same trigger types as increment_on for consistency
-    #[serde(default)]
-    pub reset_on: CounterTrigger,
+    #[serde(default = "default_reset_trigger")]
+    pub reset_on: Trigger,
 
     /// Starting value (and value after reset)
     #[serde(default)]
@@ -31,116 +36,8 @@ pub struct CounterDefinition {
     pub set_value: Option<u32>,
 }
 
-/// Events that increment or modify a counter
-/// Used for both `increment_on` and `reset_on` triggers
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case", tag = "type")]
-pub enum CounterTrigger {
-    /// Combat starts (useful for reset_on to reset at fight start)
-    CombatStart,
-
-    /// Combat ends (default reset behavior)
-    CombatEnd,
-
-    /// Ability is cast
-    AbilityCast {
-        #[serde(default)]
-        ability_ids: Vec<u64>,
-        /// Optional source filter (entity name from roster)
-        #[serde(default)]
-        source: Option<String>,
-    },
-
-    /// Effect/buff is applied
-    EffectApplied {
-        #[serde(default)]
-        effect_ids: Vec<u64>,
-        /// Optional target filter ("local_player" or entity name)
-        #[serde(default)]
-        target: Option<String>,
-    },
-
-    /// Effect/buff is removed
-    EffectRemoved {
-        #[serde(default)]
-        effect_ids: Vec<u64>,
-        /// Optional target filter ("local_player" or entity name)
-        #[serde(default)]
-        target: Option<String>,
-    },
-
-    /// Timer expires
-    TimerExpires {
-        timer_id: String,
-    },
-
-    /// Timer starts (for cancellation patterns)
-    TimerStarts {
-        timer_id: String,
-    },
-
-    /// Phase is entered
-    PhaseEntered {
-        phase_id: String,
-    },
-
-    /// Phase ends
-    PhaseEnded {
-        phase_id: String,
-    },
-
-    /// Any phase change occurs
-    AnyPhaseChange,
-
-    /// NPC is first seen (add spawn)
-    EntityFirstSeen {
-        /// Entity reference from roster (preferred)
-        #[serde(default)]
-        entity: Option<String>,
-        /// NPC ID (legacy/fallback)
-        #[serde(default)]
-        npc_id: Option<i64>,
-        /// Entity name fallback (runtime matching)
-        #[serde(default)]
-        entity_name: Option<String>,
-    },
-
-    /// Entity dies
-    EntityDeath {
-        /// Entity reference from roster (preferred)
-        #[serde(default)]
-        entity: Option<String>,
-        /// NPC ID (legacy/fallback)
-        #[serde(default)]
-        npc_id: Option<i64>,
-        /// Entity name fallback (runtime matching)
-        #[serde(default)]
-        entity_name: Option<String>,
-    },
-
-    /// Counter reaches a specific value (for chained counter logic)
-    CounterReaches {
-        counter_id: String,
-        value: u32,
-    },
-
-    /// HP threshold crossed (for HP-based counter triggers)
-    BossHpBelow {
-        hp_percent: f32,
-        #[serde(default)]
-        entity: Option<String>,
-        #[serde(default)]
-        boss_name: Option<String>,
-    },
-
-    /// Never triggers (use for counters that should never auto-reset)
-    Never,
-}
-
-impl Default for CounterTrigger {
-    fn default() -> Self {
-        CounterTrigger::CombatEnd
-    }
+fn default_reset_trigger() -> Trigger {
+    Trigger::CombatEnd
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

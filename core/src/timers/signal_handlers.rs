@@ -54,7 +54,7 @@ pub(super) fn handle_ability(
 
     // Check for cancel triggers on ability cast
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::AbilityCast { ability_ids } if ability_ids.contains(&ability_id)),
+        |t| matches!(t, TimerTrigger::AbilityCast { ability_ids, .. } if ability_ids.contains(&ability_id)),
         &format!("ability {} cast", ability_id)
     );
 }
@@ -95,7 +95,7 @@ pub(super) fn handle_effect_applied(
 
     // Check for cancel triggers on effect applied
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::EffectApplied { effect_ids } if effect_ids.contains(&effect_id)),
+        |t| matches!(t, TimerTrigger::EffectApplied { effect_ids, .. } if effect_ids.contains(&effect_id)),
         &format!("effect {} applied", effect_id)
     );
 }
@@ -139,7 +139,7 @@ pub(super) fn handle_effect_removed(
 
     // Check for cancel triggers on effect removed
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::EffectRemoved { effect_ids } if effect_ids.contains(&effect_id)),
+        |t| matches!(t, TimerTrigger::EffectRemoved { effect_ids, .. } if effect_ids.contains(&effect_id)),
         &format!("effect {} removed", effect_id)
     );
 }
@@ -168,7 +168,7 @@ pub(super) fn handle_boss_hp_change(
         eprintln!("[TIMER] Starting HP threshold timer '{}' (HP crossed below {}% for {})",
             def.name,
             match &def.trigger {
-                TimerTrigger::BossHpThreshold { hp_percent, .. } => *hp_percent,
+                TimerTrigger::BossHpBelow { hp_percent, .. } => *hp_percent,
                 _ => 0.0,
             },
             npc_name
@@ -245,7 +245,7 @@ pub(super) fn handle_npc_first_seen(manager: &mut TimerManager, npc_id: i64, npc
     let matching: Vec<_> = manager.definitions
         .values()
         .filter(|d| {
-            let matches = d.matches_entity_first_seen(npc_id, Some(npc_name));
+            let matches = d.matches_entity_spawned(npc_id, Some(npc_name));
             if matches {
                 let is_active = manager.is_definition_active(d);
                 if !is_active {

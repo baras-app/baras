@@ -1,19 +1,15 @@
 //! Phase transition logic for boss encounters.
 //!
 //! Phases represent distinct stages of a boss fight (e.g., "Walker 1", "Burn Phase").
-//! This module handles detecting phase transitions based on various triggers:
-//! - HP thresholds (BossHpBelow/Above)
-//! - Ability/effect events (AbilityCast, EffectApplied/Removed)
-//! - Entity lifecycle (EntityFirstSeen, EntityDeath)
-//! - Time elapsed (TimeElapsed)
-//! - Counter values (CounterReaches)
+//! This module handles detecting phase transitions based on various triggers.
 
 use chrono::NaiveDateTime;
 
-use crate::boss::{BossEncounterState, PhaseTrigger};
+use crate::boss::BossEncounterState;
 use crate::combat_log::CombatEvent;
 use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
+use crate::triggers::Trigger;
 
 use super::GameSignal;
 
@@ -142,7 +138,7 @@ pub fn check_ability_phase_transitions(
     Vec::new()
 }
 
-/// Check for phase transitions based on entity signals (EntityFirstSeen, EntityDeath).
+/// Check for phase transitions based on entity signals (EntitySpawned, EntityDeath).
 pub fn check_entity_phase_transitions(
     cache: &mut SessionCache,
     current_signals: &[GameSignal],
@@ -314,46 +310,56 @@ pub fn check_phase_end_triggers(
 
 /// Check if an HP-based phase trigger is satisfied.
 pub fn check_hp_trigger(
-    trigger: &PhaseTrigger,
+    trigger: &Trigger,
     old_hp: f32,
     new_hp: f32,
     npc_id: i64,
     state: &BossEncounterState,
 ) -> bool {
     match trigger {
-        PhaseTrigger::BossHpBelow { hp_percent, npc_id: trigger_npc, boss_name, .. } => {
+        Trigger::BossHpBelow { hp_percent, entity } => {
             let crossed = old_hp > *hp_percent && new_hp <= *hp_percent;
             if !crossed {
                 return false;
             }
 
-            if let Some(required_npc) = trigger_npc {
-                return npc_id == *required_npc;
+            // Check entity filter if specified
+            if entity.is_empty() {
+                return true; // No filter = any boss
             }
 
-            if let Some(name) = boss_name {
+            if entity.matches_npc_id(npc_id) {
+                return true;
+            }
+
+            // Check by name in hp_by_name
+            if let Some(ref name) = entity.name {
                 return state.hp_by_name.contains_key(name);
             }
 
-            true
+            false
         }
-        PhaseTrigger::BossHpAbove { hp_percent, npc_id: trigger_npc, boss_name, .. } => {
+        Trigger::BossHpAbove { hp_percent, entity } => {
             let crossed = old_hp < *hp_percent && new_hp >= *hp_percent;
             if !crossed {
                 return false;
             }
 
-            if let Some(required_npc) = trigger_npc {
-                return npc_id == *required_npc;
+            if entity.is_empty() {
+                return true;
             }
 
-            if let Some(name) = boss_name {
+            if entity.matches_npc_id(npc_id) {
+                return true;
+            }
+
+            if let Some(ref name) = entity.name {
                 return state.hp_by_name.contains_key(name);
             }
 
-            true
+            false
         }
-        PhaseTrigger::AnyOf { conditions } => {
+        Trigger::AnyOf { conditions } => {
             conditions.iter().any(|c| check_hp_trigger(c, old_hp, new_hp, npc_id, state))
         }
         _ => false,
@@ -361,92 +367,78 @@ pub fn check_hp_trigger(
 }
 
 /// Check if an ability/effect-based phase trigger is satisfied.
-pub fn check_ability_trigger(trigger: &PhaseTrigger, event: &CombatEvent) -> bool {
+pub fn check_ability_trigger(trigger: &Trigger, event: &CombatEvent) -> bool {
     match trigger {
-        PhaseTrigger::AbilityCast { ability_ids } => {
+        Trigger::AbilityCast { ability_ids, .. } => {
             if event.effect.effect_id != effect_id::ABILITYACTIVATE {
                 return false;
             }
             ability_ids.contains(&(event.action.action_id as u64))
         }
-        PhaseTrigger::EffectApplied { effect_ids } => {
+        Trigger::EffectApplied { effect_ids, .. } => {
             if event.effect.type_id != effect_type_id::APPLYEFFECT {
                 return false;
             }
             effect_ids.contains(&(event.effect.effect_id as u64))
         }
-        PhaseTrigger::EffectRemoved { effect_ids } => {
+        Trigger::EffectRemoved { effect_ids, .. } => {
             if event.effect.type_id != effect_type_id::REMOVEEFFECT {
                 return false;
             }
             effect_ids.contains(&(event.effect.effect_id as u64))
         }
-        PhaseTrigger::AnyOf { conditions } => {
+        Trigger::AnyOf { conditions } => {
             conditions.iter().any(|c| check_ability_trigger(c, event))
         }
         _ => false,
     }
 }
 
-/// Check if a signal-based phase trigger is satisfied (EntityFirstSeen, EntityDeath, etc.).
-pub fn check_signal_phase_trigger(trigger: &PhaseTrigger, signals: &[GameSignal]) -> bool {
+/// Check if a signal-based phase trigger is satisfied (EntitySpawned, EntityDeath, etc.).
+pub fn check_signal_phase_trigger(trigger: &Trigger, signals: &[GameSignal]) -> bool {
     match trigger {
-        PhaseTrigger::EntityFirstSeen { npc_id, entity_name, .. } => {
+        Trigger::EntitySpawned { entity } => {
             signals.iter().any(|s| {
-                if let GameSignal::NpcFirstSeen { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {
-                    if let Some(required_id) = npc_id {
-                        return sig_npc_id == required_id;
-                    }
-                    if let Some(required_name) = entity_name {
-                        return sig_name.contains(required_name);
-                    }
-                    false
-                } else {
-                    false
-                }
-            })
-        }
-        PhaseTrigger::EntityDeath { npc_id, entity_name, .. } => {
-            signals.iter().any(|s| {
-                if let GameSignal::EntityDeath { npc_id: sig_npc_id, entity_name: sig_name, .. } = s {
-                    if let Some(required_id) = npc_id
-                       && sig_npc_id != required_id {
-                            return false;
-                    }
-                    if let Some(required_name) = entity_name
-                        && !required_name.eq_ignore_ascii_case(sig_name) {
-                            return false;
-                    }
-                    true
-                } else {
-                    false
-                }
-            })
-        }
-        PhaseTrigger::PhaseEnded { phase_id, phase_ids } => {
-            signals.iter().any(|s| {
-                if let GameSignal::PhaseEndTriggered { phase_id: sig_phase_id, .. } = s {
-                    if let Some(required) = phase_id {
-                        if sig_phase_id == required {
-                            return true;
-                        }
-                    }
-                    if phase_ids.iter().any(|p| p == sig_phase_id) {
+                if let GameSignal::NpcFirstSeen { npc_id, entity_name, .. } = s {
+                    if entity.matches_npc_id(*npc_id) {
                         return true;
                     }
-                    false
-                } else {
-                    false
+                    if entity.matches_name(entity_name) {
+                        return true;
+                    }
                 }
+                false
             })
         }
-        PhaseTrigger::CounterReaches { counter_id, value } => {
+        Trigger::EntityDeath { entity } => {
+            signals.iter().any(|s| {
+                if let GameSignal::EntityDeath { npc_id, entity_name, .. } = s {
+                    if entity.is_empty() {
+                        return true; // No filter = any death
+                    }
+                    if entity.matches_npc_id(*npc_id) {
+                        return true;
+                    }
+                    if entity.matches_name(entity_name) {
+                        return true;
+                    }
+                }
+                false
+            })
+        }
+        Trigger::PhaseEnded { phase_id } => {
+            signals.iter().any(|s| {
+                matches!(s, GameSignal::PhaseEndTriggered { phase_id: sig_phase_id, .. }
+                    if sig_phase_id == phase_id)
+            })
+        }
+        Trigger::CounterReaches { counter_id, value } => {
             signals.iter().any(|s| {
                 matches!(s, GameSignal::CounterChanged { counter_id: cid, new_value, .. }
                     if cid == counter_id && *new_value == *value)
             })
         }
-        PhaseTrigger::AnyOf { conditions } => {
+        Trigger::AnyOf { conditions } => {
             conditions.iter().any(|c| check_signal_phase_trigger(c, signals))
         }
         _ => false,
@@ -454,12 +446,12 @@ pub fn check_signal_phase_trigger(trigger: &PhaseTrigger, signals: &[GameSignal]
 }
 
 /// Check if a TimeElapsed trigger is satisfied (time crossed threshold).
-pub fn check_time_trigger(trigger: &PhaseTrigger, old_time: f32, new_time: f32) -> bool {
+pub fn check_time_trigger(trigger: &Trigger, old_time: f32, new_time: f32) -> bool {
     match trigger {
-        PhaseTrigger::TimeElapsed { secs } => {
+        Trigger::TimeElapsed { secs } => {
             old_time < *secs && new_time >= *secs
         }
-        PhaseTrigger::AnyOf { conditions } => {
+        Trigger::AnyOf { conditions } => {
             conditions.iter().any(|c| check_time_trigger(c, old_time, new_time))
         }
         _ => false,
