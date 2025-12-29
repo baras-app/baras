@@ -4,3 +4,6 @@ ref-files
 CLAUDE.local.md
 scripts/*
 orbs-conversion/
+test-log-files/operations
+test-log-files/50mb/*.txt
+
