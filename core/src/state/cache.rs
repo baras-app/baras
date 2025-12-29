@@ -167,33 +167,20 @@ impl SessionCache {
 
     // --- Boss Encounter Management ---
 
-    /// Load boss definitions for the current area.
-    /// Called when entering a new area (AreaEntered signal).
-    /// Also registers NPC IDs in the global boss registry for is_boss() checks.
-    #[allow(deprecated)]
-    pub fn load_boss_definitions(&mut self, definitions: Vec<BossEncounterDefinition>) {
-        // Register encounter-triggering NPC IDs in the global registry
-        // Entities with triggers_encounter = true (or is_boss = true) are registered
-        for def in &definitions {
-            // New format: use entity roster (encounter-triggering entities)
-            let trigger_ids: Vec<i64> = def.encounter_trigger_ids().collect();
-            if !trigger_ids.is_empty() {
-                register_boss_npcs(&trigger_ids);
-            } else {
-                // Legacy format: use flat npc_ids
-                register_boss_npcs(&def.npc_ids);
-            }
-        }
-        self.boss_definitions = definitions;
-        self.active_boss_idx = None;
-        // Don't reset boss_state here - that happens on CombatEnded
-    }
+
 
     /// Clear boss definitions (e.g., when leaving an instance).
     /// Also clears the global boss registry.
     pub fn clear_boss_definitions(&mut self) {
         clear_boss_registry();
         self.boss_definitions.clear();
+        self.active_boss_idx = None;
+    }
+
+    /// Load boss definitions for the current area.
+    /// Replaces any existing definitions.
+    pub fn load_boss_definitions(&mut self, definitions: Vec<BossEncounterDefinition>) {
+        self.boss_definitions = definitions;
         self.active_boss_idx = None;
     }
 

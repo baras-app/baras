@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::types::{
     BossListItem, ChallengeCondition, ChallengeListItem, ChallengeMetric, ComparisonOp,
-    EntityMatcher,
+    EntityFilter,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -365,8 +365,8 @@ fn ChallengeConditionRow(
                 onchange: move |e| {
                     let new_condition = match e.value().as_str() {
                         "Phase" => ChallengeCondition::Phase { phase_ids: vec![] },
-                        "Source" => ChallengeCondition::Source { matcher: EntityMatcher::AnyBoss },
-                        "Target" => ChallengeCondition::Target { matcher: EntityMatcher::AnyBoss },
+                        "Source" => ChallengeCondition::Source { matcher: EntityFilter::Boss },
+                        "Target" => ChallengeCondition::Target { matcher: EntityFilter::Boss },
                         "Ability" => ChallengeCondition::Ability { ability_ids: vec![] },
                         "Effect" => ChallengeCondition::Effect { effect_ids: vec![] },
                         "Counter" => ChallengeCondition::Counter {
@@ -415,7 +415,7 @@ fn ChallengeConditionRow(
                     }
                     ChallengeCondition::Source { matcher } => {
                         rsx! {
-                            EntityMatcherSelect {
+                            EntityFilterSelect {
                                 matcher: matcher.clone(),
                                 on_change: move |m| {
                                     on_change.call(ChallengeCondition::Source { matcher: m });
@@ -425,7 +425,7 @@ fn ChallengeConditionRow(
                     }
                     ChallengeCondition::Target { matcher } => {
                         rsx! {
-                            EntityMatcherSelect {
+                            EntityFilterSelect {
                                 matcher: matcher.clone(),
                                 on_change: move |m| {
                                     on_change.call(ChallengeCondition::Target { matcher: m });
@@ -590,24 +590,24 @@ fn ChallengeConditionRow(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Entity Matcher Select
+// Entity Filter Select
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[component]
-fn EntityMatcherSelect(
-    matcher: EntityMatcher,
-    on_change: EventHandler<EntityMatcher>,
+fn EntityFilterSelect(
+    matcher: EntityFilter,
+    on_change: EventHandler<EntityFilter>,
 ) -> Element {
     let matcher_type = match &matcher {
-        EntityMatcher::AnyBoss => "any_boss",
-        EntityMatcher::AnyAdd => "any_add",
-        EntityMatcher::AnyNpc => "any_npc",
-        EntityMatcher::AnyPlayer => "any_player",
-        EntityMatcher::LocalPlayer => "local_player",
-        EntityMatcher::Any => "any",
-        EntityMatcher::NpcIds(_) => "npc_ids",
-        EntityMatcher::NpcNames(_) => "npc_names",
-        EntityMatcher::PlayerNames(_) => "player_names",
+        EntityFilter::Boss => "boss",
+        EntityFilter::NpcExceptBoss => "npc_except_boss",
+        EntityFilter::AnyNpc => "any_npc",
+        EntityFilter::AnyPlayer => "any_player",
+        EntityFilter::LocalPlayer => "local_player",
+        EntityFilter::Any => "any",
+        EntityFilter::NpcIds(_) => "npc_ids",
+        EntityFilter::Names(_) => "names",
+        _ => "any", // Handle other variants
     };
 
     rsx! {
@@ -616,34 +616,32 @@ fn EntityMatcherSelect(
             value: "{matcher_type}",
             onchange: move |e| {
                 let new_matcher = match e.value().as_str() {
-                    "any_boss" => EntityMatcher::AnyBoss,
-                    "any_add" => EntityMatcher::AnyAdd,
-                    "any_npc" => EntityMatcher::AnyNpc,
-                    "any_player" => EntityMatcher::AnyPlayer,
-                    "local_player" => EntityMatcher::LocalPlayer,
-                    "any" => EntityMatcher::Any,
-                    "npc_ids" => EntityMatcher::NpcIds(vec![]),
-                    "npc_names" => EntityMatcher::NpcNames(vec![]),
-                    "player_names" => EntityMatcher::PlayerNames(vec![]),
-                    _ => EntityMatcher::Any,
+                    "boss" => EntityFilter::Boss,
+                    "npc_except_boss" => EntityFilter::NpcExceptBoss,
+                    "any_npc" => EntityFilter::AnyNpc,
+                    "any_player" => EntityFilter::AnyPlayer,
+                    "local_player" => EntityFilter::LocalPlayer,
+                    "any" => EntityFilter::Any,
+                    "npc_ids" => EntityFilter::NpcIds(vec![]),
+                    "names" => EntityFilter::Names(vec![]),
+                    _ => EntityFilter::Any,
                 };
                 on_change.call(new_matcher);
             },
-            option { value: "any_boss", "Any Boss" }
-            option { value: "any_add", "Any Add" }
+            option { value: "boss", "Boss" }
+            option { value: "npc_except_boss", "Adds (Non-Boss)" }
             option { value: "any_npc", "Any NPC" }
             option { value: "any_player", "Any Player" }
             option { value: "local_player", "Local Player" }
             option { value: "any", "Any" }
             option { value: "npc_ids", "Specific NPC IDs" }
-            option { value: "npc_names", "Specific NPC Names" }
-            option { value: "player_names", "Specific Players" }
+            option { value: "names", "Entity Names" }
         }
 
         // Additional input for specific matchers
         {
             match &matcher {
-                EntityMatcher::NpcIds(ids) => {
+                EntityFilter::NpcIds(ids) => {
                     let ids_str = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
                     rsx! {
                         input {
@@ -655,12 +653,12 @@ fn EntityMatcherSelect(
                                     .split(',')
                                     .filter_map(|s| s.trim().parse().ok())
                                     .collect();
-                                on_change.call(EntityMatcher::NpcIds(new_ids));
+                                on_change.call(EntityFilter::NpcIds(new_ids));
                             }
                         }
                     }
                 }
-                EntityMatcher::NpcNames(names) => {
+                EntityFilter::Names(names) => {
                     let names_str = names.join(", ");
                     rsx! {
                         input {
@@ -673,25 +671,7 @@ fn EntityMatcherSelect(
                                     .map(|s| s.trim().to_string())
                                     .filter(|s| !s.is_empty())
                                     .collect();
-                                on_change.call(EntityMatcher::NpcNames(new_names));
-                            }
-                        }
-                    }
-                }
-                EntityMatcher::PlayerNames(names) => {
-                    let names_str = names.join(", ");
-                    rsx! {
-                        input {
-                            class: "input-inline flex-1",
-                            placeholder: "player1, player2, ...",
-                            value: "{names_str}",
-                            oninput: move |e| {
-                                let new_names: Vec<String> = e.value()
-                                    .split(',')
-                                    .map(|s| s.trim().to_string())
-                                    .filter(|s| !s.is_empty())
-                                    .collect();
-                                on_change.call(EntityMatcher::PlayerNames(new_names));
+                                on_change.call(EntityFilter::Names(new_names));
                             }
                         }
                     }

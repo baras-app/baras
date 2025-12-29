@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 // ─────────────────────────────────────────────────────────────────────────────
 
 pub use baras_types::{
-    AppConfig, AudioSettings, BossHealthConfig, Color, OverlayAppearanceConfig,
+    AppConfig, AudioSettings, BossHealthConfig, Color, EntityFilter, OverlayAppearanceConfig,
     OverlaySettings, PersonalOverlayConfig, PersonalStat, RaidOverlaySettings,
     TimerOverlayConfig, MAX_PROFILES,
 };
@@ -382,95 +382,6 @@ impl EffectCategory {
             Self::Cleansable,
             Self::Proc,
             Self::Mechanic,
-        ]
-    }
-}
-
-/// Entity filter for source/target matching
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EntityFilter {
-    #[default]
-    LocalPlayer,
-    LocalCompanion,
-    LocalPlayerOrCompanion,
-    OtherPlayers,
-    OtherCompanions,
-    AnyPlayer,
-    AnyCompanion,
-    AnyPlayerOrCompanion,
-    GroupMembers,
-    GroupMembersExceptLocal,
-    Boss,
-    NpcExceptBoss,
-    AnyNpc,
-    Specific(String),
-    Any,
-}
-
-impl EntityFilter {
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::LocalPlayer => "Local Player",
-            Self::LocalCompanion => "Local Companion",
-            Self::LocalPlayerOrCompanion => "Local Player or Companion",
-            Self::OtherPlayers => "Other Players",
-            Self::OtherCompanions => "Other Companions",
-            Self::AnyPlayer => "Any Player",
-            Self::AnyCompanion => "Any Companion",
-            Self::AnyPlayerOrCompanion => "Any Player or Companion",
-            Self::GroupMembers => "Group Members",
-            Self::GroupMembersExceptLocal => "Group (Except Local)",
-            Self::Boss => "Boss",
-            Self::NpcExceptBoss => "NPC (Non-Boss)",
-            Self::AnyNpc => "Any NPC",
-            Self::Specific(_) => "Specific",
-            Self::Any => "Any",
-        }
-    }
-
-    pub fn type_name(&self) -> &'static str {
-        match self {
-            Self::LocalPlayer => "local_player",
-            Self::LocalCompanion => "local_companion",
-            Self::LocalPlayerOrCompanion => "local_player_or_companion",
-            Self::OtherPlayers => "other_players",
-            Self::OtherCompanions => "other_companions",
-            Self::AnyPlayer => "any_player",
-            Self::AnyCompanion => "any_companion",
-            Self::AnyPlayerOrCompanion => "any_player_or_companion",
-            Self::GroupMembers => "group_members",
-            Self::GroupMembersExceptLocal => "group_members_except_local",
-            Self::Boss => "boss",
-            Self::NpcExceptBoss => "npc_except_boss",
-            Self::AnyNpc => "any_npc",
-            Self::Specific(_) => "specific",
-            Self::Any => "any",
-        }
-    }
-
-    /// Common filters for source field
-    pub fn source_options() -> &'static [EntityFilter] {
-        &[
-            Self::LocalPlayer,
-            Self::OtherPlayers,
-            Self::AnyPlayer,
-            Self::Boss,
-            Self::AnyNpc,
-            Self::Any,
-        ]
-    }
-
-    /// Common filters for target field
-    pub fn target_options() -> &'static [EntityFilter] {
-        &[
-            Self::LocalPlayer,
-            Self::GroupMembers,
-            Self::GroupMembersExceptLocal,
-            Self::AnyPlayer,
-            Self::Boss,
-            Self::AnyNpc,
-            Self::Any,
         ]
     }
 }
@@ -865,48 +776,6 @@ impl ChallengeMetric {
     }
 }
 
-/// Entity matcher for challenge conditions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EntityMatcher {
-    AnyBoss,
-    AnyAdd,
-    AnyNpc,
-    AnyPlayer,
-    LocalPlayer,
-    Any,
-    NpcIds(Vec<i64>),
-    NpcNames(Vec<String>),
-    PlayerNames(Vec<String>),
-}
-
-impl EntityMatcher {
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::AnyBoss => "Any Boss",
-            Self::AnyAdd => "Any Add",
-            Self::AnyNpc => "Any NPC",
-            Self::AnyPlayer => "Any Player",
-            Self::LocalPlayer => "Local Player",
-            Self::Any => "Any",
-            Self::NpcIds(_) => "Specific NPC IDs",
-            Self::NpcNames(_) => "Specific NPC Names",
-            Self::PlayerNames(_) => "Specific Players",
-        }
-    }
-
-    pub fn common_options() -> &'static [EntityMatcher] {
-        &[
-            Self::AnyBoss,
-            Self::AnyAdd,
-            Self::AnyNpc,
-            Self::AnyPlayer,
-            Self::LocalPlayer,
-            Self::Any,
-        ]
-    }
-}
-
 /// Challenge condition types
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -916,11 +785,11 @@ pub enum ChallengeCondition {
     },
     Source {
         #[serde(rename = "match")]
-        matcher: EntityMatcher,
+        matcher: EntityFilter,
     },
     Target {
         #[serde(rename = "match")]
-        matcher: EntityMatcher,
+        matcher: EntityFilter,
     },
     Ability {
         ability_ids: Vec<u64>,

@@ -271,7 +271,8 @@ pub fn save_bosses_to_file(bosses: &[BossEncounterDefinition], path: &Path) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::boss::{ChallengeMetric, ChallengeCondition, EntityMatcher};
+    use crate::boss::{ChallengeMetric, ChallengeCondition};
+    use crate::entity_filter::EntityFilter;
 
     #[test]
     fn test_parse_boss_config() {
@@ -356,7 +357,7 @@ id = "boss_damage"
 name = "Boss Damage"
 metric = "damage"
 conditions = [
-    { type = "target", match = "any_boss" }
+    { type = "target", match = "boss" }
 ]
 
 [[boss.challenge]]
@@ -374,7 +375,7 @@ name = "Burn Phase DPS"
 metric = "damage"
 conditions = [
     { type = "phase", phase_ids = ["burn"] },
-    { type = "target", match = "any_boss" }
+    { type = "target", match = "boss" }
 ]
 
 [[boss.challenge]]
@@ -383,7 +384,7 @@ name = "Your Boss Damage"
 metric = "damage"
 conditions = [
     { type = "source", match = "local_player" },
-    { type = "target", match = "any_boss" }
+    { type = "target", match = "boss" }
 ]
 "#;
 
@@ -408,14 +409,14 @@ conditions = [
         assert_eq!(boss_damage.conditions.len(), 1);
         assert!(matches!(
             &boss_damage.conditions[0],
-            ChallengeCondition::Target { matcher: EntityMatcher::AnyBoss }
+            ChallengeCondition::Target { matcher: EntityFilter::Boss }
         ));
 
         let add_damage = &boss.challenges[1];
         assert_eq!(add_damage.id, "add_damage");
         assert!(matches!(
             &add_damage.conditions[0],
-            ChallengeCondition::Target { matcher: EntityMatcher::NpcIds(ids) } if ids.len() == 2
+            ChallengeCondition::Target { matcher: EntityFilter::NpcIds(ids) } if ids.len() == 2
         ));
 
         let burn_dps = &boss.challenges[2];
@@ -429,7 +430,7 @@ conditions = [
         let local_player = &boss.challenges[3];
         assert!(matches!(
             &local_player.conditions[0],
-            ChallengeCondition::Source { matcher: EntityMatcher::LocalPlayer }
+            ChallengeCondition::Source { matcher: EntityFilter::LocalPlayer }
         ));
     }
 

@@ -29,7 +29,3 @@ pub use boss::{
     BossConfig, BossEncounterDefinition, BossEncounterState, BossTimerDefinition, CounterCondition,
     CounterDefinition, PhaseDefinition, PhaseTrigger, load_bosses_from_dir,
 };
-
-// Backward compatibility - re-export deprecated alias
-#[allow(deprecated)]
-pub use boss::BossDefinition;

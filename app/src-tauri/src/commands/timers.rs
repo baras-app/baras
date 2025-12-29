@@ -786,9 +786,6 @@ pub async fn create_boss(
         counters: vec![],
         challenges: vec![],
         entities: vec![],
-        // Legacy fields (deprecated)
-        npc_names: vec![],
-        npc_ids: vec![],
     };
 
     bosses.push(new_boss);
@@ -1289,7 +1286,6 @@ pub async fn delete_counter(
 // Challenge CRUD
 // ─────────────────────────────────────────────────────────────────────────────
 
-use baras_core::boss::EntityMatcher;
 
 /// Flattened challenge item for the frontend list view
 #[derive(Debug, Clone, Serialize, Deserialize)]

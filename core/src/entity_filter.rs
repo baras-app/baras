@@ -1,55 +1,21 @@
 //! Entity filter matching
 //!
-//! Defines filters for matching entities by type, role, or identity.
-//! Used by both effects and timers for source/target filtering.
+//! Re-exports EntityFilter from baras-types and provides matching logic.
+//! The type definition lives in the shared types crate for frontend reuse.
 
 use std::collections::HashSet;
-
-use serde::{Deserialize, Serialize};
 
 use crate::combat_log::EntityType;
 use crate::context::IStr;
 
-/// Filter for matching entities (used for both source and target)
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EntityFilter {
-    /// The local player only
-    #[default]
-    LocalPlayer,
-    /// Local player's companion
-    LocalCompanion,
-    /// Local player OR their companion
-    LocalPlayerOrCompanion,
-    /// Other players (not local)
-    OtherPlayers,
-    /// Other players' companions
-    OtherCompanions,
-    /// Any player (including local)
-    AnyPlayer,
-    /// Any companion (any player's)
-    AnyCompanion,
-    /// Any player or companion
-    AnyPlayerOrCompanion,
-    /// Group members (players in the local player's group)
-    GroupMembers,
-    /// Group members except local player
-    GroupMembersExceptLocal,
-    /// Boss NPCs specifically
-    Boss,
-    /// Non-boss NPCs (trash mobs)
-    NpcExceptBoss,
-    /// Any NPC (boss or trash)
-    AnyNpc,
-    /// Specific entity by name
-    Specific(String),
-    /// Specific NPC by class/template ID
-    SpecificNpc(i64),
-    /// Any entity whatsoever
-    Any,
-}
+// Re-export the type from the shared crate
+pub use baras_types::EntityFilter;
 
-impl EntityFilter {
+/// Extension trait for EntityFilter matching logic
+///
+/// The type definition lives in baras-types for sharing with the frontend,
+/// but the matching logic uses core-specific types (EntityType, IStr, etc.)
+pub trait EntityFilterMatching {
     /// Check if an entity matches this filter.
     ///
     /// # Arguments
@@ -59,7 +25,40 @@ impl EntityFilter {
     /// * `npc_id` - NPC class/template ID (0 for players/companions)
     /// * `local_player_id` - The local player's entity ID (for LocalPlayer filter)
     /// * `boss_entity_ids` - Set of entity IDs marked as bosses
-    pub fn matches(
+    fn matches(
+        &self,
+        entity_id: i64,
+        entity_type: EntityType,
+        entity_name: IStr,
+        npc_id: i64,
+        local_player_id: Option<i64>,
+        boss_entity_ids: &HashSet<i64>,
+    ) -> bool;
+
+    /// Check if an entity matches this filter for challenge conditions.
+    ///
+    /// This variant uses NPC class IDs (from boss config) instead of runtime
+    /// entity IDs. Used for challenge source/target matching where we check
+    /// against the configured boss NPC IDs.
+    ///
+    /// # Arguments
+    /// * `is_player` - Whether entity is a player
+    /// * `is_local_player` - Whether entity is the local player
+    /// * `name` - Entity's display name
+    /// * `npc_id` - NPC class/template ID (None for players)
+    /// * `boss_npc_ids` - Boss NPC class IDs from encounter config
+    fn matches_challenge(
+        &self,
+        is_player: bool,
+        is_local_player: bool,
+        name: &str,
+        npc_id: Option<i64>,
+        boss_npc_ids: &[i64],
+    ) -> bool;
+}
+
+impl EntityFilterMatching for EntityFilter {
+    fn matches(
         &self,
         entity_id: i64,
         entity_type: EntityType,
@@ -82,10 +81,7 @@ impl EntityFilter {
             EntityFilter::GroupMembersExceptLocal => !is_local && is_player,
 
             // Companion filters
-            EntityFilter::LocalCompanion => is_companion,
-            EntityFilter::OtherCompanions => is_companion && !is_local,
             EntityFilter::AnyCompanion => is_companion,
-            EntityFilter::LocalPlayerOrCompanion => (is_local && is_player) || is_companion,
             EntityFilter::AnyPlayerOrCompanion => is_player || is_companion,
 
             // NPC filters
@@ -101,6 +97,60 @@ impl EntityFilter {
 
             // Specific NPC by class/template ID
             EntityFilter::SpecificNpc(filter_npc_id) => is_npc && npc_id == *filter_npc_id,
+
+            // Multiple NPCs by class/template IDs
+            EntityFilter::NpcIds(ids) => is_npc && ids.contains(&npc_id),
+
+            // Multiple entities by name (works for players or NPCs)
+            EntityFilter::Names(names) => {
+                let resolved_name = crate::context::resolve(entity_name);
+                names.iter().any(|n| resolved_name.eq_ignore_ascii_case(n))
+            }
+
+            // Any entity
+            EntityFilter::Any => true,
+        }
+    }
+
+    fn matches_challenge(
+        &self,
+        is_player: bool,
+        is_local_player: bool,
+        name: &str,
+        npc_id: Option<i64>,
+        boss_npc_ids: &[i64],
+    ) -> bool {
+         let is_npc = !is_player;
+
+        match self {
+            // Player filters
+            EntityFilter::LocalPlayer => is_player && is_local_player,
+            EntityFilter::OtherPlayers => is_player && !is_local_player,
+            EntityFilter::AnyPlayer => is_player,
+            EntityFilter::GroupMembers => is_player,
+            EntityFilter::GroupMembersExceptLocal => is_player && !is_local_player,
+
+            // Companion filters - not applicable in challenge context
+            EntityFilter::AnyCompanion | EntityFilter::AnyPlayerOrCompanion => false,
+
+            // NPC filters - use NPC class IDs for boss matching
+            EntityFilter::AnyNpc => is_npc,
+            EntityFilter::Boss => is_npc && npc_id.is_some_and(|id| boss_npc_ids.contains(&id)),
+            EntityFilter::NpcExceptBoss => {
+                is_npc && npc_id.is_none_or(|id| !boss_npc_ids.contains(&id))
+            }
+
+            // Specific entity by name
+            EntityFilter::Specific(filter_name) => name.eq_ignore_ascii_case(filter_name),
+
+            // Specific NPC by class/template ID
+            EntityFilter::SpecificNpc(filter_npc_id) => is_npc && npc_id == Some(*filter_npc_id),
+
+            // Multiple NPCs by class/template IDs
+            EntityFilter::NpcIds(ids) => is_npc && npc_id.is_some_and(|id| ids.contains(&id)),
+
+            // Multiple entities by name (works for players or NPCs)
+            EntityFilter::Names(names) => names.iter().any(|n| name.eq_ignore_ascii_case(n)),
 
             // Any entity
             EntityFilter::Any => true,

@@ -149,19 +149,7 @@ pub struct BossEncounterDefinition {
     #[serde(default, alias = "entity")]
     pub entities: Vec<EntityDefinition>,
 
-    // ─── Legacy fields (deprecated, use entities instead) ────────────────────
-
-    /// NPC names that identify this boss (for detection, fallback)
-    #[deprecated(note = "Use entities with is_boss = true instead")]
-    #[serde(default)]
-    pub npc_names: Vec<String>,
-
-    /// NPC class IDs for precise detection (preferred over names)
-    #[deprecated(note = "Use entities with is_boss = true instead")]
-    #[serde(default)]
-    pub npc_ids: Vec<i64>,
-
-    // ─── Mechanics ───────────────────────────────────────────────────────────
+       // ─── Mechanics ───────────────────────────────────────────────────────────
 
     /// Phase definitions
     #[serde(default, alias = "phase")]
@@ -357,33 +345,7 @@ impl BossEncounterDefinition {
         self.entities.iter().filter(|e| e.is_kill_target)
     }
 
-    // ─── Legacy Compatibility ────────────────────────────────────────────────
-
-    /// Check if an NPC name matches any encounter-triggering entity
-    /// Checks both entity names and legacy npc_names
-    #[allow(deprecated)]
-    pub fn matches_npc_name(&self, name: &str) -> bool {
-        // Check entity roster first
-        if self.entities.iter().any(|e| e.triggers_encounter() && e.name.eq_ignore_ascii_case(name)) {
-            return true;
-        }
-        // Fall back to legacy field
-        self.npc_names.iter().any(|n| n.eq_ignore_ascii_case(name))
-    }
-
-    /// Check if an NPC ID matches any encounter-triggering entity
-    /// Checks both entity roster and legacy npc_ids
-    #[allow(deprecated)]
-    pub fn matches_npc_id(&self, id: i64) -> bool {
-        // Check entity roster first (encounter-triggering entities)
-        if self.entities.iter().any(|e| e.triggers_encounter() && e.ids.contains(&id)) {
-            return true;
-        }
-        // Fall back to legacy field
-        self.npc_ids.contains(&id)
-    }
-
-    // ─── Phase/Counter Methods ───────────────────────────────────────────────
+       // ─── Phase/Counter Methods ───────────────────────────────────────────────
 
     /// Get the initial phase (triggered by CombatStart)
     pub fn initial_phase(&self) -> Option<&PhaseDefinition> {
@@ -422,6 +384,11 @@ impl BossEncounterDefinition {
     /// Check if this encounter is for the given area
     pub fn matches_area(&self, area_name: &str) -> bool {
         self.area_name.eq_ignore_ascii_case(area_name)
+    }
+
+    /// Check if any entity in this encounter has the given NPC class ID
+    pub fn matches_npc_id(&self, npc_id: i64) -> bool {
+        self.all_entity_ids().any(|id| id == npc_id)
     }
 }
 

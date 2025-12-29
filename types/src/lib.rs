@@ -620,3 +620,128 @@ impl AppConfig {
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Entity Filter
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Filter for matching entities (used for both source and target filtering).
+///
+/// Shared between core (for timer/effect matching) and frontend (for UI editing).
+/// The actual matching logic lives in core since it requires runtime types.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EntityFilter {
+    /// The local player only
+    #[default]
+    LocalPlayer,
+    /// Local player's companion
+    OtherPlayers,
+    /// Any player (including local)
+    AnyPlayer,
+    /// Any companion (any player's)
+    AnyCompanion,
+    /// Any player or companion
+    AnyPlayerOrCompanion,
+    /// Group members (players in the local player's group)
+    GroupMembers,
+    /// Group members except local player
+    GroupMembersExceptLocal,
+    /// Boss NPCs specifically
+    Boss,
+    /// Non-boss NPCs (trash mobs / adds)
+    NpcExceptBoss,
+    /// Any NPC (boss or trash)
+    AnyNpc,
+    /// Specific entity by name
+    Specific(String),
+    /// Specific NPC by class/template ID
+    SpecificNpc(i64),
+    /// Multiple NPCs by class/template IDs
+    NpcIds(Vec<i64>),
+    /// Multiple entities by name (case-insensitive)
+    Names(Vec<String>),
+    /// Any entity whatsoever
+    Any,
+}
+
+impl EntityFilter {
+    /// Get a user-friendly label for this filter
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::LocalPlayer => "Local Player",
+            Self::OtherPlayers => "Other Players",
+            Self::AnyPlayer => "Any Player",
+            Self::AnyCompanion => "Any Companion",
+            Self::AnyPlayerOrCompanion => "Any Player or Companion",
+            Self::GroupMembers => "Group Members",
+            Self::GroupMembersExceptLocal => "Other Group Members",
+            Self::Boss => "Boss",
+            Self::NpcExceptBoss => "Adds (Non-Boss)",
+            Self::AnyNpc => "Any NPC",
+            Self::Specific(_) => "Specific Name",
+            Self::SpecificNpc(_) => "Specific NPC ID",
+            Self::NpcIds(_) => "NPC IDs",
+            Self::Names(_) => "Entity Names",
+            Self::Any => "Any",
+        }
+    }
+
+    /// Common options for source/target dropdowns (challenges)
+    pub fn common_options() -> &'static [EntityFilter] {
+        &[
+            Self::Boss,
+            Self::NpcExceptBoss,
+            Self::AnyNpc,
+            Self::AnyPlayer,
+            Self::LocalPlayer,
+            Self::Any,
+        ]
+    }
+
+    /// Get the snake_case type name for serialization
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Self::LocalPlayer => "local_player",
+            Self::OtherPlayers => "other_players",
+            Self::AnyPlayer => "any_player",
+            Self::AnyCompanion => "any_companion",
+            Self::AnyPlayerOrCompanion => "any_player_or_companion",
+            Self::GroupMembers => "group_members",
+            Self::GroupMembersExceptLocal => "group_members_except_local",
+            Self::Boss => "boss",
+            Self::NpcExceptBoss => "npc_except_boss",
+            Self::AnyNpc => "any_npc",
+            Self::Specific(_) => "specific",
+            Self::SpecificNpc(_) => "specific_npc",
+            Self::NpcIds(_) => "npc_ids",
+            Self::Names(_) => "names",
+            Self::Any => "any",
+        }
+    }
+
+    /// Common filters for source field (timers/effects)
+    pub fn source_options() -> &'static [EntityFilter] {
+        &[
+            Self::LocalPlayer,
+            Self::OtherPlayers,
+            Self::AnyPlayer,
+            Self::Boss,
+            Self::AnyNpc,
+            Self::Any,
+        ]
+    }
+
+    /// Common filters for target field (timers/effects)
+    pub fn target_options() -> &'static [EntityFilter] {
+        &[
+            Self::LocalPlayer,
+            Self::GroupMembers,
+            Self::GroupMembersExceptLocal,
+            Self::AnyPlayer,
+            Self::Boss,
+            Self::AnyNpc,
+            Self::Any,
+        ]
+    }
+}

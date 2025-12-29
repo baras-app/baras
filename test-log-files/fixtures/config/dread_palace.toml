@@ -83,7 +83,7 @@ name = "Boss Damage"
 description = "Total damage dealt to Dread Master Bestia"
 metric = "damage"
 conditions = [
-    { type = "target", match = "any_boss" }
+    { type = "target", match = "boss" }
 ]
 
 # Track add damage (Dread Larva + Dread Monster)
@@ -104,7 +104,7 @@ description = "Damage dealt to boss during burn phase (below 30% HP)"
 metric = "damage"
 conditions = [
     { type = "phase", phase_ids = ["burn"] },
-    { type = "target", match = "any_boss" }
+    { type = "target", match = "boss" }
 ]
 
 # Track player damage taken from boss
@@ -114,7 +114,7 @@ name = "Damage Taken from Boss"
 description = "Damage taken from Bestia's abilities"
 metric = "damage_taken"
 conditions = [
-    { type = "source", match = "any_boss" },
+    { type = "source", match = "boss" },
     { type = "target", match = "any_player" }
 ]
 
@@ -126,7 +126,7 @@ description = "Your personal damage to the boss"
 metric = "damage"
 conditions = [
     { type = "source", match = "local_player" },
-    { type = "target", match = "any_boss" }
+    { type = "target", match = "boss" }
 ]
 
 # ─── Timers ───────────────────────────────────────────────────────────────────

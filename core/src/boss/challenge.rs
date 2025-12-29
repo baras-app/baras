@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use super::ComparisonOp;
+use crate::entity_filter::{EntityFilter, EntityFilterMatching};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Challenge Definition
@@ -88,13 +89,13 @@ pub enum ChallengeCondition {
     /// Event source must match
     Source {
         #[serde(rename = "match")]
-        matcher: EntityMatcher,
+        matcher: EntityFilter,
     },
 
     /// Event target must match
     Target {
         #[serde(rename = "match")]
-        matcher: EntityMatcher,
+        matcher: EntityFilter,
     },
 
     /// Specific ability ID(s)
@@ -128,45 +129,6 @@ pub enum ChallengeCondition {
     },
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Entity Matching
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// Flexible entity matcher for source/target conditions
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EntityMatcher {
-    // ─── General Matchers ─────────────────────────────────────────────────
-
-    /// Any NPC in the boss encounter's npc_ids list
-    AnyBoss,
-
-    /// Any NPC NOT in the boss encounter's npc_ids list
-    AnyAdd,
-
-    /// Any NPC (boss or add)
-    AnyNpc,
-
-    /// Any player character
-    AnyPlayer,
-
-    /// The local player only
-    LocalPlayer,
-
-    /// Any entity (player or NPC)
-    Any,
-
-    // ─── Specific Matchers ────────────────────────────────────────────────
-
-    /// Specific NPC class IDs (most reliable)
-    NpcIds(Vec<i64>),
-
-    /// Specific NPC names (fallback for configs)
-    NpcNames(Vec<String>),
-
-    /// Specific player names
-    PlayerNames(Vec<String>),
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Impl Blocks
@@ -189,73 +151,6 @@ impl ChallengeDefinition {
     }
 }
 
-impl EntityMatcher {
-    /// Check if this matcher matches the local player
-    pub fn matches_local_player(&self) -> bool {
-        matches!(self, EntityMatcher::LocalPlayer | EntityMatcher::AnyPlayer | EntityMatcher::Any)
-    }
-
-    /// Check if this matcher could match any player
-    pub fn can_match_player(&self) -> bool {
-        matches!(
-            self,
-            EntityMatcher::AnyPlayer
-                | EntityMatcher::LocalPlayer
-                | EntityMatcher::PlayerNames(_)
-                | EntityMatcher::Any
-        )
-    }
-
-    /// Check if this matcher could match any NPC
-    pub fn can_match_npc(&self) -> bool {
-        matches!(
-            self,
-            EntityMatcher::AnyBoss
-                | EntityMatcher::AnyAdd
-                | EntityMatcher::AnyNpc
-                | EntityMatcher::NpcIds(_)
-                | EntityMatcher::NpcNames(_)
-                | EntityMatcher::Any
-        )
-    }
-
-    /// Check if an entity matches this matcher
-    pub fn matches(&self, entity: &EntityInfo, boss_npc_ids: &[i64]) -> bool {
-        match self {
-            EntityMatcher::Any => true,
-
-            EntityMatcher::AnyPlayer => entity.is_player,
-
-            EntityMatcher::LocalPlayer => entity.is_player && entity.is_local_player,
-
-            EntityMatcher::AnyNpc => !entity.is_player,
-
-            EntityMatcher::AnyBoss => {
-                !entity.is_player
-                    && entity.npc_id.is_some_and(|id| boss_npc_ids.contains(&id))
-            }
-
-            EntityMatcher::AnyAdd => {
-                !entity.is_player
-                    && entity.npc_id.is_none_or(|id| !boss_npc_ids.contains(&id))
-            }
-
-            EntityMatcher::NpcIds(ids) => {
-                !entity.is_player && entity.npc_id.is_some_and(|id| ids.contains(&id))
-            }
-
-            EntityMatcher::NpcNames(names) => {
-                !entity.is_player
-                    && names.iter().any(|n| n.eq_ignore_ascii_case(&entity.name))
-            }
-
-            EntityMatcher::PlayerNames(names) => {
-                entity.is_player
-                    && names.iter().any(|n| n.eq_ignore_ascii_case(&entity.name))
-            }
-        }
-    }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Matching Context
@@ -344,13 +239,25 @@ impl ChallengeCondition {
                     .is_some_and(|p| phase_ids.iter().any(|id| id == p))
             }
 
-            ChallengeCondition::Source { matcher } => {
-                source.is_some_and(|s| matcher.matches(s, &ctx.boss_npc_ids))
-            }
+            ChallengeCondition::Source { matcher } => source.is_some_and(|s| {
+                matcher.matches_challenge(
+                    s.is_player,
+                    s.is_local_player,
+                    &s.name,
+                    s.npc_id,
+                    &ctx.boss_npc_ids,
+                )
+            }),
 
-            ChallengeCondition::Target { matcher } => {
-                target.is_some_and(|t| matcher.matches(t, &ctx.boss_npc_ids))
-            }
+            ChallengeCondition::Target { matcher } => target.is_some_and(|t| {
+                matcher.matches_challenge(
+                    t.is_player,
+                    t.is_local_player,
+                    &t.name,
+                    t.npc_id,
+                    &ctx.boss_npc_ids,
+                )
+            }),
 
             ChallengeCondition::Ability { ability_ids } => {
                 ability_id.is_some_and(|id| ability_ids.contains(&id))
@@ -451,40 +358,51 @@ mod tests {
         }
     }
 
+    /// Helper to call matches_challenge on EntityFilter using EntityInfo
+    fn filter_matches(filter: &EntityFilter, info: &EntityInfo, boss_ids: &[i64]) -> bool {
+        filter.matches_challenge(
+            info.is_player,
+            info.is_local_player,
+            &info.name,
+            info.npc_id,
+            boss_ids,
+        )
+    }
+
     #[test]
-    fn test_entity_matcher_any_boss() {
+    fn test_entity_filter_boss() {
         let boss_ids = vec![1001, 1002];
         let boss = EntityInfo::npc(1, "Boss", 1001);
         let add = EntityInfo::npc(2, "Add", 9999);
         let player = EntityInfo::player(3, "Player", false);
 
-        assert!(EntityMatcher::AnyBoss.matches(&boss, &boss_ids));
-        assert!(!EntityMatcher::AnyBoss.matches(&add, &boss_ids));
-        assert!(!EntityMatcher::AnyBoss.matches(&player, &boss_ids));
+        assert!(filter_matches(&EntityFilter::Boss, &boss, &boss_ids));
+        assert!(!filter_matches(&EntityFilter::Boss, &add, &boss_ids));
+        assert!(!filter_matches(&EntityFilter::Boss, &player, &boss_ids));
     }
 
     #[test]
-    fn test_entity_matcher_any_add() {
+    fn test_entity_filter_npc_except_boss() {
         let boss_ids = vec![1001, 1002];
         let boss = EntityInfo::npc(1, "Boss", 1001);
         let add = EntityInfo::npc(2, "Add", 9999);
         let player = EntityInfo::player(3, "Player", false);
 
-        assert!(!EntityMatcher::AnyAdd.matches(&boss, &boss_ids));
-        assert!(EntityMatcher::AnyAdd.matches(&add, &boss_ids));
-        assert!(!EntityMatcher::AnyAdd.matches(&player, &boss_ids));
+        assert!(!filter_matches(&EntityFilter::NpcExceptBoss, &boss, &boss_ids));
+        assert!(filter_matches(&EntityFilter::NpcExceptBoss, &add, &boss_ids));
+        assert!(!filter_matches(&EntityFilter::NpcExceptBoss, &player, &boss_ids));
     }
 
     #[test]
-    fn test_entity_matcher_local_player() {
+    fn test_entity_filter_local_player() {
         let boss_ids = vec![];
         let local = EntityInfo::player(1, "Me", true);
         let other = EntityInfo::player(2, "Them", false);
         let npc = EntityInfo::npc(3, "NPC", 123);
 
-        assert!(EntityMatcher::LocalPlayer.matches(&local, &boss_ids));
-        assert!(!EntityMatcher::LocalPlayer.matches(&other, &boss_ids));
-        assert!(!EntityMatcher::LocalPlayer.matches(&npc, &boss_ids));
+        assert!(filter_matches(&EntityFilter::LocalPlayer, &local, &boss_ids));
+        assert!(!filter_matches(&EntityFilter::LocalPlayer, &other, &boss_ids));
+        assert!(!filter_matches(&EntityFilter::LocalPlayer, &npc, &boss_ids));
     }
 
     #[test]
@@ -576,7 +494,7 @@ mod tests {
                     phase_ids: vec!["burn".to_string()],
                 },
                 ChallengeCondition::Target {
-                    matcher: EntityMatcher::AnyBoss,
+                    matcher: EntityFilter::Boss,
                 },
             ],
         };
@@ -653,7 +571,7 @@ mod tests {
             description: None,
             metric: ChallengeMetric::Damage,
             conditions: vec![ChallengeCondition::Target {
-                matcher: EntityMatcher::AnyBoss,
+                matcher: EntityFilter::Boss,
             }],
         };
 
@@ -663,7 +581,7 @@ mod tests {
             description: None,
             metric: ChallengeMetric::Damage,
             conditions: vec![ChallengeCondition::Target {
-                matcher: EntityMatcher::NpcIds(vec![DREAD_LARVA_NPC_ID, DREAD_MONSTER_NPC_ID]),
+                matcher: EntityFilter::NpcIds(vec![DREAD_LARVA_NPC_ID, DREAD_MONSTER_NPC_ID]),
             }],
         };
 
@@ -755,7 +673,7 @@ mod tests {
         );
         assert!(add_damage_total > 0, "Add damage total should be positive");
 
-        // Verify EntityMatcher works - we matched specific NPC IDs
+        // Verify EntityFilter works - we matched specific NPC IDs
         assert!(
             add_damage_total > 1_000_000,
             "Should have accumulated >1M damage to adds"
@@ -808,7 +726,7 @@ mod tests {
                     phase_ids: vec!["burn".to_string()],
                 },
                 ChallengeCondition::Target {
-                    matcher: EntityMatcher::AnyBoss,
+                    matcher: EntityFilter::Boss,
                 },
             ],
         };
