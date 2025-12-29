@@ -17,13 +17,15 @@
 mod active;
 mod definition;
 mod manager;
+mod matching;
+mod signal_handlers;
 
 #[cfg(test)]
 mod manager_tests;
 
 pub use active::{ActiveTimer, TimerKey};
 pub use definition::{TimerConfig, TimerDefinition, TimerTrigger};
-pub use manager::{FiredAlert, TimerManager};
+pub use manager::{EncounterContext, FiredAlert, TimerManager};
 
 use std::path::Path;
 
