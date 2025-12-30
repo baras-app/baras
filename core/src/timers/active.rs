@@ -105,7 +105,18 @@ impl ActiveTimer {
         audio_file: Option<String>,
         audio_offset: u8,
     ) -> Self {
+        // Calculate lag compensation: how far behind was the game event from system time?
+        // This accounts for file I/O delay, processing time, etc.
+        let now_system = chrono::Local::now().naive_local();
+        let lag = now_system.signed_duration_since(event_timestamp);
+        let lag_ms = lag.num_milliseconds().max(0) as u64;
+        let lag_duration = Duration::from_millis(lag_ms);
+
+        // Backdate started_instant to when the event actually happened in game
+        // This ensures remaining_secs_realtime() reflects actual game time
         let now = Instant::now();
+        let started_instant = now.checked_sub(lag_duration).unwrap_or(now);
+
         let expires_at = event_timestamp
             + chrono::Duration::milliseconds(duration.as_millis() as i64);
 
@@ -114,7 +125,7 @@ impl ActiveTimer {
             name,
             target_entity_id,
             started_at: event_timestamp,
-            started_instant: now,
+            started_instant,
             expires_at,
             duration,
             repeat_count: 0,
@@ -135,8 +146,15 @@ impl ActiveTimer {
 
     /// Refresh the timer (restart from now)
     pub fn refresh(&mut self, event_timestamp: NaiveDateTime) {
+        // Apply same lag compensation as new() for consistent timing
+        let now_system = chrono::Local::now().naive_local();
+        let lag = now_system.signed_duration_since(event_timestamp);
+        let lag_ms = lag.num_milliseconds().max(0) as u64;
+        let lag_duration = Duration::from_millis(lag_ms);
+        let now = Instant::now();
+
         self.started_at = event_timestamp;
-        self.started_instant = Instant::now();
+        self.started_instant = now.checked_sub(lag_duration).unwrap_or(now);
         self.expires_at = event_timestamp
             + chrono::Duration::milliseconds(self.duration.as_millis() as i64);
         self.alert_fired = false;

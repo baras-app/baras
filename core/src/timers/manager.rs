@@ -614,6 +614,7 @@ impl SignalHandler for TimerManager {
 
             GameSignal::AbilityActivated {
                 ability_id,
+                ability_name,
                 source_id,
                 source_entity_type,
                 source_name,
@@ -623,11 +624,11 @@ impl SignalHandler for TimerManager {
                 target_name,
                 target_npc_id,
                 timestamp,
-                ..
             } => {
                 signal_handlers::handle_ability(
                     self,
                     *ability_id,
+                    *ability_name,
                     *source_id, *source_entity_type, *source_name, *source_npc_id,
                     *target_id, *target_entity_type, *target_name, *target_npc_id,
                     *timestamp,
@@ -723,9 +724,11 @@ impl SignalHandler for TimerManager {
             }
 
             // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────
-            GameSignal::BossEncounterDetected { boss_name, timestamp, .. } => {
-                eprintln!("[TIMER] Boss encounter detected: {}", boss_name);
+            GameSignal::BossEncounterDetected { boss_name, entity_id, timestamp, .. } => {
+                eprintln!("[TIMER] Boss encounter detected: {} (entity_id: {})", boss_name, entity_id);
                 self.context.boss_name = Some(boss_name.clone());
+                // Track boss entity ID for source/target "boss" filter
+                self.boss_entity_ids.insert(*entity_id);
                 // Reset phase and counters for new encounter
                 self.current_phase = None;
                 self.counters.clear();

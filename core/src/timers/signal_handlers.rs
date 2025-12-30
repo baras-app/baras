@@ -15,6 +15,7 @@ use super::{TimerManager, TimerTrigger};
 pub(super) fn handle_ability(
     manager: &mut TimerManager,
     ability_id: i64,
+    ability_name: IStr,
     source_id: i64,
     source_type: EntityType,
     source_name: IStr,
@@ -27,11 +28,28 @@ pub(super) fn handle_ability(
 ) {
     // Convert i64 to u64 for matching (game IDs are always positive)
     let ability_id = ability_id as u64;
+    let ability_name_str = crate::context::resolve(ability_name);
+
+    // Debug: log all ability activations to verify signal flow
+    eprintln!("[TIMER DEBUG] Ability activated: {} (id: {})", ability_name_str, ability_id);
+
+    // Debug: show which timers have AbilityCast triggers
+    for d in manager.definitions.values() {
+        if d.matches_ability_with_name(ability_id, Some(&ability_name_str)) {
+            eprintln!("[TIMER DEBUG] Timer '{}' matches ability! Checking context...", d.name);
+            let is_active = manager.is_definition_active(d);
+            let matches_filters = manager.matches_source_target_filters(
+                d, source_id, source_type, source_name, source_npc_id,
+                target_id, target_type, target_name, target_npc_id,
+            );
+            eprintln!("[TIMER DEBUG]   is_active={}, matches_filters={}", is_active, matches_filters);
+        }
+    }
 
     let matching: Vec<_> = manager.definitions
         .values()
         .filter(|d| {
-            let matches_ability = d.matches_ability(ability_id);
+            let matches_ability = d.matches_ability_with_name(ability_id, Some(&ability_name_str));
             let is_active = manager.is_definition_active(d);
             let matches_filters = manager.matches_source_target_filters(
                 d, source_id, source_type, source_name, source_npc_id,
@@ -39,8 +57,8 @@ pub(super) fn handle_ability(
             );
             if matches_ability && !is_active {
                 let diff_str = manager.context.difficulty.map(|d| d.config_key()).unwrap_or("none");
-                eprintln!("[TIMER] Ability {} matches timer '{}' but context filter failed (enc={:?}, boss={:?}, diff={})",
-                    ability_id, d.name, manager.context.encounter_name, manager.context.boss_name, diff_str);
+                eprintln!("[TIMER] Ability {} ({}) matches timer '{}' but context filter failed (enc={:?}, boss={:?}, diff={})",
+                    ability_id, ability_name_str, d.name, manager.context.encounter_name, manager.context.boss_name, diff_str);
             }
             matches_ability && is_active && matches_filters
         })
@@ -48,13 +66,13 @@ pub(super) fn handle_ability(
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting timer '{}' (ability {})", def.name, ability_id);
+        eprintln!("[TIMER] Starting timer '{}' (ability {} / {})", def.name, ability_id, ability_name_str);
         manager.start_timer(&def, timestamp, Some(target_id));
     }
 
     // Check for cancel triggers on ability cast
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::AbilityCast { abilities, .. } if abilities.iter().any(|s| s.matches(ability_id, None))),
+        |t| matches!(t, TimerTrigger::AbilityCast { abilities, .. } if abilities.iter().any(|s| s.matches(ability_id, Some(&ability_name_str)))),
         &format!("ability {} cast", ability_id)
     );
 }
@@ -175,6 +193,15 @@ pub(super) fn handle_boss_hp_change(
         );
         manager.start_timer(&def, timestamp, None);
     }
+
+    // Check for cancel triggers on boss HP threshold
+    let npc_name_owned = npc_name.to_string();
+    manager.cancel_timers_matching(
+        |t| matches!(t, TimerTrigger::BossHpBelow { hp_percent, entity }
+            if previous_hp > *hp_percent && current_hp <= *hp_percent
+            && (entity.is_empty() || entity.matches_npc_id(npc_id) || entity.matches_name(&npc_name_owned))),
+        &format!("boss HP below threshold for {}", npc_name)
+    );
 }
 
 /// Handle phase change - check for PhaseEntered triggers
@@ -238,6 +265,14 @@ pub(super) fn handle_counter_change(
             def.name, counter_id, new_value);
         manager.start_timer(&def, timestamp, None);
     }
+
+    // Check for cancel triggers on counter change
+    let counter_id_owned = counter_id.to_string();
+    manager.cancel_timers_matching(
+        |t| matches!(t, TimerTrigger::CounterReaches { counter_id: cid, value }
+            if cid == &counter_id_owned && old_value < *value && new_value >= *value),
+        &format!("counter {} reached {}", counter_id, new_value)
+    );
 }
 
 /// Handle NPC first seen - check for EntityFirstSeen triggers
@@ -264,6 +299,14 @@ pub(super) fn handle_npc_first_seen(manager: &mut TimerManager, npc_id: i64, npc
         eprintln!("[TIMER] Starting first-seen timer '{}' (NPC {} spawned)", def.name, npc_name);
         manager.start_timer(&def, timestamp, None);
     }
+
+    // Check for cancel triggers on entity spawned
+    let npc_name_owned = npc_name.to_string();
+    manager.cancel_timers_matching(
+        |t| matches!(t, TimerTrigger::EntitySpawned { entity }
+            if !entity.is_empty() && (entity.matches_npc_id(npc_id) || entity.matches_name(&npc_name_owned))),
+        &format!("entity {} spawned", npc_name)
+    );
 }
 
 /// Handle entity death - check for EntityDeath triggers
@@ -278,6 +321,14 @@ pub(super) fn handle_entity_death(manager: &mut TimerManager, npc_id: i64, entit
         eprintln!("[TIMER] Starting death-triggered timer '{}' ({} died)", def.name, entity_name);
         manager.start_timer(&def, timestamp, None);
     }
+
+    // Check for cancel triggers on entity death
+    let entity_name_owned = entity_name.to_string();
+    manager.cancel_timers_matching(
+        |t| matches!(t, TimerTrigger::EntityDeath { entity }
+            if entity.is_empty() || entity.matches_npc_id(npc_id) || entity.matches_name(&entity_name_owned)),
+        &format!("entity {} died", entity_name)
+    );
 }
 
 /// Handle target set - check for TargetSet triggers (e.g., sphere targeting player)
@@ -306,6 +357,14 @@ pub(super) fn handle_target_set(
         eprintln!("[TIMER] Starting target-set timer '{}' (targeted by {} [{}])", def.name, source_name_str, source_npc_id);
         manager.start_timer(&def, timestamp, None);
     }
+
+    // Check for cancel triggers on target set
+    let source_name_owned = source_name_str.to_string();
+    manager.cancel_timers_matching(
+        |t| matches!(t, TimerTrigger::TargetSet { entity }
+            if !entity.is_empty() && (entity.matches_npc_id(source_npc_id) || entity.matches_name(&source_name_owned))),
+        &format!("target set by {}", source_name_owned)
+    );
 }
 
 /// Handle time elapsed - check for TimeElapsed triggers
@@ -332,6 +391,12 @@ pub(super) fn handle_time_elapsed(manager: &mut TimerManager, timestamp: NaiveDa
         eprintln!("[TIMER] Starting time-triggered timer '{}' ({:.1}s into combat)", def.name, new_combat_secs);
         manager.start_timer(&def, timestamp, None);
     }
+
+    // Check for cancel triggers on time elapsed
+    manager.cancel_timers_matching(
+        |t| matches!(t, TimerTrigger::TimeElapsed { secs } if old_combat_secs < *secs && new_combat_secs >= *secs),
+        &format!("{:.1}s elapsed", new_combat_secs)
+    );
 
     manager.last_combat_secs = new_combat_secs;
 }
@@ -375,6 +440,7 @@ pub(super) fn clear_combat_timers(manager: &mut TimerManager) {
     manager.current_phase = None;
     manager.counters.clear();
     manager.boss_hp_by_npc.clear();
+    manager.boss_entity_ids.clear();
     manager.combat_start_time = None;
     manager.last_combat_secs = 0.0;
 }

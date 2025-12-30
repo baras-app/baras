@@ -153,6 +153,11 @@ impl TimerDefinition {
         trigger_matches_ability(&self.trigger, ability_id)
     }
 
+    /// Check if this timer matches a given ability ID and/or name
+    pub fn matches_ability_with_name(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+        trigger_matches_ability_with_name(&self.trigger, ability_id, ability_name)
+    }
+
     /// Check if this timer matches a given effect ID for apply triggers
     pub fn matches_effect_applied(&self, effect_id: u64) -> bool {
         trigger_matches_effect_applied(&self.trigger, effect_id)
