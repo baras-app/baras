@@ -274,6 +274,10 @@ pub struct BossTimerDefinition {
 
     // ─── Audio ───────────────────────────────────────────────────────────────
 
+    /// Master toggle for all audio on this timer
+    #[serde(default)]
+    pub audio_enabled: bool,
+
     /// Audio file to play on alert
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub audio_file: Option<String>,
@@ -312,6 +316,7 @@ impl BossTimerDefinition {
             show_on_raid_frames: self.show_on_raid_frames,
             alert_at_secs: self.alert_at_secs,
             alert_text: self.alert_text.clone(),
+            audio_enabled: self.audio_enabled,
             audio_file: self.audio_file.clone(),
             audio_offset: self.audio_offset,
             countdown_start: self.countdown_start,

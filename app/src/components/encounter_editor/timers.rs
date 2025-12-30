@@ -193,26 +193,23 @@ fn TimerRow(
                     // Audio toggle (clickable without expanding)
                     span {
                         class: "row-toggle",
-                        title: if timer.audio_file.is_some() { "Disable audio" } else { "No audio configured" },
+                        title: if timer.audio_enabled { "Disable audio" } else { "Enable audio" },
                         onclick: move |e| {
                             e.stop_propagation();
-                            // Only toggle if audio was configured
-                            if timer_for_audio.audio_file.is_some() {
-                                let mut updated = timer_for_audio.clone();
-                                updated.audio_file = None;
-                                let mut current = timers_for_audio.clone();
-                                if let Some(idx) = current.iter().position(|t| t.timer_id == updated.timer_id) {
-                                    current[idx] = updated.clone();
-                                    on_change.call(current);
-                                }
-                                spawn(async move {
-                                    api::update_encounter_timer(&updated).await;
-                                });
+                            let mut updated = timer_for_audio.clone();
+                            updated.audio_enabled = !updated.audio_enabled;
+                            let mut current = timers_for_audio.clone();
+                            if let Some(idx) = current.iter().position(|t| t.timer_id == updated.timer_id) {
+                                current[idx] = updated.clone();
+                                on_change.call(current);
                             }
+                            spawn(async move {
+                                api::update_encounter_timer(&updated).await;
+                            });
                         },
                         span {
-                            class: if timer.audio_file.is_some() { "text-primary" } else { "text-muted" },
-                            if timer.audio_file.is_some() { "🔊" } else { "🔇" }
+                            class: if timer.audio_enabled { "text-primary" } else { "text-muted" },
+                            if timer.audio_enabled { "🔊" } else { "🔇" }
                         }
                     }
                 }
@@ -973,6 +970,7 @@ fn NewTimerForm(
                             is_alert: false,
                             alert_text: None,
                             show_on_raid_frames: false,
+                            audio_enabled: false,
                             audio_file: None,
                             audio_offset: 0, // 0 = on expiration
                             countdown_start: 3, // Default to 3 seconds

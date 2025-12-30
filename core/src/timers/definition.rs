@@ -76,6 +76,12 @@ pub struct TimerDefinition {
     /// Custom alert text (None = use timer name)
     pub alert_text: Option<String>,
 
+    // ─── Audio ───────────────────────────────────────────────────────────────
+
+    /// Master toggle for all audio on this timer
+    #[serde(default)]
+    pub audio_enabled: bool,
+
     /// Audio file to play on alert
     pub audio_file: Option<String>,
 

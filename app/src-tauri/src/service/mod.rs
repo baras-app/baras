@@ -798,12 +798,14 @@ impl CombatService {
                             }
                         }
 
-                        // Send alert audio events (always - alerts fire at timer expiration)
+                        // Send alert audio events (only if audio_enabled for that alert)
                         for alert in alerts {
-                            let _ = audio_tx.try_send(AudioEvent::Alert {
-                                text: alert.text,
-                                custom_sound: alert.audio_file,
-                            });
+                            if alert.audio_enabled {
+                                let _ = audio_tx.try_send(AudioEvent::Alert {
+                                    text: alert.text,
+                                    custom_sound: alert.audio_file,
+                                });
+                            }
                         }
                     }
                 }

@@ -209,6 +209,8 @@ pub struct TimerListItem {
     pub show_on_raid_frames: bool,
 
     // Audio
+    #[serde(default = "default_audio_enabled")]
+    pub audio_enabled: bool,
     #[serde(default)]
     pub audio_file: Option<String>,
     #[serde(default)]
@@ -222,6 +224,7 @@ pub struct TimerListItem {
 }
 
 fn default_countdown_start() -> u8 { 3 }
+fn default_audio_enabled() -> bool { false }
 
 /// Minimal boss info for the "New Timer" dropdown
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -74,6 +74,9 @@ pub struct ActiveTimer {
     /// Voice pack for countdown (Amy, Jim, Yolo, Nerevar)
     pub countdown_voice: String,
 
+    /// Master toggle for all audio on this timer
+    pub audio_enabled: bool,
+
     /// Audio file to play when timer expires (or at offset)
     pub audio_file: Option<String>,
 
@@ -98,6 +101,7 @@ impl ActiveTimer {
         show_on_raid_frames: bool,
         countdown_start: u8,
         countdown_voice: Option<String>,
+        audio_enabled: bool,
         audio_file: Option<String>,
         audio_offset: u8,
     ) -> Self {
@@ -122,6 +126,7 @@ impl ActiveTimer {
             countdown_announced: [false; 10],
             countdown_start,
             countdown_voice: countdown_voice.unwrap_or_else(|| "Amy".to_string()),
+            audio_enabled,
             audio_file,
             audio_offset,
             audio_offset_fired: false,

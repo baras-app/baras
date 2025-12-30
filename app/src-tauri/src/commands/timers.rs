@@ -62,6 +62,7 @@ pub struct TimerListItem {
     pub show_on_raid_frames: bool,
 
     // Audio
+    pub audio_enabled: bool,
     pub audio_file: Option<String>,
     pub audio_offset: u8,
     pub countdown_start: u8,
@@ -99,6 +100,7 @@ impl TimerListItem {
             alert_at_secs: timer.alert_at_secs,
             show_on_raid_frames: timer.show_on_raid_frames,
 
+            audio_enabled: timer.audio_enabled,
             audio_file: timer.audio_file.clone(),
             audio_offset: timer.audio_offset,
             countdown_start: timer.countdown_start,
@@ -129,6 +131,7 @@ impl TimerListItem {
             cancel_trigger: None, // TODO: Add to UI if needed
             alert_at_secs: self.alert_at_secs,
             show_on_raid_frames: self.show_on_raid_frames,
+            audio_enabled: self.audio_enabled,
             audio_file: self.audio_file.clone(),
             audio_offset: self.audio_offset,
             countdown_start: self.countdown_start,
@@ -343,6 +346,7 @@ pub async fn create_encounter_timer(
         cancel_trigger: None,
         alert_at_secs: timer.alert_at_secs,
         show_on_raid_frames: timer.show_on_raid_frames,
+        audio_enabled: timer.audio_enabled,
         audio_file: timer.audio_file.clone(),
         audio_offset: timer.audio_offset,
         countdown_start: timer.countdown_start,

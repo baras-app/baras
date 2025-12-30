@@ -42,6 +42,8 @@ pub struct FiredAlert {
     pub text: String,
     pub color: Option<[u8; 4]>,
     pub timestamp: NaiveDateTime,
+    /// Whether audio is enabled for this alert
+    pub audio_enabled: bool,
     /// Optional custom audio file for this alert (relative path)
     pub audio_file: Option<String>,
 }
@@ -299,9 +301,11 @@ impl TimerManager {
     /// Returns a list of (timer_name, seconds, voice_pack) for each countdown that should be announced.
     /// This mutates the timers to mark countdowns as announced so they won't repeat.
     /// Uses realtime (system Instant) for accurate audio synchronization.
+    /// Skips timers with audio_enabled=false.
     pub fn check_all_countdowns(&mut self) -> Vec<(String, u8, String)> {
         self.active_timers
             .values_mut()
+            .filter(|timer| timer.audio_enabled)
             .filter_map(|timer| {
                 timer.check_countdown()
                     .map(|secs| (timer.name.clone(), secs, timer.countdown_voice.clone()))
@@ -313,10 +317,12 @@ impl TimerManager {
     ///
     /// Returns FiredAlerts for timers where remaining time crossed below audio_offset.
     /// This is for "early warning" sounds that play before the timer expires.
+    /// Skips timers with audio_enabled=false.
     pub fn check_audio_offsets(&mut self) -> Vec<FiredAlert> {
         let now = Local::now().naive_local();
         self.active_timers
             .values_mut()
+            .filter(|timer| timer.audio_enabled)
             .filter_map(|timer| {
                 if timer.check_audio_offset() {
                     Some(FiredAlert {
@@ -325,6 +331,7 @@ impl TimerManager {
                         text: timer.name.clone(),
                         color: Some(timer.color),
                         timestamp: now,
+                        audio_enabled: true, // Already filtered by audio_enabled
                         audio_file: timer.audio_file.clone(),
                     })
                 } else {
@@ -364,13 +371,14 @@ impl TimerManager {
     pub(super) fn start_timer(&mut self, def: &TimerDefinition, timestamp: NaiveDateTime, target_id: Option<i64>) {
         // Alerts are ephemeral notifications, not countdown timers
         if def.is_alert {
-            eprintln!("[ALERT] Fired: {} - {}", def.name, def.alert_text.as_deref().unwrap_or(&def.name));
+            eprintln!("[ALERT] Fired: {} - {} (audio_enabled={})", def.name, def.alert_text.as_deref().unwrap_or(&def.name), def.audio_enabled);
             self.fired_alerts.push(FiredAlert {
                 id: def.id.clone(),
                 name: def.name.clone(),
                 text: def.alert_text.clone().unwrap_or_else(|| def.name.clone()),
                 color: Some(def.color),
                 timestamp,
+                audio_enabled: def.audio_enabled,
                 audio_file: def.audio_file.clone(),
             });
             return;
@@ -403,6 +411,7 @@ impl TimerManager {
             def.show_on_raid_frames,
             def.countdown_start,
             def.countdown_voice.clone(),
+            def.audio_enabled,
             def.audio_file.clone(),
             def.audio_offset,
         );
@@ -490,7 +499,8 @@ impl TimerManager {
             } else if let Some(timer) = self.active_timers.remove(&key) {
                 // Timer exhausted repeats - fire expiration alert if audio is configured
                 // Only fire on expiration if audio_offset == 0 (otherwise it already played at offset)
-                if timer.audio_file.is_some() && timer.audio_offset == 0 {
+                // Skip if audio_enabled == false
+                if timer.audio_enabled && timer.audio_file.is_some() && timer.audio_offset == 0 {
                     eprintln!("[TIMER] Expired with audio: {} -> {:?}", timer.name, timer.audio_file);
                     self.fired_alerts.push(FiredAlert {
                         id: timer.definition_id.clone(),
@@ -498,6 +508,7 @@ impl TimerManager {
                         text: timer.name.clone(),
                         color: Some(timer.color),
                         timestamp: current_time,
+                        audio_enabled: true, // Already checked above
                         audio_file: timer.audio_file.clone(),
                     });
                 }
