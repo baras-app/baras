@@ -3,7 +3,7 @@ use crate::encounter::{Encounter, EncounterState, BossHealthEntry};
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{EncounterHistory, create_summary};
 use crate::state::info::AreaInfo;
-use crate::game_data::{lookup_boss, register_boss_npcs, clear_boss_registry};
+use crate::game_data::{lookup_boss, register_hp_overlay_entity, lookup_registered_name, clear_boss_registry};
 use std::collections::{HashSet, VecDeque};
 
 const CACHE_DEFAULT_CAPACITY: usize = 3;
@@ -150,8 +150,11 @@ impl SessionCache {
         let mut entries: Vec<_> = self.boss_state.hp_raw
             .iter()
             .filter_map(|(&npc_id, &(current, max))| {
-                lookup_boss(npc_id).map(|info| BossHealthEntry {
-                    name: info.boss.to_string(),
+                // Try registry first (custom definitions), then hardcoded boss data
+                let name = lookup_registered_name(npc_id)
+                    .or_else(|| lookup_boss(npc_id).map(|info| info.boss.to_string()))?;
+                Some(BossHealthEntry {
+                    name,
                     current: current as i32,
                     max: max as i32,
                     first_seen_at: self.boss_state.first_seen.get(&npc_id).copied(),
@@ -178,8 +181,16 @@ impl SessionCache {
     }
 
     /// Load boss definitions for the current area.
-    /// Replaces any existing definitions.
+    /// Replaces any existing definitions and registers HP overlay entities.
     pub fn load_boss_definitions(&mut self, definitions: Vec<BossEncounterDefinition>) {
+        // Register HP overlay entities for name lookup
+        for def in &definitions {
+            for entity in def.hp_overlay_entities() {
+                for &npc_id in &entity.ids {
+                    register_hp_overlay_entity(npc_id, &entity.name);
+                }
+            }
+        }
         self.boss_definitions = definitions;
         self.active_boss_idx = None;
     }

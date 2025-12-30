@@ -422,8 +422,7 @@ pub struct PhaseListItem {
 pub struct CounterListItem {
     pub id: String,
     /// Display name (used for ID generation)
-    #[serde(default)]
-    pub name: Option<String>,
+    pub name: String,
     /// Optional in-game display text (defaults to name if not set)
     #[serde(default)]
     pub display_text: Option<String>,
@@ -568,6 +567,8 @@ pub struct EntityListItem {
     pub triggers_encounter: bool,
     #[serde(default)]
     pub is_kill_target: bool,
+    #[serde(default)]
+    pub show_on_hp_overlay: bool,
 }
 
 /// Boss item for full editing

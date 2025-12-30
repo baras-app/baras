@@ -1116,8 +1116,7 @@ use baras_core::boss::{
 pub struct CounterListItem {
     pub id: String,
     /// Display name (used for ID generation if id is empty)
-    #[serde(default)]
-    pub name: Option<String>,
+    pub name: String,
     /// Optional in-game display text (defaults to name if not set)
     #[serde(default)]
     pub display_text: Option<String>,
@@ -1245,11 +1244,7 @@ pub async fn create_counter(
 
     // Generate ID from name if id is empty
     let counter_id = if counter.id.is_empty() {
-        if let Some(ref name) = counter.name {
-            generate_dsl_id(&boss_id, name)
-        } else {
-            return Err("Counter must have either an id or a name".to_string());
-        }
+        generate_dsl_id(&boss_id, &counter.name)
     } else {
         counter.id.clone()
     };
@@ -1568,6 +1563,8 @@ pub struct EntityListItem {
     pub triggers_encounter: bool,
     #[serde(default)]
     pub is_kill_target: bool,
+    #[serde(default)]
+    pub show_on_hp_overlay: bool,
 }
 
 impl EntityListItem {
@@ -1581,6 +1578,7 @@ impl EntityListItem {
             is_boss: entity.is_boss,
             triggers_encounter: entity.triggers_encounter(),
             is_kill_target: entity.is_kill_target,
+            show_on_hp_overlay: entity.shows_on_hp_overlay(),
         }
     }
 
@@ -1591,6 +1589,7 @@ impl EntityListItem {
             is_boss: self.is_boss,
             triggers_encounter: Some(self.triggers_encounter),
             is_kill_target: self.is_kill_target,
+            show_on_hp_overlay: Some(self.show_on_hp_overlay),
         }
     }
 }

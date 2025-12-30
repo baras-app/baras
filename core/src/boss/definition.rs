@@ -100,6 +100,12 @@ pub struct EntityDefinition {
     /// Whether killing this entity ends the encounter
     #[serde(default)]
     pub is_kill_target: bool,
+
+    /// Whether to show this entity on the Boss HP overlay.
+    /// Defaults to `is_boss` value if not specified.
+    /// Use to hide invincible boss phases or show important non-boss adds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_on_hp_overlay: Option<bool>,
 }
 
 impl EntityDefinition {
@@ -112,6 +118,12 @@ impl EntityDefinition {
     /// Defaults to `is_boss` if not explicitly set.
     pub fn triggers_encounter(&self) -> bool {
         self.triggers_encounter.unwrap_or(self.is_boss)
+    }
+
+    /// Whether this entity should show on the Boss HP overlay.
+    /// Defaults to `is_boss` if not explicitly set.
+    pub fn shows_on_hp_overlay(&self) -> bool {
+        self.show_on_hp_overlay.unwrap_or(self.is_boss)
     }
 }
 
@@ -318,6 +330,11 @@ impl BossEncounterDefinition {
     /// Get all boss entities (is_boss = true) for health bar display
     pub fn boss_entities(&self) -> impl Iterator<Item = &EntityDefinition> {
         self.entities.iter().filter(|e| e.is_boss)
+    }
+
+    /// Get all entities that should show on the HP overlay
+    pub fn hp_overlay_entities(&self) -> impl Iterator<Item = &EntityDefinition> {
+        self.entities.iter().filter(|e| e.shows_on_hp_overlay())
     }
 
     /// Get all NPC IDs that trigger encounter detection

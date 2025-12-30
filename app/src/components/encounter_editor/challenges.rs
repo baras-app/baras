@@ -137,7 +137,7 @@ fn ChallengeRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
                 span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
-                span { class: "font-medium text-mono", "{challenge.id}" }
+                span { class: "font-medium", "{challenge.name}" }
                 span { class: "tag", "{metric_label}" }
                 if condition_count > 0 {
                     span { class: "tag tag-secondary", "{condition_count} conditions" }

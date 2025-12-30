@@ -16,8 +16,7 @@ pub struct CounterDefinition {
     pub id: String,
 
     /// Display name (used for ID generation, must be unique within encounter)
-    #[serde(default)]
-    pub name: Option<String>,
+    pub name: String,
 
     /// Optional in-game display text (defaults to name, then id)
     #[serde(default, skip_serializing_if = "Option::is_none")]

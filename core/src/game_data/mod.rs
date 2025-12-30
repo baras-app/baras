@@ -10,7 +10,7 @@ mod raid_bosses;
 mod raids;
 mod shield_effects;
 
-pub use boss_registry::{register_boss_npcs, clear_boss_registry, is_registered_boss};
+pub use boss_registry::{register_hp_overlay_entity, lookup_registered_name, clear_boss_registry, is_registered_boss};
 pub use bosses::{lookup_boss, is_boss, get_boss_ids, lookup_area_content_type, BossInfo, ContentType, Difficulty};
 pub use discipline::{Class, Discipline, Role};
 pub use effects::*;

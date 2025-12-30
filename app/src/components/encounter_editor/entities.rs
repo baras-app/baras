@@ -131,6 +131,13 @@ fn EntityRow(
                 if entity.is_kill_target {
                     span { class: "tag tag-success", "Kill Target" }
                 }
+                // Show HP overlay tag when behavior differs from is_boss default
+                if entity.show_on_hp_overlay && !entity.is_boss {
+                    span { class: "tag tag-info", "HP Overlay" }
+                }
+                if !entity.show_on_hp_overlay && entity.is_boss {
+                    span { class: "tag tag-muted", "HP Hidden" }
+                }
             }
 
             // Expanded content
@@ -293,6 +300,20 @@ fn EntityEditForm(
                         span { "Is Kill Target" }
                         span { class: "text-xs text-muted", "(death of all kill targets ends encounter)" }
                     }
+
+                    label { class: "flex items-center gap-xs cursor-pointer",
+                        input {
+                            r#type: "checkbox",
+                            checked: draft().show_on_hp_overlay,
+                            onchange: move |e| {
+                                let mut d = draft();
+                                d.show_on_hp_overlay = e.checked();
+                                draft.set(d);
+                            }
+                        }
+                        span { "Show on HP Overlay" }
+                        span { class: "text-xs text-muted", "(display this entity on Boss HP bar)" }
+                    }
                 }
             }
 
@@ -329,6 +350,7 @@ fn NewEntityForm(
     let mut is_boss = use_signal(|| false);
     let mut triggers_encounter = use_signal(|| false);
     let mut is_kill_target = use_signal(|| false);
+    let mut show_on_hp_overlay = use_signal(|| false);
 
     let handle_create = move |_| {
         let new_entity = EntityListItem {
@@ -340,6 +362,7 @@ fn NewEntityForm(
             is_boss: is_boss(),
             triggers_encounter: triggers_encounter(),
             is_kill_target: is_kill_target(),
+            show_on_hp_overlay: show_on_hp_overlay(),
         };
         on_create.call(new_entity);
     };
@@ -392,6 +415,15 @@ fn NewEntityForm(
                             onchange: move |e| is_kill_target.set(e.checked())
                         }
                         "Kill Target"
+                    }
+
+                    label { class: "flex items-center gap-xs cursor-pointer",
+                        input {
+                            r#type: "checkbox",
+                            checked: show_on_hp_overlay(),
+                            onchange: move |e| show_on_hp_overlay.set(e.checked())
+                        }
+                        "Show on HP Overlay"
                     }
                 }
             }

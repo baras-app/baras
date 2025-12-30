@@ -135,7 +135,7 @@ fn CounterRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
                 span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
-                span { class: "font-medium text-mono", "{counter.id}" }
+                span { class: "font-medium", "{counter.name}" }
                 span { class: "tag", "{trigger_label}" }
                 if counter.decrement {
                     span { class: "tag tag-warning", "Decrement" }
@@ -231,11 +231,10 @@ fn CounterEditForm(
                 input {
                     class: "input-inline",
                     style: "width: 200px;",
-                    placeholder: "(optional)",
-                    value: "{draft().name.clone().unwrap_or_default()}",
+                    value: "{draft().name.clone()}",
                     oninput: move |e| {
                         let mut d = draft();
-                        d.name = if e.value().is_empty() { None } else { Some(e.value()) };
+                        d.name = e.value();
                         draft.set(d);
                     }
                 }
@@ -395,7 +394,7 @@ fn NewCounterForm(
     let handle_create = move |_| {
         let new_counter = CounterListItem {
             id: String::new(), // Backend will generate
-            name: Some(name()),
+            name: name(),
             display_text: None,
             boss_id: boss.id.clone(),
             boss_name: boss.name.clone(),
