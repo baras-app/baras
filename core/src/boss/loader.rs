@@ -416,7 +416,7 @@ conditions = [
         assert_eq!(add_damage.id, "add_damage");
         assert!(matches!(
             &add_damage.conditions[0],
-            ChallengeCondition::Target { matcher: EntityFilter::NpcIds(ids) } if ids.len() == 2
+            ChallengeCondition::Target { matcher: EntityFilter::Selector(sels) } if sels.len() == 2
         ));
 
         let burn_dps = &boss.challenges[2];

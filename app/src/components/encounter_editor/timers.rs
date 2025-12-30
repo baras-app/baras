@@ -5,7 +5,7 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{BossListItem, EntityFilter, TimerListItem, TimerTrigger};
+use crate::types::{AudioConfig, BossListItem, EntityFilter, TimerListItem, TimerTrigger};
 
 use super::conditions::CounterConditionEditor;
 use super::tabs::EncounterData;
@@ -193,11 +193,11 @@ fn TimerRow(
                     // Audio toggle (clickable without expanding)
                     span {
                         class: "row-toggle",
-                        title: if timer.audio_enabled { "Disable audio" } else { "Enable audio" },
+                        title: if timer.audio.enabled { "Disable audio" } else { "Enable audio" },
                         onclick: move |e| {
                             e.stop_propagation();
                             let mut updated = timer_for_audio.clone();
-                            updated.audio_enabled = !updated.audio_enabled;
+                            updated.audio.enabled = !updated.audio.enabled;
                             let mut current = timers_for_audio.clone();
                             if let Some(idx) = current.iter().position(|t| t.timer_id == updated.timer_id) {
                                 current[idx] = updated.clone();
@@ -208,8 +208,8 @@ fn TimerRow(
                             });
                         },
                         span {
-                            class: if timer.audio_enabled { "text-primary" } else { "text-muted" },
-                            if timer.audio_enabled { "🔊" } else { "🔇" }
+                            class: if timer.audio.enabled { "text-primary" } else { "text-muted" },
+                            if timer.audio.enabled { "🔊" } else { "🔇" }
                         }
                     }
                 }
@@ -704,10 +704,10 @@ fn TimerEditForm(
                         label { "Enable Audio" }
                         input {
                             r#type: "checkbox",
-                            checked: draft().audio_enabled,
+                            checked: draft().audio.enabled,
                             onchange: move |e| {
                                 let mut d = draft();
-                                d.audio_enabled = e.checked();
+                                d.audio.enabled = e.checked();
                                 draft.set(d);
                             }
                         }
@@ -719,17 +719,17 @@ fn TimerEditForm(
                             select {
                                 class: "select-inline",
                                 style: "width: 140px;",
-                                value: "{draft().audio_file.clone().unwrap_or_default()}",
+                                value: "{draft().audio.file.clone().unwrap_or_default()}",
                                 onchange: move |e| {
                                     let mut d = draft();
-                                    d.audio_file = if e.value().is_empty() { None } else { Some(e.value()) };
+                                    d.audio.file = if e.value().is_empty() { None } else { Some(e.value()) };
                                     draft.set(d);
                                 },
                                 option { value: "", "(none)" }
                                 option { value: "Alarm.mp3", "Alarm.mp3" }
                                 option { value: "Alert.mp3", "Alert.mp3" }
                                 // Show custom path if set and not a bundled sound
-                                if let Some(ref path) = draft().audio_file {
+                                if let Some(ref path) = draft().audio.file {
                                     if !path.is_empty() && path != "Alarm.mp3" && path != "Alert.mp3" {
                                         option { value: "{path}", selected: true, "{path} (custom)" }
                                     }
@@ -745,7 +745,7 @@ fn TimerEditForm(
                                             let lower = path.to_lowercase();
                                             if lower.ends_with(".mp3") || lower.ends_with(".wav") {
                                                 let mut d = draft();
-                                                d.audio_file = Some(path);
+                                                d.audio.file = Some(path);
                                                 draft.set(d);
                                             }
                                         }
@@ -763,11 +763,11 @@ fn TimerEditForm(
                             select {
                                 class: "select-inline",
                                 style: "width: 120px;",
-                                value: "{draft().audio_offset}",
+                                value: "{draft().audio.offset}",
                                 onchange: move |e| {
                                     if let Ok(val) = e.value().parse::<u8>() {
                                         let mut d = draft();
-                                        d.audio_offset = val;
+                                        d.audio.offset = val;
                                         draft.set(d);
                                     }
                                 },
@@ -792,11 +792,11 @@ fn TimerEditForm(
                             select {
                                 class: "select-inline",
                                 style: "width: 80px;",
-                                value: "{draft().countdown_start}",
+                                value: "{draft().audio.countdown_start}",
                                 onchange: move |e| {
                                     if let Ok(val) = e.value().parse::<u8>() {
                                         let mut d = draft();
-                                        d.countdown_start = val;
+                                        d.audio.countdown_start = val;
                                         draft.set(d);
                                     }
                                 },
@@ -816,10 +816,10 @@ fn TimerEditForm(
                             select {
                                 class: "select-inline",
                                 style: "width: 100px;",
-                                value: "{draft().countdown_voice.clone().unwrap_or_else(|| \"Amy\".to_string())}",
+                                value: "{draft().audio.countdown_voice.clone().unwrap_or_else(|| \"Amy\".to_string())}",
                                 onchange: move |e| {
                                     let mut d = draft();
-                                    d.countdown_voice = if e.value() == "Amy" { None } else { Some(e.value()) };
+                                    d.audio.countdown_voice = if e.value() == "Amy" { None } else { Some(e.value()) };
                                     draft.set(d);
                                 },
                                 option { value: "Amy", "Amy" }
@@ -1025,11 +1025,13 @@ fn NewTimerForm(
                             alert_text: None,
                             show_on_raid_frames: false,
                             show_at_secs: 0.0,
-                            audio_enabled: false,
-                            audio_file: None,
-                            audio_offset: 0, // 0 = on expiration
-                            countdown_start: 3, // Default to 3 seconds
-                            countdown_voice: None, // Default to Amy
+                            audio: AudioConfig {
+                                enabled: false,
+                                file: None,
+                                offset: 0, // 0 = on expiration
+                                countdown_start: 3, // Default to 3 seconds
+                                countdown_voice: None, // Default to Amy
+                            },
                         });
                     },
                     "Create Timer"
@@ -1053,8 +1055,14 @@ fn EntityFilterSelector(
     value: EntityFilter,
     on_change: EventHandler<EntityFilter>,
 ) -> Element {
+    use baras_types::EntitySelector;
+
     let current_value = value.type_name();
-    let specific_value = if let EntityFilter::Specific(s) = &value { s.clone() } else { String::new() };
+    let selector_value = if let EntityFilter::Selector(selectors) = &value {
+        selectors.first().map(|s| s.display()).unwrap_or_default()
+    } else {
+        String::new()
+    };
 
     rsx! {
         div { class: "flex-col gap-xs",
@@ -1074,7 +1082,7 @@ fn EntityFilterSelector(
                         "boss" => EntityFilter::Boss,
                         "npc_except_boss" => EntityFilter::NpcExceptBoss,
                         "any_npc" => EntityFilter::AnyNpc,
-                        "specific" => EntityFilter::Specific(String::new()),
+                        "selector" => EntityFilter::Selector(vec![]),
                         _ => EntityFilter::Any,
                     };
                     on_change.call(new_filter);
@@ -1092,17 +1100,20 @@ fn EntityFilterSelector(
                 option { value: "boss", "Boss" }
                 option { value: "npc_except_boss", "NPC (Except Boss)" }
                 option { value: "any_npc", "Any NPC" }
-                option { value: "specific", "Specific Entity" }
+                option { value: "selector", "Specific (ID or Name)" }
             }
 
-            if matches!(value, EntityFilter::Specific(_)) {
+            if matches!(value, EntityFilter::Selector(_)) {
                 input {
                     class: "input-inline",
                     r#type: "text",
                     style: "width: 100%;",
-                    placeholder: "Entity name",
-                    value: "{specific_value}",
-                    oninput: move |e| on_change.call(EntityFilter::Specific(e.value()))
+                    placeholder: "NPC ID or entity name",
+                    value: "{selector_value}",
+                    oninput: move |e| {
+                        let selector = EntitySelector::from_input(&e.value());
+                        on_change.call(EntityFilter::Selector(vec![selector]))
+                    }
                 }
             }
         }

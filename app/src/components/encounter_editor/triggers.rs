@@ -318,11 +318,11 @@ pub fn SimpleTriggerEditor(
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
                         "phase_entered" => TimerTrigger::PhaseEntered { phase_id: String::new() },
                         "phase_ended" => TimerTrigger::PhaseEnded { phase_id: String::new() },
-                        "boss_hp_below" => TimerTrigger::BossHpBelow { hp_percent: 50.0, entities: vec![] },
+                        "boss_hp_below" => TimerTrigger::BossHpBelow { hp_percent: 50.0, selector: vec![] },
                         "counter_reaches" => TimerTrigger::CounterReaches { counter_id: String::new(), value: 1 },
-                        "npc_appears" => TimerTrigger::NpcAppears { entities: vec![] },
-                        "entity_death" => TimerTrigger::EntityDeath { entities: vec![] },
-                        "target_set" => TimerTrigger::TargetSet { entities: vec![] },
+                        "npc_appears" => TimerTrigger::NpcAppears { selector: vec![] },
+                        "entity_death" => TimerTrigger::EntityDeath { selector: vec![] },
+                        "target_set" => TimerTrigger::TargetSet { selector: vec![] },
                         "time_elapsed" => TimerTrigger::TimeElapsed { secs: 30.0 },
                         "manual" => TimerTrigger::Manual,
                         _ => trigger.clone(),
@@ -424,7 +424,7 @@ pub fn SimpleTriggerEditor(
                             }
                         }
                     },
-                    TimerTrigger::BossHpBelow { hp_percent, entities } => {
+                    TimerTrigger::BossHpBelow { hp_percent, selector } => {
                         let available_bosses = encounter_data.boss_entity_names();
                         rsx! {
                             div { class: "flex-col gap-xs",
@@ -439,12 +439,12 @@ pub fn SimpleTriggerEditor(
                                         style: "width: 70px;",
                                         value: "{hp_percent}",
                                         oninput: {
-                                            let entities = entities.clone();
+                                            let selector = selector.clone();
                                             move |e| {
                                                 if let Ok(val) = e.value().parse::<f32>() {
                                                     on_change.call(TimerTrigger::BossHpBelow {
                                                         hp_percent: val,
-                                                        entities: entities.clone(),
+                                                        selector: selector.clone(),
                                                     });
                                                 }
                                             }
@@ -452,11 +452,11 @@ pub fn SimpleTriggerEditor(
                                     }
                                 }
                                 BossSelector {
-                                    selected: entities.clone(),
+                                    selected: selector.clone(),
                                     available_bosses: available_bosses,
                                     on_change: move |sels| on_change.call(TimerTrigger::BossHpBelow {
                                         hp_percent,
-                                        entities: sels,
+                                        selector: sels,
                                     })
                                 }
                             }
@@ -499,30 +499,30 @@ pub fn SimpleTriggerEditor(
                             }
                         }
                     },
-                    TimerTrigger::NpcAppears { entities } => rsx! {
+                    TimerTrigger::NpcAppears { selector } => rsx! {
                         EntitySelectorEditor {
                             label: "Entity (Spawned)",
-                            selectors: entities.clone(),
+                            selectors: selector.clone(),
                             on_change: move |sels| on_change.call(TimerTrigger::NpcAppears {
-                                entities: sels
+                                selector: sels
                             })
                         }
                     },
-                    TimerTrigger::EntityDeath { entities } => rsx! {
+                    TimerTrigger::EntityDeath { selector } => rsx! {
                         EntitySelectorEditor {
                             label: "Entity (Death)",
-                            selectors: entities.clone(),
+                            selectors: selector.clone(),
                             on_change: move |sels| on_change.call(TimerTrigger::EntityDeath {
-                                entities: sels
+                                selector: sels
                             })
                         }
                     },
-                    TimerTrigger::TargetSet { entities } => rsx! {
+                    TimerTrigger::TargetSet { selector } => rsx! {
                         EntitySelectorEditor {
                             label: "NPC (Setter)",
-                            selectors: entities.clone(),
+                            selectors: selector.clone(),
                             on_change: move |sels| on_change.call(TimerTrigger::TargetSet {
-                                entities: sels
+                                selector: sels
                             })
                         }
                     },
@@ -978,11 +978,11 @@ fn SimplePhaseTriggerEditor(
                         "combat_start" => PhaseTrigger::CombatStart,
                         "boss_hp_below" => PhaseTrigger::BossHpBelow {
                             hp_percent: 50.0,
-                            entities: vec![],
+                            selector: vec![],
                         },
                         "boss_hp_above" => PhaseTrigger::BossHpAbove {
                             hp_percent: 50.0,
-                            entities: vec![],
+                            selector: vec![],
                         },
                         "ability_cast" => PhaseTrigger::AbilityCast { abilities: vec![], source: EntityMatcher::default() },
                         "effect_applied" => PhaseTrigger::EffectApplied { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
@@ -994,10 +994,10 @@ fn SimplePhaseTriggerEditor(
                         },
                         "time_elapsed" => PhaseTrigger::TimeElapsed { secs: 30.0 },
                         "npc_appears" => PhaseTrigger::NpcAppears {
-                            entities: vec![],
+                            selector: vec![],
                         },
                         "entity_death" => PhaseTrigger::EntityDeath {
-                            entities: vec![],
+                            selector: vec![],
                         },
                         "phase_ended" => PhaseTrigger::PhaseEnded {
                             phase_id: String::new(),
@@ -1024,7 +1024,7 @@ fn SimplePhaseTriggerEditor(
             {
                 match trigger.clone() {
                     PhaseTrigger::CombatStart => rsx! {},
-                    PhaseTrigger::BossHpBelow { hp_percent, entities } => {
+                    PhaseTrigger::BossHpBelow { hp_percent, selector } => {
                         let available_bosses = encounter_data.boss_entity_names();
                         rsx! {
                             div { class: "flex-col gap-xs",
@@ -1039,12 +1039,12 @@ fn SimplePhaseTriggerEditor(
                                         style: "width: 70px;",
                                         value: "{hp_percent}",
                                         oninput: {
-                                            let entities = entities.clone();
+                                            let selector = selector.clone();
                                             move |e| {
                                                 if let Ok(val) = e.value().parse::<f32>() {
                                                     on_change.call(PhaseTrigger::BossHpBelow {
                                                         hp_percent: val,
-                                                        entities: entities.clone(),
+                                                        selector: selector.clone(),
                                                     });
                                                 }
                                             }
@@ -1052,17 +1052,17 @@ fn SimplePhaseTriggerEditor(
                                     }
                                 }
                                 BossSelector {
-                                    selected: entities.clone(),
+                                    selected: selector.clone(),
                                     available_bosses: available_bosses,
                                     on_change: move |sels| on_change.call(PhaseTrigger::BossHpBelow {
                                         hp_percent,
-                                        entities: sels,
+                                        selector: sels,
                                     })
                                 }
                             }
                         }
                     },
-                    PhaseTrigger::BossHpAbove { hp_percent, entities } => {
+                    PhaseTrigger::BossHpAbove { hp_percent, selector } => {
                         let available_bosses = encounter_data.boss_entity_names();
                         rsx! {
                             div { class: "flex-col gap-xs",
@@ -1077,12 +1077,12 @@ fn SimplePhaseTriggerEditor(
                                         style: "width: 70px;",
                                         value: "{hp_percent}",
                                         oninput: {
-                                            let entities = entities.clone();
+                                            let selector = selector.clone();
                                             move |e| {
                                                 if let Ok(val) = e.value().parse::<f32>() {
                                                     on_change.call(PhaseTrigger::BossHpAbove {
                                                         hp_percent: val,
-                                                        entities: entities.clone(),
+                                                        selector: selector.clone(),
                                                     });
                                                 }
                                             }
@@ -1090,11 +1090,11 @@ fn SimplePhaseTriggerEditor(
                                     }
                                 }
                                 BossSelector {
-                                    selected: entities.clone(),
+                                    selected: selector.clone(),
                                     available_bosses: available_bosses,
                                     on_change: move |sels| on_change.call(PhaseTrigger::BossHpAbove {
                                         hp_percent,
-                                        entities: sels,
+                                        selector: sels,
                                     })
                                 }
                             }
@@ -1184,21 +1184,21 @@ fn SimplePhaseTriggerEditor(
                             span { class: "hint", "into combat" }
                         }
                     },
-                    PhaseTrigger::NpcAppears { entities } => rsx! {
+                    PhaseTrigger::NpcAppears { selector } => rsx! {
                         EntitySelectorEditor {
                             label: "Entity (Spawned)",
-                            selectors: entities.clone(),
+                            selectors: selector.clone(),
                             on_change: move |sels| on_change.call(PhaseTrigger::NpcAppears {
-                                entities: sels
+                                selector: sels
                             })
                         }
                     },
-                    PhaseTrigger::EntityDeath { entities } => rsx! {
+                    PhaseTrigger::EntityDeath { selector } => rsx! {
                         EntitySelectorEditor {
                             label: "Entity (Death)",
-                            selectors: entities.clone(),
+                            selectors: selector.clone(),
                             on_change: move |sels| on_change.call(PhaseTrigger::EntityDeath {
-                                entities: sels
+                                selector: sels
                             })
                         }
                     },
@@ -1280,10 +1280,10 @@ pub fn CounterTriggerEditor(
                         },
                         "any_phase_change" => CounterTrigger::AnyPhaseChange,
                         "npc_appears" => CounterTrigger::NpcAppears {
-                            entities: vec![],
+                            selector: vec![],
                         },
                         "entity_death" => CounterTrigger::EntityDeath {
-                            entities: vec![],
+                            selector: vec![],
                         },
                         "counter_reaches" => CounterTrigger::CounterReaches {
                             counter_id: String::new(),
@@ -1291,7 +1291,7 @@ pub fn CounterTriggerEditor(
                         },
                         "boss_hp_below" => CounterTrigger::BossHpBelow {
                             hp_percent: 50.0,
-                            entities: vec![],
+                            selector: vec![],
                         },
                         "never" => CounterTrigger::Never,
                         _ => trigger.clone(),
@@ -1335,7 +1335,7 @@ pub fn CounterTriggerEditor(
                             }
                             EntitySelectorEditor {
                                 label: "Source Filter",
-                                selectors: source.entities.clone(),
+                                selectors: source.selector.clone(),
                                 on_change: {
                                     let abilities = abilities.clone();
                                     move |sels| on_change.call(CounterTrigger::AbilityCast {
@@ -1361,7 +1361,7 @@ pub fn CounterTriggerEditor(
                             }
                             EntitySelectorEditor {
                                 label: "Target Filter",
-                                selectors: target.entities.clone(),
+                                selectors: target.selector.clone(),
                                 on_change: {
                                     let effects = effects.clone();
                                     move |sels| on_change.call(CounterTrigger::EffectApplied {
@@ -1388,7 +1388,7 @@ pub fn CounterTriggerEditor(
                             }
                             EntitySelectorEditor {
                                 label: "Target Filter",
-                                selectors: target.entities.clone(),
+                                selectors: target.selector.clone(),
                                 on_change: {
                                     let effects = effects.clone();
                                     move |sels| on_change.call(CounterTrigger::EffectRemoved {
@@ -1415,7 +1415,7 @@ pub fn CounterTriggerEditor(
                             }
                             EntitySelectorEditor {
                                 label: "Target Filter",
-                                selectors: target.entities.clone(),
+                                selectors: target.selector.clone(),
                                 on_change: {
                                     let abilities = abilities.clone();
                                     move |sels| on_change.call(CounterTrigger::DamageTaken {
@@ -1476,22 +1476,22 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
-                    CounterTrigger::NpcAppears { entities } => rsx! {
+                    CounterTrigger::NpcAppears { selector } => rsx! {
                         EntitySelectorEditor {
                             label: "Entity (Spawned)",
-                            selectors: entities.clone(),
+                            selectors: selector.clone(),
                             on_change: move |sels| on_change.call(CounterTrigger::NpcAppears {
-                                entities: sels
+                                selector: sels
                             })
                         }
                     },
 
-                    CounterTrigger::EntityDeath { entities } => rsx! {
+                    CounterTrigger::EntityDeath { selector } => rsx! {
                         EntitySelectorEditor {
                             label: "Entity (Death)",
-                            selectors: entities.clone(),
+                            selectors: selector.clone(),
                             on_change: move |sels| on_change.call(CounterTrigger::EntityDeath {
-                                entities: sels
+                                selector: sels
                             })
                         }
                     },
@@ -1534,7 +1534,7 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
-                    CounterTrigger::BossHpBelow { hp_percent, entities } => {
+                    CounterTrigger::BossHpBelow { hp_percent, selector } => {
                         let available_bosses = encounter_data.boss_entity_names();
                         rsx! {
                             div { class: "flex-col gap-xs",
@@ -1549,12 +1549,12 @@ pub fn CounterTriggerEditor(
                                         style: "width: 70px;",
                                         value: "{hp_percent}",
                                         oninput: {
-                                            let entities = entities.clone();
+                                            let selector = selector.clone();
                                             move |e| {
                                                 if let Ok(val) = e.value().parse::<f32>() {
                                                     on_change.call(CounterTrigger::BossHpBelow {
                                                         hp_percent: val,
-                                                        entities: entities.clone(),
+                                                        selector: selector.clone(),
                                                     });
                                                 }
                                             }
@@ -1562,11 +1562,11 @@ pub fn CounterTriggerEditor(
                                     }
                                 }
                                 BossSelector {
-                                    selected: entities.clone(),
+                                    selected: selector.clone(),
                                     available_bosses: available_bosses,
                                     on_change: move |sels| on_change.call(CounterTrigger::BossHpBelow {
                                         hp_percent,
-                                        entities: sels,
+                                        selector: sels,
                                     })
                                 }
                             }

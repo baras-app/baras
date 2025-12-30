@@ -5,9 +5,11 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::audio::AudioConfig;
+
 // Re-export EntityFilter from shared module
 pub use crate::entity_filter::EntityFilter;
-pub use crate::triggers::EffectSelector;
+pub use crate::triggers::{AbilitySelector, EffectSelector};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Effect Definitions
@@ -86,9 +88,9 @@ pub struct EffectDefinition {
     #[serde(default)]
     pub trigger: EffectTriggerMode,
 
-    /// Ability IDs that can apply or refresh this effect
+    /// Abilities (ID or name) that can apply or refresh this effect
     #[serde(default)]
-    pub refresh_abilities: Vec<u64>,
+    pub refresh_abilities: Vec<AbilitySelector>,
 
     // ─── Filtering ──────────────────────────────────────────────────────────
     /// Who must apply the effect for it to be tracked
@@ -156,6 +158,12 @@ pub struct EffectDefinition {
     /// Seconds before expiration to show warning
     #[serde(default = "default_alert_threshold")]
     pub alert_threshold_secs: f32,
+
+    // ─── Audio ─────────────────────────────────────────────────────────────────
+
+    /// Audio configuration (alerts, custom sounds)
+    #[serde(default)]
+    pub audio: AudioConfig,
 }
 
 impl EffectDefinition {
@@ -170,8 +178,8 @@ impl EffectDefinition {
     }
 
     /// Check if an ability can refresh this effect
-    pub fn can_refresh_with(&self, ability_id: u64) -> bool {
-        self.refresh_abilities.contains(&ability_id)
+    pub fn can_refresh_with(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+        self.refresh_abilities.iter().any(|s| s.matches(ability_id, ability_name))
     }
 }
 

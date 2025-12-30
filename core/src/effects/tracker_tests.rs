@@ -11,7 +11,7 @@ use crate::combat_log::EntityType;
 use crate::context::IStr;
 use crate::signal_processor::{GameSignal, SignalHandler};
 
-use super::{DefinitionSet, EffectCategory, EffectDefinition, EffectTracker, EntityFilter, EffectSelector};
+use super::{AbilitySelector, DefinitionSet, EffectCategory, EffectDefinition, EffectTracker, EntityFilter, EffectSelector};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Test Helpers
@@ -78,6 +78,7 @@ fn test_effect_applied_creates_active_effect() {
         effect_id: 12345,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -108,6 +109,7 @@ fn test_effect_removed_marks_inactive() {
         effect_id: 999,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -152,6 +154,7 @@ fn test_charges_changed_updates_stacks() {
         effect_id: 555,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -168,6 +171,7 @@ fn test_charges_changed_updates_stacks() {
     tracker.handle_signal(&GameSignal::EffectChargesChanged {
         effect_id: 555,
         action_id: 100,
+        action_name: IStr::default(),
         target_id: 2,
         timestamp: ts,
         charges: 3,
@@ -188,6 +192,7 @@ fn test_entity_death_clears_effects() {
         effect_id: 111,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -227,6 +232,7 @@ fn test_persist_past_death_keeps_effect() {
         effect_id: 222,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -275,6 +281,7 @@ fn test_combat_end_clears_combat_only_effects() {
             effect_id,
             effect_name: IStr::default(),
             action_id: 100,
+        action_name: IStr::default(),
             source_id: 1,
             source_name: IStr::default(),
             source_entity_type: EntityType::Player,
@@ -315,6 +322,7 @@ fn test_area_entered_clears_all_effects() {
         effect_id: 555,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -343,7 +351,7 @@ fn test_area_entered_clears_all_effects() {
 #[test]
 fn test_ability_activated_refreshes_effect() {
     let mut effect = make_effect("refreshable", "Refreshable Hot", vec![666]);
-    effect.refresh_abilities = vec![100]; // Ability 100 can refresh this effect
+    effect.refresh_abilities = vec![AbilitySelector::Id(100)]; // Ability 100 can refresh this effect
 
     let mut tracker = make_tracker(vec![effect], 1);
     let ts = now();
@@ -353,6 +361,7 @@ fn test_ability_activated_refreshes_effect() {
         effect_id: 666,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -409,6 +418,7 @@ fn test_player_initialized_sets_local_player() {
         effect_id: 777,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 42,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -439,6 +449,7 @@ fn test_boss_hp_changed_tracks_boss_ids() {
         effect_id: 888,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -468,6 +479,7 @@ fn test_boss_hp_changed_tracks_boss_ids() {
         effect_id: 888,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -494,6 +506,7 @@ fn test_live_mode_required_for_tracking() {
         effect_id: 111,
         effect_name: IStr::default(),
         action_id: 100,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -527,6 +540,7 @@ fn test_filter_local_player() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1, // Local player
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -555,6 +569,7 @@ fn test_filter_local_player_rejects_other() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 2, // Other player
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -583,6 +598,7 @@ fn test_filter_other_players() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 2,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -602,6 +618,7 @@ fn test_filter_other_players() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -631,6 +648,7 @@ fn test_filter_any_player() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -648,6 +666,7 @@ fn test_filter_any_player() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 3,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -676,6 +695,7 @@ fn test_filter_any_npc() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -695,6 +715,7 @@ fn test_filter_any_npc() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -733,6 +754,7 @@ fn test_filter_npc_except_boss() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -752,6 +774,7 @@ fn test_filter_npc_except_boss() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -780,6 +803,7 @@ fn test_filter_companion() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -799,6 +823,7 @@ fn test_filter_companion() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -827,6 +852,7 @@ fn test_filter_any_player_or_companion() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -844,6 +870,7 @@ fn test_filter_any_player_or_companion() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -863,6 +890,7 @@ fn test_filter_any_player_or_companion() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -892,6 +920,7 @@ fn test_filter_any_matches_everything() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -909,6 +938,7 @@ fn test_filter_any_matches_everything() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 888,
         source_name: IStr::default(),
         source_entity_type: EntityType::Npc,
@@ -926,6 +956,7 @@ fn test_filter_any_matches_everything() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -952,6 +983,7 @@ fn test_non_matching_effect_id_ignored() {
         effect_id: 99999,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,
@@ -970,7 +1002,7 @@ fn test_non_matching_effect_id_ignored() {
 #[test]
 fn test_target_tracking_for_ability_refresh() {
     let mut effect = make_effect("healing", "Healing Effect", vec![100]);
-    effect.refresh_abilities = vec![200];
+    effect.refresh_abilities = vec![AbilitySelector::Id(200)];
 
     let mut tracker = make_tracker(vec![effect], 1);
     let ts = now();
@@ -992,6 +1024,7 @@ fn test_target_tracking_for_ability_refresh() {
         effect_id: 100,
         effect_name: IStr::default(),
         action_id: 1,
+        action_name: IStr::default(),
         source_id: 1,
         source_name: IStr::default(),
         source_entity_type: EntityType::Player,

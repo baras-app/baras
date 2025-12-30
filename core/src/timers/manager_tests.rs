@@ -124,6 +124,7 @@ fn test_effect_applied_triggers_timer() {
         effect_id: 999999,
         effect_name: crate::context::IStr::default(),
         action_id: 0,
+        action_name: crate::context::IStr::default(),
         source_id: 1,
         source_name: crate::context::IStr::default(),
         source_entity_type: crate::combat_log::EntityType::Npc,

@@ -377,15 +377,15 @@ impl TimerManager {
     pub(super) fn start_timer(&mut self, def: &TimerDefinition, timestamp: NaiveDateTime, target_id: Option<i64>) {
         // Alerts are ephemeral notifications, not countdown timers
         if def.is_alert {
-            eprintln!("[ALERT] Fired: {} - {} (audio_enabled={})", def.name, def.alert_text.as_deref().unwrap_or(&def.name), def.audio_enabled);
+            eprintln!("[ALERT] Fired: {} - {} (audio_enabled={})", def.name, def.alert_text.as_deref().unwrap_or(&def.name), def.audio.enabled);
             self.fired_alerts.push(FiredAlert {
                 id: def.id.clone(),
                 name: def.name.clone(),
                 text: def.alert_text.clone().unwrap_or_else(|| def.name.clone()),
                 color: Some(def.color),
                 timestamp,
-                audio_enabled: def.audio_enabled,
-                audio_file: def.audio_file.clone(),
+                audio_enabled: def.audio.enabled,
+                audio_file: def.audio.file.clone(),
             });
             return;
         }
@@ -416,11 +416,7 @@ impl TimerManager {
             def.triggers_timer.clone(),
             def.show_on_raid_frames,
             def.show_at_secs,
-            def.countdown_start,
-            def.countdown_voice.clone(),
-            def.audio_enabled,
-            def.audio_file.clone(),
-            def.audio_offset,
+            &def.audio,
         );
 
         self.active_timers.insert(key.clone(), timer);

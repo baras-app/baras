@@ -14,6 +14,8 @@ use std::time::{Duration, Instant};
 
 use chrono::NaiveDateTime;
 
+use crate::audio::AudioConfig;
+
 /// An active timer instance
 ///
 /// Created when a `TimerDefinition`'s trigger condition is met.
@@ -103,11 +105,7 @@ impl ActiveTimer {
         triggers_timer: Option<String>,
         show_on_raid_frames: bool,
         show_at_secs: f32,
-        countdown_start: u8,
-        countdown_voice: Option<String>,
-        audio_enabled: bool,
-        audio_file: Option<String>,
-        audio_offset: u8,
+        audio: &AudioConfig,
     ) -> Self {
         // Calculate lag compensation: how far behind was the game event from system time?
         // This accounts for file I/O delay, processing time, etc.
@@ -140,11 +138,11 @@ impl ActiveTimer {
             show_on_raid_frames,
             show_at_secs,
             countdown_announced: [false; 10],
-            countdown_start,
-            countdown_voice: countdown_voice.unwrap_or_else(|| "Amy".to_string()),
-            audio_enabled,
-            audio_file,
-            audio_offset,
+            countdown_start: audio.countdown_start,
+            countdown_voice: audio.countdown_voice.clone().unwrap_or_else(|| "Amy".to_string()),
+            audio_enabled: audio.enabled,
+            audio_file: audio.file.clone(),
+            audio_offset: audio.offset,
             audio_offset_fired: false,
         }
     }

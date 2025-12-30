@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::audio::AudioConfig;
 use super::{ChallengeDefinition, CounterCondition, CounterDefinition, CounterTrigger, PhaseDefinition};
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -286,25 +287,9 @@ pub struct BossTimerDefinition {
 
     // ─── Audio ───────────────────────────────────────────────────────────────
 
-    /// Master toggle for all audio on this timer
+    /// Audio configuration (alerts, countdown, custom sounds)
     #[serde(default)]
-    pub audio_enabled: bool,
-
-    /// Audio file to play on alert
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub audio_file: Option<String>,
-
-    /// Seconds before expiration to play audio (0 = on expiration)
-    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_u8")]
-    pub audio_offset: u8,
-
-    /// Start countdown audio at N seconds remaining (0 = disabled, default 3)
-    #[serde(default = "crate::serde_defaults::default_countdown_start")]
-    pub countdown_start: u8,
-
-    /// Voice pack for countdown (Amy, Jim, Yolo, Nerevar; None = Amy)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub countdown_voice: Option<String>,
+    pub audio: AudioConfig,
 }
 
 impl BossTimerDefinition {
@@ -329,11 +314,7 @@ impl BossTimerDefinition {
             show_at_secs: self.show_at_secs,
             alert_at_secs: self.alert_at_secs,
             alert_text: self.alert_text.clone(),
-            audio_enabled: self.audio_enabled,
-            audio_file: self.audio_file.clone(),
-            audio_offset: self.audio_offset,
-            countdown_start: self.countdown_start,
-            countdown_voice: self.countdown_voice.clone(),
+            audio: self.audio.clone(),
             triggers_timer: self.chains_to.clone(),
             cancel_trigger: self.cancel_trigger.clone(),
             // Context from parent boss encounter

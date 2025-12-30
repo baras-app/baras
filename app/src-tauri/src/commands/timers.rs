@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
+use baras_core::audio::AudioConfig;
 use baras_core::boss::{
     load_bosses_with_paths, save_bosses_to_file, BossTimerDefinition, BossWithPath,
 };
@@ -67,11 +68,7 @@ pub struct TimerListItem {
     pub show_at_secs: f32,
 
     // Audio
-    pub audio_enabled: bool,
-    pub audio_file: Option<String>,
-    pub audio_offset: u8,
-    pub countdown_start: u8,
-    pub countdown_voice: Option<String>,
+    pub audio: AudioConfig,
 }
 
 impl TimerListItem {
@@ -109,11 +106,7 @@ impl TimerListItem {
             show_on_raid_frames: timer.show_on_raid_frames,
             show_at_secs: timer.show_at_secs,
 
-            audio_enabled: timer.audio_enabled,
-            audio_file: timer.audio_file.clone(),
-            audio_offset: timer.audio_offset,
-            countdown_start: timer.countdown_start,
-            countdown_voice: timer.countdown_voice.clone(),
+            audio: timer.audio.clone(),
         }
     }
 
@@ -143,11 +136,7 @@ impl TimerListItem {
             alert_at_secs: self.alert_at_secs,
             show_on_raid_frames: self.show_on_raid_frames,
             show_at_secs: self.show_at_secs,
-            audio_enabled: self.audio_enabled,
-            audio_file: self.audio_file.clone(),
-            audio_offset: self.audio_offset,
-            countdown_start: self.countdown_start,
-            countdown_voice: self.countdown_voice.clone(),
+            audio: self.audio.clone(),
         }
     }
 }
@@ -361,11 +350,7 @@ pub async fn create_encounter_timer(
         alert_at_secs: timer.alert_at_secs,
         show_on_raid_frames: timer.show_on_raid_frames,
         show_at_secs: timer.show_at_secs,
-        audio_enabled: timer.audio_enabled,
-        audio_file: timer.audio_file.clone(),
-        audio_offset: timer.audio_offset,
-        countdown_start: timer.countdown_start,
-        countdown_voice: timer.countdown_voice.clone(),
+        audio: timer.audio.clone(),
     };
 
     // Check for duplicate ID within the target boss only (per-encounter uniqueness)

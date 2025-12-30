@@ -1,3 +1,4 @@
+pub mod audio;
 pub mod boss;
 pub mod combat_log;
 pub mod context;
@@ -28,6 +29,7 @@ pub use game_data::*;
 pub use state::SessionCache;
 pub use timers::{ActiveTimer, TimerDefinition, TimerKey, TimerManager, TimerTrigger};
 pub use triggers::{AbilitySelector, EffectSelector, EntitySelector};
+pub use audio::AudioConfig;
 pub use boss::{
     BossConfig, BossEncounterDefinition, BossEncounterState, BossTimerDefinition, CounterCondition,
     CounterDefinition, PhaseDefinition, PhaseTrigger, load_bosses_from_dir,

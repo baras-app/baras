@@ -151,6 +151,34 @@ pub enum OverlayType {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Audio Configuration (shared across timers, effects, alerts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Audio configuration shared by timers, effects, and alerts
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct AudioConfig {
+    /// Master toggle for audio on this item
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Audio file to play (relative to sounds directory)
+    #[serde(default)]
+    pub file: Option<String>,
+
+    /// Seconds before expiration to play audio (0 = on expiration)
+    #[serde(default)]
+    pub offset: u8,
+
+    /// Start countdown audio at N seconds remaining (0 = disabled)
+    #[serde(default)]
+    pub countdown_start: u8,
+
+    /// Voice pack for countdown (None = default)
+    #[serde(default)]
+    pub countdown_voice: Option<String>,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Timer Editor Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -216,22 +244,9 @@ pub struct TimerListItem {
     pub show_at_secs: f32,
 
     // Audio
-    #[serde(default = "default_audio_enabled")]
-    pub audio_enabled: bool,
     #[serde(default)]
-    pub audio_file: Option<String>,
-    #[serde(default)]
-    pub audio_offset: u8,
-
-    // Countdown audio
-    #[serde(default = "default_countdown_start")]
-    pub countdown_start: u8,
-    #[serde(default)]
-    pub countdown_voice: Option<String>,
+    pub audio: AudioConfig,
 }
-
-fn default_countdown_start() -> u8 { 3 }
-fn default_audio_enabled() -> bool { false }
 
 /// Minimal boss info for the "New Timer" dropdown
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

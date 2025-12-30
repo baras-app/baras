@@ -11,7 +11,9 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
+use baras_core::audio::AudioConfig;
 use baras_core::effects::{DefinitionConfig, EffectCategory, EffectDefinition, EffectSelector, EffectTriggerMode, EntityFilter};
+use baras_types::AbilitySelector;
 
 use crate::service::ServiceHandle;
 
@@ -32,7 +34,7 @@ pub struct EffectListItem {
     pub category: EffectCategory,
     pub trigger: EffectTriggerMode,
     pub effects: Vec<EffectSelector>,
-    pub refresh_abilities: Vec<u64>,
+    pub refresh_abilities: Vec<AbilitySelector>,
     pub source: EntityFilter,
     pub target: EntityFilter,
     pub duration_secs: Option<f32>,
@@ -56,6 +58,9 @@ pub struct EffectListItem {
     // Alerts
     pub alert_near_expiration: bool,
     pub alert_threshold_secs: f32,
+
+    // Audio
+    pub audio: AudioConfig,
 }
 
 impl EffectListItem {
@@ -84,6 +89,7 @@ impl EffectListItem {
             encounters: def.encounters.clone(),
             alert_near_expiration: def.alert_near_expiration,
             alert_threshold_secs: def.alert_threshold_secs,
+            audio: def.audio.clone(),
         }
     }
 
@@ -111,6 +117,7 @@ impl EffectListItem {
             encounters: self.encounters.clone(),
             alert_near_expiration: self.alert_near_expiration,
             alert_threshold_secs: self.alert_threshold_secs,
+            audio: self.audio.clone(),
         }
     }
 }

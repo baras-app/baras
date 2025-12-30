@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use super::ComparisonOp;
-use crate::entity_filter::{EntityFilter, EntityFilterMatching};
+use crate::entity_filter::{EntityFilter, EntityFilterMatching, EntitySelector};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Challenge Definition
@@ -589,7 +589,10 @@ mod tests {
             description: None,
             metric: ChallengeMetric::Damage,
             conditions: vec![ChallengeCondition::Target {
-                matcher: EntityFilter::NpcIds(vec![DREAD_LARVA_NPC_ID, DREAD_MONSTER_NPC_ID]),
+                matcher: EntityFilter::Selector(vec![
+                    EntitySelector::Id(DREAD_LARVA_NPC_ID),
+                    EntitySelector::Id(DREAD_MONSTER_NPC_ID),
+                ]),
             }],
         };
 

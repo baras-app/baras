@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::audio::AudioConfig;
 use crate::boss::CounterCondition;
 use crate::entity_filter::EntityFilter;
 use crate::game_data::Difficulty;
@@ -83,26 +84,9 @@ pub struct TimerDefinition {
 
     // ─── Audio ───────────────────────────────────────────────────────────────
 
-    /// Master toggle for all audio on this timer
+    /// Audio configuration (alerts, countdown, custom sounds)
     #[serde(default)]
-    pub audio_enabled: bool,
-
-    /// Audio file to play on alert
-    pub audio_file: Option<String>,
-
-    /// Seconds before expiration to play audio (0 = on expiration)
-    #[serde(default)]
-    pub audio_offset: u8,
-
-    // ─── Countdown Audio ────────────────────────────────────────────────────
-
-    /// Start countdown audio at N seconds remaining (0 = disabled, default 3)
-    #[serde(default = "crate::serde_defaults::default_countdown_start")]
-    pub countdown_start: u8,
-
-    /// Voice pack for countdown (Amy, Jim, Yolo, Nerevar; None = Amy)
-    #[serde(default)]
-    pub countdown_voice: Option<String>,
+    pub audio: AudioConfig,
 
     // ─── Chaining & Cancellation ────────────────────────────────────────────
 

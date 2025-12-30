@@ -253,6 +253,7 @@ impl EffectTracker {
         effect_id: i64,
         effect_name: IStr,
         action_id: i64,
+        action_name: IStr,
         source_id: i64,
         source_name: IStr,
         source_entity_type: EntityType,
@@ -313,10 +314,11 @@ impl EffectTracker {
 
             if let Some(existing) = self.active_effects.get_mut(&key) {
                 // Refresh existing effect if this action is in refresh_abilities
+                let action_name_str = crate::context::resolve(action_name);
                 let should_refresh = if def.refresh_abilities.is_empty() {
                     def.can_be_refreshed
                 } else {
-                    def.can_refresh_with(action_id as u64)
+                    def.can_refresh_with(action_id as u64, Some(&action_name_str))
                 };
 
                 if should_refresh {
@@ -366,15 +368,17 @@ impl EffectTracker {
     fn refresh_effects_by_action(
         &mut self,
         action_id: i64,
+        action_name: IStr,
         target_id: i64,
         target_name: IStr,
         target_entity_type: &EntityType,
         timestamp: NaiveDateTime,
     ) {
         // Find all definitions that have this action in their refresh_abilities
+        let action_name_str = crate::context::resolve(action_name);
         let refreshable_defs: Vec<_> = self.definitions
             .enabled()
-            .filter(|def| def.can_refresh_with(action_id as u64))
+            .filter(|def| def.can_refresh_with(action_id as u64, Some(&action_name_str)))
             .map(|def| (def.id.clone(), def.duration_secs.map(Duration::from_secs_f32)))
             .collect();
 
@@ -470,6 +474,7 @@ impl EffectTracker {
         &mut self,
         effect_id: i64,
         action_id: i64,
+        action_name: IStr,
         target_id: i64,
         timestamp: NaiveDateTime,
         charges: u8,
@@ -482,6 +487,8 @@ impl EffectTracker {
             .find_matching(effect_id as u64, None)
             .into_iter()
             .collect();
+
+        let action_name_str = crate::context::resolve(action_name);
 
         for def in matching_defs {
             let key = EffectInstanceKey {
@@ -496,7 +503,7 @@ impl EffectTracker {
                 let should_refresh = if def.refresh_abilities.is_empty() {
                     def.can_be_refreshed
                 } else {
-                    def.can_refresh_with(action_id as u64)
+                    def.can_refresh_with(action_id as u64, Some(&action_name_str))
                 };
 
                 if should_refresh {
@@ -574,6 +581,7 @@ impl SignalHandler for EffectTracker {
                 effect_id,
                 effect_name,
                 action_id,
+                action_name,
                 source_id,
                 source_name,
                 source_entity_type,
@@ -589,6 +597,7 @@ impl SignalHandler for EffectTracker {
                     *effect_id,
                     *effect_name,
                     *action_id,
+                    *action_name,
                     *source_id,
                     *source_name,
                     *source_entity_type,
@@ -615,11 +624,12 @@ impl SignalHandler for EffectTracker {
             GameSignal::EffectChargesChanged {
                 effect_id,
                 action_id,
+                action_name,
                 target_id,
                 timestamp,
                 charges,
             } => {
-                self.handle_charges_changed(*effect_id, *action_id, *target_id, *timestamp, *charges);
+                self.handle_charges_changed(*effect_id, *action_id, *action_name, *target_id, *timestamp, *charges);
             }
             GameSignal::EntityDeath { entity_id, .. } => {
                 self.handle_entity_death(*entity_id);
@@ -638,6 +648,7 @@ impl SignalHandler for EffectTracker {
             }
             GameSignal::AbilityActivated {
                 ability_id,
+                ability_name,
                 source_id,
                 target_id,
                 target_name,
@@ -661,6 +672,7 @@ impl SignalHandler for EffectTracker {
 
                     self.refresh_effects_by_action(
                         *ability_id,
+                        *ability_name,
                         resolved_id,
                         resolved_name,
                         &resolved_type,
