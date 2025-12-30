@@ -25,6 +25,10 @@ pub struct CounterDefinition {
     /// What increments this counter
     pub increment_on: Trigger,
 
+    /// What decrements this counter (optional, for countdown patterns)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decrement_on: Option<Trigger>,
+
     /// When to reset to initial_value (default: combat_end)
     /// Uses the same trigger types as increment_on for consistency
     #[serde(default = "default_reset_trigger")]
@@ -35,6 +39,7 @@ pub struct CounterDefinition {
     pub initial_value: u32,
 
     /// Optional: decrement instead of increment (for countdown patterns)
+    /// DEPRECATED: Use decrement_on instead for more flexibility
     #[serde(default)]
     pub decrement: bool,
 

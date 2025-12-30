@@ -21,7 +21,7 @@ use crate::types::{
 };
 
 pub use tabs::{BossTabs, EncounterData};
-pub use timers::TimersTab;
+pub use timers::{TimersTab, PhaseSelector};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Panel

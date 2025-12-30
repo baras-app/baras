@@ -11,6 +11,7 @@ use crate::types::{
 };
 
 use super::tabs::EncounterData;
+use super::timers::PhaseSelector;
 
 /// Generate a preview of the ID that will be created (mirrors backend logic)
 fn preview_id(boss_id: &str, name: &str) -> String {
@@ -315,6 +316,7 @@ fn ChallengeEditForm(
                         for (idx, condition) in draft().conditions.iter().enumerate() {
                             ChallengeConditionRow {
                                 condition: condition.clone(),
+                                available_phases: encounter_data.phase_ids(),
                                 on_change: move |updated| {
                                     let mut d = draft();
                                     d.conditions[idx] = updated;
@@ -366,6 +368,7 @@ fn ChallengeEditForm(
 #[component]
 fn ChallengeConditionRow(
     condition: ChallengeCondition,
+    available_phases: Vec<String>,
     on_change: EventHandler<ChallengeCondition>,
     on_remove: EventHandler<()>,
 ) -> Element {
@@ -416,19 +419,11 @@ fn ChallengeConditionRow(
                 {
                     match &condition {
                         ChallengeCondition::Phase { phase_ids } => {
-                            let phase_ids_str = phase_ids.join(", ");
                             rsx! {
-                                input {
-                                    class: "input-inline",
-                                    style: "width: 100%;",
-                                    placeholder: "phase_id1, phase_id2, ...",
-                                    value: "{phase_ids_str}",
-                                    oninput: move |e| {
-                                        let ids: Vec<String> = e.value()
-                                            .split(',')
-                                            .map(|s| s.trim().to_string())
-                                            .filter(|s| !s.is_empty())
-                                            .collect();
+                                PhaseSelector {
+                                    selected: phase_ids.clone(),
+                                    available: available_phases.clone(),
+                                    on_change: move |ids| {
                                         on_change.call(ChallengeCondition::Phase { phase_ids: ids });
                                     }
                                 }

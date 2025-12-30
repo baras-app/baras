@@ -1189,6 +1189,8 @@ pub struct CounterListItem {
     pub boss_name: String,
     pub file_path: String,
     pub increment_on: CounterTrigger,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decrement_on: Option<CounterTrigger>,
     pub reset_on: CounterTrigger,
     #[serde(default)]
     pub initial_value: u32,
@@ -1208,6 +1210,7 @@ impl CounterListItem {
             boss_name: boss_with_path.boss.name.clone(),
             file_path: boss_with_path.file_path.to_string_lossy().to_string(),
             increment_on: counter.increment_on.clone(),
+            decrement_on: counter.decrement_on.clone(),
             reset_on: counter.reset_on.clone(),
             initial_value: counter.initial_value,
             decrement: counter.decrement,
@@ -1221,6 +1224,7 @@ impl CounterListItem {
             name: self.name.clone(),
             display_text: self.display_text.clone(),
             increment_on: self.increment_on.clone(),
+            decrement_on: self.decrement_on.clone(),
             reset_on: self.reset_on.clone(),
             initial_value: self.initial_value,
             decrement: self.decrement,

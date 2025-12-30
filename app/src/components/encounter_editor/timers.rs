@@ -1125,7 +1125,7 @@ fn EntityFilterSelector(
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[component]
-fn PhaseSelector(
+pub fn PhaseSelector(
     selected: Vec<String>,
     available: Vec<String>,
     on_change: EventHandler<Vec<String>>,

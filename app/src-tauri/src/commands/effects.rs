@@ -27,6 +27,7 @@ pub struct EffectListItem {
     // Identity
     pub id: String,
     pub name: String,
+    pub display_text: Option<String>,
     pub file_path: String,
 
     // Effect data
@@ -43,6 +44,7 @@ pub struct EffectListItem {
     pub color: Option<[u8; 4]>,
     pub show_on_raid_frames: bool,
     pub show_on_effects_overlay: bool,
+    pub show_at_secs: f32,
 
     // Behavior
     pub persist_past_death: bool,
@@ -68,6 +70,7 @@ impl EffectListItem {
         Self {
             id: def.id.clone(),
             name: def.name.clone(),
+            display_text: def.display_text.clone(),
             file_path: file_path.to_string_lossy().to_string(),
             enabled: def.enabled,
             category: def.category,
@@ -82,6 +85,7 @@ impl EffectListItem {
             color: def.color,
             show_on_raid_frames: def.show_on_raid_frames,
             show_on_effects_overlay: def.show_on_effects_overlay,
+            show_at_secs: def.show_at_secs,
             persist_past_death: def.persist_past_death,
             track_outside_combat: def.track_outside_combat,
             on_apply_trigger_timer: def.on_apply_trigger_timer.clone(),
@@ -97,6 +101,7 @@ impl EffectListItem {
         EffectDefinition {
             id: self.id.clone(),
             name: self.name.clone(),
+            display_text: self.display_text.clone(),
             enabled: self.enabled,
             category: self.category,
             trigger: self.trigger,
@@ -110,6 +115,7 @@ impl EffectListItem {
             color: self.color,
             show_on_raid_frames: self.show_on_raid_frames,
             show_on_effects_overlay: self.show_on_effects_overlay,
+            show_at_secs: self.show_at_secs,
             persist_past_death: self.persist_past_death,
             track_outside_combat: self.track_outside_combat,
             on_apply_trigger_timer: self.on_apply_trigger_timer.clone(),
@@ -280,6 +286,39 @@ fn save_effects_to_file(effects: &[EffectDefinition], path: &PathBuf) -> Result<
     Ok(())
 }
 
+/// Get the path to custom.toml for user-created/modified effects
+fn get_custom_effects_path() -> Option<PathBuf> {
+    get_user_effects_dir().map(|p| p.join("custom.toml"))
+}
+
+/// Load effects from custom.toml
+fn load_custom_effects() -> Vec<EffectDefinition> {
+    let Some(custom_path) = get_custom_effects_path() else {
+        return vec![];
+    };
+
+    if !custom_path.exists() {
+        return vec![];
+    }
+
+    match std::fs::read_to_string(&custom_path) {
+        Ok(contents) => {
+            toml::from_str::<DefinitionConfig>(&contents)
+                .map(|c| c.effects)
+                .unwrap_or_default()
+        }
+        Err(_) => vec![],
+    }
+}
+
+/// Save effects to custom.toml
+fn save_custom_effects(effects: &[EffectDefinition]) -> Result<(), String> {
+    let Some(custom_path) = get_custom_effects_path() else {
+        return Err("Cannot determine custom effects path".to_string());
+    };
+    save_effects_to_file(effects, &custom_path)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tauri Commands
 // ─────────────────────────────────────────────────────────────────────────────
@@ -297,7 +336,7 @@ pub async fn get_effect_definitions(app_handle: AppHandle) -> Result<Vec<EffectL
     Ok(items)
 }
 
-/// Update an existing effect
+/// Update an existing effect (modifications saved to custom.toml)
 #[tauri::command]
 pub async fn update_effect_definition(
     app_handle: AppHandle,
@@ -312,31 +351,40 @@ pub async fn update_effect_definition(
         );
     }
 
-    let effects = load_user_effects(&app_handle)?;
-    let file_path = PathBuf::from(&effect.file_path);
+    let custom_path = get_custom_effects_path()
+        .ok_or("Cannot determine custom effects path")?;
+    let is_from_custom = effect.file_path == custom_path.to_string_lossy();
 
-    // Get all effects from the same file
-    let mut file_effects: Vec<EffectDefinition> = effects
-        .iter()
-        .filter(|e| e.file_path == file_path)
-        .map(|e| e.effect.clone())
-        .collect();
+    // Load custom effects
+    let mut custom_effects = load_custom_effects();
 
-    // Find and update the effect
-    let mut found = false;
-    for existing in &mut file_effects {
-        if existing.id == effect.id {
-            *existing = effect.to_definition();
-            found = true;
-            break;
+    if is_from_custom {
+        // Effect is already in custom.toml - update in place
+        let mut found = false;
+        for existing in &mut custom_effects {
+            if existing.id == effect.id {
+                *existing = effect.to_definition();
+                found = true;
+                break;
+            }
+        }
+
+        if !found {
+            return Err(format!("Effect '{}' not found in custom.toml", effect.id));
+        }
+    } else {
+        // Effect is from a default file - add/update in custom.toml as an override
+        // This creates a new entry that will override the default when loaded
+        let existing_idx = custom_effects.iter().position(|e| e.id == effect.id);
+
+        if let Some(idx) = existing_idx {
+            custom_effects[idx] = effect.to_definition();
+        } else {
+            custom_effects.push(effect.to_definition());
         }
     }
 
-    if !found {
-        return Err(format!("Effect '{}' not found in {:?}", effect.id, file_path));
-    }
-
-    save_effects_to_file(&file_effects, &file_path)?;
+    save_custom_effects(&custom_effects)?;
 
     // Reload definitions in the running service
     let _ = service.reload_effect_definitions().await;
@@ -344,7 +392,7 @@ pub async fn update_effect_definition(
     Ok(())
 }
 
-/// Create a new effect
+/// Create a new effect (always saved to custom.toml)
 #[tauri::command]
 pub async fn create_effect_definition(
     app_handle: AppHandle,
@@ -365,24 +413,23 @@ pub async fn create_effect_definition(
     }
 
     let effects = load_user_effects(&app_handle)?;
-    let file_path = PathBuf::from(&effect.file_path);
 
     // Check for duplicate ID across all files
     if effects.iter().any(|e| e.effect.id == effect.id) {
         return Err(format!("Effect with ID '{}' already exists", effect.id));
     }
 
-    // Get all effects from the target file
-    let mut file_effects: Vec<EffectDefinition> = effects
-        .iter()
-        .filter(|e| e.file_path == file_path)
-        .map(|e| e.effect.clone())
-        .collect();
+    // Load existing custom effects and add the new one
+    let mut custom_effects = load_custom_effects();
+    custom_effects.push(effect.to_definition());
 
-    // Add the new effect
-    file_effects.push(effect.to_definition());
+    // Save to custom.toml
+    save_custom_effects(&custom_effects)?;
 
-    save_effects_to_file(&file_effects, &file_path)?;
+    // Update file_path to reflect where it was saved
+    let custom_path = get_custom_effects_path()
+        .ok_or("Cannot determine custom effects path")?;
+    effect.file_path = custom_path.to_string_lossy().to_string();
 
     // Reload definitions in the running service
     let _ = service.reload_effect_definitions().await;

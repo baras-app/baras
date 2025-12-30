@@ -75,6 +75,10 @@ pub struct EffectDefinition {
     /// Display name shown in overlays
     pub name: String,
 
+    /// Optional in-game display text (defaults to name if not set)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_text: Option<String>,
+
     /// Whether this definition is currently enabled
     #[serde(default = "crate::serde_defaults::default_true")]
     pub enabled: bool,
@@ -128,6 +132,10 @@ pub struct EffectDefinition {
     /// Show this effect on the effects overlay (countdown display)
     #[serde(default)]
     pub show_on_effects_overlay: bool,
+
+    /// Only show when remaining time is at or below this threshold (0 = always show)
+    #[serde(default)]
+    pub show_at_secs: f32,
 
     // ─── Behavior ───────────────────────────────────────────────────────────
     /// Should this effect persist after target dies?

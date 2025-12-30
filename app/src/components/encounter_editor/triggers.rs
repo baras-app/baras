@@ -1322,19 +1322,19 @@ pub fn CounterTriggerEditor(
                     CounterTrigger::CombatStart | CounterTrigger::CombatEnd
                     | CounterTrigger::AnyPhaseChange | CounterTrigger::Never => rsx! {},
 
-                    CounterTrigger::AbilityCast { abilities, source, .. } => {
-                        let source_for_sels = source.clone();
+                    CounterTrigger::AbilityCast { abilities, source } => {
+                        let source_for_change = source.clone();
                         rsx! {
                             AbilitySelectorEditor {
                                 label: "Abilities",
                                 selectors: abilities.clone(),
                                 on_change: move |sels| on_change.call(CounterTrigger::AbilityCast {
                                     abilities: sels,
-                                    source: source_for_sels.clone(),
+                                    source: source_for_change.clone(),
                                 })
                             }
                             EntitySelectorEditor {
-                                label: "Source Filter",
+                                label: "Source",
                                 selectors: source.selector.clone(),
                                 on_change: {
                                     let abilities = abilities.clone();
@@ -1347,26 +1347,42 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
-                    CounterTrigger::EffectApplied { effects, target, .. } => {
-                        let target_for_sels = target.clone();
+                    CounterTrigger::EffectApplied { effects, source, target } => {
+                        let source_for_effects = source.clone();
+                        let target_for_effects = target.clone();
+                        let source_for_source = source.clone();
+                        let target_for_source = target.clone();
+                        let source_for_target = source.clone();
                         rsx! {
                             EffectSelectorEditor {
                                 label: "Effects",
                                 selectors: effects.clone(),
                                 on_change: move |sels| on_change.call(CounterTrigger::EffectApplied {
                                     effects: sels,
-                                    source: EntityMatcher::default(),
-                                    target: target_for_sels.clone(),
+                                    source: source_for_effects.clone(),
+                                    target: target_for_effects.clone(),
                                 })
                             }
                             EntitySelectorEditor {
-                                label: "Target Filter",
+                                label: "Source",
+                                selectors: source.selector.clone(),
+                                on_change: {
+                                    let effects = effects.clone();
+                                    move |sels| on_change.call(CounterTrigger::EffectApplied {
+                                        effects: effects.clone(),
+                                        source: EntityMatcher::new(sels),
+                                        target: target_for_source.clone(),
+                                    })
+                                }
+                            }
+                            EntitySelectorEditor {
+                                label: "Target",
                                 selectors: target.selector.clone(),
                                 on_change: {
                                     let effects = effects.clone();
                                     move |sels| on_change.call(CounterTrigger::EffectApplied {
                                         effects: effects.clone(),
-                                        source: EntityMatcher::default(),
+                                        source: source_for_source.clone(),
                                         target: EntityMatcher::new(sels),
                                     })
                                 }
@@ -1374,26 +1390,42 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
-                    CounterTrigger::EffectRemoved { effects, target, .. } => {
-                        let target_for_sels = target.clone();
+                    CounterTrigger::EffectRemoved { effects, source, target } => {
+                        let source_for_effects = source.clone();
+                        let target_for_effects = target.clone();
+                        let source_for_source = source.clone();
+                        let target_for_source = target.clone();
+                        let source_for_target = source.clone();
                         rsx! {
                             EffectSelectorEditor {
                                 label: "Effects",
                                 selectors: effects.clone(),
                                 on_change: move |sels| on_change.call(CounterTrigger::EffectRemoved {
                                     effects: sels,
-                                    source: EntityMatcher::default(),
-                                    target: target_for_sels.clone(),
+                                    source: source_for_effects.clone(),
+                                    target: target_for_effects.clone(),
                                 })
                             }
                             EntitySelectorEditor {
-                                label: "Target Filter",
+                                label: "Source",
+                                selectors: source.selector.clone(),
+                                on_change: {
+                                    let effects = effects.clone();
+                                    move |sels| on_change.call(CounterTrigger::EffectRemoved {
+                                        effects: effects.clone(),
+                                        source: EntityMatcher::new(sels),
+                                        target: target_for_source.clone(),
+                                    })
+                                }
+                            }
+                            EntitySelectorEditor {
+                                label: "Target",
                                 selectors: target.selector.clone(),
                                 on_change: {
                                     let effects = effects.clone();
                                     move |sels| on_change.call(CounterTrigger::EffectRemoved {
                                         effects: effects.clone(),
-                                        source: EntityMatcher::default(),
+                                        source: source_for_source.clone(),
                                         target: EntityMatcher::new(sels),
                                     })
                                 }
@@ -1401,26 +1433,42 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
-                    CounterTrigger::DamageTaken { abilities, target, .. } => {
-                        let target_for_sels = target.clone();
+                    CounterTrigger::DamageTaken { abilities, source, target } => {
+                        let source_for_abilities = source.clone();
+                        let target_for_abilities = target.clone();
+                        let source_for_source = source.clone();
+                        let target_for_source = target.clone();
+                        let source_for_target = source.clone();
                         rsx! {
                             AbilitySelectorEditor {
                                 label: "Abilities",
                                 selectors: abilities.clone(),
                                 on_change: move |sels| on_change.call(CounterTrigger::DamageTaken {
                                     abilities: sels,
-                                    source: EntityMatcher::default(),
-                                    target: target_for_sels.clone(),
+                                    source: source_for_abilities.clone(),
+                                    target: target_for_abilities.clone(),
                                 })
                             }
                             EntitySelectorEditor {
-                                label: "Target Filter",
+                                label: "Source",
+                                selectors: source.selector.clone(),
+                                on_change: {
+                                    let abilities = abilities.clone();
+                                    move |sels| on_change.call(CounterTrigger::DamageTaken {
+                                        abilities: abilities.clone(),
+                                        source: EntityMatcher::new(sels),
+                                        target: target_for_source.clone(),
+                                    })
+                                }
+                            }
+                            EntitySelectorEditor {
+                                label: "Target",
                                 selectors: target.selector.clone(),
                                 on_change: {
                                     let abilities = abilities.clone();
                                     move |sels| on_change.call(CounterTrigger::DamageTaken {
                                         abilities: abilities.clone(),
-                                        source: EntityMatcher::default(),
+                                        source: source_for_source.clone(),
                                         target: EntityMatcher::new(sels),
                                     })
                                 }

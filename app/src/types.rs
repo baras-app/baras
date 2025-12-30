@@ -344,6 +344,8 @@ pub struct EffectListItem {
     // Identity
     pub id: String,
     pub name: String,
+    #[serde(default)]
+    pub display_text: Option<String>,
     pub file_path: String,
 
     // Core
@@ -353,7 +355,7 @@ pub struct EffectListItem {
 
     // Matching
     pub effects: Vec<EffectSelector>,
-    pub refresh_abilities: Vec<u64>,
+    pub refresh_abilities: Vec<AbilitySelector>,
 
     // Filtering
     pub source: EntityFilter,
@@ -368,6 +370,7 @@ pub struct EffectListItem {
     pub color: Option<[u8; 4]>,
     pub show_on_raid_frames: bool,
     pub show_on_effects_overlay: bool,
+    pub show_at_secs: f32,
 
     // Behavior (advanced)
     pub persist_past_death: bool,
@@ -383,6 +386,10 @@ pub struct EffectListItem {
     // Alerts (advanced)
     pub alert_near_expiration: bool,
     pub alert_threshold_secs: f32,
+
+    // Audio
+    #[serde(default)]
+    pub audio: AudioConfig,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -465,6 +472,8 @@ pub struct CounterListItem {
     pub boss_name: String,
     pub file_path: String,
     pub increment_on: CounterTrigger,
+    #[serde(default)]
+    pub decrement_on: Option<CounterTrigger>,
     #[serde(default)]
     pub reset_on: CounterTrigger,
     #[serde(default)]

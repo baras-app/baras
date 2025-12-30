@@ -137,7 +137,9 @@ fn CounterRow(
                 span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
                 span { class: "font-medium", "{counter.name}" }
                 span { class: "tag", "{trigger_label}" }
-                if counter.decrement {
+                if counter.decrement_on.is_some() {
+                    span { class: "tag tag-info", "↓ Decrement" }
+                } else if counter.decrement {
                     span { class: "tag tag-warning", "Decrement" }
                 }
             }
@@ -270,6 +272,43 @@ fn CounterEditForm(
                 }
             }
 
+            // ─── Decrement Trigger (optional) ────────────────────────────────
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "Decrement On" }
+                div { class: "flex-col gap-xs",
+                    div { class: "flex items-center gap-xs",
+                        input {
+                            r#type: "checkbox",
+                            checked: draft().decrement_on.is_some(),
+                            onchange: move |_| {
+                                let mut d = draft();
+                                d.decrement_on = if d.decrement_on.is_some() {
+                                    None
+                                } else {
+                                    Some(CounterTrigger::AbilityCast {
+                                        abilities: vec![],
+                                        source: EntityMatcher::default(),
+                                    })
+                                };
+                                draft.set(d);
+                            }
+                        }
+                        span { class: "text-xs text-muted", "(enable separate decrement trigger)" }
+                    }
+                    if let Some(ref decrement_trigger) = draft().decrement_on {
+                        CounterTriggerEditor {
+                            trigger: decrement_trigger.clone(),
+                            encounter_data: encounter_data.clone(),
+                            on_change: move |t| {
+                                let mut d = draft();
+                                d.decrement_on = Some(t);
+                                draft.set(d);
+                            }
+                        }
+                    }
+                }
+            }
+
             // ─── Reset Trigger ───────────────────────────────────────────────
             div { class: "form-row-hz", style: "align-items: flex-start;",
                 label { style: "padding-top: 6px;", "Reset On" }
@@ -385,6 +424,7 @@ fn NewCounterForm(
         abilities: vec![],
         source: EntityMatcher::default(),
     });
+    let mut decrement_on = use_signal(|| None::<CounterTrigger>);
     let mut reset_on = use_signal(|| CounterTrigger::CombatEnd);
 
     // Preview the ID that will be generated
@@ -400,6 +440,7 @@ fn NewCounterForm(
             boss_name: boss.name.clone(),
             file_path: boss.file_path.clone(),
             increment_on: increment_on(),
+            decrement_on: decrement_on(),
             reset_on: reset_on(),
             initial_value: 0,
             decrement: false,
@@ -432,6 +473,36 @@ fn NewCounterForm(
                     trigger: increment_on(),
                     encounter_data: encounter_data.clone(),
                     on_change: move |t| increment_on.set(t),
+                }
+            }
+
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "Decrement On" }
+                div { class: "flex-col gap-xs",
+                    div { class: "flex items-center gap-xs",
+                        input {
+                            r#type: "checkbox",
+                            checked: decrement_on().is_some(),
+                            onchange: move |_| {
+                                decrement_on.set(if decrement_on().is_some() {
+                                    None
+                                } else {
+                                    Some(CounterTrigger::AbilityCast {
+                                        abilities: vec![],
+                                        source: EntityMatcher::default(),
+                                    })
+                                });
+                            }
+                        }
+                        span { class: "text-xs text-muted", "(enable separate decrement trigger)" }
+                    }
+                    if let Some(ref trigger) = decrement_on() {
+                        CounterTriggerEditor {
+                            trigger: trigger.clone(),
+                            encounter_data: encounter_data.clone(),
+                            on_change: move |t| decrement_on.set(Some(t)),
+                        }
+                    }
                 }
             }
 

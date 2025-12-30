@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{EffectCategory, EffectListItem, EffectSelector, EffectTriggerMode, EntityFilter};
+use crate::types::{AudioConfig, EffectCategory, EffectListItem, EffectSelector, EffectTriggerMode, EntityFilter};
 use super::encounter_editor::triggers::EffectSelectorEditor;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,7 +20,6 @@ use super::encounter_editor::triggers::EffectSelectorEditor;
 pub fn EffectEditorPanel() -> Element {
     // State
     let mut effects = use_signal(Vec::<EffectListItem>::new);
-    let mut effect_files = use_signal(Vec::<String>::new);
     let mut search_query = use_signal(String::new);
     let mut expanded_effect = use_signal(|| None::<String>);
     let mut expanded_files = use_signal(HashSet::<String>::new);
@@ -33,9 +32,6 @@ pub fn EffectEditorPanel() -> Element {
     use_future(move || async move {
         if let Some(e) = api::get_effect_definitions().await {
             effects.set(e);
-        }
-        if let Some(f) = api::get_effect_files().await {
-            effect_files.set(f);
         }
         loading.set(false);
     });
@@ -188,7 +184,6 @@ pub fn EffectEditorPanel() -> Element {
             // New effect form
             if show_new_effect() {
                 NewEffectForm {
-                    effect_files: effect_files(),
                     on_create: on_create,
                     on_cancel: move |_| show_new_effect.set(false),
                 }
@@ -292,32 +287,86 @@ fn EffectRow(
     let color = effect.color.unwrap_or([128, 128, 128, 255]);
     let color_hex = format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]);
 
+    // Clones for toggle handlers
+    let effect_for_enable = effect.clone();
+    let effect_for_audio = effect.clone();
+    let effect_for_raid = effect.clone();
+
     rsx! {
         div { class: if expanded { "effect-row expanded" } else { "effect-row" },
             div {
                 class: "effect-row-summary",
                 onclick: move |_| on_toggle.call(()),
 
-                span { class: "effect-expand-icon",
-                    if expanded { "▼" } else { "▶" }
+                // Left side - expandable content
+                div { class: "flex items-center gap-xs flex-1 min-w-0",
+                    span { class: "effect-expand-icon",
+                        if expanded { "▼" } else { "▶" }
+                    }
+
+                    span {
+                        class: "effect-color-dot",
+                        style: "background-color: {color_hex}"
+                    }
+
+                    span { class: "effect-name", "{effect.name}" }
+                    span { class: "effect-id-inline", "{effect.id}" }
+                    span { class: "effect-category-badge", "{effect.category.label()}" }
+
+                    if let Some(dur) = effect.duration_secs {
+                        span { class: "effect-duration", "{dur:.0}s" }
+                    }
                 }
 
-                span {
-                    class: "effect-color-dot",
-                    style: "background-color: {color_hex}"
-                }
+                // Right side - toggle buttons (clickable without expanding)
+                div { class: "flex items-center gap-xs", style: "flex-shrink: 0;",
+                    // Enabled toggle
+                    span {
+                        class: "row-toggle",
+                        title: if effect.enabled { "Disable effect" } else { "Enable effect" },
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            let mut updated = effect_for_enable.clone();
+                            updated.enabled = !updated.enabled;
+                            on_save.call(updated);
+                        },
+                        span {
+                            class: if effect.enabled { "text-success" } else { "text-muted" },
+                            if effect.enabled { "✓" } else { "○" }
+                        }
+                    }
 
-                span { class: "effect-name", "{effect.name}" }
-                span { class: "effect-id-inline", "{effect.id}" }
-                span { class: "effect-category-badge", "{effect.category.label()}" }
+                    // Audio toggle
+                    span {
+                        class: "row-toggle",
+                        title: if effect.audio.enabled { "Disable audio" } else { "Enable audio" },
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            let mut updated = effect_for_audio.clone();
+                            updated.audio.enabled = !updated.audio.enabled;
+                            on_save.call(updated);
+                        },
+                        span {
+                            class: if effect.audio.enabled { "text-primary" } else { "text-muted" },
+                            if effect.audio.enabled { "🔊" } else { "🔇" }
+                        }
+                    }
 
-                if let Some(dur) = effect.duration_secs {
-                    span { class: "effect-duration", "{dur:.0}s" }
-                }
-
-                span {
-                    class: if effect.enabled { "effect-status enabled" } else { "effect-status disabled" },
-                    if effect.enabled { "✓" } else { "✗" }
+                    // Raid frames toggle
+                    span {
+                        class: "row-toggle",
+                        title: if effect.show_on_raid_frames { "Hide on raid frames" } else { "Show on raid frames" },
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            let mut updated = effect_for_raid.clone();
+                            updated.show_on_raid_frames = !updated.show_on_raid_frames;
+                            on_save.call(updated);
+                        },
+                        span {
+                            class: if effect.show_on_raid_frames { "text-info" } else { "text-muted" },
+                            if effect.show_on_raid_frames { "⊞" } else { "✗" }
+                        }
+                    }
                 }
             }
 
@@ -356,16 +405,18 @@ fn EffectEditForm(
     rsx! {
         div { class: "effect-edit-form",
             // Effect ID (read-only)
-            div { class: "form-row effect-id-row",
+            div { class: "form-row-hz",
                 label { "Effect ID" }
                 code { class: "effect-id-display", "{effect.id}" }
             }
 
             // Name
-            div { class: "form-row",
+            div { class: "form-row-hz",
                 label { "Name" }
                 input {
                     r#type: "text",
+                    class: "input-inline",
+                    style: "width: 200px;",
                     value: "{draft().name}",
                     oninput: move |e| {
                         let mut d = draft();
@@ -375,186 +426,198 @@ fn EffectEditForm(
                 }
             }
 
-            // Category, Color, Enabled
-            div { class: "form-row-inline",
-                div { class: "form-field",
-                    label { "Category" }
-                    select {
-                        value: "{draft().category.label()}",
-                        onchange: move |e| {
-                            let mut d = draft();
-                            d.category = match e.value().as_str() {
-                                "HoT" => EffectCategory::Hot,
-                                "Shield" => EffectCategory::Shield,
-                                "Buff" => EffectCategory::Buff,
-                                "Debuff" => EffectCategory::Debuff,
-                                "Cleansable" => EffectCategory::Cleansable,
-                                "Proc" => EffectCategory::Proc,
-                                "Mechanic" => EffectCategory::Mechanic,
-                                _ => d.category,
-                            };
-                            draft.set(d);
-                        },
-                        for cat in EffectCategory::all() {
-                            option { value: "{cat.label()}", "{cat.label()}" }
-                        }
+            // Display Text
+            div { class: "form-row-hz",
+                label { "Display Text" }
+                input {
+                    r#type: "text",
+                    class: "input-inline",
+                    style: "width: 200px;",
+                    placeholder: "{draft().name}",
+                    value: "{draft().display_text.clone().unwrap_or_default()}",
+                    oninput: move |e| {
+                        let mut d = draft();
+                        d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
+                        draft.set(d);
                     }
                 }
+            }
 
-                div { class: "form-field",
-                    label { "Trigger" }
-                    select {
-                        value: "{draft().trigger.label()}",
-                        onchange: move |e| {
-                            let mut d = draft();
-                            d.trigger = match e.value().as_str() {
-                                "Effect Applied" => EffectTriggerMode::EffectApplied,
-                                "Effect Removed" => EffectTriggerMode::EffectRemoved,
-                                _ => d.trigger,
-                            };
-                            draft.set(d);
-                        },
-                        for trigger in EffectTriggerMode::all() {
-                            option { value: "{trigger.label()}", "{trigger.label()}" }
-                        }
+            // Category, Trigger, Color, Enabled, Raid Frames, Effects Overlay
+            div { class: "form-row-hz",
+                label { "Category" }
+                select {
+                    class: "select-inline",
+                    value: "{draft().category.label()}",
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.category = match e.value().as_str() {
+                            "HoT" => EffectCategory::Hot,
+                            "Shield" => EffectCategory::Shield,
+                            "Buff" => EffectCategory::Buff,
+                            "Debuff" => EffectCategory::Debuff,
+                            "Cleansable" => EffectCategory::Cleansable,
+                            "Proc" => EffectCategory::Proc,
+                            "Mechanic" => EffectCategory::Mechanic,
+                            _ => d.category,
+                        };
+                        draft.set(d);
+                    },
+                    for cat in EffectCategory::all() {
+                        option { value: "{cat.label()}", "{cat.label()}" }
                     }
                 }
-
-                div { class: "form-field",
-                    label { "Color" }
-                    input {
-                        r#type: "color",
-                        value: "{color_hex}",
-                        class: "color-picker",
-                        oninput: move |e| {
-                            if let Some(c) = parse_hex_color(&e.value()) {
-                                let mut d = draft();
-                                d.color = Some(c);
-                                draft.set(d);
-                            }
-                        }
+                label { "Trigger" }
+                select {
+                    class: "select-inline",
+                    value: "{draft().trigger.label()}",
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.trigger = match e.value().as_str() {
+                            "Effect Applied" => EffectTriggerMode::EffectApplied,
+                            "Effect Removed" => EffectTriggerMode::EffectRemoved,
+                            _ => d.trigger,
+                        };
+                        draft.set(d);
+                    },
+                    for trigger in EffectTriggerMode::all() {
+                        option { value: "{trigger.label()}", "{trigger.label()}" }
                     }
                 }
-
-                div { class: "form-field",
-                    label { "Enabled" }
-                    input {
-                        r#type: "checkbox",
-                        checked: draft().enabled,
-                        onchange: move |e| {
+                label { "Color" }
+                input {
+                    r#type: "color",
+                    value: "{color_hex}",
+                    class: "color-picker",
+                    oninput: move |e| {
+                        if let Some(c) = parse_hex_color(&e.value()) {
                             let mut d = draft();
-                            d.enabled = e.checked();
+                            d.color = Some(c);
                             draft.set(d);
                         }
                     }
                 }
-
-                div { class: "form-field",
-                    label { "Raid Frames" }
-                    input {
-                        r#type: "checkbox",
-                        checked: draft().show_on_raid_frames,
-                        onchange: move |e| {
-                            let mut d = draft();
-                            d.show_on_raid_frames = e.checked();
-                            draft.set(d);
-                        }
+                label { "Enabled" }
+                input {
+                    r#type: "checkbox",
+                    checked: draft().enabled,
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.enabled = e.checked();
+                        draft.set(d);
                     }
                 }
-
-                div { class: "form-field",
-                    label { "Effects Overlay" }
-                    input {
-                        r#type: "checkbox",
-                        checked: draft().show_on_effects_overlay,
-                        onchange: move |e| {
-                            let mut d = draft();
-                            d.show_on_effects_overlay = e.checked();
-                            draft.set(d);
-                        }
+                label { "Raid Frames" }
+                input {
+                    r#type: "checkbox",
+                    checked: draft().show_on_raid_frames,
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.show_on_raid_frames = e.checked();
+                        draft.set(d);
+                    }
+                }
+                label { "Effects Overlay" }
+                input {
+                    r#type: "checkbox",
+                    checked: draft().show_on_effects_overlay,
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.show_on_effects_overlay = e.checked();
+                        draft.set(d);
                     }
                 }
             }
 
             // Source and Target filters
-            div { class: "form-row-inline",
-                div { class: "form-field",
-                    label { "Source" }
-                    EntityFilterSelect {
-                        value: draft().source.clone(),
-                        options: EntityFilter::source_options(),
-                        on_change: move |f| {
-                            let mut d = draft();
-                            d.source = f;
-                            draft.set(d);
-                        }
+            div { class: "form-row-hz",
+                label { "Source" }
+                EntityFilterSelect {
+                    value: draft().source.clone(),
+                    options: EntityFilter::source_options(),
+                    on_change: move |f| {
+                        let mut d = draft();
+                        d.source = f;
+                        draft.set(d);
                     }
                 }
-
-                div { class: "form-field",
-                    label { "Target" }
-                    EntityFilterSelect {
-                        value: draft().target.clone(),
-                        options: EntityFilter::target_options(),
-                        on_change: move |f| {
-                            let mut d = draft();
-                            d.target = f;
-                            draft.set(d);
-                        }
+                label { "Target" }
+                EntityFilterSelect {
+                    value: draft().target.clone(),
+                    options: EntityFilter::target_options(),
+                    on_change: move |f| {
+                        let mut d = draft();
+                        d.target = f;
+                        draft.set(d);
                     }
                 }
             }
 
-            // Duration, Max Stacks, Can Be Refreshed
-            div { class: "form-row-inline",
-                div { class: "form-field",
-                    label { "Duration (sec)" }
-                    input {
-                        r#type: "number",
-                        step: "0.1",
-                        min: "0",
-                        value: "{draft().duration_secs.unwrap_or(0.0)}",
-                        oninput: move |e| {
+            // Duration, Max Stacks, Refreshable, Show At
+            div { class: "form-row-hz",
+                label { "Duration (sec)" }
+                input {
+                    r#type: "number",
+                    class: "input-inline",
+                    style: "width: 70px;",
+                    step: "1",
+                    min: "0",
+                    value: "{draft().duration_secs.unwrap_or(0.0) as u32}",
+                    oninput: move |e| {
+                        let mut d = draft();
+                        d.duration_secs = e.value().parse::<f32>().ok().filter(|&v| v > 0.0);
+                        draft.set(d);
+                    }
+                }
+                label { "Max Stacks" }
+                input {
+                    r#type: "number",
+                    class: "input-inline",
+                    style: "width: 50px;",
+                    min: "0",
+                    max: "255",
+                    value: "{draft().max_stacks}",
+                    oninput: move |e| {
+                        if let Ok(val) = e.value().parse::<u8>() {
                             let mut d = draft();
-                            d.duration_secs = e.value().parse::<f32>().ok().filter(|&v| v > 0.0);
+                            d.max_stacks = val;
                             draft.set(d);
                         }
                     }
                 }
-
-                div { class: "form-field",
-                    label { "Max Stacks" }
-                    input {
-                        r#type: "number",
-                        min: "0",
-                        max: "255",
-                        value: "{draft().max_stacks}",
-                        oninput: move |e| {
-                            if let Ok(val) = e.value().parse::<u8>() {
-                                let mut d = draft();
-                                d.max_stacks = val;
-                                draft.set(d);
-                            }
-                        }
+                label { "Refreshable" }
+                input {
+                    r#type: "checkbox",
+                    checked: draft().can_be_refreshed,
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.can_be_refreshed = e.checked();
+                        draft.set(d);
                     }
                 }
-
-                div { class: "form-field",
-                    label { "Refreshable" }
-                    input {
-                        r#type: "checkbox",
-                        checked: draft().can_be_refreshed,
-                        onchange: move |e| {
+                label { "Show At" }
+                select {
+                    class: "select-inline",
+                    style: "width: 130px;",
+                    value: "{draft().show_at_secs as u8}",
+                    onchange: move |e| {
+                        if let Ok(val) = e.value().parse::<f32>() {
                             let mut d = draft();
-                            d.can_be_refreshed = e.checked();
+                            d.show_at_secs = val;
                             draft.set(d);
                         }
-                    }
+                    },
+                    option { value: "0", "Always" }
+                    option { value: "5", "≤5s remaining" }
+                    option { value: "10", "≤10s remaining" }
+                    option { value: "15", "≤15s remaining" }
+                    option { value: "20", "≤20s remaining" }
+                    option { value: "30", "≤30s remaining" }
                 }
             }
 
-            // Effects
-            div { class: "form-row",
+            // Effects (with chips above input)
+            div { class: "form-row-hz",
                 EffectSelectorEditor {
                     label: "Effects",
                     selectors: draft().effects.clone(),
@@ -566,16 +629,123 @@ fn EffectEditForm(
                 }
             }
 
-            // Refresh Abilities
-            div { class: "form-row",
-                label { "Refresh Abilities" }
-                IdListEditor {
-                    ids: draft().refresh_abilities.clone(),
+            // Refresh Abilities (with chips above input)
+            div { class: "form-row-hz",
+                AbilitySelectorEditor {
+                    label: "Refresh Abilities",
+                    selectors: draft().refresh_abilities.clone(),
                     on_change: move |ids| {
                         let mut d = draft();
                         d.refresh_abilities = ids;
                         draft.set(d);
                     }
+                }
+            }
+
+            // ─── Audio Section ───────────────────────────────────────────────
+            div { class: "form-row-hz",
+                label { "Enable Audio" }
+                input {
+                    r#type: "checkbox",
+                    checked: draft().audio.enabled,
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.audio.enabled = e.checked();
+                        draft.set(d);
+                    }
+                }
+            }
+
+            div { class: "form-row-hz",
+                label { "Alert Sound" }
+                select {
+                    class: "select-inline",
+                    style: "width: 140px;",
+                    value: "{draft().audio.file.clone().unwrap_or_default()}",
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.audio.file = if e.value().is_empty() { None } else { Some(e.value()) };
+                        draft.set(d);
+                    },
+                    option { value: "", "(none)" }
+                    option { value: "Alarm.mp3", "Alarm.mp3" }
+                    option { value: "Alert.mp3", "Alert.mp3" }
+                    if let Some(ref path) = draft().audio.file {
+                        if !path.is_empty() && path != "Alarm.mp3" && path != "Alert.mp3" {
+                            option { value: "{path}", selected: true, "{path} (custom)" }
+                        }
+                    }
+                }
+                button {
+                    class: "btn btn-sm",
+                    r#type: "button",
+                    onclick: move |_| {
+                        spawn(async move {
+                            if let Some(path) = api::pick_audio_file().await {
+                                let lower = path.to_lowercase();
+                                if lower.ends_with(".mp3") || lower.ends_with(".wav") {
+                                    let mut d = draft();
+                                    d.audio.file = Some(path);
+                                    draft.set(d);
+                                }
+                            }
+                        });
+                    },
+                    "Browse"
+                }
+            }
+
+            div { class: "form-row-hz",
+                label { "Audio Offset" }
+                select {
+                    class: "select-inline",
+                    style: "width: 120px;",
+                    value: "{draft().audio.offset}",
+                    onchange: move |e| {
+                        if let Ok(val) = e.value().parse::<u8>() {
+                            let mut d = draft();
+                            d.audio.offset = val;
+                            draft.set(d);
+                        }
+                    },
+                    option { value: "0", "On expiration" }
+                    option { value: "1", "1s before" }
+                    option { value: "2", "2s before" }
+                    option { value: "3", "3s before" }
+                    option { value: "5", "5s before" }
+                    option { value: "10", "10s before" }
+                }
+                label { "Countdown" }
+                select {
+                    class: "select-inline",
+                    style: "width: 80px;",
+                    value: "{draft().audio.countdown_start}",
+                    onchange: move |e| {
+                        if let Ok(val) = e.value().parse::<u8>() {
+                            let mut d = draft();
+                            d.audio.countdown_start = val;
+                            draft.set(d);
+                        }
+                    },
+                    option { value: "0", "Off" }
+                    option { value: "3", "3s" }
+                    option { value: "5", "5s" }
+                    option { value: "10", "10s" }
+                }
+                span { class: "text-sm text-secondary", "Voice" }
+                select {
+                    class: "select-inline",
+                    style: "width: 100px;",
+                    value: "{draft().audio.countdown_voice.clone().unwrap_or_else(|| \"Amy\".to_string())}",
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.audio.countdown_voice = if e.value() == "Amy" { None } else { Some(e.value()) };
+                        draft.set(d);
+                    },
+                    option { value: "Amy", "Amy" }
+                    option { value: "Jim", "Jim" }
+                    option { value: "Yolo", "Yolo" }
+                    option { value: "Nerevar", "Nerevar" }
                 }
             }
 
@@ -617,7 +787,6 @@ fn EffectEditForm(
                 }
             }
 
-            div { class: "effect-file-info", "File: {effect.file_path}" }
         }
     }
 }
@@ -655,31 +824,41 @@ fn EntityFilterSelect(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ID List Editor
+// Ability Selector Editor (ID or Name, with chips displayed above input)
 // ─────────────────────────────────────────────────────────────────────────────
 
+use crate::types::AbilitySelector;
+
 #[component]
-fn IdListEditor(
-    ids: Vec<u64>,
-    on_change: EventHandler<Vec<u64>>,
+fn AbilitySelectorEditor(
+    label: &'static str,
+    selectors: Vec<AbilitySelector>,
+    on_change: EventHandler<Vec<AbilitySelector>>,
 ) -> Element {
-    let mut new_id_input = use_signal(String::new);
+    let mut new_input = use_signal(String::new);
+
+    let selectors_for_keydown = selectors.clone();
+    let selectors_for_click = selectors.clone();
 
     rsx! {
-        div { class: "id-list-editor",
-            div { class: "id-chips",
-                for (idx, id) in ids.iter().enumerate() {
+        div { class: "flex-col gap-xs items-start",
+            span { class: "text-sm text-secondary text-left", "{label}:" }
+
+            // Selector chips (displayed above the input)
+            div { class: "flex flex-wrap gap-xs",
+                for (idx, sel) in selectors.iter().enumerate() {
                     {
-                        let ids_clone = ids.clone();
+                        let selectors_clone = selectors.clone();
+                        let display = sel.display();
                         rsx! {
-                            span { class: "id-chip",
-                                "{id}"
+                            span { class: "chip",
+                                "{display}"
                                 button {
-                                    class: "id-chip-remove",
+                                    class: "chip-remove",
                                     onclick: move |_| {
-                                        let mut new_ids = ids_clone.clone();
-                                        new_ids.remove(idx);
-                                        on_change.call(new_ids);
+                                        let mut new_sels = selectors_clone.clone();
+                                        new_sels.remove(idx);
+                                        on_change.call(new_sels);
                                     },
                                     "×"
                                 }
@@ -687,23 +866,43 @@ fn IdListEditor(
                         }
                     }
                 }
+            }
+
+            // Add new selector
+            div { class: "flex gap-xs",
                 input {
                     r#type: "text",
-                    class: "id-input",
-                    placeholder: "ID (Enter to add)",
-                    value: "{new_id_input}",
-                    oninput: move |e| new_id_input.set(e.value()),
+                    class: "input-inline",
+                    style: "width: 180px;",
+                    placeholder: "ID or Name (Enter)",
+                    value: "{new_input}",
+                    oninput: move |e| new_input.set(e.value()),
                     onkeydown: move |e| {
-                        if e.key() == Key::Enter
-                            && let Ok(id) = new_id_input().parse::<u64>() {
-                                let mut new_ids = ids.clone();
-                                if !new_ids.contains(&id) {
-                                    new_ids.push(id);
-                                    on_change.call(new_ids);
-                                }
-                                new_id_input.set(String::new());
+                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
+                            let selector = AbilitySelector::from_input(&new_input());
+                            let mut new_sels = selectors_for_keydown.clone();
+                            if !new_sels.iter().any(|s| s.display() == selector.display()) {
+                                new_sels.push(selector);
+                                on_change.call(new_sels);
+                            }
+                            new_input.set(String::new());
                         }
                     }
+                }
+                button {
+                    class: "btn btn-sm",
+                    onclick: move |_| {
+                        if !new_input().trim().is_empty() {
+                            let selector = AbilitySelector::from_input(&new_input());
+                            let mut new_sels = selectors_for_click.clone();
+                            if !new_sels.iter().any(|s| s.display() == selector.display()) {
+                                new_sels.push(selector);
+                                on_change.call(new_sels);
+                            }
+                            new_input.set(String::new());
+                        }
+                    },
+                    "Add"
                 }
             }
         }
@@ -716,11 +915,9 @@ fn IdListEditor(
 
 #[component]
 fn NewEffectForm(
-    effect_files: Vec<String>,
     on_create: EventHandler<EffectListItem>,
     on_cancel: EventHandler<()>,
 ) -> Element {
-    let mut selected_file = use_signal(String::new);
     let mut name = use_signal(String::new);
     let mut category = use_signal(|| EffectCategory::Hot);
     let mut trigger = use_signal(|| EffectTriggerMode::EffectApplied);
@@ -730,9 +927,11 @@ fn NewEffectForm(
     let mut duration = use_signal(|| 15.0f32);
     let mut max_stacks = use_signal(|| 1u8);
     let mut effects = use_signal(Vec::<EffectSelector>::new);
-    let mut refresh_abilities = use_signal(Vec::<u64>::new);
+    let mut refresh_abilities = use_signal(Vec::<AbilitySelector>::new);
     let mut show_on_raid_frames = use_signal(|| true);
     let mut show_on_effects_overlay = use_signal(|| false);
+    let mut show_at_secs = use_signal(|| 0.0f32);
+    let mut audio = use_signal(AudioConfig::default);
 
     let color_hex = format!("#{:02x}{:02x}{:02x}", color()[0], color()[1], color()[2]);
 
@@ -747,216 +946,266 @@ fn NewEffectForm(
                 }
             }
 
-            // File selector
-            div { class: "form-row",
-                label { "File" }
+            // Name
+            div { class: "form-row-hz",
+                label { "Name" }
+                input {
+                    r#type: "text",
+                    class: "input-inline",
+                    style: "width: 200px;",
+                    placeholder: "e.g., Static Barrier",
+                    value: "{name}",
+                    oninput: move |e| name.set(e.value())
+                }
+            }
+
+            // Category, Trigger, Color, Raid Frames, Effects Overlay
+            div { class: "form-row-hz",
+                label { "Category" }
                 select {
-                    class: "file-select",
-                    onchange: move |e| selected_file.set(e.value()),
-                    option { value: "", "-- Select a file --" }
-                    for file in effect_files.iter() {
-                        {
-                            let file_name = file.rsplit('/').next().unwrap_or(file);
-                            rsx! {
-                                option { value: "{file}", "{file_name}" }
-                            }
+                    class: "select-inline",
+                    value: "{category().label()}",
+                    onchange: move |e| {
+                        category.set(match e.value().as_str() {
+                            "HoT" => EffectCategory::Hot,
+                            "Shield" => EffectCategory::Shield,
+                            "Buff" => EffectCategory::Buff,
+                            "Debuff" => EffectCategory::Debuff,
+                            "Cleansable" => EffectCategory::Cleansable,
+                            "Proc" => EffectCategory::Proc,
+                            "Mechanic" => EffectCategory::Mechanic,
+                            _ => category(),
+                        });
+                    },
+                    for cat in EffectCategory::all() {
+                        option { value: "{cat.label()}", "{cat.label()}" }
+                    }
+                }
+                label { "Trigger" }
+                select {
+                    class: "select-inline",
+                    value: "{trigger().label()}",
+                    onchange: move |e| {
+                        trigger.set(match e.value().as_str() {
+                            "Effect Applied" => EffectTriggerMode::EffectApplied,
+                            "Effect Removed" => EffectTriggerMode::EffectRemoved,
+                            _ => trigger(),
+                        });
+                    },
+                    for t in EffectTriggerMode::all() {
+                        option { value: "{t.label()}", "{t.label()}" }
+                    }
+                }
+                label { "Color" }
+                input {
+                    r#type: "color",
+                    value: "{color_hex}",
+                    class: "color-picker",
+                    oninput: move |e| {
+                        if let Some(c) = parse_hex_color(&e.value()) {
+                            color.set(c);
                         }
+                    }
+                }
+                label { "Raid Frames" }
+                input {
+                    r#type: "checkbox",
+                    checked: show_on_raid_frames(),
+                    onchange: move |e| show_on_raid_frames.set(e.checked())
+                }
+                label { "Effects Overlay" }
+                input {
+                    r#type: "checkbox",
+                    checked: show_on_effects_overlay(),
+                    onchange: move |e| show_on_effects_overlay.set(e.checked())
+                }
+            }
+
+            // Source and Target
+            div { class: "form-row-hz",
+                label { "Source" }
+                EntityFilterSelect {
+                    value: source(),
+                    options: EntityFilter::source_options(),
+                    on_change: move |f| source.set(f)
+                }
+                label { "Target" }
+                EntityFilterSelect {
+                    value: target(),
+                    options: EntityFilter::target_options(),
+                    on_change: move |f| target.set(f)
+                }
+            }
+
+            // Duration, Max Stacks, Show At
+            div { class: "form-row-hz",
+                label { "Duration (sec)" }
+                input {
+                    r#type: "number",
+                    class: "input-inline",
+                    style: "width: 70px;",
+                    step: "1",
+                    min: "0",
+                    value: "{duration() as u32}",
+                    oninput: move |e| {
+                        if let Ok(val) = e.value().parse::<f32>() {
+                            duration.set(val);
+                        }
+                    }
+                }
+                label { "Max Stacks" }
+                input {
+                    r#type: "number",
+                    class: "input-inline",
+                    style: "width: 50px;",
+                    min: "0",
+                    max: "255",
+                    value: "{max_stacks}",
+                    oninput: move |e| {
+                        if let Ok(val) = e.value().parse::<u8>() {
+                            max_stacks.set(val);
+                        }
+                    }
+                }
+                label { "Show At" }
+                select {
+                    class: "select-inline",
+                    style: "width: 130px;",
+                    value: "{show_at_secs() as u8}",
+                    onchange: move |e| {
+                        if let Ok(val) = e.value().parse::<f32>() {
+                            show_at_secs.set(val);
+                        }
+                    },
+                    option { value: "0", "Always" }
+                    option { value: "5", "≤5s remaining" }
+                    option { value: "10", "≤10s remaining" }
+                    option { value: "15", "≤15s remaining" }
+                }
+            }
+
+            // Effects (chips above input)
+            div { class: "form-row-hz",
+                EffectSelectorEditor {
+                    label: "Effects",
+                    selectors: effects(),
+                    on_change: move |sels| effects.set(sels)
+                }
+            }
+
+            // Refresh Abilities (chips above input)
+            div { class: "form-row-hz",
+                AbilitySelectorEditor {
+                    label: "Refresh Abilities",
+                    selectors: refresh_abilities(),
+                    on_change: move |ids| refresh_abilities.set(ids)
+                }
+            }
+
+            // Audio section
+            div { class: "form-row-hz",
+                label { "Enable Audio" }
+                input {
+                    r#type: "checkbox",
+                    checked: audio().enabled,
+                    onchange: move |e| {
+                        let mut a = audio();
+                        a.enabled = e.checked();
+                        audio.set(a);
                     }
                 }
             }
 
-            if !selected_file().is_empty() {
-                div { class: "form-row",
-                    label { "Name" }
-                    input {
-                        r#type: "text",
-                        placeholder: "e.g., Static Barrier",
-                        value: "{name}",
-                        oninput: move |e| name.set(e.value())
-                    }
+            div { class: "form-row-hz",
+                label { "Alert Sound" }
+                select {
+                    class: "select-inline",
+                    style: "width: 140px;",
+                    value: "{audio().file.clone().unwrap_or_default()}",
+                    onchange: move |e| {
+                        let mut a = audio();
+                        a.file = if e.value().is_empty() { None } else { Some(e.value()) };
+                        audio.set(a);
+                    },
+                    option { value: "", "(none)" }
+                    option { value: "Alarm.mp3", "Alarm.mp3" }
+                    option { value: "Alert.mp3", "Alert.mp3" }
                 }
-
-                div { class: "form-row-inline",
-                    div { class: "form-field",
-                        label { "Category" }
-                        select {
-                            value: "{category().label()}",
-                            onchange: move |e| {
-                                category.set(match e.value().as_str() {
-                                    "HoT" => EffectCategory::Hot,
-                                    "Shield" => EffectCategory::Shield,
-                                    "Buff" => EffectCategory::Buff,
-                                    "Debuff" => EffectCategory::Debuff,
-                                    "Cleansable" => EffectCategory::Cleansable,
-                                    "Proc" => EffectCategory::Proc,
-                                    "Mechanic" => EffectCategory::Mechanic,
-                                    _ => category(),
-                                });
-                            },
-                            for cat in EffectCategory::all() {
-                                option { value: "{cat.label()}", "{cat.label()}" }
-                            }
+                label { "Audio Offset" }
+                select {
+                    class: "select-inline",
+                    style: "width: 120px;",
+                    value: "{audio().offset}",
+                    onchange: move |e| {
+                        if let Ok(val) = e.value().parse::<u8>() {
+                            let mut a = audio();
+                            a.offset = val;
+                            audio.set(a);
                         }
-                    }
-
-                    div { class: "form-field",
-                        label { "Trigger" }
-                        select {
-                            value: "{trigger().label()}",
-                            onchange: move |e| {
-                                trigger.set(match e.value().as_str() {
-                                    "Effect Applied" => EffectTriggerMode::EffectApplied,
-                                    "Effect Removed" => EffectTriggerMode::EffectRemoved,
-                                    _ => trigger(),
-                                });
-                            },
-                            for t in EffectTriggerMode::all() {
-                                option { value: "{t.label()}", "{t.label()}" }
-                            }
-                        }
-                    }
-
-                    div { class: "form-field",
-                        label { "Color" }
-                        input {
-                            r#type: "color",
-                            value: "{color_hex}",
-                            class: "color-picker",
-                            oninput: move |e| {
-                                if let Some(c) = parse_hex_color(&e.value()) {
-                                    color.set(c);
-                                }
-                            }
-                        }
-                    }
-
-                    div { class: "form-field",
-                        label { "Raid Frames" }
-                        input {
-                            r#type: "checkbox",
-                            checked: show_on_raid_frames(),
-                            onchange: move |e| show_on_raid_frames.set(e.checked())
-                        }
-                    }
-
-                    div { class: "form-field",
-                        label { "Effects Overlay" }
-                        input {
-                            r#type: "checkbox",
-                            checked: show_on_effects_overlay(),
-                            onchange: move |e| show_on_effects_overlay.set(e.checked())
-                        }
-                    }
+                    },
+                    option { value: "0", "On expiration" }
+                    option { value: "3", "3s before" }
+                    option { value: "5", "5s before" }
                 }
-
-                div { class: "form-row-inline",
-                    div { class: "form-field",
-                        label { "Source" }
-                        EntityFilterSelect {
-                            value: source(),
-                            options: EntityFilter::source_options(),
-                            on_change: move |f| source.set(f)
+                label { "Countdown" }
+                select {
+                    class: "select-inline",
+                    style: "width: 80px;",
+                    value: "{audio().countdown_start}",
+                    onchange: move |e| {
+                        if let Ok(val) = e.value().parse::<u8>() {
+                            let mut a = audio();
+                            a.countdown_start = val;
+                            audio.set(a);
                         }
-                    }
-
-                    div { class: "form-field",
-                        label { "Target" }
-                        EntityFilterSelect {
-                            value: target(),
-                            options: EntityFilter::target_options(),
-                            on_change: move |f| target.set(f)
-                        }
-                    }
+                    },
+                    option { value: "0", "Off" }
+                    option { value: "3", "3s" }
+                    option { value: "5", "5s" }
                 }
+            }
 
-                div { class: "form-row-inline",
-                    div { class: "form-field",
-                        label { "Duration" }
-                        input {
-                            r#type: "number",
-                            step: "0.1",
-                            min: "0",
-                            value: "{duration}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<f32>() {
-                                    duration.set(val);
-                                }
-                            }
-                        }
-                    }
-
-                    div { class: "form-field",
-                        label { "Max Stacks" }
-                        input {
-                            r#type: "number",
-                            min: "0",
-                            max: "255",
-                            value: "{max_stacks}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<u8>() {
-                                    max_stacks.set(val);
-                                }
-                            }
-                        }
-                    }
+            div { class: "form-actions",
+                button {
+                    class: "btn-save",
+                    disabled: name().is_empty() || (effects().is_empty() && refresh_abilities().is_empty()),
+                    onclick: move |_| {
+                        let new_effect = EffectListItem {
+                            id: String::new(),
+                            name: name(),
+                            display_text: None,
+                            file_path: String::new(),
+                            enabled: true,
+                            category: category(),
+                            trigger: trigger(),
+                            effects: effects(),
+                            refresh_abilities: refresh_abilities(),
+                            source: source(),
+                            target: target(),
+                            duration_secs: Some(duration()),
+                            can_be_refreshed: true,
+                            max_stacks: max_stacks(),
+                            color: Some(color()),
+                            show_on_raid_frames: show_on_raid_frames(),
+                            show_on_effects_overlay: show_on_effects_overlay(),
+                            show_at_secs: show_at_secs(),
+                            persist_past_death: false,
+                            track_outside_combat: true,
+                            on_apply_trigger_timer: None,
+                            on_expire_trigger_timer: None,
+                            encounters: vec![],
+                            alert_near_expiration: false,
+                            alert_threshold_secs: 3.0,
+                            audio: audio(),
+                        };
+                        on_create.call(new_effect);
+                    },
+                    "Create Effect"
                 }
-
-                div { class: "form-row",
-                    EffectSelectorEditor {
-                        label: "Effects",
-                        selectors: effects(),
-                        on_change: move |sels| effects.set(sels)
-                    }
-                }
-
-                div { class: "form-row",
-                    label { "Refresh Ability IDs" }
-                    IdListEditor {
-                        ids: refresh_abilities(),
-                        on_change: move |ids| refresh_abilities.set(ids)
-                    }
-                }
-
-                div { class: "form-actions",
-                    button {
-                        class: "btn-save",
-                        // Require name and at least one effect selector or refresh ability
-                        disabled: name().is_empty() || (effects().is_empty() && refresh_abilities().is_empty()),
-                        onclick: move |_| {
-                            let new_effect = EffectListItem {
-                                id: String::new(), // Auto-generated by backend
-                                name: name(),
-                                file_path: selected_file(),
-                                enabled: true,
-                                category: category(),
-                                trigger: trigger(),
-                                effects: effects(),
-                                refresh_abilities: refresh_abilities(),
-                                source: source(),
-                                target: target(),
-                                duration_secs: Some(duration()),
-                                can_be_refreshed: true,
-                                max_stacks: max_stacks(),
-                                color: Some(color()),
-                                show_on_raid_frames: show_on_raid_frames(),
-                                show_on_effects_overlay: show_on_effects_overlay(),
-                                persist_past_death: false,
-                                track_outside_combat: true,
-                                on_apply_trigger_timer: None,
-                                on_expire_trigger_timer: None,
-                                encounters: vec![],
-                                alert_near_expiration: false,
-                                alert_threshold_secs: 3.0,
-                            };
-                            on_create.call(new_effect);
-                        },
-                        "Create Effect"
-                    }
-                    button {
-                        class: "btn-cancel",
-                        onclick: move |_| on_cancel.call(()),
-                        "Cancel"
-                    }
+                button {
+                    class: "btn-cancel",
+                    onclick: move |_| on_cancel.call(()),
+                    "Cancel"
                 }
             }
         }

@@ -11,7 +11,7 @@ use crate::triggers::Trigger;
 
 use super::GameSignal;
 
-/// Check for counter increments based on events and emit CounterChanged signals.
+/// Check for counter increments/decrements based on events and emit CounterChanged signals.
 pub fn check_counter_increments(
     event: &CombatEvent,
     cache: &mut SessionCache,
@@ -25,10 +25,11 @@ pub fn check_counter_increments(
     let mut signals = Vec::new();
 
     for counter in &def.counters {
+        // Check increment_on trigger
         if check_counter_trigger(&counter.increment_on, event, current_signals, def) {
             let (old_value, new_value) = cache.boss_state.modify_counter(
                 &counter.id,
-                counter.decrement,
+                counter.decrement, // Legacy: use decrement flag for increment_on
                 counter.set_value,
             );
 
@@ -38,6 +39,24 @@ pub fn check_counter_increments(
                 new_value,
                 timestamp: event.timestamp,
             });
+        }
+
+        // Check decrement_on trigger (always decrements)
+        if let Some(ref decrement_trigger) = counter.decrement_on {
+            if check_counter_trigger(decrement_trigger, event, current_signals, def) {
+                let (old_value, new_value) = cache.boss_state.modify_counter(
+                    &counter.id,
+                    true, // Always decrement
+                    None, // Never set_value for decrement_on
+                );
+
+                signals.push(GameSignal::CounterChanged {
+                    counter_id: counter.id.clone(),
+                    old_value,
+                    new_value,
+                    timestamp: event.timestamp,
+                });
+            }
         }
     }
 
