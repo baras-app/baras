@@ -38,6 +38,9 @@ pub struct ActiveEffect {
     /// Display name (cached from definition)
     pub name: String,
 
+    /// Display text for overlay (defaults to name if not set)
+    pub display_text: String,
+
     // ─── Entities ───────────────────────────────────────────────────────────
     /// Entity ID of who applied this effect
     pub source_entity_id: i64,
@@ -91,6 +94,28 @@ pub struct ActiveEffect {
 
     /// Show on effects countdown overlay
     pub show_on_effects_overlay: bool,
+
+    // ─── Audio ────────────────────────────────────────────────────────────────
+    /// Whether on-apply audio has been played
+    pub audio_played: bool,
+
+    /// Tracks which countdown seconds have been announced (1-10)
+    pub countdown_announced: [bool; 10],
+
+    /// Countdown start second (0 = disabled)
+    pub countdown_start: u8,
+
+    /// Voice pack for countdown
+    pub countdown_voice: String,
+
+    /// Audio file for on-apply sound
+    pub audio_file: Option<String>,
+
+    /// Audio offset (seconds before expiration to play sound)
+    pub audio_offset: u8,
+
+    /// Whether audio is enabled for this effect
+    pub audio_enabled: bool,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -100,6 +125,7 @@ impl ActiveEffect {
         definition_id: String,
         game_effect_id: u64,
         name: String,
+        display_text: String,
         source_entity_id: i64,
         target_entity_id: i64,
         target_name: IStr,
@@ -110,8 +136,20 @@ impl ActiveEffect {
         category: EffectCategory,
         show_on_raid_frames: bool,
         show_on_effects_overlay: bool,
+        audio: &crate::audio::AudioConfig,
     ) -> Self {
+        // Calculate lag compensation: how far behind was the game event from system time?
+        // This accounts for file I/O delay, processing time, etc.
+        let now_system = chrono::Local::now().naive_local();
+        let lag = now_system.signed_duration_since(event_timestamp);
+        let lag_ms = lag.num_milliseconds().max(0) as u64;
+        let lag_duration = Duration::from_millis(lag_ms);
+
+        // Backdate applied_instant to when the event actually happened in game
+        // This ensures remaining_secs_realtime() reflects actual game time
         let now = Instant::now();
+        let applied_instant = now.checked_sub(lag_duration).unwrap_or(now);
+
         let expires_at = duration.map(|d| {
             event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64)
         });
@@ -120,12 +158,13 @@ impl ActiveEffect {
             definition_id,
             game_effect_id,
             name,
+            display_text,
             source_entity_id,
             target_entity_id,
             target_name,
             is_from_local_player,
             applied_at: event_timestamp,
-            applied_instant: now,
+            applied_instant,
             expires_at,
             last_refreshed_at: event_timestamp,
             duration,
@@ -135,6 +174,13 @@ impl ActiveEffect {
             category,
             show_on_raid_frames,
             show_on_effects_overlay,
+            audio_played: false,
+            countdown_announced: [false; 10],
+            countdown_start: audio.countdown_start,
+            countdown_voice: audio.countdown_voice.clone().unwrap_or_else(|| "Amy".to_string()),
+            audio_file: audio.file.clone(),
+            audio_offset: audio.offset,
+            audio_enabled: audio.enabled,
         }
     }
 
@@ -234,6 +280,81 @@ impl ActiveEffect {
         self.remaining_secs(current_game_time)
             .map(|r| r <= threshold_secs && r > 0.0)
             .unwrap_or(false)
+    }
+
+    // ─── Audio Methods ──────────────────────────────────────────────────────────
+
+    /// Get remaining time in seconds using realtime (for audio sync)
+    /// Uses system time (Instant) for smooth countdown independent of game log timing
+    pub fn remaining_secs_realtime(&self) -> f32 {
+        let Some(dur) = self.duration else { return 0.0 };
+        let elapsed = self.applied_instant.elapsed();
+        let remaining = dur.saturating_sub(elapsed);
+        remaining.as_secs_f32()
+    }
+
+    /// Check if countdown should be announced (matches timer logic exactly)
+    ///
+    /// Announces N when remaining is in [N, N+0.3) to sync with visual display:
+    /// - remaining 3.8s → no announcement (too early)
+    /// - remaining 3.2s → announces 3 (in window [3.0, 3.3))
+    /// - remaining 2.2s → announces 2
+    pub fn check_countdown(&mut self) -> Option<u8> {
+        if !self.audio_enabled || self.countdown_start == 0 {
+            return None;
+        }
+
+        let remaining = self.remaining_secs_realtime();
+
+        // Check each second from countdown_start down to 1
+        for seconds in (1..=self.countdown_start.min(10)).rev() {
+            let lower = seconds as f32;
+            let upper = lower + 0.3;
+
+            // Announce when remaining is in [N, N+0.3)
+            if remaining >= lower && remaining < upper {
+                let index = (seconds - 1) as usize;
+                if !self.countdown_announced[index] {
+                    self.countdown_announced[index] = true;
+                    return Some(seconds);
+                }
+            }
+        }
+        None
+    }
+
+    /// Check if audio should fire at the configured offset (matches timer logic)
+    ///
+    /// Returns true (and marks as fired) when:
+    /// - audio_file is Some
+    /// - audio_offset > 0 (offset of 0 means no early warning)
+    /// - remaining time crossed below the offset threshold
+    /// - hasn't already fired
+    pub fn check_audio_offset(&mut self) -> bool {
+        // No audio file configured
+        if self.audio_file.is_none() {
+            return false;
+        }
+
+        // offset=0 means no early warning sound
+        if self.audio_offset == 0 {
+            return false;
+        }
+
+        // Already fired
+        if self.audio_played {
+            return false;
+        }
+
+        let remaining = self.remaining_secs_realtime();
+
+        // Fire when we cross into the offset window
+        if remaining <= self.audio_offset as f32 && remaining > 0.0 {
+            self.audio_played = true;
+            return true;
+        }
+
+        false
     }
 }
 

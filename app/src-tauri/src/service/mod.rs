@@ -797,6 +797,24 @@ impl CombatService {
                         let _ = overlay_tx.try_send(OverlayUpdate::EffectsOverlayUpdated(data));
                 }
 
+                // Effect audio: process in live mode
+                if shared.is_live_tailing.load(Ordering::SeqCst) {
+                    let effect_audio = process_effect_audio(&shared).await;
+                    for (name, seconds, voice_pack) in effect_audio.countdowns {
+                        let _ = audio_tx.try_send(AudioEvent::Countdown {
+                            timer_name: name,
+                            seconds,
+                            voice_pack,
+                        });
+                    }
+                    for alert in effect_audio.alerts {
+                        let _ = audio_tx.try_send(AudioEvent::Alert {
+                            text: alert.name,
+                            custom_sound: alert.file,
+                        });
+                    }
+                }
+
                 // Boss health: only poll when in combat
                 if boss_active && in_combat &&
                      let Some(data) = build_boss_health_data(&shared).await {
@@ -1294,7 +1312,7 @@ async fn build_effects_overlay_data(shared: &Arc<SharedState>) -> Option<baras_o
             }
 
             Some(EffectEntry {
-                name: effect.name.clone(),
+                name: effect.display_text.clone(),
                 remaining_secs,
                 total_secs: total,
                 color: effect.color,
@@ -1305,6 +1323,64 @@ async fn build_effects_overlay_data(shared: &Arc<SharedState>) -> Option<baras_o
 
     // Always return data (even empty) so overlay clears when effects expire
     Some(baras_overlay::EffectsData { entries })
+}
+
+/// Result of processing effect audio
+struct EffectAudioResult {
+    /// Countdown announcements: (effect_name, seconds, voice_pack)
+    countdowns: Vec<(String, u8, String)>,
+    /// Alert sounds to play
+    alerts: Vec<EffectAlert>,
+}
+
+struct EffectAlert {
+    name: String,
+    file: Option<String>,
+}
+
+/// Process effect audio (countdowns and alerts)
+async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAudioResult {
+    let mut countdowns = Vec::new();
+    let mut alerts = Vec::new();
+
+    // Get session (same pattern as build_effects_overlay_data)
+    let session_guard = shared.session.read().await;
+    let Some(session_arc) = session_guard.as_ref() else {
+        return EffectAudioResult { countdowns, alerts };
+    };
+    let session = session_arc.read().await;
+
+    // Get effect tracker
+    let effect_tracker = session.effect_tracker();
+    let Ok(mut tracker) = effect_tracker.lock() else {
+        return EffectAudioResult { countdowns, alerts };
+    };
+
+    for effect in tracker.active_effects_mut() {
+        // Skip removed effects or effects without audio
+        if effect.removed_at.is_some() || !effect.audio_enabled {
+            continue;
+        }
+
+        // Check for countdown (uses realtime internally, matches timer logic)
+        if let Some(seconds) = effect.check_countdown() {
+            countdowns.push((
+                effect.display_text.clone(),
+                seconds,
+                effect.countdown_voice.clone(),
+            ));
+        }
+
+        // Check for audio offset trigger (early warning sound)
+        if effect.check_audio_offset() {
+            alerts.push(EffectAlert {
+                name: effect.display_text.clone(),
+                file: effect.audio_file.clone(),
+            });
+        }
+    }
+
+    EffectAudioResult { countdowns, alerts }
 }
 
 /// Convert an ActiveEffect (core) to RaidEffect (overlay)

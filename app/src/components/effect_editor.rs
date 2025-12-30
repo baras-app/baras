@@ -311,6 +311,11 @@ fn EffectRow(
                     }
 
                     span { class: "effect-name", "{effect.name}" }
+                    if let Some(ref dt) = effect.display_text {
+                        if dt != &effect.name {
+                            span { class: "effect-display-text", "→ \"{dt}\"" }
+                        }
+                    }
                     span { class: "effect-id-inline", "{effect.id}" }
                     span { class: "effect-category-badge", "{effect.category.label()}" }
 
@@ -570,7 +575,7 @@ fn EffectEditForm(
                 }
             }
 
-            // Duration, Max Stacks, Refreshable, Show At
+            // Duration, Max Stacks, Refreshable, Persist Past Death
             div { class: "form-row-hz",
                 label { "Duration (sec)" }
                 input {
@@ -612,25 +617,49 @@ fn EffectEditForm(
                         draft.set(d);
                     }
                 }
-                label { "Show At" }
-                select {
-                    class: "select-inline",
-                    style: "width: 130px;",
-                    value: "{draft().show_at_secs as u8}",
+                label { "Persist Past Death" }
+                input {
+                    r#type: "checkbox",
+                    checked: draft().persist_past_death,
                     onchange: move |e| {
+                        let mut d = draft();
+                        d.persist_past_death = e.checked();
+                        draft.set(d);
+                    }
+                }
+                label { "Track Outside Combat" }
+                input {
+                    r#type: "checkbox",
+                    checked: draft().track_outside_combat,
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.track_outside_combat = e.checked();
+                        draft.set(d);
+                    }
+                }
+            }
+
+            // Show At (seconds remaining)
+            div { class: "form-row-hz",
+                label { "Show at" }
+                input {
+                    r#type: "number",
+                    class: "input-inline",
+                    style: "width: 60px;",
+                    min: "0",
+                    max: "{draft().duration_secs.unwrap_or(999.0) as u32}",
+                    value: "{draft().show_at_secs as u32}",
+                    oninput: move |e| {
                         if let Ok(val) = e.value().parse::<f32>() {
                             let mut d = draft();
-                            d.show_at_secs = val;
+                            // Clamp to duration if set
+                            let max_val = d.duration_secs.unwrap_or(f32::MAX);
+                            d.show_at_secs = val.min(max_val).max(0.0);
                             draft.set(d);
                         }
-                    },
-                    option { value: "0", "Always" }
-                    option { value: "5", "≤5s remaining" }
-                    option { value: "10", "≤10s remaining" }
-                    option { value: "15", "≤15s remaining" }
-                    option { value: "20", "≤20s remaining" }
-                    option { value: "30", "≤30s remaining" }
+                    }
                 }
+                span { class: "text-sm text-secondary", "seconds remaining (0 = always show)" }
             }
 
             // Effects (with chips above input)
@@ -948,6 +977,8 @@ fn NewEffectForm(
     let mut show_on_raid_frames = use_signal(|| true);
     let mut show_on_effects_overlay = use_signal(|| false);
     let mut show_at_secs = use_signal(|| 0.0f32);
+    let mut persist_past_death = use_signal(|| false);
+    let mut track_outside_combat = use_signal(|| true);
     let mut audio = use_signal(AudioConfig::default);
 
     let color_hex = format!("#{:02x}{:02x}{:02x}", color()[0], color()[1], color()[2]);
@@ -1054,7 +1085,7 @@ fn NewEffectForm(
                 }
             }
 
-            // Duration, Max Stacks, Show At
+            // Duration, Max Stacks, Persist Past Death
             div { class: "form-row-hz",
                 label { "Duration (sec)" }
                 input {
@@ -1084,21 +1115,38 @@ fn NewEffectForm(
                         }
                     }
                 }
-                label { "Show At" }
-                select {
-                    class: "select-inline",
-                    style: "width: 130px;",
-                    value: "{show_at_secs() as u8}",
-                    onchange: move |e| {
-                        if let Ok(val) = e.value().parse::<f32>() {
-                            show_at_secs.set(val);
-                        }
-                    },
-                    option { value: "0", "Always" }
-                    option { value: "5", "≤5s remaining" }
-                    option { value: "10", "≤10s remaining" }
-                    option { value: "15", "≤15s remaining" }
+                label { "Persist Past Death" }
+                input {
+                    r#type: "checkbox",
+                    checked: persist_past_death(),
+                    onchange: move |e| persist_past_death.set(e.checked())
                 }
+                label { "Track Outside Combat" }
+                input {
+                    r#type: "checkbox",
+                    checked: track_outside_combat(),
+                    onchange: move |e| track_outside_combat.set(e.checked())
+                }
+            }
+
+            // Show At
+            div { class: "form-row-hz",
+                label { "Show at" }
+                input {
+                    r#type: "number",
+                    class: "input-inline",
+                    style: "width: 60px;",
+                    min: "0",
+                    max: "{duration() as u32}",
+                    value: "{show_at_secs() as u32}",
+                    oninput: move |e| {
+                        if let Ok(val) = e.value().parse::<f32>() {
+                            // Clamp to duration
+                            show_at_secs.set(val.min(duration()).max(0.0));
+                        }
+                    }
+                }
+                span { class: "text-sm text-secondary", "seconds remaining (0 = always show)" }
             }
 
             // Effects (chips above input)
@@ -1206,8 +1254,8 @@ fn NewEffectForm(
                             show_on_raid_frames: show_on_raid_frames(),
                             show_on_effects_overlay: show_on_effects_overlay(),
                             show_at_secs: show_at_secs(),
-                            persist_past_death: false,
-                            track_outside_combat: true,
+                            persist_past_death: persist_past_death(),
+                            track_outside_combat: track_outside_combat(),
                             on_apply_trigger_timer: None,
                             on_expire_trigger_timer: None,
                             encounters: vec![],

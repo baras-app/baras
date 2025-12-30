@@ -4564,6 +4564,16 @@ details[open] .collapsible-summary::before {
   background: var(--bg-mid);
 }
 
+/* Override flex: 1 for inputs inside edit forms */
+.list-item-body input[type="text"],
+.list-item-body input[type="number"],
+.list-item-body select,
+.effect-edit-form input[type="text"],
+.effect-edit-form input[type="number"],
+.effect-edit-form select {
+  flex: none;
+}
+
 /* ─── Color Swatch ───────────────────────────────────────────────────────────── */
 .color-swatch {
   width: 12px;

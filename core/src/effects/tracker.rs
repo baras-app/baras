@@ -217,6 +217,11 @@ impl EffectTracker {
         self.active_effects.values()
     }
 
+    /// Get mutable references to all active effects (for audio processing)
+    pub fn active_effects_mut(&mut self) -> impl Iterator<Item = &mut ActiveEffect> {
+        self.active_effects.values_mut()
+    }
+
     /// Get active effects for a specific target entity
     pub fn effects_for_target(&self, target_id: i64) -> impl Iterator<Item = &ActiveEffect> {
         self.active_effects
@@ -330,10 +335,12 @@ impl EffectTracker {
                 }
             } else {
                 // Create new effect
+                let display_text = def.display_text.clone().unwrap_or_else(|| def.name.clone());
                 let mut effect = ActiveEffect::new(
                     def.id.clone(),
                     effect_id as u64,
                     def.name.clone(),
+                    display_text,
                     source_id,
                     target_id,
                     target_name,
@@ -344,6 +351,7 @@ impl EffectTracker {
                     def.category,
                     def.show_on_raid_frames,
                     def.show_on_effects_overlay,
+                    &def.audio,
                 );
 
                 if let Some(c) = charges {
@@ -448,10 +456,12 @@ impl EffectTracker {
                 EffectTriggerMode::EffectRemoved => {
                     // Create new effect when the game effect is removed (cooldown tracking)
                     let duration = def.duration_secs.map(Duration::from_secs_f32);
+                    let display_text = def.display_text.clone().unwrap_or_else(|| def.name.clone());
                     let effect = ActiveEffect::new(
                         def.id.clone(),
                         effect_id as u64,
                         def.name.clone(),
+                        display_text,
                         source_id,
                         target_id,
                         target_name,
@@ -462,6 +472,7 @@ impl EffectTracker {
                         def.category,
                         def.show_on_raid_frames,
                         def.show_on_effects_overlay,
+                        &def.audio,
                     );
                     self.active_effects.insert(key, effect);
                 }

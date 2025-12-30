@@ -630,6 +630,28 @@ fn TimerEditForm(
                         }
                     }
 
+                    // ─── Show At ─────────────────────────────────────────────────
+                    div { class: "form-row-hz",
+                        label { "Show at" }
+                        input {
+                            r#type: "number",
+                            class: "input-inline",
+                            style: "width: 60px;",
+                            min: "0",
+                            max: "{draft().duration_secs as u32}",
+                            value: "{draft().show_at_secs as u32}",
+                            oninput: move |e| {
+                                if let Ok(val) = e.value().parse::<f32>() {
+                                    let mut d = draft();
+                                    // Clamp to duration
+                                    d.show_at_secs = val.min(d.duration_secs).max(0.0);
+                                    draft.set(d);
+                                }
+                            }
+                        }
+                        span { class: "text-sm text-secondary", "sec remaining (0 = always)" }
+                    }
+
                     // ─── Conditions ──────────────────────────────────────────────
                     span { class: "text-sm font-bold text-secondary", "Conditions" }
 
@@ -888,6 +910,7 @@ fn NewTimerForm(
 ) -> Element {
     let mut name = use_signal(String::new);
     let mut duration = use_signal(|| 30.0f32);
+    let mut show_at_secs = use_signal(|| 0.0f32);
     let mut color = use_signal(|| [255u8, 128, 0, 255]);
     let mut trigger = use_signal(|| TimerTrigger::CombatStart);
     let mut difficulties = use_signal(|| vec!["story".to_string(), "veteran".to_string(), "master".to_string()]);
@@ -980,6 +1003,26 @@ fn NewTimerForm(
                 }
             }
 
+            // Show At
+            div { class: "form-row-hz",
+                label { "Show at" }
+                input {
+                    r#type: "number",
+                    class: "input-inline",
+                    style: "width: 60px;",
+                    min: "0",
+                    max: "{duration() as u32}",
+                    value: "{show_at_secs() as u32}",
+                    oninput: move |e| {
+                        if let Ok(val) = e.value().parse::<f32>() {
+                            // Clamp to duration
+                            show_at_secs.set(val.min(duration()).max(0.0));
+                        }
+                    }
+                }
+                span { class: "text-sm text-secondary", "sec remaining (0 = always)" }
+            }
+
             // Trigger
             div { class: "form-row-hz",
                 label { "Trigger" }
@@ -1024,7 +1067,7 @@ fn NewTimerForm(
                             is_alert: false,
                             alert_text: None,
                             show_on_raid_frames: false,
-                            show_at_secs: 0.0,
+                            show_at_secs: show_at_secs(),
                             audio: AudioConfig {
                                 enabled: false,
                                 file: None,
