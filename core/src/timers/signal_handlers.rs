@@ -385,6 +385,48 @@ pub(super) fn handle_target_set(
     );
 }
 
+/// Handle damage taken - check for DamageTaken triggers (tank busters, raid damage, etc.)
+pub(super) fn handle_damage_taken(
+    manager: &mut TimerManager,
+    ability_id: i64,
+    ability_name: IStr,
+    source_id: i64,
+    source_type: EntityType,
+    source_name: IStr,
+    source_npc_id: i64,
+    target_id: i64,
+    target_type: EntityType,
+    target_name: IStr,
+    timestamp: NaiveDateTime,
+) {
+    let ability_id = ability_id as u64;
+    let ability_name_str = crate::context::resolve(ability_name);
+
+    let matching: Vec<_> = manager.definitions
+        .values()
+        .filter(|d| {
+            d.matches_damage_taken(ability_id, Some(&ability_name_str))
+                && manager.is_definition_active(d)
+                && manager.matches_source_target_filters(
+                    d, source_id, source_type, source_name, source_npc_id,
+                    target_id, target_type, target_name, 0,
+                )
+        })
+        .cloned()
+        .collect();
+
+    for def in matching {
+        eprintln!("[TIMER] Starting damage-taken timer '{}' (ability {} / {})", def.name, ability_id, ability_name_str);
+        manager.start_timer(&def, timestamp, Some(target_id));
+    }
+
+    // Check for cancel triggers on damage taken
+    manager.cancel_timers_matching(
+        |t| matches!(t, TimerTrigger::DamageTaken { abilities, .. } if abilities.iter().any(|s| s.matches(ability_id, Some(&ability_name_str)))),
+        &format!("damage taken from {}", ability_name_str)
+    );
+}
+
 /// Handle time elapsed - check for TimeElapsed triggers
 pub(super) fn handle_time_elapsed(manager: &mut TimerManager, timestamp: NaiveDateTime) {
     let Some(start_time) = manager.combat_start_time else {

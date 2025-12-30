@@ -9,7 +9,7 @@ use crate::combat_log::EntityType;
 use crate::context::IStr;
 
 // Re-export the type from the shared crate
-pub use baras_types::EntityFilter;
+pub use baras_types::{EntityFilter, EntitySelector};
 
 /// Extension trait for EntityFilter matching logic
 ///
@@ -89,22 +89,13 @@ impl EntityFilterMatching for EntityFilter {
             EntityFilter::Boss => is_npc && boss_entity_ids.contains(&entity_id),
             EntityFilter::NpcExceptBoss => is_npc && !boss_entity_ids.contains(&entity_id),
 
-            // Specific entity by name
-            EntityFilter::Specific(name) => {
+            // Unified selector - matches by ID or name
+            EntityFilter::Selector(selectors) => {
                 let resolved_name = crate::context::resolve(entity_name);
-                resolved_name.eq_ignore_ascii_case(name)
-            }
-
-            // Specific NPC by class/template ID
-            EntityFilter::SpecificNpc(filter_npc_id) => is_npc && npc_id == *filter_npc_id,
-
-            // Multiple NPCs by class/template IDs
-            EntityFilter::NpcIds(ids) => is_npc && ids.contains(&npc_id),
-
-            // Multiple entities by name (works for players or NPCs)
-            EntityFilter::Names(names) => {
-                let resolved_name = crate::context::resolve(entity_name);
-                names.iter().any(|n| resolved_name.eq_ignore_ascii_case(n))
+                selectors.iter().any(|sel| match sel {
+                    EntitySelector::Id(id) => is_npc && npc_id == *id,
+                    EntitySelector::Name(name) => resolved_name.eq_ignore_ascii_case(name),
+                })
             }
 
             // Any entity
@@ -140,17 +131,13 @@ impl EntityFilterMatching for EntityFilter {
                 is_npc && npc_id.is_none_or(|id| !boss_npc_ids.contains(&id))
             }
 
-            // Specific entity by name
-            EntityFilter::Specific(filter_name) => name.eq_ignore_ascii_case(filter_name),
-
-            // Specific NPC by class/template ID
-            EntityFilter::SpecificNpc(filter_npc_id) => is_npc && npc_id == Some(*filter_npc_id),
-
-            // Multiple NPCs by class/template IDs
-            EntityFilter::NpcIds(ids) => is_npc && npc_id.is_some_and(|id| ids.contains(&id)),
-
-            // Multiple entities by name (works for players or NPCs)
-            EntityFilter::Names(names) => names.iter().any(|n| name.eq_ignore_ascii_case(n)),
+            // Unified selector - matches by ID or name
+            EntityFilter::Selector(selectors) => {
+                selectors.iter().any(|sel| match sel {
+                    EntitySelector::Id(id) => is_npc && npc_id == Some(*id),
+                    EntitySelector::Name(n) => name.eq_ignore_ascii_case(n),
+                })
+            }
 
             // Any entity
             EntityFilter::Any => true,

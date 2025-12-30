@@ -84,21 +84,21 @@ impl EntitySelectorExt for EntitySelector {
 /// Empty selector list matches nothing (require explicit filter).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityMatcher {
-    /// Entity selectors - any match suffices.
-    /// Supports NPC IDs and names/roster aliases.
+    /// Selectors for matching - any match suffices.
+    /// Accepts NPC IDs, entity names, or roster aliases.
     #[serde(default)]
-    pub entities: Vec<EntitySelector>,
+    pub selector: Vec<EntitySelector>,
 }
 
 impl EntityMatcher {
     /// Create a matcher that matches by NPC ID.
     pub fn by_npc_id(npc_id: i64) -> Self {
-        Self { entities: vec![EntitySelector::Id(npc_id)] }
+        Self { selector: vec![EntitySelector::Id(npc_id)] }
     }
 
     /// Create a matcher that matches by entity roster reference or name.
     pub fn by_entity(entity: impl Into<String>) -> Self {
-        Self { entities: vec![EntitySelector::Name(entity.into())] }
+        Self { selector: vec![EntitySelector::Name(entity.into())] }
     }
 
     /// Create a matcher that matches by name (same as by_entity for unified API).
@@ -108,12 +108,12 @@ impl EntityMatcher {
 
     /// Create a matcher from multiple selectors.
     pub fn by_selectors(selectors: impl IntoIterator<Item = EntitySelector>) -> Self {
-        Self { entities: selectors.into_iter().collect() }
+        Self { selector: selectors.into_iter().collect() }
     }
 
     /// Returns true if no filters are set (matches nothing by design).
     pub fn is_empty(&self) -> bool {
-        self.entities.is_empty()
+        self.selector.is_empty()
     }
 
     /// Check if this matcher matches the given entity.
@@ -122,39 +122,39 @@ impl EntityMatcher {
     /// Empty matchers match nothing (require explicit filter).
     pub fn matches(
         &self,
-        entities: &[EntityDefinition],
+        entity_roster: &[EntityDefinition],
         npc_id: i64,
         name: Option<&str>,
     ) -> bool {
-        if self.entities.is_empty() {
+        if self.selector.is_empty() {
             return false;
         }
-        self.entities.iter().any(|s| s.matches_with_roster(entities, npc_id, name))
+        self.selector.iter().any(|s| s.matches_with_roster(entity_roster, npc_id, name))
     }
 
     /// Check if this matcher matches by NPC ID only (ignores roster and name).
     /// Useful when roster isn't available.
     pub fn matches_npc_id(&self, npc_id: i64) -> bool {
-        self.entities.iter().any(|s| s.matches_npc_id(npc_id))
+        self.selector.iter().any(|s| s.matches_npc_id(npc_id))
     }
 
     /// Check if this matcher matches by name only (ignores roster and NPC ID).
     /// Useful for simple name comparisons.
     pub fn matches_name(&self, name: &str) -> bool {
-        self.entities.iter().any(|s| s.matches_name_only(name))
+        self.selector.iter().any(|s| s.matches_name_only(name))
     }
 
     /// Check if this matcher has "local_player" as a filter.
     /// This is a special value used to match player entities.
     pub fn is_local_player_filter(&self) -> bool {
-        self.entities.iter().any(|s| {
+        self.selector.iter().any(|s| {
             matches!(s, EntitySelector::Name(name) if name.eq_ignore_ascii_case("local_player"))
         })
     }
 
     /// Get the first name selector (if any) for display purposes.
     pub fn first_name(&self) -> Option<&str> {
-        self.entities.iter().find_map(|s| match s {
+        self.selector.iter().find_map(|s| match s {
             EntitySelector::Name(name) => Some(name.as_str()),
             EntitySelector::Id(_) => None,
         })

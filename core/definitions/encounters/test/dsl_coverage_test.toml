@@ -68,7 +68,7 @@ end_trigger = { type = "time_elapsed", secs = 30.0 }
 [[boss.phases]]
 id = "hp_phase"
 name = "HP Phase (<50%)"
-trigger = { type = "boss_hp_below", hp_percent = 50.0, entities = ["Toth"] }
+trigger = { type = "boss_hp_below", hp_percent = 50.0, selector = ["Toth"] }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TRIGGER TYPE TESTS
@@ -130,7 +130,7 @@ color = [100, 255, 200, 255]
 [[boss.timer]]
 id = "test_boss_hp_below"
 name = "[T07] BossHpBelow"
-trigger = { type = "boss_hp_below", hp_percent = 80.0, entities = ["Toth"] }
+trigger = { type = "boss_hp_below", hp_percent = 80.0, selector = ["Toth"] }
 is_alert = true
 alert_text = "Toth < 80%"
 color = [255, 150, 50, 255]
@@ -139,7 +139,7 @@ color = [255, 150, 50, 255]
 [[boss.timer]]
 id = "test_boss_hp_name"
 name = "[T08] BossHpBelow+Name"
-trigger = { type = "boss_hp_below", hp_percent = 95.0, entities = ["Zorn"] }
+trigger = { type = "boss_hp_below", hp_percent = 95.0, selector = ["Zorn"] }
 is_alert = true
 alert_text = "Zorn < 95%"
 color = [255, 150, 100, 255]
@@ -174,7 +174,7 @@ color = [255, 255, 100, 255]
 [[boss.timer]]
 id = "test_npc_appears"
 name = "[T12] NpcAppears"
-trigger = { type = "npc_appears", entities = [2857544821243904] }  # Zorn NPC ID
+trigger = { type = "npc_appears", selector = [2857544821243904] }  # Zorn NPC ID
 is_alert = true
 alert_text = "Zorn Appeared!"
 color = [100, 255, 150, 255]
@@ -183,7 +183,7 @@ color = [100, 255, 150, 255]
 [[boss.timer]]
 id = "test_entity_death"
 name = "[T13] EntityDeath"
-trigger = { type = "entity_death", entities = ["Toth"] }
+trigger = { type = "entity_death", selector = ["Toth"] }
 is_alert = true
 alert_text = "Toth Died!"
 color = [50, 255, 50, 255]
@@ -201,7 +201,7 @@ color = [255, 200, 200, 255]
 [[boss.timer]]
 id = "test_target_set"
 name = "[T15] TargetSet"
-trigger = { type = "target_set", entities = [2857544821243904] }  # Zorn NPC ID
+trigger = { type = "target_set", selector = [2857544821243904] }  # Zorn NPC ID
 target = "any_player"  # Use any_player to test more broadly
 duration_secs = 5
 color = [255, 100, 200, 255]
@@ -211,8 +211,8 @@ color = [255, 100, 200, 255]
 id = "test_any_of"
 name = "[T16] AnyOf"
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_below", hp_percent = 70.0, entities = ["Toth"] },
-    { type = "boss_hp_below", hp_percent = 30.0, entities = ["Toth"] },
+    { type = "boss_hp_below", hp_percent = 70.0, selector = ["Toth"] },
+    { type = "boss_hp_below", hp_percent = 30.0, selector = ["Toth"] },
 ]}
 is_alert = true
 alert_text = "Toth 70% or 30%!"
@@ -282,7 +282,7 @@ id = "test_cancel_death"
 name = "[F06] CancelOnDeath"
 trigger = { type = "combat_start" }
 duration_secs = 600
-cancel_trigger = { type = "entity_death", entities = ["Toth"] }
+cancel_trigger = { type = "entity_death", selector = ["Toth"] }
 color = [255, 200, 150, 255]
 
 # --- FEATURE: phase restriction ---

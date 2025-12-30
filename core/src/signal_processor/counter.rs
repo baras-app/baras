@@ -205,6 +205,46 @@ pub fn check_counter_trigger(
         // Timer triggers not supported for counters
         Trigger::TimerExpires { .. } | Trigger::TimerStarted { .. } => false,
 
+        Trigger::DamageTaken { abilities, source, target } => {
+            // Check for DamageTaken signal in current signals
+            current_signals.iter().any(|sig| {
+                if let GameSignal::DamageTaken {
+                    ability_id,
+                    ability_name,
+                    source_npc_id,
+                    source_name,
+                    target_name,
+                    ..
+                } = sig
+                {
+                    let ability_name_str = crate::context::resolve(*ability_name);
+                    if !abilities.is_empty()
+                        && !abilities.iter().any(|s| s.matches(*ability_id as u64, Some(&ability_name_str)))
+                    {
+                        return false;
+                    }
+                    if !source.is_empty() {
+                        let source_name_str = crate::context::resolve(*source_name);
+                        if !source.matches_name(&source_name_str)
+                            && !source.matches_npc_id(*source_npc_id)
+                        {
+                            return false;
+                        }
+                    }
+                    if !target.is_empty() {
+                        // Targets are typically players (no NPC ID), so only match by name
+                        let target_name_str = crate::context::resolve(*target_name);
+                        if !target.matches_name(&target_name_str) {
+                            return false;
+                        }
+                    }
+                    true
+                } else {
+                    false
+                }
+            })
+        }
+
         // Other triggers not applicable to counter increment
         Trigger::TimeElapsed { .. }
         | Trigger::BossHpAbove { .. }

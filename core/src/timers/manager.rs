@@ -415,6 +415,7 @@ impl TimerManager {
             def.color,
             def.triggers_timer.clone(),
             def.show_on_raid_frames,
+            def.show_at_secs,
             def.countdown_start,
             def.countdown_voice.clone(),
             def.audio_enabled,
@@ -734,6 +735,28 @@ impl SignalHandler for TimerManager {
             }
             GameSignal::TargetCleared { .. } => {
                 // No-op for timer manager
+            }
+
+            GameSignal::DamageTaken {
+                ability_id,
+                ability_name,
+                source_id,
+                source_entity_type,
+                source_name,
+                source_npc_id,
+                target_id,
+                target_entity_type,
+                target_name,
+                timestamp,
+            } => {
+                signal_handlers::handle_damage_taken(
+                    self,
+                    *ability_id,
+                    *ability_name,
+                    *source_id, *source_entity_type, *source_name, *source_npc_id,
+                    *target_id, *target_entity_type, *target_name,
+                    *timestamp,
+                );
             }
 
             // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────

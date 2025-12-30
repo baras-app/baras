@@ -858,6 +858,7 @@ fn SimpleTriggerEditor(
                         "ability_cast" => TimerTrigger::AbilityCast { ability_ids: vec![] },
                         "effect_applied" => TimerTrigger::EffectApplied { effect_ids: vec![] },
                         "effect_removed" => TimerTrigger::EffectRemoved { effect_ids: vec![] },
+                        "damage_taken" => TimerTrigger::DamageTaken { ability_ids: vec![] },
                         "timer_expires" => TimerTrigger::TimerExpires { timer_id: String::new() },
                         "phase_entered" => TimerTrigger::PhaseEntered { phase_id: String::new() },
                         "boss_hp_below" => TimerTrigger::BossHpBelow { hp_percent: 50.0, npc_id: None, boss_name: None },
@@ -869,6 +870,7 @@ fn SimpleTriggerEditor(
                 option { value: "ability_cast", "Ability Cast" }
                 option { value: "effect_applied", "Effect Applied" }
                 option { value: "effect_removed", "Effect Removed" }
+                option { value: "damage_taken", "Damage Taken" }
                 option { value: "timer_expires", "Timer Expires" }
                 option { value: "phase_entered", "Phase Entered" }
                 option { value: "boss_hp_below", "Boss HP Below" }
@@ -898,6 +900,13 @@ fn SimpleTriggerEditor(
                             label: "Effect IDs",
                             ids: effect_ids,
                             on_change: move |ids| on_change.call(TimerTrigger::EffectRemoved { effect_ids: ids })
+                        }
+                    },
+                    TimerTrigger::DamageTaken { ability_ids } => rsx! {
+                        IdListEditor {
+                            label: "Ability IDs",
+                            ids: ability_ids,
+                            on_change: move |ids| on_change.call(TimerTrigger::DamageTaken { ability_ids: ids })
                         }
                     },
                     TimerTrigger::TimerExpires { timer_id } => rsx! {

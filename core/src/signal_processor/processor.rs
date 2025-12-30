@@ -67,6 +67,7 @@ impl EventProcessor {
 
         signals.extend(self.emit_effect_signals(&event));
         signals.extend(self.emit_action_signals(&event));
+        signals.extend(self.emit_damage_signals(&event));
 
         // Check if current phase's end_trigger fired (emits PhaseEndTriggered signal)
         signals.extend(phase::check_phase_end_triggers(&event, cache, &signals));
@@ -512,5 +513,36 @@ impl EventProcessor {
         }
 
         signals
+    }
+
+    /// Emit signals for damage events (tank buster detection, raid-wide damage, etc.).
+    /// Pure transformation - no encounter state modification.
+    fn emit_damage_signals(&self, event: &CombatEvent) -> Vec<GameSignal> {
+        // Only emit for damage during APPLYEFFECT
+        if event.effect.type_id != effect_type_id::APPLYEFFECT
+            || event.effect.effect_id != effect_id::DAMAGE
+        {
+            return Vec::new();
+        }
+
+        // Ensure we have valid source and target
+        if event.source_entity.entity_type == EntityType::Empty
+            || event.target_entity.entity_type == EntityType::Empty
+        {
+            return Vec::new();
+        }
+
+        vec![GameSignal::DamageTaken {
+            ability_id: event.action.action_id,
+            ability_name: event.action.name,
+            source_id: event.source_entity.log_id,
+            source_entity_type: event.source_entity.entity_type,
+            source_name: event.source_entity.name,
+            source_npc_id: event.source_entity.class_id,
+            target_id: event.target_entity.log_id,
+            target_entity_type: event.target_entity.entity_type,
+            target_name: event.target_entity.name,
+            timestamp: event.timestamp,
+        }]
     }
 }

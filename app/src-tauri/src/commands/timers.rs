@@ -54,12 +54,17 @@ pub struct TimerListItem {
     pub is_alert: bool,
     pub alert_text: Option<String>,
 
+    // Cancel trigger filters
+    pub cancel_source: EntityFilter,
+    pub cancel_target: EntityFilter,
+
     // Optional fields
     pub can_be_refreshed: bool,
     pub repeats: u8,
     pub chains_to: Option<String>,
     pub alert_at_secs: Option<f32>,
     pub show_on_raid_frames: bool,
+    pub show_at_secs: f32,
 
     // Audio
     pub audio_enabled: bool,
@@ -94,11 +99,15 @@ impl TimerListItem {
             is_alert: timer.is_alert,
             alert_text: timer.alert_text.clone(),
 
+            cancel_source: timer.cancel_source.clone(),
+            cancel_target: timer.cancel_target.clone(),
+
             can_be_refreshed: timer.can_be_refreshed,
             repeats: timer.repeats,
             chains_to: timer.chains_to.clone(),
             alert_at_secs: timer.alert_at_secs,
             show_on_raid_frames: timer.show_on_raid_frames,
+            show_at_secs: timer.show_at_secs,
 
             audio_enabled: timer.audio_enabled,
             audio_file: timer.audio_file.clone(),
@@ -129,8 +138,11 @@ impl TimerListItem {
             repeats: self.repeats,
             chains_to: self.chains_to.clone(),
             cancel_trigger: None, // TODO: Add to UI if needed
+            cancel_source: self.cancel_source.clone(),
+            cancel_target: self.cancel_target.clone(),
             alert_at_secs: self.alert_at_secs,
             show_on_raid_frames: self.show_on_raid_frames,
+            show_at_secs: self.show_at_secs,
             audio_enabled: self.audio_enabled,
             audio_file: self.audio_file.clone(),
             audio_offset: self.audio_offset,
@@ -344,8 +356,11 @@ pub async fn create_encounter_timer(
         repeats: timer.repeats,
         chains_to: timer.chains_to.clone(),
         cancel_trigger: None,
+        cancel_source: timer.cancel_source.clone(),
+        cancel_target: timer.cancel_target.clone(),
         alert_at_secs: timer.alert_at_secs,
         show_on_raid_frames: timer.show_on_raid_frames,
+        show_at_secs: timer.show_at_secs,
         audio_enabled: timer.audio_enabled,
         audio_file: timer.audio_file.clone(),
         audio_offset: timer.audio_offset,

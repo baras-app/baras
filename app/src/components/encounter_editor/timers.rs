@@ -394,9 +394,10 @@ fn TimerEditForm(
                         input {
                             class: "input-inline",
                             r#type: "number",
-                            step: "0.1",
+                            step: "1",
                             min: "0",
                             style: "width: 70px;",
+                            disabled: draft().is_alert,
                             value: "{draft().duration_secs}",
                             oninput: move |e| {
                                 if let Ok(val) = e.value().parse::<f32>() {
@@ -406,31 +407,19 @@ fn TimerEditForm(
                                 }
                             }
                         }
-                        span { class: "text-muted", "sec" }
+                        span { class: if draft().is_alert { "text-muted opacity-50" } else { "text-muted" }, "sec" }
                         span { class: "ml-md" }
-                        label { class: "text-sm text-secondary", "Color" }
-                        input {
-                            class: "color-picker",
-                            r#type: "color",
-                            value: "{color_hex}",
-                            oninput: move |e| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
+                        label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().is_alert,
+                                onchange: move |e| {
                                     let mut d = draft();
-                                    d.color = color;
+                                    d.is_alert = e.checked();
                                     draft.set(d);
                                 }
                             }
-                        }
-                        span { class: "ml-md" }
-                        label { class: "text-sm text-secondary", "Enabled" }
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().enabled,
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.enabled = e.checked();
-                                draft.set(d);
-                            }
+                            "Is Alert"
                         }
                     }
 
@@ -497,18 +486,6 @@ fn TimerEditForm(
                                 }
                                 "Can Refresh"
                             }
-                            label { class: "flex items-center gap-xs text-sm",
-                                input {
-                                    r#type: "checkbox",
-                                    checked: draft().is_alert,
-                                    onchange: move |e| {
-                                        let mut d = draft();
-                                        d.is_alert = e.checked();
-                                        draft.set(d);
-                                    }
-                                }
-                                "Is Alert"
-                            }
                             div { class: "flex items-center gap-xs",
                                 span { class: "text-sm text-secondary", "Repeats" }
                                 input {
@@ -553,12 +530,43 @@ fn TimerEditForm(
                         if let Some(cancel) = draft().cancel_trigger.clone() {
                             div { class: "flex-col gap-xs",
                                 ComposableTriggerEditor {
-                                    trigger: cancel,
+                                    trigger: cancel.clone(),
                                     encounter_data: encounter_data.clone(),
                                     on_change: move |t| {
                                         let mut d = draft();
                                         d.cancel_trigger = Some(t);
                                         draft.set(d);
+                                    }
+                                }
+                                // Source/Target filters for cancel trigger
+                                if trigger_supports_source(&cancel) || trigger_supports_target(&cancel) {
+                                    div { class: "flex gap-md",
+                                        if trigger_supports_source(&cancel) {
+                                            div { class: "flex items-center gap-xs",
+                                                span { class: "text-sm text-secondary", "Source" }
+                                                EntityFilterSelector {
+                                                    value: draft().cancel_source.clone(),
+                                                    on_change: move |f| {
+                                                        let mut d = draft();
+                                                        d.cancel_source = f;
+                                                        draft.set(d);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if trigger_supports_target(&cancel) {
+                                            div { class: "flex items-center gap-xs",
+                                                span { class: "text-sm text-secondary", "Target" }
+                                                EntityFilterSelector {
+                                                    value: draft().cancel_target.clone(),
+                                                    on_change: move |f| {
+                                                        let mut d = draft();
+                                                        d.cancel_target = f;
+                                                        draft.set(d);
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                                 button {
@@ -591,6 +599,37 @@ fn TimerEditForm(
 
                 // ═══ RIGHT COLUMN: Conditions & Audio ═══════════════════════════
                 div { class: "timer-edit-right",
+                    // ─── Color & Enabled ────────────────────────────────────────
+                    div { class: "flex items-center gap-md mb-md",
+                        div { class: "flex items-center gap-xs",
+                            label { class: "text-sm text-secondary", "Color" }
+                            input {
+                                class: "color-picker",
+                                r#type: "color",
+                                value: "{color_hex}",
+                                oninput: move |e| {
+                                    if let Some(color) = parse_hex_color(&e.value()) {
+                                        let mut d = draft();
+                                        d.color = color;
+                                        draft.set(d);
+                                    }
+                                }
+                            }
+                        }
+                        div { class: "flex items-center gap-xs",
+                            label { class: "text-sm text-secondary", "Enabled" }
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().enabled,
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.enabled = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                        }
+                    }
+
                     // ─── Conditions ──────────────────────────────────────────────
                     span { class: "text-sm font-bold text-secondary", "Conditions" }
 
@@ -628,7 +667,7 @@ fn TimerEditForm(
                         input {
                             class: "input-inline",
                             r#type: "number",
-                            step: "0.1",
+                            step: "1",
                             min: "0",
                             style: "width: 60px;",
                             placeholder: "-",
@@ -661,6 +700,19 @@ fn TimerEditForm(
                     }
 
                     // ─── Audio Section ───────────────────────────────────────────────
+                    div { class: "form-row-hz",
+                        label { "Enable Audio" }
+                        input {
+                            r#type: "checkbox",
+                            checked: draft().audio_enabled,
+                            onchange: move |e| {
+                                let mut d = draft();
+                                d.audio_enabled = e.checked();
+                                draft.set(d);
+                            }
+                        }
+                    }
+
                     div { class: "form-row-hz",
                         label { "Alert Sound" }
                         div { class: "flex items-center gap-xs",
@@ -963,6 +1015,8 @@ fn NewTimerForm(
                             target: EntityFilter::Any,
                             counter_condition: None,
                             cancel_trigger: None,
+                            cancel_source: EntityFilter::Any,
+                            cancel_target: EntityFilter::Any,
                             can_be_refreshed: false,
                             repeats: 0,
                             chains_to: None,
@@ -970,6 +1024,7 @@ fn NewTimerForm(
                             is_alert: false,
                             alert_text: None,
                             show_on_raid_frames: false,
+                            show_at_secs: 0.0,
                             audio_enabled: false,
                             audio_file: None,
                             audio_offset: 0, // 0 = on expiration

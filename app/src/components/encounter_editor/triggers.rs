@@ -27,7 +27,8 @@ fn IdSelector(
         div { class: "flex items-center gap-xs",
             label { class: "text-sm text-secondary", "{label}" }
             select {
-                class: "select flex-1",
+                class: "select",
+                style: "width: 180px;",
                 value: "{value}",
                 onchange: move |e| on_change.call(e.value()),
                 if value.is_empty() {
@@ -96,7 +97,8 @@ fn BossSelector(
             div { class: "flex items-center gap-xs",
                 label { class: "text-sm text-secondary", "Boss" }
                 select {
-                    class: "select flex-1",
+                    class: "select",
+                    style: "width: 180px;",
                     onchange: move |e| {
                         let val = e.value();
                         if !val.is_empty() {
@@ -311,13 +313,14 @@ pub fn SimpleTriggerEditor(
                         "ability_cast" => TimerTrigger::AbilityCast { abilities: vec![], source: EntityMatcher::default() },
                         "effect_applied" => TimerTrigger::EffectApplied { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
                         "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
+                        "damage_taken" => TimerTrigger::DamageTaken { abilities: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
                         "timer_expires" => TimerTrigger::TimerExpires { timer_id: String::new() },
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
                         "phase_entered" => TimerTrigger::PhaseEntered { phase_id: String::new() },
                         "phase_ended" => TimerTrigger::PhaseEnded { phase_id: String::new() },
                         "boss_hp_below" => TimerTrigger::BossHpBelow { hp_percent: 50.0, entities: vec![] },
                         "counter_reaches" => TimerTrigger::CounterReaches { counter_id: String::new(), value: 1 },
-                        "entity_spawned" => TimerTrigger::EntitySpawned { entities: vec![] },
+                        "npc_appears" => TimerTrigger::NpcAppears { entities: vec![] },
                         "entity_death" => TimerTrigger::EntityDeath { entities: vec![] },
                         "target_set" => TimerTrigger::TargetSet { entities: vec![] },
                         "time_elapsed" => TimerTrigger::TimeElapsed { secs: 30.0 },
@@ -330,13 +333,14 @@ pub fn SimpleTriggerEditor(
                 option { value: "ability_cast", "Ability Cast" }
                 option { value: "effect_applied", "Effect Applied" }
                 option { value: "effect_removed", "Effect Removed" }
+                option { value: "damage_taken", "Damage Taken" }
                 option { value: "timer_expires", "Timer Expires" }
                 option { value: "timer_started", "Timer Started" }
                 option { value: "phase_entered", "Phase Entered" }
                 option { value: "phase_ended", "Phase Ended" }
                 option { value: "boss_hp_below", "Boss HP Below" }
                 option { value: "counter_reaches", "Counter Reaches" }
-                option { value: "entity_spawned", "Entity Spawned" }
+                option { value: "npc_appears", "NPC Appears" }
                 option { value: "entity_death", "Entity Death" }
                 option { value: "target_set", "Target Set" }
                 option { value: "time_elapsed", "Time Elapsed" }
@@ -367,6 +371,13 @@ pub fn SimpleTriggerEditor(
                             label: "Effects",
                             selectors: effects,
                             on_change: move |sels| on_change.call(TimerTrigger::EffectRemoved { effects: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
+                        }
+                    },
+                    TimerTrigger::DamageTaken { abilities, .. } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities",
+                            selectors: abilities,
+                            on_change: move |sels| on_change.call(TimerTrigger::DamageTaken { abilities: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
                         }
                     },
                     TimerTrigger::TimerExpires { timer_id } => {
@@ -488,11 +499,11 @@ pub fn SimpleTriggerEditor(
                             }
                         }
                     },
-                    TimerTrigger::EntitySpawned { entities } => rsx! {
+                    TimerTrigger::NpcAppears { entities } => rsx! {
                         EntitySelectorEditor {
                             label: "Entity (Spawned)",
                             selectors: entities.clone(),
-                            on_change: move |sels| on_change.call(TimerTrigger::EntitySpawned {
+                            on_change: move |sels| on_change.call(TimerTrigger::NpcAppears {
                                 entities: sels
                             })
                         }
@@ -508,7 +519,7 @@ pub fn SimpleTriggerEditor(
                     },
                     TimerTrigger::TargetSet { entities } => rsx! {
                         EntitySelectorEditor {
-                            label: "Entity (Target Set)",
+                            label: "NPC (Setter)",
                             selectors: entities.clone(),
                             on_change: move |sels| on_change.call(TimerTrigger::TargetSet {
                                 entities: sels
@@ -976,12 +987,13 @@ fn SimplePhaseTriggerEditor(
                         "ability_cast" => PhaseTrigger::AbilityCast { abilities: vec![], source: EntityMatcher::default() },
                         "effect_applied" => PhaseTrigger::EffectApplied { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
                         "effect_removed" => PhaseTrigger::EffectRemoved { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
+                        "damage_taken" => PhaseTrigger::DamageTaken { abilities: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
                         "counter_reaches" => PhaseTrigger::CounterReaches {
                             counter_id: String::new(),
                             value: 1,
                         },
                         "time_elapsed" => PhaseTrigger::TimeElapsed { secs: 30.0 },
-                        "entity_spawned" => PhaseTrigger::EntitySpawned {
+                        "npc_appears" => PhaseTrigger::NpcAppears {
                             entities: vec![],
                         },
                         "entity_death" => PhaseTrigger::EntityDeath {
@@ -1000,9 +1012,10 @@ fn SimplePhaseTriggerEditor(
                 option { value: "ability_cast", "Ability Cast" }
                 option { value: "effect_applied", "Effect Applied" }
                 option { value: "effect_removed", "Effect Removed" }
+                option { value: "damage_taken", "Damage Taken" }
                 option { value: "counter_reaches", "Counter Reaches" }
                 option { value: "time_elapsed", "Time Elapsed" }
-                option { value: "entity_spawned", "Entity Spawned" }
+                option { value: "npc_appears", "NPC Appears" }
                 option { value: "entity_death", "Entity Death" }
                 option { value: "phase_ended", "Phase Ended" }
             }
@@ -1108,6 +1121,13 @@ fn SimplePhaseTriggerEditor(
                             on_change: move |sels| on_change.call(PhaseTrigger::EffectRemoved { effects: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
                         }
                     },
+                    PhaseTrigger::DamageTaken { abilities, .. } => rsx! {
+                        AbilitySelectorEditor {
+                            label: "Abilities",
+                            selectors: abilities,
+                            on_change: move |sels| on_change.call(PhaseTrigger::DamageTaken { abilities: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
+                        }
+                    },
                     PhaseTrigger::CounterReaches { counter_id, value } => {
                         let available_counters = encounter_data.counter_ids();
                         rsx! {
@@ -1164,11 +1184,11 @@ fn SimplePhaseTriggerEditor(
                             span { class: "hint", "into combat" }
                         }
                     },
-                    PhaseTrigger::EntitySpawned { entities } => rsx! {
+                    PhaseTrigger::NpcAppears { entities } => rsx! {
                         EntitySelectorEditor {
                             label: "Entity (Spawned)",
                             selectors: entities.clone(),
-                            on_change: move |sels| on_change.call(PhaseTrigger::EntitySpawned {
+                            on_change: move |sels| on_change.call(PhaseTrigger::NpcAppears {
                                 entities: sels
                             })
                         }
@@ -1241,6 +1261,11 @@ pub fn CounterTriggerEditor(
                             source: EntityMatcher::default(),
                             target: EntityMatcher::default(),
                         },
+                        "damage_taken" => CounterTrigger::DamageTaken {
+                            abilities: vec![],
+                            source: EntityMatcher::default(),
+                            target: EntityMatcher::default(),
+                        },
                         "timer_expires" => CounterTrigger::TimerExpires {
                             timer_id: String::new(),
                         },
@@ -1254,7 +1279,7 @@ pub fn CounterTriggerEditor(
                             phase_id: String::new(),
                         },
                         "any_phase_change" => CounterTrigger::AnyPhaseChange,
-                        "entity_spawned" => CounterTrigger::EntitySpawned {
+                        "npc_appears" => CounterTrigger::NpcAppears {
                             entities: vec![],
                         },
                         "entity_death" => CounterTrigger::EntityDeath {
@@ -1278,12 +1303,13 @@ pub fn CounterTriggerEditor(
                 option { value: "ability_cast", "Ability Cast" }
                 option { value: "effect_applied", "Effect Applied" }
                 option { value: "effect_removed", "Effect Removed" }
+                option { value: "damage_taken", "Damage Taken" }
                 option { value: "timer_expires", "Timer Expires" }
                 option { value: "timer_started", "Timer Started" }
                 option { value: "phase_entered", "Phase Entered" }
                 option { value: "phase_ended", "Phase Ended" }
                 option { value: "any_phase_change", "Any Phase Change" }
-                option { value: "entity_spawned", "Entity Spawned" }
+                option { value: "npc_appears", "NPC Appears" }
                 option { value: "entity_death", "Entity Death" }
                 option { value: "counter_reaches", "Counter Reaches" }
                 option { value: "boss_hp_below", "Boss HP Below" }
@@ -1375,6 +1401,33 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
+                    CounterTrigger::DamageTaken { abilities, target, .. } => {
+                        let target_for_sels = target.clone();
+                        rsx! {
+                            AbilitySelectorEditor {
+                                label: "Abilities",
+                                selectors: abilities.clone(),
+                                on_change: move |sels| on_change.call(CounterTrigger::DamageTaken {
+                                    abilities: sels,
+                                    source: EntityMatcher::default(),
+                                    target: target_for_sels.clone(),
+                                })
+                            }
+                            EntitySelectorEditor {
+                                label: "Target Filter",
+                                selectors: target.entities.clone(),
+                                on_change: {
+                                    let abilities = abilities.clone();
+                                    move |sels| on_change.call(CounterTrigger::DamageTaken {
+                                        abilities: abilities.clone(),
+                                        source: EntityMatcher::default(),
+                                        target: EntityMatcher::new(sels),
+                                    })
+                                }
+                            }
+                        }
+                    },
+
                     CounterTrigger::TimerExpires { timer_id } => {
                         let available_timers = encounter_data.timer_ids();
                         rsx! {
@@ -1423,11 +1476,11 @@ pub fn CounterTriggerEditor(
                         }
                     },
 
-                    CounterTrigger::EntitySpawned { entities } => rsx! {
+                    CounterTrigger::NpcAppears { entities } => rsx! {
                         EntitySelectorEditor {
                             label: "Entity (Spawned)",
                             selectors: entities.clone(),
-                            on_change: move |sels| on_change.call(CounterTrigger::EntitySpawned {
+                            on_change: move |sels| on_change.call(CounterTrigger::NpcAppears {
                                 entities: sels
                             })
                         }

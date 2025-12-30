@@ -95,6 +95,18 @@ pub enum Trigger {
         target: EntityMatcher,
     },
 
+    /// Damage is taken from an ability. [TPC]
+    /// Useful for tank buster detection and raid-wide damage events.
+    DamageTaken {
+        /// Ability selectors (ID or name).
+        #[serde(default)]
+        abilities: Vec<AbilitySelector>,
+        #[serde(default)]
+        source: EntityMatcher,
+        #[serde(default)]
+        target: EntityMatcher,
+    },
+
     // ─── HP Thresholds [TPC / P only] ──────────────────────────────────────
 
     /// Boss HP drops below threshold. [TPC]
@@ -185,6 +197,7 @@ impl Trigger {
             | Self::AbilityCast { .. }
             | Self::EffectApplied { .. }
             | Self::EffectRemoved { .. }
+            | Self::DamageTaken { .. }
             | Self::BossHpBelow { .. }
             | Self::NpcAppears { .. }
             | Self::EntityDeath { .. }

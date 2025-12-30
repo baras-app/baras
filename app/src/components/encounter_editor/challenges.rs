@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::types::{
     BossListItem, ChallengeCondition, ChallengeListItem, ChallengeMetric, ComparisonOp,
-    EntityFilter,
+    EntityFilter, EntitySelector,
 };
 
 use super::tabs::EncounterData;
@@ -634,8 +634,7 @@ fn EntityFilterSelect(
         EntityFilter::AnyPlayer => "any_player",
         EntityFilter::LocalPlayer => "local_player",
         EntityFilter::Any => "any",
-        EntityFilter::NpcIds(_) => "npc_ids",
-        EntityFilter::Names(_) => "names",
+        EntityFilter::Selector(_) => "selector",
         _ => "any", // Handle other variants
     };
 
@@ -652,8 +651,7 @@ fn EntityFilterSelect(
                         "any_player" => EntityFilter::AnyPlayer,
                         "local_player" => EntityFilter::LocalPlayer,
                         "any" => EntityFilter::Any,
-                        "npc_ids" => EntityFilter::NpcIds(vec![]),
-                        "names" => EntityFilter::Names(vec![]),
+                        "selector" => EntityFilter::Selector(vec![]),
                         _ => EntityFilter::Any,
                     };
                     on_change.call(new_matcher);
@@ -664,26 +662,17 @@ fn EntityFilterSelect(
                 option { value: "any_player", "Any Player" }
                 option { value: "local_player", "Local Player" }
                 option { value: "any", "Any" }
-                option { value: "npc_ids", "Specific NPC IDs" }
-                option { value: "names", "Entity Names" }
+                option { value: "selector", "Specific (ID or Name)" }
             }
 
-            // Chip-based input for specific matchers
+            // Chip-based input for selector
             {
                 match &matcher {
-                    EntityFilter::NpcIds(ids) => {
+                    EntityFilter::Selector(selectors) => {
                         rsx! {
-                            NpcIdChipEditor {
-                                ids: ids.clone(),
-                                on_change: move |new_ids| on_change.call(EntityFilter::NpcIds(new_ids))
-                            }
-                        }
-                    }
-                    EntityFilter::Names(names) => {
-                        rsx! {
-                            NameChipEditor {
-                                names: names.clone(),
-                                on_change: move |new_names| on_change.call(EntityFilter::Names(new_names))
+                            SelectorChipEditor {
+                                selectors: selectors.clone(),
+                                on_change: move |new_sels| on_change.call(EntityFilter::Selector(new_sels))
                             }
                         }
                     }
@@ -840,6 +829,85 @@ fn NameChipEditor(
                             if !new_names.contains(&name) {
                                 new_names.push(name);
                                 on_change.call(new_names);
+                            }
+                            new_input.set(String::new());
+                        }
+                    },
+                    "Add"
+                }
+            }
+        }
+    }
+}
+
+/// Unified chip editor for entity selectors (IDs or names)
+#[component]
+fn SelectorChipEditor(
+    selectors: Vec<EntitySelector>,
+    on_change: EventHandler<Vec<EntitySelector>>,
+) -> Element {
+    let mut new_input = use_signal(String::new);
+    let sels_for_keydown = selectors.clone();
+    let sels_for_click = selectors.clone();
+
+    rsx! {
+        div { class: "flex-col gap-xs",
+            // Selector chips
+            if !selectors.is_empty() {
+                div { class: "flex flex-wrap gap-xs",
+                    for (idx, sel) in selectors.iter().enumerate() {
+                        {
+                            let sels_clone = selectors.clone();
+                            let display = sel.display();
+                            rsx! {
+                                span { class: "chip",
+                                    "{display}"
+                                    button {
+                                        class: "chip-remove",
+                                        onclick: move |_| {
+                                            let mut new_sels = sels_clone.clone();
+                                            new_sels.remove(idx);
+                                            on_change.call(new_sels);
+                                        },
+                                        "×"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Add new selector (parses to ID if numeric, name otherwise)
+            div { class: "flex gap-xs",
+                input {
+                    r#type: "text",
+                    class: "input-inline",
+                    style: "width: 150px;",
+                    placeholder: "ID or Name",
+                    value: "{new_input}",
+                    oninput: move |e| new_input.set(e.value()),
+                    onkeydown: move |e| {
+                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
+                            let sel = EntitySelector::from_input(&new_input());
+                            let mut new_sels = sels_for_keydown.clone();
+                            if !new_sels.contains(&sel) {
+                                new_sels.push(sel);
+                                on_change.call(new_sels);
+                            }
+                            new_input.set(String::new());
+                        }
+                    }
+                }
+                button {
+                    class: "btn btn-sm",
+                    onclick: move |_| {
+                        if !new_input().trim().is_empty() {
+                            let sel = EntitySelector::from_input(&new_input());
+                            let mut new_sels = sels_for_click.clone();
+                            if !new_sels.contains(&sel) {
+                                new_sels.push(sel);
+                                on_change.call(new_sels);
                             }
                             new_input.set(String::new());
                         }

@@ -4346,7 +4346,7 @@ details[open] .collapsible-summary::before {
 /* ─── Timer Edit 2-Column Grid ───────────────────────────────────────────────── */
 .timer-edit-grid {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 55% 45%;
   gap: var(--space-md);
 }
 
@@ -4784,6 +4784,18 @@ details[open] .collapsible-summary::before {
   border: 1px solid var(--border-accent);
   border-radius: var(--radius-sm);
   font-size: 0.75em;
+  color: var(--text-secondary);
+}
+
+.chip-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px;
+  background: var(--blue-alpha-10);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  font-size: 0.65em;
   color: var(--text-secondary);
 }
 

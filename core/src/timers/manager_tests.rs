@@ -31,6 +31,7 @@ fn make_timer(id: &str, name: &str, trigger: TimerTrigger, duration: f32) -> Tim
         countdown_start: 0,
         countdown_voice: None,
         show_on_raid_frames: false,
+        show_at_secs: 0.0,
         source: EntityFilter::Any,
         target: EntityFilter::Any,
         area_ids: Vec::new(),

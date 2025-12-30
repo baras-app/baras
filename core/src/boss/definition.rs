@@ -264,6 +264,14 @@ pub struct BossTimerDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cancel_trigger: Option<crate::timers::TimerTrigger>,
 
+    /// Source filter for cancel trigger events
+    #[serde(default = "crate::serde_defaults::default_entity_filter_any")]
+    pub cancel_source: crate::entity_filter::EntityFilter,
+
+    /// Target filter for cancel trigger events
+    #[serde(default = "crate::serde_defaults::default_entity_filter_any")]
+    pub cancel_target: crate::entity_filter::EntityFilter,
+
     /// Alert when this many seconds remain
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alert_at_secs: Option<f32>,
@@ -271,6 +279,10 @@ pub struct BossTimerDefinition {
     /// Show on raid frames instead of timer bar
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
     pub show_on_raid_frames: bool,
+
+    /// Only show when remaining time is at or below this threshold (0 = always show)
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_f32")]
+    pub show_at_secs: f32,
 
     // ─── Audio ───────────────────────────────────────────────────────────────
 
@@ -314,6 +326,7 @@ impl BossTimerDefinition {
             repeats: self.repeats,
             color: self.color,
             show_on_raid_frames: self.show_on_raid_frames,
+            show_at_secs: self.show_at_secs,
             alert_at_secs: self.alert_at_secs,
             alert_text: self.alert_text.clone(),
             audio_enabled: self.audio_enabled,

@@ -192,6 +192,10 @@ pub struct TimerListItem {
     // Cancel trigger
     #[serde(default)]
     pub cancel_trigger: Option<TimerTrigger>,
+    #[serde(default)]
+    pub cancel_source: EntityFilter,
+    #[serde(default)]
+    pub cancel_target: EntityFilter,
 
     // Behavior
     pub can_be_refreshed: bool,
@@ -207,6 +211,9 @@ pub struct TimerListItem {
 
     // Display
     pub show_on_raid_frames: bool,
+    /// Only show when remaining time is at or below this (0 = always show)
+    #[serde(default)]
+    pub show_at_secs: f32,
 
     // Audio
     #[serde(default = "default_audio_enabled")]

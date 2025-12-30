@@ -63,6 +63,9 @@ pub struct ActiveTimer {
     /// Show on raid frames instead of timer bar?
     pub show_on_raid_frames: bool,
 
+    /// Only show when remaining time is at or below this (0 = always show)
+    pub show_at_secs: f32,
+
     // ─── Audio (countdown tracking) ───────────────────────────────────────
     /// Tracks which countdown seconds have been announced (1-10)
     /// Index 0 = 1 second, index 9 = 10 seconds
@@ -99,6 +102,7 @@ impl ActiveTimer {
         color: [u8; 4],
         triggers_timer: Option<String>,
         show_on_raid_frames: bool,
+        show_at_secs: f32,
         countdown_start: u8,
         countdown_voice: Option<String>,
         audio_enabled: bool,
@@ -134,6 +138,7 @@ impl ActiveTimer {
             color,
             triggers_timer,
             show_on_raid_frames,
+            show_at_secs,
             countdown_announced: [false; 10],
             countdown_start,
             countdown_voice: countdown_voice.unwrap_or_else(|| "Amy".to_string()),
@@ -206,6 +211,18 @@ impl ActiveTimer {
         let elapsed = self.started_instant.elapsed();
         let remaining = self.duration.saturating_sub(elapsed);
         remaining.as_secs_f32()
+    }
+
+    /// Check if timer should be visible based on show_at_secs threshold
+    ///
+    /// Returns true if:
+    /// - show_at_secs is 0 (always show), OR
+    /// - remaining time is at or below show_at_secs threshold
+    pub fn is_visible(&self) -> bool {
+        if self.show_at_secs <= 0.0 {
+            return true; // 0 means always show
+        }
+        self.remaining_secs_realtime() <= self.show_at_secs
     }
 
     /// Check if timer is within alert threshold and alert hasn't fired yet

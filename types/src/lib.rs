@@ -93,7 +93,7 @@ impl AbilitySelector {
 /// Selector for entities - can match by NPC ID, roster alias, or name.
 /// Uses untagged serde: numbers as IDs, strings as roster alias or name.
 /// Priority when matching: Roster Alias → NPC ID → Name (resolved at runtime).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum EntitySelector {
     Id(i64),
@@ -123,16 +123,16 @@ impl EntitySelector {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityMatcher {
     #[serde(default)]
-    pub entities: Vec<EntitySelector>,
+    pub selector: Vec<EntitySelector>,
 }
 
 impl EntityMatcher {
-    pub fn new(entities: Vec<EntitySelector>) -> Self {
-        Self { entities }
+    pub fn new(selector: Vec<EntitySelector>) -> Self {
+        Self { selector }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.entities.is_empty()
+        self.selector.is_empty()
     }
 }
 
@@ -188,40 +188,50 @@ pub enum Trigger {
         target: EntityMatcher,
     },
 
+    /// Damage is taken from an ability. [TPC]
+    DamageTaken {
+        #[serde(default)]
+        abilities: Vec<AbilitySelector>,
+        #[serde(default)]
+        source: EntityMatcher,
+        #[serde(default)]
+        target: EntityMatcher,
+    },
+
     // ─── HP Thresholds [TPC] ───────────────────────────────────────────────
 
     /// Boss HP drops below threshold. [TPC]
     BossHpBelow {
         hp_percent: f32,
         #[serde(default)]
-        entities: Vec<EntitySelector>,
+        selector: Vec<EntitySelector>,
     },
 
     /// Boss HP rises above threshold. [P only]
     BossHpAbove {
         hp_percent: f32,
         #[serde(default)]
-        entities: Vec<EntitySelector>,
+        selector: Vec<EntitySelector>,
     },
 
     // ─── Entity Lifecycle [TPC] ────────────────────────────────────────────
 
-    /// Entity spawns (first seen in combat). [TPC]
-    EntitySpawned {
+    /// NPC appears (first seen in combat). [TPC]
+    NpcAppears {
         #[serde(default)]
-        entities: Vec<EntitySelector>,
+        selector: Vec<EntitySelector>,
     },
 
     /// Entity dies. [TPC]
     EntityDeath {
         #[serde(default)]
-        entities: Vec<EntitySelector>,
+        selector: Vec<EntitySelector>,
     },
 
     /// NPC sets its target. [T only]
     TargetSet {
         #[serde(default)]
-        entities: Vec<EntitySelector>,
+        selector: Vec<EntitySelector>,
     },
 
     // ─── Phase Events [TPC] ────────────────────────────────────────────────
@@ -276,9 +286,10 @@ impl Trigger {
             Self::AbilityCast { .. } => "Ability Cast",
             Self::EffectApplied { .. } => "Effect Applied",
             Self::EffectRemoved { .. } => "Effect Removed",
+            Self::DamageTaken { .. } => "Damage Taken",
             Self::BossHpBelow { .. } => "Boss HP Below",
             Self::BossHpAbove { .. } => "Boss HP Above",
-            Self::EntitySpawned { .. } => "Entity Spawned",
+            Self::NpcAppears { .. } => "NPC Appears",
             Self::EntityDeath { .. } => "Entity Death",
             Self::TargetSet { .. } => "Target Set",
             Self::PhaseEntered { .. } => "Phase Entered",
@@ -302,9 +313,10 @@ impl Trigger {
             Self::AbilityCast { .. } => "ability_cast",
             Self::EffectApplied { .. } => "effect_applied",
             Self::EffectRemoved { .. } => "effect_removed",
+            Self::DamageTaken { .. } => "damage_taken",
             Self::BossHpBelow { .. } => "boss_hp_below",
             Self::BossHpAbove { .. } => "boss_hp_above",
-            Self::EntitySpawned { .. } => "entity_spawned",
+            Self::NpcAppears { .. } => "npc_appears",
             Self::EntityDeath { .. } => "entity_death",
             Self::TargetSet { .. } => "target_set",
             Self::PhaseEntered { .. } => "phase_entered",
@@ -961,14 +973,8 @@ pub enum EntityFilter {
     NpcExceptBoss,
     /// Any NPC (boss or trash)
     AnyNpc,
-    /// Specific entity by name
-    Specific(String),
-    /// Specific NPC by class/template ID
-    SpecificNpc(i64),
-    /// Multiple NPCs by class/template IDs
-    NpcIds(Vec<i64>),
-    /// Multiple entities by name (case-insensitive)
-    Names(Vec<String>),
+    /// Specific entities by selector (IDs, names, or roster aliases)
+    Selector(Vec<EntitySelector>),
     /// Any entity whatsoever
     Any,
 }
@@ -987,10 +993,7 @@ impl EntityFilter {
             Self::Boss => "Boss",
             Self::NpcExceptBoss => "Adds (Non-Boss)",
             Self::AnyNpc => "Any NPC",
-            Self::Specific(_) => "Specific Name",
-            Self::SpecificNpc(_) => "Specific NPC ID",
-            Self::NpcIds(_) => "NPC IDs",
-            Self::Names(_) => "Entity Names",
+            Self::Selector(_) => "Specific Selector",
             Self::Any => "Any",
         }
     }
@@ -1020,10 +1023,7 @@ impl EntityFilter {
             Self::Boss => "boss",
             Self::NpcExceptBoss => "npc_except_boss",
             Self::AnyNpc => "any_npc",
-            Self::Specific(_) => "specific",
-            Self::SpecificNpc(_) => "specific_npc",
-            Self::NpcIds(_) => "npc_ids",
-            Self::Names(_) => "names",
+            Self::Selector(_) => "selector",
             Self::Any => "any",
         }
     }

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::boss::CounterCondition;
 use crate::entity_filter::EntityFilter;
 use crate::game_data::Difficulty;
-use crate::triggers::{EntityMatcher, Trigger};
+use crate::triggers::Trigger;
 
 // Re-export Trigger as TimerTrigger for backward compatibility during migration
 pub use crate::triggers::Trigger as TimerTrigger;
@@ -63,6 +63,11 @@ pub struct TimerDefinition {
     /// Display color as RGBA
     #[serde(default = "crate::serde_defaults::default_timer_color")]
     pub color: [u8; 4],
+
+    /// Only show timer when remaining time is at or below this threshold (0 = always show)
+    /// Useful for long timers where you only care about the final countdown
+    #[serde(default)]
+    pub show_at_secs: f32,
 
     /// Show on raid frames instead of timer bar overlay?
     #[serde(default)]
@@ -222,6 +227,11 @@ impl TimerDefinition {
     /// Check if this timer triggers when an NPC sets its target
     pub fn matches_target_set(&self, source_npc_id: i64, source_name: Option<&str>) -> bool {
         trigger_matches_target_set(&self.trigger, source_npc_id, source_name)
+    }
+
+    /// Check if this timer triggers when damage is taken from an ability
+    pub fn matches_damage_taken(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+        trigger_matches_damage_taken(&self.trigger, ability_id, ability_name)
     }
 
     /// Check if this timer is active for a given encounter context
@@ -529,6 +539,23 @@ pub fn trigger_matches_timer_started(trigger: &Trigger, timer_id: &str) -> bool 
         Trigger::AnyOf { conditions } => {
             conditions.iter().any(|c| trigger_matches_timer_started(c, timer_id))
         }
+        _ => false,
+    }
+}
+
+/// Check if trigger matches damage taken (handles AnyOf recursively)
+pub fn trigger_matches_damage_taken(
+    trigger: &Trigger,
+    ability_id: u64,
+    ability_name: Option<&str>,
+) -> bool {
+    match trigger {
+        Trigger::DamageTaken { abilities, .. } => {
+            abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+        }
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| trigger_matches_damage_taken(c, ability_id, ability_name)),
         _ => false,
     }
 }
