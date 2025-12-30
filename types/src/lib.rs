@@ -848,17 +848,12 @@ pub struct AudioSettings {
     #[serde(default = "default_true")]
     pub countdown_enabled: bool,
 
-    /// Start countdown at N seconds remaining (1-10)
-    #[serde(default = "default_countdown_seconds")]
-    pub countdown_seconds: u8,
-
     /// Enable alert speech when timers fire
     #[serde(default = "default_true")]
     pub alerts_enabled: bool,
 }
 
 fn default_audio_volume() -> u8 { 80 }
-fn default_countdown_seconds() -> u8 { 3 }
 
 impl Default for AudioSettings {
     fn default() -> Self {
@@ -866,7 +861,6 @@ impl Default for AudioSettings {
             enabled: true,
             volume: 80,
             countdown_enabled: true,
-            countdown_seconds: 3,
             alerts_enabled: true,
         }
     }

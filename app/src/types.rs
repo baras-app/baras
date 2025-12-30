@@ -211,7 +211,15 @@ pub struct TimerListItem {
     // Audio
     #[serde(default)]
     pub audio_file: Option<String>,
+
+    // Countdown audio
+    #[serde(default = "default_countdown_start")]
+    pub countdown_start: u8,
+    #[serde(default)]
+    pub countdown_voice: Option<String>,
 }
+
+fn default_countdown_start() -> u8 { 3 }
 
 /// Minimal boss info for the "New Timer" dropdown
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

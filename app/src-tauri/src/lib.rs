@@ -202,8 +202,9 @@ pub fn run() {
             commands::get_effect_files,
             // Parsely upload
             commands::upload_to_parsely,
-            // Audio picker
+            // Audio
             commands::pick_audio_file,
+            commands::list_bundled_sounds,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

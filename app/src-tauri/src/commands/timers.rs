@@ -60,6 +60,11 @@ pub struct TimerListItem {
     pub chains_to: Option<String>,
     pub alert_at_secs: Option<f32>,
     pub show_on_raid_frames: bool,
+
+    // Audio
+    pub audio_file: Option<String>,
+    pub countdown_start: u8,
+    pub countdown_voice: Option<String>,
 }
 
 impl TimerListItem {
@@ -92,6 +97,10 @@ impl TimerListItem {
             chains_to: timer.chains_to.clone(),
             alert_at_secs: timer.alert_at_secs,
             show_on_raid_frames: timer.show_on_raid_frames,
+
+            audio_file: timer.audio_file.clone(),
+            countdown_start: timer.countdown_start,
+            countdown_voice: timer.countdown_voice.clone(),
         }
     }
 
@@ -118,6 +127,9 @@ impl TimerListItem {
             cancel_trigger: None, // TODO: Add to UI if needed
             alert_at_secs: self.alert_at_secs,
             show_on_raid_frames: self.show_on_raid_frames,
+            audio_file: self.audio_file.clone(),
+            countdown_start: self.countdown_start,
+            countdown_voice: self.countdown_voice.clone(),
         }
     }
 }
@@ -328,6 +340,9 @@ pub async fn create_encounter_timer(
         cancel_trigger: None,
         alert_at_secs: timer.alert_at_secs,
         show_on_raid_frames: timer.show_on_raid_frames,
+        audio_file: timer.audio_file.clone(),
+        countdown_start: timer.countdown_start,
+        countdown_voice: timer.countdown_voice.clone(),
     };
 
     // Check for duplicate ID within the target boss only (per-encounter uniqueness)
@@ -894,6 +909,48 @@ pub async fn pick_audio_file(app_handle: AppHandle) -> Result<Option<String>, St
         Some(path) => Ok(Some(path.to_string())),
         None => Ok(None), // User cancelled
     }
+}
+
+/// List bundled alert sounds (excludes voice pack directories)
+#[tauri::command]
+pub async fn list_bundled_sounds(app_handle: AppHandle) -> Result<Vec<String>, String> {
+    // In release: bundled resources. In dev: fall back to source directory
+    let sounds_dir = app_handle
+        .path()
+        .resolve("definitions/sounds", tauri::path::BaseDirectory::Resource)
+        .ok()
+        .filter(|p| p.exists())
+        .unwrap_or_else(|| {
+            // Dev fallback: relative to project root
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("core/definitions/sounds")
+        });
+
+    let mut sounds = Vec::new();
+
+    if let Ok(entries) = std::fs::read_dir(&sounds_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            // Only include files (not directories like voice packs)
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    let ext = ext.to_string_lossy().to_lowercase();
+                    if ext == "mp3" || ext == "wav" {
+                        if let Some(name) = path.file_name() {
+                            sounds.push(name.to_string_lossy().to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    sounds.sort();
+    Ok(sounds)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

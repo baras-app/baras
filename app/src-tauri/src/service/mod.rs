@@ -205,10 +205,23 @@ impl CombatService {
         let user_sounds_dir = dirs::config_dir()
             .map(|p| p.join("baras").join("sounds"))
             .unwrap_or_else(|| PathBuf::from("."));
+        // In release: bundled resources. In dev: fall back to source directory
+        let bundled_sounds_dir = app_handle
+            .path()
+            .resolve("definitions/sounds", tauri::path::BaseDirectory::Resource)
+            .ok()
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| {
+                // Dev fallback: relative to project root
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .parent().unwrap()
+                    .parent().unwrap()
+                    .join("core/definitions/sounds")
+            });
         let audio_settings = Arc::new(tokio::sync::RwLock::new(
             shared.config.blocking_read().audio.clone()
         ));
-        let audio_service = AudioService::new(audio_rx, audio_settings, user_sounds_dir);
+        let audio_service = AudioService::new(audio_rx, audio_settings, user_sounds_dir, bundled_sounds_dir);
         tauri::async_runtime::spawn(audio_service.run());
 
         let service = Self {
@@ -765,24 +778,27 @@ impl CombatService {
                         let _ = overlay_tx.try_send(OverlayUpdate::BossHealthUpdated(data));
                 }
 
-                // Timers + Audio: poll when in combat and in live mode
-                if in_combat && shared.is_live_tailing.load(Ordering::SeqCst) {
+                // Timers + Audio: always poll when in live mode (alerts can fire at combat end)
+                if shared.is_live_tailing.load(Ordering::SeqCst) {
                     // Process timer audio and get timer data
                     if let Some((data, countdowns, alerts)) = build_timer_data_with_audio(&shared).await {
-                        // Send timer overlay data
-                        if timer_active {
+                        // Send timer overlay data (only when in combat)
+                        if in_combat && timer_active {
                             let _ = overlay_tx.try_send(OverlayUpdate::TimersUpdated(data));
                         }
 
-                        // Send countdown audio events
-                        for (name, seconds) in countdowns {
-                            let _ = audio_tx.try_send(AudioEvent::Countdown {
-                                timer_name: name,
-                                seconds,
-                            });
+                        // Send countdown audio events (only when in combat)
+                        if in_combat {
+                            for (name, seconds, voice_pack) in countdowns {
+                                let _ = audio_tx.try_send(AudioEvent::Countdown {
+                                    timer_name: name,
+                                    seconds,
+                                    voice_pack,
+                                });
+                            }
                         }
 
-                        // Send alert audio events
+                        // Send alert audio events (always - alerts fire at timer expiration)
                         for alert in alerts {
                             let _ = audio_tx.try_send(AudioEvent::Alert {
                                 text: alert.text,
@@ -1154,9 +1170,10 @@ async fn build_boss_health_data(shared: &Arc<SharedState>) -> Option<BossHealthD
 /// Build timer data with audio events (countdowns and alerts)
 ///
 /// Returns (TimerData, countdowns_to_announce, fired_alerts)
+/// Countdowns are (timer_name, seconds, voice_pack)
 async fn build_timer_data_with_audio(
     shared: &Arc<SharedState>,
-) -> Option<(TimerData, Vec<(String, u8)>, Vec<FiredAlert>)> {
+) -> Option<(TimerData, Vec<(String, u8, String)>, Vec<FiredAlert>)> {
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
@@ -1165,10 +1182,13 @@ async fn build_timer_data_with_audio(
     let timer_mgr = session.timer_manager();
     let mut timer_mgr = timer_mgr.lock().ok()?;
 
-    // If not in combat, return empty data
+    // Always take alerts (even after combat ends, timer expirations need to play)
+    let alerts = timer_mgr.take_fired_alerts();
+
+    // If not in combat, return only alerts (no countdown checks)
     let in_combat = shared.in_combat.load(Ordering::SeqCst);
     if !in_combat {
-        return Some((TimerData::default(), Vec::new(), Vec::new()));
+        return Some((TimerData::default(), Vec::new(), alerts));
     }
 
     // Get current time for remaining calculations
@@ -1177,9 +1197,6 @@ async fn build_timer_data_with_audio(
 
     // Check for countdowns to announce (mutates timer state)
     let countdowns = timer_mgr.check_all_countdowns(now);
-
-    // Take any fired alerts
-    let alerts = timer_mgr.take_fired_alerts();
 
     // Convert active timers to TimerEntry format
     let entries: Vec<TimerEntry> = timer_mgr

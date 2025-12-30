@@ -35,7 +35,8 @@
     "targets": ["appimage", "deb", "nsis"],
     "resources": {
       "../../core/definitions/effects/*": "definitions/effects/",
-      "../../core/definitions/encounters/**/*": "definitions/encounters/"
+      "../../core/definitions/encounters/**/*": "definitions/encounters/",
+      "../../core/definitions/sounds/**/*": "definitions/sounds/"
     },
     "icon": [
       "icons/32x32.png",

@@ -3,11 +3,13 @@
 /// Events that can trigger audio playback
 #[derive(Debug, Clone)]
 pub enum AudioEvent {
-    /// Countdown: speak timer name + seconds remaining
-    /// e.g., "Shield 3", "Shield 2", "Shield 1"
+    /// Countdown: play voice pack number for remaining seconds
+    /// e.g., plays "Amy/3.mp3", "Amy/2.mp3", "Amy/1.mp3"
     Countdown {
         timer_name: String,
         seconds: u8,
+        /// Voice pack name (Amy, Jim, Yolo, Nerevar)
+        voice_pack: String,
     },
 
     /// Alert fired: speak the alert text

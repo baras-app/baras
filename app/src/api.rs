@@ -622,3 +622,9 @@ pub async fn pick_audio_file() -> Option<String> {
     let result = invoke("pick_audio_file", JsValue::NULL).await;
     from_js(result).unwrap_or(None)
 }
+
+/// List bundled alert sounds (Alarm.mp3, Alert.mp3, etc.)
+pub async fn list_bundled_sounds() -> Vec<String> {
+    let result = invoke("list_bundled_sounds", JsValue::NULL).await;
+    from_js(result).unwrap_or_default()
+}

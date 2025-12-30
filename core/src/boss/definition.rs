@@ -271,6 +271,20 @@ pub struct BossTimerDefinition {
     /// Show on raid frames instead of timer bar
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
     pub show_on_raid_frames: bool,
+
+    // ─── Audio ───────────────────────────────────────────────────────────────
+
+    /// Audio file to play on alert
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub audio_file: Option<String>,
+
+    /// Start countdown audio at N seconds remaining (0 = disabled, default 3)
+    #[serde(default = "crate::serde_defaults::default_countdown_start")]
+    pub countdown_start: u8,
+
+    /// Voice pack for countdown (Amy, Jim, Yolo, Nerevar; None = Amy)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub countdown_voice: Option<String>,
 }
 
 impl BossTimerDefinition {
@@ -294,7 +308,9 @@ impl BossTimerDefinition {
             show_on_raid_frames: self.show_on_raid_frames,
             alert_at_secs: self.alert_at_secs,
             alert_text: self.alert_text.clone(),
-            audio_file: None,
+            audio_file: self.audio_file.clone(),
+            countdown_start: self.countdown_start,
+            countdown_voice: self.countdown_voice.clone(),
             triggers_timer: self.chains_to.clone(),
             cancel_trigger: self.cancel_trigger.clone(),
             // Context from parent boss encounter

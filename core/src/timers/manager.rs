@@ -296,14 +296,14 @@ impl TimerManager {
 
     /// Check all active timers for countdown announcements
     ///
-    /// Returns a list of (timer_name, seconds) for each countdown that should be announced.
+    /// Returns a list of (timer_name, seconds, voice_pack) for each countdown that should be announced.
     /// This mutates the timers to mark countdowns as announced so they won't repeat.
-    pub fn check_all_countdowns(&mut self, current_time: NaiveDateTime) -> Vec<(String, u8)> {
+    pub fn check_all_countdowns(&mut self, current_time: NaiveDateTime) -> Vec<(String, u8, String)> {
         self.active_timers
             .values_mut()
             .filter_map(|timer| {
                 timer.check_countdown(current_time)
-                    .map(|secs| (timer.name.clone(), secs))
+                    .map(|secs| (timer.name.clone(), secs, timer.countdown_voice.clone()))
             })
             .collect()
     }
@@ -375,6 +375,9 @@ impl TimerManager {
             def.color,
             def.triggers_timer.clone(),
             def.show_on_raid_frames,
+            def.countdown_start,
+            def.countdown_voice.clone(),
+            def.audio_file.clone(),
         );
 
         self.active_timers.insert(key.clone(), timer);
@@ -458,7 +461,19 @@ impl TimerManager {
                 timer.repeat(current_time);
                 eprintln!("[TIMER] Repeated '{}' ({}/{})", timer.name, timer.repeat_count, timer.max_repeats);
             } else if let Some(timer) = self.active_timers.remove(&key) {
-                // Timer exhausted repeats - remove and prepare chain
+                // Timer exhausted repeats - fire expiration alert if audio is configured
+                if timer.audio_file.is_some() {
+                    eprintln!("[TIMER] Expired with audio: {} -> {:?}", timer.name, timer.audio_file);
+                    self.fired_alerts.push(FiredAlert {
+                        id: timer.definition_id.clone(),
+                        name: timer.name.clone(),
+                        text: timer.name.clone(),
+                        color: Some(timer.color),
+                        timestamp: current_time,
+                        audio_file: timer.audio_file.clone(),
+                    });
+                }
+                // Prepare chain to next timer
                 if let Some(next_timer_id) = timer.triggers_timer.clone() {
                     chains_to_start.push((next_timer_id, timer.target_entity_id));
                 }

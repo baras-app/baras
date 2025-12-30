@@ -37,6 +37,11 @@ pub fn default_timer_color() -> [u8; 4] {
     [200, 200, 200, 255]
 }
 
+/// Default countdown start (3 seconds)
+pub fn default_countdown_start() -> u8 {
+    3
+}
+
 /// Default entity filter for boss timer source/target (matches any entity)
 /// Boss timers need permissive defaults since abilities come from NPCs, not players.
 pub fn default_entity_filter_any() -> crate::effects::EntityFilter {

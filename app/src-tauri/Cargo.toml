@@ -38,7 +38,7 @@ toml = "0.9"
 reqwest = { version = "0.12", features = ["multipart"] }
 flate2 = "1.1"
 encoding_rs = "0.8"
-rodio = { version = "0.19", default-features = false, features = ["wav", "vorbis"] }
+rodio = { version = "0.19", default-features = false, features = ["wav", "vorbis", "mp3"] }
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 tts = "0.26"

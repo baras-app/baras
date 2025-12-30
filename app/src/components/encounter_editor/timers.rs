@@ -663,19 +663,27 @@ fn TimerEditForm(
                         }
                     }
 
+                    // ─── Audio Section ───────────────────────────────────────────────
                     div { class: "form-row-hz",
-                        label { "Audio" }
+                        label { "Alert Sound" }
                         div { class: "flex items-center gap-xs",
-                            input {
-                                class: "input-inline",
-                                r#type: "text",
+                            select {
+                                class: "select-inline",
                                 style: "width: 140px;",
-                                placeholder: "(none)",
                                 value: "{draft().audio_file.clone().unwrap_or_default()}",
-                                oninput: move |e| {
+                                onchange: move |e| {
                                     let mut d = draft();
                                     d.audio_file = if e.value().is_empty() { None } else { Some(e.value()) };
                                     draft.set(d);
+                                },
+                                option { value: "", "(none)" }
+                                option { value: "Alarm.mp3", "Alarm.mp3" }
+                                option { value: "Alert.mp3", "Alert.mp3" }
+                                // Show custom path if set and not a bundled sound
+                                if let Some(ref path) = draft().audio_file {
+                                    if !path.is_empty() && path != "Alarm.mp3" && path != "Alert.mp3" {
+                                        option { value: "{path}", selected: true, "{path} (custom)" }
+                                    }
                                 }
                             }
                             button {
@@ -684,13 +692,61 @@ fn TimerEditForm(
                                 onclick: move |_| {
                                     spawn(async move {
                                         if let Some(path) = api::pick_audio_file().await {
-                                            let mut d = draft();
-                                            d.audio_file = Some(path);
-                                            draft.set(d);
+                                            // Validate extension
+                                            let lower = path.to_lowercase();
+                                            if lower.ends_with(".mp3") || lower.ends_with(".wav") {
+                                                let mut d = draft();
+                                                d.audio_file = Some(path);
+                                                draft.set(d);
+                                            }
                                         }
                                     });
                                 },
                                 "Browse"
+                            }
+                        }
+                    }
+
+                    div { class: "form-row-hz",
+                        label { "Countdown" }
+                        div { class: "flex items-center gap-md",
+                            select {
+                                class: "select-inline",
+                                style: "width: 80px;",
+                                value: "{draft().countdown_start}",
+                                onchange: move |e| {
+                                    if let Ok(val) = e.value().parse::<u8>() {
+                                        let mut d = draft();
+                                        d.countdown_start = val;
+                                        draft.set(d);
+                                    }
+                                },
+                                option { value: "0", "Off" }
+                                option { value: "1", "1s" }
+                                option { value: "2", "2s" }
+                                option { value: "3", "3s" }
+                                option { value: "4", "4s" }
+                                option { value: "5", "5s" }
+                                option { value: "6", "6s" }
+                                option { value: "7", "7s" }
+                                option { value: "8", "8s" }
+                                option { value: "9", "9s" }
+                                option { value: "10", "10s" }
+                            }
+                            span { class: "text-sm text-secondary", "Voice" }
+                            select {
+                                class: "select-inline",
+                                style: "width: 100px;",
+                                value: "{draft().countdown_voice.clone().unwrap_or_else(|| \"Amy\".to_string())}",
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.countdown_voice = if e.value() == "Amy" { None } else { Some(e.value()) };
+                                    draft.set(d);
+                                },
+                                option { value: "Amy", "Amy" }
+                                option { value: "Jim", "Jim" }
+                                option { value: "Yolo", "Yolo" }
+                                option { value: "Nerevar", "Nerevar" }
                             }
                         }
                     }
@@ -888,6 +944,8 @@ fn NewTimerForm(
                             alert_text: None,
                             show_on_raid_frames: false,
                             audio_file: None,
+                            countdown_start: 3, // Default to 3 seconds
+                            countdown_voice: None, // Default to Amy
                         });
                     },
                     "Create Timer"

@@ -79,6 +79,16 @@ pub struct TimerDefinition {
     /// Audio file to play on alert
     pub audio_file: Option<String>,
 
+    // ─── Countdown Audio ────────────────────────────────────────────────────
+
+    /// Start countdown audio at N seconds remaining (0 = disabled, default 3)
+    #[serde(default = "crate::serde_defaults::default_countdown_start")]
+    pub countdown_start: u8,
+
+    /// Voice pack for countdown (Amy, Jim, Yolo, Nerevar; None = Amy)
+    #[serde(default)]
+    pub countdown_voice: Option<String>,
+
     // ─── Chaining & Cancellation ────────────────────────────────────────────
 
     /// Timer ID to trigger when this one expires

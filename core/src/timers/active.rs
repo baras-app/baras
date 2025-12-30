@@ -64,9 +64,18 @@ pub struct ActiveTimer {
     pub show_on_raid_frames: bool,
 
     // ─── Audio (countdown tracking) ───────────────────────────────────────
-    /// Tracks which countdown seconds have been announced (5, 4, 3, 2, 1)
-    /// Index 0 = 1 second, index 4 = 5 seconds
-    countdown_announced: [bool; 5],
+    /// Tracks which countdown seconds have been announced (1-10)
+    /// Index 0 = 1 second, index 9 = 10 seconds
+    countdown_announced: [bool; 10],
+
+    /// When to start countdown audio (0 = disabled, 1-10)
+    pub countdown_start: u8,
+
+    /// Voice pack for countdown (Amy, Jim, Yolo, Nerevar)
+    pub countdown_voice: String,
+
+    /// Audio file to play when timer expires
+    pub audio_file: Option<String>,
 }
 
 impl ActiveTimer {
@@ -81,6 +90,9 @@ impl ActiveTimer {
         color: [u8; 4],
         triggers_timer: Option<String>,
         show_on_raid_frames: bool,
+        countdown_start: u8,
+        countdown_voice: Option<String>,
+        audio_file: Option<String>,
     ) -> Self {
         let now = Instant::now();
         let expires_at = event_timestamp
@@ -100,7 +112,10 @@ impl ActiveTimer {
             color,
             triggers_timer,
             show_on_raid_frames,
-            countdown_announced: [false; 5],
+            countdown_announced: [false; 10],
+            countdown_start,
+            countdown_voice: countdown_voice.unwrap_or_else(|| "Amy".to_string()),
+            audio_file,
         }
     }
 
@@ -111,7 +126,7 @@ impl ActiveTimer {
         self.expires_at = event_timestamp
             + chrono::Duration::milliseconds(self.duration.as_millis() as i64);
         self.alert_fired = false;
-        self.countdown_announced = [false; 5];
+        self.countdown_announced = [false; 10];
     }
 
     /// Repeat the timer (increment count, restart)
@@ -170,7 +185,7 @@ impl ActiveTimer {
         self.max_repeats > 0 && self.repeat_count < self.max_repeats
     }
 
-    /// Check for countdown seconds to announce (5, 4, 3, 2, 1)
+    /// Check for countdown seconds to announce (respects countdown_start setting)
     ///
     /// Returns Some(seconds) if we've crossed into a new second boundary
     /// that hasn't been announced yet. Returns None otherwise.
@@ -179,15 +194,20 @@ impl ActiveTimer {
     /// - remaining 5.2s → announces 5
     /// - remaining 4.8s → announces 4
     pub fn check_countdown(&mut self, current_game_time: NaiveDateTime) -> Option<u8> {
+        // 0 means countdown disabled for this timer
+        if self.countdown_start == 0 {
+            return None;
+        }
+
         let remaining = self.remaining_secs(current_game_time);
 
         // Floor to get whole seconds remaining
         let remaining_floor = remaining.floor() as i32;
 
-        // Only announce 5, 4, 3, 2, 1 (index 0-4)
-        if remaining_floor >= 1 && remaining_floor <= 5 {
+        // Only announce within countdown_start range (e.g., 3 means announce 3, 2, 1)
+        if remaining_floor >= 1 && remaining_floor <= self.countdown_start as i32 {
             let seconds = remaining_floor as u8;
-            // Index: 1 → 0, 2 → 1, 3 → 2, 4 → 3, 5 → 4
+            // Index: 1 → 0, 2 → 1, ..., 10 → 9
             let index = (seconds - 1) as usize;
 
             if !self.countdown_announced[index] {

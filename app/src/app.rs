@@ -73,7 +73,6 @@ pub fn App() -> Element {
     let mut audio_enabled = use_signal(|| true);
     let mut audio_volume = use_signal(|| 80u8);
     let mut audio_countdown_enabled = use_signal(|| true);
-    let mut audio_countdown_seconds = use_signal(|| 3u8);
     let mut audio_alerts_enabled = use_signal(|| true);
 
     // Profile state
@@ -110,7 +109,6 @@ pub fn App() -> Element {
             audio_enabled.set(config.audio.enabled);
             audio_volume.set(config.audio.volume);
             audio_countdown_enabled.set(config.audio.countdown_enabled);
-            audio_countdown_seconds.set(config.audio.countdown_seconds);
             audio_alerts_enabled.set(config.audio.alerts_enabled);
         }
 
@@ -957,30 +955,6 @@ pub fn App() -> Element {
                                                 }
                                             });
                                         }
-                                    }
-                                }
-
-                                div { class: "setting-row",
-                                    label { "Countdown Start" }
-                                    select {
-                                        value: "{audio_countdown_seconds()}",
-                                        disabled: !audio_enabled() || !audio_countdown_enabled(),
-                                        onchange: move |e| {
-                                            if let Ok(val) = e.value().parse::<u8>() {
-                                                audio_countdown_seconds.set(val);
-                                                spawn(async move {
-                                                    if let Some(mut cfg) = api::get_config().await {
-                                                        cfg.audio.countdown_seconds = val;
-                                                        api::update_config(&cfg).await;
-                                                    }
-                                                });
-                                            }
-                                        },
-                                        option { value: "1", "1 second" }
-                                        option { value: "2", "2 seconds" }
-                                        option { value: "3", "3 seconds" }
-                                        option { value: "4", "4 seconds" }
-                                        option { value: "5", "5 seconds" }
                                     }
                                 }
 
