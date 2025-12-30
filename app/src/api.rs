@@ -59,8 +59,8 @@ pub async fn get_config() -> Option<AppConfig> {
 
 /// Update the application configuration
 pub async fn update_config(config: &AppConfig) -> bool {
-    let result = invoke("update_config", build_args("config", config)).await;
-    result.is_undefined() || result.is_null()
+    let _result = invoke("update_config", build_args("config", config)).await;
+    true
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -222,14 +222,14 @@ pub async fn cleanup_logs(delete_empty: bool, retention_days: Option<u32>) -> (u
 
 /// Open a historical log file (pauses live tailing)
 pub async fn open_historical_file(path: &str) -> bool {
-    let result = invoke("open_historical_file", build_args("path", &path)).await;
-    result.is_undefined() || result.is_null()
+    let _result = invoke("open_historical_file", build_args("path", &path)).await;
+    true
 }
 
 /// Resume live tailing mode
 pub async fn resume_live_tailing() -> bool {
-    let result = invoke("resume_live_tailing", JsValue::NULL).await;
-    result.is_undefined() || result.is_null()
+    let _result = invoke("resume_live_tailing", JsValue::NULL).await;
+    true
 }
 
 /// Check if in live tailing mode
@@ -256,20 +256,20 @@ pub async fn get_active_profile() -> Option<String> {
 
 /// Save current settings to a profile
 pub async fn save_profile(name: &str) -> bool {
-    let result = invoke("save_profile", build_args("name", &name)).await;
-    result.is_undefined() || result.is_null()
+    let _result = invoke("save_profile", build_args("name", &name)).await;
+    true
 }
 
 /// Load a profile by name
 pub async fn load_profile(name: &str) -> bool {
-    let result = invoke("load_profile", build_args("name", &name)).await;
-    result.is_undefined() || result.is_null()
+    let _result = invoke("load_profile", build_args("name", &name)).await;
+    true
 }
 
 /// Delete a profile by name
 pub async fn delete_profile(name: &str) -> bool {
-    let result = invoke("delete_profile", build_args("name", &name)).await;
-    result.is_undefined() || result.is_null()
+    let _result = invoke("delete_profile", build_args("name", &name)).await;
+    true
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -311,21 +311,24 @@ pub async fn get_encounter_history() -> JsValue {
 use crate::types::{AreaListItem, BossListItem, TimerListItem};
 
 /// Update an existing timer
+/// Returns true on success. Tauri commands returning Result<(), E> serialize Ok(()) as null.
 pub async fn update_encounter_timer(timer: &TimerListItem) -> bool {
     let args = build_args("timer", timer);
-    let result = invoke("update_encounter_timer", args).await;
-    !result.is_null() && !result.is_undefined()
+    let _result = invoke("update_encounter_timer", args).await;
+    // If we reach here without throwing, the command succeeded (null is valid for ())
+    true
 }
 
 /// Delete a timer
+/// Returns true on success. Tauri commands returning Result<(), E> serialize Ok(()) as null.
 pub async fn delete_encounter_timer(timer_id: &str, boss_id: &str, file_path: &str) -> bool {
     let obj = js_sys::Object::new();
     js_sys::Reflect::set(&obj, &JsValue::from_str("timerId"), &JsValue::from_str(timer_id)).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
 
-    let result = invoke("delete_encounter_timer", obj.into()).await;
-    !result.is_null() && !result.is_undefined()
+    let _result = invoke("delete_encounter_timer", obj.into()).await;
+    true
 }
 
 /// Duplicate a timer
@@ -398,8 +401,8 @@ pub async fn get_phases_for_area(file_path: &str) -> Option<Vec<PhaseListItem>> 
 /// Update an existing phase
 pub async fn update_phase(phase: &PhaseListItem) -> bool {
     let args = build_args("phase", phase);
-    let result = invoke("update_phase", args).await;
-    !result.is_null() && !result.is_undefined()
+    let _result = invoke("update_phase", args).await;
+    true
 }
 
 /// Create a new phase
@@ -416,8 +419,8 @@ pub async fn delete_phase(phase_id: &str, boss_id: &str, file_path: &str) -> boo
     js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
 
-    let result = invoke("delete_phase", obj.into()).await;
-    result.is_null() || result.is_undefined()
+    let _result = invoke("delete_phase", obj.into()).await;
+    true
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -436,8 +439,8 @@ pub async fn get_counters_for_area(file_path: &str) -> Option<Vec<CounterListIte
 /// Update an existing counter
 pub async fn update_counter(counter: &CounterListItem) -> bool {
     let args = build_args("counter", counter);
-    let result = invoke("update_counter", args).await;
-    !result.is_null() && !result.is_undefined()
+    let _result = invoke("update_counter", args).await;
+    true
 }
 
 /// Create a new counter
@@ -454,8 +457,8 @@ pub async fn delete_counter(counter_id: &str, boss_id: &str, file_path: &str) ->
     js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
 
-    let result = invoke("delete_counter", obj.into()).await;
-    result.is_null() || result.is_undefined()
+    let _result = invoke("delete_counter", obj.into()).await;
+    true
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -474,8 +477,8 @@ pub async fn get_challenges_for_area(file_path: &str) -> Option<Vec<ChallengeLis
 /// Update an existing challenge
 pub async fn update_challenge(challenge: &ChallengeListItem) -> bool {
     let args = build_args("challenge", challenge);
-    let result = invoke("update_challenge", args).await;
-    !result.is_null() && !result.is_undefined()
+    let _result = invoke("update_challenge", args).await;
+    true
 }
 
 /// Create a new challenge
@@ -492,8 +495,8 @@ pub async fn delete_challenge(challenge_id: &str, boss_id: &str, file_path: &str
     js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
 
-    let result = invoke("delete_challenge", obj.into()).await;
-    result.is_null() || result.is_undefined()
+    let _result = invoke("delete_challenge", obj.into()).await;
+    true
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -516,8 +519,8 @@ pub async fn update_entity(entity: &EntityListItem, original_name: &str) -> bool
     js_sys::Reflect::set(&obj, &JsValue::from_str("entity"), &entity_js).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("originalName"), &JsValue::from_str(original_name)).unwrap();
 
-    let result = invoke("update_entity", obj.into()).await;
-    !result.is_null() && !result.is_undefined()
+    let _result = invoke("update_entity", obj.into()).await;
+    true
 }
 
 /// Create a new entity
@@ -534,8 +537,8 @@ pub async fn delete_entity(entity_name: &str, boss_id: &str, file_path: &str) ->
     js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
 
-    let result = invoke("delete_entity", obj.into()).await;
-    result.is_null() || result.is_undefined()
+    let _result = invoke("delete_entity", obj.into()).await;
+    true
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -554,9 +557,8 @@ pub async fn get_effect_definitions() -> Option<Vec<EffectListItem>> {
 /// Returns true on success. Tauri commands returning Result<(), String> serialize Ok(()) as null.
 pub async fn update_effect_definition(effect: &EffectListItem) -> bool {
     let args = build_args("effect", effect);
-    let result = invoke("update_effect_definition", args).await;
-    // Ok(()) serializes to null, Err would throw - so null means success
-    result.is_null() || result.is_undefined()
+    let _result = invoke("update_effect_definition", args).await;
+    true
 }
 
 /// Delete an effect
@@ -566,9 +568,8 @@ pub async fn delete_effect_definition(effect_id: &str, file_path: &str) -> bool 
     js_sys::Reflect::set(&obj, &JsValue::from_str("effectId"), &JsValue::from_str(effect_id)).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
 
-    let result = invoke("delete_effect_definition", obj.into()).await;
-    // Ok(()) serializes to null, Err would throw - so null means success
-    result.is_null() || result.is_undefined()
+    let _result = invoke("delete_effect_definition", obj.into()).await;
+    true
 }
 
 /// Duplicate an effect

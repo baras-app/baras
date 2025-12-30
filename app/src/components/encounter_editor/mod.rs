@@ -50,6 +50,16 @@ pub fn EncounterEditorPanel() -> Element {
     let mut show_new_boss = use_signal(|| false);
     let mut status_message = use_signal(|| None::<(String, bool)>);
 
+    // Auto-dismiss toast after 3 seconds
+    use_effect(move || {
+        if status_message().is_some() {
+            spawn(async move {
+                gloo_timers::future::TimeoutFuture::new(3000).await;
+                status_message.set(None);
+            });
+        }
+    });
+
     // Load area index on mount
     use_effect(move || {
         spawn(async move {
@@ -183,19 +193,6 @@ pub fn EncounterEditorPanel() -> Element {
 
             // ─── Main Content ─────────────────────────────────────────────────
             div { class: "editor-main",
-                // Status message
-                if let Some((msg, is_error)) = status_message() {
-                    div {
-                        class: if is_error { "status-message error mb-sm" } else { "status-message success mb-sm" },
-                        "{msg}"
-                        button {
-                            class: "btn btn-ghost btn-sm ml-auto",
-                            onclick: move |_| status_message.set(None),
-                            "×"
-                        }
-                    }
-                }
-
                 if selected_area().is_none() {
                     div { class: "empty-state",
                         div { class: "empty-state-icon", "📂" }
@@ -328,6 +325,29 @@ pub fn EncounterEditorPanel() -> Element {
                     show_new_area.set(false);
                 },
                 on_cancel: move |_| show_new_area.set(false),
+            }
+        }
+
+        // Toast notification (fixed bottom-right)
+        if let Some((msg, is_error)) = status_message() {
+            div {
+                class: "toast",
+                style: "position: fixed; bottom: 20px; right: 20px; z-index: 1000; \
+                        padding: 12px 16px; border-radius: 6px; \
+                        background: #2a2a2e; border: 1px solid #3a3a3e; \
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.5); \
+                        display: flex; align-items: center; gap: 12px;",
+                span {
+                    style: if is_error { "color: var(--color-error);" } else { "color: var(--color-success);" },
+                    if is_error { "✗" } else { "✓" }
+                }
+                span { "{msg}" }
+                button {
+                    class: "btn btn-ghost btn-sm",
+                    style: "padding: 2px 6px; min-width: auto;",
+                    onclick: move |_| status_message.set(None),
+                    "×"
+                }
             }
         }
     }
