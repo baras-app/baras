@@ -204,9 +204,9 @@ impl TimerDefinition {
         trigger_matches_counter_reaches(&self.trigger, counter_id, old_value, new_value)
     }
 
-    /// Check if this timer triggers when an entity is first seen
-    pub fn matches_entity_spawned(&self, npc_id: i64, entity_name: Option<&str>) -> bool {
-        trigger_matches_entity_spawned(&self.trigger, npc_id, entity_name)
+    /// Check if this timer triggers when an NPC first appears
+    pub fn matches_npc_appears(&self, npc_id: i64, entity_name: Option<&str>) -> bool {
+        trigger_matches_npc_appears(&self.trigger, npc_id, entity_name)
     }
 
     /// Check if this timer triggers on entity death
@@ -433,14 +433,14 @@ pub fn trigger_matches_counter_reaches(
     }
 }
 
-/// Check if trigger matches entity spawned (handles AnyOf recursively)
-pub fn trigger_matches_entity_spawned(
+/// Check if trigger matches NPC appears (handles AnyOf recursively)
+pub fn trigger_matches_npc_appears(
     trigger: &Trigger,
     npc_id: i64,
     entity_name: Option<&str>,
 ) -> bool {
     match trigger {
-        Trigger::EntitySpawned { entity } => {
+        Trigger::NpcAppears { entity } => {
             if entity.is_empty() {
                 return false; // Require explicit filter
             }
@@ -454,7 +454,7 @@ pub fn trigger_matches_entity_spawned(
         }
         Trigger::AnyOf { conditions } => conditions
             .iter()
-            .any(|c| trigger_matches_entity_spawned(c, npc_id, entity_name)),
+            .any(|c| trigger_matches_npc_appears(c, npc_id, entity_name)),
         _ => false,
     }
 }

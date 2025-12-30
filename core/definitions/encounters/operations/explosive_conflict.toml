@@ -442,6 +442,7 @@ initial_value = 0
 
 [[boss.counters]]
 id = "walker_burns"
+name = "Walker Burns"
 increment_on = {type = "phase_ended", phase_id = "walker_burn"}
 reset_on = { type = "combat_end" }
 initial_value = 0

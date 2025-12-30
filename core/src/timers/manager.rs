@@ -100,7 +100,12 @@ pub struct TimerManager {
     pub(super) local_player_id: Option<i64>,
 
     /// Boss entity IDs currently in combat (for Boss filter)
+    /// These are runtime entity IDs (log_id), not NPC class IDs
     pub(super) boss_entity_ids: HashSet<i64>,
+
+    /// Boss NPC class IDs for the active encounter (to detect additional boss entities)
+    /// When NPCs with these class IDs are first seen, add their entity_id to boss_entity_ids
+    boss_npc_class_ids: HashSet<i64>,
 }
 
 impl Default for TimerManager {
@@ -128,6 +133,7 @@ impl TimerManager {
             last_combat_secs: 0.0,
             local_player_id: None,
             boss_entity_ids: HashSet::new(),
+            boss_npc_class_ids: HashSet::new(),
         }
     }
 
@@ -690,7 +696,12 @@ impl SignalHandler for TimerManager {
                 signal_handlers::handle_entity_death(self, *npc_id, entity_name, *timestamp);
             }
 
-            GameSignal::NpcFirstSeen { npc_id, entity_name, timestamp, .. } => {
+            GameSignal::NpcFirstSeen { entity_id, npc_id, entity_name, timestamp, .. } => {
+                // Track boss entities for multi-boss fights (e.g., Zorn & Toth)
+                if self.boss_npc_class_ids.contains(npc_id) && !self.boss_entity_ids.contains(entity_id) {
+                    eprintln!("[TIMER] Adding boss entity {} (npc_id: {}) to boss_entity_ids", entity_name, npc_id);
+                    self.boss_entity_ids.insert(*entity_id);
+                }
                 signal_handlers::handle_npc_first_seen(self, *npc_id, entity_name, *timestamp);
             }
 
@@ -700,6 +711,7 @@ impl SignalHandler for TimerManager {
             // This ensures timers like "Mighty Leap" work even when the player isn't
             // targeting the boss.
             GameSignal::TargetChanged {
+                source_id,
                 source_npc_id,
                 source_name,
                 target_id,
@@ -711,6 +723,7 @@ impl SignalHandler for TimerManager {
                 // Check for TargetSet triggers (e.g., sphere targeting player)
                 signal_handlers::handle_target_set(
                     self,
+                    *source_id,
                     *source_npc_id,
                     *source_name,
                     *target_id,
@@ -724,11 +737,27 @@ impl SignalHandler for TimerManager {
             }
 
             // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────
-            GameSignal::BossEncounterDetected { boss_name, entity_id, timestamp, .. } => {
-                eprintln!("[TIMER] Boss encounter detected: {} (entity_id: {})", boss_name, entity_id);
+            GameSignal::BossEncounterDetected { boss_name, entity_id, npc_id, timestamp, .. } => {
+                eprintln!("[TIMER] Boss encounter detected: {} (entity_id: {}, npc_id: {})", boss_name, entity_id, npc_id);
                 self.context.boss_name = Some(boss_name.clone());
+
                 // Track boss entity ID for source/target "boss" filter
                 self.boss_entity_ids.insert(*entity_id);
+
+                // Also store boss NPC class IDs so we can track additional boss entities
+                // (e.g., in a multi-boss fight like Zorn & Toth)
+                self.boss_npc_class_ids.clear();
+                if let Some(area_name) = &self.context.encounter_name {
+                    if let Some(boss_defs) = self.boss_definitions.get(area_name) {
+                        if let Some(def) = boss_defs.iter().find(|d| &d.name == boss_name) {
+                            for boss_class_id in def.boss_npc_ids() {
+                                self.boss_npc_class_ids.insert(boss_class_id);
+                            }
+                            eprintln!("[TIMER] Tracking {} boss NPC class IDs for multi-boss detection", self.boss_npc_class_ids.len());
+                        }
+                    }
+                }
+
                 // Reset phase and counters for new encounter
                 self.current_phase = None;
                 self.counters.clear();

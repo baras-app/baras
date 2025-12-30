@@ -275,17 +275,17 @@ pub(super) fn handle_counter_change(
     );
 }
 
-/// Handle NPC first seen - check for EntityFirstSeen triggers
+/// Handle NPC first seen - check for NpcAppears triggers
 pub(super) fn handle_npc_first_seen(manager: &mut TimerManager, npc_id: i64, npc_name: &str, timestamp: NaiveDateTime) {
     let matching: Vec<_> = manager.definitions
         .values()
         .filter(|d| {
-            let matches = d.matches_entity_spawned(npc_id, Some(npc_name));
+            let matches = d.matches_npc_appears(npc_id, Some(npc_name));
             if matches {
                 let is_active = manager.is_definition_active(d);
                 if !is_active {
                     let diff_str = manager.context.difficulty.map(|x| x.config_key()).unwrap_or("none");
-                    eprintln!("[TIMER] Entity first seen {} matches timer '{}' but context filter failed (enc={:?}, boss={:?}, diff={}, timer_diffs={:?})",
+                    eprintln!("[TIMER] NPC {} matches timer '{}' but context filter failed (enc={:?}, boss={:?}, diff={}, timer_diffs={:?})",
                         npc_name, d.id, manager.context.encounter_name, manager.context.boss_name, diff_str, d.difficulties);
                 }
                 return is_active;
@@ -296,16 +296,16 @@ pub(super) fn handle_npc_first_seen(manager: &mut TimerManager, npc_id: i64, npc
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting first-seen timer '{}' (NPC {} spawned)", def.name, npc_name);
+        eprintln!("[TIMER] Starting npc-appears timer '{}' (NPC {} appeared)", def.name, npc_name);
         manager.start_timer(&def, timestamp, None);
     }
 
-    // Check for cancel triggers on entity spawned
+    // Check for cancel triggers on NPC appears
     let npc_name_owned = npc_name.to_string();
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::EntitySpawned { entity }
+        |t| matches!(t, TimerTrigger::NpcAppears { entity }
             if !entity.is_empty() && (entity.matches_npc_id(npc_id) || entity.matches_name(&npc_name_owned))),
-        &format!("entity {} spawned", npc_name)
+        &format!("NPC {} appeared", npc_name)
     );
 }
 
@@ -334,6 +334,7 @@ pub(super) fn handle_entity_death(manager: &mut TimerManager, npc_id: i64, entit
 /// Handle target set - check for TargetSet triggers (e.g., sphere targeting player)
 pub(super) fn handle_target_set(
     manager: &mut TimerManager,
+    source_entity_id: i64,
     source_npc_id: i64,
     source_name: IStr,
     target_id: i64,
@@ -342,14 +343,31 @@ pub(super) fn handle_target_set(
     timestamp: NaiveDateTime,
 ) {
     let source_name_str = crate::context::resolve(source_name);
+    let target_name_str = crate::context::resolve(target_name);
+
+    eprintln!("[TIMER DEBUG] TargetSet: {} (entity_id: {}, npc_id: {}) → {} (entity_id: {})",
+        source_name_str, source_entity_id, source_npc_id, target_name_str, target_id);
 
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.matches_target_set(source_npc_id, Some(&source_name_str)) && manager.is_definition_active(d))
+        .filter(|d| {
+            let matches_trigger = d.matches_target_set(source_npc_id, Some(&source_name_str));
+            if matches_trigger {
+                let is_active = manager.is_definition_active(d);
+                eprintln!("[TIMER DEBUG]   Timer '{}' matches trigger, is_active={}", d.name, is_active);
+                return is_active;
+            }
+            false
+        })
         .cloned()
         .collect();
 
     for def in matching {
+        // Check source filter (e.g., boss, any_npc - the NPC doing the targeting)
+        // Source is always an NPC for TargetChanged signals
+        if !def.source.matches(source_entity_id, EntityType::Npc, source_name, source_npc_id, manager.local_player_id, &manager.boss_entity_ids) {
+            continue;
+        }
         // Check target filter (e.g., local_player, any_player, etc.)
         if !def.target.matches(target_id, target_entity_type, target_name, 0, manager.local_player_id, &manager.boss_entity_ids) {
             continue;

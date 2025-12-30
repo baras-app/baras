@@ -138,7 +138,7 @@ pub fn check_ability_phase_transitions(
     Vec::new()
 }
 
-/// Check for phase transitions based on entity signals (EntitySpawned, EntityDeath).
+/// Check for phase transitions based on entity signals (NpcAppears, EntityDeath).
 pub fn check_entity_phase_transitions(
     cache: &mut SessionCache,
     current_signals: &[GameSignal],
@@ -402,10 +402,10 @@ pub fn check_ability_trigger(trigger: &Trigger, event: &CombatEvent) -> bool {
     }
 }
 
-/// Check if a signal-based phase trigger is satisfied (EntitySpawned, EntityDeath, etc.).
+/// Check if a signal-based phase trigger is satisfied (NpcAppears, EntityDeath, etc.).
 pub fn check_signal_phase_trigger(trigger: &Trigger, signals: &[GameSignal]) -> bool {
     match trigger {
-        Trigger::EntitySpawned { entity } => {
+        Trigger::NpcAppears { entity } => {
             signals.iter().any(|s| {
                 if let GameSignal::NpcFirstSeen { npc_id, entity_name, .. } = s {
                     if entity.matches_npc_id(*npc_id) {

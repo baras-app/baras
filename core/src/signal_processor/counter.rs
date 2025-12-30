@@ -147,7 +147,7 @@ pub fn check_counter_trigger(
         Trigger::AnyPhaseChange => {
             current_signals.iter().any(|s| matches!(s, GameSignal::PhaseChanged { .. }))
         }
-        Trigger::EntitySpawned { entity } => {
+        Trigger::NpcAppears { entity } => {
             current_signals.iter().any(|s| {
                 if let GameSignal::NpcFirstSeen { npc_id, entity_name, .. } = s {
                     // Use unified matching: roster alias → NPC ID → name

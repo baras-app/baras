@@ -327,7 +327,7 @@ trigger = {type = "ability_cast", abilities = [3036846820950016] }
 [[boss.phases]]
 id = "op_ix_main"
 name = "Operator IX"
-trigger = { type = "entity_spawned", entities = ["Operator IX"] }
+trigger = { type = "npc_appears", entities = ["Operator IX"] }
 
 [[boss.timer]]
 id = "op_ix_blue_cd"
@@ -615,7 +615,7 @@ trigger = { type = "combat_start" }
 [[boss.phases]]
 id = "tfb_phase2"
 name = "Platforms"
-trigger = { type = "entity_spawned", entities = [3025233229381632] }
+trigger = { type = "npc_appears", entities = [3025233229381632] }
 preceded_by = "tfb_phase1"
 
 [[boss.phases]]

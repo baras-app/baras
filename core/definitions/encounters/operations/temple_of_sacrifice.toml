@@ -371,7 +371,7 @@ trigger = { type = "effect_removed", effects = [3447578838433792] }
 id = "revan_core"
 name = "Core"
 preceded_by = "revan_p4"
-trigger = { type = "entity_spawned", entities = [3447583133401088] }
+trigger = { type = "npc_appears", entities = [3447583133401088] }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Timers - Phase 1 (Floor 1 - Revan)

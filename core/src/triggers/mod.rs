@@ -114,8 +114,8 @@ pub enum Trigger {
 
     // ─── Entity Lifecycle [TPC] ────────────────────────────────────────────
 
-    /// Entity spawns (first seen in combat). [TPC]
-    EntitySpawned {
+    /// NPC appears (first seen in combat log). [TPC]
+    NpcAppears {
         #[serde(flatten)]
         entity: EntityMatcher,
     },
@@ -186,7 +186,7 @@ impl Trigger {
             | Self::EffectApplied { .. }
             | Self::EffectRemoved { .. }
             | Self::BossHpBelow { .. }
-            | Self::EntitySpawned { .. }
+            | Self::NpcAppears { .. }
             | Self::EntityDeath { .. }
             | Self::PhaseEnded { .. }
             | Self::AnyOf { .. } => TriggerScope::ALL,

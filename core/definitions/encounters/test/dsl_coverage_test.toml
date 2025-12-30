@@ -1,0 +1,377 @@
+# DSL Coverage Test - Zorn & Toth
+#
+# This definition tests ALL trigger types, filters, and timer options
+# against the nim_ec_zorn_toth.txt log file.
+#
+# Run with:
+#   cargo run --release --package baras-validate -- \
+#     --log test-log-files/operations/nim_ec_zorn_toth.txt \
+#     --boss dsl_coverage_test --all-abilities
+#
+# Expected: All timers should fire at least once
+
+[area]
+name = "Denova"
+area_id = 833571547775688
+
+[[boss]]
+id = "dsl_coverage_test"
+name = "DSL Coverage Test (Zorn & Toth)"
+difficulties = ["master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ENTITIES
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss.entities]]
+name = "Zorn"
+ids = [2857544821243904]
+is_boss = true
+is_kill_target = false
+
+[[boss.entities]]
+name = "Toth"
+ids = [2857549116211200]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COUNTERS - Test counter functionality
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss.counters]]
+id = "smash_count"
+name = "Smash Count"
+increment_on = { type = "ability_cast", abilities = [2917463909990400] }  # Smash
+reset_on = { type = "combat_end" }
+initial_value = 0
+
+[[boss.counters]]
+id = "phase_count"
+name = "Phase Count"
+increment_on = { type = "phase_ended", phase_id = "test_timed_phase" }
+reset_on = { type = "combat_end" }
+initial_value = 0
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASES - Test phase triggers
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss.phases]]
+id = "main"
+name = "Main Phase"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "test_timed_phase"
+name = "Timed Phase (15-30s)"
+trigger = { type = "time_elapsed", secs = 15.0 }
+end_trigger = { type = "time_elapsed", secs = 30.0 }
+
+[[boss.phases]]
+id = "hp_phase"
+name = "HP Phase (<50%)"
+trigger = { type = "boss_hp_below", hp_percent = 50.0, entities = ["Toth"] }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TRIGGER TYPE TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# --- TRIGGER: CombatStart ---
+[[boss.timer]]
+id = "test_combat_start"
+name = "[T01] CombatStart"
+trigger = { type = "combat_start" }
+duration_secs = 300
+color = [100, 255, 100, 255]
+
+# --- TRIGGER: AbilityCast ---
+[[boss.timer]]
+id = "test_ability_cast"
+name = "[T02] AbilityCast"
+trigger = { type = "ability_cast", abilities = [2857132504383488] }  # Shriek
+duration_secs = 10
+color = [100, 200, 255, 255]
+
+# --- TRIGGER: AbilityCast with source filter (Boss) ---
+[[boss.timer]]
+id = "test_ability_cast_boss_source"
+name = "[T03] AbilityCast+BossSource"
+trigger = { type = "ability_cast", abilities = [2917463909990400] }  # Smash
+source = "boss"
+duration_secs = 8
+color = [100, 200, 200, 255]
+
+# --- TRIGGER: EffectApplied ---
+[[boss.timer]]
+id = "test_effect_applied"
+name = "[T04] EffectApplied"
+trigger = { type = "effect_applied", effects = [2857300008108306] }  # Baradium Heave
+duration_secs = 12
+color = [255, 200, 100, 255]
+
+# --- TRIGGER: EffectApplied with target filter (LocalPlayer) ---
+[[boss.timer]]
+id = "test_effect_applied_local"
+name = "[T05] EffectApplied+LocalPlayer"
+trigger = { type = "effect_applied", effects = [3004561551786240] }  # Baradium Poisoning debuff
+target = "local_player"
+is_alert = true
+alert_text = "Poison on YOU!"
+color = [255, 100, 100, 255]
+
+# --- TRIGGER: EffectRemoved ---
+[[boss.timer]]
+id = "test_effect_removed"
+name = "[T06] EffectRemoved"
+trigger = { type = "effect_removed", effects = [3004561551786240] }  # Baradium Poisoning removed
+target = "any_player"
+duration_secs = 5
+color = [100, 255, 200, 255]
+
+# --- TRIGGER: BossHpBelow ---
+[[boss.timer]]
+id = "test_boss_hp_below"
+name = "[T07] BossHpBelow"
+trigger = { type = "boss_hp_below", hp_percent = 80.0, entities = ["Toth"] }
+is_alert = true
+alert_text = "Toth < 80%"
+color = [255, 150, 50, 255]
+
+# --- TRIGGER: BossHpBelow with name match ---
+[[boss.timer]]
+id = "test_boss_hp_name"
+name = "[T08] BossHpBelow+Name"
+trigger = { type = "boss_hp_below", hp_percent = 95.0, entities = ["Zorn"] }
+is_alert = true
+alert_text = "Zorn < 95%"
+color = [255, 150, 100, 255]
+
+# --- TRIGGER: PhaseEntered ---
+[[boss.timer]]
+id = "test_phase_entered"
+name = "[T09] PhaseEntered"
+trigger = { type = "phase_entered", phase_id = "test_timed_phase" }
+duration_secs = 15
+color = [200, 100, 255, 255]
+
+# --- TRIGGER: PhaseEnded ---
+[[boss.timer]]
+id = "test_phase_ended"
+name = "[T10] PhaseEnded"
+trigger = { type = "phase_ended", phase_id = "test_timed_phase" }
+is_alert = true
+alert_text = "Timed Phase Ended!"
+color = [150, 100, 255, 255]
+
+# --- TRIGGER: CounterReaches ---
+[[boss.timer]]
+id = "test_counter_reaches"
+name = "[T11] CounterReaches"
+trigger = { type = "counter_reaches", counter_id = "smash_count", value = 3 }
+is_alert = true
+alert_text = "3 Smashes!"
+color = [255, 255, 100, 255]
+
+# --- TRIGGER: NpcAppears (Zorn is first seen at combat start) ---
+[[boss.timer]]
+id = "test_npc_appears"
+name = "[T12] NpcAppears"
+trigger = { type = "npc_appears", entities = [2857544821243904] }  # Zorn NPC ID
+is_alert = true
+alert_text = "Zorn Appeared!"
+color = [100, 255, 150, 255]
+
+# --- TRIGGER: EntityDeath ---
+[[boss.timer]]
+id = "test_entity_death"
+name = "[T13] EntityDeath"
+trigger = { type = "entity_death", entities = ["Toth"] }
+is_alert = true
+alert_text = "Toth Died!"
+color = [50, 255, 50, 255]
+
+# --- TRIGGER: TimeElapsed ---
+[[boss.timer]]
+id = "test_time_elapsed"
+name = "[T14] TimeElapsed"
+trigger = { type = "time_elapsed", secs = 60.0 }
+is_alert = true
+alert_text = "60 seconds!"
+color = [255, 200, 200, 255]
+
+# --- TRIGGER: TargetSet (boss targets a player) ---
+[[boss.timer]]
+id = "test_target_set"
+name = "[T15] TargetSet"
+trigger = { type = "target_set", entities = [2857544821243904] }  # Zorn NPC ID
+target = "any_player"  # Use any_player to test more broadly
+duration_secs = 5
+color = [255, 100, 200, 255]
+
+# --- TRIGGER: AnyOf (composite) ---
+[[boss.timer]]
+id = "test_any_of"
+name = "[T16] AnyOf"
+trigger = { type = "any_of", conditions = [
+    { type = "boss_hp_below", hp_percent = 70.0, entities = ["Toth"] },
+    { type = "boss_hp_below", hp_percent = 30.0, entities = ["Toth"] },
+]}
+is_alert = true
+alert_text = "Toth 70% or 30%!"
+color = [200, 200, 255, 255]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TIMER FEATURE TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# --- FEATURE: can_be_refreshed ---
+[[boss.timer]]
+id = "test_refresh"
+name = "[F01] Refreshable"
+trigger = { type = "ability_cast", abilities = [2857158274187264] }  # Flurry (cast often)
+duration_secs = 10
+can_be_refreshed = true
+color = [200, 255, 200, 255]
+
+# --- FEATURE: repeats ---
+[[boss.timer]]
+id = "test_repeats"
+name = "[F02] Repeating"
+trigger = { type = "combat_start" }
+duration_secs = 30
+repeats = 3
+color = [255, 200, 255, 255]
+
+# --- FEATURE: triggers_timer (chaining) ---
+[[boss.timer]]
+id = "test_chain_parent"
+name = "[F03a] Chain Parent"
+trigger = { type = "time_elapsed", secs = 45.0 }
+duration_secs = 10
+triggers_timer = "test_chain_child"
+color = [150, 200, 255, 255]
+
+[[boss.timer]]
+id = "test_chain_child"
+name = "[F03b] Chain Child"
+trigger = { type = "timer_expires", timer_id = "test_chain_parent" }
+duration_secs = 15
+is_alert = true
+alert_text = "Chain Triggered!"
+color = [100, 150, 255, 255]
+
+# --- FEATURE: cancel_trigger (AbilityCast cancels timer) ---
+[[boss.timer]]
+id = "test_cancel"
+name = "[F04] Cancellable"
+trigger = { type = "combat_start" }
+duration_secs = 120
+cancel_trigger = { type = "ability_cast", abilities = [2857132504383488] }  # First Shriek cancels
+color = [255, 150, 150, 255]
+
+# --- FEATURE: cancel_trigger (EffectRemoved cancels) ---
+[[boss.timer]]
+id = "test_cancel_effect"
+name = "[F05] CancelOnEffectRemoved"
+trigger = { type = "effect_applied", effects = [2857300008108306] }  # Baradium Heave
+duration_secs = 20
+cancel_trigger = { type = "effect_removed", effects = [2857300008108306] }
+color = [255, 180, 150, 255]
+
+# --- FEATURE: cancel_trigger (EntityDeath cancels) ---
+[[boss.timer]]
+id = "test_cancel_death"
+name = "[F06] CancelOnDeath"
+trigger = { type = "combat_start" }
+duration_secs = 600
+cancel_trigger = { type = "entity_death", entities = ["Toth"] }
+color = [255, 200, 150, 255]
+
+# --- FEATURE: phase restriction ---
+[[boss.timer]]
+id = "test_phase_restriction"
+name = "[F07] PhaseRestricted"
+trigger = { type = "ability_cast", abilities = [2857132504383488] }  # Shriek
+duration_secs = 10
+phases = ["test_timed_phase"]  # Only active during 15-30s phase
+color = [180, 180, 255, 255]
+
+# --- FEATURE: counter_condition ---
+[[boss.timer]]
+id = "test_counter_condition"
+name = "[F08] CounterCondition"
+trigger = { type = "ability_cast", abilities = [2917463909990400] }  # Smash
+duration_secs = 8
+counter_condition = { counter_id = "smash_count", operator = "gte", value = 5 }
+color = [180, 255, 180, 255]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ENTITY FILTER TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# --- FILTER: source = "boss" (tested above in T03) ---
+
+# --- FILTER: source = "any_npc" ---
+[[boss.timer]]
+id = "test_filter_any_npc"
+name = "[E01] Source=AnyNpc"
+trigger = { type = "ability_cast", abilities = [2857351547715584] }  # Cleave
+source = "any_npc"
+duration_secs = 5
+color = [150, 200, 150, 255]
+
+# --- FILTER: target = "any_player" ---
+[[boss.timer]]
+id = "test_filter_any_player"
+name = "[E02] Target=AnyPlayer"
+trigger = { type = "effect_applied", effects = [2857132504383753] }  # Weakened
+target = "any_player"
+is_alert = true
+alert_text = "Someone Weakened!"
+color = [200, 150, 150, 255]
+
+# --- FILTER: target = "other_players" (not local) ---
+[[boss.timer]]
+id = "test_filter_other_players"
+name = "[E03] Target=OtherPlayers"
+trigger = { type = "effect_applied", effects = [3004561551786240] }  # Baradium Poisoning
+target = "other_players"
+is_alert = true
+alert_text = "Teammate Poisoned!"
+color = [200, 150, 200, 255]
+
+# --- FILTER: source = boss (covers specific NPC case) ---
+# Note: For specific NPC ID filtering, use the trigger's source EntityMatcher instead
+# The timer source/target filters are for player/boss/npc categorization
+[[boss.timer]]
+id = "test_filter_boss_source"
+name = "[E04] Source=Boss"
+trigger = { type = "ability_cast", abilities = [2857132504383488] }  # Shriek
+source = "boss"
+duration_secs = 8
+color = [200, 200, 150, 255]
+
+# Note: Specific entity name filtering should use trigger's source EntityMatcher
+# For now, testing with boss filter which covers both Zorn and Toth
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AUDIO FEATURE TESTS (won't play in validator, but tests parsing)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.timer]]
+id = "test_audio_countdown"
+name = "[A01] Countdown"
+trigger = { type = "time_elapsed", secs = 90.0 }
+duration_secs = 10
+audio_enabled = true
+countdown_start = 5
+countdown_voice = "Amy"
+color = [255, 220, 200, 255]
+
+[[boss.timer]]
+id = "test_audio_offset"
+name = "[A02] AudioOffset"
+trigger = { type = "time_elapsed", secs = 120.0 }
+duration_secs = 15
+audio_enabled = true
+audio_offset = 3
+audio_file = "alert.wav"
+color = [255, 200, 220, 255]

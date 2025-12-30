@@ -26,6 +26,10 @@ fn make_timer(id: &str, name: &str, trigger: TimerTrigger, duration: f32) -> Tim
         alert_at_secs: None,
         alert_text: None,
         audio_file: None,
+        audio_enabled: false,
+        audio_offset: 0,
+        countdown_start: 0,
+        countdown_voice: None,
         show_on_raid_frames: false,
         source: EntityFilter::Any,
         target: EntityFilter::Any,
@@ -145,7 +149,7 @@ fn test_npc_first_seen_triggers_timer() {
     let timer = make_timer(
         "monster_spawn",
         "Dread Monster Spawned",
-        TimerTrigger::EntitySpawned { entity: EntityMatcher::by_npc_id(3291675820556288) },
+        TimerTrigger::NpcAppears { entity: EntityMatcher::by_npc_id(3291675820556288) },
         30.0,
     );
     manager.load_definitions(vec![timer]);
@@ -645,7 +649,7 @@ fn test_integration_npc_first_seen_timer() {
     let timer = make_timer(
         "monster_spawn",
         "Dread Monster Spawned",
-        TimerTrigger::EntitySpawned { entity: EntityMatcher::by_npc_id(3291675820556288) },
+        TimerTrigger::NpcAppears { entity: EntityMatcher::by_npc_id(3291675820556288) },
         30.0,
     );
 
