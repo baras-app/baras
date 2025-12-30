@@ -222,15 +222,17 @@ impl ParsingSession {
         }
 
         let difficulty = crate::game_data::Difficulty::from_game_string(&area.difficulty_name);
+        let area_id = if area.area_id != 0 { Some(area.area_id) } else { None };
 
         if let Ok(mut timer_mgr) = self.timer_manager.lock() {
             timer_mgr.set_context(
+                area_id,
                 Some(area.area_name.clone()),
                 None, // Boss will be detected on target change
                 difficulty,
             );
-            eprintln!("[TIMER] Synced initial context from cache: area={}, difficulty={:?}",
-                area.area_name, difficulty);
+            eprintln!("[TIMER] Synced initial context from cache: area={} (id={:?}), difficulty={:?}",
+                area.area_name, area_id, difficulty);
         }
     }
 }

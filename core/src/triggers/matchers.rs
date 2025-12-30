@@ -305,6 +305,7 @@ mod tests {
                 is_boss: true,
                 triggers_encounter: None,
                 is_kill_target: true,
+                show_on_hp_overlay: None,
             },
         ];
         let matcher = EntityMatcher::by_entity("Huntmaster");
@@ -400,6 +401,7 @@ mod tests {
                 is_boss: true,
                 triggers_encounter: None,
                 is_kill_target: true,
+                show_on_hp_overlay: None,
             },
         ];
 

@@ -320,10 +320,10 @@ impl TimerManager {
     }
 
     /// Set encounter context for filtering (legacy - prefer using signals)
-    pub fn set_context(&mut self, encounter: Option<String>, boss: Option<String>, difficulty: Option<Difficulty>) {
+    pub fn set_context(&mut self, area_id: Option<i64>, encounter: Option<String>, boss: Option<String>, difficulty: Option<Difficulty>) {
         self.context = EncounterContext {
+            area_id,
             encounter_name: encounter,
-            area_id: None, // Not available in legacy API
             boss_name: boss,
             difficulty,
         };
@@ -516,7 +516,28 @@ impl TimerManager {
 
 impl SignalHandler for TimerManager {
     fn handle_signal(&mut self, signal: &GameSignal) {
-        // Skip if no definitions loaded (historical mode or empty config)
+        // ─── Context-setting signals: always process (bypass recency filter) ───
+        // These establish context for future timer matching, not trigger timers directly.
+        match signal {
+            GameSignal::PlayerInitialized { entity_id, .. } => {
+                self.local_player_id = Some(*entity_id);
+                return;
+            }
+            GameSignal::AreaEntered { area_id, area_name, difficulty_name, .. } => {
+                self.context.area_id = Some(*area_id);
+                self.context.encounter_name = Some(area_name.clone());
+                self.context.difficulty = if difficulty_name.is_empty() {
+                    None
+                } else {
+                    Difficulty::from_game_string(difficulty_name)
+                };
+                eprintln!("[TIMER] Area entered: {} (id: {}, difficulty: {:?})", area_name, area_id, self.context.difficulty);
+                return;
+            }
+            _ => {}
+        }
+
+        // Skip timer-triggering signals if no definitions loaded
         if self.definitions.is_empty() && self.boss_definitions.is_empty() {
             return;
         }
@@ -534,9 +555,8 @@ impl SignalHandler for TimerManager {
         self.last_timestamp = Some(ts);
 
         match signal {
-            GameSignal::PlayerInitialized { entity_id, .. } => {
-                self.local_player_id = Some(*entity_id);
-            }
+            // Context signals already handled above
+            GameSignal::PlayerInitialized { .. } | GameSignal::AreaEntered { .. } => {}
 
             GameSignal::AbilityActivated {
                 ability_id,
@@ -617,18 +637,6 @@ impl SignalHandler for TimerManager {
 
             GameSignal::NpcFirstSeen { npc_id, entity_name, timestamp, .. } => {
                 signal_handlers::handle_npc_first_seen(self, *npc_id, entity_name, *timestamp);
-            }
-
-            GameSignal::AreaEntered { area_id, area_name, difficulty_name, .. } => {
-                // Update encounter context from area (area_id is primary match key)
-                self.context.area_id = Some(*area_id);
-                self.context.encounter_name = Some(area_name.clone());
-                self.context.difficulty = if difficulty_name.is_empty() {
-                    None
-                } else {
-                    Difficulty::from_game_string(difficulty_name)
-                };
-                eprintln!("[TIMER] Area entered: {} (id: {}, difficulty: {:?})", area_name, area_id, self.context.difficulty);
             }
 
             // Note: We intentionally DON'T update boss_name from TargetChanged/TargetCleared.

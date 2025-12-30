@@ -85,6 +85,7 @@ fn test_ability_cast_triggers_timer() {
     // Send AbilityActivated signal
     let signal = GameSignal::AbilityActivated {
         ability_id: 3302391763959808,
+        ability_name: crate::context::IStr::default(),
         source_id: 12345,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -116,6 +117,7 @@ fn test_effect_applied_triggers_timer() {
 
     let signal = GameSignal::EffectApplied {
         effect_id: 999999,
+        effect_name: crate::context::IStr::default(),
         action_id: 0,
         source_id: 1,
         source_name: crate::context::IStr::default(),
@@ -182,6 +184,7 @@ fn test_anyof_condition_triggers_on_either() {
     // First ability should trigger
     let signal1 = GameSignal::AbilityActivated {
         ability_id: 111,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -204,6 +207,7 @@ fn test_anyof_condition_triggers_on_either() {
 
     let signal2 = GameSignal::AbilityActivated {
         ability_id: 222,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -284,6 +288,7 @@ fn test_cancel_on_timer() {
     // Trigger Timer B - Timer A should be cancelled
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 444,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -315,6 +320,7 @@ fn test_wrong_ability_does_not_trigger() {
     // Wrong ability ID
     let signal = GameSignal::AbilityActivated {
         ability_id: 99999, // Different ID
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -394,6 +400,7 @@ fn test_timer_expires_triggers_chain() {
     let after_expiry = start_time + chrono::Duration::seconds(3);
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 999999, // Non-matching ability just to advance time
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -438,6 +445,7 @@ fn test_timer_expires_without_chain() {
     let after_expiry = start_time + chrono::Duration::seconds(2);
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 999999,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -693,6 +701,7 @@ fn test_multi_timer_chain_a_b_c() {
     let t1 = start_time + chrono::Duration::seconds(3);
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 0,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -712,6 +721,7 @@ fn test_multi_timer_chain_a_b_c() {
     let t2 = t1 + chrono::Duration::seconds(4);
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 0,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -731,6 +741,7 @@ fn test_multi_timer_chain_a_b_c() {
     let t3 = t2 + chrono::Duration::seconds(6);
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 0,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -789,6 +800,7 @@ fn test_cancel_on_timer_with_chain() {
     let after_expiry = start_time + chrono::Duration::seconds(3);
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 0,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -828,6 +840,7 @@ fn test_timer_refresh_resets_expiration() {
     // First cast - timer starts
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 12345,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -848,6 +861,7 @@ fn test_timer_refresh_resets_expiration() {
     // Cast again - should refresh
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 12345,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -892,6 +906,7 @@ fn test_timer_no_refresh_when_disabled() {
     // First cast - timer starts
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 12345,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -909,6 +924,7 @@ fn test_timer_no_refresh_when_disabled() {
     // Cast again - should NOT start a second timer (can't refresh, can't duplicate)
     manager.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 12345,
+        ability_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),

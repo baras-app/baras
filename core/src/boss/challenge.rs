@@ -491,6 +491,7 @@ mod tests {
         let challenge = ChallengeDefinition {
             id: "burn_dps".to_string(),
             name: "Burn Phase DPS".to_string(),
+            display_text: None,
             description: None,
             metric: ChallengeMetric::Damage,
             conditions: vec![
@@ -523,6 +524,7 @@ mod tests {
         let challenge = ChallengeDefinition {
             id: "all_damage".to_string(),
             name: "All Damage".to_string(),
+            display_text: None,
             description: None,
             metric: ChallengeMetric::Damage,
             conditions: vec![],
@@ -572,6 +574,7 @@ mod tests {
         let boss_damage_challenge = ChallengeDefinition {
             id: "boss_damage".to_string(),
             name: "Boss Damage".to_string(),
+            display_text: None,
             description: None,
             metric: ChallengeMetric::Damage,
             conditions: vec![ChallengeCondition::Target {
@@ -582,6 +585,7 @@ mod tests {
         let add_damage_challenge = ChallengeDefinition {
             id: "add_damage".to_string(),
             name: "Add Damage".to_string(),
+            display_text: None,
             description: None,
             metric: ChallengeMetric::Damage,
             conditions: vec![ChallengeCondition::Target {
@@ -723,6 +727,7 @@ mod tests {
         let burn_phase_challenge = ChallengeDefinition {
             id: "burn_dps".to_string(),
             name: "Burn Phase DPS".to_string(),
+            display_text: None,
             description: None,
             metric: ChallengeMetric::Damage,
             conditions: vec![

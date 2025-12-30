@@ -28,6 +28,7 @@ fn make_effect(id: &str, name: &str, effect_ids: Vec<u64>) -> EffectDefinition {
         name: name.to_string(),
         enabled: true,
         effects: effect_ids.into_iter().map(EffectSelector::Id).collect(),
+        trigger: crate::effects::EffectTriggerMode::default(),
         refresh_abilities: Vec::new(),
         source: EntityFilter::Any,
         target: EntityFilter::Any,
@@ -75,6 +76,7 @@ fn test_effect_applied_creates_active_effect() {
 
     let signal = GameSignal::EffectApplied {
         effect_id: 12345,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 1,
         source_name: IStr::default(),
@@ -104,6 +106,7 @@ fn test_effect_removed_marks_inactive() {
     // Apply effect
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 999,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 1,
         source_name: IStr::default(),
@@ -122,6 +125,7 @@ fn test_effect_removed_marks_inactive() {
     // Remove effect
     tracker.handle_signal(&GameSignal::EffectRemoved {
         effect_id: 999,
+        effect_name: crate::context::IStr::default(),
         source_id: 1,
         source_entity_type: crate::combat_log::EntityType::Player,
         source_name: crate::context::IStr::default(),
@@ -146,6 +150,7 @@ fn test_charges_changed_updates_stacks() {
     // Apply with initial charges
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 555,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 1,
         source_name: IStr::default(),
@@ -181,6 +186,7 @@ fn test_entity_death_clears_effects() {
     // Apply effect to target 2
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 111,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 1,
         source_name: IStr::default(),
@@ -219,6 +225,7 @@ fn test_persist_past_death_keeps_effect() {
     // Apply effect
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 222,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 1,
         source_name: IStr::default(),
@@ -266,6 +273,7 @@ fn test_combat_end_clears_combat_only_effects() {
     for effect_id in [333, 444] {
         tracker.handle_signal(&GameSignal::EffectApplied {
             effect_id,
+            effect_name: IStr::default(),
             action_id: 100,
             source_id: 1,
             source_name: IStr::default(),
@@ -305,6 +313,7 @@ fn test_area_entered_clears_all_effects() {
     // Apply effect
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 555,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 1,
         source_name: IStr::default(),
@@ -342,6 +351,7 @@ fn test_ability_activated_refreshes_effect() {
     // Apply effect
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 666,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 1,
         source_name: IStr::default(),
@@ -362,6 +372,7 @@ fn test_ability_activated_refreshes_effect() {
     let later = ts + chrono::Duration::seconds(5);
     tracker.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 100,
+        ability_name: IStr::default(),
         source_id: 1,
         source_entity_type: EntityType::Player,
         source_name: IStr::default(),
@@ -396,6 +407,7 @@ fn test_player_initialized_sets_local_player() {
     // Now effects from player 42 should be tracked as local
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 777,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 42,
         source_name: IStr::default(),
@@ -425,6 +437,7 @@ fn test_boss_hp_changed_tracks_boss_ids() {
     // Effect on NPC won't match Boss filter until BossHpChanged
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 888,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 1,
         source_name: IStr::default(),
@@ -453,6 +466,7 @@ fn test_boss_hp_changed_tracks_boss_ids() {
     // Now try again
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 888,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 1,
         source_name: IStr::default(),
@@ -478,6 +492,7 @@ fn test_live_mode_required_for_tracking() {
 
     let signal = GameSignal::EffectApplied {
         effect_id: 111,
+        effect_name: IStr::default(),
         action_id: 100,
         source_id: 1,
         source_name: IStr::default(),
@@ -510,6 +525,7 @@ fn test_filter_local_player() {
     // From local player - should match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1, // Local player
         source_name: IStr::default(),
@@ -537,6 +553,7 @@ fn test_filter_local_player_rejects_other() {
     // From other player - should NOT match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 2, // Other player
         source_name: IStr::default(),
@@ -564,6 +581,7 @@ fn test_filter_other_players() {
     // From other player - should match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 2,
         source_name: IStr::default(),
@@ -582,6 +600,7 @@ fn test_filter_other_players() {
     // From local - should NOT match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -610,6 +629,7 @@ fn test_filter_any_player() {
     // From local
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -626,6 +646,7 @@ fn test_filter_any_player() {
     // From other
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 3,
         source_name: IStr::default(),
@@ -653,6 +674,7 @@ fn test_filter_any_npc() {
     // On NPC - should match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -671,6 +693,7 @@ fn test_filter_any_npc() {
     // On Player - should NOT match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -708,6 +731,7 @@ fn test_filter_npc_except_boss() {
     // On boss - should NOT match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -726,6 +750,7 @@ fn test_filter_npc_except_boss() {
     // On non-boss NPC - should match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -753,6 +778,7 @@ fn test_filter_companion() {
     // On companion - should match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -771,6 +797,7 @@ fn test_filter_companion() {
     // On player - should NOT match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -798,6 +825,7 @@ fn test_filter_any_player_or_companion() {
     // On player
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -814,6 +842,7 @@ fn test_filter_any_player_or_companion() {
     // On companion
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -832,6 +861,7 @@ fn test_filter_any_player_or_companion() {
     // On NPC - should NOT match
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -860,6 +890,7 @@ fn test_filter_any_matches_everything() {
     // Player to Player
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -876,6 +907,7 @@ fn test_filter_any_matches_everything() {
     // NPC to NPC
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 888,
         source_name: IStr::default(),
@@ -892,6 +924,7 @@ fn test_filter_any_matches_everything() {
     // Player to Companion
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -917,6 +950,7 @@ fn test_non_matching_effect_id_ignored() {
     // Wrong effect ID
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 99999,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -956,6 +990,7 @@ fn test_target_tracking_for_ability_refresh() {
     // Apply effect to target
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 100,
+        effect_name: IStr::default(),
         action_id: 1,
         source_id: 1,
         source_name: IStr::default(),
@@ -973,6 +1008,7 @@ fn test_target_tracking_for_ability_refresh() {
     let later = ts + chrono::Duration::seconds(2);
     tracker.handle_signal(&GameSignal::AbilityActivated {
         ability_id: 200,
+        ability_name: IStr::default(),
         source_id: 1,
         source_entity_type: EntityType::Player,
         source_name: IStr::default(),

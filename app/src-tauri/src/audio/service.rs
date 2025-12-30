@@ -53,7 +53,7 @@ impl AudioService {
         };
 
         #[cfg(target_os = "linux")]
-        eprintln!("[AUDIO] TTS not available on Linux (requires speech-dispatcher). Custom sounds only.");
+        eprintln!("[AUDIO] Using espeak for TTS on Linux");
 
         Self {
             event_rx,
@@ -125,8 +125,19 @@ impl AudioService {
     }
 
     #[cfg(target_os = "linux")]
-    fn speak(&mut self, _text: &str) {
-        // TTS not available on Linux without speech-dispatcher
+    fn speak(&mut self, text: &str) {
+        // Use espeak directly on Linux (non-blocking)
+        use std::process::Command;
+
+        let text = text.to_string();
+        std::thread::spawn(move || {
+            if let Err(e) = Command::new("espeak")
+                .arg(&text)
+                .output()
+            {
+                eprintln!("[AUDIO] espeak failed: {}. Install with: sudo pacman -S espeak-ng", e);
+            }
+        });
     }
 
     /// Play a custom sound file

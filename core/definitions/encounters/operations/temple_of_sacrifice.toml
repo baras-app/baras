@@ -162,6 +162,7 @@ difficulties = ["veteran"]
 # Counter: Tracks if Rain of Missiles timer is active (0 = can trigger, 1 = locked)
 [[boss.counters]]
 id = "rain_lock"
+name = "Rain of Missles Lock"
 increment_on = { type = "ability_cast", abilities = [3448064169738240] }
 reset_on = { type = "timer_expires", timer_id = "ss_rain_of_missiles" }
 initial_value = 0
@@ -313,6 +314,7 @@ is_kill_target = true
 # Track Machine Focus deaths for Foci phase transition
 [[boss.counters]]
 id = "foci_deaths"
+name = "Foci Deaths"
 increment_on = { type = "entity_death", entities = ["Machine Focus"] }
 reset_on = { type = "combat_end" }
 initial_value = 0

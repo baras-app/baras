@@ -342,12 +342,26 @@ pub(super) fn handle_combat_start(manager: &mut TimerManager, timestamp: NaiveDa
     manager.combat_start_time = Some(timestamp);
     manager.last_combat_secs = 0.0;
 
+    // Debug: show current context
+    eprintln!("[TIMER] combat_start context: area_id={:?}, enc={:?}, boss={:?}, diff={:?}",
+        manager.context.area_id, manager.context.encounter_name,
+        manager.context.boss_name, manager.context.difficulty);
+
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.triggers_on_combat_start() && manager.is_definition_active(d))
+        .filter(|d| {
+            let has_trigger = d.triggers_on_combat_start();
+            let is_active = manager.is_definition_active(d);
+            if has_trigger && !is_active {
+                eprintln!("[TIMER] combat_start timer '{}' skipped - context mismatch (area_ids={:?}, boss={:?}, diffs={:?})",
+                    d.id, d.area_ids, d.boss, d.difficulties);
+            }
+            has_trigger && is_active
+        })
         .cloned()
         .collect();
 
+    eprintln!("[TIMER] combat_start matched {} timers", matching.len());
     for def in matching {
         manager.start_timer(&def, timestamp, None);
     }

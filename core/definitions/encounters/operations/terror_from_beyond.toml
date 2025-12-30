@@ -298,6 +298,7 @@ is_boss = false
 
 [[boss.counters]]
 id = "op_ix_data_cores"
+name = "Data Cores Killed"
 increment_on = { type = "entity_death", entities = ["Data Core"] }
 reset_on = { type = "combat_end" }
 initial_value = 0
@@ -433,6 +434,7 @@ trigger = { type = "boss_hp_below", hp_percent = 10.0, entities = ["Kephess the 
 # Tracks Overcharge casts - Laser Blast only fires on first cast
 [[boss.counters]]
 id = "overcharge_count"
+name = "Overcharges"
 increment_on = { type = "ability_cast", abilities = [3012687629910016], source = { entities = ["Kephess the Undying"] } }
 reset_on = { type = "combat_end" }
 
@@ -440,6 +442,7 @@ reset_on = { type = "combat_end" }
 # Counter cycles 1→2→3→reset (resets when it would hit 4)
 [[boss.counters]]
 id = "nanites_count"
+name = "Nanites"
 increment_on = { type = "ability_cast", abilities = [2977765250826240], source = { entities = ["Kephess the Undying"] } }
 reset_on = { type = "counter_reaches", counter_id = "nanites_count", value = 4 }
 
@@ -624,6 +627,7 @@ trigger = { type = "counter_reaches", counter_id = "grasping_death_count", value
 # Counter for Grasping Tentacle deaths (for phase 2 respawn timing)
 [[boss.counters]]
 id = "grasping_death_count"
+name = "Grasping Death"
 increment_on = { type = "entity_death", entities = ["Grasping Tentacle"] }
 
 # ─── Entities ───────────────────────────────────────────────────────────────────

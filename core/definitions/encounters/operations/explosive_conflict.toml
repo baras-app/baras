@@ -162,6 +162,7 @@ is_kill_target = true
 
 [[boss.counters]]
 id = "fs_defensive_systems_ct"
+name = "Defensive Systems"
 increment_on = { type = "phase_ended", phase_id="fs_shield"}
 reset_on = { type = "combat_end" }
 initial_value = 0
@@ -434,6 +435,7 @@ ids = [2876515691790336]
 
 [[boss.counters]]
 id = "siege_droid_deaths"
+name = "Siege Droids Killed"
 increment_on = { type = "entity_death", entities = ["Siege Droid"] }
 reset_on = { type = "combat_end" }
 initial_value = 0

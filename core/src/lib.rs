@@ -1,6 +1,7 @@
 pub mod boss;
 pub mod combat_log;
 pub mod context;
+pub mod debug_log;
 pub mod effects;
 pub mod encounter;
 pub mod entity_filter;

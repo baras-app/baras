@@ -660,6 +660,8 @@ impl CombatService {
                 session_guard.current_byte = Some(end_pos);
                 // Finalize session to add the last encounter to history
                 session_guard.finalize_session();
+                // Sync area context to timer manager (handles mid-session starts)
+                session_guard.sync_timer_context();
                 drop(session_guard);
                 // Trigger initial metrics send after file processing
                 let _ = trigger_tx.send(MetricsTrigger::InitialLoad);
