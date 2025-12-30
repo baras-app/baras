@@ -300,6 +300,11 @@ impl ActiveEffect {
     /// - remaining 3.2s → announces 3 (in window [3.0, 3.3))
     /// - remaining 2.2s → announces 2
     pub fn check_countdown(&mut self) -> Option<u8> {
+        // Don't announce if effect was manually removed
+        if self.removed_at.is_some() {
+            return None;
+        }
+
         if !self.audio_enabled || self.countdown_start == 0 {
             return None;
         }
@@ -327,16 +332,21 @@ impl ActiveEffect {
     ///
     /// Returns true (and marks as fired) when:
     /// - audio_file is Some
-    /// - audio_offset > 0 (offset of 0 means no early warning)
+    /// - audio_offset > 0 (offset of 0 means fire on expiration, handled separately)
     /// - remaining time crossed below the offset threshold
     /// - hasn't already fired
     pub fn check_audio_offset(&mut self) -> bool {
+        // Don't play if effect was manually removed
+        if self.removed_at.is_some() {
+            return false;
+        }
+
         // No audio file configured
         if self.audio_file.is_none() {
             return false;
         }
 
-        // offset=0 means no early warning sound
+        // offset=0 means fire on expiration, not here
         if self.audio_offset == 0 {
             return false;
         }
@@ -350,6 +360,49 @@ impl ActiveEffect {
 
         // Fire when we cross into the offset window
         if remaining <= self.audio_offset as f32 && remaining > 0.0 {
+            self.audio_played = true;
+            return true;
+        }
+
+        false
+    }
+
+    /// Check if audio should fire on expiration (offset == 0)
+    ///
+    /// Returns true (and marks as fired) when:
+    /// - audio_file is Some
+    /// - audio_offset == 0 (fire on expiration)
+    /// - remaining time is in [0, 0.3) window (fires just as effect expires)
+    /// - hasn't already fired
+    ///
+    /// Uses a small window like countdown to ensure we catch expiration
+    /// before the effect is removed from the tracker.
+    pub fn check_expiration_audio(&mut self) -> bool {
+        // Don't play if effect was manually removed (cleansed, clicked off, etc.)
+        if self.removed_at.is_some() {
+            return false;
+        }
+
+        // No audio file configured
+        if self.audio_file.is_none() {
+            return false;
+        }
+
+        // Only handle offset=0 (on expiration)
+        if self.audio_offset != 0 {
+            return false;
+        }
+
+        // Already fired
+        if self.audio_played {
+            return false;
+        }
+
+        let remaining = self.remaining_secs_realtime();
+
+        // Fire in window [0, 0.3) - catches expiration before effect is removed
+        // This matches the countdown window logic
+        if remaining >= 0.0 && remaining < 0.3 {
             self.audio_played = true;
             return true;
         }

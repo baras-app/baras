@@ -137,6 +137,11 @@ impl TimerManager {
         }
     }
 
+    /// Clear boss NPC class IDs (called when encounter ends)
+    pub(super) fn clear_boss_npc_class_ids(&mut self) {
+        self.boss_npc_class_ids.clear();
+    }
+
     /// Load timer definitions
     pub fn load_definitions(&mut self, definitions: Vec<TimerDefinition>) {
         self.definitions.clear();

@@ -1357,22 +1357,33 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
     };
 
     for effect in tracker.active_effects_mut() {
-        // Skip removed effects or effects without audio
-        if effect.removed_at.is_some() || !effect.audio_enabled {
+        // Skip effects without audio (but don't skip removed - they might need expiration audio)
+        if !effect.audio_enabled {
             continue;
         }
 
         // Check for countdown (uses realtime internally, matches timer logic)
-        if let Some(seconds) = effect.check_countdown() {
-            countdowns.push((
-                effect.display_text.clone(),
-                seconds,
-                effect.countdown_voice.clone(),
-            ));
+        // Only for non-removed effects
+        if effect.removed_at.is_none() {
+            if let Some(seconds) = effect.check_countdown() {
+                countdowns.push((
+                    effect.display_text.clone(),
+                    seconds,
+                    effect.countdown_voice.clone(),
+                ));
+            }
         }
 
-        // Check for audio offset trigger (early warning sound)
+        // Check for audio offset trigger (early warning sound, offset > 0)
         if effect.check_audio_offset() {
+            alerts.push(EffectAlert {
+                name: effect.display_text.clone(),
+                file: effect.audio_file.clone(),
+            });
+        }
+
+        // Check for expiration audio (offset == 0, fire when effect expires)
+        if effect.check_expiration_audio() {
             alerts.push(EffectAlert {
                 name: effect.display_text.clone(),
                 file: effect.audio_file.clone(),

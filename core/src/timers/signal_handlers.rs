@@ -492,7 +492,7 @@ pub(super) fn handle_combat_start(manager: &mut TimerManager, timestamp: NaiveDa
     }
 }
 
-/// Clear all combat-scoped timers
+/// Clear all combat-scoped timers and encounter context
 pub(super) fn clear_combat_timers(manager: &mut TimerManager) {
     manager.in_combat = false;
     manager.active_timers.clear();
@@ -503,4 +503,7 @@ pub(super) fn clear_combat_timers(manager: &mut TimerManager) {
     manager.boss_entity_ids.clear();
     manager.combat_start_time = None;
     manager.last_combat_secs = 0.0;
+    // Clear encounter context so timers don't trigger in subsequent trash fights
+    manager.context.boss_name = None;
+    manager.clear_boss_npc_class_ids();
 }
