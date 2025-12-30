@@ -15,7 +15,10 @@ pub mod triggers;
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{AreaListItem, BossListItem, TimerListItem};
+use crate::types::{
+    AreaListItem, BossListItem, ChallengeListItem, CounterListItem, EntityListItem,
+    PhaseListItem, TimerListItem,
+};
 
 pub use tabs::{BossTabs, EncounterData};
 pub use timers::TimersTab;
@@ -34,6 +37,10 @@ pub fn EncounterEditorPanel() -> Element {
     // Boss state (loaded on area selection)
     let mut bosses = use_signal(Vec::<BossListItem>::new);
     let mut timers = use_signal(Vec::<TimerListItem>::new);
+    let mut phases = use_signal(Vec::<PhaseListItem>::new);
+    let mut counters = use_signal(Vec::<CounterListItem>::new);
+    let mut challenges = use_signal(Vec::<ChallengeListItem>::new);
+    let mut entities = use_signal(Vec::<EntityListItem>::new);
     let mut loading_bosses = use_signal(|| false);
 
     // UI state
@@ -60,6 +67,10 @@ pub fn EncounterEditorPanel() -> Element {
         loading_bosses.set(true);
         bosses.set(Vec::new());
         timers.set(Vec::new());
+        phases.set(Vec::new());
+        counters.set(Vec::new());
+        challenges.set(Vec::new());
+        entities.set(Vec::new());
         expanded_boss.set(None);
 
         spawn(async move {
@@ -68,6 +79,18 @@ pub fn EncounterEditorPanel() -> Element {
             }
             if let Some(t) = api::get_timers_for_area(&file_path).await {
                 timers.set(t);
+            }
+            if let Some(p) = api::get_phases_for_area(&file_path).await {
+                phases.set(p);
+            }
+            if let Some(c) = api::get_counters_for_area(&file_path).await {
+                counters.set(c);
+            }
+            if let Some(ch) = api::get_challenges_for_area(&file_path).await {
+                challenges.set(ch);
+            }
+            if let Some(e) = api::get_entities_for_area(&file_path).await {
+                entities.set(e);
             }
             loading_bosses.set(false);
         });
@@ -232,6 +255,10 @@ pub fn EncounterEditorPanel() -> Element {
                                     .filter(|t| t.boss_id == boss.id)
                                     .collect();
                                 let timer_count = boss_timers.len();
+                                let phase_count = phases().iter().filter(|p| p.boss_id == boss.id).count();
+                                let counter_count = counters().iter().filter(|c| c.boss_id == boss.id).count();
+                                let challenge_count = challenges().iter().filter(|c| c.boss_id == boss.id).count();
+                                let entity_count = entities().iter().filter(|e| e.boss_id == boss.id).count();
 
                                 rsx! {
                                     div { class: "list-item",
@@ -243,7 +270,21 @@ pub fn EncounterEditorPanel() -> Element {
                                             span { class: "list-item-expand", if is_expanded { "▼" } else { "▶" } }
                                             span { class: "font-medium text-primary", "{boss.name}" }
                                             span { class: "text-xs text-mono text-muted", "{boss.id}" }
-                                            span { class: "tag", "{timer_count} timers" }
+                                            if timer_count > 0 {
+                                                span { class: "tag", "{timer_count} timers" }
+                                            }
+                                            if phase_count > 0 {
+                                                span { class: "tag", "{phase_count} phases" }
+                                            }
+                                            if counter_count > 0 {
+                                                span { class: "tag", "{counter_count} counters" }
+                                            }
+                                            if challenge_count > 0 {
+                                                span { class: "tag", "{challenge_count} challenges" }
+                                            }
+                                            if entity_count > 0 {
+                                                span { class: "tag", "{entity_count} entities" }
+                                            }
                                         }
 
                                         if is_expanded {

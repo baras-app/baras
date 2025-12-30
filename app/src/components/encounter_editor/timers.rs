@@ -11,6 +11,32 @@ use super::conditions::CounterConditionEditor;
 use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
 
+/// Check if a trigger type supports source filtering
+/// Only event-based triggers with source actors make sense to filter
+fn trigger_supports_source(trigger: &TimerTrigger) -> bool {
+    match trigger {
+        TimerTrigger::AbilityCast { .. }
+        | TimerTrigger::EffectApplied { .. }
+        | TimerTrigger::EffectRemoved { .. } => true,
+        // For composite triggers, check if any sub-condition supports source
+        TimerTrigger::AnyOf { conditions } => conditions.iter().any(trigger_supports_source),
+        _ => false,
+    }
+}
+
+/// Check if a trigger type supports target filtering
+/// Only event-based triggers with target actors make sense to filter
+fn trigger_supports_target(trigger: &TimerTrigger) -> bool {
+    match trigger {
+        TimerTrigger::EffectApplied { .. }
+        | TimerTrigger::EffectRemoved { .. }
+        | TimerTrigger::TargetSet { .. } => true,
+        // For composite triggers, check if any sub-condition supports target
+        TimerTrigger::AnyOf { conditions } => conditions.iter().any(trigger_supports_target),
+        _ => false,
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Timers Tab
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,50 +152,30 @@ fn TimerRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-                span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
-                span {
-                    class: "color-swatch",
-                    style: "background: {color_hex};"
-                }
-                span { class: "font-medium text-primary", "{timer.name}" }
-                span { class: "text-xs text-mono text-muted", "{timer.timer_id}" }
-                span { class: "tag", "{timer.trigger.label()}" }
-                span { class: "text-sm text-secondary", "{timer.duration_secs:.1}s" }
-
-                // Enabled toggle (clickable without expanding)
-                span {
-                    class: "row-toggle",
-                    title: if timer.enabled { "Disable timer" } else { "Enable timer" },
-                    onclick: move |e| {
-                        e.stop_propagation();
-                        let mut updated = timer_for_enable.clone();
-                        updated.enabled = !updated.enabled;
-                        let mut current = timers_for_enable.clone();
-                        if let Some(idx) = current.iter().position(|t| t.timer_id == updated.timer_id) {
-                            current[idx] = updated.clone();
-                            on_change.call(current);
-                        }
-                        spawn(async move {
-                            api::update_encounter_timer(&updated).await;
-                        });
-                    },
+                // Left side - expandable content
+                div { class: "flex items-center gap-xs flex-1 min-w-0",
+                    span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
                     span {
-                        class: if timer.enabled { "text-success" } else { "text-muted" },
-                        if timer.enabled { "✓" } else { "○" }
+                        class: "color-swatch",
+                        style: "background: {color_hex};"
                     }
+                    span { class: "font-medium text-primary truncate", "{timer.name}" }
+                    span { class: "text-xs text-mono text-muted truncate", "{timer.timer_id}" }
+                    span { class: "tag", "{timer.trigger.label()}" }
+                    span { class: "text-sm text-secondary", "{timer.duration_secs:.1}s" }
                 }
 
-                // Audio toggle (clickable without expanding)
-                span {
-                    class: "row-toggle",
-                    title: if timer.audio_file.is_some() { "Disable audio" } else { "No audio configured" },
-                    onclick: move |e| {
-                        e.stop_propagation();
-                        // Only toggle if audio was configured
-                        if timer_for_audio.audio_file.is_some() {
-                            let mut updated = timer_for_audio.clone();
-                            updated.audio_file = None;
-                            let mut current = timers_for_audio.clone();
+                // Right side - fixed toggle buttons
+                div { class: "flex items-center gap-xs", style: "flex-shrink: 0;",
+                    // Enabled toggle (clickable without expanding)
+                    span {
+                        class: "row-toggle",
+                        title: if timer.enabled { "Disable timer" } else { "Enable timer" },
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            let mut updated = timer_for_enable.clone();
+                            updated.enabled = !updated.enabled;
+                            let mut current = timers_for_enable.clone();
                             if let Some(idx) = current.iter().position(|t| t.timer_id == updated.timer_id) {
                                 current[idx] = updated.clone();
                                 on_change.call(current);
@@ -177,11 +183,37 @@ fn TimerRow(
                             spawn(async move {
                                 api::update_encounter_timer(&updated).await;
                             });
+                        },
+                        span {
+                            class: if timer.enabled { "text-success" } else { "text-muted" },
+                            if timer.enabled { "✓" } else { "○" }
                         }
-                    },
+                    }
+
+                    // Audio toggle (clickable without expanding)
                     span {
-                        class: if timer.audio_file.is_some() { "text-primary" } else { "text-muted" },
-                        if timer.audio_file.is_some() { "🔊" } else { "🔇" }
+                        class: "row-toggle",
+                        title: if timer.audio_file.is_some() { "Disable audio" } else { "No audio configured" },
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            // Only toggle if audio was configured
+                            if timer_for_audio.audio_file.is_some() {
+                                let mut updated = timer_for_audio.clone();
+                                updated.audio_file = None;
+                                let mut current = timers_for_audio.clone();
+                                if let Some(idx) = current.iter().position(|t| t.timer_id == updated.timer_id) {
+                                    current[idx] = updated.clone();
+                                    on_change.call(current);
+                                }
+                                spawn(async move {
+                                    api::update_encounter_timer(&updated).await;
+                                });
+                            }
+                        },
+                        span {
+                            class: if timer.audio_file.is_some() { "text-primary" } else { "text-muted" },
+                            if timer.audio_file.is_some() { "🔊" } else { "🔇" }
+                        }
                     }
                 }
             }
@@ -418,6 +450,41 @@ fn TimerEditForm(
                         }
                     }
 
+                    // Source/Target filters - shown only for applicable trigger types
+                    if trigger_supports_source(&draft().trigger) || trigger_supports_target(&draft().trigger) {
+                        div { class: "form-row-hz",
+                            label { "" } // Empty label for alignment
+                            div { class: "flex gap-md",
+                                if trigger_supports_source(&draft().trigger) {
+                                    div { class: "flex items-center gap-xs",
+                                        span { class: "text-sm text-secondary", "Source" }
+                                        EntityFilterSelector {
+                                            value: draft().source.clone(),
+                                            on_change: move |f| {
+                                                let mut d = draft();
+                                                d.source = f;
+                                                draft.set(d);
+                                            }
+                                        }
+                                    }
+                                }
+                                if trigger_supports_target(&draft().trigger) {
+                                    div { class: "flex items-center gap-xs",
+                                        span { class: "text-sm text-secondary", "Target" }
+                                        EntityFilterSelector {
+                                            value: draft().target.clone(),
+                                            on_change: move |f| {
+                                                let mut d = draft();
+                                                d.target = f;
+                                                draft.set(d);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     div { class: "form-row-hz",
                         label { "Options" }
                         div { class: "flex gap-md flex-wrap",
@@ -486,23 +553,10 @@ fn TimerEditForm(
 
                     div { class: "form-row-hz", style: "align-items: flex-start;",
                         label { style: "padding-top: 6px;", "Cancel On" }
-                        div { class: "flex items-center gap-xs",
-                            input {
-                                r#type: "checkbox",
-                                checked: draft().cancel_trigger.is_some(),
-                                onchange: move |e| {
-                                    let mut d = draft();
-                                    d.cancel_trigger = if e.checked() {
-                                        Some(TimerTrigger::CombatStart)
-                                    } else {
-                                        None
-                                    };
-                                    draft.set(d);
-                                }
-                            }
-                            if draft().cancel_trigger.is_some() {
+                        if let Some(cancel) = draft().cancel_trigger.clone() {
+                            div { class: "flex-col gap-xs",
                                 ComposableTriggerEditor {
-                                    trigger: draft().cancel_trigger.clone().unwrap(),
+                                    trigger: cancel,
                                     encounter_data: encounter_data.clone(),
                                     on_change: move |t| {
                                         let mut d = draft();
@@ -510,8 +564,29 @@ fn TimerEditForm(
                                         draft.set(d);
                                     }
                                 }
-                            } else {
-                                span { class: "text-muted text-sm", "(disabled)" }
+                                button {
+                                    class: "btn btn-sm",
+                                    style: "width: fit-content;",
+                                    onclick: move |_| {
+                                        let mut d = draft();
+                                        d.cancel_trigger = None;
+                                        draft.set(d);
+                                    },
+                                    "Remove Cancel Trigger"
+                                }
+                            }
+                        } else {
+                            div { class: "flex-col gap-xs",
+                                span { class: "text-muted text-sm", "(default: combat end)" }
+                                button {
+                                    class: "btn btn-sm",
+                                    onclick: move |_| {
+                                        let mut d = draft();
+                                        d.cancel_trigger = Some(TimerTrigger::CombatStart);
+                                        draft.set(d);
+                                    },
+                                    "+ Add Cancel Trigger"
+                                }
                             }
                         }
                     }
@@ -523,30 +598,6 @@ fn TimerEditForm(
                     span { class: "text-sm font-bold text-secondary", "Conditions" }
 
                     div { class: "form-row-hz mt-xs",
-                        label { "Source" }
-                        EntityFilterSelector {
-                            value: draft().source.clone(),
-                            on_change: move |f| {
-                                let mut d = draft();
-                                d.source = f;
-                                draft.set(d);
-                            }
-                        }
-                    }
-
-                    div { class: "form-row-hz",
-                        label { "Target" }
-                        EntityFilterSelector {
-                            value: draft().target.clone(),
-                            on_change: move |f| {
-                                let mut d = draft();
-                                d.target = f;
-                                draft.set(d);
-                            }
-                        }
-                    }
-
-                    div { class: "form-row-hz",
                         label { "Phases" }
                         PhaseSelector {
                             selected: draft().phases.clone(),

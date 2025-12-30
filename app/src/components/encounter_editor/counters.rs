@@ -258,8 +258,8 @@ fn CounterEditForm(
             }
 
             // ─── Increment Trigger ───────────────────────────────────────────
-            div { class: "form-section",
-                div { class: "font-bold text-sm mb-xs", "Increment On" }
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "Increment On" }
                 CounterTriggerEditor {
                     trigger: draft().increment_on,
                     encounter_data: encounter_data.clone(),
@@ -272,8 +272,8 @@ fn CounterEditForm(
             }
 
             // ─── Reset Trigger ───────────────────────────────────────────────
-            div { class: "form-section",
-                div { class: "font-bold text-sm mb-xs", "Reset On" }
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "Reset On" }
                 CounterTriggerEditor {
                     trigger: draft().reset_on,
                     encounter_data: encounter_data.clone(),
@@ -286,72 +286,67 @@ fn CounterEditForm(
             }
 
             // ─── Options ─────────────────────────────────────────────────────
-            div { class: "form-section",
-                div { class: "font-bold text-sm mb-xs", "Options" }
-
-                div { class: "form-row-hz",
-                    label { "Initial Value" }
-                    input {
-                        r#type: "number",
-                        min: "0",
-                        class: "input-inline",
-                        style: "width: 70px;",
-                        value: "{draft().initial_value}",
-                        oninput: move |e| {
-                            if let Ok(val) = e.value().parse::<u32>() {
-                                let mut d = draft();
-                                d.initial_value = val;
-                                draft.set(d);
-                            }
+            div { class: "form-row-hz",
+                label { "Initial Value" }
+                input {
+                    r#type: "number",
+                    min: "0",
+                    class: "input-inline",
+                    style: "width: 70px;",
+                    value: "{draft().initial_value}",
+                    oninput: move |e| {
+                        if let Ok(val) = e.value().parse::<u32>() {
+                            let mut d = draft();
+                            d.initial_value = val;
+                            draft.set(d);
                         }
                     }
                 }
+            }
 
-                div { class: "form-row-hz",
-                    label { "Set Value" }
-                    div { class: "flex items-center gap-xs",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().set_value.is_some(),
-                            onchange: move |_| {
-                                let mut d = draft();
-                                d.set_value = if d.set_value.is_some() { None } else { Some(1) };
-                                draft.set(d);
-                            }
+            div { class: "form-row-hz",
+                label { "Set Value" }
+                div { class: "flex items-center gap-xs",
+                    input {
+                        r#type: "checkbox",
+                        checked: draft().set_value.is_some(),
+                        onchange: move |_| {
+                            let mut d = draft();
+                            d.set_value = if d.set_value.is_some() { None } else { Some(1) };
+                            draft.set(d);
                         }
-                        if draft().set_value.is_some() {
-                            input {
-                                r#type: "number",
-                                min: "0",
-                                class: "input-inline",
-                                style: "width: 70px;",
-                                value: "{draft().set_value.unwrap_or(1)}",
-                                oninput: move |e| {
-                                    if let Ok(val) = e.value().parse::<u32>() {
-                                        let mut d = draft();
-                                        d.set_value = Some(val);
-                                        draft.set(d);
-                                    }
+                    }
+                    if draft().set_value.is_some() {
+                        input {
+                            r#type: "number",
+                            min: "0",
+                            class: "input-inline",
+                            style: "width: 70px;",
+                            value: "{draft().set_value.unwrap_or(1)}",
+                            oninput: move |e| {
+                                if let Ok(val) = e.value().parse::<u32>() {
+                                    let mut d = draft();
+                                    d.set_value = Some(val);
+                                    draft.set(d);
                                 }
                             }
                         }
                     }
-                    span { class: "text-xs text-muted", "(set to specific value instead of increment)" }
                 }
+                span { class: "text-xs text-muted", "(set to specific value instead of increment)" }
+            }
 
-                div { class: "flex items-center gap-sm",
-                    label {
-                        class: "flex items-center gap-xs cursor-pointer",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().decrement,
-                            onchange: move |_| {
-                                let mut d = draft();
-                                d.decrement = !d.decrement;
-                                draft.set(d);
-                            }
+            div { class: "form-row-hz",
+                label { "Decrement" }
+                div { class: "flex items-center gap-xs",
+                    input {
+                        r#type: "checkbox",
+                        checked: draft().decrement,
+                        onchange: move |_| {
+                            let mut d = draft();
+                            d.decrement = !d.decrement;
+                            draft.set(d);
                         }
-                        "Decrement"
                     }
                     span { class: "text-xs text-muted", "(count down instead of up)" }
                 }
@@ -432,8 +427,8 @@ fn NewCounterForm(
                 span { class: "text-xs text-muted ml-xs", "(auto-generated)" }
             }
 
-            div { class: "form-section",
-                div { class: "font-bold text-sm mb-xs", "Increment On" }
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "Increment On" }
                 CounterTriggerEditor {
                     trigger: increment_on(),
                     encounter_data: encounter_data.clone(),
@@ -441,8 +436,8 @@ fn NewCounterForm(
                 }
             }
 
-            div { class: "form-section",
-                div { class: "font-bold text-sm mb-xs", "Reset On" }
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "Reset On" }
                 CounterTriggerEditor {
                     trigger: reset_on(),
                     encounter_data: encounter_data.clone(),

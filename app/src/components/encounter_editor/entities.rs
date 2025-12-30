@@ -36,7 +36,7 @@ pub fn EntitiesTab(
 
             // Help text
             div { class: "text-xs text-muted mb-sm",
-                "Define NPCs for this encounter. Mark bosses, adds, encounter triggers, and kill targets."
+                "Add NPCs to the entity roster by game ids. Entity roster names can be used as selectors for source/target filter conditions."
             }
 
             // New entity form
@@ -206,9 +206,6 @@ fn EntityEditForm(
 
     let has_changes = use_memo(move || draft() != original);
 
-    // Format IDs as comma-separated string for display
-    let ids_display = draft().ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
-
     let handle_save = {
         let orig_name = original_name.clone();
         move |_| {
@@ -239,25 +236,16 @@ fn EntityEditForm(
             }
 
             // ─── NPC IDs ───────────────────────────────────────────────────────
-            div { class: "form-row-hz",
-                label { "NPC IDs" }
-                input {
-                    class: "input-inline text-mono",
-                    style: "width: 300px;",
-                    placeholder: "123456789, 987654321, ...",
-                    value: "{ids_display}",
-                    oninput: move |e| {
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "NPC IDs" }
+                NpcIdChipEditor {
+                    ids: draft().ids.clone(),
+                    on_change: move |new_ids| {
                         let mut d = draft();
-                        d.ids = e.value()
-                            .split(',')
-                            .filter_map(|s| s.trim().parse::<i64>().ok())
-                            .collect();
+                        d.ids = new_ids;
                         draft.set(d);
                     }
                 }
-            }
-            div { class: "text-xs text-muted mb-sm pl-lg",
-                "Comma-separated NPC IDs that match this entity across difficulties"
             }
 
             // ─── Flags ─────────────────────────────────────────────────────────
@@ -276,7 +264,6 @@ fn EntityEditForm(
                             }
                         }
                         span { "Is Boss" }
-                        span { class: "text-xs text-muted", "(primary encounter target)" }
                     }
 
                     label { class: "flex items-center gap-xs cursor-pointer",
@@ -290,7 +277,7 @@ fn EntityEditForm(
                             }
                         }
                         span { "Triggers Encounter" }
-                        span { class: "text-xs text-muted", "(damage starts the encounter)" }
+                        span { class: "text-xs text-muted", "(appearance of this target loads timers)" }
                     }
 
                     label { class: "flex items-center gap-xs cursor-pointer",
@@ -304,7 +291,7 @@ fn EntityEditForm(
                             }
                         }
                         span { "Is Kill Target" }
-                        span { class: "text-xs text-muted", "(death ends the encounter)" }
+                        span { class: "text-xs text-muted", "(death of all kill targets ends encounter)" }
                     }
                 }
             }
@@ -343,8 +330,6 @@ fn NewEntityForm(
     let mut triggers_encounter = use_signal(|| false);
     let mut is_kill_target = use_signal(|| false);
 
-    let ids_display = ids().iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
-
     let handle_create = move |_| {
         let new_entity = EntityListItem {
             name: name(),
@@ -372,20 +357,11 @@ fn NewEntityForm(
                 }
             }
 
-            div { class: "form-row-hz",
-                label { "NPC IDs" }
-                input {
-                    class: "input-inline text-mono",
-                    style: "width: 300px;",
-                    placeholder: "123456789, 987654321, ...",
-                    value: "{ids_display}",
-                    oninput: move |e| {
-                        let parsed: Vec<i64> = e.value()
-                            .split(',')
-                            .filter_map(|s| s.trim().parse::<i64>().ok())
-                            .collect();
-                        ids.set(parsed);
-                    }
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "NPC IDs" }
+                NpcIdChipEditor {
+                    ids: ids(),
+                    on_change: move |new_ids| ids.set(new_ids)
                 }
             }
 
@@ -431,6 +407,88 @@ fn NewEntityForm(
                     class: "btn btn-sm",
                     onclick: move |_| on_cancel.call(()),
                     "Cancel"
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NPC ID Chip Editor
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Chip editor for NPC IDs with +Add button
+#[component]
+fn NpcIdChipEditor(
+    ids: Vec<i64>,
+    on_change: EventHandler<Vec<i64>>,
+) -> Element {
+    let mut new_input = use_signal(String::new);
+    let ids_for_keydown = ids.clone();
+    let ids_for_click = ids.clone();
+
+    rsx! {
+        div { class: "flex-col gap-xs",
+            // ID chips
+            if !ids.is_empty() {
+                div { class: "flex flex-wrap gap-xs mb-xs",
+                    for (idx, id) in ids.iter().enumerate() {
+                        {
+                            let ids_clone = ids.clone();
+                            rsx! {
+                                span { class: "chip text-mono",
+                                    "{id}"
+                                    button {
+                                        class: "chip-remove",
+                                        onclick: move |_| {
+                                            let mut new_ids = ids_clone.clone();
+                                            new_ids.remove(idx);
+                                            on_change.call(new_ids);
+                                        },
+                                        "×"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Add new ID
+            div { class: "flex gap-xs",
+                input {
+                    r#type: "text",
+                    class: "input-inline text-mono",
+                    style: "width: 150px;",
+                    placeholder: "NPC ID (Enter)",
+                    value: "{new_input}",
+                    oninput: move |e| new_input.set(e.value()),
+                    onkeydown: move |e| {
+                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
+                            if let Ok(id) = new_input().trim().parse::<i64>() {
+                                let mut new_ids = ids_for_keydown.clone();
+                                if !new_ids.contains(&id) {
+                                    new_ids.push(id);
+                                    on_change.call(new_ids);
+                                }
+                                new_input.set(String::new());
+                            }
+                        }
+                    }
+                }
+                button {
+                    class: "btn btn-sm",
+                    onclick: move |_| {
+                        if let Ok(id) = new_input().trim().parse::<i64>() {
+                            let mut new_ids = ids_for_click.clone();
+                            if !new_ids.contains(&id) {
+                                new_ids.push(id);
+                                on_change.call(new_ids);
+                            }
+                            new_input.set(String::new());
+                        }
+                    },
+                    "Add"
                 }
             }
         }

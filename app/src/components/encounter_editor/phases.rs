@@ -232,7 +232,7 @@ fn PhaseEditForm(
 
     rsx! {
         div { class: "phase-edit-form",
-            // ─── Main Fields ─────────────────────────────────────────────────
+            // ─── Identity ────────────────────────────────────────────────────
             div { class: "form-row-hz",
                 label { "Phase ID" }
                 code { class: "tag-muted text-mono text-xs", "{phase_id_display}" }
@@ -268,8 +268,8 @@ fn PhaseEditForm(
             }
 
             // ─── Start Trigger ───────────────────────────────────────────────
-            div { class: "form-section",
-                div { class: "font-bold text-sm mb-xs", "Start Trigger" }
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "Trigger" }
                 PhaseTriggerEditor {
                     trigger: draft().start_trigger,
                     encounter_data: encounter_data.clone(),
@@ -282,83 +282,81 @@ fn PhaseEditForm(
             }
 
             // ─── End Trigger (Optional) ──────────────────────────────────────
-            div { class: "form-section",
-                div { class: "flex items-center gap-xs mb-xs",
-                    span { class: "font-bold text-sm", "End Trigger" }
-                    span { class: "text-xs text-muted", "(optional)" }
-                }
-
-                if draft().end_trigger.is_some() {
-                    PhaseTriggerEditor {
-                        trigger: draft().end_trigger.clone().unwrap(),
-                        encounter_data: encounter_data.clone(),
-                        on_change: move |t| {
-                            let mut d = draft();
-                            d.end_trigger = Some(t);
-                            draft.set(d);
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "End On" }
+                if let Some(end) = draft().end_trigger.clone() {
+                    div { class: "flex-col gap-xs",
+                        PhaseTriggerEditor {
+                            trigger: end,
+                            encounter_data: encounter_data.clone(),
+                            on_change: move |t| {
+                                let mut d = draft();
+                                d.end_trigger = Some(t);
+                                draft.set(d);
+                            }
+                        }
+                        button {
+                            class: "btn btn-sm",
+                            style: "width: fit-content;",
+                            onclick: move |_| {
+                                let mut d = draft();
+                                d.end_trigger = None;
+                                draft.set(d);
+                            },
+                            "Remove End Trigger"
                         }
                     }
-                    button {
-                        class: "btn btn-sm btn-danger mt-xs",
-                        onclick: move |_| {
-                            let mut d = draft();
-                            d.end_trigger = None;
-                            draft.set(d);
-                        },
-                        "Remove End Trigger"
-                    }
                 } else {
-                    button {
-                        class: "btn-dashed text-sm",
-                        onclick: move |_| {
-                            let mut d = draft();
-                            d.end_trigger = Some(PhaseTrigger::CombatStart);
-                            draft.set(d);
-                        },
-                        "+ Add End Trigger"
+                    div { class: "flex-col gap-xs",
+                        span { class: "text-muted text-sm", "(ends when another phase starts)" }
+                        button {
+                            class: "btn btn-sm",
+                            onclick: move |_| {
+                                let mut d = draft();
+                                d.end_trigger = Some(PhaseTrigger::CombatStart);
+                                draft.set(d);
+                            },
+                            "+ Add End Trigger"
+                        }
                     }
                 }
             }
 
             // ─── Guards ──────────────────────────────────────────────────────
-            div { class: "form-section",
-                div { class: "font-bold text-sm mb-xs", "Guards" }
-
-                div { class: "form-row-hz",
-                    label { "Preceded By" }
-                    select {
-                        class: "select",
-                        style: "width: 180px;",
-                        value: "{draft().preceded_by.clone().unwrap_or_default()}",
-                        onchange: move |e| {
-                            let mut d = draft();
-                            d.preceded_by = if e.value().is_empty() { None } else { Some(e.value()) };
-                            draft.set(d);
-                        },
-                        option { value: "", "(none)" }
-                        for phase_id in &phase_ids {
-                            option { value: "{phase_id}", "{phase_id}" }
-                        }
+            div { class: "form-row-hz",
+                label { "Preceded By" }
+                select {
+                    class: "select",
+                    style: "width: 180px;",
+                    value: "{draft().preceded_by.clone().unwrap_or_default()}",
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.preceded_by = if e.value().is_empty() { None } else { Some(e.value()) };
+                        draft.set(d);
+                    },
+                    option { value: "", "(none)" }
+                    for phase_id in &phase_ids {
+                        option { value: "{phase_id}", "{phase_id}" }
                     }
                 }
+            }
 
-                div { class: "form-row-hz",
-                    label { "Counter" }
-                    CounterConditionEditor {
-                        condition: draft().counter_condition.clone(),
-                        counters: encounter_data.counter_ids(),
-                        on_change: move |cond| {
-                            let mut d = draft();
-                            d.counter_condition = cond;
-                            draft.set(d);
-                        }
+            div { class: "form-row-hz",
+                label { "Counter" }
+                CounterConditionEditor {
+                    condition: draft().counter_condition.clone(),
+                    counters: encounter_data.counter_ids(),
+                    on_change: move |cond| {
+                        let mut d = draft();
+                        d.counter_condition = cond;
+                        draft.set(d);
                     }
                 }
             }
 
             // ─── Resets Counters ─────────────────────────────────────────────
-            div { class: "form-section",
-                div { class: "font-bold text-sm mb-xs", "Resets Counters" }
+            div { class: "form-row-hz", style: "align-items: flex-start;",
+                label { style: "padding-top: 6px;", "Resets" }
                 CounterListEditor {
                     counters: draft().resets_counters.clone(),
                     available_counters: encounter_data.counter_ids(),
