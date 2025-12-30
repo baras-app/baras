@@ -1183,7 +1183,11 @@ async fn build_timer_data_with_audio(
     let mut timer_mgr = timer_mgr.lock().ok()?;
 
     // Always take alerts (even after combat ends, timer expirations need to play)
-    let alerts = timer_mgr.take_fired_alerts();
+    let mut alerts = timer_mgr.take_fired_alerts();
+
+    // Check for audio offset alerts (early warning sounds before timer expires)
+    let offset_alerts = timer_mgr.check_audio_offsets();
+    alerts.extend(offset_alerts);
 
     // If not in combat, return only alerts (no countdown checks)
     let in_combat = shared.in_combat.load(Ordering::SeqCst);
@@ -1191,19 +1195,15 @@ async fn build_timer_data_with_audio(
         return Some((TimerData::default(), Vec::new(), alerts));
     }
 
-    // Get current time for remaining calculations
-    use chrono::Local;
-    let now = Local::now().naive_local();
+    // Check for countdowns to announce (uses realtime internally)
+    let countdowns = timer_mgr.check_all_countdowns();
 
-    // Check for countdowns to announce (mutates timer state)
-    let countdowns = timer_mgr.check_all_countdowns(now);
-
-    // Convert active timers to TimerEntry format
+    // Convert active timers to TimerEntry format (using realtime for display consistency)
     let entries: Vec<TimerEntry> = timer_mgr
         .active_timers()
         .iter()
         .filter_map(|timer| {
-            let remaining = timer.remaining_secs(now);
+            let remaining = timer.remaining_secs_realtime();
             if remaining <= 0.0 {
                 return None;
             }

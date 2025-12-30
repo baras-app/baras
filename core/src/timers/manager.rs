@@ -298,12 +298,38 @@ impl TimerManager {
     ///
     /// Returns a list of (timer_name, seconds, voice_pack) for each countdown that should be announced.
     /// This mutates the timers to mark countdowns as announced so they won't repeat.
-    pub fn check_all_countdowns(&mut self, current_time: NaiveDateTime) -> Vec<(String, u8, String)> {
+    /// Uses realtime (system Instant) for accurate audio synchronization.
+    pub fn check_all_countdowns(&mut self) -> Vec<(String, u8, String)> {
         self.active_timers
             .values_mut()
             .filter_map(|timer| {
-                timer.check_countdown(current_time)
+                timer.check_countdown()
                     .map(|secs| (timer.name.clone(), secs, timer.countdown_voice.clone()))
+            })
+            .collect()
+    }
+
+    /// Check all active timers for audio offset triggers
+    ///
+    /// Returns FiredAlerts for timers where remaining time crossed below audio_offset.
+    /// This is for "early warning" sounds that play before the timer expires.
+    pub fn check_audio_offsets(&mut self) -> Vec<FiredAlert> {
+        let now = Local::now().naive_local();
+        self.active_timers
+            .values_mut()
+            .filter_map(|timer| {
+                if timer.check_audio_offset() {
+                    Some(FiredAlert {
+                        id: timer.definition_id.clone(),
+                        name: timer.name.clone(),
+                        text: timer.name.clone(),
+                        color: Some(timer.color),
+                        timestamp: now,
+                        audio_file: timer.audio_file.clone(),
+                    })
+                } else {
+                    None
+                }
             })
             .collect()
     }
@@ -378,6 +404,7 @@ impl TimerManager {
             def.countdown_start,
             def.countdown_voice.clone(),
             def.audio_file.clone(),
+            def.audio_offset,
         );
 
         self.active_timers.insert(key.clone(), timer);
@@ -462,7 +489,8 @@ impl TimerManager {
                 eprintln!("[TIMER] Repeated '{}' ({}/{})", timer.name, timer.repeat_count, timer.max_repeats);
             } else if let Some(timer) = self.active_timers.remove(&key) {
                 // Timer exhausted repeats - fire expiration alert if audio is configured
-                if timer.audio_file.is_some() {
+                // Only fire on expiration if audio_offset == 0 (otherwise it already played at offset)
+                if timer.audio_file.is_some() && timer.audio_offset == 0 {
                     eprintln!("[TIMER] Expired with audio: {} -> {:?}", timer.name, timer.audio_file);
                     self.fired_alerts.push(FiredAlert {
                         id: timer.definition_id.clone(),

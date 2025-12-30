@@ -79,6 +79,10 @@ pub struct TimerDefinition {
     /// Audio file to play on alert
     pub audio_file: Option<String>,
 
+    /// Seconds before expiration to play audio (0 = on expiration)
+    #[serde(default)]
+    pub audio_offset: u8,
+
     // ─── Countdown Audio ────────────────────────────────────────────────────
 
     /// Start countdown audio at N seconds remaining (0 = disabled, default 3)

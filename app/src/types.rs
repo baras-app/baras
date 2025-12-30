@@ -211,6 +211,8 @@ pub struct TimerListItem {
     // Audio
     #[serde(default)]
     pub audio_file: Option<String>,
+    #[serde(default)]
+    pub audio_offset: u8,
 
     // Countdown audio
     #[serde(default = "default_countdown_start")]

@@ -278,6 +278,10 @@ pub struct BossTimerDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub audio_file: Option<String>,
 
+    /// Seconds before expiration to play audio (0 = on expiration)
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_u8")]
+    pub audio_offset: u8,
+
     /// Start countdown audio at N seconds remaining (0 = disabled, default 3)
     #[serde(default = "crate::serde_defaults::default_countdown_start")]
     pub countdown_start: u8,
@@ -309,6 +313,7 @@ impl BossTimerDefinition {
             alert_at_secs: self.alert_at_secs,
             alert_text: self.alert_text.clone(),
             audio_file: self.audio_file.clone(),
+            audio_offset: self.audio_offset,
             countdown_start: self.countdown_start,
             countdown_voice: self.countdown_voice.clone(),
             triggers_timer: self.chains_to.clone(),

@@ -74,8 +74,14 @@ pub struct ActiveTimer {
     /// Voice pack for countdown (Amy, Jim, Yolo, Nerevar)
     pub countdown_voice: String,
 
-    /// Audio file to play when timer expires
+    /// Audio file to play when timer expires (or at offset)
     pub audio_file: Option<String>,
+
+    /// Seconds before expiration to play audio (0 = on expiration)
+    pub audio_offset: u8,
+
+    /// Whether the offset audio has been fired
+    audio_offset_fired: bool,
 }
 
 impl ActiveTimer {
@@ -93,6 +99,7 @@ impl ActiveTimer {
         countdown_start: u8,
         countdown_voice: Option<String>,
         audio_file: Option<String>,
+        audio_offset: u8,
     ) -> Self {
         let now = Instant::now();
         let expires_at = event_timestamp
@@ -116,6 +123,8 @@ impl ActiveTimer {
             countdown_start,
             countdown_voice: countdown_voice.unwrap_or_else(|| "Amy".to_string()),
             audio_file,
+            audio_offset,
+            audio_offset_fired: false,
         }
     }
 
@@ -126,6 +135,7 @@ impl ActiveTimer {
         self.expires_at = event_timestamp
             + chrono::Duration::milliseconds(self.duration.as_millis() as i64);
         self.alert_fired = false;
+        self.audio_offset_fired = false;
         self.countdown_announced = [false; 10];
     }
 
@@ -159,10 +169,20 @@ impl ActiveTimer {
         }
     }
 
-    /// Get remaining time in seconds
+    /// Get remaining time in seconds (game time - for expiration logic)
     pub fn remaining_secs(&self, current_game_time: NaiveDateTime) -> f32 {
         let remaining = self.expires_at.signed_duration_since(current_game_time);
         (remaining.num_milliseconds().max(0) as f32) / 1000.0
+    }
+
+    /// Get remaining time in seconds (realtime - for display and audio)
+    ///
+    /// Uses system time (`Instant`) instead of game time to avoid
+    /// drift between combat log timestamps and current time.
+    pub fn remaining_secs_realtime(&self) -> f32 {
+        let elapsed = self.started_instant.elapsed();
+        let remaining = self.duration.saturating_sub(elapsed);
+        remaining.as_secs_f32()
     }
 
     /// Check if timer is within alert threshold and alert hasn't fired yet
@@ -187,36 +207,74 @@ impl ActiveTimer {
 
     /// Check for countdown seconds to announce (respects countdown_start setting)
     ///
-    /// Returns Some(seconds) if we've crossed into a new second boundary
-    /// that hasn't been announced yet. Returns None otherwise.
+    /// Returns Some(seconds) if we've crossed into the announcement window
+    /// for that second and it hasn't been announced yet.
     ///
-    /// This uses floor to determine the current second window:
-    /// - remaining 5.2s → announces 5
-    /// - remaining 4.8s → announces 4
-    pub fn check_countdown(&mut self, current_game_time: NaiveDateTime) -> Option<u8> {
+    /// Uses realtime (system Instant) for accurate audio sync.
+    /// Announces N when remaining is in [N, N+0.3) to sync with visual display:
+    /// - remaining 3.8s → no announcement (too early)
+    /// - remaining 3.2s → announces 3 (in window [3.0, 3.3))
+    /// - remaining 2.2s → announces 2
+    pub fn check_countdown(&mut self) -> Option<u8> {
         // 0 means countdown disabled for this timer
         if self.countdown_start == 0 {
             return None;
         }
 
-        let remaining = self.remaining_secs(current_game_time);
+        let remaining = self.remaining_secs_realtime();
 
-        // Floor to get whole seconds remaining
-        let remaining_floor = remaining.floor() as i32;
+        // Check each second from countdown_start down to 1
+        for seconds in (1..=self.countdown_start).rev() {
+            let lower = seconds as f32;
+            let upper = lower + 0.3;
 
-        // Only announce within countdown_start range (e.g., 3 means announce 3, 2, 1)
-        if remaining_floor >= 1 && remaining_floor <= self.countdown_start as i32 {
-            let seconds = remaining_floor as u8;
-            // Index: 1 → 0, 2 → 1, ..., 10 → 9
-            let index = (seconds - 1) as usize;
-
-            if !self.countdown_announced[index] {
-                self.countdown_announced[index] = true;
-                return Some(seconds);
+            // Announce when remaining is in [N, N+0.3)
+            if remaining >= lower && remaining < upper {
+                let index = (seconds - 1) as usize;
+                if !self.countdown_announced[index] {
+                    self.countdown_announced[index] = true;
+                    return Some(seconds);
+                }
             }
         }
 
         None
+    }
+
+    /// Check if the audio should fire at the configured offset
+    ///
+    /// Returns true (and marks as fired) when:
+    /// - audio_file is Some
+    /// - audio_offset > 0 (offset of 0 means fire on expiration, handled separately)
+    /// - remaining time just crossed below the offset threshold
+    /// - hasn't already fired
+    ///
+    /// Uses realtime for accurate audio sync.
+    pub fn check_audio_offset(&mut self) -> bool {
+        // No audio file configured
+        if self.audio_file.is_none() {
+            return false;
+        }
+
+        // offset=0 means fire on expiration, not here
+        if self.audio_offset == 0 {
+            return false;
+        }
+
+        // Already fired
+        if self.audio_offset_fired {
+            return false;
+        }
+
+        let remaining = self.remaining_secs_realtime();
+
+        // Fire when we cross into the offset window
+        if remaining <= self.audio_offset as f32 && remaining > 0.0 {
+            self.audio_offset_fired = true;
+            return true;
+        }
+
+        false
     }
 }
 

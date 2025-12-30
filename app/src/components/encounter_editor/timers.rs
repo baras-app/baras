@@ -707,6 +707,36 @@ fn TimerEditForm(
                         }
                     }
 
+                    // Audio offset - when to play the sound before timer expires
+                    div { class: "form-row-hz",
+                        label { "Audio Offset" }
+                        div { class: "flex items-center gap-md",
+                            select {
+                                class: "select-inline",
+                                style: "width: 120px;",
+                                value: "{draft().audio_offset}",
+                                onchange: move |e| {
+                                    if let Ok(val) = e.value().parse::<u8>() {
+                                        let mut d = draft();
+                                        d.audio_offset = val;
+                                        draft.set(d);
+                                    }
+                                },
+                                option { value: "0", "On expiration" }
+                                option { value: "1", "1s before" }
+                                option { value: "2", "2s before" }
+                                option { value: "3", "3s before" }
+                                option { value: "4", "4s before" }
+                                option { value: "5", "5s before" }
+                                option { value: "6", "6s before" }
+                                option { value: "7", "7s before" }
+                                option { value: "8", "8s before" }
+                                option { value: "9", "9s before" }
+                                option { value: "10", "10s before" }
+                            }
+                        }
+                    }
+
                     div { class: "form-row-hz",
                         label { "Countdown" }
                         div { class: "flex items-center gap-md",
@@ -944,6 +974,7 @@ fn NewTimerForm(
                             alert_text: None,
                             show_on_raid_frames: false,
                             audio_file: None,
+                            audio_offset: 0, // 0 = on expiration
                             countdown_start: 3, // Default to 3 seconds
                             countdown_voice: None, // Default to Amy
                         });
