@@ -202,7 +202,7 @@ impl LogParser {
             });
         }
 
-        let action_name = segment[..end_brace?].trim().to_string();
+        let action_name = segment[..brace?].trim().to_string();
         let action_id = parse_i64!(segment[brace? + 1..end_brace?]);
 
         Some(Action {
