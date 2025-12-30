@@ -263,27 +263,18 @@ impl CombatService {
 
         // Build index from bundled directory
         if let Some(ref path) = bundled_dir && path.exists() {
-            match build_area_index(path) {
-                Ok(area_index) => {
-                    eprintln!("[AREAS] Indexed {} areas from bundled definitions", area_index.len());
-                    index.extend(area_index);
-                }
-                Err(e) => eprintln!("[AREAS] Failed to index bundled: {}", e),
+            if let Ok(area_index) = build_area_index(path) {
+                index.extend(area_index);
             }
         }
 
         // Build index from custom directory (can override bundled)
         if let Some(ref path) = custom_dir && path.exists() {
-            match build_area_index(path) {
-                Ok(area_index) => {
-                    eprintln!("[AREAS] Indexed {} areas from custom definitions", area_index.len());
-                    index.extend(area_index);
-                }
-                Err(e) => eprintln!("[AREAS] Failed to index custom: {}", e),
+            if let Ok(area_index) = build_area_index(path) {
+                index.extend(area_index);
             }
         }
 
-        eprintln!("[AREAS] Total: {} areas indexed for lazy loading", index.len());
         index
     }
 
@@ -292,19 +283,7 @@ impl CombatService {
         use baras_core::boss::load_bosses_from_file;
 
         let entry = self.area_index.get(&area_id)?;
-
-        match load_bosses_from_file(&entry.file_path) {
-            Ok(bosses) => {
-                let timer_count: usize = bosses.iter().map(|b| b.timers.len()).sum();
-                eprintln!("[AREAS] Loaded {} bosses, {} timers for '{}'",
-                    bosses.len(), timer_count, entry.name);
-                Some(bosses)
-            }
-            Err(e) => {
-                eprintln!("[AREAS] Failed to load definitions for '{}': {}", entry.name, e);
-                None
-            }
-        }
+        load_bosses_from_file(&entry.file_path).ok()
     }
 
     /// Load effect definitions from bundled and user config directories
@@ -346,14 +325,8 @@ impl CombatService {
 
     /// Load effect definitions from a directory of TOML files
     /// custom.toml is always loaded last so user overrides take precedence
-    fn load_definitions_from_dir(set: &mut DefinitionSet, dir: &std::path::Path, source: &str, overwrite: bool) {
-        let entries = match std::fs::read_dir(dir) {
-            Ok(e) => e,
-            Err(e) => {
-                eprintln!("[DEFINITIONS] Failed to read {}: {}", source, e);
-                return;
-            }
-        };
+    fn load_definitions_from_dir(set: &mut DefinitionSet, dir: &std::path::Path, _source: &str, overwrite: bool) {
+        let Ok(entries) = std::fs::read_dir(dir) else { return };
 
         // Collect and sort files, putting custom.toml last
         let mut files: Vec<_> = entries
@@ -366,27 +339,16 @@ impl CombatService {
             let a_is_custom = a.file_name().is_some_and(|n| n == "custom.toml");
             let b_is_custom = b.file_name().is_some_and(|n| n == "custom.toml");
             match (a_is_custom, b_is_custom) {
-                (true, false) => std::cmp::Ordering::Greater,  // custom.toml goes last
+                (true, false) => std::cmp::Ordering::Greater,
                 (false, true) => std::cmp::Ordering::Less,
-                _ => a.cmp(b),  // alphabetical otherwise
+                _ => a.cmp(b),
             }
         });
 
         for path in files {
-            match std::fs::read_to_string(&path) {
-                Ok(contents) => {
-                    // Parse TOML and extract effect definitions
-                    if let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
-                        let duplicates = set.add_definitions(config.effects, overwrite);
-                        if !duplicates.is_empty() && !overwrite {
-                            eprintln!("[EFFECT WARNING] Duplicate effect IDs SKIPPED in {:?}: {:?}. \
-                                Check your {} definitions for conflicts.",
-                                path.file_name(), duplicates, source);
-                        }
-                    }
-                }
-                Err(e) => {
-                    eprintln!("[{}] Failed to read {:?}: {}", source, path.file_name(), e);
+            if let Ok(contents) = std::fs::read_to_string(&path) {
+                if let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
+                    set.add_definitions(config.effects, overwrite);
                 }
             }
         }
@@ -458,38 +420,25 @@ impl CombatService {
 
     /// Reload effect definitions from disk and update the active session
     async fn reload_effect_definitions(&mut self) {
-        eprintln!("[SERVICE] Reloading effect definitions...");
-
-        // Reload from disk
         self.definitions = Self::load_effect_definitions(&self.app_handle);
-        eprintln!("[SERVICE] Loaded {} effect definitions", self.definitions.effects.len());
 
-        // Update the active session if one exists
         if let Some(session) = self.shared.session.read().await.as_ref() {
             let session = session.read().await;
             session.set_definitions(self.definitions.clone());
-            eprintln!("[SERVICE] Updated active session with new effect definitions");
         }
     }
 
     /// Reload timer and boss definitions from disk and update the active session
     async fn reload_timer_definitions(&mut self) {
-        eprintln!("[SERVICE] Reloading timer definitions...");
-
-        // Rebuild area index from disk
         self.area_index = Arc::new(Self::build_area_index(&self.app_handle));
-        eprintln!("[SERVICE] Rebuilt area index with {} areas", self.area_index.len());
 
-        // Reload definitions for the currently loaded area (if any)
         let current_area = self.shared.current_area_id.load(Ordering::SeqCst);
         if current_area != 0
-            && let Some(bosses) = self.load_area_definitions(current_area) {
-                // Update the active session if one exists
-                if let Some(session) = self.shared.session.read().await.as_ref() {
-                    let mut session = session.write().await;
-                    session.load_boss_definitions(bosses);
-                    eprintln!("[SERVICE] Updated active session with new definitions");
-            }
+            && let Some(bosses) = self.load_area_definitions(current_area)
+            && let Some(session) = self.shared.session.read().await.as_ref()
+        {
+            let mut session = session.write().await;
+            session.load_boss_definitions(bosses);
         }
     }
 
@@ -591,18 +540,12 @@ impl CombatService {
                     self.start_tailing(newest_path.clone()).await;
                 }
             }
-            Err(e) => {
-                eprintln!("[WATCHER] Failed to build index: {}", e);
-            }
+            Err(_) => {}
         }
 
-        let mut watcher = match DirectoryWatcher::new(&dir) {
-            Ok(w) => w,
-            Err(e) => {
-                eprintln!("[WATCHER] Failed to start: {}", e);
-                self.shared.watching.store(false, Ordering::SeqCst);
-                return;
-            }
+        let Ok(mut watcher) = DirectoryWatcher::new(&dir) else {
+            self.shared.watching.store(false, Ordering::SeqCst);
+            return;
         };
 
       // Clone the command sender so watcher can send back to service
@@ -704,9 +647,7 @@ impl CombatService {
                 // Trigger initial metrics send after file processing
                 let _ = trigger_tx.send(MetricsTrigger::InitialLoad);
             }
-            Err(e) => {
-                eprintln!("[TAIL] Failed to read log file: {}", e);
-            }
+            Err(_) => {}
         }
 
         // Enable live mode for effect/timer tracking (skip historical events)
@@ -718,9 +659,7 @@ impl CombatService {
 
         // Spawn the tail task to watch for new lines
         let tail_handle = tokio::spawn(async move {
-            if let Err(e) = reader.tail_log_file().await {
-                eprintln!("[TAIL] Error: {}", e);
-            }
+            let _ = reader.tail_log_file().await;
         });
 
         // Spawn signal-driven metrics task
@@ -884,23 +823,12 @@ impl CombatService {
                     if let Some(entry) = area_index.get(&area_id) {
                         use baras_core::boss::load_bosses_from_file;
 
-                        match load_bosses_from_file(&entry.file_path) {
-                            Ok(bosses) => {
-                                let timer_count: usize = bosses.iter().map(|b| b.timers.len()).sum();
-                                eprintln!("[AREAS] Loaded {} bosses, {} timers for '{}'",
-                                    bosses.len(), timer_count, entry.name);
-
-                                // Update the session with new definitions
-                                if let Some(session_arc) = &*shared.session.read().await {
-                                    let mut session = session_arc.write().await;
-                                    session.load_boss_definitions(bosses);
-                                }
-
-                                loaded_area_id = area_id;
+                        if let Ok(bosses) = load_bosses_from_file(&entry.file_path) {
+                            if let Some(session_arc) = &*shared.session.read().await {
+                                let mut session = session_arc.write().await;
+                                session.load_boss_definitions(bosses);
                             }
-                            Err(e) => {
-                                eprintln!("[AREAS] Failed to load definitions for '{}': {}", entry.name, e);
-                            }
+                            loaded_area_id = area_id;
                         }
                     }
                 }
@@ -1008,12 +936,16 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         let boss_name = cache.active_boss_idx.and_then(|idx| {
             cache.boss_definitions.get(idx).map(|def| def.name.clone())
         });
-        let duration_secs = cache.boss_state.combat_time_secs.max(1.0);
+        let overall_duration = cache.boss_state.combat_time_secs.max(1.0);
+        let current_time = chrono::Local::now().naive_local();
 
         let entries: Vec<ChallengeEntry> = encounter.challenge_tracker
-            .snapshot()
+            .snapshot_live(current_time)
             .into_iter()
             .map(|val| {
+                // Use the challenge's own duration (phase-scoped or total)
+                let challenge_duration = val.duration_secs.max(1.0);
+
                 // Build per-player breakdown, sorted by value descending
                 let mut by_player: Vec<PlayerContribution> = val.by_player
                     .iter()
@@ -1036,7 +968,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                             value,
                             percent,
                             per_second: if value > 0 {
-                                Some(value as f32 / duration_secs)
+                                Some(value as f32 / challenge_duration)
                             } else {
                                 None
                             },
@@ -1052,11 +984,12 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                     value: val.value,
                     event_count: val.event_count,
                     per_second: if val.value > 0 {
-                        Some(val.value as f32 / duration_secs)
+                        Some(val.value as f32 / challenge_duration)
                     } else {
                         None
                     },
                     by_player,
+                    duration_secs: challenge_duration,
                 }
             })
             .collect();
@@ -1064,7 +997,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         Some(ChallengeData {
             entries,
             boss_name,
-            duration_secs,
+            duration_secs: overall_duration,
             phase_durations: encounter.challenge_tracker.phase_durations().clone(),
         })
     } else {
@@ -1112,13 +1045,7 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
 
     // Get effect tracker
     let effect_tracker = session.effect_tracker();
-    let mut tracker = match effect_tracker.lock() {
-        Ok(t) => t,
-        Err(e) => {
-            eprintln!("[RAID-DATA] Failed to lock effect tracker: {}", e);
-            return None;
-        }
-    };
+    let Ok(mut tracker) = effect_tracker.lock() else { return None };
 
     // Get local player ID for is_self flag
     let local_player_id = session.session_cache.as_ref()
@@ -1126,13 +1053,7 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
         .unwrap_or(0);
 
     // Lock registry
-    let mut registry = match shared.raid_registry.lock() {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("[RAID-DATA] Failed to lock registry: {}", e);
-            return None;
-        }
-    };
+    let Ok(mut registry) = shared.raid_registry.lock() else { return None };
 
     // Process new targets queue - these are entities that JUST received an effect from local player
     // The registry handles duplicate rejection via try_register

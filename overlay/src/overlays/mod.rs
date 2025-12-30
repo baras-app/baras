@@ -18,7 +18,7 @@ mod raid;
 mod timers;
 
 pub use boss_health::{BossHealthOverlay, BossHealthData};
-pub use challenges::{ChallengeData, ChallengeEntry, PlayerContribution};
+pub use challenges::{ChallengeData, ChallengeEntry, ChallengeOverlay, PlayerContribution};
 pub use effects::{EffectsData, EffectEntry, EffectsOverlay};
 pub use metric::{MetricEntry, MetricOverlay};
 pub use personal::{PersonalOverlay, PersonalStats};

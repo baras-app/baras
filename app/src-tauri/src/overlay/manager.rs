@@ -8,7 +8,7 @@ use baras_core::context::{OverlayPositionConfig, OverlaySettings};
 use baras_overlay::{OverlayConfigUpdate, OverlayData, RaidGridLayout, RaidOverlayConfig};
 
 use super::metrics::create_entries_for_type;
-use super::spawn::{create_boss_health_overlay, create_effects_overlay, create_metric_overlay, create_personal_overlay, create_raid_overlay, create_timer_overlay};
+use super::spawn::{create_boss_health_overlay, create_challenges_overlay, create_effects_overlay, create_metric_overlay, create_personal_overlay, create_raid_overlay, create_timer_overlay};
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
 use super::types::{MetricType, OverlayType};
 use super::{get_appearance_for_type, SharedOverlayState};
@@ -64,6 +64,12 @@ impl OverlayManager {
                 let effects_config = settings.effects_overlay.clone();
                 create_effects_overlay(position, effects_config, settings.effects_opacity)?
             }
+            OverlayType::Challenges => {
+                let appearance = settings.appearances.get("challenges")
+                    .cloned()
+                    .unwrap_or_default();
+                create_challenges_overlay(position, appearance, settings.metric_opacity)?
+            }
         };
 
         Ok(SpawnResult { handle, needs_monitor_save })
@@ -112,7 +118,7 @@ impl OverlayManager {
                     let _ = tx.send(OverlayCommand::UpdateData(OverlayData::Personal(stats))).await;
                 }
             }
-            OverlayType::Raid | OverlayType::BossHealth | OverlayType::Timers | OverlayType::Effects => {
+            OverlayType::Raid | OverlayType::BossHealth | OverlayType::Timers | OverlayType::Effects | OverlayType::Challenges => {
                 // These get data via separate update channels (bridge)
             }
         }
@@ -201,6 +207,13 @@ impl OverlayManager {
             OverlayType::Effects => {
                 let effects_config = settings.effects_overlay.clone();
                 OverlayConfigUpdate::Effects(effects_config, settings.effects_opacity)
+            }
+            OverlayType::Challenges => {
+                // Use default metric appearance for challenges overlay
+                let appearance = settings.appearances.get("challenges")
+                    .cloned()
+                    .unwrap_or_default();
+                OverlayConfigUpdate::Metric(appearance, settings.metric_opacity)
             }
         }
     }
@@ -334,6 +347,7 @@ impl OverlayManager {
                 "boss_health" => OverlayType::BossHealth,
                 "timers" => OverlayType::Timers,
                 "effects" => OverlayType::Effects,
+                "challenges" => OverlayType::Challenges,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)
@@ -355,13 +369,7 @@ impl OverlayManager {
             }
 
             // Spawn overlay
-            let result = match Self::spawn(kind, &config.overlay_settings) {
-                Ok(r) => r,
-                Err(e) => {
-                    eprintln!("[MANAGER] Failed to spawn {}: {}", key, e);
-                    continue;
-                }
-            };
+            let Ok(result) = Self::spawn(kind, &config.overlay_settings) else { continue };
 
             let tx = result.handle.tx.clone();
 
@@ -515,14 +523,12 @@ impl OverlayManager {
 
             if running && !enabled {
                 // Shutdown if running but disabled
-                eprintln!("[REFRESH] Shutting down {} (disabled)", key);
                 if let Ok(mut s) = state.lock()
                     && let Some(handle) = s.remove(overlay_type) {
                         let _ = handle.tx.try_send(OverlayCommand::Shutdown);
                     }
             } else if !running && enabled {
                 // Start if not running but enabled
-                eprintln!("[REFRESH] Starting {} (enabled)", key);
                 if let Ok(result) = Self::spawn(overlay_type, settings)
                     && let Ok(mut s) = state.lock() {
                         s.insert(result.handle);
@@ -576,6 +582,7 @@ impl OverlayManager {
             OverlayType::BossHealth,
             OverlayType::Timers,
             OverlayType::Effects,
+            OverlayType::Challenges,
         ];
         for mt in MetricType::all() {
             types.push(OverlayType::Metric(*mt));

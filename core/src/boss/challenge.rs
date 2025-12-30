@@ -57,6 +57,9 @@ pub enum ChallengeMetric {
     /// Total healing done
     Healing,
 
+    /// Effective healing (healing - overhealing)
+    EffectiveHealing,
+
     /// Total damage received
     DamageTaken,
 

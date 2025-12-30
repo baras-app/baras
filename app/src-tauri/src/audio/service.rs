@@ -44,23 +44,12 @@ impl AudioService {
             // Try to initialize TTS, gracefully handle failure
             match tts::Tts::default() {
                 Ok(mut engine) => {
-                    // Set a reasonable speech rate
                     let _ = engine.set_rate(engine.normal_rate());
-                    eprintln!("[AUDIO] TTS initialized successfully");
                     Some(engine)
                 }
-                Err(e) => {
-                    eprintln!("[AUDIO] TTS initialization failed: {}. TTS disabled.", e);
-                    None
-                }
+                Err(_) => None,
             }
         };
-
-        #[cfg(target_os = "linux")]
-        eprintln!("[AUDIO] Using espeak for TTS on Linux");
-
-        eprintln!("[AUDIO] User sounds: {:?}", user_sounds_dir);
-        eprintln!("[AUDIO] Bundled sounds: {:?}", bundled_sounds_dir);
 
         Self {
             event_rx,
@@ -92,10 +81,8 @@ impl AudioService {
             }
 
             match &event {
-                AudioEvent::Countdown { timer_name, seconds, voice_pack } => {
-                    eprintln!("[AUDIO] Countdown: {} {} (voice: {})", timer_name, seconds, voice_pack);
+                AudioEvent::Countdown { timer_name: _, seconds, voice_pack } => {
                     if countdown_enabled {
-                        // Timer manager already filtered by countdown_start, just play it
                         if !self.play_countdown_voice(voice_pack, *seconds, volume) {
                             self.speak(&format!("{}", seconds));
                         }
@@ -103,7 +90,6 @@ impl AudioService {
                 }
 
                 AudioEvent::Alert { text, custom_sound } => {
-                    eprintln!("[AUDIO] Alert: {}", text);
                     if alerts_enabled {
                         if let Some(sound_file) = custom_sound {
                             self.play_custom_sound(sound_file, volume);
@@ -114,45 +100,31 @@ impl AudioService {
                 }
 
                 AudioEvent::Speak { text } => {
-                    eprintln!("[AUDIO] Speak: {}", text);
                     self.speak(text);
                 }
             }
         }
-
-        eprintln!("[AUDIO] Service stopped");
     }
 
     /// Speak text using TTS (no-op on Linux)
     #[cfg(not(target_os = "linux"))]
     fn speak(&mut self, text: &str) {
         if let Some(ref mut tts) = self.tts {
-            // Use non-blocking speech (interrupt = false means queue)
-            if let Err(e) = tts.speak(text, false) {
-                eprintln!("[AUDIO] TTS speak failed: {}", e);
-            }
+            let _ = tts.speak(text, false);
         }
     }
 
     #[cfg(target_os = "linux")]
     fn speak(&mut self, text: &str) {
-        // Use espeak directly on Linux (non-blocking)
         use std::process::Command;
-
         let text = text.to_string();
         std::thread::spawn(move || {
-            if let Err(e) = Command::new("espeak")
-                .arg(&text)
-                .output()
-            {
-                eprintln!("[AUDIO] espeak failed: {}. Install with: sudo pacman -S espeak-ng", e);
-            }
+            let _ = Command::new("espeak").arg(&text).output();
         });
     }
 
     /// Play a countdown number using a voice pack (returns false if not found)
     fn play_countdown_voice(&self, voice: &str, seconds: u8, volume: u8) -> bool {
-        // Voice packs are in {sounds_dir}/{voice}/{number}.mp3
         let filename = format!("{}.mp3", seconds);
         let user_path = self.user_sounds_dir.join(voice).join(&filename);
         let bundled_path = self.bundled_sounds_dir.join(voice).join(&filename);
@@ -162,55 +134,23 @@ impl AudioService {
         } else if bundled_path.exists() {
             bundled_path
         } else {
-            eprintln!("[AUDIO] Voice pack not found: {}/{} (tried {:?} and {:?})",
-                voice, filename, user_path, bundled_path);
             return false;
         };
 
-        eprintln!("[AUDIO] Playing voice: {:?}", path);
-
-        // Spawn thread to keep OutputStream alive until playback completes
         let vol = volume;
-        let path_for_log = path.clone();
         std::thread::spawn(move || {
             use rodio::{Decoder, OutputStream, Sink};
             use std::fs::File;
             use std::io::BufReader;
 
-            let (_stream, stream_handle) = match OutputStream::try_default() {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("[AUDIO] Failed to get output stream: {}", e);
-                    return;
-                }
-            };
-            let file = match File::open(&path) {
-                Ok(f) => f,
-                Err(e) => {
-                    eprintln!("[AUDIO] Failed to open file {:?}: {}", path, e);
-                    return;
-                }
-            };
-            let source = match Decoder::new(BufReader::new(file)) {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("[AUDIO] Failed to decode {:?}: {}", path, e);
-                    return;
-                }
-            };
-            let sink = match Sink::try_new(&stream_handle) {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("[AUDIO] Failed to create sink: {}", e);
-                    return;
-                }
-            };
+            let Ok((_stream, stream_handle)) = OutputStream::try_default() else { return };
+            let Ok(file) = File::open(&path) else { return };
+            let Ok(source) = Decoder::new(BufReader::new(file)) else { return };
+            let Ok(sink) = Sink::try_new(&stream_handle) else { return };
 
-            eprintln!("[AUDIO] Actually playing {:?} at volume {}", path_for_log, vol);
             sink.set_volume(vol as f32 / 100.0);
             sink.append(source);
-            sink.sleep_until_end(); // Block thread until audio finishes
-            eprintln!("[AUDIO] Finished playing {:?}", path_for_log);
+            sink.sleep_until_end();
         });
         true
     }
@@ -225,52 +165,23 @@ impl AudioService {
         } else if bundled_path.exists() {
             bundled_path
         } else {
-            eprintln!("[AUDIO] Sound file not found: {:?} or {:?}", user_path, bundled_path);
             return;
         };
 
-        eprintln!("[AUDIO] Playing custom sound: {:?}", path);
-
-        // Spawn thread to keep OutputStream alive until playback completes
         let vol = volume;
         std::thread::spawn(move || {
             use rodio::{Decoder, OutputStream, Sink};
             use std::fs::File;
             use std::io::BufReader;
 
-            let (_stream, stream_handle) = match OutputStream::try_default() {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("[AUDIO] Failed to get output stream: {}", e);
-                    return;
-                }
-            };
-            let file = match File::open(&path) {
-                Ok(f) => f,
-                Err(e) => {
-                    eprintln!("[AUDIO] Failed to open file {:?}: {}", path, e);
-                    return;
-                }
-            };
-            let source = match Decoder::new(BufReader::new(file)) {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("[AUDIO] Failed to decode {:?}: {}", path, e);
-                    return;
-                }
-            };
-            let sink = match Sink::try_new(&stream_handle) {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("[AUDIO] Failed to create sink: {}", e);
-                    return;
-                }
-            };
+            let Ok((_stream, stream_handle)) = OutputStream::try_default() else { return };
+            let Ok(file) = File::open(&path) else { return };
+            let Ok(source) = Decoder::new(BufReader::new(file)) else { return };
+            let Ok(sink) = Sink::try_new(&stream_handle) else { return };
 
             sink.set_volume(vol as f32 / 100.0);
             sink.append(source);
-            sink.sleep_until_end(); // Block thread until audio finishes
-            eprintln!("[AUDIO] Finished playing custom sound");
+            sink.sleep_until_end();
         });
     }
 }

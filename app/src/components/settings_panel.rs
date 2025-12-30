@@ -267,6 +267,7 @@ pub fn SettingsPanel(
                         TabButton { label: "Boss Health", tab_key: "boss_health", selected_tab: selected_tab }
                         TabButton { label: "Timers", tab_key: "timers", selected_tab: selected_tab }
                         TabButton { label: "Effects", tab_key: "effects", selected_tab: selected_tab }
+                        TabButton { label: "Challenges", tab_key: "challenges", selected_tab: selected_tab }
                     }
                 }
                 div { class: "tab-group",
@@ -436,6 +437,128 @@ pub fn SettingsPanel(
                             },
                             i { class: "fa-solid fa-rotate-left" }
                             span { " Reset Style" }
+                        }
+                    }
+                }
+            } else if tab == "challenges" {
+                // Challenges Settings
+                div { class: "settings-section",
+                    h4 { "Appearance" }
+
+                    // Use default metric appearance for challenges
+                    {
+                        let challenges_appearance = get_appearance("challenges");
+                        let challenges_font_hex = color_to_hex(&challenges_appearance.font_color);
+                        let challenges_bar_hex = color_to_hex(&challenges_appearance.bar_color);
+                        rsx! {
+                            div { class: "setting-row",
+                                label { "Bar Color" }
+                                input {
+                                    r#type: "color",
+                                    value: "{challenges_bar_hex}",
+                                    class: "color-picker",
+                                    oninput: move |e: Event<FormData>| {
+                                        if let Some(color) = parse_hex_color(&e.value()) {
+                                            let mut new_settings = draft_settings();
+                                            let default = new_settings.default_appearances.get("challenges").cloned().unwrap_or_default();
+                                            let appearance = new_settings.appearances.entry("challenges".to_string()).or_insert(default);
+                                            appearance.bar_color = color;
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Font Color" }
+                                input {
+                                    r#type: "color",
+                                    value: "{challenges_font_hex}",
+                                    class: "color-picker",
+                                    oninput: move |e: Event<FormData>| {
+                                        if let Some(color) = parse_hex_color(&e.value()) {
+                                            let mut new_settings = draft_settings();
+                                            let default = new_settings.default_appearances.get("challenges").cloned().unwrap_or_default();
+                                            let appearance = new_settings.appearances.entry("challenges".to_string()).or_insert(default);
+                                            appearance.font_color = color;
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Show Total" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: challenges_appearance.show_total,
+                                    onchange: move |e: Event<FormData>| {
+                                        let mut new_settings = draft_settings();
+                                        let default = new_settings.default_appearances.get("challenges").cloned().unwrap_or_default();
+                                        let appearance = new_settings.appearances.entry("challenges".to_string()).or_insert(default);
+                                        appearance.show_total = e.checked();
+                                        update_draft(new_settings);
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Show Per-Second" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: challenges_appearance.show_per_second,
+                                    onchange: move |e: Event<FormData>| {
+                                        let mut new_settings = draft_settings();
+                                        let default = new_settings.default_appearances.get("challenges").cloned().unwrap_or_default();
+                                        let appearance = new_settings.appearances.entry("challenges".to_string()).or_insert(default);
+                                        appearance.show_per_second = e.checked();
+                                        update_draft(new_settings);
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Show Percent" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: challenges_appearance.show_percent,
+                                    onchange: move |e: Event<FormData>| {
+                                        let mut new_settings = draft_settings();
+                                        let default = new_settings.default_appearances.get("challenges").cloned().unwrap_or_default();
+                                        let appearance = new_settings.appearances.entry("challenges".to_string()).or_insert(default);
+                                        appearance.show_percent = e.checked();
+                                        update_draft(new_settings);
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Show Duration" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: challenges_appearance.show_duration,
+                                    onchange: move |e: Event<FormData>| {
+                                        let mut new_settings = draft_settings();
+                                        let default = new_settings.default_appearances.get("challenges").cloned().unwrap_or_default();
+                                        let appearance = new_settings.appearances.entry("challenges".to_string()).or_insert(default);
+                                        appearance.show_duration = e.checked();
+                                        update_draft(new_settings);
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row reset-row",
+                                button {
+                                    class: "btn btn-reset",
+                                    onclick: move |_| {
+                                        let mut new_settings = draft_settings();
+                                        new_settings.appearances.remove("challenges");
+                                        update_draft(new_settings);
+                                    },
+                                    i { class: "fa-solid fa-rotate-left" }
+                                    span { " Reset Style" }
+                                }
+                            }
                         }
                     }
                 }

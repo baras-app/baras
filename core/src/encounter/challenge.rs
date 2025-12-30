@@ -5,9 +5,7 @@
 
 use std::collections::HashMap;
 
-use crate::boss::{
-    ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityInfo,
-};
+use crate::boss::{ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityInfo};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Challenge Value
@@ -30,6 +28,16 @@ pub struct ChallengeValue {
 
     /// Per-player breakdown (entity_id → value)
     pub by_player: HashMap<i64, i64>,
+
+    /// Duration in seconds for this challenge (phase-scoped or total)
+    pub duration_secs: f32,
+
+    /// When this challenge first received a matching event (for display filtering)
+    pub first_event_time: Option<chrono::NaiveDateTime>,
+
+    /// When the challenge context became active (for duration calculation)
+    /// Set when phase starts, HP threshold crossed, or encounter starts for unconditional challenges
+    pub activated_time: Option<chrono::NaiveDateTime>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -73,7 +81,7 @@ impl ChallengeTracker {
     }
 
     /// Initialize tracker with challenges from a boss definition
-    pub fn start(&mut self, challenges: Vec<ChallengeDefinition>, boss_npc_ids: Vec<i64>) {
+    pub fn start(&mut self, challenges: Vec<ChallengeDefinition>, boss_npc_ids: Vec<i64>, timestamp: chrono::NaiveDateTime) {
         self.definitions = challenges;
         self.boss_npc_ids = boss_npc_ids;
         self.values.clear();
@@ -84,6 +92,13 @@ impl ChallengeTracker {
 
         // Pre-initialize values for all challenges
         for def in &self.definitions {
+            // Challenges without phase conditions are active from encounter start
+            let activated_time = if def.has_phase_condition() {
+                None // Will be set when the matching phase starts
+            } else {
+                Some(timestamp)
+            };
+
             self.values.insert(
                 def.id.clone(),
                 ChallengeValue {
@@ -92,6 +107,9 @@ impl ChallengeTracker {
                     value: 0,
                     event_count: 0,
                     by_player: HashMap::new(),
+                    duration_secs: 0.0, // Calculated in snapshot()
+                    first_event_time: None,
+                    activated_time,
                 },
             );
         }
@@ -119,6 +137,19 @@ impl ChallengeTracker {
     pub fn set_phase(&mut self, phase_id: &str, timestamp: chrono::NaiveDateTime) {
         self.end_current_phase(timestamp);
         self.current_phase_start = Some((phase_id.to_string(), timestamp));
+
+        // Activate challenges that have this phase in their conditions (first time only)
+        for def in &self.definitions {
+            if let Some(phase_ids) = def.phase_ids() {
+                if phase_ids.iter().any(|p| p == phase_id) {
+                    if let Some(val) = self.values.get_mut(&def.id) {
+                        if val.activated_time.is_none() {
+                            val.activated_time = Some(timestamp);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// End the current phase and record its duration
@@ -161,9 +192,50 @@ impl ChallengeTracker {
         self.active
     }
 
-    /// Get current values snapshot
+    /// Get current values snapshot with calculated durations
+    /// Pass current timestamp for live duration calculation
+    /// Only returns challenges that have received at least one matching event
+    pub fn snapshot_live(&self, current_time: chrono::NaiveDateTime) -> Vec<ChallengeValue> {
+        self.values.values()
+            .filter(|val| val.first_event_time.is_some()) // Only show challenges with data
+            .map(|val| {
+                // Calculate duration from activated_time (when challenge context became active)
+                // Falls back to first_event_time if activated_time not set
+                let duration_secs = val.activated_time
+                    .or(val.first_event_time)
+                    .map(|start| {
+                        let elapsed = current_time.signed_duration_since(start);
+                        (elapsed.num_milliseconds() as f32 / 1000.0).max(0.0)
+                    })
+                    .unwrap_or(0.0);
+
+                ChallengeValue {
+                    id: val.id.clone(),
+                    name: val.name.clone(),
+                    value: val.value,
+                    event_count: val.event_count,
+                    by_player: val.by_player.clone(),
+                    duration_secs,
+                    first_event_time: val.first_event_time,
+                    activated_time: val.activated_time,
+                }
+            }).collect()
+    }
+
+    /// Get current values snapshot (uses stored duration - for historical data)
     pub fn snapshot(&self) -> Vec<ChallengeValue> {
-        self.values.values().cloned().collect()
+        self.values.values().map(|val| {
+            ChallengeValue {
+                id: val.id.clone(),
+                name: val.name.clone(),
+                value: val.value,
+                event_count: val.event_count,
+                by_player: val.by_player.clone(),
+                duration_secs: val.duration_secs.max(self.total_duration_secs).max(1.0),
+                first_event_time: val.first_event_time,
+                activated_time: val.activated_time,
+            }
+        }).collect()
     }
 
     /// Get a specific challenge value
@@ -184,6 +256,7 @@ impl ChallengeTracker {
         target: &EntityInfo,
         ability_id: u64,
         damage: i64,
+        timestamp: chrono::NaiveDateTime,
     ) -> Vec<String> {
         if !self.active || damage == 0 {
             return Vec::new();
@@ -204,13 +277,18 @@ impl ChallengeTracker {
 
             if def.matches(ctx, Some(source), Some(target), Some(ability_id), None)
                 && let Some(val) = self.values.get_mut(&def.id) {
-                    val.value += damage;
-                    val.event_count += 1;
                     let entity = if track_source { source } else { target };
+                    // Only count player contributions (not companions/NPCs)
                     if entity.is_player {
+                        // Record first event time for duration calculation
+                        if val.first_event_time.is_none() {
+                            val.first_event_time = Some(timestamp);
+                        }
+                        val.value += damage;
+                        val.event_count += 1;
                         *val.by_player.entry(entity.entity_id).or_insert(0) += damage;
+                        updated.push(def.id.clone());
                     }
-                    updated.push(def.id.clone());
             }
         }
 
@@ -225,33 +303,40 @@ impl ChallengeTracker {
         target: &EntityInfo,
         ability_id: u64,
         healing: i64,
+        effective_healing: i64,
+        timestamp: chrono::NaiveDateTime,
     ) -> Vec<String> {
-        if !self.active || healing == 0 {
+        if !self.active || (healing == 0 && effective_healing == 0) {
             return Vec::new();
         }
 
         let mut updated = Vec::new();
 
         for def in &self.definitions {
-            let (matches_metric, track_source) = match def.metric {
-                ChallengeMetric::Healing => (true, true),
-                ChallengeMetric::HealingTaken => (true, false),
-                _ => (false, false),
+            let (matches_metric, track_source, value) = match def.metric {
+                ChallengeMetric::Healing => (true, true, healing),
+                ChallengeMetric::EffectiveHealing => (true, true, effective_healing),
+                ChallengeMetric::HealingTaken => (true, false, effective_healing),
+                _ => (false, false, 0),
             };
 
-            if !matches_metric {
+            if !matches_metric || value == 0 {
                 continue;
             }
 
             if def.matches(ctx, Some(source), Some(target), Some(ability_id), None)
                 && let Some(val) = self.values.get_mut(&def.id) {
-                    val.value += healing;
-                    val.event_count += 1;
                     let entity = if track_source { source } else { target };
+                    // Only count player contributions (not companions/NPCs)
                     if entity.is_player {
-                        *val.by_player.entry(entity.entity_id).or_insert(0) += healing;
+                        if val.first_event_time.is_none() {
+                            val.first_event_time = Some(timestamp);
+                        }
+                        val.value += value;
+                        val.event_count += 1;
+                        *val.by_player.entry(entity.entity_id).or_insert(0) += value;
+                        updated.push(def.id.clone());
                     }
-                    updated.push(def.id.clone());
             }
         }
 
@@ -265,6 +350,7 @@ impl ChallengeTracker {
         source: &EntityInfo,
         target: &EntityInfo,
         ability_id: u64,
+        timestamp: chrono::NaiveDateTime,
     ) -> Vec<String> {
         if !self.active {
             return Vec::new();
@@ -279,12 +365,15 @@ impl ChallengeTracker {
 
             if def.matches(ctx, Some(source), Some(target), Some(ability_id), None)
                 && let Some(val) = self.values.get_mut(&def.id) {
-                    val.value += 1;
-                    val.event_count += 1;
                     if source.is_player {
+                        if val.first_event_time.is_none() {
+                            val.first_event_time = Some(timestamp);
+                        }
+                        val.value += 1;
+                        val.event_count += 1;
                         *val.by_player.entry(source.entity_id).or_insert(0) += 1;
+                        updated.push(def.id.clone());
                     }
-                    updated.push(def.id.clone());
                 }
         }
 
@@ -298,6 +387,7 @@ impl ChallengeTracker {
         source: &EntityInfo,
         target: &EntityInfo,
         effect_id: u64,
+        timestamp: chrono::NaiveDateTime,
     ) -> Vec<String> {
         if !self.active {
             return Vec::new();
@@ -312,12 +402,15 @@ impl ChallengeTracker {
 
             if def.matches(ctx, Some(source), Some(target), None, Some(effect_id))
                 && let Some(val) = self.values.get_mut(&def.id) {
-                    val.value += 1;
-                    val.event_count += 1;
                     if source.is_player {
+                        if val.first_event_time.is_none() {
+                            val.first_event_time = Some(timestamp);
+                        }
+                        val.value += 1;
+                        val.event_count += 1;
                         *val.by_player.entry(source.entity_id).or_insert(0) += 1;
+                        updated.push(def.id.clone());
                     }
-                    updated.push(def.id.clone());
             }
         }
 
@@ -329,6 +422,7 @@ impl ChallengeTracker {
         &mut self,
         ctx: &ChallengeContext,
         entity: &EntityInfo,
+        timestamp: chrono::NaiveDateTime,
     ) -> Vec<String> {
         if !self.active {
             return Vec::new();
@@ -343,12 +437,15 @@ impl ChallengeTracker {
 
             if def.matches(ctx, None, Some(entity), None, None)
                 && let Some(val) = self.values.get_mut(&def.id) {
-                    val.value += 1;
-                    val.event_count += 1;
                     if entity.is_player {
+                        if val.first_event_time.is_none() {
+                            val.first_event_time = Some(timestamp);
+                        }
+                        val.value += 1;
+                        val.event_count += 1;
                         *val.by_player.entry(entity.entity_id).or_insert(0) += 1;
+                        updated.push(def.id.clone());
                     }
-                    updated.push(def.id.clone());
             }
         }
 
@@ -362,6 +459,7 @@ impl ChallengeTracker {
         source: &EntityInfo,
         target: &EntityInfo,
         threat: i64,
+        timestamp: chrono::NaiveDateTime,
     ) -> Vec<String> {
         if !self.active || threat == 0 {
             return Vec::new();
@@ -376,12 +474,15 @@ impl ChallengeTracker {
 
             if def.matches(ctx, Some(source), Some(target), None, None)
                 && let Some(val) = self.values.get_mut(&def.id) {
-                    val.value += threat;
-                    val.event_count += 1;
                     if source.is_player {
+                        if val.first_event_time.is_none() {
+                            val.first_event_time = Some(timestamp);
+                        }
+                        val.value += threat;
+                        val.event_count += 1;
                         *val.by_player.entry(source.entity_id).or_insert(0) += threat;
+                        updated.push(def.id.clone());
                     }
-                    updated.push(def.id.clone());
             }
         }
 

@@ -41,19 +41,11 @@ fn spawn_auto_show_overlays(
 
         // Only show overlays if global visibility is enabled
         if !config.overlay_settings.overlays_visible {
-            eprintln!("Overlays hidden on startup (overlays_visible=false)");
             return;
         }
 
         // Use OverlayManager to show all enabled overlays
-        match OverlayManager::show_all(&overlay_state, &service_handle).await {
-            Ok(metric_types) => {
-                eprintln!("Auto-showed {} metric overlays on startup", metric_types.len());
-            }
-            Err(e) => {
-                eprintln!("Failed to auto-show overlays on startup: {}", e);
-            }
-        }
+        let _ = OverlayManager::show_all(&overlay_state, &service_handle).await;
     });
 }
 
@@ -93,9 +85,7 @@ pub fn run() {
                 hotkeys::spawn_register_hotkeys(app.handle().clone(), overlay_state.clone(), handle);
 
                 // Set up system tray
-                if let Err(e) = tray::setup_tray(app.handle()) {
-                    eprintln!("[TRAY] Failed to set up system tray: {}", e);
-                }
+                let _ = tray::setup_tray(app.handle());
 
                 Ok(())
             }

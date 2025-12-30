@@ -25,6 +25,12 @@ pub fn format_time(secs: u64) -> String {
     format!("{}:{:02}", secs / 60, secs % 60)
 }
 
+/// Format a duration in seconds as compact M:SS string
+pub fn format_duration_short(secs: f32) -> String {
+    let total_secs = secs.round() as u64;
+    format!("{}:{:02}", total_secs / 60, total_secs % 60)
+}
+
 /// Format a large number with K/M suffix for compact display
 pub fn format_number(n: i64) -> String {
     if n >= 1_000_000 {

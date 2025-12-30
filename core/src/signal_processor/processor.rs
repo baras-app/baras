@@ -317,7 +317,7 @@ impl EventProcessor {
                 // Start challenge tracker on the encounter (persists with encounter, not boss state)
                 // Also set initial phase on challenge tracker for duration tracking
                 if let Some(enc) = cache.current_encounter_mut() {
-                    enc.challenge_tracker.start(challenges, npc_ids);
+                    enc.challenge_tracker.start(challenges, npc_ids, event.timestamp);
                     if let Some(ref initial) = initial_phase {
                         enc.challenge_tracker.set_phase(&initial.id, event.timestamp);
                     }

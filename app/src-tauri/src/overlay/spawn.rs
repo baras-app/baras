@@ -16,8 +16,8 @@ use tokio::sync::mpsc::{self, Sender};
 
 use baras_core::context::{BossHealthConfig, OverlayAppearanceConfig, OverlayPositionConfig, PersonalOverlayConfig, TimerOverlayConfig};
 use baras_overlay::{
-    BossHealthOverlay, EffectsOverlay, MetricOverlay, Overlay, OverlayConfig, PersonalOverlay,
-    RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
+    BossHealthOverlay, ChallengeOverlay, EffectsOverlay, MetricOverlay, Overlay, OverlayConfig,
+    PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
 };
 
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
@@ -64,7 +64,6 @@ where
                 o
             }
             Err(e) => {
-                eprintln!("[OVERLAY] {}: Failed to create: {}", kind_name, e);
                 let _ = confirm_tx.send(Err(e));
                 return;
             }
@@ -363,6 +362,34 @@ pub fn create_effects_overlay(
     let factory = move || {
         EffectsOverlay::new(config, effects_config, background_alpha)
             .map_err(|e| format!("Failed to create effects overlay: {}", e))
+    };
+
+    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
+
+    Ok(OverlayHandle { tx, handle, kind, registry_action_rx: None })
+}
+
+/// Create and spawn the challenges overlay
+pub fn create_challenges_overlay(
+    position: OverlayPositionConfig,
+    appearance: OverlayAppearanceConfig,
+    background_alpha: u8,
+) -> Result<OverlayHandle, String> {
+    let config = OverlayConfig {
+        x: position.x,
+        y: position.y,
+        width: position.width,
+        height: position.height,
+        namespace: "baras-challenges".to_string(),
+        click_through: true,
+        target_monitor_id: position.monitor_id.clone(),
+    };
+
+    let kind = OverlayType::Challenges;
+
+    let factory = move || {
+        ChallengeOverlay::new(config, appearance, background_alpha)
+            .map_err(|e| format!("Failed to create challenges overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;

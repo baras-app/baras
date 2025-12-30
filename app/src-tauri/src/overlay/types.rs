@@ -134,6 +134,8 @@ pub enum OverlayType {
     Timers,
     /// Effects countdown bars
     Effects,
+    /// Challenge metrics overlay
+    Challenges,
 }
 
 impl OverlayType {
@@ -146,6 +148,7 @@ impl OverlayType {
             OverlayType::BossHealth => "boss_health",
             OverlayType::Timers => "timers",
             OverlayType::Effects => "effects",
+            OverlayType::Challenges => "challenges",
         }
     }
 
@@ -158,6 +161,7 @@ impl OverlayType {
             OverlayType::BossHealth => "baras-boss-health".to_string(),
             OverlayType::Timers => "baras-timers".to_string(),
             OverlayType::Effects => "baras-effects".to_string(),
+            OverlayType::Challenges => "baras-challenges".to_string(),
         }
     }
 
@@ -170,6 +174,7 @@ impl OverlayType {
             OverlayType::BossHealth => (650, 400),
             OverlayType::Timers => (650, 550),
             OverlayType::Effects => (650, 700),
+            OverlayType::Challenges => (950, 50),
         }
     }
 }

@@ -194,7 +194,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|e| e.is_boss)
         .flat_map(|e| e.ids.iter().copied())
         .collect();
-    challenge_tracker.start(boss_def.challenges.clone(), boss_npc_ids.clone());
+    challenge_tracker.start(boss_def.challenges.clone(), boss_npc_ids.clone(), session_date);
 
     // Debug: show challenge info
     if !boss_def.challenges.is_empty() {
@@ -321,6 +321,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &target,
                     event.action.action_id as u64,
                     damage,
+                    event.timestamp,
                 );
             }
         }

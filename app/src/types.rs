@@ -56,6 +56,8 @@ pub struct OverlayStatus {
     pub timers_enabled: bool,
     pub effects_running: bool,
     pub effects_enabled: bool,
+    pub challenges_running: bool,
+    pub challenges_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -148,6 +150,7 @@ pub enum OverlayType {
     BossHealth,
     Timers,
     Effects,
+    Challenges,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -490,6 +493,7 @@ pub struct CounterListItem {
 pub enum ChallengeMetric {
     Damage,
     Healing,
+    EffectiveHealing,
     DamageTaken,
     HealingTaken,
     AbilityCount,
@@ -503,6 +507,7 @@ impl ChallengeMetric {
         match self {
             Self::Damage => "Damage",
             Self::Healing => "Healing",
+            Self::EffectiveHealing => "Effective Healing",
             Self::DamageTaken => "Damage Taken",
             Self::HealingTaken => "Healing Taken",
             Self::AbilityCount => "Ability Count",
@@ -516,6 +521,7 @@ impl ChallengeMetric {
         &[
             Self::Damage,
             Self::Healing,
+            Self::EffectiveHealing,
             Self::DamageTaken,
             Self::HealingTaken,
             Self::AbilityCount,

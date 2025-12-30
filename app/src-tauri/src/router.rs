@@ -74,11 +74,9 @@ pub fn spawn_overlay_router(
 async fn process_registry_action(service_handle: &ServiceHandle, action: RaidRegistryAction) {
     match action {
         RaidRegistryAction::SwapSlots(a, b) => {
-            eprintln!("[ROUTER] Processing SwapSlots({}, {})", a, b);
             service_handle.swap_raid_slots(a, b).await;
         }
         RaidRegistryAction::ClearSlot(slot) => {
-            eprintln!("[ROUTER] Processing ClearSlot({})", slot);
             service_handle.remove_raid_slot(slot).await;
         }
     }
@@ -126,6 +124,23 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
             {
                 let _ = tx.send(OverlayCommand::UpdateData(
                     OverlayData::Personal(stats)
+                )).await;
+            }
+
+            // Send challenges data to challenges overlay
+            let challenges_tx = {
+                let state = match overlay_state.lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                state.get_challenges_tx().cloned()
+            };
+
+            if let Some(tx) = challenges_tx
+                && let Some(challenges) = data.challenges
+            {
+                let _ = tx.send(OverlayCommand::UpdateData(
+                    OverlayData::Challenges(challenges)
                 )).await;
             }
         }
@@ -197,7 +212,7 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
             // Could show overlay or clear entries
         }
         OverlayUpdate::CombatEnded => {
-            // Clear boss health and timer overlays when combat ends
+            // Clear boss health, timer, and challenges overlays when combat ends
             let channels: Vec<_> = {
                 let state = match overlay_state.lock() {
                     Ok(s) => s,
@@ -214,6 +229,11 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
                 // Timer overlay
                 if let Some(tx) = state.get_timers_tx() {
                     channels.push((tx.clone(), OverlayData::Timers(Default::default())));
+                }
+
+                // Challenges overlay
+                if let Some(tx) = state.get_challenges_tx() {
+                    channels.push((tx.clone(), OverlayData::Challenges(Default::default())));
                 }
 
                 channels
@@ -266,6 +286,11 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
                 // Effects overlay
                 if let Some(tx) = state.get_effects_tx() {
                     channels.push((tx.clone(), OverlayData::Effects(Default::default())));
+                }
+
+                // Challenges overlay
+                if let Some(tx) = state.get_challenges_tx() {
+                    channels.push((tx.clone(), OverlayData::Challenges(Default::default())));
                 }
 
                 channels

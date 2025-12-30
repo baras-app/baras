@@ -26,6 +26,8 @@ pub struct OverlayStatusResponse {
     pub timers_enabled: bool,
     pub effects_running: bool,
     pub effects_enabled: bool,
+    pub challenges_running: bool,
+    pub challenges_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -97,7 +99,7 @@ pub async fn get_overlay_status(
     state: State<'_, SharedOverlayState>,
     service: State<'_, ServiceHandle>,
 ) -> Result<OverlayStatusResponse, String> {
-    let (running_metric_types, personal_running, raid_running, boss_health_running, timers_running, effects_running, move_mode, rearrange_mode) = {
+    let (running_metric_types, personal_running, raid_running, boss_health_running, timers_running, effects_running, challenges_running, move_mode, rearrange_mode) = {
         let s = state.lock().map_err(|e| e.to_string())?;
         (
             s.running_metric_types(),
@@ -106,6 +108,7 @@ pub async fn get_overlay_status(
             s.is_boss_health_running(),
             s.is_running(OverlayType::Timers),
             s.is_effects_running(),
+            s.is_challenges_running(),
             s.move_mode,
             s.rearrange_mode,
         )
@@ -124,6 +127,7 @@ pub async fn get_overlay_status(
     let boss_health_enabled = config.overlay_settings.is_enabled("boss_health");
     let timers_enabled = config.overlay_settings.is_enabled("timers");
     let effects_enabled = config.overlay_settings.is_enabled("effects");
+    let challenges_enabled = config.overlay_settings.is_enabled("challenges");
 
     Ok(OverlayStatusResponse {
         running: running_metric_types,
@@ -138,6 +142,8 @@ pub async fn get_overlay_status(
         timers_enabled,
         effects_running,
         effects_enabled,
+        challenges_running,
+        challenges_enabled,
         overlays_visible: config.overlay_settings.overlays_visible,
         move_mode,
         rearrange_mode,

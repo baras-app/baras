@@ -400,6 +400,10 @@ pub struct OverlayAppearanceConfig {
     pub show_total: bool,
     #[serde(default = "default_true")]
     pub show_per_second: bool,
+    #[serde(default = "default_true")]
+    pub show_percent: bool,
+    #[serde(default = "default_true")]
+    pub show_duration: bool,
 }
 
 fn default_font_color() -> Color { overlay_colors::WHITE }
@@ -417,6 +421,8 @@ impl Default for OverlayAppearanceConfig {
             max_entries: 16,
             show_total: false,
             show_per_second: true,
+            show_percent: true,
+            show_duration: true,
         }
     }
 }

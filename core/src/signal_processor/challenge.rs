@@ -36,6 +36,7 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
     let tracker = &mut enc.challenge_tracker;
 
     // Process based on event type - just accumulate, no signals needed
+    let timestamp = event.timestamp;
     match event.effect.effect_id {
         effect_id::DAMAGE => {
             let damage = event.details.dmg_effective as i64;
@@ -45,16 +46,20 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
                 &target,
                 event.action.action_id as u64,
                 damage,
+                timestamp,
             );
         }
         effect_id::HEAL => {
-            let healing = event.details.heal_effective as i64;
+            let healing = event.details.heal_amount as i64;
+            let effective_healing = event.details.heal_effective as i64;
             tracker.process_healing(
                 &ctx,
                 &source,
                 &target,
                 event.action.action_id as u64,
                 healing,
+                effective_healing,
+                timestamp,
             );
         }
         effect_id::ABILITYACTIVATE => {
@@ -63,10 +68,11 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
                 &source,
                 &target,
                 event.action.action_id as u64,
+                timestamp,
             );
         }
         effect_id::DEATH => {
-            tracker.process_death(&ctx, &target);
+            tracker.process_death(&ctx, &target, timestamp);
         }
         _ => {
             if event.effect.type_id == effect_type_id::APPLYEFFECT {
@@ -75,6 +81,7 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
                     &source,
                     &target,
                     event.effect.effect_id as u64,
+                    timestamp,
                 );
             }
         }

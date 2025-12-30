@@ -187,6 +187,16 @@ impl OverlayState {
         self.overlays.contains_key(&OverlayType::Effects)
     }
 
+    /// Get the channel for challenges overlay (convenience)
+    pub fn get_challenges_tx(&self) -> Option<&Sender<OverlayCommand>> {
+        self.get_tx(OverlayType::Challenges)
+    }
+
+    /// Check if challenges overlay is running
+    pub fn is_challenges_running(&self) -> bool {
+        self.overlays.contains_key(&OverlayType::Challenges)
+    }
+
     /// Insert an overlay handle
     pub fn insert(&mut self, handle: OverlayHandle) {
         self.overlays.insert(handle.kind, handle);
