@@ -291,6 +291,7 @@ fn EffectRow(
     let effect_for_enable = effect.clone();
     let effect_for_audio = effect.clone();
     let effect_for_raid = effect.clone();
+    let effect_for_overlay = effect.clone();
 
     rsx! {
         div { class: if expanded { "effect-row expanded" } else { "effect-row" },
@@ -365,6 +366,22 @@ fn EffectRow(
                         span {
                             class: if effect.show_on_raid_frames { "text-info" } else { "text-muted" },
                             if effect.show_on_raid_frames { "⊞" } else { "✗" }
+                        }
+                    }
+
+                    // Effects overlay toggle
+                    span {
+                        class: "row-toggle",
+                        title: if effect.show_on_effects_overlay { "Hide on effects overlay" } else { "Show on effects overlay" },
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            let mut updated = effect_for_overlay.clone();
+                            updated.show_on_effects_overlay = !updated.show_on_effects_overlay;
+                            on_save.call(updated);
+                        },
+                        span {
+                            class: if effect.show_on_effects_overlay { "text-warning" } else { "text-muted" },
+                            if effect.show_on_effects_overlay { "◎" } else { "✗" }
                         }
                     }
                 }

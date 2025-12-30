@@ -461,6 +461,7 @@ impl EventProcessor {
                 }
                 vec![GameSignal::EffectChargesChanged {
                     effect_id: event.effect.effect_id,
+                    effect_name: event.effect.effect_name,
                     action_id: event.action.action_id,
                     action_name: event.action.name,
                     target_id: event.target_entity.log_id,

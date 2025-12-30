@@ -308,6 +308,10 @@ impl CombatService {
     }
 
     /// Load effect definitions from bundled and user config directories
+    /// Loading order (later overrides earlier):
+    /// 1. Bundled definitions (shipped with app)
+    /// 2. User defaults (~/.config/baras/effects/defaults/)
+    /// 3. User root files (~/.config/baras/effects/*.toml, custom.toml last)
     fn load_effect_definitions(app_handle: &AppHandle) -> DefinitionSet {
         // Bundled definitions: shipped with the app in resources
         let bundled_dir = app_handle
@@ -315,19 +319,25 @@ impl CombatService {
             .resolve("definitions/effects", tauri::path::BaseDirectory::Resource)
             .ok();
 
-        // Custom definitions: user's config directory
-        let custom_dir = dirs::config_dir().map(|p| p.join("baras").join("effects"));
+        // User config directories
+        let effects_dir = dirs::config_dir().map(|p| p.join("baras").join("effects"));
+        let defaults_dir = effects_dir.as_ref().map(|p| p.join("defaults"));
 
         // Load definitions from TOML files
         let mut set = DefinitionSet::new();
 
-        // Load from bundled directory first (defaults)
+        // 1. Load from bundled directory first (lowest priority)
         if let Some(ref path) = bundled_dir && path.exists() {
             Self::load_definitions_from_dir(&mut set, path, "bundled", false);
         }
 
-        // Load from custom directory (user edits override bundled)
-        if let Some(ref path) = custom_dir && path.exists() {
+        // 2. Load from user defaults directory (user-editable base definitions)
+        if let Some(ref path) = defaults_dir && path.exists() {
+            Self::load_definitions_from_dir(&mut set, path, "defaults", true);
+        }
+
+        // 3. Load from user root directory (highest priority, custom.toml loaded last)
+        if let Some(ref path) = effects_dir && path.exists() {
             Self::load_definitions_from_dir(&mut set, path, "custom", true);
         }
 
@@ -335,6 +345,7 @@ impl CombatService {
     }
 
     /// Load effect definitions from a directory of TOML files
+    /// custom.toml is always loaded last so user overrides take precedence
     fn load_definitions_from_dir(set: &mut DefinitionSet, dir: &std::path::Path, source: &str, overwrite: bool) {
         let entries = match std::fs::read_dir(dir) {
             Ok(e) => e,
@@ -344,24 +355,38 @@ impl CombatService {
             }
         };
 
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().is_some_and(|ext| ext == "toml") {
-                match std::fs::read_to_string(&path) {
-                    Ok(contents) => {
-                        // Parse TOML and extract effect definitions
-                        if let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
-                            let duplicates = set.add_definitions(config.effects, overwrite);
-                            if !duplicates.is_empty() && !overwrite {
-                                eprintln!("[EFFECT WARNING] Duplicate effect IDs SKIPPED in {:?}: {:?}. \
-                                    Check your {} definitions for conflicts.",
-                                    path.file_name(), duplicates, source);
-                            }
+        // Collect and sort files, putting custom.toml last
+        let mut files: Vec<_> = entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|ext| ext == "toml"))
+            .collect();
+
+        files.sort_by(|a, b| {
+            let a_is_custom = a.file_name().is_some_and(|n| n == "custom.toml");
+            let b_is_custom = b.file_name().is_some_and(|n| n == "custom.toml");
+            match (a_is_custom, b_is_custom) {
+                (true, false) => std::cmp::Ordering::Greater,  // custom.toml goes last
+                (false, true) => std::cmp::Ordering::Less,
+                _ => a.cmp(b),  // alphabetical otherwise
+            }
+        });
+
+        for path in files {
+            match std::fs::read_to_string(&path) {
+                Ok(contents) => {
+                    // Parse TOML and extract effect definitions
+                    if let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
+                        let duplicates = set.add_definitions(config.effects, overwrite);
+                        if !duplicates.is_empty() && !overwrite {
+                            eprintln!("[EFFECT WARNING] Duplicate effect IDs SKIPPED in {:?}: {:?}. \
+                                Check your {} definitions for conflicts.",
+                                path.file_name(), duplicates, source);
                         }
                     }
-                    Err(e) => {
-                        eprintln!("[{}] Failed to read {:?}: {}", source, path.file_name(), e);
-                    }
+                }
+                Err(e) => {
+                    eprintln!("[{}] Failed to read {:?}: {}", source, path.file_name(), e);
                 }
             }
         }
@@ -1103,8 +1128,8 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
         std::collections::HashMap::new();
 
     for effect in tracker.active_effects() {
-        // Skip effects not marked for raid frames
-        if !effect.show_on_raid_frames {
+        // Skip effects not marked for raid frames or already removed
+        if !effect.show_on_raid_frames || effect.removed_at.is_some() {
             continue;
         }
 
@@ -1238,11 +1263,6 @@ async fn build_effects_overlay_data(shared: &Arc<SharedState>) -> Option<baras_o
     // Get effect tracker
     let effect_tracker = session.effect_tracker();
     let tracker = effect_tracker.lock().ok()?;
-
-    // Early out if no effects are ticking (all removed/expired = just fading)
-    if !tracker.has_ticking_effects() {
-        return None;
-    }
 
     // Filter to effects marked for effects overlay and convert to entries
     // Use system time (like raid frames) so countdown ticks smoothly outside combat

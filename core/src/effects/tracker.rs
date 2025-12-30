@@ -473,6 +473,7 @@ impl EffectTracker {
     fn handle_charges_changed(
         &mut self,
         effect_id: i64,
+        effect_name: IStr,
         action_id: i64,
         action_name: IStr,
         target_id: i64,
@@ -481,10 +482,11 @@ impl EffectTracker {
     ) {
         self.current_game_time = Some(timestamp);
 
-        // Find matching definitions
+        // Find matching definitions (by ID or name)
+        let effect_name_str = crate::context::resolve(effect_name);
         let matching_defs: Vec<_> = self
             .definitions
-            .find_matching(effect_id as u64, None)
+            .find_matching(effect_id as u64, Some(&effect_name_str))
             .into_iter()
             .collect();
 
@@ -623,13 +625,14 @@ impl SignalHandler for EffectTracker {
             }
             GameSignal::EffectChargesChanged {
                 effect_id,
+                effect_name,
                 action_id,
                 action_name,
                 target_id,
                 timestamp,
                 charges,
             } => {
-                self.handle_charges_changed(*effect_id, *action_id, *action_name, *target_id, *timestamp, *charges);
+                self.handle_charges_changed(*effect_id, *effect_name, *action_id, *action_name, *target_id, *timestamp, *charges);
             }
             GameSignal::EntityDeath { entity_id, .. } => {
                 self.handle_entity_death(*entity_id);

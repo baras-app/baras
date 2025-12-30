@@ -170,6 +170,7 @@ fn test_charges_changed_updates_stacks() {
     // Update charges
     tracker.handle_signal(&GameSignal::EffectChargesChanged {
         effect_id: 555,
+        effect_name: IStr::default(),
         action_id: 100,
         action_name: IStr::default(),
         target_id: 2,

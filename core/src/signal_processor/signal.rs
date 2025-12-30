@@ -78,6 +78,7 @@ pub enum GameSignal {
     /// Effect charges/stacks changed (ModifyCharges event)
     EffectChargesChanged {
         effect_id: i64,
+        effect_name: IStr,
         /// The ability/action that caused this charge change
         action_id: i64,
         action_name: IStr,
