@@ -55,7 +55,6 @@ where
     F: FnOnce() -> Result<O, String> + Send + 'static,
 {
     let (tx, mut rx) = mpsc::channel::<OverlayCommand>(32);
-    let kind_name = format!("{:?}", kind);
 
     // Use a oneshot channel to get creation result back from spawned thread
     let (confirm_tx, confirm_rx) = std::sync::mpsc::channel::<Result<(), String>>();

@@ -1149,7 +1149,6 @@ pub struct NewAreaRequest {
 /// Create a new boss in an existing area file
 #[tauri::command]
 pub async fn create_boss(
-    app_handle: AppHandle,
     service: State<'_, ServiceHandle>,
     boss: BossEditItem,
 ) -> Result<BossEditItem, String> {

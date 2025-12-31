@@ -342,7 +342,6 @@ pub async fn get_effect_definitions(app_handle: AppHandle) -> Result<Vec<EffectL
 /// Update an existing effect (modifications saved to custom.toml)
 #[tauri::command]
 pub async fn update_effect_definition(
-    app_handle: AppHandle,
     service: State<'_, ServiceHandle>,
     effect: EffectListItem,
 ) -> Result<(), String> {

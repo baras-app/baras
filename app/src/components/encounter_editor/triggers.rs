@@ -1339,7 +1339,7 @@ pub fn CounterTriggerEditor(
                                 selectors: vec![],
                                 on_change: {
                                     let abilities = abilities.clone();
-                                    move |sels| on_change.call(CounterTrigger::AbilityCast {
+                                    move |_sels| on_change.call(CounterTrigger::AbilityCast {
                                         abilities: abilities.clone(),
                                         source: EntityFilter::default(),
                                     })
@@ -1353,7 +1353,6 @@ pub fn CounterTriggerEditor(
                         let target_for_effects = target.clone();
                         let source_for_source = source.clone();
                         let target_for_source = target.clone();
-                        let source_for_target = source.clone();
                         rsx! {
                             EffectSelectorEditor {
                                 label: "Effects",
@@ -1369,7 +1368,7 @@ pub fn CounterTriggerEditor(
                                 selectors: vec![],
                                 on_change: {
                                     let effects = effects.clone();
-                                    move |sels| on_change.call(CounterTrigger::EffectApplied {
+                                    move |_sels| on_change.call(CounterTrigger::EffectApplied {
                                         effects: effects.clone(),
                                         source: EntityFilter::default(),
                                         target: target_for_source.clone(),
@@ -1381,7 +1380,7 @@ pub fn CounterTriggerEditor(
                                 selectors: vec![],
                                 on_change: {
                                     let effects = effects.clone();
-                                    move |sels| on_change.call(CounterTrigger::EffectApplied {
+                                    move |_sels| on_change.call(CounterTrigger::EffectApplied {
                                         effects: effects.clone(),
                                         source: source_for_source.clone(),
                                         target: EntityFilter::default(),
@@ -1396,7 +1395,6 @@ pub fn CounterTriggerEditor(
                         let target_for_effects = target.clone();
                         let source_for_source = source.clone();
                         let target_for_source = target.clone();
-                        let source_for_target = source.clone();
                         rsx! {
                             EffectSelectorEditor {
                                 label: "Effects",
@@ -1412,7 +1410,7 @@ pub fn CounterTriggerEditor(
                                 selectors: vec![],
                                 on_change: {
                                     let effects = effects.clone();
-                                    move |sels| on_change.call(CounterTrigger::EffectRemoved {
+                                    move |_sels| on_change.call(CounterTrigger::EffectRemoved {
                                         effects: effects.clone(),
                                         source: EntityFilter::default(),
                                         target: target_for_source.clone(),
@@ -1424,7 +1422,7 @@ pub fn CounterTriggerEditor(
                                 selectors: vec![],
                                 on_change: {
                                     let effects = effects.clone();
-                                    move |sels| on_change.call(CounterTrigger::EffectRemoved {
+                                    move |_sels| on_change.call(CounterTrigger::EffectRemoved {
                                         effects: effects.clone(),
                                         source: source_for_source.clone(),
                                         target: EntityFilter::default(),
@@ -1439,7 +1437,6 @@ pub fn CounterTriggerEditor(
                         let target_for_abilities = target.clone();
                         let source_for_source = source.clone();
                         let target_for_source = target.clone();
-                        let source_for_target = source.clone();
                         rsx! {
                             AbilitySelectorEditor {
                                 label: "Abilities",
@@ -1455,7 +1452,7 @@ pub fn CounterTriggerEditor(
                                 selectors: vec![],
                                 on_change: {
                                     let abilities = abilities.clone();
-                                    move |sels| on_change.call(CounterTrigger::DamageTaken {
+                                    move |_sels| on_change.call(CounterTrigger::DamageTaken {
                                         abilities: abilities.clone(),
                                         source: EntityFilter::default(),
                                         target: target_for_source.clone(),
@@ -1467,7 +1464,7 @@ pub fn CounterTriggerEditor(
                                 selectors: vec![],
                                 on_change: {
                                     let abilities = abilities.clone();
-                                    move |sels| on_change.call(CounterTrigger::DamageTaken {
+                                    move |_sels| on_change.call(CounterTrigger::DamageTaken {
                                         abilities: abilities.clone(),
                                         source: source_for_source.clone(),
                                         target: EntityFilter::default(),

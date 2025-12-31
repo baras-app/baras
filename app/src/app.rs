@@ -8,7 +8,7 @@ use web_sys::console;
 
 use crate::api;
 use crate::components::{EffectEditorPanel, EncounterEditorPanel, HistoryPanel, SettingsPanel};
-use crate::types::{LogFileInfo, MetricType, OverlaySettings, OverlayStatus, OverlayType, SessionInfo};
+use crate::types::{LogFileInfo, MetricType, OverlaySettings, OverlayStatus, OverlayType, SessionInfo, UpdateInfo};
 
 static CSS: Asset = asset!("/assets/styles.css");
 static LOGO: Asset = asset!("/assets/logo.png");
@@ -69,6 +69,10 @@ pub fn App() -> Element {
     // Application settings
     let mut minimize_to_tray = use_signal(|| true);
     let mut app_version = use_signal(String::new);
+
+    // Update state
+    let mut update_available = use_signal(|| None::<UpdateInfo>);
+    let mut update_installing = use_signal(|| false);
 
     // Audio settings
     let mut audio_enabled = use_signal(|| true);
@@ -186,6 +190,19 @@ pub fn App() -> Element {
         closure.forget();
     });
 
+    // Listen for app updates
+    use_future(move || async move {
+        let closure = Closure::new(move |event: JsValue| {
+            if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload")) {
+                if let Ok(info) = serde_wasm_bindgen::from_value::<UpdateInfo>(payload) {
+                    update_available.set(Some(info));
+                }
+            }
+        });
+        api::tauri_listen("update-available", &closure).await;
+        closure.forget();
+    });
+
     // ─────────────────────────────────────────────────────────────────────────
     // Computed Values
     // ─────────────────────────────────────────────────────────────────────────
@@ -223,7 +240,34 @@ pub fn App() -> Element {
                     h1 { "BARAS" }
                     img { class: "header-logo", src: LOGO, alt: "BARAS mascot" }
                     if !app_version().is_empty() {
-                        span { class: "header-version", "v{app_version}" }
+                        if let Some(ref update) = update_available() {
+                            // Update available - show clickable notification
+                            button {
+                                class: if update_installing() { "header-version update-available updating" } else { "header-version update-available" },
+                                title: update.notes.as_deref().unwrap_or("Update available"),
+                                disabled: update_installing(),
+                                onclick: move |_| {
+                                    update_installing.set(true);
+                                    spawn(async move {
+                                        if let Err(e) = api::install_update().await {
+                                            console::error_1(&format!("Update failed: {}", e).into());
+                                            update_installing.set(false);
+                                        }
+                                        // On success, app will restart automatically
+                                    });
+                                },
+                                if update_installing() {
+                                    i { class: "fa-solid fa-spinner fa-spin" }
+                                    " Updating..."
+                                } else {
+                                    i { class: "fa-solid fa-download" }
+                                    " v{update.version}"
+                                }
+                            }
+                        } else {
+                            // No update - show current version
+                            span { class: "header-version", "v{app_version}" }
+                        }
                     }
                     p { class: "subtitle", "Battle Analysis and Raid Assessment System" }
                 }

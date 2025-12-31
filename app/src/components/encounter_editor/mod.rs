@@ -20,8 +20,7 @@ use crate::types::{
     PhaseListItem, TimerListItem,
 };
 
-pub use tabs::{BossTabs, EncounterData};
-pub use timers::{TimersTab, PhaseSelector};
+pub use tabs::BossTabs;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Panel

@@ -516,19 +516,6 @@ pub fn trigger_matches_target_set(
     }
 }
 
-/// Check if trigger matches timer started (handles AnyOf recursively)
-pub fn trigger_matches_timer_started(trigger: &Trigger, timer_id: &str) -> bool {
-    match trigger {
-        Trigger::TimerStarted {
-            timer_id: trigger_id,
-        } => trigger_id == timer_id,
-        Trigger::AnyOf { conditions } => conditions
-            .iter()
-            .any(|c| trigger_matches_timer_started(c, timer_id)),
-        _ => false,
-    }
-}
-
 /// Check if trigger matches damage taken (handles AnyOf recursively)
 pub fn trigger_matches_damage_taken(
     trigger: &Trigger,

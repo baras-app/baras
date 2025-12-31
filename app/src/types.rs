@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 pub use baras_types::{
     // Config types
-    AppConfig, AudioSettings, BossHealthConfig, Color, EntityFilter, OverlayAppearanceConfig,
+    AppConfig, BossHealthConfig, Color, EntityFilter, OverlayAppearanceConfig,
     OverlaySettings, PersonalOverlayConfig, PersonalStat, RaidOverlaySettings,
     TimerOverlayConfig, MAX_PROFILES,
     // Selectors (unified ID-or-Name matching)
@@ -72,6 +72,14 @@ pub struct LogFileInfo {
     pub date: String,
     pub is_empty: bool,
     pub file_size: u64,
+}
+
+/// Update availability info from backend
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct UpdateInfo {
+    pub version: String,
+    pub notes: Option<String>,
+    pub date: Option<String>,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

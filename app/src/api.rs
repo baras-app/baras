@@ -589,12 +589,6 @@ pub async fn create_effect_definition(effect: &EffectListItem) -> Option<EffectL
     from_js(result)
 }
 
-/// Get list of effect files for "New Effect" file selection
-pub async fn get_effect_files() -> Option<Vec<String>> {
-    let result = invoke("get_effect_files", JsValue::NULL).await;
-    from_js(result)
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Parsely Upload
 // ─────────────────────────────────────────────────────────────────────────────
@@ -627,4 +621,18 @@ pub async fn pick_audio_file() -> Option<String> {
 pub async fn list_bundled_sounds() -> Vec<String> {
     let result = invoke("list_bundled_sounds", JsValue::NULL).await;
     from_js(result).unwrap_or_default()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Updater Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Install available update (downloads, installs, restarts app)
+pub async fn install_update() -> Result<(), String> {
+    let result = invoke("install_update", JsValue::NULL).await;
+    if let Some(err) = result.as_string() {
+        Err(err)
+    } else {
+        Ok(())
+    }
 }

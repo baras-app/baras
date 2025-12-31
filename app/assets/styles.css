@@ -242,6 +242,33 @@ select optgroup {
   margin-bottom: 0.3em;
 }
 
+.app-header .header-version.update-available {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  color: #81c784;
+  padding: 0.2em 0.6em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.app-header .header-version.update-available:hover {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(76, 175, 80, 0.2));
+  border-color: rgba(76, 175, 80, 0.7);
+  color: #a5d6a7;
+}
+
+.app-header .header-version.update-available.updating {
+  background: rgba(255, 183, 77, 0.15);
+  border-color: rgba(255, 183, 77, 0.5);
+  color: #ffb74d;
+  cursor: wait;
+}
+
 .app-header .subtitle {
   width: 100%;
   margin: 0.25vh 0 0 0;
