@@ -47,12 +47,3 @@ pub fn is_registered_boss(npc_id: i64) -> Option<bool> {
         .filter(|r| !r.is_empty())
         .map(|r| r.contains_key(&npc_id))
 }
-
-/// Get count of registered HP overlay entities (for diagnostics).
-#[allow(dead_code)]
-pub fn registered_boss_count() -> usize {
-    HP_OVERLAY_REGISTRY
-        .read()
-        .map(|r| r.len())
-        .unwrap_or(0)
-}

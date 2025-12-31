@@ -9,8 +9,8 @@ use tiny_skia::Color;
 use super::{Overlay, OverlayConfigUpdate, OverlayData, RaidRegistryAction};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::widgets::colors;
 use crate::utils::truncate_name;
+use crate::widgets::colors;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Player Role
@@ -34,8 +34,12 @@ impl PlayerRole {
         if lower.contains("tank")
             || matches!(
                 lower.as_str(),
-                "immortal" | "darkness" | "shield specialist" | "shield tech"
-                    | "defense" | "kinetic combat"
+                "immortal"
+                    | "darkness"
+                    | "shield specialist"
+                    | "shield tech"
+                    | "defense"
+                    | "kinetic combat"
             )
         {
             PlayerRole::Tank
@@ -44,8 +48,7 @@ impl PlayerRole {
         else if lower.contains("heal")
             || matches!(
                 lower.as_str(),
-                "corruption" | "medicine" | "bodyguard" | "combat medic"
-                    | "seer" | "sawbones"
+                "corruption" | "medicine" | "bodyguard" | "combat medic" | "seer" | "sawbones"
             )
         {
             PlayerRole::Healer
@@ -208,7 +211,11 @@ impl RaidFrame {
     /// Apply or refresh an effect
     pub fn apply_effect(&mut self, effect: RaidEffect, max_effects: usize) {
         // Check if effect already exists
-        if let Some(existing) = self.effects.iter_mut().find(|e| e.effect_id == effect.effect_id) {
+        if let Some(existing) = self
+            .effects
+            .iter_mut()
+            .find(|e| e.effect_id == effect.effect_id)
+        {
             // Refresh: update expiry and take higher stack count
             existing.expires_at = effect.expires_at;
             existing.charges = existing.charges.max(effect.charges);
@@ -278,7 +285,7 @@ impl SwapState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum InteractionMode {
     #[default]
-    Normal,    // click_through = true, clicks pass through
+    Normal, // click_through = true, clicks pass through
     Move,      // click_through = false, drag = move window
     Rearrange, // click_through = false, click = swap slots
 }
@@ -308,9 +315,18 @@ impl RaidGridLayout {
     /// Create a layout for the given player count
     pub fn for_player_count(count: u8) -> Self {
         match count {
-            0..=4 => Self { columns: 1, rows: 4 },
-            5..=8 => Self { columns: 2, rows: 4 },
-            _ => Self { columns: 4, rows: 4 },
+            0..=4 => Self {
+                columns: 1,
+                rows: 4,
+            },
+            5..=8 => Self {
+                columns: 2,
+                rows: 4,
+            },
+            _ => Self {
+                columns: 4,
+                rows: 4,
+            },
         }
     }
 
@@ -322,7 +338,10 @@ impl RaidGridLayout {
 
 impl Default for RaidGridLayout {
     fn default() -> Self {
-        Self { columns: 2, rows: 4 }
+        Self {
+            columns: 2,
+            rows: 4,
+        }
     }
 }
 
@@ -388,7 +407,8 @@ impl RaidOverlayConfig {
 
     /// Get the clamped effect vertical offset
     pub fn effect_vertical_offset(&self) -> f32 {
-        self.effect_vertical_offset.clamp(EFFECT_OFFSET_MIN, EFFECT_OFFSET_MAX)
+        self.effect_vertical_offset
+            .clamp(EFFECT_OFFSET_MIN, EFFECT_OFFSET_MAX)
     }
 }
 
@@ -478,7 +498,7 @@ impl RaidOverlay {
             swap_state: SwapState::default(),
             config,
             overflow_count: 0,
-            needs_render: true, // Initial render needed
+            needs_render: true,                            // Initial render needed
             last_render: Instant::now() - RENDER_INTERVAL, // Allow immediate first render
             pending_registry_actions: Vec::new(),
         })
@@ -745,12 +765,15 @@ impl RaidOverlay {
                 // Move mode: transparent frames with dashed border for alignment
                 // (container background is set semi-transparent in set_interaction_mode)
                 self.frame.stroke_rounded_rect_dashed(
-                    x, y, w, h,
+                    x,
+                    y,
+                    w,
+                    h,
                     corner_radius,
-                    1.5,        // stroke width
+                    1.5, // stroke width
                     colors::raid_guide(),
-                    6.0,        // dash length
-                    4.0,        // gap length
+                    6.0, // dash length
+                    4.0, // gap length
                 );
             }
             InteractionMode::Rearrange => {
@@ -783,23 +806,6 @@ impl RaidOverlay {
         if self.config.show_role_icons {
             self.render_role_icon(raid_frame.role, x, y, h, effect_size);
         }
-
-        // NOTE: Player names are NOT shown in normal/move mode
-        // They are redundant since the game already displays them
-        // Names only appear in rearrange mode for identification during swap
-    }
-
-    /// Get color based on a percentage value (0.0 - 1.0)
-    /// Useful for effect duration indicators, cooldowns, etc.
-    #[allow(dead_code)]
-    fn percent_color(percent: f32) -> Color {
-        if percent > 0.5 {
-            colors::health_high()
-        } else if percent > 0.25 {
-            colors::health_medium()
-        } else {
-            colors::health_low()
-        }
     }
 
     /// Render the role icon at bottom-left, below the effects row
@@ -817,13 +823,21 @@ impl RaidOverlay {
         match role {
             PlayerRole::Tank => {
                 // Blue shield
-                self.frame.fill_rounded_rect(icon_x, icon_y, icon_size, icon_size, 2.0, colors::role_tank());
+                self.frame.fill_rounded_rect(
+                    icon_x,
+                    icon_y,
+                    icon_size,
+                    icon_size,
+                    2.0,
+                    colors::role_tank(),
+                );
                 // "T" label centered in the icon
                 // Note: draw_text y is baseline, so add font_size to push text down into box
                 let icon_font = icon_size * 0.7;
                 let text_x = icon_x + icon_size * 0.25;
                 let text_y = icon_y + icon_size * 0.75; // Baseline near bottom of icon
-                self.frame.draw_text("T", text_x, text_y, icon_font, colors::white());
+                self.frame
+                    .draw_text("T", text_x, text_y, icon_font, colors::white());
             }
             PlayerRole::Healer => {
                 // Green cross
@@ -863,16 +877,26 @@ impl RaidOverlay {
         let ey = y + vertical_offset;
 
         // Semi-transparent background with dashed border to indicate placeholder
-        self.frame.fill_rounded_rect(ex, ey, effect_size, effect_size, corner_radius, colors::effect_icon_bg());
+        self.frame.fill_rounded_rect(
+            ex,
+            ey,
+            effect_size,
+            effect_size,
+            corner_radius,
+            colors::effect_icon_bg(),
+        );
 
         // Dashed border to indicate it's a placeholder
         self.frame.stroke_rounded_rect_dashed(
-            ex, ey, effect_size, effect_size,
+            ex,
+            ey,
+            effect_size,
+            effect_size,
             corner_radius,
-            1.0,        // stroke width
+            1.0, // stroke width
             colors::effect_icon_border(),
-            3.0,        // dash length
-            2.0,        // gap length
+            3.0, // dash length
+            2.0, // gap length
         );
     }
 
@@ -894,7 +918,14 @@ impl RaidOverlay {
             let ey = y + vertical_offset;
 
             // Dark background (always visible even when fill is empty)
-            self.frame.fill_rounded_rect(ex, ey, effect_size, effect_size, corner_radius, colors::effect_bar_bg());
+            self.frame.fill_rounded_rect(
+                ex,
+                ey,
+                effect_size,
+                effect_size,
+                corner_radius,
+                colors::effect_bar_bg(),
+            );
 
             // Calculate fill based on remaining duration
             let fill_percent = effect.fill_percent();
@@ -928,8 +959,13 @@ impl RaidOverlay {
 
             // Thin border outline for visibility
             self.frame.stroke_rounded_rect(
-                ex, ey, effect_size, effect_size,
-                corner_radius, 1.0, colors::effect_bar_border(),
+                ex,
+                ey,
+                effect_size,
+                effect_size,
+                corner_radius,
+                1.0,
+                colors::effect_bar_border(),
             );
 
             // Stack count if applicable (centered in the effect square)
@@ -945,10 +981,17 @@ impl RaidOverlay {
                 let text_y = ey + effect_size * 0.78;
 
                 // Draw shadow (subtle drop shadow for readability)
-                self.frame.draw_text(&count, text_x + 1.0, text_y + 1.0, stack_font, colors::text_shadow());
+                self.frame.draw_text(
+                    &count,
+                    text_x + 1.0,
+                    text_y + 1.0,
+                    stack_font,
+                    colors::text_shadow(),
+                );
 
                 // Draw text on top
-                self.frame.draw_text(&count, text_x, text_y, stack_font, colors::white());
+                self.frame
+                    .draw_text(&count, text_x, text_y, stack_font, colors::white());
             }
         }
 
@@ -973,7 +1016,8 @@ impl RaidOverlay {
             colors::raid_empty_slot()
         };
         let corner_radius = (h * 0.1).clamp(2.0, 6.0);
-        self.frame.fill_rounded_rect(x, y, w, h, corner_radius, overlay_color);
+        self.frame
+            .fill_rounded_rect(x, y, w, h, corner_radius, overlay_color);
 
         // Border
         let border_color = if is_selected {
@@ -981,7 +1025,15 @@ impl RaidOverlay {
         } else {
             colors::text_muted()
         };
-        self.frame.stroke_rounded_rect(x + 1.0, y + 1.0, w - 2.0, h - 2.0, corner_radius - 1.0, 2.0, border_color);
+        self.frame.stroke_rounded_rect(
+            x + 1.0,
+            y + 1.0,
+            w - 2.0,
+            h - 2.0,
+            corner_radius - 1.0,
+            2.0,
+            border_color,
+        );
 
         // Player name centered (or "Empty")
         let font_size = self.font_size() * 1.1;
@@ -1002,7 +1054,8 @@ impl RaidOverlay {
         } else {
             colors::white()
         };
-        self.frame.draw_text(&text, text_x, text_y, font_size, text_color);
+        self.frame
+            .draw_text(&text, text_x, text_y, font_size, text_color);
 
         // Clear button (×) for ALL occupied frames (including self)
         if !raid_frame.is_empty() {
@@ -1011,14 +1064,19 @@ impl RaidOverlay {
             let btn_y = y + 3.0;
 
             self.frame.fill_rounded_rect(
-                btn_x, btn_y, btn_size, btn_size, 2.0,
+                btn_x,
+                btn_y,
+                btn_size,
+                btn_size,
+                2.0,
                 colors::raid_clear_button(),
             );
             // Note: draw_text y is baseline
             let btn_font = btn_size * 0.7;
             let text_x = btn_x + btn_size * 0.3;
             let text_y = btn_y + btn_size * 0.75; // Baseline near bottom
-            self.frame.draw_text("x", text_x, text_y, btn_font, colors::white());
+            self.frame
+                .draw_text("x", text_x, text_y, btn_font, colors::white());
         }
     }
 
@@ -1032,7 +1090,8 @@ impl RaidOverlay {
         let x = self.frame.width() as f32 - 24.0;
         let y = self.frame.height() as f32 - 16.0;
 
-        self.frame.draw_text(&text, x, y, 10.0, colors::raid_overflow());
+        self.frame
+            .draw_text(&text, x, y, 10.0, colors::raid_overflow());
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1048,7 +1107,8 @@ impl RaidOverlay {
             // All non-empty frames can be cleared (including self)
             if !frame.is_empty() && self.hit_test_clear_button(frame.slot, px, py) {
                 eprintln!("[RAID-OVERLAY] Queuing ClearSlot({})", frame.slot);
-                self.pending_registry_actions.push(RaidRegistryAction::ClearSlot(frame.slot));
+                self.pending_registry_actions
+                    .push(RaidRegistryAction::ClearSlot(frame.slot));
                 self.needs_render = true;
                 return;
             }
@@ -1059,7 +1119,8 @@ impl RaidOverlay {
             if let Some((a, b)) = self.swap_state.on_click(slot) {
                 // Queue swap action - registry will update, then data will flow back
                 eprintln!("[RAID-OVERLAY] Queuing SwapSlots({}, {})", a, b);
-                self.pending_registry_actions.push(RaidRegistryAction::SwapSlots(a, b));
+                self.pending_registry_actions
+                    .push(RaidRegistryAction::SwapSlots(a, b));
                 self.needs_render = true;
             } else {
                 // Selection changed (first click or deselect same slot)
@@ -1083,7 +1144,8 @@ impl Overlay for RaidOverlay {
             // Skip render if both old and new have no players with effects
             let old_has_effects = self.frames.iter().any(|f| !f.effects.is_empty());
             let new_has_effects = raid_data.frames.iter().any(|f| !f.effects.is_empty());
-            let skip_render = !old_has_effects && !new_has_effects && self.frames.len() == raid_data.frames.len();
+            let skip_render =
+                !old_has_effects && !new_has_effects && self.frames.len() == raid_data.frames.len();
             self.set_frames(raid_data.frames);
             !skip_render
         } else {
@@ -1115,8 +1177,9 @@ impl Overlay for RaidOverlay {
 
         // Handle clicks in rearrange mode (platform reports clicks when drag is disabled)
         if self.interaction_mode == InteractionMode::Rearrange
-            && let Some((px, py)) = self.frame.take_pending_click() {
-                self.handle_rearrange_click(px, py);
+            && let Some((px, py)) = self.frame.take_pending_click()
+        {
+            self.handle_rearrange_click(px, py);
         }
 
         true
