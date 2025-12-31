@@ -32,7 +32,7 @@ pub(super) fn handle_ability(
     let matching: Vec<_> = manager.definitions
         .values()
         .filter(|d| {
-            d.matches_ability_with_name(ability_id, Some(&ability_name_str))
+            d.matches_ability_with_name(ability_id, Some(ability_name_str))
                 && manager.is_definition_active(d)
                 && manager.matches_source_target_filters(
                     &d.trigger, source_id, source_type, source_name, source_npc_id,
@@ -48,7 +48,7 @@ pub(super) fn handle_ability(
 
     // Check for cancel triggers on ability cast
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::AbilityCast { abilities, .. } if abilities.iter().any(|s| s.matches(ability_id, Some(&ability_name_str)))),
+        |t| matches!(t, TimerTrigger::AbilityCast { abilities, .. } if abilities.iter().any(|s| s.matches(ability_id, Some(ability_name_str)))),
         &format!("ability {} cast", ability_id)
     );
 }
@@ -297,7 +297,7 @@ pub(super) fn handle_target_set(
     let matching: Vec<_> = manager.definitions
         .values()
         .filter(|d| {
-            d.matches_target_set(source_npc_id, Some(&source_name_str))
+            d.matches_target_set(source_npc_id, Some(source_name_str))
                 && manager.is_definition_active(d)
                 && manager.matches_source_target_filters(
                     &d.trigger,

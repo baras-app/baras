@@ -291,20 +291,16 @@ impl CombatService {
         // Build index from bundled directory
         if let Some(ref path) = bundled_dir
             && path.exists()
-        {
-            if let Ok(area_index) = build_area_index(path) {
+            && let Ok(area_index) = build_area_index(path) {
                 index.extend(area_index);
             }
-        }
 
         // Build index from custom directory (can override bundled)
         if let Some(ref path) = custom_dir
             && path.exists()
-        {
-            if let Ok(area_index) = build_area_index(path) {
+            && let Ok(area_index) = build_area_index(path) {
                 index.extend(area_index);
             }
-        }
 
         index
     }
@@ -399,11 +395,10 @@ impl CombatService {
         });
 
         for path in files {
-            if let Ok(contents) = std::fs::read_to_string(&path) {
-                if let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
+            if let Ok(contents) = std::fs::read_to_string(&path)
+                && let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
                     set.add_definitions(config.effects, overwrite);
                 }
-            }
         }
     }
 
@@ -584,19 +579,16 @@ impl CombatService {
         }
 
         // Build initial index
-        match directory_watcher::build_index(&dir) {
-            Ok((index, newest)) => {
-                {
-                    let mut index_guard = self.shared.directory_index.write().await;
-                    *index_guard = index;
-                }
-
-                // Auto-load newest file if available
-                if let Some(ref newest_path) = newest {
-                    self.start_tailing(newest_path.clone()).await;
-                }
+        if let Ok((index, newest)) = directory_watcher::build_index(&dir) {
+            {
+                let mut index_guard = self.shared.directory_index.write().await;
+                *index_guard = index;
             }
-            Err(_) => {}
+
+            // Auto-load newest file if available
+            if let Some(ref newest_path) = newest {
+                self.start_tailing(newest_path.clone()).await;
+            }
         }
 
         let Ok(mut watcher) = DirectoryWatcher::new(&dir) else {
@@ -648,11 +640,10 @@ impl CombatService {
         // Load timer preferences into the session's timer manager
         if let Some(prefs_path) = Self::timer_preferences_path() {
             let timer_mgr = session.timer_manager();
-            if let Ok(mut mgr) = timer_mgr.lock() {
-                if let Err(e) = mgr.load_preferences(&prefs_path) {
+            if let Ok(mut mgr) = timer_mgr.lock()
+                && let Err(e) = mgr.load_preferences(&prefs_path) {
                     eprintln!("Warning: Failed to load timer preferences: {}", e);
                 }
-            }
         }
 
         // Timer/boss definitions are now lazy-loaded when AreaEntered signal fires
@@ -703,22 +694,19 @@ impl CombatService {
         let reader = Reader::from(path, session.clone());
 
         // First, read and process the entire existing file
-        match reader.read_log_file().await {
-            Ok((events, end_pos)) => {
-                let mut session_guard = session.write().await;
-                for event in events {
-                    session_guard.process_event(event);
-                }
-                session_guard.current_byte = Some(end_pos);
-                // Finalize session to add the last encounter to history
-                session_guard.finalize_session();
-                // Sync area context to timer manager (handles mid-session starts)
-                session_guard.sync_timer_context();
-                drop(session_guard);
-                // Trigger initial metrics send after file processing
-                let _ = trigger_tx.send(MetricsTrigger::InitialLoad);
+        if let Ok((events, end_pos)) = reader.read_log_file().await {
+            let mut session_guard = session.write().await;
+            for event in events {
+                session_guard.process_event(event);
             }
-            Err(_) => {}
+            session_guard.current_byte = Some(end_pos);
+            // Finalize session to add the last encounter to history
+            session_guard.finalize_session();
+            // Sync area context to timer manager (handles mid-session starts)
+            session_guard.sync_timer_context();
+            drop(session_guard);
+            // Trigger initial metrics send after file processing
+            let _ = trigger_tx.send(MetricsTrigger::InitialLoad);
         }
 
         // Enable live mode for effect/timer tracking (skip historical events)
@@ -815,8 +803,8 @@ impl CombatService {
                 }
 
                 // Raid frames: only send if there are effects or effects just cleared
-                if raid_active {
-                    if let Some(data) = build_raid_frame_data(&shared).await {
+                if raid_active
+                    && let Some(data) = build_raid_frame_data(&shared).await {
                         let effect_count: usize = data.frames.iter().map(|f| f.effects.len()).sum();
                         // Only send if effects exist, or if we need to clear (was non-zero, now zero)
                         if effect_count > 0 || last_raid_effect_count > 0 {
@@ -824,11 +812,10 @@ impl CombatService {
                         }
                         last_raid_effect_count = effect_count;
                     }
-                }
 
                 // Effects countdown: only send if there are effects or effects just cleared
-                if effects_active {
-                    if let Some(data) = build_effects_overlay_data(&shared).await {
+                if effects_active
+                    && let Some(data) = build_effects_overlay_data(&shared).await {
                         let effect_count = data.entries.len();
                         // Only send if effects exist, or if we need to clear (was non-zero, now zero)
                         if effect_count > 0 || last_effects_count > 0 {
@@ -836,7 +823,6 @@ impl CombatService {
                         }
                         last_effects_count = effect_count;
                     }
-                }
 
                 // Effect audio: process in live mode
                 if shared.is_live_tailing.load(Ordering::SeqCst) {
@@ -1434,15 +1420,14 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
 
         // Check for countdown (uses realtime internally, matches timer logic)
         // Only for non-removed effects
-        if effect.removed_at.is_none() {
-            if let Some(seconds) = effect.check_countdown() {
+        if effect.removed_at.is_none()
+            && let Some(seconds) = effect.check_countdown() {
                 countdowns.push((
                     effect.display_text.clone(),
                     seconds,
                     effect.countdown_voice.clone(),
                 ));
             }
-        }
 
         // Check for audio offset trigger (early warning sound, offset > 0)
         if effect.check_audio_offset() {

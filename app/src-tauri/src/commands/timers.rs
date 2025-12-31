@@ -521,8 +521,7 @@ pub async fn update_encounter_timer(
 
             for boss_with_path in &mut bosses {
                 if boss_with_path.boss.id == timer.boss_id && boss_with_path.file_path == file_path
-                {
-                    if let Some(existing) = boss_with_path
+                    && let Some(existing) = boss_with_path
                         .boss
                         .timers
                         .iter_mut()
@@ -531,7 +530,6 @@ pub async fn update_encounter_timer(
                         *existing = timer_def;
                         break;
                     }
-                }
             }
 
             let file_bosses: Vec<_> = bosses
@@ -1291,15 +1289,13 @@ pub async fn list_bundled_sounds(app_handle: AppHandle) -> Result<Vec<String>, S
         for entry in entries.flatten() {
             let path = entry.path();
             // Only include files (not directories like voice packs)
-            if path.is_file() {
-                if let Some(ext) = path.extension() {
+            if path.is_file()
+                && let Some(ext) = path.extension() {
                     let ext = ext.to_string_lossy().to_lowercase();
-                    if ext == "mp3" || ext == "wav" {
-                        if let Some(name) = path.file_name() {
+                    if (ext == "mp3" || ext == "wav")
+                        && let Some(name) = path.file_name() {
                             sounds.push(name.to_string_lossy().to_string());
                         }
-                    }
-                }
             }
         }
     }

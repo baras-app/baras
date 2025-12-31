@@ -369,7 +369,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 // Helpers
 // ═══════════════════════════════════════════════════════════════════════════════
 
-fn extract_session_date(first_line: &str) -> Result<NaiveDateTime, Box<dyn std::error::Error>> {
+fn extract_session_date(_first_line: &str) -> Result<NaiveDateTime, Box<dyn std::error::Error>> {
     // Combat log first line should have timestamp like [HH:MM:SS.mmm]
     // We'll use today's date as base (logs don't include date)
     let today = chrono::Local::now().naive_local().date();
@@ -436,7 +436,7 @@ fn populate_tracked_ids(state: &mut ValidationState, boss: &BossEncounterDefinit
 
 fn track_event(state: &mut ValidationState, event: &CombatEvent, boss: &BossEncounterDefinition) {
     let source_name = resolve(event.source_entity.name).to_string();
-    let target_name = resolve(event.target_entity.name).to_string();
+    let _target_name = resolve(event.target_entity.name).to_string();
 
     // Track NPC entities (source and target)
     for entity in [&event.source_entity, &event.target_entity] {
