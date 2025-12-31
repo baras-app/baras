@@ -1,0 +1,15 @@
+{
+  "version": "2025.12.24",
+  "notes": "Initial release",
+  "pub_date": "2025-12-24T00:00:00Z",
+  "platforms": {
+    "linux-x86_64": {
+      "signature": "",
+      "url": ""
+    },
+    "windows-x86_64": {
+      "signature": "",
+      "url": ""
+    }
+  }
+}

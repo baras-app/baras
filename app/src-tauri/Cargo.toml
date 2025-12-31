@@ -43,3 +43,6 @@ rodio = { version = "0.19", default-features = false, features = ["wav", "vorbis
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 tts = "0.26"
 
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+

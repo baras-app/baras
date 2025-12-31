@@ -1,0 +1,188 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., 2025.12.24)"
+        required: true
+        type: string
+      release_notes:
+        description: "Release notes"
+        required: false
+        type: string
+        default: "Bug fixes and improvements"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install Dioxus and Tauri CLIs
+        run: cargo binstall dioxus-cli tauri-cli --no-confirm --force
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: app
+          tauriScript: cargo tauri
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: |
+            target/release/bundle/appimage/*.AppImage
+            target/release/bundle/appimage/*.AppImage.sig
+            target/release/bundle/appimage/*.AppImage.tar.gz
+            target/release/bundle/appimage/*.AppImage.tar.gz.sig
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install Dioxus and Tauri CLIs
+        run: cargo binstall dioxus-cli tauri-cli --no-confirm --force
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: app
+          tauriScript: cargo tauri
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: |
+            target/release/bundle/nsis/*.exe
+            target/release/bundle/nsis/*.nsis.zip
+            target/release/bundle/nsis/*.nsis.zip.sig
+
+  publish-release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-release
+          path: artifacts/linux
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: artifacts/windows
+
+      - name: List artifacts
+        run: find artifacts -type f
+
+      - name: Read signatures and create release manifest
+        id: manifest
+        run: |
+          VERSION="${{ inputs.version }}"
+          NOTES="${{ inputs.release_notes }}"
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Find signature files
+          LINUX_SIG=$(cat artifacts/linux/*.tar.gz.sig 2>/dev/null || echo "")
+          WINDOWS_SIG=$(cat artifacts/windows/*.nsis.zip.sig 2>/dev/null || echo "")
+
+          # Get artifact filenames
+          LINUX_FILE=$(basename artifacts/linux/*.tar.gz 2>/dev/null | head -1)
+          WINDOWS_FILE=$(basename artifacts/windows/*.nsis.zip 2>/dev/null | head -1)
+
+          # Create latest.json
+          cat > latest.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": "${NOTES}",
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+              "linux-x86_64": {
+                "signature": "${LINUX_SIG}",
+                "url": "https://github.com/baras-app/baras/releases/download/v${VERSION}/${LINUX_FILE}"
+              },
+              "windows-x86_64": {
+                "signature": "${WINDOWS_SIG}",
+                "url": "https://github.com/baras-app/baras/releases/download/v${VERSION}/${WINDOWS_FILE}"
+              }
+            }
+          }
+          EOF
+
+          cat latest.json
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: BARAS v${{ inputs.version }}
+          body: ${{ inputs.release_notes }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/linux/*.AppImage
+            artifacts/linux/*.tar.gz
+            artifacts/windows/*.exe
+            artifacts/windows/*.nsis.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit updated latest.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          git commit -m "Update latest.json for v${{ inputs.version }}"
+          git push
