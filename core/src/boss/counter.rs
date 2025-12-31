@@ -57,7 +57,7 @@ fn default_reset_trigger() -> Trigger {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Condition for counter-based timer/phase activation
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CounterCondition {
     /// Counter to check
     pub counter_id: String,
@@ -71,7 +71,7 @@ pub struct CounterCondition {
 }
 
 /// Comparison operators for counter conditions
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ComparisonOp {
     #[default]

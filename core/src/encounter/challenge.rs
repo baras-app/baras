@@ -81,7 +81,12 @@ impl ChallengeTracker {
     }
 
     /// Initialize tracker with challenges from a boss definition
-    pub fn start(&mut self, challenges: Vec<ChallengeDefinition>, boss_npc_ids: Vec<i64>, timestamp: chrono::NaiveDateTime) {
+    pub fn start(
+        &mut self,
+        challenges: Vec<ChallengeDefinition>,
+        boss_npc_ids: Vec<i64>,
+        timestamp: chrono::NaiveDateTime,
+    ) {
         self.definitions = challenges;
         self.boss_npc_ids = boss_npc_ids;
         self.values.clear();
@@ -140,14 +145,12 @@ impl ChallengeTracker {
 
         // Activate challenges that have this phase in their conditions (first time only)
         for def in &self.definitions {
-            if let Some(phase_ids) = def.phase_ids() {
-                if phase_ids.iter().any(|p| p == phase_id) {
-                    if let Some(val) = self.values.get_mut(&def.id) {
-                        if val.activated_time.is_none() {
-                            val.activated_time = Some(timestamp);
-                        }
-                    }
-                }
+            if let Some(phase_ids) = def.phase_ids()
+                && phase_ids.iter().any(|p| p == phase_id)
+                && let Some(val) = self.values.get_mut(&def.id)
+                && val.activated_time.is_none()
+            {
+                val.activated_time = Some(timestamp);
             }
         }
     }
@@ -196,12 +199,14 @@ impl ChallengeTracker {
     /// Pass current timestamp for live duration calculation
     /// Only returns challenges that have received at least one matching event
     pub fn snapshot_live(&self, current_time: chrono::NaiveDateTime) -> Vec<ChallengeValue> {
-        self.values.values()
+        self.values
+            .values()
             .filter(|val| val.first_event_time.is_some()) // Only show challenges with data
             .map(|val| {
                 // Calculate duration from activated_time (when challenge context became active)
                 // Falls back to first_event_time if activated_time not set
-                let duration_secs = val.activated_time
+                let duration_secs = val
+                    .activated_time
                     .or(val.first_event_time)
                     .map(|start| {
                         let elapsed = current_time.signed_duration_since(start);
@@ -219,13 +224,15 @@ impl ChallengeTracker {
                     first_event_time: val.first_event_time,
                     activated_time: val.activated_time,
                 }
-            }).collect()
+            })
+            .collect()
     }
 
     /// Get current values snapshot (uses stored duration - for historical data)
     pub fn snapshot(&self) -> Vec<ChallengeValue> {
-        self.values.values().map(|val| {
-            ChallengeValue {
+        self.values
+            .values()
+            .map(|val| ChallengeValue {
                 id: val.id.clone(),
                 name: val.name.clone(),
                 value: val.value,
@@ -234,8 +241,8 @@ impl ChallengeTracker {
                 duration_secs: val.duration_secs.max(self.total_duration_secs).max(1.0),
                 first_event_time: val.first_event_time,
                 activated_time: val.activated_time,
-            }
-        }).collect()
+            })
+            .collect()
     }
 
     /// Get a specific challenge value
@@ -276,19 +283,20 @@ impl ChallengeTracker {
             }
 
             if def.matches(ctx, Some(source), Some(target), Some(ability_id), None)
-                && let Some(val) = self.values.get_mut(&def.id) {
-                    let entity = if track_source { source } else { target };
-                    // Only count player contributions (not companions/NPCs)
-                    if entity.is_player {
-                        // Record first event time for duration calculation
-                        if val.first_event_time.is_none() {
-                            val.first_event_time = Some(timestamp);
-                        }
-                        val.value += damage;
-                        val.event_count += 1;
-                        *val.by_player.entry(entity.entity_id).or_insert(0) += damage;
-                        updated.push(def.id.clone());
+                && let Some(val) = self.values.get_mut(&def.id)
+            {
+                let entity = if track_source { source } else { target };
+                // Only count player contributions (not companions/NPCs)
+                if entity.is_player {
+                    // Record first event time for duration calculation
+                    if val.first_event_time.is_none() {
+                        val.first_event_time = Some(timestamp);
                     }
+                    val.value += damage;
+                    val.event_count += 1;
+                    *val.by_player.entry(entity.entity_id).or_insert(0) += damage;
+                    updated.push(def.id.clone());
+                }
             }
         }
 
@@ -325,18 +333,19 @@ impl ChallengeTracker {
             }
 
             if def.matches(ctx, Some(source), Some(target), Some(ability_id), None)
-                && let Some(val) = self.values.get_mut(&def.id) {
-                    let entity = if track_source { source } else { target };
-                    // Only count player contributions (not companions/NPCs)
-                    if entity.is_player {
-                        if val.first_event_time.is_none() {
-                            val.first_event_time = Some(timestamp);
-                        }
-                        val.value += value;
-                        val.event_count += 1;
-                        *val.by_player.entry(entity.entity_id).or_insert(0) += value;
-                        updated.push(def.id.clone());
+                && let Some(val) = self.values.get_mut(&def.id)
+            {
+                let entity = if track_source { source } else { target };
+                // Only count player contributions (not companions/NPCs)
+                if entity.is_player {
+                    if val.first_event_time.is_none() {
+                        val.first_event_time = Some(timestamp);
                     }
+                    val.value += value;
+                    val.event_count += 1;
+                    *val.by_player.entry(entity.entity_id).or_insert(0) += value;
+                    updated.push(def.id.clone());
+                }
             }
         }
 
@@ -364,17 +373,17 @@ impl ChallengeTracker {
             }
 
             if def.matches(ctx, Some(source), Some(target), Some(ability_id), None)
-                && let Some(val) = self.values.get_mut(&def.id) {
-                    if source.is_player {
-                        if val.first_event_time.is_none() {
-                            val.first_event_time = Some(timestamp);
-                        }
-                        val.value += 1;
-                        val.event_count += 1;
-                        *val.by_player.entry(source.entity_id).or_insert(0) += 1;
-                        updated.push(def.id.clone());
-                    }
+                && let Some(val) = self.values.get_mut(&def.id)
+                && source.is_player
+            {
+                if val.first_event_time.is_none() {
+                    val.first_event_time = Some(timestamp);
                 }
+                val.value += 1;
+                val.event_count += 1;
+                *val.by_player.entry(source.entity_id).or_insert(0) += 1;
+                updated.push(def.id.clone());
+            }
         }
 
         updated
@@ -401,16 +410,16 @@ impl ChallengeTracker {
             }
 
             if def.matches(ctx, Some(source), Some(target), None, Some(effect_id))
-                && let Some(val) = self.values.get_mut(&def.id) {
-                    if source.is_player {
-                        if val.first_event_time.is_none() {
-                            val.first_event_time = Some(timestamp);
-                        }
-                        val.value += 1;
-                        val.event_count += 1;
-                        *val.by_player.entry(source.entity_id).or_insert(0) += 1;
-                        updated.push(def.id.clone());
-                    }
+                && let Some(val) = self.values.get_mut(&def.id)
+                && source.is_player
+            {
+                if val.first_event_time.is_none() {
+                    val.first_event_time = Some(timestamp);
+                }
+                val.value += 1;
+                val.event_count += 1;
+                *val.by_player.entry(source.entity_id).or_insert(0) += 1;
+                updated.push(def.id.clone());
             }
         }
 
@@ -436,16 +445,16 @@ impl ChallengeTracker {
             }
 
             if def.matches(ctx, None, Some(entity), None, None)
-                && let Some(val) = self.values.get_mut(&def.id) {
-                    if entity.is_player {
-                        if val.first_event_time.is_none() {
-                            val.first_event_time = Some(timestamp);
-                        }
-                        val.value += 1;
-                        val.event_count += 1;
-                        *val.by_player.entry(entity.entity_id).or_insert(0) += 1;
-                        updated.push(def.id.clone());
-                    }
+                && let Some(val) = self.values.get_mut(&def.id)
+                && entity.is_player
+            {
+                if val.first_event_time.is_none() {
+                    val.first_event_time = Some(timestamp);
+                }
+                val.value += 1;
+                val.event_count += 1;
+                *val.by_player.entry(entity.entity_id).or_insert(0) += 1;
+                updated.push(def.id.clone());
             }
         }
 
@@ -473,16 +482,16 @@ impl ChallengeTracker {
             }
 
             if def.matches(ctx, Some(source), Some(target), None, None)
-                && let Some(val) = self.values.get_mut(&def.id) {
-                    if source.is_player {
-                        if val.first_event_time.is_none() {
-                            val.first_event_time = Some(timestamp);
-                        }
-                        val.value += threat;
-                        val.event_count += 1;
-                        *val.by_player.entry(source.entity_id).or_insert(0) += threat;
-                        updated.push(def.id.clone());
-                    }
+                && let Some(val) = self.values.get_mut(&def.id)
+                && source.is_player
+            {
+                if val.first_event_time.is_none() {
+                    val.first_event_time = Some(timestamp);
+                }
+                val.value += threat;
+                val.event_count += 1;
+                *val.by_player.entry(source.entity_id).or_insert(0) += threat;
+                updated.push(def.id.clone());
             }
         }
 

@@ -5,7 +5,7 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{BossListItem, CounterListItem, CounterTrigger, EntityMatcher};
+use crate::types::{BossListItem, CounterListItem, CounterTrigger, EntityFilter};
 
 use super::tabs::EncounterData;
 use super::triggers::CounterTriggerEditor;
@@ -287,7 +287,7 @@ fn CounterEditForm(
                                 } else {
                                     Some(CounterTrigger::AbilityCast {
                                         abilities: vec![],
-                                        source: EntityMatcher::default(),
+                                        source: EntityFilter::default(),
                                     })
                                 };
                                 draft.set(d);
@@ -422,7 +422,7 @@ fn NewCounterForm(
     let mut name = use_signal(|| "New Counter".to_string());
     let mut increment_on = use_signal(|| CounterTrigger::AbilityCast {
         abilities: vec![],
-        source: EntityMatcher::default(),
+        source: EntityFilter::default(),
     });
     let mut decrement_on = use_signal(|| None::<CounterTrigger>);
     let mut reset_on = use_signal(|| CounterTrigger::CombatEnd);
@@ -489,7 +489,7 @@ fn NewCounterForm(
                                 } else {
                                     Some(CounterTrigger::AbilityCast {
                                         abilities: vec![],
-                                        source: EntityMatcher::default(),
+                                        source: EntityFilter::default(),
                                     })
                                 });
                             }

@@ -15,7 +15,7 @@ pub use baras_types::{
     OverlaySettings, PersonalOverlayConfig, PersonalStat, RaidOverlaySettings,
     TimerOverlayConfig, MAX_PROFILES,
     // Selectors (unified ID-or-Name matching)
-    AbilitySelector, EffectSelector, EntityMatcher, EntitySelector,
+    AbilitySelector, EffectSelector, EntitySelector,
     // Trigger type (shared across timers, phases, counters)
     Trigger,
 };
@@ -198,8 +198,6 @@ pub struct TimerListItem {
 
     // Timer data
     pub name: String,
-    /// Optional in-game display text (defaults to name if not set)
-    #[serde(default)]
     pub display_text: Option<String>,
     pub enabled: bool,
     pub duration_secs: f32,
@@ -210,44 +208,31 @@ pub struct TimerListItem {
     // Trigger info
     pub trigger: TimerTrigger,
 
-    // Entity filters
-    #[serde(default)]
+    // Entity filters (from trigger)
     pub source: EntityFilter,
-    #[serde(default)]
     pub target: EntityFilter,
 
     // Counter guard condition
-    #[serde(default)]
     pub counter_condition: Option<CounterCondition>,
 
+    // Alert fields
+    pub is_alert: bool,
+    pub alert_text: Option<String>,
+
     // Cancel trigger
-    #[serde(default)]
     pub cancel_trigger: Option<TimerTrigger>,
-    #[serde(default)]
     pub cancel_source: EntityFilter,
-    #[serde(default)]
     pub cancel_target: EntityFilter,
 
     // Behavior
     pub can_be_refreshed: bool,
     pub repeats: u8,
     pub chains_to: Option<String>,
-
-    // Alert options
     pub alert_at_secs: Option<f32>,
-    #[serde(default)]
-    pub is_alert: bool,
-    #[serde(default)]
-    pub alert_text: Option<String>,
-
-    // Display
     pub show_on_raid_frames: bool,
-    /// Only show when remaining time is at or below this (0 = always show)
-    #[serde(default)]
     pub show_at_secs: f32,
 
     // Audio
-    #[serde(default)]
     pub audio: AudioConfig,
 }
 

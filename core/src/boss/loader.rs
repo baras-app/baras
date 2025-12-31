@@ -268,6 +268,118 @@ pub fn save_bosses_to_file(bosses: &[BossEncounterDefinition], path: &Path) -> R
     Ok(())
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Custom File Merging
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Find the custom overlay file for a bundled file
+/// e.g., dxun.toml -> dxun_custom.toml in user config dir
+pub fn find_custom_file(bundled_path: &Path, user_dir: &Path) -> Option<PathBuf> {
+    let stem = bundled_path.file_stem()?.to_str()?;
+    let custom_name = format!("{}_custom.toml", stem);
+
+    // Look in same relative path within user directory
+    let relative = bundled_path.parent()?;
+    if let Some(category) = relative.file_name() {
+        let custom_path = user_dir.join(category).join(&custom_name);
+        if custom_path.exists() {
+            return Some(custom_path);
+        }
+    }
+
+    // Also check user directory root
+    let custom_path = user_dir.join(&custom_name);
+    if custom_path.exists() {
+        return Some(custom_path);
+    }
+
+    None
+}
+
+/// Load bosses from a bundled file, merging with custom overlay if present
+pub fn load_bosses_with_custom(
+    bundled_path: &Path,
+    user_dir: Option<&Path>,
+) -> Result<Vec<BossEncounterDefinition>, String> {
+    // Load bundled definitions
+    let mut bosses = load_bosses_from_file(bundled_path)?;
+
+    // Look for custom overlay file
+    if let Some(user_dir) = user_dir
+        && let Some(custom_path) = find_custom_file(bundled_path, user_dir)
+    {
+        match load_bosses_from_file(&custom_path) {
+            Ok(custom_bosses) => {
+                eprintln!(
+                    "Merging {} custom bosses from {}",
+                    custom_bosses.len(),
+                    custom_path.display()
+                );
+                bosses = merge_boss_lists(bosses, custom_bosses);
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to load custom file {}: {}", custom_path.display(), e);
+            }
+        }
+    }
+
+    Ok(bosses)
+}
+
+/// Merge two lists of boss definitions by ID
+/// Custom entries replace or extend bundled entries
+fn merge_boss_lists(
+    mut bundled: Vec<BossEncounterDefinition>,
+    custom: Vec<BossEncounterDefinition>,
+) -> Vec<BossEncounterDefinition> {
+    for custom_boss in custom {
+        if let Some(base) = bundled.iter_mut().find(|b| b.id == custom_boss.id) {
+            // Merge into existing boss
+            merge_boss_definition(base, custom_boss);
+        } else {
+            // New boss from custom file
+            bundled.push(custom_boss);
+        }
+    }
+    bundled
+}
+
+/// Merge a custom boss definition into a base (bundled) definition
+/// Element-level merging: matching IDs replace, new IDs append
+fn merge_boss_definition(base: &mut BossEncounterDefinition, custom: BossEncounterDefinition) {
+    // Merge timers by ID
+    merge_by_id(&mut base.timers, custom.timers, |t| &t.id);
+
+    // Merge challenges by ID
+    merge_by_id(&mut base.challenges, custom.challenges, |c| &c.id);
+
+    // Merge counters by ID
+    merge_by_id(&mut base.counters, custom.counters, |c| &c.id);
+
+    // Merge phases by ID
+    merge_by_id(&mut base.phases, custom.phases, |p| &p.id);
+
+    // Merge entities by name (entities use name as ID)
+    merge_by_id(&mut base.entities, custom.entities, |e| &e.name);
+}
+
+/// Generic merge helper: replace matching IDs, append new ones
+fn merge_by_id<T, F>(base: &mut Vec<T>, custom: Vec<T>, get_id: F)
+where
+    F: Fn(&T) -> &String,
+{
+    for custom_item in custom {
+        let custom_id = get_id(&custom_item);
+        if let Some(base_item) = base.iter_mut().find(|b| get_id(b) == custom_id) {
+            // Replace with custom version
+            *base_item = custom_item;
+        } else {
+            // Append new item
+            base.push(custom_item);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

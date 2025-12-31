@@ -286,6 +286,27 @@ impl Trigger {
             _ => None,
         }
     }
+
+    /// Extract both source and target filters from this trigger.
+    /// Returns default "Any" filters for triggers that don't have them.
+    pub fn source_target_filters(&self) -> (EntityFilter, EntityFilter) {
+        let source = self.source_filter().cloned().unwrap_or_default();
+        let target = self.target_filter().cloned().unwrap_or_default();
+        (source, target)
+    }
+
+    /// Create a new trigger with updated source and target filters.
+    /// Only affects trigger variants that support these filters.
+    pub fn with_source_target(self, source: EntityFilter, target: EntityFilter) -> Self {
+        match self {
+            Self::AbilityCast { abilities, .. } => Self::AbilityCast { abilities, source },
+            Self::EffectApplied { effects, .. } => Self::EffectApplied { effects, source, target },
+            Self::EffectRemoved { effects, .. } => Self::EffectRemoved { effects, source, target },
+            Self::DamageTaken { abilities, .. } => Self::DamageTaken { abilities, source, target },
+            Self::TargetSet { selector, .. } => Self::TargetSet { selector, target },
+            other => other, // Leave unchanged for triggers without source/target
+        }
+    }
 }
 
 #[cfg(test)]

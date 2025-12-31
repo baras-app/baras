@@ -14,7 +14,7 @@ use crate::signal_processor::{GameSignal, SignalHandler};
 use crate::game_data::Difficulty;
 use crate::context::IStr;
 
-use super::{ActiveTimer, TimerDefinition, TimerKey, TimerTrigger};
+use super::{ActiveTimer, TimerDefinition, TimerKey, TimerTrigger, TimerPreferences};
 use super::matching::{is_definition_active, matches_source_target_filters};
 use super::signal_handlers;
 
@@ -54,6 +54,9 @@ pub struct FiredAlert {
 pub struct TimerManager {
     /// Timer definitions indexed by ID
     pub(super) definitions: HashMap<String, TimerDefinition>,
+
+    /// User preferences (color, audio, enabled overrides)
+    preferences: TimerPreferences,
 
     /// Currently active timers (countdown timers with duration > 0)
     pub(super) active_timers: HashMap<TimerKey, ActiveTimer>,
@@ -118,6 +121,7 @@ impl TimerManager {
     pub fn new() -> Self {
         Self {
             definitions: HashMap::new(),
+            preferences: TimerPreferences::new(),
             active_timers: HashMap::new(),
             fired_alerts: Vec::new(),
             expired_this_tick: Vec::new(),
@@ -135,6 +139,28 @@ impl TimerManager {
             boss_entity_ids: HashSet::new(),
             boss_npc_class_ids: HashSet::new(),
         }
+    }
+
+    /// Load timer preferences from a file
+    pub fn load_preferences(&mut self, path: &std::path::Path) -> Result<(), super::PreferencesError> {
+        self.preferences = TimerPreferences::load(path)?;
+        eprintln!("TimerManager: loaded {} timer preferences", self.preferences.timers.len());
+        Ok(())
+    }
+
+    /// Set timer preferences directly
+    pub fn set_preferences(&mut self, preferences: TimerPreferences) {
+        self.preferences = preferences;
+    }
+
+    /// Get a reference to current preferences
+    pub fn preferences(&self) -> &TimerPreferences {
+        &self.preferences
+    }
+
+    /// Get a mutable reference to preferences (for updating)
+    pub fn preferences_mut(&mut self) -> &mut TimerPreferences {
+        &mut self.preferences
     }
 
     /// Clear boss NPC class IDs (called when encounter ends)
@@ -374,22 +400,32 @@ impl TimerManager {
     }
 
     /// Check if a timer definition is active for current context (delegates to matching module)
+    /// Also checks preference override for enabled state
     pub(super) fn is_definition_active(&self, def: &TimerDefinition) -> bool {
+        // Check preference override first - user can disable timers via preferences
+        if !self.preferences.is_enabled(def) {
+            return false;
+        }
         is_definition_active(def, &self.context, self.current_phase.as_deref(), &self.counters)
     }
 
     /// Start a timer from a definition
     pub(super) fn start_timer(&mut self, def: &TimerDefinition, timestamp: NaiveDateTime, target_id: Option<i64>) {
+        // Apply preference overrides
+        let color = self.preferences.get_color(def);
+        let audio_enabled = self.preferences.is_audio_enabled(def);
+        let audio_file = self.preferences.get_audio_file(def);
+
         // Alerts are ephemeral notifications, not countdown timers
         if def.is_alert {
             self.fired_alerts.push(FiredAlert {
                 id: def.id.clone(),
                 name: def.name.clone(),
                 text: def.alert_text.clone().unwrap_or_else(|| def.name.clone()),
-                color: Some(def.color),
+                color: Some(color),
                 timestamp,
-                audio_enabled: def.audio.enabled,
-                audio_file: def.audio.file.clone(),
+                audio_enabled,
+                audio_file,
             });
             return;
         }
@@ -408,6 +444,15 @@ impl TimerManager {
             return;
         }
 
+        // Build audio config with preference overrides
+        let audio_with_prefs = crate::audio::AudioConfig {
+            enabled: audio_enabled,
+            file: audio_file,
+            offset: def.audio.offset,
+            countdown_start: def.audio.countdown_start,
+            countdown_voice: def.audio.countdown_voice.clone(),
+        };
+
         // Create new timer
         let timer = ActiveTimer::new(
             def.id.clone(),
@@ -416,11 +461,11 @@ impl TimerManager {
             timestamp,
             Duration::from_secs_f32(def.duration_secs),
             def.repeats,
-            def.color,
+            color,
             def.triggers_timer.clone(),
             def.show_on_raid_frames,
             def.show_at_secs,
-            &def.audio,
+            &audio_with_prefs,
         );
 
         self.active_timers.insert(key.clone(), timer);

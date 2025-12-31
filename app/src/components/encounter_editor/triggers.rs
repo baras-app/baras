@@ -5,7 +5,7 @@
 use dioxus::prelude::*;
 
 use crate::types::{
-    AbilitySelector, CounterTrigger, EffectSelector, EntityMatcher, EntitySelector, PhaseTrigger,
+    AbilitySelector, CounterTrigger, EffectSelector, EntityFilter, EntitySelector, PhaseTrigger,
     TimerTrigger,
 };
 
@@ -310,10 +310,10 @@ pub fn SimpleTriggerEditor(
                 onchange: move |e| {
                     let new_trigger = match e.value().as_str() {
                         "combat_start" => TimerTrigger::CombatStart,
-                        "ability_cast" => TimerTrigger::AbilityCast { abilities: vec![], source: EntityMatcher::default() },
-                        "effect_applied" => TimerTrigger::EffectApplied { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
-                        "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
-                        "damage_taken" => TimerTrigger::DamageTaken { abilities: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
+                        "ability_cast" => TimerTrigger::AbilityCast { abilities: vec![], source: EntityFilter::default() },
+                        "effect_applied" => TimerTrigger::EffectApplied { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
+                        "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
+                        "damage_taken" => TimerTrigger::DamageTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "timer_expires" => TimerTrigger::TimerExpires { timer_id: String::new() },
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
                         "phase_entered" => TimerTrigger::PhaseEntered { phase_id: String::new() },
@@ -322,7 +322,7 @@ pub fn SimpleTriggerEditor(
                         "counter_reaches" => TimerTrigger::CounterReaches { counter_id: String::new(), value: 1 },
                         "npc_appears" => TimerTrigger::NpcAppears { selector: vec![] },
                         "entity_death" => TimerTrigger::EntityDeath { selector: vec![] },
-                        "target_set" => TimerTrigger::TargetSet { selector: vec![] },
+                        "target_set" => TimerTrigger::TargetSet { selector: vec![], target: EntityFilter::default() },
                         "time_elapsed" => TimerTrigger::TimeElapsed { secs: 30.0 },
                         "manual" => TimerTrigger::Manual,
                         _ => trigger.clone(),
@@ -356,28 +356,28 @@ pub fn SimpleTriggerEditor(
                         AbilitySelectorEditor {
                             label: "Abilities",
                             selectors: abilities,
-                            on_change: move |sels| on_change.call(TimerTrigger::AbilityCast { abilities: sels, source: EntityMatcher::default() })
+                            on_change: move |sels| on_change.call(TimerTrigger::AbilityCast { abilities: sels, source: EntityFilter::default() })
                         }
                     },
                     TimerTrigger::EffectApplied { effects, .. } => rsx! {
                         EffectSelectorEditor {
                             label: "Effects",
                             selectors: effects,
-                            on_change: move |sels| on_change.call(TimerTrigger::EffectApplied { effects: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
+                            on_change: move |sels| on_change.call(TimerTrigger::EffectApplied { effects: sels, source: EntityFilter::default(), target: EntityFilter::default() })
                         }
                     },
                     TimerTrigger::EffectRemoved { effects, .. } => rsx! {
                         EffectSelectorEditor {
                             label: "Effects",
                             selectors: effects,
-                            on_change: move |sels| on_change.call(TimerTrigger::EffectRemoved { effects: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
+                            on_change: move |sels| on_change.call(TimerTrigger::EffectRemoved { effects: sels, source: EntityFilter::default(), target: EntityFilter::default() })
                         }
                     },
                     TimerTrigger::DamageTaken { abilities, .. } => rsx! {
                         AbilitySelectorEditor {
                             label: "Abilities",
                             selectors: abilities,
-                            on_change: move |sels| on_change.call(TimerTrigger::DamageTaken { abilities: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
+                            on_change: move |sels| on_change.call(TimerTrigger::DamageTaken { abilities: sels, source: EntityFilter::default(), target: EntityFilter::default() })
                         }
                     },
                     TimerTrigger::TimerExpires { timer_id } => {
@@ -517,12 +517,13 @@ pub fn SimpleTriggerEditor(
                             })
                         }
                     },
-                    TimerTrigger::TargetSet { selector } => rsx! {
+                    TimerTrigger::TargetSet { selector, target: _ } => rsx! {
                         EntitySelectorEditor {
                             label: "NPC (Setter)",
                             selectors: selector.clone(),
                             on_change: move |sels| on_change.call(TimerTrigger::TargetSet {
-                                selector: sels
+                                selector: sels,
+                                target: EntityFilter::default(),
                             })
                         }
                     },
@@ -984,10 +985,10 @@ fn SimplePhaseTriggerEditor(
                             hp_percent: 50.0,
                             selector: vec![],
                         },
-                        "ability_cast" => PhaseTrigger::AbilityCast { abilities: vec![], source: EntityMatcher::default() },
-                        "effect_applied" => PhaseTrigger::EffectApplied { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
-                        "effect_removed" => PhaseTrigger::EffectRemoved { effects: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
-                        "damage_taken" => PhaseTrigger::DamageTaken { abilities: vec![], source: EntityMatcher::default(), target: EntityMatcher::default() },
+                        "ability_cast" => PhaseTrigger::AbilityCast { abilities: vec![], source: EntityFilter::default() },
+                        "effect_applied" => PhaseTrigger::EffectApplied { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
+                        "effect_removed" => PhaseTrigger::EffectRemoved { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
+                        "damage_taken" => PhaseTrigger::DamageTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "counter_reaches" => PhaseTrigger::CounterReaches {
                             counter_id: String::new(),
                             value: 1,
@@ -1104,28 +1105,28 @@ fn SimplePhaseTriggerEditor(
                         AbilitySelectorEditor {
                             label: "Abilities",
                             selectors: abilities,
-                            on_change: move |sels| on_change.call(PhaseTrigger::AbilityCast { abilities: sels, source: EntityMatcher::default() })
+                            on_change: move |sels| on_change.call(PhaseTrigger::AbilityCast { abilities: sels, source: EntityFilter::default() })
                         }
                     },
                     PhaseTrigger::EffectApplied { effects, .. } => rsx! {
                         EffectSelectorEditor {
                             label: "Effects",
                             selectors: effects,
-                            on_change: move |sels| on_change.call(PhaseTrigger::EffectApplied { effects: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
+                            on_change: move |sels| on_change.call(PhaseTrigger::EffectApplied { effects: sels, source: EntityFilter::default(), target: EntityFilter::default() })
                         }
                     },
                     PhaseTrigger::EffectRemoved { effects, .. } => rsx! {
                         EffectSelectorEditor {
                             label: "Effects",
                             selectors: effects,
-                            on_change: move |sels| on_change.call(PhaseTrigger::EffectRemoved { effects: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
+                            on_change: move |sels| on_change.call(PhaseTrigger::EffectRemoved { effects: sels, source: EntityFilter::default(), target: EntityFilter::default() })
                         }
                     },
                     PhaseTrigger::DamageTaken { abilities, .. } => rsx! {
                         AbilitySelectorEditor {
                             label: "Abilities",
                             selectors: abilities,
-                            on_change: move |sels| on_change.call(PhaseTrigger::DamageTaken { abilities: sels, source: EntityMatcher::default(), target: EntityMatcher::default() })
+                            on_change: move |sels| on_change.call(PhaseTrigger::DamageTaken { abilities: sels, source: EntityFilter::default(), target: EntityFilter::default() })
                         }
                     },
                     PhaseTrigger::CounterReaches { counter_id, value } => {
@@ -1249,22 +1250,22 @@ pub fn CounterTriggerEditor(
                         "combat_end" => CounterTrigger::CombatEnd,
                         "ability_cast" => CounterTrigger::AbilityCast {
                             abilities: vec![],
-                            source: EntityMatcher::default(),
+                            source: EntityFilter::default(),
                         },
                         "effect_applied" => CounterTrigger::EffectApplied {
                             effects: vec![],
-                            source: EntityMatcher::default(),
-                            target: EntityMatcher::default(),
+                            source: EntityFilter::default(),
+                            target: EntityFilter::default(),
                         },
                         "effect_removed" => CounterTrigger::EffectRemoved {
                             effects: vec![],
-                            source: EntityMatcher::default(),
-                            target: EntityMatcher::default(),
+                            source: EntityFilter::default(),
+                            target: EntityFilter::default(),
                         },
                         "damage_taken" => CounterTrigger::DamageTaken {
                             abilities: vec![],
-                            source: EntityMatcher::default(),
-                            target: EntityMatcher::default(),
+                            source: EntityFilter::default(),
+                            target: EntityFilter::default(),
                         },
                         "timer_expires" => CounterTrigger::TimerExpires {
                             timer_id: String::new(),
@@ -1335,12 +1336,12 @@ pub fn CounterTriggerEditor(
                             }
                             EntitySelectorEditor {
                                 label: "Source",
-                                selectors: source.selector.clone(),
+                                selectors: vec![],
                                 on_change: {
                                     let abilities = abilities.clone();
                                     move |sels| on_change.call(CounterTrigger::AbilityCast {
                                         abilities: abilities.clone(),
-                                        source: EntityMatcher::new(sels),
+                                        source: EntityFilter::default(),
                                     })
                                 }
                             }
@@ -1365,25 +1366,25 @@ pub fn CounterTriggerEditor(
                             }
                             EntitySelectorEditor {
                                 label: "Source",
-                                selectors: source.selector.clone(),
+                                selectors: vec![],
                                 on_change: {
                                     let effects = effects.clone();
                                     move |sels| on_change.call(CounterTrigger::EffectApplied {
                                         effects: effects.clone(),
-                                        source: EntityMatcher::new(sels),
+                                        source: EntityFilter::default(),
                                         target: target_for_source.clone(),
                                     })
                                 }
                             }
                             EntitySelectorEditor {
                                 label: "Target",
-                                selectors: target.selector.clone(),
+                                selectors: vec![],
                                 on_change: {
                                     let effects = effects.clone();
                                     move |sels| on_change.call(CounterTrigger::EffectApplied {
                                         effects: effects.clone(),
                                         source: source_for_source.clone(),
-                                        target: EntityMatcher::new(sels),
+                                        target: EntityFilter::default(),
                                     })
                                 }
                             }
@@ -1408,25 +1409,25 @@ pub fn CounterTriggerEditor(
                             }
                             EntitySelectorEditor {
                                 label: "Source",
-                                selectors: source.selector.clone(),
+                                selectors: vec![],
                                 on_change: {
                                     let effects = effects.clone();
                                     move |sels| on_change.call(CounterTrigger::EffectRemoved {
                                         effects: effects.clone(),
-                                        source: EntityMatcher::new(sels),
+                                        source: EntityFilter::default(),
                                         target: target_for_source.clone(),
                                     })
                                 }
                             }
                             EntitySelectorEditor {
                                 label: "Target",
-                                selectors: target.selector.clone(),
+                                selectors: vec![],
                                 on_change: {
                                     let effects = effects.clone();
                                     move |sels| on_change.call(CounterTrigger::EffectRemoved {
                                         effects: effects.clone(),
                                         source: source_for_source.clone(),
-                                        target: EntityMatcher::new(sels),
+                                        target: EntityFilter::default(),
                                     })
                                 }
                             }
@@ -1451,25 +1452,25 @@ pub fn CounterTriggerEditor(
                             }
                             EntitySelectorEditor {
                                 label: "Source",
-                                selectors: source.selector.clone(),
+                                selectors: vec![],
                                 on_change: {
                                     let abilities = abilities.clone();
                                     move |sels| on_change.call(CounterTrigger::DamageTaken {
                                         abilities: abilities.clone(),
-                                        source: EntityMatcher::new(sels),
+                                        source: EntityFilter::default(),
                                         target: target_for_source.clone(),
                                     })
                                 }
                             }
                             EntitySelectorEditor {
                                 label: "Target",
-                                selectors: target.selector.clone(),
+                                selectors: vec![],
                                 on_change: {
                                     let abilities = abilities.clone();
                                     move |sels| on_change.call(CounterTrigger::DamageTaken {
                                         abilities: abilities.clone(),
                                         source: source_for_source.clone(),
-                                        target: EntityMatcher::new(sels),
+                                        target: EntityFilter::default(),
                                     })
                                 }
                             }

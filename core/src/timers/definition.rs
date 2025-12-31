@@ -27,12 +27,10 @@ pub struct TimerDefinition {
     pub enabled: bool,
 
     // ─── Trigger ────────────────────────────────────────────────────────────
-
     /// What causes this timer to start (includes source/target filters)
     pub trigger: Trigger,
 
     // ─── Duration ───────────────────────────────────────────────────────────
-
     /// Timer duration in seconds (0 = instant, use with is_alert)
     #[serde(default)]
     pub duration_secs: f32,
@@ -51,7 +49,6 @@ pub struct TimerDefinition {
     pub repeats: u8,
 
     // ─── Display ────────────────────────────────────────────────────────────
-
     /// Display color as RGBA
     #[serde(default = "crate::serde_defaults::default_timer_color")]
     pub color: [u8; 4],
@@ -66,7 +63,6 @@ pub struct TimerDefinition {
     pub show_on_raid_frames: bool,
 
     // ─── Alerts ─────────────────────────────────────────────────────────────
-
     /// Alert when this many seconds remain (None = no alert)
     pub alert_at_secs: Option<f32>,
 
@@ -74,13 +70,11 @@ pub struct TimerDefinition {
     pub alert_text: Option<String>,
 
     // ─── Audio ───────────────────────────────────────────────────────────────
-
     /// Audio configuration (alerts, countdown, custom sounds)
     #[serde(default)]
     pub audio: AudioConfig,
 
     // ─── Chaining & Cancellation ────────────────────────────────────────────
-
     /// Timer ID to trigger when this one expires
     pub triggers_timer: Option<String>,
 
@@ -88,7 +82,6 @@ pub struct TimerDefinition {
     pub cancel_trigger: Option<Trigger>,
 
     // ─── Context ────────────────────────────────────────────────────────────
-
     /// Area IDs for matching (primary key - more reliable than names)
     #[serde(default)]
     pub area_ids: Vec<i64>,
@@ -105,7 +98,6 @@ pub struct TimerDefinition {
     pub difficulties: Vec<String>,
 
     // ─── Phase/Counter Conditions (optional) ─────────────────────────────────
-
     /// Only active during these phases (empty = all phases)
     #[serde(default)]
     pub phases: Vec<String>,
@@ -180,7 +172,12 @@ impl TimerDefinition {
     }
 
     /// Check if this timer triggers when a counter reaches a value
-    pub fn matches_counter_reaches(&self, counter_id: &str, old_value: u32, new_value: u32) -> bool {
+    pub fn matches_counter_reaches(
+        &self,
+        counter_id: &str,
+        old_value: u32,
+        new_value: u32,
+    ) -> bool {
         trigger_matches_counter_reaches(&self.trigger, counter_id, old_value, new_value)
     }
 
@@ -250,10 +247,9 @@ impl TimerDefinition {
         // Check difficulty filter
         if !self.difficulties.is_empty()
             && let Some(diff) = difficulty
+            && !self.difficulties.iter().any(|d| diff.matches_config_key(d))
         {
-            if !self.difficulties.iter().any(|d| diff.matches_config_key(d)) {
-                return false;
-            }
+            return false;
         }
 
         true
@@ -277,7 +273,10 @@ pub fn trigger_matches_ability_with_name(
 ) -> bool {
     match trigger {
         Trigger::AbilityCast { abilities, .. } => {
-            abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+            abilities.is_empty()
+                || abilities
+                    .iter()
+                    .any(|s| s.matches(ability_id, ability_name))
         }
         Trigger::AnyOf { conditions } => conditions
             .iter()
@@ -333,10 +332,12 @@ pub fn trigger_matches_effect_removed_with_name(
 /// Check if trigger matches timer expiration (handles AnyOf recursively)
 pub fn trigger_matches_timer_expires(trigger: &Trigger, timer_id: &str) -> bool {
     match trigger {
-        Trigger::TimerExpires { timer_id: trigger_id } => trigger_id == timer_id,
-        Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| trigger_matches_timer_expires(c, timer_id))
-        }
+        Trigger::TimerExpires {
+            timer_id: trigger_id,
+        } => trigger_id == timer_id,
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| trigger_matches_timer_expires(c, timer_id)),
         _ => false,
     }
 }
@@ -350,7 +351,10 @@ pub fn trigger_matches_boss_hp(
     current_hp: f32,
 ) -> bool {
     match trigger {
-        Trigger::BossHpBelow { hp_percent, selector } => {
+        Trigger::BossHpBelow {
+            hp_percent,
+            selector,
+        } => {
             // Check HP threshold crossing
             let crossed = previous_hp > *hp_percent && current_hp <= *hp_percent;
             if !crossed {
@@ -381,10 +385,12 @@ pub fn trigger_matches_boss_hp(
 /// Check if trigger matches phase entered (handles AnyOf recursively)
 pub fn trigger_matches_phase_entered(trigger: &Trigger, phase_id: &str) -> bool {
     match trigger {
-        Trigger::PhaseEntered { phase_id: trigger_phase } => trigger_phase == phase_id,
-        Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| trigger_matches_phase_entered(c, phase_id))
-        }
+        Trigger::PhaseEntered {
+            phase_id: trigger_phase,
+        } => trigger_phase == phase_id,
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| trigger_matches_phase_entered(c, phase_id)),
         _ => false,
     }
 }
@@ -392,10 +398,12 @@ pub fn trigger_matches_phase_entered(trigger: &Trigger, phase_id: &str) -> bool 
 /// Check if trigger matches phase ended (handles AnyOf recursively)
 pub fn trigger_matches_phase_ended(trigger: &Trigger, phase_id: &str) -> bool {
     match trigger {
-        Trigger::PhaseEnded { phase_id: trigger_phase } => trigger_phase == phase_id,
-        Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| trigger_matches_phase_ended(c, phase_id))
-        }
+        Trigger::PhaseEnded {
+            phase_id: trigger_phase,
+        } => trigger_phase == phase_id,
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| trigger_matches_phase_ended(c, phase_id)),
         _ => false,
     }
 }
@@ -408,9 +416,10 @@ pub fn trigger_matches_counter_reaches(
     new_value: u32,
 ) -> bool {
     match trigger {
-        Trigger::CounterReaches { counter_id: trigger_counter, value } => {
-            trigger_counter == counter_id && old_value < *value && new_value >= *value
-        }
+        Trigger::CounterReaches {
+            counter_id: trigger_counter,
+            value,
+        } => trigger_counter == counter_id && old_value < *value && new_value >= *value,
         Trigger::AnyOf { conditions } => conditions
             .iter()
             .any(|c| trigger_matches_counter_reaches(c, counter_id, old_value, new_value)),
@@ -474,9 +483,9 @@ pub fn trigger_matches_entity_death(
 pub fn trigger_matches_time_elapsed(trigger: &Trigger, old_secs: f32, new_secs: f32) -> bool {
     match trigger {
         Trigger::TimeElapsed { secs } => old_secs < *secs && new_secs >= *secs,
-        Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| trigger_matches_time_elapsed(c, old_secs, new_secs))
-        }
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| trigger_matches_time_elapsed(c, old_secs, new_secs)),
         _ => false,
     }
 }
@@ -500,9 +509,9 @@ pub fn trigger_matches_target_set(
             }
             false
         }
-        Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| trigger_matches_target_set(c, source_npc_id, source_name))
-        }
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| trigger_matches_target_set(c, source_npc_id, source_name)),
         _ => false,
     }
 }
@@ -510,10 +519,12 @@ pub fn trigger_matches_target_set(
 /// Check if trigger matches timer started (handles AnyOf recursively)
 pub fn trigger_matches_timer_started(trigger: &Trigger, timer_id: &str) -> bool {
     match trigger {
-        Trigger::TimerStarted { timer_id: trigger_id } => trigger_id == timer_id,
-        Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| trigger_matches_timer_started(c, timer_id))
-        }
+        Trigger::TimerStarted {
+            timer_id: trigger_id,
+        } => trigger_id == timer_id,
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| trigger_matches_timer_started(c, timer_id)),
         _ => false,
     }
 }
@@ -526,7 +537,10 @@ pub fn trigger_matches_damage_taken(
 ) -> bool {
     match trigger {
         Trigger::DamageTaken { abilities, .. } => {
-            abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+            abilities.is_empty()
+                || abilities
+                    .iter()
+                    .any(|s| s.matches(ability_id, ability_name))
         }
         Trigger::AnyOf { conditions } => conditions
             .iter()

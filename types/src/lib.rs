@@ -165,7 +165,7 @@ pub enum Trigger {
         #[serde(default)]
         abilities: Vec<AbilitySelector>,
         #[serde(default)]
-        source: EntityMatcher,
+        source: EntityFilter,
     },
 
     /// Effect/buff is applied. [TPC]
@@ -173,9 +173,9 @@ pub enum Trigger {
         #[serde(default)]
         effects: Vec<EffectSelector>,
         #[serde(default)]
-        source: EntityMatcher,
+        source: EntityFilter,
         #[serde(default)]
-        target: EntityMatcher,
+        target: EntityFilter,
     },
 
     /// Effect/buff is removed. [TPC]
@@ -183,9 +183,9 @@ pub enum Trigger {
         #[serde(default)]
         effects: Vec<EffectSelector>,
         #[serde(default)]
-        source: EntityMatcher,
+        source: EntityFilter,
         #[serde(default)]
-        target: EntityMatcher,
+        target: EntityFilter,
     },
 
     /// Damage is taken from an ability. [TPC]
@@ -193,9 +193,9 @@ pub enum Trigger {
         #[serde(default)]
         abilities: Vec<AbilitySelector>,
         #[serde(default)]
-        source: EntityMatcher,
+        source: EntityFilter,
         #[serde(default)]
-        target: EntityMatcher,
+        target: EntityFilter,
     },
 
     // ─── HP Thresholds [TPC] ───────────────────────────────────────────────
@@ -232,6 +232,8 @@ pub enum Trigger {
     TargetSet {
         #[serde(default)]
         selector: Vec<EntitySelector>,
+        #[serde(default)]
+        target: EntityFilter,
     },
 
     // ─── Phase Events [TPC] ────────────────────────────────────────────────

@@ -38,24 +38,33 @@ pub struct TimerListItem {
 
     // Timer data
     pub name: String,
+    pub display_text: Option<String>,
     pub enabled: bool,
     pub duration_secs: f32,
     pub color: [u8; 4],
     pub phases: Vec<String>,
     pub difficulties: Vec<String>,
 
-    // Trigger info (serialized for frontend, includes source/target filters)
+    // Trigger info
     pub trigger: TimerTrigger,
+
+    // Entity filters (from trigger)
+    pub source: EntityFilter,
+    pub target: EntityFilter,
+
+    // Counter guard condition
+    pub counter_condition: Option<CounterCondition>,
 
     // Alert fields
     pub is_alert: bool,
     pub alert_text: Option<String>,
 
-    // Cancel trigger filters
+    // Cancel trigger
+    pub cancel_trigger: Option<TimerTrigger>,
     pub cancel_source: EntityFilter,
     pub cancel_target: EntityFilter,
 
-    // Optional fields
+    // Behavior
     pub can_be_refreshed: bool,
     pub repeats: u8,
     pub chains_to: Option<String>,
@@ -68,8 +77,34 @@ pub struct TimerListItem {
 }
 
 impl TimerListItem {
-    /// Convert a BossWithPath + timer index to a flattened list item
-    fn from_boss_timer(boss_with_path: &BossWithPath, timer: &BossTimerDefinition) -> Self {
+    /// Convert a BossWithPath + timer to a flattened list item, merging preferences
+    fn from_boss_timer(
+        boss_with_path: &BossWithPath,
+        timer: &BossTimerDefinition,
+        prefs: &TimerPreferences,
+    ) -> Self {
+        // Extract source/target from trigger
+        let (source, target) = timer.trigger.source_target_filters();
+
+        // Generate preference key
+        let pref_key = boss_timer_key(
+            &boss_with_path.boss.area_name,
+            &boss_with_path.boss.name,
+            &timer.id,
+        );
+        let pref = prefs.get(&pref_key);
+
+        // Merge preferences over definition defaults
+        let enabled = pref.and_then(|p| p.enabled).unwrap_or(timer.enabled);
+        let color = pref.and_then(|p| p.color).unwrap_or(timer.color);
+        let audio = AudioConfig {
+            enabled: pref.and_then(|p| p.audio_enabled).unwrap_or(timer.audio.enabled),
+            file: pref.and_then(|p| p.audio_file.clone()).or_else(|| timer.audio.file.clone()),
+            offset: timer.audio.offset,
+            countdown_start: timer.audio.countdown_start,
+            countdown_voice: timer.audio.countdown_voice.clone(),
+        };
+
         Self {
             timer_id: timer.id.clone(),
             boss_id: boss_with_path.boss.id.clone(),
@@ -79,17 +114,23 @@ impl TimerListItem {
             file_path: boss_with_path.file_path.to_string_lossy().to_string(),
 
             name: timer.name.clone(),
-            enabled: timer.enabled,
+            display_text: timer.display_text.clone(),
+            enabled,
             duration_secs: timer.duration_secs,
-            color: timer.color,
+            color,
             phases: timer.phases.clone(),
             difficulties: timer.difficulties.clone(),
 
             trigger: timer.trigger.clone(),
+            source,
+            target,
+
+            counter_condition: timer.counter_condition.clone(),
 
             is_alert: timer.is_alert,
             alert_text: timer.alert_text.clone(),
 
+            cancel_trigger: timer.cancel_trigger.clone(),
             cancel_source: timer.cancel_source.clone(),
             cancel_target: timer.cancel_target.clone(),
 
@@ -100,29 +141,34 @@ impl TimerListItem {
             show_on_raid_frames: timer.show_on_raid_frames,
             show_at_secs: timer.show_at_secs,
 
-            audio: timer.audio.clone(),
+            audio,
         }
     }
 
-    /// Convert back to a BossTimerDefinition
+    /// Convert back to a BossTimerDefinition (excludes preference fields)
+    /// Note: enabled, color, and audio are NOT included in definition output
+    /// because they should be saved to preferences, not the definition file.
     fn to_timer_definition(&self) -> BossTimerDefinition {
+        // Rebuild trigger with source/target filters
+        let trigger = self.trigger.clone().with_source_target(self.source.clone(), self.target.clone());
+
         BossTimerDefinition {
             id: self.timer_id.clone(),
             name: self.name.clone(),
-            display_text: None,
-            trigger: self.trigger.clone(),
+            display_text: self.display_text.clone(),
+            trigger,
             duration_secs: self.duration_secs,
             is_alert: self.is_alert,
             alert_text: self.alert_text.clone(),
             color: self.color,
             phases: self.phases.clone(),
-            counter_condition: None, // TODO: Add to UI if needed
+            counter_condition: self.counter_condition.clone(),
             difficulties: self.difficulties.clone(),
             enabled: self.enabled,
             can_be_refreshed: self.can_be_refreshed,
             repeats: self.repeats,
             chains_to: self.chains_to.clone(),
-            cancel_trigger: None, // TODO: Add to UI if needed
+            cancel_trigger: self.cancel_trigger.clone(),
             cancel_source: self.cancel_source.clone(),
             cancel_target: self.cancel_target.clone(),
             alert_at_secs: self.alert_at_secs,
@@ -151,77 +197,176 @@ fn get_bundled_encounters_dir(app_handle: &AppHandle) -> Option<PathBuf> {
         .ok()
 }
 
-/// Ensure user encounters directory exists and has defaults copied
-/// This is called before any timer operations to guarantee the user dir is ready
-fn ensure_user_encounters_dir(app_handle: &AppHandle) -> Result<PathBuf, String> {
+/// Ensure user encounters directory exists (for custom overlay files)
+/// Does NOT copy bundled defaults - those are loaded directly and never copied
+fn ensure_user_encounters_dir(_app_handle: &AppHandle) -> Result<PathBuf, String> {
     let user_dir = get_user_encounters_dir()
         .ok_or_else(|| "Could not determine user config directory".to_string())?;
 
-    // If user dir already exists with content, use it as-is
-    if user_dir.exists() {
-        let has_content = std::fs::read_dir(&user_dir)
-            .map(|mut entries| entries.next().is_some())
-            .unwrap_or(false);
-
-        if has_content {
-            eprintln!("[TIMERS] Using existing user encounters dir: {:?}", user_dir);
-            return Ok(user_dir);
-        }
+    // Just create the directory if it doesn't exist
+    if !user_dir.exists() {
+        std::fs::create_dir_all(&user_dir)
+            .map_err(|e| format!("Failed to create user encounters dir: {}", e))?;
+        eprintln!("[TIMERS] Created user encounters dir: {:?}", user_dir);
     }
 
-    // User dir is empty or doesn't exist - copy defaults
-    let bundled_dir = get_bundled_encounters_dir(app_handle)
-        .ok_or_else(|| "Could not find bundled encounter definitions".to_string())?;
-
-    if !bundled_dir.exists() {
-        return Err(format!(
-            "Bundled encounters directory does not exist: {:?}",
-            bundled_dir
-        ));
-    }
-
-    eprintln!(
-        "[TIMERS] Copying default encounters from {:?} to {:?}",
-        bundled_dir, user_dir
-    );
-
-    copy_dir_recursive(&bundled_dir, &user_dir)?;
-
-    eprintln!("[TIMERS] Successfully copied default encounters to user dir");
     Ok(user_dir)
 }
 
-/// Recursively copy a directory
-fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> Result<(), String> {
-    std::fs::create_dir_all(dst)
-        .map_err(|e| format!("Failed to create directory {:?}: {}", dst, e))?;
+/// Load all bosses: bundled defaults merged with user custom overlays
+/// - Bundled files are read-only defaults
+/// - Custom files (*_custom.toml) in user dir contain user modifications
+/// - Files in user dir with same name as bundled are user overrides
+fn load_merged_bosses(app_handle: &AppHandle) -> Result<Vec<BossWithPath>, String> {
+    let bundled_dir = get_bundled_encounters_dir(app_handle)
+        .ok_or_else(|| "Could not find bundled encounter definitions".to_string())?;
 
-    let entries = std::fs::read_dir(src)
-        .map_err(|e| format!("Failed to read directory {:?}: {}", src, e))?;
+    let user_dir = ensure_user_encounters_dir(app_handle)?;
+
+    eprintln!("[TIMERS] Loading bundled from {:?}", bundled_dir);
+    eprintln!("[TIMERS] Loading custom overlays from {:?}", user_dir);
+
+    load_bosses_merged(&bundled_dir, &user_dir)
+}
+
+/// Load bosses from bundled dir, merging with custom overlays from user dir
+fn load_bosses_merged(bundled_dir: &Path, user_dir: &Path) -> Result<Vec<BossWithPath>, String> {
+    let mut results = Vec::new();
+
+    // Load from bundled directory
+    if bundled_dir.exists() {
+        load_bosses_merged_recursive(bundled_dir, bundled_dir, user_dir, &mut results)?;
+    }
+
+    // Also load any user-created files (not overlays, but entirely new files)
+    if user_dir.exists() {
+        load_user_only_files(user_dir, user_dir, bundled_dir, &mut results)?;
+    }
+
+    Ok(results)
+}
+
+/// Recursively load bundled bosses, merging with custom overlays
+fn load_bosses_merged_recursive(
+    base_dir: &Path,
+    current_dir: &Path,
+    user_dir: &Path,
+    results: &mut Vec<BossWithPath>,
+) -> Result<(), String> {
+    use baras_core::boss::load_bosses_with_custom;
+
+    let entries = std::fs::read_dir(current_dir)
+        .map_err(|e| format!("Failed to read directory {}: {}", current_dir.display(), e))?;
 
     for entry in entries.flatten() {
-        let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
+        let path = entry.path();
 
-        if src_path.is_dir() {
-            copy_dir_recursive(&src_path, &dst_path)?;
-        } else {
-            std::fs::copy(&src_path, &dst_path)
-                .map_err(|e| format!("Failed to copy {:?} to {:?}: {}", src_path, dst_path, e))?;
+        if path.is_dir() {
+            load_bosses_merged_recursive(base_dir, &path, user_dir, results)?;
+        } else if path.extension().is_some_and(|ext| ext == "toml") {
+            // Load bundled + merge with custom overlay
+            match load_bosses_with_custom(&path, Some(user_dir)) {
+                Ok(file_bosses) => {
+                    let category = determine_category(&path);
+
+                    for boss in file_bosses {
+                        results.push(BossWithPath {
+                            boss,
+                            file_path: path.clone(), // Points to bundled source
+                            category: category.clone(),
+                        });
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Warning: {}", e);
+                }
+            }
         }
     }
 
     Ok(())
 }
 
-/// Load all bosses from the user config directory
-/// Ensures defaults are copied first if needed
-fn load_user_bosses(app_handle: &AppHandle) -> Result<Vec<BossWithPath>, String> {
-    let user_dir = ensure_user_encounters_dir(app_handle)?;
+/// Load user-created files that don't have a bundled counterpart
+fn load_user_only_files(
+    base_dir: &Path,
+    current_dir: &Path,
+    bundled_dir: &Path,
+    results: &mut Vec<BossWithPath>,
+) -> Result<(), String> {
+    use baras_core::boss::load_bosses_from_file;
 
-    load_bosses_with_paths(&user_dir)
-        .map_err(|e| format!("Failed to load bosses from user dir: {}", e))
+    let entries = std::fs::read_dir(current_dir)
+        .map_err(|e| format!("Failed to read directory {}: {}", current_dir.display(), e))?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+
+        if path.is_dir() {
+            load_user_only_files(base_dir, &path, bundled_dir, results)?;
+        } else if path.extension().is_some_and(|ext| ext == "toml") {
+            let filename = path.file_name().unwrap_or_default().to_string_lossy();
+
+            // Skip *_custom.toml files (these are overlays, already merged)
+            if filename.ends_with("_custom.toml") {
+                continue;
+            }
+
+            // Skip if there's a matching bundled file
+            if has_bundled_counterpart(&path, base_dir, bundled_dir) {
+                continue;
+            }
+
+            // This is a user-created file
+            match load_bosses_from_file(&path) {
+                Ok(file_bosses) => {
+                    let category = determine_category(&path);
+                    eprintln!("[TIMERS] Loaded user file: {:?}", path);
+
+                    for boss in file_bosses {
+                        results.push(BossWithPath {
+                            boss,
+                            file_path: path.clone(),
+                            category: category.clone(),
+                        });
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Warning: {}", e);
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
+
+/// Check if a user file has a corresponding bundled file
+fn has_bundled_counterpart(user_file: &Path, user_base: &Path, bundled_dir: &Path) -> bool {
+    if let Ok(relative) = user_file.strip_prefix(user_base) {
+        let bundled_path = bundled_dir.join(relative);
+        return bundled_path.exists();
+    }
+    false
+}
+
+/// Get the custom file path for saving edits to a bundled boss
+fn get_custom_file_path(bundled_path: &Path, bundled_dir: &Path, user_dir: &Path) -> PathBuf {
+    // Get relative path from bundled dir
+    let relative = bundled_path.strip_prefix(bundled_dir).unwrap_or(bundled_path);
+
+    // Build custom file name: foo.toml -> foo_custom.toml
+    let stem = bundled_path.file_stem().unwrap_or_default().to_string_lossy();
+    let custom_name = format!("{}_custom.toml", stem);
+
+    // Put in same relative directory within user dir
+    if let Some(parent) = relative.parent() {
+        user_dir.join(parent).join(custom_name)
+    } else {
+        user_dir.join(custom_name)
+    }
+}
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -231,12 +376,13 @@ fn load_user_bosses(app_handle: &AppHandle) -> Result<Vec<BossWithPath>, String>
 /// Get all encounter timers as a flat list
 #[tauri::command]
 pub async fn get_encounter_timers(app_handle: AppHandle) -> Result<Vec<TimerListItem>, String> {
-    let bosses = load_user_bosses(&app_handle)?;
+    let bosses = load_merged_bosses(&app_handle)?;
+    let prefs = load_timer_preferences();
 
     let mut items = Vec::new();
     for boss_with_path in &bosses {
         for timer in &boss_with_path.boss.timers {
-            items.push(TimerListItem::from_boss_timer(boss_with_path, timer));
+            items.push(TimerListItem::from_boss_timer(boss_with_path, timer, &prefs));
         }
     }
 
@@ -251,51 +397,184 @@ pub async fn get_encounter_timers(app_handle: AppHandle) -> Result<Vec<TimerList
 }
 
 /// Update an existing timer
+/// Preference fields (enabled, color, audio) go to preferences file
+/// Definition fields go to custom overlay (for bundled) or user file
 #[tauri::command]
 pub async fn update_encounter_timer(
     app_handle: AppHandle,
     service: State<'_, ServiceHandle>,
     timer: TimerListItem,
 ) -> Result<(), String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let file_path = PathBuf::from(&timer.file_path);
+    let bosses = load_merged_bosses(&app_handle)?;
 
-    // Find the boss and update the timer
-    let mut found = false;
-    for boss_with_path in &mut bosses {
-        if boss_with_path.boss.id == timer.boss_id
-            && boss_with_path.file_path.to_string_lossy() == timer.file_path
-        {
-            for existing_timer in &mut boss_with_path.boss.timers {
-                if existing_timer.id == timer.timer_id {
-                    *existing_timer = timer.to_timer_definition();
-                    found = true;
-                    break;
-                }
+    // Find the original timer definition to compare
+    let original = bosses.iter()
+        .find(|b| b.boss.id == timer.boss_id && b.file_path == file_path)
+        .and_then(|b| b.boss.timers.iter().find(|t| t.id == timer.timer_id))
+        .ok_or_else(|| format!("Timer '{}' not found", timer.timer_id))?;
+
+    // Check if preference fields changed
+    let prefs_changed = timer.enabled != original.enabled
+        || timer.color != original.color
+        || timer.audio.enabled != original.audio.enabled
+        || timer.audio.file != original.audio.file;
+
+    // Check if definition fields changed (everything except preferences)
+    let def_changed = timer.name != original.name
+        || timer.display_text != original.display_text
+        || timer.trigger != original.trigger
+        || timer.duration_secs != original.duration_secs
+        || timer.phases != original.phases
+        || timer.difficulties != original.difficulties
+        || timer.is_alert != original.is_alert
+        || timer.alert_text != original.alert_text
+        || timer.counter_condition != original.counter_condition
+        || timer.cancel_trigger != original.cancel_trigger
+        || timer.can_be_refreshed != original.can_be_refreshed
+        || timer.repeats != original.repeats
+        || timer.chains_to != original.chains_to
+        || timer.alert_at_secs != original.alert_at_secs
+        || timer.show_on_raid_frames != original.show_on_raid_frames
+        || timer.show_at_secs != original.show_at_secs;
+
+    // Save preference changes to preferences file
+    if prefs_changed {
+        let mut prefs = load_timer_preferences();
+        let pref_key = boss_timer_key(&timer.area_name, &timer.boss_name, &timer.timer_id);
+
+        // Only set preference if it differs from definition default
+        if timer.enabled != original.enabled {
+            prefs.update_enabled(&pref_key, timer.enabled);
+        }
+        if timer.color != original.color {
+            prefs.update_color(&pref_key, timer.color);
+        }
+        if timer.audio.enabled != original.audio.enabled {
+            prefs.update_audio_enabled(&pref_key, timer.audio.enabled);
+        }
+        if timer.audio.file != original.audio.file {
+            prefs.update_audio_file(&pref_key, timer.audio.file.clone());
+        }
+
+        save_timer_preferences(&prefs)?;
+        eprintln!("[TIMERS] Saved preferences for timer '{}'", timer.timer_id);
+
+        // Update the live session's preferences
+        if let Some(session) = service.shared.session.read().await.as_ref() {
+            let session = session.read().await;
+            let timer_mgr = session.timer_manager();
+            if let Ok(mut mgr) = timer_mgr.lock() {
+                mgr.set_preferences(prefs);
             }
-            break;
         }
     }
 
-    if !found {
-        return Err(format!(
-            "Timer '{}' not found in boss '{}'",
-            timer.timer_id, timer.boss_id
-        ));
+    // Save definition changes to file
+    if def_changed {
+        let bundled_dir = get_bundled_encounters_dir(&app_handle);
+        let user_dir = get_user_encounters_dir();
+
+        let timer_def = timer.to_timer_definition();
+
+        let is_bundled = bundled_dir
+            .as_ref()
+            .is_some_and(|bd| file_path.starts_with(bd));
+
+        if is_bundled {
+            // Bundled file - save to custom overlay
+            let custom_path = get_custom_file_path(
+                &file_path,
+                bundled_dir.as_ref().unwrap(),
+                user_dir.as_ref().ok_or("No user dir")?,
+            );
+            save_timer_to_custom_file(&custom_path, &timer.boss_id, &timer_def)?;
+        } else {
+            // User file - save directly
+            let mut bosses = load_merged_bosses(&app_handle)?;
+
+            for boss_with_path in &mut bosses {
+                if boss_with_path.boss.id == timer.boss_id
+                    && boss_with_path.file_path == file_path
+                {
+                    if let Some(existing) = boss_with_path.boss.timers.iter_mut()
+                        .find(|t| t.id == timer.timer_id)
+                    {
+                        *existing = timer_def;
+                        break;
+                    }
+                }
+            }
+
+            let file_bosses: Vec<_> = bosses
+                .iter()
+                .filter(|b| b.file_path == file_path)
+                .map(|b| b.boss.clone())
+                .collect();
+
+            save_bosses_to_file(&file_bosses, &file_path)?;
+        }
+
+        // Reload definitions into the running session
+        let _ = service.reload_timer_definitions().await;
     }
 
-    // Save the modified file
-    let file_path = PathBuf::from(&timer.file_path);
-    let file_bosses: Vec<_> = bosses
-        .iter()
-        .filter(|b| b.file_path == file_path)
-        .map(|b| b.boss.clone())
-        .collect();
+    Ok(())
+}
 
-    save_bosses_to_file(&file_bosses, &file_path)?;
+/// Save a single timer modification to a custom overlay file
+/// Creates or updates the custom file with just the modified timer
+fn save_timer_to_custom_file(
+    custom_path: &Path,
+    boss_id: &str,
+    timer: &BossTimerDefinition,
+) -> Result<(), String> {
+    use baras_core::boss::{load_bosses_from_file, BossEncounterDefinition};
 
-    // Reload definitions into the running session
-    let _ = service.reload_timer_definitions().await;
+    // Load existing custom file if present
+    let mut bosses = if custom_path.exists() {
+        load_bosses_from_file(custom_path).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
 
+    // Find or create the boss entry
+    let boss = if let Some(b) = bosses.iter_mut().find(|b| b.id == boss_id) {
+        b
+    } else {
+        // Create minimal boss entry for the overlay
+        #[allow(deprecated)]
+        bosses.push(BossEncounterDefinition {
+            id: boss_id.to_string(),
+            name: String::new(), // Will be merged from bundled
+            area_name: String::new(),
+            area_id: 0,
+            difficulties: vec![],
+            timers: vec![],
+            phases: vec![],
+            counters: vec![],
+            challenges: vec![],
+            entities: vec![],
+        });
+        bosses.last_mut().unwrap()
+    };
+
+    // Update or add the timer
+    if let Some(existing) = boss.timers.iter_mut().find(|t| t.id == timer.id) {
+        *existing = timer.clone();
+    } else {
+        boss.timers.push(timer.clone());
+    }
+
+    // Ensure parent directory exists
+    if let Some(parent) = custom_path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create directory: {}", e))?;
+    }
+
+    save_bosses_to_file(&bosses, custom_path)?;
+
+    eprintln!("[TIMERS] Saved timer '{}' to custom file {:?}", timer.id, custom_path);
     Ok(())
 }
 
@@ -306,7 +585,8 @@ pub async fn create_encounter_timer(
     service: State<'_, ServiceHandle>,
     timer: TimerListItem,
 ) -> Result<TimerListItem, String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
+    let prefs = load_timer_preferences();
     let file_path_buf = PathBuf::from(&timer.file_path);
     let boss_id = &timer.boss_id;
 
@@ -358,7 +638,7 @@ pub async fn create_encounter_timer(
     for boss_with_path in &mut bosses {
         if boss_with_path.boss.id == *boss_id && boss_with_path.file_path == file_path_buf {
             boss_with_path.boss.timers.push(new_timer.clone());
-            created_item = Some(TimerListItem::from_boss_timer(boss_with_path, &new_timer));
+            created_item = Some(TimerListItem::from_boss_timer(boss_with_path, &new_timer, &prefs));
             break;
         }
     }
@@ -406,7 +686,7 @@ pub async fn delete_encounter_timer(
     boss_id: String,
     file_path: String,
 ) -> Result<(), String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
 
     // Canonicalize paths for reliable comparison
     let file_path_buf = PathBuf::from(&file_path);
@@ -467,7 +747,8 @@ pub async fn duplicate_encounter_timer(
     boss_id: String,
     file_path: String,
 ) -> Result<TimerListItem, String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
+    let prefs = load_timer_preferences();
     let file_path_buf = PathBuf::from(&file_path);
 
     // Find the timer to duplicate
@@ -513,7 +794,7 @@ pub async fn duplicate_encounter_timer(
     let item = bosses
         .iter()
         .find(|b| b.boss.id == boss_id && b.file_path == file_path_buf)
-        .map(|b| TimerListItem::from_boss_timer(b, &timer))
+        .map(|b| TimerListItem::from_boss_timer(b, &timer, &prefs))
         .ok_or_else(|| "Failed to create timer item".to_string())?;
 
     // Save the modified file
@@ -536,7 +817,7 @@ pub async fn duplicate_encounter_timer(
 pub async fn get_encounter_bosses(
     app_handle: AppHandle,
 ) -> Result<Vec<BossListItem>, String> {
-    let bosses = load_user_bosses(&app_handle)?;
+    let bosses = load_merged_bosses(&app_handle)?;
 
     let items: Vec<_> = bosses
         .iter()
@@ -576,15 +857,20 @@ pub struct AreaListItem {
 
 /// Get the area index for lazy loading the timer editor
 /// Returns list of areas with summary info (boss count, timer count)
+/// Loads from bundled directory (with custom overlay counts merged)
 #[tauri::command]
 pub async fn get_area_index(app_handle: AppHandle) -> Result<Vec<AreaListItem>, String> {
     eprintln!("[TIMERS] get_area_index called");
 
+    let bundled_dir = get_bundled_encounters_dir(&app_handle)
+        .ok_or_else(|| "Could not find bundled encounter definitions".to_string())?;
     let user_dir = ensure_user_encounters_dir(&app_handle)?;
-    eprintln!("[TIMERS] User encounters dir: {:?}", user_dir);
+
+    eprintln!("[TIMERS] Bundled dir: {:?}", bundled_dir);
+    eprintln!("[TIMERS] User dir: {:?}", user_dir);
 
     let mut areas = Vec::new();
-    collect_areas_recursive(&user_dir, &mut areas)?;
+    collect_areas_from_bundled(&bundled_dir, &user_dir, &mut areas)?;
 
     eprintln!("[TIMERS] Found {} areas", areas.len());
 
@@ -594,12 +880,22 @@ pub async fn get_area_index(app_handle: AppHandle) -> Result<Vec<AreaListItem>, 
     Ok(areas)
 }
 
-/// Recursively collect area files with summary stats
-fn collect_areas_recursive(
-    current_dir: &PathBuf,
+/// Recursively collect area files from bundled directory with merged custom data
+fn collect_areas_from_bundled(
+    bundled_dir: &Path,
+    user_dir: &Path,
     areas: &mut Vec<AreaListItem>,
 ) -> Result<(), String> {
-    use baras_core::boss::{load_area_config, load_bosses_from_file};
+    collect_areas_from_bundled_recursive(bundled_dir, bundled_dir, user_dir, areas)
+}
+
+fn collect_areas_from_bundled_recursive(
+    base_dir: &Path,
+    current_dir: &Path,
+    user_dir: &Path,
+    areas: &mut Vec<AreaListItem>,
+) -> Result<(), String> {
+    use baras_core::boss::{load_area_config, load_bosses_with_custom};
 
     let entries = std::fs::read_dir(current_dir)
         .map_err(|e| format!("Failed to read directory: {}", e))?;
@@ -608,13 +904,13 @@ fn collect_areas_recursive(
         let path = entry.path();
 
         if path.is_dir() {
-            collect_areas_recursive( &path, areas)?;
+            collect_areas_from_bundled_recursive(base_dir, &path, user_dir, areas)?;
         } else if path.extension().is_some_and(|ext| ext == "toml") {
             // Try to load area config for metadata
             match load_area_config(&path) {
                 Ok(Some(area_config)) => {
-                    // Load bosses to get counts
-                    let (boss_count, timer_count) = match load_bosses_from_file(&path) {
+                    // Load bosses with custom overlay merged to get accurate counts
+                    let (boss_count, timer_count) = match load_bosses_with_custom(&path, Some(user_dir)) {
                         Ok(bosses) => {
                             let timers: usize = bosses.iter().map(|b| b.timers.len()).sum();
                             (bosses.len(), timers)
@@ -712,13 +1008,14 @@ pub async fn get_timers_for_area(
     // Load bosses from this specific file
     let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
         .map_err(|e| format!("Failed to load bosses: {}", e))?;
+    let prefs = load_timer_preferences();
 
     // Filter to only bosses from this file and flatten timers
     let mut items = Vec::new();
     for boss_with_path in &bosses {
         if boss_with_path.file_path == path {
             for timer in &boss_with_path.boss.timers {
-                items.push(TimerListItem::from_boss_timer(boss_with_path, timer));
+                items.push(TimerListItem::from_boss_timer(boss_with_path, timer, &prefs));
             }
         }
     }
@@ -1036,7 +1333,7 @@ pub async fn update_phase(
     service: State<'_, ServiceHandle>,
     phase: PhaseListItem,
 ) -> Result<PhaseListItem, String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&phase.file_path);
 
     let mut updated_item = None;
@@ -1073,7 +1370,7 @@ pub async fn create_phase(
     service: State<'_, ServiceHandle>,
     phase: PhaseListItem,
 ) -> Result<PhaseListItem, String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&phase.file_path);
     let boss_id = phase.boss_id.clone();
 
@@ -1115,7 +1412,7 @@ pub async fn delete_phase(
     boss_id: String,
     file_path: String,
 ) -> Result<(), String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&file_path);
     let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
 
@@ -1256,7 +1553,7 @@ pub async fn update_counter(
     service: State<'_, ServiceHandle>,
     counter: CounterListItem,
 ) -> Result<CounterListItem, String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&counter.file_path);
 
     let mut updated_item = None;
@@ -1297,7 +1594,7 @@ pub async fn create_counter(
     service: State<'_, ServiceHandle>,
     counter: CounterListItem,
 ) -> Result<CounterListItem, String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&counter.file_path);
     let boss_id = counter.boss_id.clone();
 
@@ -1343,7 +1640,7 @@ pub async fn delete_counter(
     boss_id: String,
     file_path: String,
 ) -> Result<(), String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&file_path);
     let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
 
@@ -1471,7 +1768,7 @@ pub async fn update_challenge(
     service: State<'_, ServiceHandle>,
     challenge: ChallengeListItem,
 ) -> Result<ChallengeListItem, String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&challenge.file_path);
 
     let mut updated_item = None;
@@ -1512,7 +1809,7 @@ pub async fn create_challenge(
     service: State<'_, ServiceHandle>,
     challenge: ChallengeListItem,
 ) -> Result<ChallengeListItem, String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&challenge.file_path);
     let boss_id = challenge.boss_id.clone();
 
@@ -1558,7 +1855,7 @@ pub async fn delete_challenge(
     boss_id: String,
     file_path: String,
 ) -> Result<(), String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&file_path);
     let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
 
@@ -1687,7 +1984,7 @@ pub async fn update_entity(
     entity: EntityListItem,
     original_name: String,
 ) -> Result<EntityListItem, String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&entity.file_path);
 
     let mut updated_item = None;
@@ -1728,7 +2025,7 @@ pub async fn create_entity(
     service: State<'_, ServiceHandle>,
     entity: EntityListItem,
 ) -> Result<EntityListItem, String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&entity.file_path);
     let boss_id = entity.boss_id.clone();
 
@@ -1770,7 +2067,7 @@ pub async fn delete_entity(
     boss_id: String,
     file_path: String,
 ) -> Result<(), String> {
-    let mut bosses = load_user_bosses(&app_handle)?;
+    let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&file_path);
 
     let mut found = false;
@@ -1798,6 +2095,154 @@ pub async fn delete_entity(
 
     save_bosses_to_file(&file_bosses, &file_path_buf)?;
     let _ = service.reload_timer_definitions().await;
+
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timer Preferences Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+use baras_core::timers::{TimerPreferences, TimerPreference, boss_timer_key};
+
+/// Get the timer preferences file path
+fn timer_preferences_path() -> Option<PathBuf> {
+    dirs::config_dir().map(|p| p.join("baras").join("timer_preferences.toml"))
+}
+
+/// Load timer preferences from disk
+fn load_timer_preferences() -> TimerPreferences {
+    timer_preferences_path()
+        .and_then(|p| TimerPreferences::load(&p).ok())
+        .unwrap_or_default()
+}
+
+/// Save timer preferences to disk
+fn save_timer_preferences(prefs: &TimerPreferences) -> Result<(), String> {
+    let path = timer_preferences_path()
+        .ok_or("Could not determine preferences path")?;
+    prefs.save(&path).map_err(|e| e.to_string())
+}
+
+/// Get preference for a specific timer
+#[tauri::command]
+pub fn get_timer_preference(
+    area_name: String,
+    boss_name: String,
+    timer_id: String,
+) -> Option<TimerPreference> {
+    let prefs = load_timer_preferences();
+    let key = boss_timer_key(&area_name, &boss_name, &timer_id);
+    prefs.get(&key).cloned()
+}
+
+/// Set enabled preference for a timer
+#[tauri::command]
+pub async fn set_timer_enabled(
+    service: State<'_, ServiceHandle>,
+    area_name: String,
+    boss_name: String,
+    timer_id: String,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut prefs = load_timer_preferences();
+    let key = boss_timer_key(&area_name, &boss_name, &timer_id);
+    prefs.update_enabled(&key, enabled);
+    save_timer_preferences(&prefs)?;
+
+    // Update the live session's timer manager preferences
+    if let Some(session) = service.shared.session.read().await.as_ref() {
+        let session = session.read().await;
+        let timer_mgr = session.timer_manager();
+        if let Ok(mut mgr) = timer_mgr.lock() {
+            mgr.set_preferences(prefs);
+        }
+    }
+
+    Ok(())
+}
+
+/// Set audio preference for a timer
+#[tauri::command]
+pub async fn set_timer_audio(
+    service: State<'_, ServiceHandle>,
+    area_name: String,
+    boss_name: String,
+    timer_id: String,
+    audio_enabled: Option<bool>,
+    audio_file: Option<String>,
+) -> Result<(), String> {
+    let mut prefs = load_timer_preferences();
+    let key = boss_timer_key(&area_name, &boss_name, &timer_id);
+
+    if let Some(enabled) = audio_enabled {
+        prefs.update_audio_enabled(&key, enabled);
+    }
+    if audio_file.is_some() {
+        prefs.update_audio_file(&key, audio_file);
+    }
+
+    save_timer_preferences(&prefs)?;
+
+    // Update live session
+    if let Some(session) = service.shared.session.read().await.as_ref() {
+        let session = session.read().await;
+        let timer_mgr = session.timer_manager();
+        if let Ok(mut mgr) = timer_mgr.lock() {
+            mgr.set_preferences(prefs);
+        }
+    }
+
+    Ok(())
+}
+
+/// Set color preference for a timer
+#[tauri::command]
+pub async fn set_timer_color(
+    service: State<'_, ServiceHandle>,
+    area_name: String,
+    boss_name: String,
+    timer_id: String,
+    color: [u8; 4],
+) -> Result<(), String> {
+    let mut prefs = load_timer_preferences();
+    let key = boss_timer_key(&area_name, &boss_name, &timer_id);
+    prefs.update_color(&key, color);
+    save_timer_preferences(&prefs)?;
+
+    // Update live session
+    if let Some(session) = service.shared.session.read().await.as_ref() {
+        let session = session.read().await;
+        let timer_mgr = session.timer_manager();
+        if let Ok(mut mgr) = timer_mgr.lock() {
+            mgr.set_preferences(prefs);
+        }
+    }
+
+    Ok(())
+}
+
+/// Reset all preferences for a timer back to defaults
+#[tauri::command]
+pub async fn reset_timer_preference(
+    service: State<'_, ServiceHandle>,
+    area_name: String,
+    boss_name: String,
+    timer_id: String,
+) -> Result<(), String> {
+    let mut prefs = load_timer_preferences();
+    let key = boss_timer_key(&area_name, &boss_name, &timer_id);
+    prefs.clear(&key);
+    save_timer_preferences(&prefs)?;
+
+    // Update live session
+    if let Some(session) = service.shared.session.read().await.as_ref() {
+        let session = session.read().await;
+        let timer_mgr = session.timer_manager();
+        if let Ok(mut mgr) = timer_mgr.lock() {
+            mgr.set_preferences(prefs);
+        }
+    }
 
     Ok(())
 }

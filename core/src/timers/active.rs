@@ -119,8 +119,8 @@ impl ActiveTimer {
         let now = Instant::now();
         let started_instant = now.checked_sub(lag_duration).unwrap_or(now);
 
-        let expires_at = event_timestamp
-            + chrono::Duration::milliseconds(duration.as_millis() as i64);
+        let expires_at =
+            event_timestamp + chrono::Duration::milliseconds(duration.as_millis() as i64);
 
         Self {
             definition_id,
@@ -139,7 +139,10 @@ impl ActiveTimer {
             show_at_secs,
             countdown_announced: [false; 10],
             countdown_start: audio.countdown_start,
-            countdown_voice: audio.countdown_voice.clone().unwrap_or_else(|| "Amy".to_string()),
+            countdown_voice: audio
+                .countdown_voice
+                .clone()
+                .unwrap_or_else(|| "Amy".to_string()),
             audio_enabled: audio.enabled,
             audio_file: audio.file.clone(),
             audio_offset: audio.offset,
@@ -158,8 +161,8 @@ impl ActiveTimer {
 
         self.started_at = event_timestamp;
         self.started_instant = now.checked_sub(lag_duration).unwrap_or(now);
-        self.expires_at = event_timestamp
-            + chrono::Duration::milliseconds(self.duration.as_millis() as i64);
+        self.expires_at =
+            event_timestamp + chrono::Duration::milliseconds(self.duration.as_millis() as i64);
         self.alert_fired = false;
         self.audio_offset_fired = false;
         self.countdown_announced = [false; 10];

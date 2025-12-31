@@ -18,6 +18,7 @@ mod active;
 mod definition;
 mod manager;
 mod matching;
+mod preferences;
 mod signal_handlers;
 
 #[cfg(test)]
@@ -26,6 +27,10 @@ mod manager_tests;
 pub use active::{ActiveTimer, TimerKey};
 pub use definition::{TimerConfig, TimerDefinition, TimerTrigger};
 pub use manager::{EncounterContext, FiredAlert, TimerManager};
+pub use preferences::{
+    boss_timer_key, standalone_timer_key,
+    TimerPreference, TimerPreferences, PreferencesError,
+};
 
 use std::path::Path;
 

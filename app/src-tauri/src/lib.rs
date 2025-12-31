@@ -183,6 +183,12 @@ pub fn run() {
             commands::create_entity,
             commands::update_entity,
             commands::delete_entity,
+            // Timer preference commands
+            commands::get_timer_preference,
+            commands::set_timer_enabled,
+            commands::set_timer_audio,
+            commands::set_timer_color,
+            commands::reset_timer_preference,
             // Effect editor commands
             commands::get_effect_definitions,
             commands::update_effect_definition,

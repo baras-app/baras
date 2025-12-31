@@ -278,12 +278,21 @@ impl CombatService {
         index
     }
 
-    /// Load boss definitions for a specific area
+    /// Load boss definitions for a specific area, merging with custom overlays
     fn load_area_definitions(&self, area_id: i64) -> Option<Vec<BossEncounterDefinition>> {
-        use baras_core::boss::load_bosses_from_file;
+        use baras_core::boss::load_bosses_with_custom;
 
         let entry = self.area_index.get(&area_id)?;
-        load_bosses_from_file(&entry.file_path).ok()
+
+        // User custom directory for overlay files
+        let user_dir = dirs::config_dir().map(|p| p.join("baras").join("encounters"));
+
+        load_bosses_with_custom(&entry.file_path, user_dir.as_deref()).ok()
+    }
+
+    /// Get the path to the timer preferences file
+    fn timer_preferences_path() -> Option<std::path::PathBuf> {
+        dirs::config_dir().map(|p| p.join("baras").join("timer_preferences.toml"))
     }
 
     /// Load effect definitions from bundled and user config directories
@@ -588,6 +597,16 @@ impl CombatService {
 
         let mut session = ParsingSession::new(path.clone(), self.definitions.clone());
 
+        // Load timer preferences into the session's timer manager
+        if let Some(prefs_path) = Self::timer_preferences_path() {
+            let timer_mgr = session.timer_manager();
+            if let Ok(mut mgr) = timer_mgr.lock() {
+                if let Err(e) = mgr.load_preferences(&prefs_path) {
+                    eprintln!("Warning: Failed to load timer preferences: {}", e);
+                }
+            }
+        }
+
         // Timer/boss definitions are now lazy-loaded when AreaEntered signal fires
         // Reset area tracking for new session
         self.loaded_area_id = 0;
@@ -823,6 +842,7 @@ impl CombatService {
         let shared = self.shared.clone();
         let area_index = self.area_index.clone();
         let is_live = self.shared.is_live_tailing.load(Ordering::SeqCst);
+        let user_encounters_dir = dirs::config_dir().map(|p| p.join("baras").join("encounters"));
         let area_loader_handle = if is_live {
             Some(tokio::spawn(async move {
                 let mut loaded_area_id: i64 = 0;
@@ -843,11 +863,11 @@ impl CombatService {
                         continue;
                     }
 
-                    // Load definitions for this area
+                    // Load definitions for this area (with custom overlay merging)
                     if let Some(entry) = area_index.get(&area_id) {
-                        use baras_core::boss::load_bosses_from_file;
+                        use baras_core::boss::load_bosses_with_custom;
 
-                        if let Ok(bosses) = load_bosses_from_file(&entry.file_path) {
+                        if let Ok(bosses) = load_bosses_with_custom(&entry.file_path, user_encounters_dir.as_deref()) {
                             if let Some(session_arc) = &*shared.session.read().await {
                                 let mut session = session_arc.write().await;
                                 session.load_boss_definitions(bosses);
