@@ -1133,12 +1133,20 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
     };
 
     // Get phase info from boss state
-    let current_phase = cache.boss_state.current_phase.clone();
+    // Look up the phase display name from the boss definition
+    let current_phase = cache.boss_state.current_phase.as_ref().and_then(|phase_id| {
+        cache.active_boss_definition().and_then(|def| {
+            def.phases
+                .iter()
+                .find(|p| &p.id == phase_id)
+                .map(|p| p.name.clone())
+        })
+    });
     let phase_time_secs = cache
         .boss_state
         .phase_started_at
         .map(|start| {
-            let now = chrono::Utc::now().naive_utc();
+            let now = chrono::Local::now().naive_local();
             (now - start).num_milliseconds() as f32 / 1000.0
         })
         .unwrap_or(0.0);

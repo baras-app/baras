@@ -124,11 +124,17 @@ impl PersonalOverlay {
                 ("Spec", value)
             }
             PersonalStat::Phase => {
-                let phase = self.stats.current_phase.as_deref().unwrap_or("-");
+                let phase = self.stats.current_phase.as_deref().unwrap_or("");
                 ("Phase", phase.to_string())
             }
             PersonalStat::PhaseTime => {
-                ("Phase Time", format_time(self.stats.phase_time_secs as u64))
+                // Only show phase time if there's an active phase
+                let time_str = if self.stats.current_phase.is_some() {
+                    format_time(self.stats.phase_time_secs as u64)
+                } else {
+                    String::new()
+                };
+                ("Phase Time", time_str)
             }
         }
     }
