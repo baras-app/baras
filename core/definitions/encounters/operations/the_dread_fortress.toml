@@ -1,0 +1,700 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# The Dread Fortress - Operation
+# ═══════════════════════════════════════════════════════════════════════════════
+# Dread Fortress - 5 boss operation (Nefra, Draxus, Grob'thok, Corruptor Zero, Brontes)
+# Source: ORBS timer data + manual verification from NiM logs
+
+[area]
+name = "The Dread Fortress"
+id = 137438993402
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 1: Nefra, Who Bars the Way
+# ═══════════════════════════════════════════════════════════════════════════════
+# Simple boss with periodic raid damage and add spawns.
+# Key mechanics:
+# - Voice of the Masters: Raid-wide damage that must be healed through
+# - DPS/Tank Adds: Spawned periodically, must be killed quickly
+# - Twin Attack: Main rotation ability (used for NiM cleave tracking)
+# - Nightmare Twin Attack: Special cleave mechanic in NiM
+
+[[boss]]
+id = "nefra"
+name = "Nefra, Who Bars the Way"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Nefra, Who Bars the Way"
+ids = [3303036009054208, 3266533082005504, 3303040304021504, 3303031714086912]
+is_boss = true
+is_kill_target = true
+
+# ─── Counters ───────────────────────────────────────────────────────────────────
+# NiM uses Twin Attack count to determine when adds/cleave happen
+
+[[boss.counters]]
+id = "nefra_twin_attack_count"
+name = "Twin Attacks"
+increment_on = { type = "ability_cast", abilities = [3342034312101888] }
+reset_on = { type = "ability_cast", abilities = [3342167456088064] }  # Reset on Nightmare Twin Attack
+
+# ─── Timers ─────────────────────────────────────────────────────────────────────
+
+# -- Voice of the Masters --
+# Raid-wide damage that needs to be healed. First at 15s, then every 30s.
+
+[[boss.timer]]
+id = "nefra_voice_cs"
+name = "Voice"
+trigger = { type = "combat_start" }
+duration_secs = 15.0
+color = [29, 153, 20, 255]
+difficulties = ["veteran", "master"]
+chains_to = "nefra_voice"
+
+[[boss.timer]]
+id = "nefra_voice"
+name = "Voice"
+trigger = { type = "ability_cast", abilities = [3270007710547968] }
+duration_secs = 30.0
+color = [29, 153, 20, 255]
+difficulties = ["veteran", "master"]
+
+# -- DPS Add --
+# Small add that DPS needs to kill. First at 30s, then every 30s on spawn.
+
+[[boss.timer]]
+id = "nefra_dps_add_cs"
+name = "DPS Add"
+trigger = { type = "combat_start" }
+duration_secs = 30.0
+color = [37, 219, 213, 255]
+difficulties = ["veteran", "master"]
+chains_to = "nefra_dps_add"
+
+[[boss.timer]]
+id = "nefra_dps_add"
+name = "DPS Add"
+trigger = { type = "ability_cast", abilities = [3308460552749056] }
+duration_secs = 30.0
+color = [37, 219, 213, 255]
+difficulties = ["veteran", "master"]
+
+# -- Tank Add --
+# Larger add that tanks need to pick up. First at 45s (VM), then every 30s.
+
+[[boss.timer]]
+id = "nefra_tank_add_cs"
+name = "Tank Add"
+trigger = { type = "combat_start" }
+duration_secs = 45.0
+color = [52, 28, 219, 255]
+difficulties = ["veteran"]
+chains_to = "nefra_tank_add"
+
+[[boss.timer]]
+id = "nefra_tank_add"
+name = "Tank Add"
+trigger = { type = "ability_cast", abilities = [3308164200005632] }
+duration_secs = 30.0
+color = [46, 32, 219, 255]
+difficulties = ["veteran", "master"]
+
+# -- NiM Specific: RNG Add --
+# In NiM, an extra add spawns based on Twin Attack count (around 11th attack)
+# Uses counter to fire only at the right time
+
+[[boss.timer]]
+id = "nefra_rng_add"
+name = "RNG Add"
+trigger = { type = "ability_cast", abilities = [3342034312101888] }
+counter_condition = { counter_id = "nefra_twin_attack_count", operator = "eq", value = 10 }
+duration_secs = 30.0
+color = [33, 149, 224, 255]
+difficulties = ["master"]
+
+# -- NiM Specific: Raid Cleave Alert --
+# Nightmare Twin Attack is a dangerous cleave. Alert when it happens.
+
+[[boss.timer]]
+id = "nefra_raid_cleave"
+name = "Raid Cleave"
+trigger = { type = "ability_cast", abilities = [3342167456088064] }
+is_alert = true
+alert_text = "Raid Cleave!"
+color = [219, 37, 41, 255]
+difficulties = ["master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 2: Gate Commander Draxus
+# ═══════════════════════════════════════════════════════════════════════════════
+# Multi-phase fight with add waves. Boss escapes at HP thresholds, spawning adds.
+# Key mechanics:
+# - Escape: Boss runs away at 90%, 60%, 30% HP - each triggers add wave
+# - Subteroth Adds: Swarm of small adds that spawn after each escape
+# - Corrosive Grenade: DoT attack on random players
+# - Emergency Shielding: Final phase immunity shield that must be burned
+
+[[boss]]
+id = "draxus"
+name = "Gate Commander Draxus"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Gate Commander Draxus"
+ids = [3303401081274368, 3273924720721920, 3303405376241664, 3303392491339776]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Subteroth"
+ids = [3281320654405632]
+is_boss = false
+
+# ─── Phases ─────────────────────────────────────────────────────────────────────
+# Draxus escapes at HP thresholds, spawning add waves
+
+[[boss.phases]]
+id = "draxus_p1"
+name = "Phase 1"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "draxus_p2"
+name = "Phase 2 (90%)"
+preceded_by = "draxus_p1"
+trigger = { type = "boss_hp_below", hp_percent = 90.0, selector = ["Gate Commander Draxus"] }
+
+[[boss.phases]]
+id = "draxus_p3"
+name = "Phase 3 (60%)"
+preceded_by = "draxus_p2"
+trigger = { type = "boss_hp_below", hp_percent = 60.0, selector = ["Gate Commander Draxus"] }
+
+[[boss.phases]]
+id = "draxus_p4"
+name = "Phase 4 (30%)"
+preceded_by = "draxus_p3"
+trigger = { type = "boss_hp_below", hp_percent = 30.0, selector = ["Gate Commander Draxus"] }
+
+# ─── Counters ───────────────────────────────────────────────────────────────────
+# Track escape count for wave numbering
+
+[[boss.counters]]
+id = "draxus_escape_count"
+name = "Escapes"
+increment_on = { type = "ability_cast", abilities = [3315620263231488] }
+reset_on = { type = "combat_end" }
+
+# ─── Timers ─────────────────────────────────────────────────────────────────────
+
+# -- Escape Alerts --
+# Alert when boss is about to escape (HP threshold approaching)
+
+[[boss.timer]]
+id = "draxus_escape_90"
+name = "Escape (90%)"
+trigger = { type = "boss_hp_below", hp_percent = 90.0, selector = ["Gate Commander Draxus"] }
+is_alert = true
+alert_text = "Draxus Escaping!"
+color = [224, 31, 29, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "draxus_escape_60"
+name = "Escape (60%)"
+trigger = { type = "boss_hp_below", hp_percent = 60.0, selector = ["Gate Commander Draxus"] }
+is_alert = true
+alert_text = "Draxus Escaping!"
+color = [219, 32, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "draxus_escape_30"
+name = "Escape (30%)"
+trigger = { type = "boss_hp_below", hp_percent = 30.0, selector = ["Gate Commander Draxus"] }
+is_alert = true
+alert_text = "Draxus Escaping!"
+color = [219, 24, 24, 255]
+difficulties = ["veteran", "master"]
+
+# -- Add Wave Timer --
+# First wave at 50s from combat start (NiM specific)
+
+[[boss.timer]]
+id = "draxus_adds_w1"
+name = "Adds"
+trigger = { type = "combat_start" }
+duration_secs = 50.0
+color = [33, 151, 18, 255]
+difficulties = ["master"]
+
+# Subsequent waves triggered by Escape ability
+[[boss.timer]]
+id = "draxus_adds_wave"
+name = "Adds"
+trigger = { type = "ability_cast", abilities = [3315620263231488] }
+duration_secs = 50.0
+color = [25, 136, 20, 255]
+difficulties = ["master"]
+
+# -- Corrosive Grenade --
+# DoT attack - track cooldown
+
+[[boss.timer]]
+id = "draxus_grenade"
+name = "Grenade"
+trigger = { type = "ability_cast", abilities = [3289043005603840] }
+duration_secs = 12.0
+color = [204, 182, 30, 255]
+difficulties = ["veteran", "master"]
+
+# -- Suppressive Fire --
+# Channeled attack
+
+[[boss.timer]]
+id = "draxus_suppressive"
+name = "Suppressive Fire"
+trigger = { type = "ability_cast", abilities = [3289034415669248] }
+duration_secs = 15.0
+color = [219, 96, 28, 255]
+difficulties = ["veteran", "master"]
+
+# -- Emergency Shielding --
+# Final phase immunity - alert when applied and removed
+
+[[boss.timer]]
+id = "draxus_shield_on"
+name = "Emergency Shield"
+trigger = { type = "effect_applied", effects = [3321693346988296] }
+is_alert = true
+alert_text = "Shield Active - BURN!"
+color = [29, 224, 219, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "draxus_shield_off"
+name = "Shield Down"
+trigger = { type = "effect_removed", effects = [3321693346988296] }
+is_alert = true
+alert_text = "Shield Down!"
+color = [33, 224, 218, 255]
+difficulties = ["veteran", "master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 3: Grob'thok, Who Feeds the Forge
+# ═══════════════════════════════════════════════════════════════════════════════
+# Kite fight with lava, adds, and a magnet mechanic.
+# Source: ORBS timer data
+
+[[boss]]
+id = "grobthok"
+name = "Grob'thok, Who Feeds the Forge"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Grob'thok, Who Feeds the Forge"
+ids = [3302559267684352, 3279024890417152, 3302555872337920, 3302563562651648]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Dreadful Ugnaught"
+ids = [3307678868701184]
+is_boss = false
+
+# ─── Timers ─────────────────────────────────────────────────────────────────────
+
+# -- Pipe Smash --
+# Boss smashes pipes to release lava. 60s from start, 63s after each cast.
+
+[[boss.timer]]
+id = "grobthok_pipe_smash_cs"
+name = "Pipe Smash"
+trigger = { type = "combat_start" }
+duration_secs = 60.0
+color = [204, 182, 30, 255]
+difficulties = ["veteran", "master"]
+chains_to = "grobthok_pipe_smash"
+
+[[boss.timer]]
+id = "grobthok_pipe_smash"
+name = "Pipe Smash"
+trigger = { type = "ability_cast", abilities = [3307601559289856] }
+duration_secs = 63.0
+color = [204, 182, 30, 255]
+difficulties = ["veteran", "master"]
+
+# -- Adds --
+# Spawns at 97% HP, then 25s after each spawn ability.
+
+[[boss.timer]]
+id = "grobthok_adds_hp"
+name = "Adds"
+trigger = { type = "boss_hp_below", hp_percent = 97.0, selector = ["Grob'thok, Who Feeds the Forge"] }
+is_alert = true
+alert_text = "Adds Spawning"
+color = [25, 148, 13, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "grobthok_adds"
+name = "Adds"
+trigger = { type = "ability_cast", abilities = [3315585903493120] }
+duration_secs = 25.0
+color = [25, 148, 13, 255]
+difficulties = ["veteran", "master"]
+
+# -- Lava DOT --
+# Debuff that creates fire zones. First at 95% HP, then 30s cooldown.
+
+[[boss.timer]]
+id = "grobthok_lava_dot_hp"
+name = "Lava DOT"
+trigger = { type = "boss_hp_below", hp_percent = 95.0, selector = ["Grob'thok, Who Feeds the Forge"] }
+is_alert = true
+alert_text = "Lava DOT"
+color = [224, 108, 29, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "grobthok_lava_dot"
+name = "Lava DOT"
+trigger = { type = "ability_cast", abilities = [3294703772499968] }
+duration_secs = 30.0
+color = [224, 108, 29, 255]
+difficulties = ["veteran", "master"]
+
+# -- Overhead Smash --
+# Massive raid-wide damage. 33s cooldown.
+
+[[boss.timer]]
+id = "grobthok_overhead_smash"
+name = "Overhead Smash"
+trigger = { type = "ability_cast", abilities = [3285993578823680] }
+duration_secs = 33.0
+color = [144, 24, 224, 255]
+difficulties = ["veteran", "master"]
+
+# -- Roar --
+# Raid damage ability. 15s cooldown.
+
+[[boss.timer]]
+id = "grobthok_roar"
+name = "Roar"
+trigger = { type = "ability_cast", abilities = [3285997873790976] }
+duration_secs = 15.0
+color = [219, 28, 28, 255]
+difficulties = ["veteran", "master"]
+
+# -- Stunned --
+# Boss stunned after magnet. 10s duration.
+
+[[boss.timer]]
+id = "grobthok_stunned"
+name = "Stunned"
+trigger = { type = "effect_removed", effects = [3286745198100740] }
+duration_secs = 10.0
+color = [33, 224, 221, 255]
+difficulties = ["veteran", "master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: Corruptor Zero
+# ═══════════════════════════════════════════════════════════════════════════════
+# Droid boss with melee and ranged phases.
+# Source: ORBS timer data
+
+[[boss]]
+id = "corruptor_zero"
+name = "Corruptor Zero"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Corruptor Zero"
+ids = [3303534225260544, 3277089476714496, 3303538520227840, 3303530830243840]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "D-13 Corruption Droid"
+ids = [3282596259692544]
+is_boss = false
+
+[[boss.entities]]
+name = "D-15 Corruption Droid"
+ids = [3282639209365504]
+is_boss = false
+
+# ─── Phases ─────────────────────────────────────────────────────────────────────
+
+[[boss.phases]]
+id = "corruptor_p1"
+name = "Phase 1"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "corruptor_transition"
+name = "Transition"
+preceded_by = "corruptor_p1"
+trigger = { type = "boss_hp_below", hp_percent = 35.0, selector = ["Corruptor Zero"] }
+
+# ─── Timers ─────────────────────────────────────────────────────────────────────
+
+# -- Adds --
+# First wave at 95% HP.
+
+[[boss.timer]]
+id = "corruptor_adds_hp"
+name = "Adds"
+trigger = { type = "boss_hp_below", hp_percent = 95.0, selector = ["Corruptor Zero"] }
+is_alert = true
+alert_text = "Ranged Adds"
+color = [27, 158, 20, 255]
+difficulties = ["veteran", "master"]
+
+# -- Transition --
+# Boss transitions at 35% HP.
+
+[[boss.timer]]
+id = "corruptor_transition_hp"
+name = "Transition"
+trigger = { type = "boss_hp_below", hp_percent = 35.0, selector = ["Corruptor Zero"] }
+is_alert = true
+alert_text = "Jump20"
+color = [133, 56, 85, 255]
+difficulties = ["veteran", "master"]
+
+# -- Burn Phase --
+# After transition effect ends. 33.5s duration.
+
+[[boss.timer]]
+id = "corruptor_burn"
+name = "Burn Phase"
+trigger = { type = "effect_removed", effects = [3287793170121044] }
+duration_secs = 33.5
+color = [133, 56, 85, 255]
+difficulties = ["veteran", "master"]
+
+# -- Missile Barrage --
+# Ranged phase ability. 15s cooldown.
+
+[[boss.timer]]
+id = "corruptor_missiles"
+name = "Missile Barrage"
+trigger = { type = "ability_cast", abilities = [3286483205095424] }
+duration_secs = 15.0
+color = [35, 28, 219, 255]
+difficulties = ["veteran", "master"]
+
+# -- Heavy Slash --
+# Melee phase attack. 20s cooldown.
+
+[[boss.timer]]
+id = "corruptor_heavy_slash"
+name = "Heavy Slash"
+trigger = { type = "ability_cast", abilities = [3286530449735680] }
+duration_secs = 20.0
+color = [219, 30, 28, 255]
+difficulties = ["veteran", "master"]
+
+# -- Chest Laser --
+# High damage ranged attack. 15s cooldown.
+
+[[boss.timer]]
+id = "corruptor_chest_laser"
+name = "Chest Laser"
+trigger = { type = "ability_cast", abilities = [3285409463271424] }
+duration_secs = 15.0
+color = [224, 59, 212, 255]
+difficulties = ["veteran", "master"]
+
+# -- Beam (Melee Mode) --
+# 60s after melee mode effect ends.
+
+[[boss.timer]]
+id = "corruptor_beam_melee"
+name = "Beam"
+trigger = { type = "effect_removed", effects = [3284760923209993] }
+duration_secs = 60.0
+color = [219, 96, 28, 255]
+difficulties = ["veteran", "master"]
+
+# -- Gravity (Ranged Mode) --
+# 60s after ranged mode effect ends.
+
+[[boss.timer]]
+id = "corruptor_gravity_ranged"
+name = "Gravity"
+trigger = { type = "effect_removed", effects = [3284760923209990] }
+duration_secs = 60.0
+color = [219, 96, 28, 255]
+difficulties = ["veteran", "master"]
+
+# -- Concussion Mine --
+# Stacking debuff. 21.5s cooldown.
+
+[[boss.timer]]
+id = "corruptor_mine"
+name = "Concussion Mine"
+trigger = { type = "ability_cast", abilities = [3321882325549056, 3344271990063104] }
+duration_secs = 21.5
+color = [24, 224, 221, 255]
+difficulties = ["veteran", "master"]
+
+# -- Gravity Field --
+# Positioning mechanic. 33s cooldown.
+
+[[boss.timer]]
+id = "corruptor_gravity_field"
+name = "Gravity Field"
+trigger = { type = "ability_cast", abilities = [3285972103987200] }
+duration_secs = 33.0
+color = [204, 191, 30, 255]
+difficulties = ["veteran", "master"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: Dread Master Brontes
+# ═══════════════════════════════════════════════════════════════════════════════
+# Complex multi-phase fight with hands, fingers, orbs, and clocks.
+# Source: ORBS timer data
+
+[[boss]]
+id = "brontes"
+name = "Dread Master Brontes"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Dread Master Brontes"
+ids = [3303529930293248, 3275195828551680, 3303525635325952, 3303521340358656]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Right Hand of Brontes"
+ids = [3275625527771136]
+is_boss = true
+
+[[boss.entities]]
+name = "Left Hand of Brontes"
+ids = [3277721471811584]
+is_boss = true
+
+[[boss.entities]]
+name = "Finger of Brontes"
+ids = [3275642707640320]
+is_boss = false
+
+[[boss.entities]]
+name = "Energy Sphere"
+ids = [3280057934020608]
+is_boss = false
+
+[[boss.entities]]
+name = "Reach of Brontes"
+ids = [3298281480257536]
+is_boss = true
+
+# ─── Phases ─────────────────────────────────────────────────────────────────────
+
+[[boss.phases]]
+id = "brontes_p1"
+name = "Hands Phase"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "brontes_p5"
+name = "Six Droids"
+preceded_by = "brontes_p1"
+trigger = { type = "ability_cast", abilities = [3301459756056576] }
+
+[[boss.phases]]
+id = "brontes_p6"
+name = "Burn Phase"
+preceded_by = "brontes_p5"
+trigger = { type = "ability_cast", abilities = [3309164927385600] }
+
+# ─── Timers ─────────────────────────────────────────────────────────────────────
+
+# -- Clone --
+# First clone at 96% HP, then 30s cooldown.
+
+[[boss.timer]]
+id = "brontes_clone_hp"
+name = "Clone"
+trigger = { type = "boss_hp_below", hp_percent = 96.0, selector = ["Dread Master Brontes"] }
+is_alert = true
+alert_text = "Clone 1st"
+color = [32, 168, 18, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "brontes_clone"
+name = "Clone"
+trigger = { type = "ability_cast", abilities = [3309152042483712] }
+duration_secs = 30.0
+color = [32, 168, 18, 255]
+difficulties = ["veteran", "master"]
+
+# -- Can't Clone --
+# At 52% HP, clones stop. Alert for strategy.
+
+[[boss.timer]]
+id = "brontes_no_clone_hp"
+name = "Can't Clone"
+trigger = { type = "boss_hp_below", hp_percent = 52.0, selector = ["Dread Master Brontes"] }
+is_alert = true
+alert_text = "Cant Clone"
+color = [32, 168, 18, 255]
+difficulties = ["veteran", "master"]
+
+# -- Energy Sphere P3 --
+# First at 67% HP, then 12s cooldown.
+
+[[boss.timer]]
+id = "brontes_sphere_hp"
+name = "Energy Sphere"
+trigger = { type = "boss_hp_below", hp_percent = 67.0, selector = ["Dread Master Brontes"] }
+is_alert = true
+alert_text = "Energy Sphere P3"
+color = [219, 32, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "brontes_sphere"
+name = "Energy Sphere"
+trigger = { type = "ability_cast", abilities = [3313167836905472] }
+duration_secs = 12.0
+color = [219, 31, 28, 255]
+difficulties = ["veteran", "master"]
+
+# -- Overcharge --
+# First cast 30s, then 16s cooldown after subsequent casts.
+
+[[boss.timer]]
+id = "brontes_overcharge_1st"
+name = "Overcharge"
+trigger = { type = "ability_cast", abilities = [3313824966901760] }
+duration_secs = 30.0
+color = [36, 32, 219, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "brontes_overcharge"
+name = "Overcharge"
+trigger = { type = "ability_cast", abilities = [3313528614158336] }
+duration_secs = 16.0
+color = [36, 28, 219, 255]
+difficulties = ["veteran", "master"]
+
+# -- Fingers Knockback --
+# First at 12s, then 30s cooldown.
+
+[[boss.timer]]
+id = "brontes_fingers_kb_1st"
+name = "Fingers Knockback"
+trigger = { type = "ability_cast", abilities = [3303572879966208] }
+duration_secs = 12.0
+color = [224, 38, 29, 255]
+difficulties = ["veteran", "master"]
+
+
