@@ -36,7 +36,9 @@ pub use types::{MetricType, OverlayType};
 pub use state::{OverlayCommand, OverlayHandle, OverlayState, PositionEvent};
 
 // Spawn functions
-pub use spawn::{create_boss_health_overlay, create_metric_overlay, create_personal_overlay, create_raid_overlay};
+pub use spawn::{
+    create_boss_health_overlay, create_metric_overlay, create_personal_overlay, create_raid_overlay,
+};
 
 // Manager
 pub use manager::OverlayManager;
@@ -54,7 +56,10 @@ use baras_core::context::{OverlayAppearanceConfig, OverlaySettings};
 ///
 /// If the user has saved custom appearance settings, those are returned.
 /// Otherwise, returns the default appearance with the correct bar color for this type.
-pub fn get_appearance_for_type(settings: &OverlaySettings, overlay_type: MetricType) -> OverlayAppearanceConfig {
+pub fn get_appearance_for_type(
+    settings: &OverlaySettings,
+    overlay_type: MetricType,
+) -> OverlayAppearanceConfig {
     let key = overlay_type.config_key();
     if let Some(saved) = settings.appearances.get(key) {
         saved.clone()

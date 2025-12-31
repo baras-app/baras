@@ -14,7 +14,7 @@ use tauri::{AppHandle, Manager, State};
 
 use baras_core::audio::AudioConfig;
 use baras_core::boss::{
-    load_bosses_with_paths, save_bosses_to_file, BossTimerDefinition, BossWithPath,
+    BossTimerDefinition, BossWithPath, load_bosses_with_paths, save_bosses_to_file,
 };
 use baras_core::effects::EntityFilter;
 use baras_core::timers::TimerTrigger;
@@ -98,8 +98,12 @@ impl TimerListItem {
         let enabled = pref.and_then(|p| p.enabled).unwrap_or(timer.enabled);
         let color = pref.and_then(|p| p.color).unwrap_or(timer.color);
         let audio = AudioConfig {
-            enabled: pref.and_then(|p| p.audio_enabled).unwrap_or(timer.audio.enabled),
-            file: pref.and_then(|p| p.audio_file.clone()).or_else(|| timer.audio.file.clone()),
+            enabled: pref
+                .and_then(|p| p.audio_enabled)
+                .unwrap_or(timer.audio.enabled),
+            file: pref
+                .and_then(|p| p.audio_file.clone())
+                .or_else(|| timer.audio.file.clone()),
             offset: timer.audio.offset,
             countdown_start: timer.audio.countdown_start,
             countdown_voice: timer.audio.countdown_voice.clone(),
@@ -150,7 +154,10 @@ impl TimerListItem {
     /// because they should be saved to preferences, not the definition file.
     fn to_timer_definition(&self) -> BossTimerDefinition {
         // Rebuild trigger with source/target filters
-        let trigger = self.trigger.clone().with_source_target(self.source.clone(), self.target.clone());
+        let trigger = self
+            .trigger
+            .clone()
+            .with_source_target(self.source.clone(), self.target.clone());
 
         BossTimerDefinition {
             id: self.timer_id.clone(),
@@ -193,7 +200,10 @@ fn get_user_encounters_dir() -> Option<PathBuf> {
 fn get_bundled_encounters_dir(app_handle: &AppHandle) -> Option<PathBuf> {
     app_handle
         .path()
-        .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
+        .resolve(
+            "definitions/encounters",
+            tauri::path::BaseDirectory::Resource,
+        )
         .ok()
 }
 
@@ -353,10 +363,15 @@ fn has_bundled_counterpart(user_file: &Path, user_base: &Path, bundled_dir: &Pat
 /// Get the custom file path for saving edits to a bundled boss
 fn get_custom_file_path(bundled_path: &Path, bundled_dir: &Path, user_dir: &Path) -> PathBuf {
     // Get relative path from bundled dir
-    let relative = bundled_path.strip_prefix(bundled_dir).unwrap_or(bundled_path);
+    let relative = bundled_path
+        .strip_prefix(bundled_dir)
+        .unwrap_or(bundled_path);
 
     // Build custom file name: foo.toml -> foo_custom.toml
-    let stem = bundled_path.file_stem().unwrap_or_default().to_string_lossy();
+    let stem = bundled_path
+        .file_stem()
+        .unwrap_or_default()
+        .to_string_lossy();
     let custom_name = format!("{}_custom.toml", stem);
 
     // Put in same relative directory within user dir
@@ -366,8 +381,6 @@ fn get_custom_file_path(bundled_path: &Path, bundled_dir: &Path, user_dir: &Path
         user_dir.join(custom_name)
     }
 }
-
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tauri Commands
@@ -382,16 +395,16 @@ pub async fn get_encounter_timers(app_handle: AppHandle) -> Result<Vec<TimerList
     let mut items = Vec::new();
     for boss_with_path in &bosses {
         for timer in &boss_with_path.boss.timers {
-            items.push(TimerListItem::from_boss_timer(boss_with_path, timer, &prefs));
+            items.push(TimerListItem::from_boss_timer(
+                boss_with_path,
+                timer,
+                &prefs,
+            ));
         }
     }
 
     // Sort by boss name, then timer name
-    items.sort_by(|a, b| {
-        a.boss_name
-            .cmp(&b.boss_name)
-            .then(a.name.cmp(&b.name))
-    });
+    items.sort_by(|a, b| a.boss_name.cmp(&b.boss_name).then(a.name.cmp(&b.name)));
 
     Ok(items)
 }
@@ -409,7 +422,8 @@ pub async fn update_encounter_timer(
     let bosses = load_merged_bosses(&app_handle)?;
 
     // Find the original timer definition to compare
-    let original = bosses.iter()
+    let original = bosses
+        .iter()
         .find(|b| b.boss.id == timer.boss_id && b.file_path == file_path)
         .and_then(|b| b.boss.timers.iter().find(|t| t.id == timer.timer_id))
         .ok_or_else(|| format!("Timer '{}' not found", timer.timer_id))?;
@@ -494,10 +508,12 @@ pub async fn update_encounter_timer(
             let mut bosses = load_merged_bosses(&app_handle)?;
 
             for boss_with_path in &mut bosses {
-                if boss_with_path.boss.id == timer.boss_id
-                    && boss_with_path.file_path == file_path
+                if boss_with_path.boss.id == timer.boss_id && boss_with_path.file_path == file_path
                 {
-                    if let Some(existing) = boss_with_path.boss.timers.iter_mut()
+                    if let Some(existing) = boss_with_path
+                        .boss
+                        .timers
+                        .iter_mut()
                         .find(|t| t.id == timer.timer_id)
                     {
                         *existing = timer_def;
@@ -529,7 +545,7 @@ fn save_timer_to_custom_file(
     boss_id: &str,
     timer: &BossTimerDefinition,
 ) -> Result<(), String> {
-    use baras_core::boss::{load_bosses_from_file, BossEncounterDefinition};
+    use baras_core::boss::{BossEncounterDefinition, load_bosses_from_file};
 
     // Load existing custom file if present
     let mut bosses = if custom_path.exists() {
@@ -574,7 +590,10 @@ fn save_timer_to_custom_file(
 
     save_bosses_to_file(&bosses, custom_path)?;
 
-    eprintln!("[TIMERS] Saved timer '{}' to custom file {:?}", timer.id, custom_path);
+    eprintln!(
+        "[TIMERS] Saved timer '{}' to custom file {:?}",
+        timer.id, custom_path
+    );
     Ok(())
 }
 
@@ -625,7 +644,9 @@ pub async fn create_encounter_timer(
 
     // Check for duplicate ID within the target boss only (per-encounter uniqueness)
     for boss_with_path in &bosses {
-        if boss_with_path.boss.id == timer.boss_id && boss_with_path.boss.timers.iter().any(|t| t.id == timer_id) {
+        if boss_with_path.boss.id == timer.boss_id
+            && boss_with_path.boss.timers.iter().any(|t| t.id == timer_id)
+        {
             return Err(format!(
                 "Timer with ID '{}' already exists in this encounter. Timer IDs must be unique within each encounter.",
                 timer_id
@@ -638,7 +659,11 @@ pub async fn create_encounter_timer(
     for boss_with_path in &mut bosses {
         if boss_with_path.boss.id == *boss_id && boss_with_path.file_path == file_path_buf {
             boss_with_path.boss.timers.push(new_timer.clone());
-            created_item = Some(TimerListItem::from_boss_timer(boss_with_path, &new_timer, &prefs));
+            created_item = Some(TimerListItem::from_boss_timer(
+                boss_with_path,
+                &new_timer,
+                &prefs,
+            ));
             break;
         }
     }
@@ -690,14 +715,18 @@ pub async fn delete_encounter_timer(
 
     // Canonicalize paths for reliable comparison
     let file_path_buf = PathBuf::from(&file_path);
-    let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
+    let canonical_path = file_path_buf
+        .canonicalize()
+        .unwrap_or_else(|_| file_path_buf.clone());
 
     // Find the boss and remove the timer
     let mut found = false;
     let mut matched_file_path: Option<PathBuf> = None;
 
     for boss_with_path in &mut bosses {
-        let boss_canonical = boss_with_path.file_path.canonicalize()
+        let boss_canonical = boss_with_path
+            .file_path
+            .canonicalize()
             .unwrap_or_else(|_| boss_with_path.file_path.clone());
 
         if boss_with_path.boss.id == boss_id && boss_canonical == canonical_path {
@@ -723,7 +752,10 @@ pub async fn delete_encounter_timer(
     let file_bosses: Vec<_> = bosses
         .iter()
         .filter(|b| {
-            let b_canonical = b.file_path.canonicalize().unwrap_or_else(|_| b.file_path.clone());
+            let b_canonical = b
+                .file_path
+                .canonicalize()
+                .unwrap_or_else(|_| b.file_path.clone());
             b_canonical == canonical_path
         })
         .map(|b| b.boss.clone())
@@ -732,7 +764,9 @@ pub async fn delete_encounter_timer(
     save_bosses_to_file(&file_bosses, &save_path)?;
 
     // Reload definitions into the running session (propagate errors)
-    service.reload_timer_definitions().await
+    service
+        .reload_timer_definitions()
+        .await
         .map_err(|e| format!("Failed to reload after delete: {}", e))?;
 
     Ok(())
@@ -763,9 +797,9 @@ pub async fn duplicate_encounter_timer(
                 let mut suffix = 1;
                 loop {
                     let new_id = format!("{}_copy{}", timer_id, suffix);
-                    let exists_globally = bosses.iter().any(|b| {
-                        b.boss.timers.iter().any(|t| t.id == new_id)
-                    });
+                    let exists_globally = bosses
+                        .iter()
+                        .any(|b| b.boss.timers.iter().any(|t| t.id == new_id));
                     if !exists_globally {
                         cloned.id = new_id;
                         cloned.name = format!("{} (Copy)", timer.name);
@@ -814,9 +848,7 @@ pub async fn duplicate_encounter_timer(
 
 /// Get list of all bosses (for "New Timer" dropdown)
 #[tauri::command]
-pub async fn get_encounter_bosses(
-    app_handle: AppHandle,
-) -> Result<Vec<BossListItem>, String> {
+pub async fn get_encounter_bosses(app_handle: AppHandle) -> Result<Vec<BossListItem>, String> {
     let bosses = load_merged_bosses(&app_handle)?;
 
     let items: Vec<_> = bosses
@@ -897,8 +929,8 @@ fn collect_areas_from_bundled_recursive(
 ) -> Result<(), String> {
     use baras_core::boss::{load_area_config, load_bosses_with_custom};
 
-    let entries = std::fs::read_dir(current_dir)
-        .map_err(|e| format!("Failed to read directory: {}", e))?;
+    let entries =
+        std::fs::read_dir(current_dir).map_err(|e| format!("Failed to read directory: {}", e))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -910,16 +942,17 @@ fn collect_areas_from_bundled_recursive(
             match load_area_config(&path) {
                 Ok(Some(area_config)) => {
                     // Load bosses with custom overlay merged to get accurate counts
-                    let (boss_count, timer_count) = match load_bosses_with_custom(&path, Some(user_dir)) {
-                        Ok(bosses) => {
-                            let timers: usize = bosses.iter().map(|b| b.timers.len()).sum();
-                            (bosses.len(), timers)
-                        }
-                        Err(e) => {
-                            eprintln!("[TIMERS] Failed to load bosses from {:?}: {}", path, e);
-                            (0, 0)
-                        }
-                    };
+                    let (boss_count, timer_count) =
+                        match load_bosses_with_custom(&path, Some(user_dir)) {
+                            Ok(bosses) => {
+                                let timers: usize = bosses.iter().map(|b| b.timers.len()).sum();
+                                (bosses.len(), timers)
+                            }
+                            Err(e) => {
+                                eprintln!("[TIMERS] Failed to load bosses from {:?}: {}", path, e);
+                                (0, 0)
+                            }
+                        };
 
                     // Determine category from file path
                     let category = determine_category(&path);
@@ -961,27 +994,60 @@ fn determine_category(file_path: &Path) -> String {
     }
 
     // Fallback: determine from filename (known operations/flashpoints)
-    let filename = file_path.file_stem()
+    let filename = file_path
+        .file_stem()
         .map(|s| s.to_string_lossy().to_lowercase())
         .unwrap_or_default();
 
     // Known operations
     const OPERATIONS: &[&str] = &[
-        "dxun", "r4", "eternity_vault", "karagga_s_palace", "explosive_conflict",
-        "terror_from_beyond", "scum_and_villainy", "dread_fortress", "dread_palace",
-        "ravagers", "temple_of_sacrifice", "gods_from_the_machine", "toborro_s_palace",
+        "dxun",
+        "r4",
+        "eternity_vault",
+        "karagga_s_palace",
+        "explosive_conflict",
+        "terror_from_beyond",
+        "scum_and_villainy",
+        "dread_fortress",
+        "dread_palace",
+        "ravagers",
+        "temple_of_sacrifice",
+        "gods_from_the_machine",
+        "toborro_s_palace",
     ];
 
     // Known flashpoints
     const FLASHPOINTS: &[&str] = &[
-        "athiss", "hammer_station", "mandalorian_raiders", "cademimu", "boarding_party",
-        "the_foundry", "maelstrom_prison", "kaon_under_siege", "lost_island",
-        "czerka_corporate_labs", "czerka_core_meltdown", "korriban_incursion",
-        "assault_on_tython", "depths_of_manaan", "legacy_of_the_rakata", "blood_hunt",
-        "battle_of_rishi", "crisis_on_umbara", "a_traitor_among_the_chiss",
-        "the_nathema_conspiracy", "objective_meridian", "spirit_of_vengeance",
-        "secrets_of_the_enclave", "ruins_of_nul", "the_red_reaper", "directive_7",
-        "false_emperor", "the_esseles", "the_black_talon", "propagator_core",
+        "athiss",
+        "hammer_station",
+        "mandalorian_raiders",
+        "cademimu",
+        "boarding_party",
+        "the_foundry",
+        "maelstrom_prison",
+        "kaon_under_siege",
+        "lost_island",
+        "czerka_corporate_labs",
+        "czerka_core_meltdown",
+        "korriban_incursion",
+        "assault_on_tython",
+        "depths_of_manaan",
+        "legacy_of_the_rakata",
+        "blood_hunt",
+        "battle_of_rishi",
+        "crisis_on_umbara",
+        "a_traitor_among_the_chiss",
+        "the_nathema_conspiracy",
+        "objective_meridian",
+        "spirit_of_vengeance",
+        "secrets_of_the_enclave",
+        "ruins_of_nul",
+        "the_red_reaper",
+        "directive_7",
+        "false_emperor",
+        "the_esseles",
+        "the_black_talon",
+        "propagator_core",
     ];
 
     if OPERATIONS.iter().any(|op| filename.contains(op)) {
@@ -996,9 +1062,7 @@ fn determine_category(file_path: &Path) -> String {
 
 /// Get timers for a specific area file (lazy loading)
 #[tauri::command]
-pub async fn get_timers_for_area(
-    file_path: String,
-) -> Result<Vec<TimerListItem>, String> {
+pub async fn get_timers_for_area(file_path: String) -> Result<Vec<TimerListItem>, String> {
     let path = PathBuf::from(&file_path);
 
     if !path.exists() {
@@ -1015,7 +1079,11 @@ pub async fn get_timers_for_area(
     for boss_with_path in &bosses {
         if boss_with_path.file_path == path {
             for timer in &boss_with_path.boss.timers {
-                items.push(TimerListItem::from_boss_timer(boss_with_path, timer, &prefs));
+                items.push(TimerListItem::from_boss_timer(
+                    boss_with_path,
+                    timer,
+                    &prefs,
+                ));
             }
         }
     }
@@ -1085,7 +1153,7 @@ pub async fn create_boss(
     service: State<'_, ServiceHandle>,
     boss: BossEditItem,
 ) -> Result<BossEditItem, String> {
-    use baras_core::boss::{load_bosses_from_file, BossEncounterDefinition};
+    use baras_core::boss::{BossEncounterDefinition, load_bosses_from_file};
 
     let file_path = PathBuf::from(&boss.file_path);
 
@@ -1094,12 +1162,15 @@ pub async fn create_boss(
     }
 
     // Load existing bosses from the file
-    let mut bosses = load_bosses_from_file(&file_path)
-        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+    let mut bosses =
+        load_bosses_from_file(&file_path).map_err(|e| format!("Failed to load bosses: {}", e))?;
 
     // Check for duplicate boss ID
     if bosses.iter().any(|b| b.id == boss.id) {
-        return Err(format!("Boss with ID '{}' already exists in this area", boss.id));
+        return Err(format!(
+            "Boss with ID '{}' already exists in this area",
+            boss.id
+        ));
     }
 
     // Create new boss definition
@@ -1130,10 +1201,7 @@ pub async fn create_boss(
 
 /// Create a new area file
 #[tauri::command]
-pub async fn create_area(
-    app_handle: AppHandle,
-    area: NewAreaRequest,
-) -> Result<String, String> {
+pub async fn create_area(app_handle: AppHandle, area: NewAreaRequest) -> Result<String, String> {
     let user_dir = ensure_user_encounters_dir(&app_handle)?;
 
     // Determine subdirectory based on area type
@@ -1149,7 +1217,8 @@ pub async fn create_area(
         .map_err(|e| format!("Failed to create directory: {}", e))?;
 
     // Generate filename from area name (snake_case)
-    let filename: String = area.name
+    let filename: String = area
+        .name
         .to_lowercase()
         .chars()
         .map(|c| if c.is_alphanumeric() { c } else { '_' })
@@ -1179,8 +1248,7 @@ area_id = {}
         area.name, area.area_type, area.name, area.area_id
     );
 
-    std::fs::write(&file_path, content)
-        .map_err(|e| format!("Failed to write area file: {}", e))?;
+    std::fs::write(&file_path, content).map_err(|e| format!("Failed to write area file: {}", e))?;
 
     Ok(file_path.to_string_lossy().to_string())
 }
@@ -1340,7 +1408,11 @@ pub async fn update_phase(
 
     for boss_with_path in &mut bosses {
         if boss_with_path.boss.id == phase.boss_id && boss_with_path.file_path == file_path_buf {
-            if let Some(existing) = boss_with_path.boss.phases.iter_mut().find(|p| p.id == phase.id)
+            if let Some(existing) = boss_with_path
+                .boss
+                .phases
+                .iter_mut()
+                .find(|p| p.id == phase.id)
             {
                 *existing = phase.to_phase_definition();
                 updated_item = Some(phase.clone());
@@ -1414,13 +1486,17 @@ pub async fn delete_phase(
 ) -> Result<(), String> {
     let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&file_path);
-    let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
+    let canonical_path = file_path_buf
+        .canonicalize()
+        .unwrap_or_else(|_| file_path_buf.clone());
 
     let mut found = false;
     let mut matched_file_path: Option<PathBuf> = None;
 
     for boss_with_path in &mut bosses {
-        let boss_canonical = boss_with_path.file_path.canonicalize()
+        let boss_canonical = boss_with_path
+            .file_path
+            .canonicalize()
             .unwrap_or_else(|_| boss_with_path.file_path.clone());
 
         if boss_with_path.boss.id == boss_id && boss_canonical == canonical_path {
@@ -1433,21 +1509,29 @@ pub async fn delete_phase(
     }
 
     if !found {
-        return Err(format!("Phase '{}' not found in boss '{}'", phase_id, boss_id));
+        return Err(format!(
+            "Phase '{}' not found in boss '{}'",
+            phase_id, boss_id
+        ));
     }
 
     let save_path = matched_file_path.unwrap_or(file_path_buf);
     let file_bosses: Vec<_> = bosses
         .iter()
         .filter(|b| {
-            let b_canonical = b.file_path.canonicalize().unwrap_or_else(|_| b.file_path.clone());
+            let b_canonical = b
+                .file_path
+                .canonicalize()
+                .unwrap_or_else(|_| b.file_path.clone());
             b_canonical == canonical_path
         })
         .map(|b| b.boss.clone())
         .collect();
 
     save_bosses_to_file(&file_bosses, &save_path)?;
-    service.reload_timer_definitions().await
+    service
+        .reload_timer_definitions()
+        .await
         .map_err(|e| format!("Failed to reload after delete: {}", e))?;
 
     Ok(())
@@ -1612,7 +1696,10 @@ pub async fn create_counter(
     for boss_with_path in &mut bosses {
         if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
             boss_with_path.boss.counters.push(new_counter.clone());
-            created_item = Some(CounterListItem::from_boss_counter(boss_with_path, &new_counter));
+            created_item = Some(CounterListItem::from_boss_counter(
+                boss_with_path,
+                &new_counter,
+            ));
             break;
         }
     }
@@ -1642,13 +1729,17 @@ pub async fn delete_counter(
 ) -> Result<(), String> {
     let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&file_path);
-    let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
+    let canonical_path = file_path_buf
+        .canonicalize()
+        .unwrap_or_else(|_| file_path_buf.clone());
 
     let mut found = false;
     let mut matched_file_path: Option<PathBuf> = None;
 
     for boss_with_path in &mut bosses {
-        let boss_canonical = boss_with_path.file_path.canonicalize()
+        let boss_canonical = boss_with_path
+            .file_path
+            .canonicalize()
             .unwrap_or_else(|_| boss_with_path.file_path.clone());
 
         if boss_with_path.boss.id == boss_id && boss_canonical == canonical_path {
@@ -1671,14 +1762,19 @@ pub async fn delete_counter(
     let file_bosses: Vec<_> = bosses
         .iter()
         .filter(|b| {
-            let b_canonical = b.file_path.canonicalize().unwrap_or_else(|_| b.file_path.clone());
+            let b_canonical = b
+                .file_path
+                .canonicalize()
+                .unwrap_or_else(|_| b.file_path.clone());
             b_canonical == canonical_path
         })
         .map(|b| b.boss.clone())
         .collect();
 
     save_bosses_to_file(&file_bosses, &save_path)?;
-    service.reload_timer_definitions().await
+    service
+        .reload_timer_definitions()
+        .await
         .map_err(|e| format!("Failed to reload after delete: {}", e))?;
 
     Ok(())
@@ -1687,7 +1783,6 @@ pub async fn delete_counter(
 // ─────────────────────────────────────────────────────────────────────────────
 // Challenge CRUD
 // ─────────────────────────────────────────────────────────────────────────────
-
 
 /// Flattened challenge item for the frontend list view
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1751,7 +1846,10 @@ pub async fn get_challenges_for_area(file_path: String) -> Result<Vec<ChallengeL
     for boss_with_path in &bosses {
         if boss_with_path.file_path == path {
             for challenge in &boss_with_path.boss.challenges {
-                items.push(ChallengeListItem::from_boss_challenge(boss_with_path, challenge));
+                items.push(ChallengeListItem::from_boss_challenge(
+                    boss_with_path,
+                    challenge,
+                ));
             }
         }
     }
@@ -1774,7 +1872,8 @@ pub async fn update_challenge(
     let mut updated_item = None;
 
     for boss_with_path in &mut bosses {
-        if boss_with_path.boss.id == challenge.boss_id && boss_with_path.file_path == file_path_buf {
+        if boss_with_path.boss.id == challenge.boss_id && boss_with_path.file_path == file_path_buf
+        {
             if let Some(existing) = boss_with_path
                 .boss
                 .challenges
@@ -1827,7 +1926,10 @@ pub async fn create_challenge(
     for boss_with_path in &mut bosses {
         if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
             boss_with_path.boss.challenges.push(new_challenge.clone());
-            created_item = Some(ChallengeListItem::from_boss_challenge(boss_with_path, &new_challenge));
+            created_item = Some(ChallengeListItem::from_boss_challenge(
+                boss_with_path,
+                &new_challenge,
+            ));
             break;
         }
     }
@@ -1857,18 +1959,25 @@ pub async fn delete_challenge(
 ) -> Result<(), String> {
     let mut bosses = load_merged_bosses(&app_handle)?;
     let file_path_buf = PathBuf::from(&file_path);
-    let canonical_path = file_path_buf.canonicalize().unwrap_or_else(|_| file_path_buf.clone());
+    let canonical_path = file_path_buf
+        .canonicalize()
+        .unwrap_or_else(|_| file_path_buf.clone());
 
     let mut found = false;
     let mut matched_file_path: Option<PathBuf> = None;
 
     for boss_with_path in &mut bosses {
-        let boss_canonical = boss_with_path.file_path.canonicalize()
+        let boss_canonical = boss_with_path
+            .file_path
+            .canonicalize()
             .unwrap_or_else(|_| boss_with_path.file_path.clone());
 
         if boss_with_path.boss.id == boss_id && boss_canonical == canonical_path {
             let original_len = boss_with_path.boss.challenges.len();
-            boss_with_path.boss.challenges.retain(|c| c.id != challenge_id);
+            boss_with_path
+                .boss
+                .challenges
+                .retain(|c| c.id != challenge_id);
             found = boss_with_path.boss.challenges.len() < original_len;
             matched_file_path = Some(boss_with_path.file_path.clone());
             break;
@@ -1886,14 +1995,19 @@ pub async fn delete_challenge(
     let file_bosses: Vec<_> = bosses
         .iter()
         .filter(|b| {
-            let b_canonical = b.file_path.canonicalize().unwrap_or_else(|_| b.file_path.clone());
+            let b_canonical = b
+                .file_path
+                .canonicalize()
+                .unwrap_or_else(|_| b.file_path.clone());
             b_canonical == canonical_path
         })
         .map(|b| b.boss.clone())
         .collect();
 
     save_bosses_to_file(&file_bosses, &save_path)?;
-    service.reload_timer_definitions().await
+    service
+        .reload_timer_definitions()
+        .await
         .map_err(|e| format!("Failed to reload after delete: {}", e))?;
 
     Ok(())
@@ -2035,11 +2149,22 @@ pub async fn create_entity(
     for boss_with_path in &mut bosses {
         if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
             // Check for duplicate name
-            if boss_with_path.boss.entities.iter().any(|e| e.name == entity.name) {
-                return Err(format!("Entity '{}' already exists in this boss", entity.name));
+            if boss_with_path
+                .boss
+                .entities
+                .iter()
+                .any(|e| e.name == entity.name)
+            {
+                return Err(format!(
+                    "Entity '{}' already exists in this boss",
+                    entity.name
+                ));
             }
             boss_with_path.boss.entities.push(new_entity.clone());
-            created_item = Some(EntityListItem::from_boss_entity(boss_with_path, &new_entity));
+            created_item = Some(EntityListItem::from_boss_entity(
+                boss_with_path,
+                &new_entity,
+            ));
             break;
         }
     }
@@ -2074,7 +2199,10 @@ pub async fn delete_entity(
     for boss_with_path in &mut bosses {
         if boss_with_path.boss.id == boss_id && boss_with_path.file_path == file_path_buf {
             let original_len = boss_with_path.boss.entities.len();
-            boss_with_path.boss.entities.retain(|e| e.name != entity_name);
+            boss_with_path
+                .boss
+                .entities
+                .retain(|e| e.name != entity_name);
             found = boss_with_path.boss.entities.len() < original_len;
             break;
         }
@@ -2103,7 +2231,7 @@ pub async fn delete_entity(
 // Timer Preferences Commands
 // ─────────────────────────────────────────────────────────────────────────────
 
-use baras_core::timers::{TimerPreferences, TimerPreference, boss_timer_key};
+use baras_core::timers::{TimerPreference, TimerPreferences, boss_timer_key};
 
 /// Get the timer preferences file path
 fn timer_preferences_path() -> Option<PathBuf> {
@@ -2119,8 +2247,7 @@ fn load_timer_preferences() -> TimerPreferences {
 
 /// Save timer preferences to disk
 fn save_timer_preferences(prefs: &TimerPreferences) -> Result<(), String> {
-    let path = timer_preferences_path()
-        .ok_or("Could not determine preferences path")?;
+    let path = timer_preferences_path().ok_or("Could not determine preferences path")?;
     prefs.save(&path).map_err(|e| e.to_string())
 }
 

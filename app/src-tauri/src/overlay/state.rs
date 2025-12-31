@@ -8,7 +8,7 @@ use tokio::sync::mpsc::Sender;
 
 use baras_overlay::{OverlayConfigUpdate, OverlayData};
 
-use super::types::{OverlayType, MetricType};
+use super::types::{MetricType, OverlayType};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Commands and Events
@@ -108,7 +108,8 @@ impl OverlayState {
 
     /// Check if a metric overlay type is running (convenience method)
     pub fn is_metric_running(&self, overlay_type: MetricType) -> bool {
-        self.overlays.contains_key(&OverlayType::Metric(overlay_type))
+        self.overlays
+            .contains_key(&OverlayType::Metric(overlay_type))
     }
 
     /// Check if personal overlay is running

@@ -5,10 +5,9 @@
 use std::sync::{Arc, Mutex};
 
 use tauri::{
-    AppHandle, Manager,
+    AppHandle, Manager, Runtime,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Runtime,
 };
 
 use crate::overlay::{OverlayManager, OverlayState};
@@ -18,7 +17,13 @@ use crate::service::ServiceHandle;
 pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error::Error>> {
     // Create menu items
     let show_hide = MenuItem::with_id(app, "show_hide", "Show/Hide Window", true, None::<&str>)?;
-    let toggle_overlays = MenuItem::with_id(app, "toggle_overlays", "Toggle Overlays", true, None::<&str>)?;
+    let toggle_overlays = MenuItem::with_id(
+        app,
+        "toggle_overlays",
+        "Toggle Overlays",
+        true,
+        None::<&str>,
+    )?;
     let separator = MenuItem::with_id(app, "sep", "─────────────", false, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
@@ -34,7 +39,12 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::err
             handle_menu_event(app, event.id.as_ref());
         })
         .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
                 // Double-click or single click to show window
                 if let Some(window) = tray.app_handle().get_webview_window("main") {
                     let _ = window.show();

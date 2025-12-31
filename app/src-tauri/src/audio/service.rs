@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 
 use baras_types::AudioSettings;
 
@@ -81,7 +81,11 @@ impl AudioService {
             }
 
             match &event {
-                AudioEvent::Countdown { timer_name: _, seconds, voice_pack } => {
+                AudioEvent::Countdown {
+                    timer_name: _,
+                    seconds,
+                    voice_pack,
+                } => {
                     if countdown_enabled {
                         if !self.play_countdown_voice(voice_pack, *seconds, volume) {
                             self.speak(&format!("{}", seconds));
@@ -143,10 +147,16 @@ impl AudioService {
             use std::fs::File;
             use std::io::BufReader;
 
-            let Ok((_stream, stream_handle)) = OutputStream::try_default() else { return };
+            let Ok((_stream, stream_handle)) = OutputStream::try_default() else {
+                return;
+            };
             let Ok(file) = File::open(&path) else { return };
-            let Ok(source) = Decoder::new(BufReader::new(file)) else { return };
-            let Ok(sink) = Sink::try_new(&stream_handle) else { return };
+            let Ok(source) = Decoder::new(BufReader::new(file)) else {
+                return;
+            };
+            let Ok(sink) = Sink::try_new(&stream_handle) else {
+                return;
+            };
 
             sink.set_volume(vol as f32 / 100.0);
             sink.append(source);
@@ -174,10 +184,16 @@ impl AudioService {
             use std::fs::File;
             use std::io::BufReader;
 
-            let Ok((_stream, stream_handle)) = OutputStream::try_default() else { return };
+            let Ok((_stream, stream_handle)) = OutputStream::try_default() else {
+                return;
+            };
             let Ok(file) = File::open(&path) else { return };
-            let Ok(source) = Decoder::new(BufReader::new(file)) else { return };
-            let Ok(sink) = Sink::try_new(&stream_handle) else { return };
+            let Ok(source) = Decoder::new(BufReader::new(file)) else {
+                return;
+            };
+            let Ok(sink) = Sink::try_new(&stream_handle) else {
+                return;
+            };
 
             sink.set_volume(vol as f32 / 100.0);
             sink.append(source);

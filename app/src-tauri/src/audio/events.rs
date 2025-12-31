@@ -20,7 +20,5 @@ pub enum AudioEvent {
     },
 
     /// Speak arbitrary text
-    Speak {
-        text: String,
-    },
+    Speak { text: String },
 }

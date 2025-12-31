@@ -94,8 +94,9 @@ impl RaidSlotRegistry {
     /// Update player's name (if we get better info later)
     pub fn update_name(&mut self, entity_id: i64, name: String) {
         if let Some(&slot) = self.entity_to_slot.get(&entity_id)
-            && let Some(player) = self.slots.get_mut(&slot) {
-                player.name = name;
+            && let Some(player) = self.slots.get_mut(&slot)
+        {
+            player.name = name;
         }
     }
 
@@ -181,7 +182,7 @@ impl RaidSlotRegistry {
         let mut displaced: Vec<RegisteredPlayer> = Vec::new();
         let mut slots_to_remove = Vec::new();
 
-        for &slot in self.slots.keys(){
+        for &slot in self.slots.keys() {
             if slot >= new_max {
                 slots_to_remove.push(slot);
             }

@@ -4,8 +4,8 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use encoding_rs::WINDOWS_1252;
-use flate2::write::GzEncoder;
 use flate2::Compression;
+use flate2::write::GzEncoder;
 use reqwest::multipart::{Form, Part};
 use tauri::State;
 
@@ -29,8 +29,7 @@ pub async fn upload_to_parsely(
     handle: State<'_, ServiceHandle>,
 ) -> Result<ParselyUploadResponse, String> {
     // Read file as bytes (SWTOR logs are Windows-1252 encoded, not UTF-8)
-    let file_bytes = std::fs::read(&path)
-        .map_err(|e| format!("Failed to read log file: {}", e))?;
+    let file_bytes = std::fs::read(&path).map_err(|e| format!("Failed to read log file: {}", e))?;
 
     if file_bytes.is_empty() {
         return Ok(ParselyUploadResponse {
@@ -65,8 +64,8 @@ pub async fn upload_to_parsely(
     }
 
     // Gzip compress the original bytes (already in Windows-1252)
-    let compressed = gzip_compress(&file_bytes)
-        .map_err(|e| format!("Failed to compress: {}", e))?;
+    let compressed =
+        gzip_compress(&file_bytes).map_err(|e| format!("Failed to compress: {}", e))?;
 
     // Get filename for the upload
     let filename = path
@@ -81,9 +80,7 @@ pub async fn upload_to_parsely(
         .mime_str("text/html")
         .map_err(|e| format!("Failed to create file part: {}", e))?;
 
-    let mut form = Form::new()
-        .part("file", file_part)
-        .text("public", "1");
+    let mut form = Form::new().part("file", file_part).text("public", "1");
 
     // Add credentials if configured
     let config = handle.config().await;
@@ -127,8 +124,8 @@ fn parse_parsely_response(xml: &str) -> Result<ParselyUploadResponse, String> {
     // Check for error status: <status>error</status>
     if xml.contains("<status>error</status>") {
         // Extract error message from <error>...</error>
-        let error_msg = extract_xml_element(xml, "error")
-            .unwrap_or_else(|| "Unknown error".to_string());
+        let error_msg =
+            extract_xml_element(xml, "error").unwrap_or_else(|| "Unknown error".to_string());
         return Ok(ParselyUploadResponse {
             success: false,
             link: None,
@@ -167,11 +164,12 @@ fn extract_xml_element(xml: &str, tag: &str) -> Option<String> {
     let close_tag = format!("</{}>", tag);
 
     if let Some(start) = xml.find(&open_tag)
-        && let Some(end) = xml.find(&close_tag) {
-            let content_start = start + open_tag.len();
-            if content_start < end {
-                return Some(xml[content_start..end].to_string());
-            }
+        && let Some(end) = xml.find(&close_tag)
+    {
+        let content_start = start + open_tag.len();
+        if content_start < end {
+            return Some(xml[content_start..end].to_string());
+        }
     }
     None
 }

@@ -9,25 +9,30 @@ mod handler;
 
 use crate::state::SharedState;
 pub use crate::state::{RaidSlotRegistry, RegisteredPlayer};
+use baras_core::directory_watcher;
 pub use handler::*;
 use std::path::PathBuf;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use baras_core::directory_watcher;
+use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager};
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 
-use baras_core::context::{resolve, AppConfig, AppConfigExt, DirectoryIndex, ParsingSession};
+use baras_core::context::{AppConfig, AppConfigExt, DirectoryIndex, ParsingSession, resolve};
+use baras_core::directory_watcher::DirectoryWatcher;
 use baras_core::encounter::EncounterState;
 use baras_core::encounter::summary::classify_encounter;
-use baras_core::directory_watcher::DirectoryWatcher;
 use baras_core::game_data::{Discipline, Role};
 use baras_core::timers::FiredAlert;
-use baras_core::{ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, EffectCategory, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler};
-use baras_overlay::{BossHealthData, ChallengeData, ChallengeEntry, PersonalStats, PlayerContribution, PlayerRole, RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry};
+use baras_core::{
+    ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, EffectCategory,
+    EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler,
+};
+use baras_overlay::{
+    BossHealthData, ChallengeData, ChallengeEntry, PersonalStats, PlayerContribution, PlayerRole,
+    RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry,
+};
 
 use crate::audio::{AudioEvent, AudioSender, AudioService};
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service Commands
@@ -113,7 +118,13 @@ impl CombatSignalHandler {
         session_event_tx: std::sync::mpsc::Sender<SessionEvent>,
         overlay_tx: mpsc::Sender<OverlayUpdate>,
     ) -> Self {
-        Self { shared, trigger_tx, area_load_tx, session_event_tx, overlay_tx }
+        Self {
+            shared,
+            trigger_tx,
+            area_load_tx,
+            session_event_tx,
+            overlay_tx,
+        }
     }
 }
 
@@ -132,7 +143,11 @@ impl SignalHandler for CombatSignalHandler {
                 // Clear boss health and timer overlays
                 let _ = self.overlay_tx.try_send(OverlayUpdate::CombatEnded);
             }
-            GameSignal::DisciplineChanged { entity_id, discipline_id, .. } => {
+            GameSignal::DisciplineChanged {
+                entity_id,
+                discipline_id,
+                ..
+            } => {
                 // Update raid registry with discipline info for role icons
                 if let Ok(mut registry) = self.shared.raid_registry.lock() {
                     registry.update_discipline(*entity_id, 0, *discipline_id);
@@ -144,7 +159,9 @@ impl SignalHandler for CombatSignalHandler {
                 // Send area ID through channel for event-driven loading
                 let current = self.shared.current_area_id.load(Ordering::SeqCst);
                 if *area_id != current && *area_id != 0 {
-                    self.shared.current_area_id.store(*area_id, Ordering::SeqCst);
+                    self.shared
+                        .current_area_id
+                        .store(*area_id, Ordering::SeqCst);
                     let _ = self.area_load_tx.send(*area_id);
                     let _ = self.session_event_tx.send(SessionEvent::AreaChanged);
                 }
@@ -190,8 +207,8 @@ impl CombatService {
         let (cmd_tx, cmd_rx) = mpsc::channel(32);
 
         let config = AppConfig::load();
-        let directory_index = DirectoryIndex::build_index(&PathBuf::from(&config.log_directory))
-            .unwrap_or_default();
+        let directory_index =
+            DirectoryIndex::build_index(&PathBuf::from(&config.log_directory)).unwrap_or_default();
 
         // Load effect definitions from builtin and user directories
         let definitions = Self::load_effect_definitions(&app_handle);
@@ -214,14 +231,21 @@ impl CombatService {
             .unwrap_or_else(|| {
                 // Dev fallback: relative to project root
                 PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                    .parent().unwrap()
-                    .parent().unwrap()
+                    .parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
                     .join("core/definitions/sounds")
             });
         let audio_settings = Arc::new(tokio::sync::RwLock::new(
-            shared.config.blocking_read().audio.clone()
+            shared.config.blocking_read().audio.clone(),
         ));
-        let audio_service = AudioService::new(audio_rx, audio_settings, user_sounds_dir, bundled_sounds_dir);
+        let audio_service = AudioService::new(
+            audio_rx,
+            audio_settings,
+            user_sounds_dir,
+            bundled_sounds_dir,
+        );
         tauri::async_runtime::spawn(audio_service.run());
 
         let service = Self {
@@ -253,7 +277,10 @@ impl CombatService {
         // Bundled definitions: shipped with the app in resources
         let bundled_dir = app_handle
             .path()
-            .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
+            .resolve(
+                "definitions/encounters",
+                tauri::path::BaseDirectory::Resource,
+            )
             .ok();
 
         // Custom definitions: user's config directory
@@ -262,14 +289,18 @@ impl CombatService {
         let mut index = baras_core::boss::AreaIndex::new();
 
         // Build index from bundled directory
-        if let Some(ref path) = bundled_dir && path.exists() {
+        if let Some(ref path) = bundled_dir
+            && path.exists()
+        {
             if let Ok(area_index) = build_area_index(path) {
                 index.extend(area_index);
             }
         }
 
         // Build index from custom directory (can override bundled)
-        if let Some(ref path) = custom_dir && path.exists() {
+        if let Some(ref path) = custom_dir
+            && path.exists()
+        {
             if let Ok(area_index) = build_area_index(path) {
                 index.extend(area_index);
             }
@@ -315,17 +346,23 @@ impl CombatService {
         let mut set = DefinitionSet::new();
 
         // 1. Load from bundled directory first (lowest priority)
-        if let Some(ref path) = bundled_dir && path.exists() {
+        if let Some(ref path) = bundled_dir
+            && path.exists()
+        {
             Self::load_definitions_from_dir(&mut set, path, "bundled", false);
         }
 
         // 2. Load from user defaults directory (user-editable base definitions)
-        if let Some(ref path) = defaults_dir && path.exists() {
+        if let Some(ref path) = defaults_dir
+            && path.exists()
+        {
             Self::load_definitions_from_dir(&mut set, path, "defaults", true);
         }
 
         // 3. Load from user root directory (highest priority, custom.toml loaded last)
-        if let Some(ref path) = effects_dir && path.exists() {
+        if let Some(ref path) = effects_dir
+            && path.exists()
+        {
             Self::load_definitions_from_dir(&mut set, path, "custom", true);
         }
 
@@ -334,8 +371,15 @@ impl CombatService {
 
     /// Load effect definitions from a directory of TOML files
     /// custom.toml is always loaded last so user overrides take precedence
-    fn load_definitions_from_dir(set: &mut DefinitionSet, dir: &std::path::Path, _source: &str, overwrite: bool) {
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
+    fn load_definitions_from_dir(
+        set: &mut DefinitionSet,
+        dir: &std::path::Path,
+        _source: &str,
+        overwrite: bool,
+    ) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
 
         // Collect and sort files, putting custom.toml last
         let mut files: Vec<_> = entries
@@ -362,7 +406,6 @@ impl CombatService {
             }
         }
     }
-
 
     /// Run the service event loop
     pub async fn run(mut self) {
@@ -408,13 +451,17 @@ impl CombatService {
                 ServiceCommand::OpenHistoricalFile(path) => {
                     // Pause live tailing and open the historical file
                     self.shared.is_live_tailing.store(false, Ordering::SeqCst);
-                    let _ = self.app_handle.emit("session-updated", "TailingModeChanged");
+                    let _ = self
+                        .app_handle
+                        .emit("session-updated", "TailingModeChanged");
                     self.start_tailing(path).await;
                 }
                 ServiceCommand::ResumeLiveTailing => {
                     // Resume live tailing and switch to newest file
                     self.shared.is_live_tailing.store(true, Ordering::SeqCst);
-                    let _ = self.app_handle.emit("session-updated", "TailingModeChanged");
+                    let _ = self
+                        .app_handle
+                        .emit("session-updated", "TailingModeChanged");
                     let newest = {
                         let index = self.shared.directory_index.read().await;
                         index.newest_file().map(|f| f.path.clone())
@@ -493,7 +540,7 @@ impl CombatService {
 
     async fn file_removed(&mut self, path: PathBuf) {
         let was_active = {
-            let session_guard= self.shared.session.read().await;
+            let session_guard = self.shared.session.read().await;
             if let Some(session) = session_guard.as_ref() {
                 let s = session.read().await;
                 s.active_file.as_ref().map(|p| p == &path).unwrap_or(false)
@@ -509,19 +556,19 @@ impl CombatService {
 
         // Notify frontend that file list changed
         let _ = self.app_handle.emit("log-files-changed", ());
-                  // Check if we need to switch files
+        // Check if we need to switch files
 
-                  if was_active {
-                      self.stop_tailing().await;
-                      // Optionally switch to next newest
-                      let next = {
-                          let index = self.shared.directory_index.read().await;
-                          index.newest_file().map(|f| f.path.clone())
-                      };
-                      if let Some(next_path) = next {
-                          self.start_tailing(next_path).await;
-                      }
-                    }
+        if was_active {
+            self.stop_tailing().await;
+            // Optionally switch to next newest
+            let next = {
+                let index = self.shared.directory_index.read().await;
+                index.newest_file().map(|f| f.path.clone())
+            };
+            if let Some(next_path) = next {
+                self.start_tailing(next_path).await;
+            }
+        }
     }
 
     async fn start_watcher(&mut self) {
@@ -557,24 +604,25 @@ impl CombatService {
             return;
         };
 
-      // Clone the command sender so watcher can send back to service
-      let cmd_tx = self.cmd_tx.clone();
-      let shared = self.shared.clone();
+        // Clone the command sender so watcher can send back to service
+        let cmd_tx = self.cmd_tx.clone();
+        let shared = self.shared.clone();
 
-      let handle = tokio::spawn(async move {
-          while let Some(event) = watcher.next_event().await {
-              if let Some(cmd) = directory::translate_event(event)
-                  && cmd_tx.send(cmd).await.is_err() {
-                      break; // Service shut down
-                  }
-          }
-          // Watcher stopped
-          shared.watching.store(false, Ordering::SeqCst);
-      });
+        let handle = tokio::spawn(async move {
+            while let Some(event) = watcher.next_event().await {
+                if let Some(cmd) = directory::translate_event(event)
+                    && cmd_tx.send(cmd).await.is_err()
+                {
+                    break; // Service shut down
+                }
+            }
+            // Watcher stopped
+            shared.watching.store(false, Ordering::SeqCst);
+        });
 
-      self.directory_handle = Some(handle);
-      self.shared.watching.store(true, Ordering::SeqCst);
-      let _ = self.app_handle.emit("session-updated", "WatcherStarted");
+        self.directory_handle = Some(handle);
+        self.shared.watching.store(true, Ordering::SeqCst);
+        let _ = self.app_handle.emit("session-updated", "WatcherStarted");
     }
 
     async fn start_tailing(&mut self, path: PathBuf) {
@@ -629,7 +677,9 @@ impl CombatService {
                 let event = match tokio::task::spawn_blocking({
                     let rx = session_event_rx.recv();
                     move || rx
-                }).await {
+                })
+                .await
+                {
                     Ok(Ok(e)) => e,
                     Ok(Err(_)) => break, // Channel closed
                     Err(_) => break,     // Task cancelled
@@ -645,7 +695,9 @@ impl CombatService {
         *self.shared.session.write().await = Some(session.clone());
 
         // Notify frontend of active file change
-        let _ = self.app_handle.emit("active-file-changed", path.to_string_lossy().to_string());
+        let _ = self
+            .app_handle
+            .emit("active-file-changed", path.to_string_lossy().to_string());
 
         // Create reader
         let reader = Reader::from(path, session.clone());
@@ -688,9 +740,11 @@ impl CombatService {
             loop {
                 // Check for triggers (non-blocking with timeout to allow task cancellation)
                 let trigger = tokio::task::spawn_blocking({
-                    let trigger_rx_timeout = trigger_rx.recv_timeout(std::time::Duration::from_millis(100));
+                    let trigger_rx_timeout =
+                        trigger_rx.recv_timeout(std::time::Duration::from_millis(100));
                     move || trigger_rx_timeout
-                }).await;
+                })
+                .await;
 
                 let trigger = match trigger {
                     Ok(Ok(t)) => t,
@@ -742,12 +796,17 @@ impl CombatService {
                 let is_live = shared.is_live_tailing.load(Ordering::SeqCst);
 
                 // Determine if any work needs to be done
-                let any_overlay_active = raid_active || boss_active || timer_active || effects_active;
+                let any_overlay_active =
+                    raid_active || boss_active || timer_active || effects_active;
                 let needs_audio = is_live && (in_combat || raid_active || effects_active);
 
                 // Adaptive sleep: fast when active, slow when idle
                 // 100ms = 10 updates/sec for smooth countdowns (visual-change detection skips redundant renders)
-                let sleep_ms = if any_overlay_active || needs_audio { 100 } else { 500 };
+                let sleep_ms = if any_overlay_active || needs_audio {
+                    100
+                } else {
+                    500
+                };
                 tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
 
                 // Skip processing if nothing needs updating
@@ -798,15 +857,19 @@ impl CombatService {
                 }
 
                 // Boss health: only poll when in combat
-                if boss_active && in_combat &&
-                     let Some(data) = build_boss_health_data(&shared).await {
-                        let _ = overlay_tx.try_send(OverlayUpdate::BossHealthUpdated(data));
+                if boss_active
+                    && in_combat
+                    && let Some(data) = build_boss_health_data(&shared).await
+                {
+                    let _ = overlay_tx.try_send(OverlayUpdate::BossHealthUpdated(data));
                 }
 
                 // Timers + Audio: always poll when in live mode (alerts can fire at combat end)
                 if shared.is_live_tailing.load(Ordering::SeqCst) {
                     // Process timer audio and get timer data
-                    if let Some((data, countdowns, alerts)) = build_timer_data_with_audio(&shared).await {
+                    if let Some((data, countdowns, alerts)) =
+                        build_timer_data_with_audio(&shared).await
+                    {
                         // Send timer overlay data (only when in combat)
                         if in_combat && timer_active {
                             let _ = overlay_tx.try_send(OverlayUpdate::TimersUpdated(data));
@@ -852,7 +915,9 @@ impl CombatService {
                     let area_id = match tokio::task::spawn_blocking({
                         let rx_recv = area_load_rx.recv();
                         move || rx_recv
-                    }).await {
+                    })
+                    .await
+                    {
                         Ok(Ok(id)) => id,
                         Ok(Err(_)) => break, // Channel closed
                         Err(_) => break,     // Task cancelled
@@ -867,7 +932,10 @@ impl CombatService {
                     if let Some(entry) = area_index.get(&area_id) {
                         use baras_core::boss::load_bosses_with_custom;
 
-                        if let Ok(bosses) = load_bosses_with_custom(&entry.file_path, user_encounters_dir.as_deref()) {
+                        if let Ok(bosses) = load_bosses_with_custom(
+                            &entry.file_path,
+                            user_encounters_dir.as_deref(),
+                        ) {
                             if let Some(session_arc) = &*shared.session.read().await {
                                 let mut session = session_arc.write().await;
                                 session.load_boss_definitions(bosses);
@@ -935,18 +1003,27 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 
     // Get player info for class/discipline and entity ID
     let player_info = &cache.player;
-    let class_discipline = if !player_info.class_name.is_empty() && !player_info.discipline_name.is_empty() {
-        Some(format!("{} / {}", player_info.class_name, player_info.discipline_name))
-    } else if !player_info.class_name.is_empty() {
-        Some(player_info.class_name.clone())
-    } else {
-        None
-    };
+    let class_discipline =
+        if !player_info.class_name.is_empty() && !player_info.discipline_name.is_empty() {
+            Some(format!(
+                "{} / {}",
+                player_info.class_name, player_info.discipline_name
+            ))
+        } else if !player_info.class_name.is_empty() {
+            Some(player_info.class_name.clone())
+        } else {
+            None
+        };
     let player_entity_id = player_info.id;
 
     // Get encounter info
     let encounter = cache.last_combat_encounter()?;
-    let encounter_count = cache.encounters().filter(|e| e.state != EncounterState::NotStarted ).map(|e| e.id + 1).max().unwrap_or(0) as usize;
+    let encounter_count = cache
+        .encounters()
+        .filter(|e| e.state != EncounterState::NotStarted)
+        .map(|e| e.id + 1)
+        .max()
+        .unwrap_or(0) as usize;
     let encounter_time_secs = encounter.duration_seconds().unwrap_or(0) as u64;
 
     // Classify the encounter to get phase type and boss info
@@ -977,13 +1054,14 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 
     // Build challenge data from encounter's tracker (persists with encounter, not boss state)
     let challenges = if encounter.challenge_tracker.is_active() {
-        let boss_name = cache.active_boss_idx.and_then(|idx| {
-            cache.boss_definitions.get(idx).map(|def| def.name.clone())
-        });
+        let boss_name = cache
+            .active_boss_idx
+            .and_then(|idx| cache.boss_definitions.get(idx).map(|def| def.name.clone()));
         let overall_duration = cache.boss_state.combat_time_secs.max(1.0);
         let current_time = chrono::Local::now().naive_local();
 
-        let entries: Vec<ChallengeEntry> = encounter.challenge_tracker
+        let entries: Vec<ChallengeEntry> = encounter
+            .challenge_tracker
             .snapshot_live(current_time)
             .into_iter()
             .map(|val| {
@@ -991,11 +1069,13 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                 let challenge_duration = val.duration_secs.max(1.0);
 
                 // Build per-player breakdown, sorted by value descending
-                let mut by_player: Vec<PlayerContribution> = val.by_player
+                let mut by_player: Vec<PlayerContribution> = val
+                    .by_player
                     .iter()
                     .filter_map(|(&entity_id, &value)| {
                         // Resolve player name from encounter
-                        let name = encounter.players
+                        let name = encounter
+                            .players
                             .get(&entity_id)
                             .map(|p| resolve(p.name).to_string())
                             .unwrap_or_else(|| format!("Player {}", entity_id));
@@ -1050,7 +1130,9 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 
     // Get phase info from boss state
     let current_phase = cache.boss_state.current_phase.clone();
-    let phase_time_secs = cache.boss_state.phase_started_at
+    let phase_time_secs = cache
+        .boss_state
+        .phase_started_at
         .map(|start| {
             let now = chrono::Utc::now().naive_utc();
             (now - start).num_milliseconds() as f32 / 1000.0
@@ -1089,15 +1171,21 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
 
     // Get effect tracker
     let effect_tracker = session.effect_tracker();
-    let Ok(mut tracker) = effect_tracker.lock() else { return None };
+    let Ok(mut tracker) = effect_tracker.lock() else {
+        return None;
+    };
 
     // Get local player ID for is_self flag
-    let local_player_id = session.session_cache.as_ref()
+    let local_player_id = session
+        .session_cache
+        .as_ref()
         .map(|c| c.player.id)
         .unwrap_or(0);
 
     // Lock registry
-    let Ok(mut registry) = shared.raid_registry.lock() else { return None };
+    let Ok(mut registry) = shared.raid_registry.lock() else {
+        return None;
+    };
 
     // Process new targets queue - these are entities that JUST received an effect from local player
     // The registry handles duplicate rejection via try_register
@@ -1133,10 +1221,13 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
 
     for slot in 0..max_slots {
         if let Some(player) = registry.get_player(slot) {
-            let effects = effects_by_target.remove(&player.entity_id).unwrap_or_default();
+            let effects = effects_by_target
+                .remove(&player.entity_id)
+                .unwrap_or_default();
 
             // Map discipline to role (defaults to DPS if unknown)
-            let role = player.discipline_id
+            let role = player
+                .discipline_id
                 .and_then(Discipline::from_guid)
                 .map(|d| match d.role() {
                     Role::Tank => PlayerRole::Tank,
@@ -1230,7 +1321,9 @@ async fn build_timer_data_with_audio(
 }
 
 /// Build effects countdown overlay data from active effects
-async fn build_effects_overlay_data(shared: &Arc<SharedState>) -> Option<baras_overlay::EffectsData> {
+async fn build_effects_overlay_data(
+    shared: &Arc<SharedState>,
+) -> Option<baras_overlay::EffectsData> {
     use baras_overlay::EffectEntry;
 
     // Get lag offset from config first (before locking tracker)
@@ -1449,7 +1542,10 @@ pub struct CombatData {
 impl CombatData {
     /// Convert to PersonalStats by finding the player's entry in metrics
     pub fn to_personal_stats(&self) -> Option<PersonalStats> {
-        let player = self.metrics.iter().find(|m| m.entity_id == self.player_entity_id)?;
+        let player = self
+            .metrics
+            .iter()
+            .find(|m| m.entity_id == self.player_entity_id)?;
         Some(PersonalStats {
             encounter_name: self.encounter_name.clone(),
             difficulty: self.difficulty.clone(),

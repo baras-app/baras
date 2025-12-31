@@ -3,16 +3,16 @@
 //! Provides async methods for Tauri commands to interact with the background service.
 
 use std::path::PathBuf;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use tokio::sync::mpsc;
 
-use baras_core::context::{resolve, AppConfig, AppConfigExt};
-use baras_core::encounter::EncounterState;
 use baras_core::EncounterSummary;
+use baras_core::context::{AppConfig, AppConfigExt, resolve};
+use baras_core::encounter::EncounterState;
 
-use crate::state::SharedState;
 use super::{CombatData, LogFileInfo, ServiceCommand, SessionInfo};
+use crate::state::SharedState;
 
 /// Handle to communicate with the combat service and query state
 #[derive(Clone)]
@@ -55,7 +55,10 @@ impl ServiceHandle {
     pub async fn active_file(&self) -> Option<String> {
         self.shared
             .with_session(|session| {
-                session.active_file.as_ref().map(|p| p.to_string_lossy().to_string())
+                session
+                    .active_file
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().to_string())
             })
             .await
             .unwrap_or(Some("None".to_string()))
@@ -111,7 +114,11 @@ impl ServiceHandle {
     }
 
     /// Clean up log files based on provided settings. Returns (empty_deleted, old_deleted).
-    pub async fn cleanup_logs(&self, delete_empty: bool, retention_days: Option<u32>) -> (u32, u32) {
+    pub async fn cleanup_logs(
+        &self,
+        delete_empty: bool,
+        retention_days: Option<u32>,
+    ) -> (u32, u32) {
         let mut index = self.shared.directory_index.write().await;
         index.cleanup(delete_empty, retention_days)
     }
@@ -302,10 +309,22 @@ impl ServiceHandle {
     /// Update the overlay status flag for a specific overlay type
     pub fn set_overlay_active(&self, kind: &str, active: bool) {
         match kind {
-            "raid" => self.shared.raid_overlay_active.store(active, Ordering::SeqCst),
-            "boss_health" => self.shared.boss_health_overlay_active.store(active, Ordering::SeqCst),
-            "timers" => self.shared.timer_overlay_active.store(active, Ordering::SeqCst),
-            "effects" => self.shared.effects_overlay_active.store(active, Ordering::SeqCst),
+            "raid" => self
+                .shared
+                .raid_overlay_active
+                .store(active, Ordering::SeqCst),
+            "boss_health" => self
+                .shared
+                .boss_health_overlay_active
+                .store(active, Ordering::SeqCst),
+            "timers" => self
+                .shared
+                .timer_overlay_active
+                .store(active, Ordering::SeqCst),
+            "effects" => self
+                .shared
+                .effects_overlay_active
+                .store(active, Ordering::SeqCst),
             _ => {}
         }
     }

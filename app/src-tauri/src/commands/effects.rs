@@ -12,7 +12,10 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
 use baras_core::audio::AudioConfig;
-use baras_core::effects::{DefinitionConfig, EffectCategory, EffectDefinition, EffectSelector, EffectTriggerMode, EntityFilter};
+use baras_core::effects::{
+    DefinitionConfig, EffectCategory, EffectDefinition, EffectSelector, EffectTriggerMode,
+    EntityFilter,
+};
 use baras_types::AbilitySelector;
 
 use crate::service::ServiceHandle;
@@ -178,8 +181,8 @@ fn ensure_user_effects_dir(app_handle: &AppHandle) -> Result<PathBuf, String> {
 
 /// Copy files from src to dst that don't already exist in dst
 fn sync_missing_files(src: &PathBuf, dst: &Path) -> Result<(), String> {
-    let entries = std::fs::read_dir(src)
-        .map_err(|e| format!("Failed to read directory {:?}: {}", src, e))?;
+    let entries =
+        std::fs::read_dir(src).map_err(|e| format!("Failed to read directory {:?}: {}", src, e))?;
 
     for entry in entries.flatten() {
         let src_path = entry.path();
@@ -189,7 +192,10 @@ fn sync_missing_files(src: &PathBuf, dst: &Path) -> Result<(), String> {
         if !dst_path.exists() {
             if src_path.is_dir() {
                 copy_dir_recursive(&src_path, &dst_path)?;
-                eprintln!("[EFFECTS] Synced missing directory: {:?}", entry.file_name());
+                eprintln!(
+                    "[EFFECTS] Synced missing directory: {:?}",
+                    entry.file_name()
+                );
             } else {
                 std::fs::copy(&src_path, &dst_path)
                     .map_err(|e| format!("Failed to copy {:?}: {}", src_path, e))?;
@@ -206,8 +212,8 @@ fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> Result<(), String> {
     std::fs::create_dir_all(dst)
         .map_err(|e| format!("Failed to create directory {:?}: {}", dst, e))?;
 
-    let entries = std::fs::read_dir(src)
-        .map_err(|e| format!("Failed to read directory {:?}: {}", src, e))?;
+    let entries =
+        std::fs::read_dir(src).map_err(|e| format!("Failed to read directory {:?}: {}", src, e))?;
 
     for entry in entries.flatten() {
         let src_path = entry.path();
@@ -238,8 +244,8 @@ fn load_effects_with_paths(dir: &PathBuf) -> Result<Vec<EffectWithPath>, String>
         return Ok(results);
     }
 
-    let entries = std::fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read directory {:?}: {}", dir, e))?;
+    let entries =
+        std::fs::read_dir(dir).map_err(|e| format!("Failed to read directory {:?}: {}", dir, e))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -280,8 +286,7 @@ fn save_effects_to_file(effects: &[EffectDefinition], path: &PathBuf) -> Result<
             .map_err(|e| format!("Failed to create directory {:?}: {}", parent, e))?;
     }
 
-    std::fs::write(path, content)
-        .map_err(|e| format!("Failed to write {:?}: {}", path, e))?;
+    std::fs::write(path, content).map_err(|e| format!("Failed to write {:?}: {}", path, e))?;
 
     Ok(())
 }
@@ -302,11 +307,9 @@ fn load_custom_effects() -> Vec<EffectDefinition> {
     }
 
     match std::fs::read_to_string(&custom_path) {
-        Ok(contents) => {
-            toml::from_str::<DefinitionConfig>(&contents)
-                .map(|c| c.effects)
-                .unwrap_or_default()
-        }
+        Ok(contents) => toml::from_str::<DefinitionConfig>(&contents)
+            .map(|c| c.effects)
+            .unwrap_or_default(),
         Err(_) => vec![],
     }
 }
@@ -347,12 +350,12 @@ pub async fn update_effect_definition(
     if effect.effects.is_empty() && effect.refresh_abilities.is_empty() {
         return Err(
             "Effect must have at least one effect ID or refresh ability to match against. \
-            Without these, the effect will never trigger.".to_string()
+            Without these, the effect will never trigger."
+                .to_string(),
         );
     }
 
-    let custom_path = get_custom_effects_path()
-        .ok_or("Cannot determine custom effects path")?;
+    let custom_path = get_custom_effects_path().ok_or("Cannot determine custom effects path")?;
     let is_from_custom = effect.file_path == custom_path.to_string_lossy();
 
     // Load custom effects
@@ -403,7 +406,8 @@ pub async fn create_effect_definition(
     if effect.effects.is_empty() && effect.refresh_abilities.is_empty() {
         return Err(
             "Effect must have at least one effect ID or refresh ability to match against. \
-            Without these, the effect will never trigger.".to_string()
+            Without these, the effect will never trigger."
+                .to_string(),
         );
     }
 
@@ -427,8 +431,7 @@ pub async fn create_effect_definition(
     save_custom_effects(&custom_effects)?;
 
     // Update file_path to reflect where it was saved
-    let custom_path = get_custom_effects_path()
-        .ok_or("Cannot determine custom effects path")?;
+    let custom_path = get_custom_effects_path().ok_or("Cannot determine custom effects path")?;
     effect.file_path = custom_path.to_string_lossy().to_string();
 
     // Reload definitions in the running service
@@ -461,7 +464,12 @@ pub async fn delete_effect_definition(
         .filter(|e| e.id != effect_id)
         .collect();
 
-    if new_effects.len() == effects.iter().filter(|e| e.file_path == file_path_buf).count() {
+    if new_effects.len()
+        == effects
+            .iter()
+            .filter(|e| e.file_path == file_path_buf)
+            .count()
+    {
         return Err(format!("Effect '{}' not found", effect_id));
     }
 
@@ -528,8 +536,8 @@ pub async fn get_effect_files(app_handle: AppHandle) -> Result<Vec<String>, Stri
     let mut files = Vec::new();
 
     if user_dir.exists() {
-        let entries = std::fs::read_dir(&user_dir)
-            .map_err(|e| format!("Failed to read directory: {}", e))?;
+        let entries =
+            std::fs::read_dir(&user_dir).map_err(|e| format!("Failed to read directory: {}", e))?;
 
         for entry in entries.flatten() {
             let path = entry.path();

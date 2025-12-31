@@ -4,7 +4,9 @@
 //! Also handles the raid overlay's registry action channel and forwards swap/clear commands
 //! back to the service registry.
 
-use crate::overlay::{create_all_entries, OverlayCommand, OverlayType, MetricType, SharedOverlayState};
+use crate::overlay::{
+    MetricType, OverlayCommand, OverlayType, SharedOverlayState, create_all_entries,
+};
 use crate::service::{OverlayUpdate, ServiceHandle};
 use baras_overlay::{OverlayData, RaidRegistryAction};
 use tokio::sync::mpsc;
@@ -27,7 +29,9 @@ pub fn spawn_overlay_router(
             // Check if raid overlay exists and has a registry channel
             // Must not hold lock across await!
             let action = overlay_state_clone.lock().ok().and_then(|state| {
-                state.overlays.get(&OverlayType::Raid)
+                state
+                    .overlays
+                    .get(&OverlayType::Raid)
                     .and_then(|h| h.registry_action_rx.as_ref())
                     .and_then(|rx| rx.try_recv().ok())
             });
@@ -112,9 +116,11 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
             // Send entries to each running metric overlay
             for (overlay_type, tx) in metric_txs {
                 if let Some(entries) = all_entries.get(&overlay_type) {
-                    let _ = tx.send(OverlayCommand::UpdateData(
-                        OverlayData::Metrics(entries.clone())
-                    )).await;
+                    let _ = tx
+                        .send(OverlayCommand::UpdateData(OverlayData::Metrics(
+                            entries.clone(),
+                        )))
+                        .await;
                 }
             }
 
@@ -122,9 +128,9 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
             if let Some(tx) = personal_tx
                 && let Some(stats) = data.to_personal_stats()
             {
-                let _ = tx.send(OverlayCommand::UpdateData(
-                    OverlayData::Personal(stats)
-                )).await;
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::Personal(stats)))
+                    .await;
             }
 
             // Send challenges data to challenges overlay
@@ -139,9 +145,11 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
             if let Some(tx) = challenges_tx
                 && let Some(challenges) = data.challenges
             {
-                let _ = tx.send(OverlayCommand::UpdateData(
-                    OverlayData::Challenges(challenges)
-                )).await;
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::Challenges(
+                        challenges,
+                    )))
+                    .await;
             }
         }
         OverlayUpdate::EffectsUpdated(raid_data) => {
@@ -155,9 +163,9 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
             };
 
             if let Some(tx) = raid_tx {
-                let _ = tx.send(OverlayCommand::UpdateData(
-                    OverlayData::Raid(raid_data)
-                )).await;
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::Raid(raid_data)))
+                    .await;
             }
         }
         OverlayUpdate::BossHealthUpdated(boss_data) => {
@@ -171,9 +179,11 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
             };
 
             if let Some(tx) = boss_tx {
-                let _ = tx.send(OverlayCommand::UpdateData(
-                    OverlayData::BossHealth(boss_data)
-                )).await;
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::BossHealth(
+                        boss_data,
+                    )))
+                    .await;
             }
         }
         OverlayUpdate::TimersUpdated(timer_data) => {
@@ -187,9 +197,9 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
             };
 
             if let Some(tx) = timer_tx {
-                let _ = tx.send(OverlayCommand::UpdateData(
-                    OverlayData::Timers(timer_data)
-                )).await;
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::Timers(timer_data)))
+                    .await;
             }
         }
         OverlayUpdate::EffectsOverlayUpdated(effects_data) => {
@@ -203,9 +213,11 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
             };
 
             if let Some(tx) = effects_tx {
-                let _ = tx.send(OverlayCommand::UpdateData(
-                    OverlayData::Effects(effects_data)
-                )).await;
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::Effects(
+                        effects_data,
+                    )))
+                    .await;
             }
         }
         OverlayUpdate::CombatStarted => {
@@ -270,7 +282,10 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
 
                 // Raid overlay
                 if let Some(tx) = state.get_raid_tx() {
-                    channels.push((tx.clone(), OverlayData::Raid(RaidFrameData { frames: vec![] })));
+                    channels.push((
+                        tx.clone(),
+                        OverlayData::Raid(RaidFrameData { frames: vec![] }),
+                    ));
                 }
 
                 // Boss health overlay
@@ -303,4 +318,3 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
         }
     }
 }
-

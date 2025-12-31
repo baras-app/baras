@@ -7,4 +7,4 @@ mod events;
 mod service;
 
 pub use events::AudioEvent;
-pub use service::{create_audio_channel, AudioSender, AudioService};
+pub use service::{AudioSender, AudioService, create_audio_channel};

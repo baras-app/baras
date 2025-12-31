@@ -5,9 +5,9 @@
 use std::path::PathBuf;
 use tauri::State;
 
-use baras_core::context::{AppConfig, AppConfigExt, OverlayAppearanceConfig};
 use baras_core::EncounterSummary;
 use baras_core::PlayerMetrics;
+use baras_core::context::{AppConfig, AppConfigExt, OverlayAppearanceConfig};
 
 use crate::overlay::{MetricType, OverlayType, SharedOverlayState};
 use crate::service::{LogFileInfo, ServiceHandle, SessionInfo};
@@ -165,7 +165,9 @@ pub async fn get_profile_names(handle: State<'_, ServiceHandle>) -> Result<Vec<S
 }
 
 #[tauri::command]
-pub async fn get_active_profile(handle: State<'_, ServiceHandle>) -> Result<Option<String>, String> {
+pub async fn get_active_profile(
+    handle: State<'_, ServiceHandle>,
+) -> Result<Option<String>, String> {
     let config = handle.config().await;
     Ok(config.active_profile_name.clone())
 }
@@ -214,7 +216,9 @@ pub async fn rename_profile(
     handle: State<'_, ServiceHandle>,
 ) -> Result<(), String> {
     let mut config = handle.config().await;
-    config.rename_profile(&old_name, new_name).map_err(|e| e.to_string())?;
+    config
+        .rename_profile(&old_name, new_name)
+        .map_err(|e| e.to_string())?;
     *handle.shared.config.write().await = config.clone();
     config.save();
     Ok(())
@@ -225,21 +229,22 @@ pub async fn rename_profile(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Sync the enabled map with actual running overlay state
-fn sync_enabled_with_running(
-    config: &mut AppConfig,
-    overlay_state: &crate::overlay::OverlayState,
-) {
+fn sync_enabled_with_running(config: &mut AppConfig, overlay_state: &crate::overlay::OverlayState) {
     // Sync raid overlay state
     let raid_running = overlay_state.is_running(OverlayType::Raid);
     config.overlay_settings.set_enabled("raid", raid_running);
 
     // Sync personal overlay state
     let personal_running = overlay_state.is_running(OverlayType::Personal);
-    config.overlay_settings.set_enabled("personal", personal_running);
+    config
+        .overlay_settings
+        .set_enabled("personal", personal_running);
 
     // Sync all metric overlay states
     for metric_type in MetricType::all() {
         let running = overlay_state.is_running(OverlayType::Metric(*metric_type));
-        config.overlay_settings.set_enabled(metric_type.config_key(), running);
+        config
+            .overlay_settings
+            .set_enabled(metric_type.config_key(), running);
     }
 }

@@ -3,15 +3,18 @@
 //! Provides a clean interface for spawning, shutting down, and updating overlays.
 //! This consolidates the duplicated logic that was scattered across commands.
 
-use std::time::Duration;
 use baras_core::context::{OverlayPositionConfig, OverlaySettings};
 use baras_overlay::{OverlayConfigUpdate, OverlayData, RaidGridLayout, RaidOverlayConfig};
+use std::time::Duration;
 
 use super::metrics::create_entries_for_type;
-use super::spawn::{create_boss_health_overlay, create_challenges_overlay, create_effects_overlay, create_metric_overlay, create_personal_overlay, create_raid_overlay, create_timer_overlay};
+use super::spawn::{
+    create_boss_health_overlay, create_challenges_overlay, create_effects_overlay,
+    create_metric_overlay, create_personal_overlay, create_raid_overlay, create_timer_overlay,
+};
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
 use super::types::{MetricType, OverlayType};
-use super::{get_appearance_for_type, SharedOverlayState};
+use super::{SharedOverlayState, get_appearance_for_type};
 use crate::service::{CombatData, ServiceHandle};
 
 /// Result of a spawn operation
@@ -30,10 +33,7 @@ impl OverlayManager {
 
     /// Spawn a single overlay of the given type.
     /// Returns the handle and whether the position needs to be saved.
-    pub fn spawn(
-        kind: OverlayType,
-        settings: &OverlaySettings,
-    ) -> Result<SpawnResult, String> {
+    pub fn spawn(kind: OverlayType, settings: &OverlaySettings) -> Result<SpawnResult, String> {
         let position = settings.get_position(kind.config_key());
         let needs_monitor_save = position.monitor_id.is_none();
 
@@ -65,14 +65,19 @@ impl OverlayManager {
                 create_effects_overlay(position, effects_config, settings.effects_opacity)?
             }
             OverlayType::Challenges => {
-                let appearance = settings.appearances.get("challenges")
+                let appearance = settings
+                    .appearances
+                    .get("challenges")
                     .cloned()
                     .unwrap_or_default();
                 create_challenges_overlay(position, appearance, settings.metric_opacity)?
             }
         };
 
-        Ok(SpawnResult { handle, needs_monitor_save })
+        Ok(SpawnResult {
+            handle,
+            needs_monitor_save,
+        })
     }
 
     /// Shutdown an overlay and return its final position for saving.
@@ -106,29 +111,36 @@ impl OverlayManager {
         combat_data: Option<&CombatData>,
     ) {
         let Some(data) = combat_data else { return };
-        if data.metrics.is_empty() { return; }
+        if data.metrics.is_empty() {
+            return;
+        }
 
         match kind {
             OverlayType::Metric(metric_type) => {
                 let entries = create_entries_for_type(metric_type, &data.metrics);
-                let _ = tx.send(OverlayCommand::UpdateData(OverlayData::Metrics(entries))).await;
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::Metrics(entries)))
+                    .await;
             }
             OverlayType::Personal => {
                 if let Some(stats) = data.to_personal_stats() {
-                    let _ = tx.send(OverlayCommand::UpdateData(OverlayData::Personal(stats))).await;
+                    let _ = tx
+                        .send(OverlayCommand::UpdateData(OverlayData::Personal(stats)))
+                        .await;
                 }
             }
-            OverlayType::Raid | OverlayType::BossHealth | OverlayType::Timers | OverlayType::Effects | OverlayType::Challenges => {
+            OverlayType::Raid
+            | OverlayType::BossHealth
+            | OverlayType::Timers
+            | OverlayType::Effects
+            | OverlayType::Challenges => {
                 // These get data via separate update channels (bridge)
             }
         }
     }
 
     /// Sync move mode state with overlay.
-    pub async fn sync_move_mode(
-        tx: &tokio::sync::mpsc::Sender<OverlayCommand>,
-        move_mode: bool,
-    ) {
+    pub async fn sync_move_mode(tx: &tokio::sync::mpsc::Sender<OverlayCommand>, move_mode: bool) {
         if move_mode {
             let _ = tx.send(OverlayCommand::SetMoveMode(true)).await;
         }
@@ -163,7 +175,9 @@ impl OverlayManager {
         pending: Vec<(String, tokio::sync::mpsc::Sender<OverlayCommand>)>,
         service: &ServiceHandle,
     ) {
-        if pending.is_empty() { return; }
+        if pending.is_empty() {
+            return;
+        }
 
         // Give overlays a moment to be placed by compositor
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -171,7 +185,9 @@ impl OverlayManager {
         let mut config = service.config().await;
         for (key, tx) in pending {
             if let Some(pos) = Self::query_position(&tx).await {
-                config.overlay_settings.set_position(&key, Self::position_to_config(&pos));
+                config
+                    .overlay_settings
+                    .set_position(&key, Self::position_to_config(&pos));
             }
         }
         let _ = service.update_config(config).await;
@@ -182,7 +198,10 @@ impl OverlayManager {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Create a config update for an overlay type.
-    pub fn create_config_update(kind: OverlayType, settings: &OverlaySettings) -> OverlayConfigUpdate {
+    pub fn create_config_update(
+        kind: OverlayType,
+        settings: &OverlaySettings,
+    ) -> OverlayConfigUpdate {
         match kind {
             OverlayType::Metric(metric_type) => {
                 let appearance = get_appearance_for_type(settings, metric_type);
@@ -210,7 +229,9 @@ impl OverlayManager {
             }
             OverlayType::Challenges => {
                 // Use default metric appearance for challenges overlay
-                let appearance = settings.appearances.get("challenges")
+                let appearance = settings
+                    .appearances
+                    .get("challenges")
                     .cloned()
                     .unwrap_or_default();
                 OverlayConfigUpdate::Metric(appearance, settings.metric_opacity)
@@ -270,10 +291,7 @@ impl OverlayManager {
 
         // Save position if needed
         if result.needs_monitor_save {
-            Self::save_positions_delayed(
-                vec![(kind.config_key().to_string(), tx)],
-                service,
-            ).await;
+            Self::save_positions_delayed(vec![(kind.config_key().to_string(), tx)], service).await;
         }
 
         // Update overlay status flag for effects loop optimization
@@ -290,7 +308,9 @@ impl OverlayManager {
     ) -> Result<bool, String> {
         // Update enabled state in config
         let mut config = service.config().await;
-        config.overlay_settings.set_enabled(kind.config_key(), false);
+        config
+            .overlay_settings
+            .set_enabled(kind.config_key(), false);
         service.update_config(config).await?;
 
         // Remove and shutdown if running
@@ -369,7 +389,9 @@ impl OverlayManager {
             }
 
             // Spawn overlay
-            let Ok(result) = Self::spawn(kind, &config.overlay_settings) else { continue };
+            let Ok(result) = Self::spawn(kind, &config.overlay_settings) else {
+                continue;
+            };
 
             let tx = result.handle.tx.clone();
 
@@ -454,9 +476,11 @@ impl OverlayManager {
         };
 
         // Turn off rearrange mode first if entering move mode
-        if was_rearranging && new_mode
-            && let Some(ref tx) = raid_tx {
-                let _ = tx.send(OverlayCommand::SetRearrangeMode(false)).await;
+        if was_rearranging
+            && new_mode
+            && let Some(ref tx) = raid_tx
+        {
+            let _ = tx.send(OverlayCommand::SetRearrangeMode(false)).await;
         }
 
         // Broadcast move mode to all overlays
@@ -475,10 +499,9 @@ impl OverlayManager {
 
             let mut config = service.config().await;
             for pos in positions {
-                config.overlay_settings.set_position(
-                    pos.kind.config_key(),
-                    Self::position_to_config(&pos),
-                );
+                config
+                    .overlay_settings
+                    .set_position(pos.kind.config_key(), Self::position_to_config(&pos));
             }
             service.update_config(config).await?;
         }
@@ -524,14 +547,16 @@ impl OverlayManager {
             if running && !enabled {
                 // Shutdown if running but disabled
                 if let Ok(mut s) = state.lock()
-                    && let Some(handle) = s.remove(overlay_type) {
-                        let _ = handle.tx.try_send(OverlayCommand::Shutdown);
-                    }
+                    && let Some(handle) = s.remove(overlay_type)
+                {
+                    let _ = handle.tx.try_send(OverlayCommand::Shutdown);
+                }
             } else if !running && enabled {
                 // Start if not running but enabled
                 if let Ok(result) = Self::spawn(overlay_type, settings)
-                    && let Ok(mut s) = state.lock() {
-                        s.insert(result.handle);
+                    && let Ok(mut s) = state.lock()
+                {
+                    s.insert(result.handle);
                 }
             }
         }
@@ -541,23 +566,28 @@ impl OverlayManager {
         let raid_was_running = {
             let mut was_running = false;
             if let Ok(mut s) = state.lock()
-                && let Some(handle) = s.remove(OverlayType::Raid) {
-                    let _ = handle.tx.try_send(OverlayCommand::Shutdown);
-                    was_running = true;
+                && let Some(handle) = s.remove(OverlayType::Raid)
+            {
+                let _ = handle.tx.try_send(OverlayCommand::Shutdown);
+                was_running = true;
             }
             was_running
         };
 
         if (raid_was_running || raid_enabled)
             && let Ok(result) = Self::spawn(OverlayType::Raid, settings)
-            && let Ok(mut s) = state.lock() {
-                    s.insert(result.handle);
+            && let Ok(mut s) = state.lock()
+        {
+            s.insert(result.handle);
         }
 
         // Update config for all running overlays
         let overlays: Vec<_> = {
             let s = state.lock().map_err(|e| e.to_string())?;
-            s.all_overlays().into_iter().map(|(k, tx)| (k, tx.clone())).collect()
+            s.all_overlays()
+                .into_iter()
+                .map(|(k, tx)| (k, tx.clone()))
+                .collect()
         };
 
         for (kind, tx) in overlays {

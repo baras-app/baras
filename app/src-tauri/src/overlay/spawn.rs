@@ -14,14 +14,18 @@
 use std::thread::{self, JoinHandle};
 use tokio::sync::mpsc::{self, Sender};
 
-use baras_core::context::{BossHealthConfig, OverlayAppearanceConfig, OverlayPositionConfig, PersonalOverlayConfig, TimerOverlayConfig};
+use baras_core::context::{
+    BossHealthConfig, OverlayAppearanceConfig, OverlayPositionConfig, PersonalOverlayConfig,
+    TimerOverlayConfig,
+};
 use baras_overlay::{
     BossHealthOverlay, ChallengeOverlay, EffectsOverlay, MetricOverlay, Overlay, OverlayConfig,
-    PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
+    PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction,
+    TimerOverlay,
 };
 
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
-use super::types::{OverlayType, MetricType};
+use super::types::{MetricType, OverlayType};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic Spawn Function
@@ -213,7 +217,12 @@ pub fn create_metric_overlay(
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
 
-    Ok(OverlayHandle { tx, handle, kind, registry_action_rx: None })
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
 }
 
 /// Create and spawn the personal overlay
@@ -250,7 +259,12 @@ pub fn create_personal_overlay(
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
 
-    Ok(OverlayHandle { tx, handle, kind, registry_action_rx: None })
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
 }
 
 /// Create and spawn the raid frames overlay (starts with empty frames)
@@ -285,7 +299,12 @@ pub fn create_raid_overlay(
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, Some(registry_tx))?;
 
-    Ok(OverlayHandle { tx, handle, kind, registry_action_rx: Some(registry_rx) })
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: Some(registry_rx),
+    })
 }
 
 /// Create and spawn the boss health bar overlay
@@ -313,7 +332,12 @@ pub fn create_boss_health_overlay(
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
 
-    Ok(OverlayHandle { tx, handle, kind, registry_action_rx: None })
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
 }
 
 /// Create and spawn the timer countdown overlay
@@ -341,7 +365,12 @@ pub fn create_timer_overlay(
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
 
-    Ok(OverlayHandle { tx, handle, kind, registry_action_rx: None })
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
 }
 
 /// Create and spawn the effects countdown overlay
@@ -369,7 +398,12 @@ pub fn create_effects_overlay(
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
 
-    Ok(OverlayHandle { tx, handle, kind, registry_action_rx: None })
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
 }
 
 /// Create and spawn the challenges overlay
@@ -397,5 +431,10 @@ pub fn create_challenges_overlay(
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
 
-    Ok(OverlayHandle { tx, handle, kind, registry_action_rx: None })
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
 }

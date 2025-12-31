@@ -56,7 +56,7 @@ impl MetricType {
         match self {
             MetricType::Dps => (50, 50),
             MetricType::EDps => (50, 50),
-            MetricType::BossDps => (50,50),
+            MetricType::BossDps => (50, 50),
             MetricType::Hps => (50, 280),
             MetricType::EHps => (50, 280),
             MetricType::Tps => (50, 510),

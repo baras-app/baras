@@ -88,9 +88,7 @@ pub async fn toggle_move_mode(
 }
 
 #[tauri::command]
-pub async fn toggle_raid_rearrange(
-    state: State<'_, SharedOverlayState>,
-) -> Result<bool, String> {
+pub async fn toggle_raid_rearrange(state: State<'_, SharedOverlayState>) -> Result<bool, String> {
     OverlayManager::toggle_rearrange(&state).await
 }
 
@@ -99,7 +97,17 @@ pub async fn get_overlay_status(
     state: State<'_, SharedOverlayState>,
     service: State<'_, ServiceHandle>,
 ) -> Result<OverlayStatusResponse, String> {
-    let (running_metric_types, personal_running, raid_running, boss_health_running, timers_running, effects_running, challenges_running, move_mode, rearrange_mode) = {
+    let (
+        running_metric_types,
+        personal_running,
+        raid_running,
+        boss_health_running,
+        timers_running,
+        effects_running,
+        challenges_running,
+        move_mode,
+        rearrange_mode,
+    ) = {
         let s = state.lock().map_err(|e| e.to_string())?;
         (
             s.running_metric_types(),
@@ -169,9 +177,7 @@ pub async fn refresh_overlay_settings(
 
 /// Clear all players from the raid frame registry
 #[tauri::command]
-pub async fn clear_raid_registry(
-    service: State<'_, ServiceHandle>,
-) -> Result<(), String> {
+pub async fn clear_raid_registry(service: State<'_, ServiceHandle>) -> Result<(), String> {
     service.clear_raid_registry().await;
     Ok(())
 }
@@ -189,10 +195,7 @@ pub async fn swap_raid_slots(
 
 /// Remove a player from a specific slot
 #[tauri::command]
-pub async fn remove_raid_slot(
-    slot: u8,
-    service: State<'_, ServiceHandle>,
-) -> Result<(), String> {
+pub async fn remove_raid_slot(slot: u8, service: State<'_, ServiceHandle>) -> Result<(), String> {
     service.remove_raid_slot(slot).await;
     Ok(())
 }

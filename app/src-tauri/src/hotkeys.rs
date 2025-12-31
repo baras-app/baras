@@ -31,15 +31,17 @@ pub fn spawn_register_hotkeys(
                 let state = overlay_state.clone();
                 let handle = service_handle.clone();
 
-                if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
-                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        let state = state.clone();
-                        let handle = handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            toggle_visibility_hotkey(state, handle).await;
-                        });
-                    }
-                }) {
+                if let Err(e) =
+                    global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
+                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                            let state = state.clone();
+                            let handle = handle.clone();
+                            tauri::async_runtime::spawn(async move {
+                                toggle_visibility_hotkey(state, handle).await;
+                            });
+                        }
+                    })
+                {
                     eprintln!("[HOTKEY] Failed to register visibility hotkey: {}", e);
                 } else {
                     eprintln!("[HOTKEY] Registered visibility hotkey: {}", key_str);
@@ -54,14 +56,16 @@ pub fn spawn_register_hotkeys(
             if let Ok(shortcut) = key_str.parse::<Shortcut>() {
                 let state = overlay_state.clone();
 
-                if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
-                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        let state = state.clone();
-                        tauri::async_runtime::spawn(async move {
-                            toggle_move_mode_hotkey(state).await;
-                        });
-                    }
-                }) {
+                if let Err(e) =
+                    global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
+                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                            let state = state.clone();
+                            tauri::async_runtime::spawn(async move {
+                                toggle_move_mode_hotkey(state).await;
+                            });
+                        }
+                    })
+                {
                     eprintln!("[HOTKEY] Failed to register move mode hotkey: {}", e);
                 } else {
                     eprintln!("[HOTKEY] Registered move mode hotkey: {}", key_str);
@@ -76,14 +80,16 @@ pub fn spawn_register_hotkeys(
             if let Ok(shortcut) = key_str.parse::<Shortcut>() {
                 let state = overlay_state.clone();
 
-                if let Err(e) = global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
-                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        let state = state.clone();
-                        tauri::async_runtime::spawn(async move {
-                            toggle_rearrange_mode_hotkey(state).await;
-                        });
-                    }
-                }) {
+                if let Err(e) =
+                    global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
+                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                            let state = state.clone();
+                            tauri::async_runtime::spawn(async move {
+                                toggle_rearrange_mode_hotkey(state).await;
+                            });
+                        }
+                    })
+                {
                     eprintln!("[HOTKEY] Failed to register rearrange mode hotkey: {}", e);
                 } else {
                     eprintln!("[HOTKEY] Registered rearrange mode hotkey: {}", key_str);
@@ -96,7 +102,10 @@ pub fn spawn_register_hotkeys(
 }
 
 /// Hotkey handler: Toggle overlay visibility
-async fn toggle_visibility_hotkey(overlay_state: SharedOverlayState, service_handle: ServiceHandle) {
+async fn toggle_visibility_hotkey(
+    overlay_state: SharedOverlayState,
+    service_handle: ServiceHandle,
+) {
     let is_visible = {
         if let Ok(state) = overlay_state.lock() {
             state.overlays_visible

@@ -18,21 +18,20 @@ mod router;
 pub mod service;
 pub mod state;
 mod tray;
+#[cfg(desktop)]
+mod updater;
 
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 
-use router::spawn_overlay_router;
-use overlay::{OverlayManager, OverlayState, SharedOverlayState};
-use service::{CombatService, OverlayUpdate, ServiceHandle};
 use audio::create_audio_channel;
+use overlay::{OverlayManager, OverlayState, SharedOverlayState};
+use router::spawn_overlay_router;
+use service::{CombatService, OverlayUpdate, ServiceHandle};
 use tauri::Manager;
 
 /// Auto-show all enabled overlays on startup (if overlays_visible is true)
-fn spawn_auto_show_overlays(
-    overlay_state: SharedOverlayState,
-    service_handle: ServiceHandle,
-) {
+fn spawn_auto_show_overlays(overlay_state: SharedOverlayState, service_handle: ServiceHandle) {
     tauri::async_runtime::spawn(async move {
         // Small delay to let everything initialize
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
@@ -55,6 +54,7 @@ pub fn run() {
     let overlay_state = Arc::new(Mutex::new(OverlayState::default()));
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -68,7 +68,8 @@ pub fn run() {
                 let (audio_tx, audio_rx) = create_audio_channel();
 
                 // Create and spawn the combat service (includes audio service)
-                let (service, handle) = CombatService::new(app.handle().clone(), overlay_tx, audio_tx, audio_rx);
+                let (service, handle) =
+                    CombatService::new(app.handle().clone(), overlay_tx, audio_tx, audio_rx);
                 tauri::async_runtime::spawn(service.run());
 
                 // Store the service handle for commands
@@ -82,10 +83,18 @@ pub fn run() {
 
                 // Register global hotkeys (not supported on Linux/Wayland)
                 #[cfg(not(target_os = "linux"))]
-                hotkeys::spawn_register_hotkeys(app.handle().clone(), overlay_state.clone(), handle);
+                hotkeys::spawn_register_hotkeys(
+                    app.handle().clone(),
+                    overlay_state.clone(),
+                    handle,
+                );
 
                 // Set up system tray
                 let _ = tray::setup_tray(app.handle());
+
+                // Check for updates in background
+                #[cfg(desktop)]
+                updater::spawn_update_check(app.handle().clone());
 
                 Ok(())
             }
@@ -201,6 +210,11 @@ pub fn run() {
             // Audio
             commands::pick_audio_file,
             commands::list_bundled_sounds,
+            // Updater
+            #[cfg(desktop)]
+            updater::check_update,
+            #[cfg(desktop)]
+            updater::install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
