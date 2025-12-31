@@ -9,7 +9,7 @@ parse-50mb:
 
 # Tauri app commands
 dev:
-  cd app && cargo tauri dev
+  cd app && cargo tauri dev 2>&1 | tee /tmp/baras.log
 
 # Build AppImage/deb (NO_STRIP needed on Arch due to linuxdeploy incompatibility)
 bundle:
