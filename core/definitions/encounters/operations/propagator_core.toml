@@ -13,7 +13,7 @@ difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Propagator Core XR-53"
-ids = [4847325860069376]
+ids = [4824927605620736, 4847325860069376]
 is_boss = true
 is_kill_target = true
 

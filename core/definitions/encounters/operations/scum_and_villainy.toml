@@ -107,8 +107,32 @@ name = "Cartel Warlords"
 difficulties = ["story", "veteran"]
 
 [[boss.entities]]
-name = "Cartel Warlords"
-ids = [3054400352288768, 3054404647256064, 3054408942223360, 3054413237190656, 3156899746807808, 3156904041775104, 3156895451840512]
+name = "Horic"
+ids = [3054400352288768, 3032770896986112]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Garr"
+ids = [3032753717116928, 3054408942223360]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Tuchuk"
+ids = [
+  3156899746807808,
+  3156904041775104,
+  3032779486920704,
+  3156895451840512,
+  3054413237190656,
+]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Sunder"
+ids = [3054404647256064, 3032766602018816]
 is_boss = true
 is_kill_target = true
 
@@ -123,6 +147,13 @@ difficulties = ["story", "veteran"]
 
 [[boss.entities]]
 name = "Dread Master Styrak"
-ids = [3067057620910080, 3152441570754560, 3225679353085952, 3066945951760384, 3152445865721856, 3152407211016192]
+ids = [
+  3067057620910080,
+  3152441570754560,
+  3225679353085952,
+  3066945951760384,
+  3152445865721856,
+  3152407211016192,
+]
 is_boss = true
 is_kill_target = true

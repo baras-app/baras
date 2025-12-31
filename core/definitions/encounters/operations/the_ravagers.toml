@@ -63,12 +63,18 @@ difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Blaster"
-ids = [3391100018491392]
+ids = [
+  3725149689872384,
+  3391095723524096,
+  3462181727240192,
+  3462186022207488,
+  3458148752949248,
+]
 is_boss = true
 
 [[boss.entities]]
 name = "Master"
-ids = [3462181727240192, 3391095723524096, 3462186022207488, 3458148752949248]
+ids = [3462181727240192]
 is_boss = true
 is_kill_target = true
 
@@ -83,16 +89,16 @@ difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Coratanni"
-ids = [3371437658210304]
+ids = [3619433364848640, 3371437658210304]
 is_boss = true
 
 [[boss.entities]]
 name = "Ruugar"
-ids = [3371441953177600]
+ids = [3371441953177600, 3397039958261760]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Pearl"
-ids = [3468735847333888, 3443983950807040, 3468740142301184, 3468731552366592]
+ids = [3374109127868416]
 is_boss = true
-is_kill_target = true

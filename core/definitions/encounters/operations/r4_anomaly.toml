@@ -18,7 +18,7 @@ difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "IP-CPT"
-ids = [4467247024177152, 4480196350574592, 4480200645541888, 4494653210492928]
+ids = [4494653210492928, 4467247024177152]
 is_boss = true
 is_kill_target = true
 
@@ -65,4 +65,10 @@ difficulties = ["story", "veteran", "master"]
 name = "Lady Dominique"
 ids = [4466199052156928, 4488524292161536, 4608014577303552]
 is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Watchdog"
+ids = [4488524292161536]
+ids_boss = true
 is_kill_target = true

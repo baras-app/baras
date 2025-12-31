@@ -21,7 +21,13 @@ difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "The Writhing Horror"
-ids = [3010424182145024]
+ids = [
+  2962174519541760,
+  3010428477112320,
+  3010432772079616,
+  2938874321960960,
+  3010424182145024,
+]
 is_boss = true
 is_kill_target = true
 
@@ -36,7 +42,9 @@ trigger = { type = "combat_start" }
 id = "wh_burn"
 name = "Burn"
 preceded_by = "wh_main"
-trigger = { type = "boss_hp_below", hp_percent = 15.0, selector = ["The Writhing Horror"] }
+trigger = { type = "boss_hp_below", hp_percent = 15.0, selector = [
+  "The Writhing Horror",
+] }
 
 # ─── Timers ─────────────────────────────────────────────────────────────────────
 
@@ -91,7 +99,7 @@ id = "wh_corrosive_slime"
 name = "Corrosive Slime"
 alert_text = "Slime on you"
 target = "local_player"
-trigger = {type = "effect_applied", effects = [3010686175150344]}
+trigger = { type = "effect_applied", effects = [3010686175150344] }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: The Dread Guard
@@ -105,17 +113,35 @@ difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Heirad"
-ids = [3013327580037120]
+ids = [
+  3013374824677376,
+  3013327580037120,
+  3013409184415744,
+  2831414240215040,
+  2938002443599872,
+]
 is_boss = true
 
 [[boss.entities]]
 name = "Ciphas"
-ids = [3013336169971712]
+ids = [
+  3013387709579264,
+  3013336169971712,
+  3013417774350336,
+  2831422830149632,
+  2938011033534464,
+]
 is_boss = true
 
 [[boss.entities]]
 name = "Kel'sara"
-ids = [3013331875004416]
+ids = [
+  3013379119644672,
+  3013331875004416,
+  3013413479383040,
+  2831418535182336,
+  2938006738567168,
+]
 is_boss = true
 is_kill_target = true
 
@@ -267,7 +293,7 @@ name = "Vitality Extraction"
 is_alert = true
 trigger = { type = "ability_cast", abilities = [3014512991010816] }
 alert_text = "Vitality Extraction"
-source = { specific =  "Kel'sara"}
+source = { specific = "Kel'sara" }
 target = "local_player"
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -280,21 +306,37 @@ name = "Operator IX"
 
 [[boss.entities]]
 name = "Operator IX"
+ids = [
+  2942606648541184,
+  2836319092867072,
+  2836314797899776,
+  2994859220664320,
+  2994837745827840,
+  3725128215035904,
+  2994850630729728,
+]
 ids = [2994837745827840]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Master Control"
-ids = [2994915055239168]
+ids = [
+  2994923645173760,
+  2939690365747200,
+  2994919350206464,
+  2836310502932480,
+  2994915055239168,
+]
 triggers_encounter = true
 is_boss = false
 is_kill_target = false
 
 [[boss.entities]]
 name = "Data Core"
-ids = [2994867810598912]
+ids = [2994876400533504, 2940596603846656, 2994867810598912, 2994872105566208]
 is_boss = false
+show_on_hp_overlay = true
 
 [[boss.counters]]
 id = "op_ix_data_cores"
@@ -307,22 +349,22 @@ initial_value = 0
 [[boss.phases]]
 id = "op_ix_blue"
 name = "Blue"
-trigger = {type = "ability_cast", abilities = [3036833936048128] }
+trigger = { type = "ability_cast", abilities = [3036833936048128] }
 
 [[boss.phases]]
 id = "op_ix_orange"
 name = "Orange"
-trigger = {type = "ability_cast", abilities = [3036838231015424] }
+trigger = { type = "ability_cast", abilities = [3036838231015424] }
 
 [[boss.phases]]
 id = "op_ix_purple"
 name = "Purple"
-trigger = {type = "ability_cast", abilities = [3036842525982720] }
+trigger = { type = "ability_cast", abilities = [3036842525982720] }
 
 [[boss.phases]]
 id = "op_ix_yellow"
 name = "Yellow"
-trigger = {type = "ability_cast", abilities = [3036846820950016] }
+trigger = { type = "ability_cast", abilities = [3036846820950016] }
 
 [[boss.phases]]
 id = "op_ix_main"
@@ -332,7 +374,7 @@ trigger = { type = "npc_appears", selector = ["Operator IX"] }
 [[boss.timer]]
 id = "op_ix_blue_cd"
 name = "Blue Scalene"
-trigger = {type = "phase_entered", phase_id = "op_ix_blue"}
+trigger = { type = "phase_entered", phase_id = "op_ix_blue" }
 duration_secs = 70.0
 color = [20, 131, 18, 255]
 difficulties = ["veteran", "master"]
@@ -340,7 +382,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "op_ix_orange_cd"
 name = "Orange Scalene"
-trigger = {type = "phase_entered", phase_id = "op_ix_orange"}
+trigger = { type = "phase_entered", phase_id = "op_ix_orange" }
 duration_secs = 60.0
 color = [20, 131, 18, 255]
 difficulties = ["veteran", "master"]
@@ -348,8 +390,8 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "op_ix_purple_scalene"
 name = "Purple Scalene"
-trigger = {type = "phase_entered", phase_id = "op_ix_purple"}
-cancel_trigger = {type = "phase_ended", phase_id = "op_ix_purple"}
+trigger = { type = "phase_entered", phase_id = "op_ix_purple" }
+cancel_trigger = { type = "phase_ended", phase_id = "op_ix_purple" }
 duration_secs = 55.0
 color = [20, 131, 18, 255]
 difficulties = ["veteran", "master"]
@@ -357,8 +399,8 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "op_ix_yellow_scalene"
 name = "Yellow Scalene"
-trigger = {type = "phase_entered", phase_id = "op_ix_yellow"}
-cancel_trigger = {type = "phase_ended", phase_id = "op_ix_yellow"}
+trigger = { type = "phase_entered", phase_id = "op_ix_yellow" }
+cancel_trigger = { type = "phase_ended", phase_id = "op_ix_yellow" }
 duration_secs = 50.0
 color = [20, 131, 18, 255]
 difficulties = ["veteran", "master"]
@@ -366,7 +408,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "op_ix_black_obtuse"
 name = "Black Obtuse"
-trigger = {type = "ability_cast", abilities = [2998471288160256]}
+trigger = { type = "ability_cast", abilities = [2998471288160256] }
 duration_secs = 30.0
 color = [20, 131, 18, 255]
 difficulties = ["veteran", "master"]
@@ -375,11 +417,19 @@ difficulties = ["veteran", "master"]
 id = "op_ix_adds"
 name = "Adds"
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_below", hp_percent = 90.0, selector = ["Operator IX"] },
-    { type = "boss_hp_below", hp_percent = 70.0, selector = ["Operator IX"] },
-    { type = "boss_hp_below", hp_percent = 50.0, selector = ["Operator IX"] },
-    { type = "boss_hp_below", hp_percent = 30.0, selector = ["Operator IX"] },
-]}
+  { type = "boss_hp_below", hp_percent = 90.0, selector = [
+    "Operator IX",
+  ] },
+  { type = "boss_hp_below", hp_percent = 70.0, selector = [
+    "Operator IX",
+  ] },
+  { type = "boss_hp_below", hp_percent = 50.0, selector = [
+    "Operator IX",
+  ] },
+  { type = "boss_hp_below", hp_percent = 30.0, selector = [
+    "Operator IX",
+  ] },
+] }
 is_alert = true
 alert_text = "Adds Incoming!"
 difficulties = ["veteran", "master"]
@@ -401,13 +451,19 @@ difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Kephess the Undying"
-ids = [3013134306508800, 2937620191510528, 3013138601476096, 3013121421606912]
+ids = [
+  2937620191510528,
+  3013121421606912,
+  3013138601476096,
+  3013134306508800,
+  2831409945247744,
+]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Energy Distortion"
-ids = [3013095651803136]
+ids = [3013095651803136, 3013104241737728]
 is_boss = false
 
 # ─── Phases ─────────────────────────────────────────────────────────────────────
@@ -421,13 +477,17 @@ trigger = { type = "combat_start" }
 id = "kephess_cascade"
 name = "Cascade"
 preceded_by = "kephess_main"
-trigger = { type = "boss_hp_below", hp_percent = 50.0, selector = ["Kephess the Undying"] }
+trigger = { type = "boss_hp_below", hp_percent = 50.0, selector = [
+  "Kephess the Undying",
+] }
 
 [[boss.phases]]
 id = "kephess_burn"
 name = "Burn"
 preceded_by = "kephess_cascade"
-trigger = { type = "boss_hp_below", hp_percent = 10.0, selector = ["Kephess the Undying"] }
+trigger = { type = "boss_hp_below", hp_percent = 10.0, selector = [
+  "Kephess the Undying",
+] }
 
 # ─── Counters ───────────────────────────────────────────────────────────────────
 
@@ -435,7 +495,11 @@ trigger = { type = "boss_hp_below", hp_percent = 10.0, selector = ["Kephess the 
 [[boss.counters]]
 id = "overcharge_count"
 name = "Overcharges"
-increment_on = { type = "ability_cast", abilities = [3012687629910016], source = { selector = ["Kephess the Undying"] } }
+increment_on = { type = "ability_cast", abilities = [
+  3012687629910016,
+], source = { selector = [
+  "Kephess the Undying",
+] } }
 reset_on = { type = "combat_end" }
 
 # Tracks Nanites casts - different timers fire at count 1, 2, 3 then resets
@@ -443,7 +507,11 @@ reset_on = { type = "combat_end" }
 [[boss.counters]]
 id = "nanites_count"
 name = "Nanites"
-increment_on = { type = "ability_cast", abilities = [2977765250826240], source = { selector = ["Kephess the Undying"] } }
+increment_on = { type = "ability_cast", abilities = [
+  2977765250826240,
+], source = { selector = [
+  "Kephess the Undying",
+] } }
 reset_on = { type = "counter_reaches", counter_id = "nanites_count", value = 4 }
 
 # ─── Simple Timers ──────────────────────────────────────────────────────────────
@@ -621,7 +689,7 @@ preceded_by = "tfb_phase1"
 [[boss.phases]]
 id = "tfb_burn"
 name = "Burn"
-trigger = { type = "counter_reaches", counter_id = "grasping_death_count", value = 6}
+trigger = { type = "counter_reaches", counter_id = "grasping_death_count", value = 6 }
 # ─── Counters ───────────────────────────────────────────────────────────────────
 
 # Counter for Grasping Tentacle deaths (for phase 2 respawn timing)
@@ -648,12 +716,21 @@ is_kill_target = true
 
 [[boss.entities]]
 name = "Grasping Tentacle"
-ids = [3025284768989184]
+ids = [3025293358923776, 3025289063956480, 2988545618739200, 3025284768989184]
 is_boss = true
 
 [[boss.entities]]
 name = "Tunneling Tentacle"
-ids = [3025258999185408, 3025271884087296]
+ids = [
+  3025267589120000,
+  3025280474021888,
+  3025263294152704,
+  3025276179054592,
+  3025271884087296,
+  3025258999185408,
+  2938895796797440,
+  2938891501830144,
+]
 is_boss = true
 triggers_encounter = true
 
@@ -776,9 +853,13 @@ difficulties = ["veteran", "master"]
 id = "tfb_void_disturbance_debuff"
 name = "Void Disturbance"
 trigger = { type = "any_of", conditions = [
-    { type = "effect_removed", effects = [3246243656499200] },
-    { type = "effect_removed", effects = [3250010342817792] }
-]}
+  { type = "effect_removed", effects = [
+    3246243656499200,
+  ] },
+  { type = "effect_removed", effects = [
+    3250010342817792,
+  ] },
+] }
 target = "local_player"
 duration_secs = 20.0
 color = [222, 26, 32, 255]
@@ -789,10 +870,13 @@ difficulties = ["veteran", "master"]
 id = "tfb_adds"
 name = "Adds"
 trigger = { type = "any_of", conditions = [
-    { type = "ability_cast", abilities = [3025903244279808] },
-    { type = "ability_cast", abilities = [3025916129181696] }
-]}
+  { type = "ability_cast", abilities = [
+    3025903244279808,
+  ] },
+  { type = "ability_cast", abilities = [
+    3025916129181696,
+  ] },
+] }
 duration_secs = 30.0
 color = [20, 136, 30, 255]
 difficulties = ["veteran", "master"]
-

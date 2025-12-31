@@ -15,13 +15,25 @@ difficulties = ["veteran", "master"]
 
 [[boss.entities]]
 name = "Zorn"
-ids = [2857544821243904]
+ids = [
+  2788331423268864,
+  2860770341683200,
+  2861388816973824,
+  3725115330134016,
+  2857544821243904,
+]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Toth"
-ids = [2857549116211200]
+ids = [
+  2788335718236160,
+  2453173650325504,
+  2860766046715904,
+  2861384522006528,
+  285754911621120,
+]
 is_boss = true
 is_kill_target = true
 
@@ -97,12 +109,22 @@ id = "zt_jump"
 name = "Jump"
 is_alert = true
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_below", hp_percent = 90.0, selector = ["Toth"] },
-    { type = "boss_hp_below", hp_percent = 70.0, selector = ["Toth"] },
-    { type = "boss_hp_below", hp_percent = 50.0, selector = ["Toth"] },
-    { type = "boss_hp_below", hp_percent = 30.0, selector = ["Toth"] },
-    { type = "boss_hp_below", hp_percent = 10.0, selector = ["Toth"] },
-]}
+  { type = "boss_hp_below", hp_percent = 90.0, selector = [
+    "Toth",
+  ] },
+  { type = "boss_hp_below", hp_percent = 70.0, selector = [
+    "Toth",
+  ] },
+  { type = "boss_hp_below", hp_percent = 50.0, selector = [
+    "Toth",
+  ] },
+  { type = "boss_hp_below", hp_percent = 30.0, selector = [
+    "Toth",
+  ] },
+  { type = "boss_hp_below", hp_percent = 10.0, selector = [
+    "Toth",
+  ] },
+] }
 alert_text = "Jump"
 color = [130, 33, 224, 255]
 difficulties = ["veteran", "master"]
@@ -112,9 +134,13 @@ id = "zt_frenzy"
 name = "Frenzy"
 is_alert = true
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_below", hp_percent = 80.0, selector = ["Toth"] },
-    { type = "boss_hp_below", hp_percent = 40.0, selector = ["Toth"] },
-]}
+  { type = "boss_hp_below", hp_percent = 80.0, selector = [
+    "Toth",
+  ] },
+  { type = "boss_hp_below", hp_percent = 40.0, selector = [
+    "Toth",
+  ] },
+] }
 alert_text = "Frenzy"
 color = [214, 164, 19, 255]
 difficulties = ["veteran", "master"]
@@ -124,9 +150,13 @@ id = "zt_shatter"
 name = "Shatter + Sonic"
 is_alert = true
 trigger = { type = "any_of", conditions = [
-    { type = "boss_hp_below", hp_percent = 60.0, selector = ["Toth"] },
-    { type = "boss_hp_below", hp_percent = 20.0, selector = ["Toth"] },
-]}
+  { type = "boss_hp_below", hp_percent = 60.0, selector = [
+    "Toth",
+  ] },
+  { type = "boss_hp_below", hp_percent = 20.0, selector = [
+    "Toth",
+  ] },
+] }
 alert_text = "Shatter + Sonic"
 color = [219, 36, 28, 255]
 difficulties = ["veteran", "master"]
@@ -150,20 +180,20 @@ difficulties = ["veteran", "master"]
 
 [[boss.entities]]
 name = "Firebrand"
-ids = [2876434087411712]
+ids = [2876434087411712, 2876459857215488, 2876481332051968, 2808827007205376]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Stormcaller"
-ids = [2876438382379008]
+ids = [2876438382379008, 2876464152182784, 2876485627019264, 2808831302172672]
 is_boss = true
 is_kill_target = true
 
 [[boss.counters]]
 id = "fs_defensive_systems_ct"
 name = "Defensive Systems"
-increment_on = { type = "phase_ended", phase_id="fs_shield"}
+increment_on = { type = "phase_ended", phase_id = "fs_shield" }
 reset_on = { type = "combat_end" }
 initial_value = 0
 
@@ -171,22 +201,32 @@ initial_value = 0
 [[boss.phases]]
 id = "fs_tanks"
 name = "Tanks"
-counter_condition = {counter_id = "fs_defensive_systems_ct", operator = "lte", value = 3}
+counter_condition = { counter_id = "fs_defensive_systems_ct", operator = "lte", value = 3 }
 trigger = { type = "any_of", conditions = [
-  {type = "combat_start" },
-  {type = "phase_ended", phase_id = "fs_shield"}
-]}
+  { type = "combat_start" },
+  { type = "phase_ended", phase_id = "fs_shield" },
+] }
 
 [[boss.phases]]
 id = "fs_shield"
 name = "Defensive Systems"
-trigger = { type = "effect_applied", effects = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
-end_trigger = { type = "effect_removed", effects = [2816089796902912, 2876958073421824, 2876962368389120, 2876717555253248] }
+trigger = { type = "effect_applied", effects = [
+  2816089796902912,
+  2876958073421824,
+  2876962368389120,
+  2876717555253248,
+] }
+end_trigger = { type = "effect_removed", effects = [
+  2816089796902912,
+  2876958073421824,
+  2876962368389120,
+  2876717555253248,
+] }
 
 [[boss.phases]]
 id = "fs_burn"
 name = "Burn"
-counter_condition = {counter_id = "fs_defensive_systems_ct", operator = "eq", value = 4}
+counter_condition = { counter_id = "fs_defensive_systems_ct", operator = "eq", value = 4 }
 trigger = { type = "phase_ended", phase_id = "fs_shield" }
 
 # -- Challenges --
@@ -194,9 +234,7 @@ trigger = { type = "phase_ended", phase_id = "fs_shield" }
 id = "fs_shield_dps"
 name = "Shield DPS"
 metric = "damage"
-conditions = [
-    { type = "target", match = { selector = [2876425497477120] } }
-]
+conditions = [{ type = "target", match = { selector = [2876425497477120] } }]
 color = [100, 210, 237, 255]
 
 # -- Combat Start Timers (initial cooldowns) --
@@ -332,7 +370,7 @@ difficulties = ["veteran", "master"]
 
 [[boss.entities]]
 name = "Colonel Vorgath"
-ids = [2854117437341696]
+ids = [2854224811524096, 2854117437341696, 2854229106491392, 2786080860405760]
 is_boss = true
 is_kill_target = true
 
@@ -345,7 +383,8 @@ is_kill_target = false
 
 [[boss.entities]]
 name = "Imperial Demolitions Probe"
-ids = [2854151797080064]
+ids = [2854160387014656, 2854156092047360, 2783478110224384, 2854151797080064]
+is_boss = false
 
 [[boss.phases]]
 id = "cv_main"
@@ -355,7 +394,9 @@ trigger = { type = "combat_start" }
 [[boss.phases]]
 id = "cv_vorgath"
 name = "Vorgath"
-trigger = {type = "boss_hp_below", hp_percent = 99.9, selector = ["Colonel Vorgath"]}
+trigger = { type = "boss_hp_below", hp_percent = 99.9, selector = [
+  "Colonel Vorgath",
+] }
 
 # -- Timers --
 [[boss.timer]]
@@ -387,7 +428,9 @@ difficulties = ["veteran", "master"]
 id = "cv_hp_95"
 name = "Threat Drop"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 95.0, selector = ["Colonel Vorgath"] }
+trigger = { type = "boss_hp_below", hp_percent = 95.0, selector = [
+  "Colonel Vorgath",
+] }
 alert_text = "Threat Drop"
 color = [39, 209, 208, 255]
 difficulties = ["veteran", "master"]
@@ -396,7 +439,9 @@ difficulties = ["veteran", "master"]
 id = "cv_hp_80"
 name = "Turrets"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 80.0, selector = ["Colonel Vorgath"] }
+trigger = { type = "boss_hp_below", hp_percent = 80.0, selector = [
+  "Colonel Vorgath",
+] }
 alert_text = "Turrets"
 color = [14, 128, 22, 255]
 difficulties = ["veteran", "master"]
@@ -411,39 +456,32 @@ difficulties = ["veteran", "master"]
 
 [[boss.entities]]
 name = "Warlord Kephess"
-ids = [2876528576692224,
-2876550051528704,
-2876562936430592,
-2794185463693312,
-2800357331697664,
-2876588706234368,
-2876593001201664,
-2876528576692224,
-2876532871659520]
+ids = [
+  2876550051528704,
+  3618127694790656,
+  2876528576692224,
+  2876588706234368,
+  2800357331697664,
+  2749629472964608,
+]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Warstrider Battlewalker"
-ids = [2876532871659520]
+ids = [2876562936430592, 2794185463693312, 2876532871659520, 2876593001201664]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
-name = "Siege Droid"
-ids = [2876515691790336]
-
-[[boss.counters]]
-id = "siege_droid_deaths"
-name = "Siege Droids Killed"
-increment_on = { type = "entity_death", selector = ["Siege Droid"] }
-reset_on = { type = "combat_end" }
-initial_value = 0
+name = "Baradium Bomber"
+ids = [2876524281724928, 2876558641463296, 2792969987948544, 2876584411267072]
+is_boss = false
 
 [[boss.counters]]
 id = "walker_burns"
 name = "Walker Burns"
-increment_on = {type = "phase_ended", phase_id = "walker_burn"}
+increment_on = { type = "phase_ended", phase_id = "walker_burn" }
 reset_on = { type = "combat_end" }
 initial_value = 0
 
@@ -455,37 +493,43 @@ trigger = { type = "combat_start" }
 [[boss.phases]]
 id = "walker_burn"
 name = "Walker Burn"
-trigger = {type = "effect_removed", effects = [2815376832331776] }
-end_trigger = {type = "any_of", conditions = [
-  {type = "entity_death", selector = ["Warstrider Battlewalker"]},
-  {type = "effect_applied", effects = [2815376832331776] }
-]}
+trigger = { type = "effect_removed", effects = [2815376832331776] }
+end_trigger = { type = "any_of", conditions = [
+  { type = "entity_death", selector = [
+    "Warstrider Battlewalker",
+  ] },
+  { type = "effect_applied", effects = [
+    2815376832331776,
+  ] },
+] }
 
 [[boss.phases]]
 id = "wk_trandos"
 name = "Trandoshans"
-counter_condition = {counter_id = "walker_burns", operator = "eq", value = 1}
-trigger = {type = "phase_ended", phase_id = "walker_burn"}
-end_trigger = {type = "entity_death", name = "Baradium Bomber"}
+counter_condition = { counter_id = "walker_burns", operator = "eq", value = 1 }
+trigger = { type = "phase_ended", phase_id = "walker_burn" }
+end_trigger = { type = "entity_death", name = "Baradium Bomber" }
 
 [[boss.phases]]
 id = "wk_pulsar"
 name = "Pulsar Droids"
-counter_condition = {counter_id = "walker_burns", operator = "eq", value = 2}
-trigger = {type = "phase_ended", phase_id = "walker_burn"}
-end_trigger = {type = "entity_death", name = "Baradium Bomber"}
+counter_condition = { counter_id = "walker_burns", operator = "eq", value = 2 }
+trigger = { type = "phase_ended", phase_id = "walker_burn" }
+end_trigger = { type = "entity_death", name = "Baradium Bomber" }
 
 [[boss.phases]]
 id = "wk_kephess"
 name = "Kephess"
-counter_condition = {counter_id = "walker_burns", operator = "gte", value = 3}
-trigger = {type = "phase_ended", phase_id = "walker_burn"}
-end_trigger = {type = "effect_removed", effects = [2815376832331776] }
+counter_condition = { counter_id = "walker_burns", operator = "gte", value = 3 }
+trigger = { type = "phase_ended", phase_id = "walker_burn" }
+end_trigger = { type = "effect_removed", effects = [2815376832331776] }
 
 [[boss.phases]]
 id = "wk_kephess_burn"
 name = "Kephess Burn"
-trigger = {type = "boss_hp_below", hp_percent = 59.0, selector = ["Warlord Kephess"]}
+trigger = { type = "boss_hp_below", hp_percent = 59.0, selector = [
+  "Warlord Kephess",
+] }
 
 # -- Timers --
 [[boss.timer]]
@@ -512,6 +556,14 @@ duration_secs = 6
 color = [224, 168, 33, 255]
 difficulties = ["master"]
 
+[[boss.timer]]
+id = "wk_baradium_countdown"
+name = "Bomber Coutdown"
+trigger = { type = "npc_appears", selector = ["Baradium Bomber"] }
+cancel_trigger = { type = "entity_death", selector = ["Baradium Bomber"] }
+duration_secs = 20.0
+difficulties = ["veteran", "master"]
+
 [[boss.challenge]]
 id = "wk_ch_walker_burn"
 name = "Walker Burn Damage"
@@ -524,5 +576,3 @@ phase_ids = ["walker_burn"]
 [[boss.challenge.conditions]]
 type = "target"
 match = { selector = ["Warstrider Battlewalker"] }
-
-
