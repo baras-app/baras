@@ -713,6 +713,79 @@ impl Default for TimerOverlayConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Challenge Overlay Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Layout direction for challenge cards
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChallengeLayout {
+    /// Stack challenges vertically (default)
+    #[default]
+    Vertical,
+    /// Arrange challenges horizontally
+    Horizontal,
+}
+
+/// Column display mode for individual challenges
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChallengeColumns {
+    /// Show total value and percent (default)
+    #[default]
+    TotalPercent,
+    /// Show total value and per-second rate
+    TotalPerSecond,
+    /// Show per-second rate and percent
+    PerSecondPercent,
+    /// Show only total value
+    TotalOnly,
+    /// Show only per-second rate
+    PerSecondOnly,
+    /// Show only percent
+    PercentOnly,
+}
+
+/// Configuration for the challenge overlay (global settings)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChallengeOverlayConfig {
+    /// Font color for challenge text
+    #[serde(default = "default_font_color")]
+    pub font_color: Color,
+    /// Default bar color for challenges (individual challenges may override)
+    #[serde(default = "default_challenge_bar_color")]
+    pub default_bar_color: Color,
+    /// Show footer with totals
+    #[serde(default = "default_true")]
+    pub show_footer: bool,
+    /// Show duration in header
+    #[serde(default = "default_true")]
+    pub show_duration: bool,
+    /// Maximum challenges to display
+    #[serde(default = "default_max_challenges")]
+    pub max_display: u8,
+    /// Layout direction for challenge cards
+    #[serde(default)]
+    pub layout: ChallengeLayout,
+}
+
+fn default_challenge_bar_color() -> Color { overlay_colors::DPS }
+fn default_max_challenges() -> u8 { 4 }
+
+impl Default for ChallengeOverlayConfig {
+    fn default() -> Self {
+        Self {
+            font_color: overlay_colors::WHITE,
+            default_bar_color: overlay_colors::DPS,
+            show_footer: true,
+            show_duration: true,
+            max_display: 4,
+            layout: ChallengeLayout::Vertical,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Hotkey Settings
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -789,6 +862,10 @@ pub struct OverlaySettings {
     pub effects_overlay: TimerOverlayConfig,
     #[serde(default = "default_opacity")]
     pub effects_opacity: u8,
+    #[serde(default)]
+    pub challenge_overlay: ChallengeOverlayConfig,
+    #[serde(default = "default_opacity")]
+    pub challenge_opacity: u8,
 }
 
 impl Default for OverlaySettings {
@@ -812,6 +889,8 @@ impl Default for OverlaySettings {
             timer_opacity: 180,
             effects_overlay: TimerOverlayConfig::default(),
             effects_opacity: 180,
+            challenge_overlay: ChallengeOverlayConfig::default(),
+            challenge_opacity: 180,
         }
     }
 }

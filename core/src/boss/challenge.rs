@@ -9,6 +9,7 @@
 
 use std::collections::HashMap;
 
+use baras_types::ChallengeColumns;
 use serde::{Deserialize, Serialize};
 
 use super::ComparisonOp;
@@ -41,7 +42,21 @@ pub struct ChallengeDefinition {
     /// All conditions must pass for an event to count (AND logic)
     #[serde(default)]
     pub conditions: Vec<ChallengeCondition>,
+
+    /// Whether this challenge is enabled for display (default: true)
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+
+    /// Bar color for this challenge [r, g, b, a] (optional, uses default if not set)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<[u8; 4]>,
+
+    /// Which columns to display for this challenge
+    #[serde(default)]
+    pub columns: ChallengeColumns,
 }
+
+fn default_enabled() -> bool { true }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Metrics

@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 
 pub use baras_types::{
     // Config types
-    AppConfig, BossHealthConfig, Color, EntityFilter, OverlayAppearanceConfig,
-    OverlaySettings, PersonalOverlayConfig, PersonalStat, RaidOverlaySettings,
-    TimerOverlayConfig, MAX_PROFILES,
+    AppConfig, BossHealthConfig, ChallengeColumns, ChallengeLayout, Color, EntityFilter,
+    OverlayAppearanceConfig, OverlaySettings, PersonalOverlayConfig, PersonalStat,
+    RaidOverlaySettings, TimerOverlayConfig, MAX_PROFILES,
     // Selectors (unified ID-or-Name matching)
     AbilitySelector, EffectSelector, EntitySelector,
     // Trigger type (shared across timers, phases, counters)
@@ -592,7 +592,18 @@ pub struct ChallengeListItem {
     pub metric: ChallengeMetric,
     #[serde(default)]
     pub conditions: Vec<ChallengeCondition>,
+    /// Whether this challenge is enabled for overlay display
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+    /// Bar color [r, g, b, a] (None = use overlay default)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<[u8; 4]>,
+    /// Which columns to display for this challenge
+    #[serde(default)]
+    pub columns: ChallengeColumns,
 }
+
+fn default_enabled() -> bool { true }
 
 /// Entity list item for the encounter editor
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

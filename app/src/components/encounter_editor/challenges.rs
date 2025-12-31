@@ -6,9 +6,10 @@ use dioxus::prelude::*;
 
 use crate::api;
 use crate::types::{
-    BossListItem, ChallengeCondition, ChallengeListItem, ChallengeMetric, ComparisonOp,
-    EntityFilter, EntitySelector,
+    BossListItem, ChallengeColumns, ChallengeCondition, ChallengeListItem, ChallengeMetric,
+    ComparisonOp, EntityFilter, EntitySelector,
 };
+use crate::utils::parse_hex_color;
 
 use super::tabs::EncounterData;
 use super::timers::PhaseSelector;
@@ -301,6 +302,96 @@ fn ChallengeEditForm(
                             value: "{metric:?}",
                             selected: draft().metric == *metric,
                             "{metric.label()}"
+                        }
+                    }
+                }
+            }
+
+            // ─── Display Settings ────────────────────────────────────────────
+            div { class: "form-row-hz",
+                label { "Enabled" }
+                input {
+                    r#type: "checkbox",
+                    checked: draft().enabled,
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.enabled = e.checked();
+                        draft.set(d);
+                    }
+                }
+                span { class: "text-muted text-sm", style: "margin-left: 8px;", "(show in overlay)" }
+            }
+
+            div { class: "form-row-hz",
+                label { "Columns" }
+                select {
+                    class: "input-inline",
+                    value: match draft().columns {
+                        ChallengeColumns::TotalPercent => "total_percent",
+                        ChallengeColumns::TotalPerSecond => "total_per_second",
+                        ChallengeColumns::PerSecondPercent => "per_second_percent",
+                        ChallengeColumns::TotalOnly => "total_only",
+                        ChallengeColumns::PerSecondOnly => "per_second_only",
+                        ChallengeColumns::PercentOnly => "percent_only",
+                    },
+                    onchange: move |e| {
+                        let mut d = draft();
+                        d.columns = match e.value().as_str() {
+                            "total_per_second" => ChallengeColumns::TotalPerSecond,
+                            "per_second_percent" => ChallengeColumns::PerSecondPercent,
+                            "total_only" => ChallengeColumns::TotalOnly,
+                            "per_second_only" => ChallengeColumns::PerSecondOnly,
+                            "percent_only" => ChallengeColumns::PercentOnly,
+                            _ => ChallengeColumns::TotalPercent,
+                        };
+                        draft.set(d);
+                    },
+                    option { value: "total_percent", selected: matches!(draft().columns, ChallengeColumns::TotalPercent), "Total + Percent" }
+                    option { value: "total_per_second", selected: matches!(draft().columns, ChallengeColumns::TotalPerSecond), "Total + Per Second" }
+                    option { value: "per_second_percent", selected: matches!(draft().columns, ChallengeColumns::PerSecondPercent), "Per Second + Percent" }
+                    option { value: "total_only", selected: matches!(draft().columns, ChallengeColumns::TotalOnly), "Total Only" }
+                    option { value: "per_second_only", selected: matches!(draft().columns, ChallengeColumns::PerSecondOnly), "Per Second Only" }
+                    option { value: "percent_only", selected: matches!(draft().columns, ChallengeColumns::PercentOnly), "Percent Only" }
+                }
+            }
+
+            {
+                let current_color = draft().color;
+                let color_hex = current_color
+                    .map(|c| format!("#{:02x}{:02x}{:02x}", c[0], c[1], c[2]))
+                    .unwrap_or_else(|| "#4a90d9".to_string()); // Default blue
+
+                rsx! {
+                    div { class: "form-row-hz",
+                        label { "Bar Color" }
+                        div { class: "flex-row gap-sm",
+                            input {
+                                r#type: "color",
+                                class: "color-picker",
+                                value: "{color_hex}",
+                                oninput: move |e| {
+                                    if let Some(color) = parse_hex_color(&e.value()) {
+                                        let mut d = draft();
+                                        d.color = Some([color[0], color[1], color[2], color[3]]);
+                                        draft.set(d);
+                                    }
+                                }
+                            }
+                            if current_color.is_some() {
+                                button {
+                                    class: "btn btn-sm",
+                                    title: "Use default color",
+                                    onclick: move |_| {
+                                        let mut d = draft();
+                                        d.color = None;
+                                        draft.set(d);
+                                    },
+                                    i { class: "fa-solid fa-rotate-left" }
+                                }
+                            }
+                            if current_color.is_none() {
+                                span { class: "text-muted text-sm", "(using default)" }
+                            }
                         }
                     }
                 }
@@ -942,6 +1033,9 @@ fn NewChallengeForm(
             file_path: boss.file_path.clone(),
             metric: metric(),
             conditions: vec![],
+            enabled: true,
+            color: None,
+            columns: ChallengeColumns::TotalPercent,
         };
         on_create.call(new_challenge);
     };

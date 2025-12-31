@@ -28,8 +28,8 @@ use baras_core::{
     EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler,
 };
 use baras_overlay::{
-    BossHealthData, ChallengeData, ChallengeEntry, PersonalStats, PlayerContribution, PlayerRole,
-    RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry,
+    BossHealthData, ChallengeData, ChallengeEntry, Color, PersonalStats, PlayerContribution,
+    PlayerRole, RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry,
 };
 
 use crate::audio::{AudioEvent, AudioSender, AudioService};
@@ -1114,6 +1114,10 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                     },
                     by_player,
                     duration_secs: challenge_duration,
+                    // Display settings from challenge definition
+                    enabled: val.enabled,
+                    color: val.color.map(|c| Color::from_rgba8(c[0], c[1], c[2], c[3])),
+                    columns: val.columns,
                 }
             })
             .collect();

@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 
+use baras_types::ChallengeColumns;
 use crate::boss::{ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityInfo};
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -38,6 +39,19 @@ pub struct ChallengeValue {
     /// When the challenge context became active (for duration calculation)
     /// Set when phase starts, HP threshold crossed, or encounter starts for unconditional challenges
     pub activated_time: Option<chrono::NaiveDateTime>,
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Display Settings (copied from ChallengeDefinition)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Whether this challenge is enabled for overlay display
+    pub enabled: bool,
+
+    /// Bar color [r, g, b, a] (None = use overlay default)
+    pub color: Option<[u8; 4]>,
+
+    /// Which columns to display
+    pub columns: ChallengeColumns,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -115,6 +129,10 @@ impl ChallengeTracker {
                     duration_secs: 0.0, // Calculated in snapshot()
                     first_event_time: None,
                     activated_time,
+                    // Display settings from definition
+                    enabled: def.enabled,
+                    color: def.color,
+                    columns: def.columns,
                 },
             );
         }
@@ -223,6 +241,10 @@ impl ChallengeTracker {
                     duration_secs,
                     first_event_time: val.first_event_time,
                     activated_time: val.activated_time,
+                    // Display settings
+                    enabled: val.enabled,
+                    color: val.color,
+                    columns: val.columns,
                 }
             })
             .collect()
@@ -241,6 +263,10 @@ impl ChallengeTracker {
                 duration_secs: val.duration_secs.max(self.total_duration_secs).max(1.0),
                 first_event_time: val.first_event_time,
                 activated_time: val.activated_time,
+                // Display settings
+                enabled: val.enabled,
+                color: val.color,
+                columns: val.columns,
             })
             .collect()
     }

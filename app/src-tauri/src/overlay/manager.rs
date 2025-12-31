@@ -65,12 +65,8 @@ impl OverlayManager {
                 create_effects_overlay(position, effects_config, settings.effects_opacity)?
             }
             OverlayType::Challenges => {
-                let appearance = settings
-                    .appearances
-                    .get("challenges")
-                    .cloned()
-                    .unwrap_or_default();
-                create_challenges_overlay(position, appearance, settings.metric_opacity)?
+                let challenge_config = settings.challenge_overlay.clone();
+                create_challenges_overlay(position, challenge_config, settings.challenge_opacity)?
             }
         };
 

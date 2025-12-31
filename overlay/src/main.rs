@@ -8,18 +8,21 @@
 //!   --metric-16   - Moveable DPS meter with 16 players
 //!   --raid        - Three raid overlays side-by-side showing all interaction modes
 //!   --raid-timers - 16 frames with ticking effect timers
-//!   --timers      - Boss timer overlay with sample countdown bars
+//!   --timers       - Boss timer overlay with sample countdown bars
+//!   --challenges   - Challenge overlay (vertical, 2-col format)
+//!   --challenges-h - Challenge overlay (horizontal, 3-col with per-second)
 
 use std::env;
 use std::time::{Duration, Instant};
 
 mod examples {
     use super::*;
-    use baras_core::context::{OverlayAppearanceConfig, TimerOverlayConfig};
+    use baras_core::context::{ChallengeColumns, ChallengeLayout, ChallengeOverlayConfig, OverlayAppearanceConfig, TimerOverlayConfig};
     use baras_overlay::{
-        colors, InteractionMode, MetricEntry, MetricOverlay, Overlay, OverlayConfig, PlayerRole,
-        RaidEffect, RaidFrame, RaidGridLayout, RaidOverlay, RaidOverlayConfig,
-        TimerData, TimerEntry, TimerOverlay,
+        colors, ChallengeData, ChallengeEntry, ChallengeOverlay, Color, InteractionMode,
+        MetricEntry, MetricOverlay, Overlay, OverlayConfig, PlayerContribution, PlayerRole,
+        RaidEffect, RaidFrame, RaidGridLayout, RaidOverlay, RaidOverlayConfig, TimerData,
+        TimerEntry, TimerOverlay,
     };
 
     pub fn run_metric_overlay() {
@@ -727,6 +730,406 @@ mod examples {
             })
             .collect()
     }
+
+    /// Run the challenge overlay with 8 players and 3 challenges
+    /// Demonstrates a typical raid challenge tracking scenario
+    pub fn run_challenge_overlay() {
+        let overlay_config = OverlayConfig {
+            x: 200,
+            y: 100,
+            width: 340,
+            height: 400,
+            namespace: "baras-challenges".to_string(),
+            click_through: false,
+            target_monitor_id: None,
+        };
+
+        let challenge_config = ChallengeOverlayConfig {
+            show_footer: true,
+            show_duration: true,
+            layout: ChallengeLayout::Vertical,
+            ..Default::default()
+        };
+
+        let mut overlay = match ChallengeOverlay::new(overlay_config, challenge_config, 180) {
+            Ok(o) => o,
+            Err(e) => {
+                eprintln!("Failed to create challenge overlay: {}", e);
+                return;
+            }
+        };
+
+        overlay.set_move_mode(true);
+
+        let data = create_sample_challenges();
+        overlay.set_data(data);
+
+        let start = Instant::now();
+        let mut last_frame = Instant::now();
+        let frame_duration = Duration::from_millis(250); // 4 FPS like metric overlays
+
+        println!("┌─────────────────────────────────────────────────────────────┐");
+        println!("│       Challenge Overlay - 8 Players × 3 Challenges          │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  Shows per-player contribution to boss mechanics            │");
+        println!("│  Drag anywhere to move the overlay                          │");
+        println!("│  Drag bottom-right corner to resize                         │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  Challenges:                                                │");
+        println!("│    • Doom Cleanse - who's handling cleanses                 │");
+        println!("│    • Orb Catches  - crystal/orb mechanic participation      │");
+        println!("│    • Add Damage   - contribution to priority targets        │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  Press Ctrl+C to exit                                       │");
+        println!("└─────────────────────────────────────────────────────────────┘");
+
+        loop {
+            if !overlay.poll_events() {
+                break;
+            }
+
+            let now = Instant::now();
+            if now.duration_since(last_frame) >= frame_duration {
+                // Simulate dynamic updates: increment values over time
+                let elapsed = start.elapsed().as_secs_f32();
+                let mut data = create_sample_challenges();
+
+                // Add some dynamic variation based on elapsed time
+                for challenge in &mut data.entries {
+                    for player in &mut challenge.by_player {
+                        // Simulate ongoing contributions
+                        let bonus = (elapsed * player.value as f32 * 0.01) as i64;
+                        player.value += bonus;
+                    }
+                    // Recalculate total and percentages
+                    let total: i64 = challenge.by_player.iter().map(|p| p.value).sum();
+                    challenge.value = total;
+                    for player in &mut challenge.by_player {
+                        player.percent = if total > 0 {
+                            (player.value as f32 / total as f32) * 100.0
+                        } else {
+                            0.0
+                        };
+                    }
+                }
+                data.duration_secs = elapsed;
+
+                overlay.set_data(data);
+                overlay.render();
+                last_frame = now;
+            }
+
+            let sleep_ms = if overlay.frame().is_interactive() { 4 } else { 50 };
+            std::thread::sleep(Duration::from_millis(sleep_ms));
+        }
+    }
+
+    /// Create sample challenge data with 8 players and 3 challenges
+    fn create_sample_challenges() -> ChallengeData {
+        // 8 player raid composition: 2 tanks, 2 healers, 4 DPS
+        // Player IDs: 1001-1002 tanks, 1003-1004 healers, 1005-1008 DPS
+
+        // Challenge 1: Doom Cleanse (healers and tanks typically handle this) - Green
+        let doom_cleanse = ChallengeEntry {
+            name: "Doom Cleanse".to_string(),
+            value: 24,
+            event_count: 24,
+            per_second: Some(0.4),
+            duration_secs: 60.0,
+            enabled: true,
+            color: Some(Color::from_rgba8(80, 200, 120, 255)), // Green for cleanse
+            columns: ChallengeColumns::TotalPercent, // Show total and percent
+            by_player: vec![
+                PlayerContribution {
+                    entity_id: 1003,
+                    name: "Healz4Days".to_string(),
+                    value: 8,
+                    percent: 33.3,
+                    per_second: Some(0.13),
+                },
+                PlayerContribution {
+                    entity_id: 1004,
+                    name: "HoTsOnYou".to_string(),
+                    value: 7,
+                    percent: 29.2,
+                    per_second: Some(0.12),
+                },
+                PlayerContribution {
+                    entity_id: 1001,
+                    name: "Tanky McTank".to_string(),
+                    value: 5,
+                    percent: 20.8,
+                    per_second: Some(0.08),
+                },
+                PlayerContribution {
+                    entity_id: 1002,
+                    name: "Shield Wall".to_string(),
+                    value: 4,
+                    percent: 16.7,
+                    per_second: Some(0.07),
+                },
+                PlayerContribution {
+                    entity_id: 1005,
+                    name: "PewPewLazors".to_string(),
+                    value: 0,
+                    percent: 0.0,
+                    per_second: Some(0.0),
+                },
+                PlayerContribution {
+                    entity_id: 1006,
+                    name: "StabbySith".to_string(),
+                    value: 0,
+                    percent: 0.0,
+                    per_second: Some(0.0),
+                },
+                PlayerContribution {
+                    entity_id: 1007,
+                    name: "LightningLord".to_string(),
+                    value: 0,
+                    percent: 0.0,
+                    per_second: Some(0.0),
+                },
+                PlayerContribution {
+                    entity_id: 1008,
+                    name: "ArsenalMerc".to_string(),
+                    value: 0,
+                    percent: 0.0,
+                    per_second: Some(0.0),
+                },
+            ],
+        };
+
+        // Challenge 2: Orb Catches (everyone participates, ranged usually better) - Blue
+        let orb_catches = ChallengeEntry {
+            name: "Orb Catches".to_string(),
+            value: 48,
+            event_count: 48,
+            per_second: Some(0.8),
+            duration_secs: 60.0,
+            enabled: true,
+            color: Some(Color::from_rgba8(100, 150, 220, 255)), // Blue for orbs
+            columns: ChallengeColumns::TotalPercent, // Show total and percent
+            by_player: vec![
+                PlayerContribution {
+                    entity_id: 1007,
+                    name: "LightningLord".to_string(),
+                    value: 12,
+                    percent: 25.0,
+                    per_second: Some(0.2),
+                },
+                PlayerContribution {
+                    entity_id: 1008,
+                    name: "ArsenalMerc".to_string(),
+                    value: 10,
+                    percent: 20.8,
+                    per_second: Some(0.17),
+                },
+                PlayerContribution {
+                    entity_id: 1005,
+                    name: "PewPewLazors".to_string(),
+                    value: 9,
+                    percent: 18.8,
+                    per_second: Some(0.15),
+                },
+                PlayerContribution {
+                    entity_id: 1003,
+                    name: "Healz4Days".to_string(),
+                    value: 6,
+                    percent: 12.5,
+                    per_second: Some(0.1),
+                },
+                PlayerContribution {
+                    entity_id: 1004,
+                    name: "HoTsOnYou".to_string(),
+                    value: 5,
+                    percent: 10.4,
+                    per_second: Some(0.08),
+                },
+                PlayerContribution {
+                    entity_id: 1006,
+                    name: "StabbySith".to_string(),
+                    value: 4,
+                    percent: 8.3,
+                    per_second: Some(0.07),
+                },
+                PlayerContribution {
+                    entity_id: 1001,
+                    name: "Tanky McTank".to_string(),
+                    value: 1,
+                    percent: 2.1,
+                    per_second: Some(0.02),
+                },
+                PlayerContribution {
+                    entity_id: 1002,
+                    name: "Shield Wall".to_string(),
+                    value: 1,
+                    percent: 2.1,
+                    per_second: Some(0.02),
+                },
+            ],
+        };
+
+        // Challenge 3: Add Damage (DPS contribution to priority adds) - Red/Orange
+        let add_damage = ChallengeEntry {
+            name: "Add Damage".to_string(),
+            value: 2_850_000,
+            event_count: 1200,
+            per_second: Some(47500.0),
+            duration_secs: 60.0,
+            enabled: true,
+            color: Some(Color::from_rgba8(220, 100, 80, 255)), // Red/Orange for damage
+            columns: ChallengeColumns::TotalPerSecond, // Show total and DPS
+            by_player: vec![
+                PlayerContribution {
+                    entity_id: 1005,
+                    name: "PewPewLazors".to_string(),
+                    value: 720_000,
+                    percent: 25.3,
+                    per_second: Some(12000.0),
+                },
+                PlayerContribution {
+                    entity_id: 1007,
+                    name: "LightningLord".to_string(),
+                    value: 680_000,
+                    percent: 23.9,
+                    per_second: Some(11333.0),
+                },
+                PlayerContribution {
+                    entity_id: 1006,
+                    name: "StabbySith".to_string(),
+                    value: 650_000,
+                    percent: 22.8,
+                    per_second: Some(10833.0),
+                },
+                PlayerContribution {
+                    entity_id: 1008,
+                    name: "ArsenalMerc".to_string(),
+                    value: 580_000,
+                    percent: 20.4,
+                    per_second: Some(9667.0),
+                },
+                PlayerContribution {
+                    entity_id: 1001,
+                    name: "Tanky McTank".to_string(),
+                    value: 95_000,
+                    percent: 3.3,
+                    per_second: Some(1583.0),
+                },
+                PlayerContribution {
+                    entity_id: 1002,
+                    name: "Shield Wall".to_string(),
+                    value: 85_000,
+                    percent: 3.0,
+                    per_second: Some(1417.0),
+                },
+                PlayerContribution {
+                    entity_id: 1003,
+                    name: "Healz4Days".to_string(),
+                    value: 25_000,
+                    percent: 0.9,
+                    per_second: Some(417.0),
+                },
+                PlayerContribution {
+                    entity_id: 1004,
+                    name: "HoTsOnYou".to_string(),
+                    value: 15_000,
+                    percent: 0.5,
+                    per_second: Some(250.0),
+                },
+            ],
+        };
+
+        ChallengeData {
+            entries: vec![doom_cleanse, orb_catches, add_damage],
+            boss_name: Some("Dread Master Brontes".to_string()),
+            duration_secs: 60.0,
+            phase_durations: std::collections::HashMap::new(),
+        }
+    }
+
+    /// Run the challenge overlay in horizontal layout with per-second columns
+    pub fn run_challenge_overlay_horizontal() {
+        let overlay_config = OverlayConfig {
+            x: 100,
+            y: 100,
+            width: 900,
+            height: 280,
+            namespace: "baras-challenges-horiz".to_string(),
+            click_through: false,
+            target_monitor_id: None,
+        };
+
+        // Horizontal layout (per-challenge columns setting determines what's shown)
+        let challenge_config = ChallengeOverlayConfig {
+            show_footer: true,
+            show_duration: true,
+            layout: ChallengeLayout::Horizontal,
+            ..Default::default()
+        };
+
+        let mut overlay = match ChallengeOverlay::new(overlay_config, challenge_config, 180) {
+            Ok(o) => o,
+            Err(e) => {
+                eprintln!("Failed to create challenge overlay: {}", e);
+                return;
+            }
+        };
+
+        overlay.set_move_mode(true);
+
+        let data = create_sample_challenges();
+        overlay.set_data(data);
+
+        let start = Instant::now();
+        let mut last_frame = Instant::now();
+        let frame_duration = Duration::from_millis(250);
+
+        println!("┌─────────────────────────────────────────────────────────────┐");
+        println!("│   Challenge Overlay - Horizontal Layout + Per-Second        │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  3 challenges side-by-side with value/s columns             │");
+        println!("│  Drag anywhere to move, corner to resize                    │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  Press Ctrl+C to exit                                       │");
+        println!("└─────────────────────────────────────────────────────────────┘");
+
+        loop {
+            if !overlay.poll_events() {
+                break;
+            }
+
+            let now = Instant::now();
+            if now.duration_since(last_frame) >= frame_duration {
+                let elapsed = start.elapsed().as_secs_f32();
+                let mut data = create_sample_challenges();
+
+                for challenge in &mut data.entries {
+                    for player in &mut challenge.by_player {
+                        let bonus = (elapsed * player.value as f32 * 0.01) as i64;
+                        player.value += bonus;
+                    }
+                    let total: i64 = challenge.by_player.iter().map(|p| p.value).sum();
+                    challenge.value = total;
+                    for player in &mut challenge.by_player {
+                        player.percent = if total > 0 {
+                            (player.value as f32 / total as f32) * 100.0
+                        } else {
+                            0.0
+                        };
+                    }
+                    challenge.duration_secs = elapsed;
+                }
+                data.duration_secs = elapsed;
+
+                overlay.set_data(data);
+                overlay.render();
+                last_frame = now;
+            }
+
+            let sleep_ms = if overlay.frame().is_interactive() { 4 } else { 50 };
+            std::thread::sleep(Duration::from_millis(sleep_ms));
+        }
+    }
 }
 
 fn main() {
@@ -741,16 +1144,20 @@ fn main() {
         "--metric-8" => examples::run_metric_overlay_8(),
         "--metric-16" => examples::run_metric_overlay_16(),
         "--timers" => examples::run_timer_overlay(),
+        "--challenges" => examples::run_challenge_overlay(),
+        "--challenges-h" => examples::run_challenge_overlay_horizontal(),
         _ => {
             println!("Usage: cargo run -p baras-overlay -- [OPTION]");
             println!();
             println!("Options:");
-            println!("  --metric      DPS meter with 4 players (default)");
-            println!("  --metric-8    Moveable DPS meter with 8 players");
-            println!("  --metric-16   Moveable DPS meter with 16 players");
-            println!("  --raid        Three raid overlays showing interaction modes");
-            println!("  --raid-timers 16-frame stress test with ticking timers");
-            println!("  --timers      Boss timer overlay with countdown bars");
+            println!("  --metric       DPS meter with 4 players (default)");
+            println!("  --metric-8     Moveable DPS meter with 8 players");
+            println!("  --metric-16    Moveable DPS meter with 16 players");
+            println!("  --raid         Three raid overlays showing interaction modes");
+            println!("  --raid-timers  16-frame stress test with ticking timers");
+            println!("  --timers       Boss timer overlay with countdown bars");
+            println!("  --challenges   Challenge overlay (vertical, 2-col: value + percent)");
+            println!("  --challenges-h Challenge overlay (horizontal, 3-col: value + /s + percent)");
         }
     }
 }

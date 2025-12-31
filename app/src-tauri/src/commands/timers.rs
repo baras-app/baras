@@ -1544,6 +1544,7 @@ use baras_core::boss::{
     ChallengeCondition, ChallengeDefinition, ChallengeMetric, CounterDefinition, CounterTrigger,
     EntityDefinition,
 };
+use baras_core::context::ChallengeColumns;
 
 /// Flattened counter item for the frontend list view
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1800,7 +1801,18 @@ pub struct ChallengeListItem {
     pub metric: ChallengeMetric,
     #[serde(default)]
     pub conditions: Vec<ChallengeCondition>,
+    /// Whether this challenge is enabled for display
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+    /// Bar color [r, g, b, a] (optional, uses overlay default if None)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<[u8; 4]>,
+    /// Which columns to display
+    #[serde(default)]
+    pub columns: ChallengeColumns,
 }
+
+fn default_enabled() -> bool { true }
 
 impl ChallengeListItem {
     fn from_boss_challenge(boss_with_path: &BossWithPath, challenge: &ChallengeDefinition) -> Self {
@@ -1814,6 +1826,9 @@ impl ChallengeListItem {
             file_path: boss_with_path.file_path.to_string_lossy().to_string(),
             metric: challenge.metric,
             conditions: challenge.conditions.clone(),
+            enabled: challenge.enabled,
+            color: challenge.color,
+            columns: challenge.columns,
         }
     }
 
@@ -1825,6 +1840,9 @@ impl ChallengeListItem {
             description: self.description.clone(),
             metric: self.metric,
             conditions: self.conditions.clone(),
+            enabled: self.enabled,
+            color: self.color,
+            columns: self.columns,
         }
     }
 }

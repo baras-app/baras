@@ -15,8 +15,8 @@ use std::thread::{self, JoinHandle};
 use tokio::sync::mpsc::{self, Sender};
 
 use baras_core::context::{
-    BossHealthConfig, OverlayAppearanceConfig, OverlayPositionConfig, PersonalOverlayConfig,
-    TimerOverlayConfig,
+    BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig, OverlayPositionConfig,
+    PersonalOverlayConfig, TimerOverlayConfig,
 };
 use baras_overlay::{
     BossHealthOverlay, ChallengeOverlay, EffectsOverlay, MetricOverlay, Overlay, OverlayConfig,
@@ -408,7 +408,7 @@ pub fn create_effects_overlay(
 /// Create and spawn the challenges overlay
 pub fn create_challenges_overlay(
     position: OverlayPositionConfig,
-    appearance: OverlayAppearanceConfig,
+    challenge_config: ChallengeOverlayConfig,
     background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
     let config = OverlayConfig {
@@ -424,7 +424,7 @@ pub fn create_challenges_overlay(
     let kind = OverlayType::Challenges;
 
     let factory = move || {
-        ChallengeOverlay::new(config, appearance, background_alpha)
+        ChallengeOverlay::new(config, challenge_config, background_alpha)
             .map_err(|e| format!("Failed to create challenges overlay: {}", e))
     };
 

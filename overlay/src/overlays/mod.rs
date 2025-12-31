@@ -46,7 +46,10 @@ pub enum RaidRegistryAction {
 }
 
 use crate::frame::OverlayFrame;
-use baras_core::context::{OverlayAppearanceConfig, PersonalOverlayConfig, BossHealthConfig, TimerOverlayConfig};
+use baras_core::context::{
+    BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig, PersonalOverlayConfig,
+    TimerOverlayConfig,
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Types
@@ -86,6 +89,8 @@ pub enum OverlayConfigUpdate {
     Timers(TimerOverlayConfig, u8),
     /// Config for effects overlay (+ background alpha)
     Effects(TimerOverlayConfig, u8),
+    /// Config for challenge overlay (+ background alpha)
+    Challenge(ChallengeOverlayConfig, u8),
 }
 
 /// Position information for an overlay

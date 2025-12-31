@@ -5,9 +5,10 @@
 
 // Re-export all shared types
 pub use baras_types::{
-    AppConfig, BossHealthConfig, Color, HotkeySettings, OverlayAppearanceConfig,
-    OverlayPositionConfig, OverlayProfile, OverlaySettings, PersonalOverlayConfig,
-    PersonalStat, RaidOverlaySettings, TimerOverlayConfig, MAX_PROFILES, overlay_colors,
+    AppConfig, BossHealthConfig, ChallengeColumns, ChallengeLayout, ChallengeOverlayConfig,
+    Color, HotkeySettings, OverlayAppearanceConfig, OverlayPositionConfig, OverlayProfile,
+    OverlaySettings, PersonalOverlayConfig, PersonalStat, RaidOverlaySettings,
+    TimerOverlayConfig, MAX_PROFILES, overlay_colors,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
