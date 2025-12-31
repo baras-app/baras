@@ -224,13 +224,8 @@ impl OverlayManager {
                 OverlayConfigUpdate::Effects(effects_config, settings.effects_opacity)
             }
             OverlayType::Challenges => {
-                // Use default metric appearance for challenges overlay
-                let appearance = settings
-                    .appearances
-                    .get("challenges")
-                    .cloned()
-                    .unwrap_or_default();
-                OverlayConfigUpdate::Metric(appearance, settings.metric_opacity)
+                let challenge_config = settings.challenge_overlay.clone();
+                OverlayConfigUpdate::Challenge(challenge_config, settings.challenge_opacity)
             }
         }
     }

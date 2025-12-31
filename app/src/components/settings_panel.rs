@@ -77,6 +77,8 @@ pub fn SettingsPanel(
                 config.overlay_settings.timer_opacity = new_settings.timer_opacity;
                 config.overlay_settings.effects_overlay = new_settings.effects_overlay.clone();
                 config.overlay_settings.effects_opacity = new_settings.effects_opacity;
+                config.overlay_settings.challenge_overlay = new_settings.challenge_overlay.clone();
+                config.overlay_settings.challenge_opacity = new_settings.challenge_opacity;
                 config.overlay_settings.positions = existing_positions;
                 config.overlay_settings.enabled = existing_enabled;
 
@@ -443,7 +445,19 @@ pub fn SettingsPanel(
             } else if tab == "challenges" {
                 // Challenges Settings (global overlay settings)
                 div { class: "settings-section",
-                    h4 { "Layout" }
+                    h4 { "Appearance" }
+
+                    OpacitySlider {
+                        label: "Background Opacity",
+                        value: current_settings.challenge_opacity,
+                        on_change: move |val| {
+                            let mut new_settings = draft_settings();
+                            new_settings.challenge_opacity = val;
+                            update_draft(new_settings);
+                        },
+                    }
+
+                    h4 { style: "margin-top: 16px;", "Layout" }
 
                     {
                         let challenge_config = current_settings.challenge_overlay.clone();
@@ -565,6 +579,7 @@ pub fn SettingsPanel(
                                     onclick: move |_| {
                                         let mut new_settings = draft_settings();
                                         new_settings.challenge_overlay = Default::default();
+                                        new_settings.challenge_opacity = 180;
                                         update_draft(new_settings);
                                     },
                                     i { class: "fa-solid fa-rotate-left" }

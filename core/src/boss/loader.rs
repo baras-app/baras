@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::{AreaConfig, BossConfig, BossEncounterDefinition};
+use super::{AreaConfig, AreaType, BossConfig, BossEncounterDefinition};
 
 /// Boss definition with its source file path for saving back
 #[derive(Debug, Clone)]
@@ -123,12 +123,11 @@ pub fn load_bosses_with_paths(dir: &Path) -> Result<Vec<BossWithPath>, String> {
     }
 
     let mut results = Vec::new();
-    load_bosses_with_paths_recursive(dir, dir, &mut results)?;
+    load_bosses_with_paths_recursive(dir, &mut results)?;
     Ok(results)
 }
 
 fn load_bosses_with_paths_recursive(
-    base_dir: &Path,
     current_dir: &Path,
     results: &mut Vec<BossWithPath>,
 ) -> Result<(), String> {
@@ -139,12 +138,17 @@ fn load_bosses_with_paths_recursive(
         let path = entry.path();
 
         if path.is_dir() {
-            load_bosses_with_paths_recursive(base_dir, &path, results)?;
+            load_bosses_with_paths_recursive(&path, results)?;
         } else if path.extension().is_some_and(|ext| ext == "toml") {
             match load_bosses_from_file(&path) {
                 Ok(file_bosses) => {
-                    // Determine category from path relative to base
-                    let category = determine_category(base_dir, &path);
+                    // Get category from [area] section in the TOML file
+                    let category = load_area_config(&path)
+                        .ok()
+                        .flatten()
+                        .map(|a| a.area_type.to_category())
+                        .unwrap_or(AreaType::Other.to_category())
+                        .to_string();
 
                     for boss in file_bosses {
                         results.push(BossWithPath {
@@ -162,38 +166,6 @@ fn load_bosses_with_paths_recursive(
     }
 
     Ok(())
-}
-
-/// Determine category (operations/flashpoints/lair_bosses) from file path
-/// Looks for known category names anywhere in the path for robustness
-fn determine_category(base_dir: &Path, file_path: &Path) -> String {
-    let path_str = file_path.to_string_lossy().to_lowercase();
-
-    // Check for known category names in the path
-    if path_str.contains("/operations/") || path_str.contains("\\operations\\") {
-        return "operations".to_string();
-    }
-    if path_str.contains("/flashpoints/") || path_str.contains("\\flashpoints\\") {
-        return "flashpoints".to_string();
-    }
-    if path_str.contains("/lair_bosses/") || path_str.contains("\\lair_bosses\\") {
-        return "lair_bosses".to_string();
-    }
-
-    // Fallback: try relative path extraction
-    if let Ok(relative) = file_path.strip_prefix(base_dir) {
-        let parts: Vec<_> = relative.components().collect();
-        // Need at least 2 parts (category/subdir or category/file.toml)
-        if parts.len() >= 2
-            && let std::path::Component::Normal(first) = parts[0] {
-                let cat = first.to_string_lossy().to_string();
-                if !cat.ends_with(".toml") {
-                    return cat;
-                }
-        }
-    }
-
-    "unknown".to_string()
 }
 
 fn load_bosses_recursive(dir: &Path, bosses: &mut Vec<BossEncounterDefinition>) -> Result<(), String> {

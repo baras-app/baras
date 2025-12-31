@@ -277,7 +277,13 @@ fn load_bosses_merged_recursive(
             // Load bundled + merge with custom overlay
             match load_bosses_with_custom(&path, Some(user_dir)) {
                 Ok(file_bosses) => {
-                    let category = determine_category(&path);
+                    // Get category from [area] section in the TOML file
+                    let category = baras_core::boss::load_area_config(&path)
+                        .ok()
+                        .flatten()
+                        .map(|a| a.area_type.to_category())
+                        .unwrap_or("other")
+                        .to_string();
 
                     for boss in file_bosses {
                         results.push(BossWithPath {
@@ -330,7 +336,13 @@ fn load_user_only_files(
             // This is a user-created file
             match load_bosses_from_file(&path) {
                 Ok(file_bosses) => {
-                    let category = determine_category(&path);
+                    // Get category from [area] section in the TOML file
+                    let category = baras_core::boss::load_area_config(&path)
+                        .ok()
+                        .flatten()
+                        .map(|a| a.area_type.to_category())
+                        .unwrap_or("other")
+                        .to_string();
                     eprintln!("[TIMERS] Loaded user file: {:?}", path);
 
                     for boss in file_bosses {
@@ -889,7 +901,7 @@ pub struct AreaListItem {
 
 /// Get the area index for lazy loading the timer editor
 /// Returns list of areas with summary info (boss count, timer count)
-/// Loads from bundled directory (with custom overlay counts merged)
+/// Loads from bundled directory (with custom overlay counts merged) plus user-created areas
 #[tauri::command]
 pub async fn get_area_index(app_handle: AppHandle) -> Result<Vec<AreaListItem>, String> {
     eprintln!("[TIMERS] get_area_index called");
@@ -902,7 +914,13 @@ pub async fn get_area_index(app_handle: AppHandle) -> Result<Vec<AreaListItem>, 
     eprintln!("[TIMERS] User dir: {:?}", user_dir);
 
     let mut areas = Vec::new();
+
+    // Collect bundled areas (with custom overlay counts merged)
     collect_areas_from_bundled(&bundled_dir, &user_dir, &mut areas)?;
+
+    // Collect user-created areas (that aren't just overlays to bundled ones)
+    let bundled_area_ids: std::collections::HashSet<_> = areas.iter().map(|a| a.area_id).collect();
+    collect_user_areas(&user_dir, &bundled_area_ids, &mut areas)?;
 
     eprintln!("[TIMERS] Found {} areas", areas.len());
 
@@ -954,14 +972,11 @@ fn collect_areas_from_bundled_recursive(
                             }
                         };
 
-                    // Determine category from file path
-                    let category = determine_category(&path);
-
                     areas.push(AreaListItem {
                         name: area_config.name,
                         area_id: area_config.area_id,
                         file_path: path.to_string_lossy().to_string(),
-                        category,
+                        category: area_config.area_type.to_category().to_string(),
                         boss_count,
                         timer_count,
                     });
@@ -979,85 +994,74 @@ fn collect_areas_from_bundled_recursive(
     Ok(())
 }
 
-/// Determine category from file path or area name
-fn determine_category(file_path: &Path) -> String {
-    let path_str = file_path.to_string_lossy().to_lowercase();
-
-    if path_str.contains("/operations/") || path_str.contains("\\operations\\") {
-        return "operations".to_string();
-    }
-    if path_str.contains("/flashpoints/") || path_str.contains("\\flashpoints\\") {
-        return "flashpoints".to_string();
-    }
-    if path_str.contains("/lair_bosses/") || path_str.contains("\\lair_bosses\\") {
-        return "lair_bosses".to_string();
+/// Collect user-created areas that aren't overlays of bundled areas
+fn collect_user_areas(
+    user_dir: &Path,
+    bundled_area_ids: &std::collections::HashSet<i64>,
+    areas: &mut Vec<AreaListItem>,
+) -> Result<(), String> {
+    if !user_dir.exists() {
+        return Ok(());
     }
 
-    // Fallback: determine from filename (known operations/flashpoints)
-    let filename = file_path
-        .file_stem()
-        .map(|s| s.to_string_lossy().to_lowercase())
-        .unwrap_or_default();
+    collect_user_areas_recursive(user_dir, bundled_area_ids, areas)
+}
 
-    // Known operations
-    const OPERATIONS: &[&str] = &[
-        "dxun",
-        "r4",
-        "eternity_vault",
-        "karagga_s_palace",
-        "explosive_conflict",
-        "terror_from_beyond",
-        "scum_and_villainy",
-        "dread_fortress",
-        "dread_palace",
-        "ravagers",
-        "temple_of_sacrifice",
-        "gods_from_the_machine",
-        "toborro_s_palace",
-    ];
+fn collect_user_areas_recursive(
+    dir: &Path,
+    bundled_area_ids: &std::collections::HashSet<i64>,
+    areas: &mut Vec<AreaListItem>,
+) -> Result<(), String> {
+    use baras_core::boss::{load_area_config, load_bosses_from_file};
 
-    // Known flashpoints
-    const FLASHPOINTS: &[&str] = &[
-        "athiss",
-        "hammer_station",
-        "mandalorian_raiders",
-        "cademimu",
-        "boarding_party",
-        "the_foundry",
-        "maelstrom_prison",
-        "kaon_under_siege",
-        "lost_island",
-        "czerka_corporate_labs",
-        "czerka_core_meltdown",
-        "korriban_incursion",
-        "assault_on_tython",
-        "depths_of_manaan",
-        "legacy_of_the_rakata",
-        "blood_hunt",
-        "battle_of_rishi",
-        "crisis_on_umbara",
-        "a_traitor_among_the_chiss",
-        "the_nathema_conspiracy",
-        "objective_meridian",
-        "spirit_of_vengeance",
-        "secrets_of_the_enclave",
-        "ruins_of_nul",
-        "the_red_reaper",
-        "directive_7",
-        "false_emperor",
-        "the_esseles",
-        "the_black_talon",
-        "propagator_core",
-    ];
+    let entries = std::fs::read_dir(dir).map_err(|e| format!("Failed to read directory: {}", e))?;
 
-    if OPERATIONS.iter().any(|op| filename.contains(op)) {
-        return "operations".to_string();
-    }
-    if FLASHPOINTS.iter().any(|fp| filename.contains(fp)) {
-        return "flashpoints".to_string();
+    for entry in entries.flatten() {
+        let path = entry.path();
+
+        if path.is_dir() {
+            collect_user_areas_recursive(&path, bundled_area_ids, areas)?;
+        } else if path.extension().is_some_and(|ext| ext == "toml") {
+            // Skip overlay files (those that end with _custom.toml)
+            if path
+                .file_stem()
+                .is_some_and(|s| s.to_string_lossy().ends_with("_custom"))
+            {
+                continue;
+            }
+
+            match load_area_config(&path) {
+                Ok(Some(area_config)) => {
+                    // Skip if this area already exists in bundled (based on area_id)
+                    if bundled_area_ids.contains(&area_config.area_id) {
+                        continue;
+                    }
+
+                    // Count bosses and timers
+                    let (boss_count, timer_count) = match load_bosses_from_file(&path) {
+                        Ok(bosses) => {
+                            let timers: usize = bosses.iter().map(|b| b.timers.len()).sum();
+                            (bosses.len(), timers)
+                        }
+                        Err(_) => (0, 0),
+                    };
+
+                    areas.push(AreaListItem {
+                        name: area_config.name,
+                        area_id: area_config.area_id,
+                        file_path: path.to_string_lossy().to_string(),
+                        category: area_config.area_type.to_category().to_string(),
+                        boss_count,
+                        timer_count,
+                    });
+                }
+                Ok(None) => {}
+                Err(_) => {}
+            }
+        }
     }
 
-    "other".to_string()
+    Ok(())
 }
 
 /// Get timers for a specific area file (lazy loading)
@@ -1203,18 +1207,6 @@ pub async fn create_boss(
 pub async fn create_area(app_handle: AppHandle, area: NewAreaRequest) -> Result<String, String> {
     let user_dir = ensure_user_encounters_dir(&app_handle)?;
 
-    // Determine subdirectory based on area type
-    let subdir = match area.area_type.as_str() {
-        "operation" => "operations",
-        "flashpoint" => "flashpoints",
-        "lair_boss" => "lair_bosses",
-        _ => "other",
-    };
-
-    let target_dir = user_dir.join(subdir);
-    std::fs::create_dir_all(&target_dir)
-        .map_err(|e| format!("Failed to create directory: {}", e))?;
-
     // Generate filename from area name (snake_case)
     let filename: String = area
         .name
@@ -1227,24 +1219,25 @@ pub async fn create_area(app_handle: AppHandle, area: NewAreaRequest) -> Result<
         .collect::<Vec<_>>()
         .join("_");
 
-    let file_path = target_dir.join(format!("{}.toml", filename));
+    // Save directly in user directory (category comes from area_type in file)
+    let file_path = user_dir.join(format!("{}.toml", filename));
 
     if file_path.exists() {
         return Err(format!("Area file already exists: {:?}", file_path));
     }
 
-    // Create minimal TOML content with area config
+    // Create minimal TOML content with area config including area_type
     let content = format!(
         r#"# {}
-# Area type: {}
 
 [area]
 name = "{}"
 area_id = {}
+area_type = "{}"
 
 # Add bosses below using [[boss]] sections
 "#,
-        area.name, area.area_type, area.name, area.area_id
+        area.name, area.name, area.area_id, area.area_type
     );
 
     std::fs::write(&file_path, content).map_err(|e| format!("Failed to write area file: {}", e))?;

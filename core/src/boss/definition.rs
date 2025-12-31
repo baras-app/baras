@@ -29,6 +29,19 @@ pub enum AreaType {
     Other,
 }
 
+impl AreaType {
+    /// Convert to category string for UI grouping
+    pub fn to_category(&self) -> &'static str {
+        match self {
+            AreaType::Operation => "operations",
+            AreaType::Flashpoint => "flashpoints",
+            AreaType::LairBoss => "lair_bosses",
+            AreaType::TrainingDummy => "other",
+            AreaType::Other => "other",
+        }
+    }
+}
+
 /// Area header for consolidated encounter files
 /// Contains area metadata for indexing and lazy loading
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
