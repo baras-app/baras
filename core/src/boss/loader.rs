@@ -337,7 +337,12 @@ category = "operations"
 [[boss]]
 id = "bestia"
 name = "Dread Master Bestia"
-npc_ids = [3273941900591104]
+
+[[boss.entities]]
+name = "Dread Master Bestia"
+ids = [3273941900591104]
+is_boss = true
+is_kill_target = true
 
 [[boss.phase]]
 id = "p1"
@@ -347,10 +352,11 @@ trigger = { type = "combat_start" }
 [[boss.phase]]
 id = "burn"
 name = "Burn Phase"
-trigger = { type = "boss_hp_below", hp_percent = 30.0, npc_id = 3273941900591104 }
+trigger = { type = "boss_hp_below", hp_percent = 30.0, selector = [3273941900591104] }
 
 [[boss.counter]]
 id = "dread_scream_casts"
+name = "Dread Scream Casts"
 increment_on = { type = "ability_cast", abilities = [3302391763959808] }
 
 [[boss.challenge]]
@@ -367,7 +373,7 @@ name = "Add Damage"
 description = "Damage to Dread Larva and Dread Monster"
 metric = "damage"
 conditions = [
-    { type = "target", match = { npc_ids = [3292079547482112, 3291675820556288] } }
+    { type = "target", match = { selector = [3292079547482112, 3291675820556288] } }
 ]
 
 [[boss.challenge]]

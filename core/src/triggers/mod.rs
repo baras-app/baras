@@ -6,10 +6,7 @@
 
 mod matchers;
 
-pub use matchers::{
-    AbilityMatcher, AbilitySelector, EffectMatcher, EffectSelector, EntityMatcher, EntitySelector,
-    EntitySelectorExt,
-};
+pub use matchers::{AbilitySelector, EffectSelector, EntitySelector, EntitySelectorExt};
 
 // Re-export EntityFilter for use in triggers
 pub use baras_types::EntityFilter;
@@ -122,37 +119,41 @@ pub enum Trigger {
     /// Boss HP drops below threshold. [TPC]
     BossHpBelow {
         hp_percent: f32,
-        #[serde(flatten)]
-        entity: EntityMatcher,
+        /// Specific boss to monitor (empty = any boss)
+        #[serde(default)]
+        selector: Vec<EntitySelector>,
     },
 
     /// Boss HP rises above threshold. [P only]
     /// Used for heal-check mechanics.
     BossHpAbove {
         hp_percent: f32,
-        #[serde(flatten)]
-        entity: EntityMatcher,
+        /// Specific boss to monitor (empty = any boss)
+        #[serde(default)]
+        selector: Vec<EntitySelector>,
     },
 
     // ─── Entity Lifecycle [TPC] ────────────────────────────────────────────
 
     /// NPC appears (first seen in combat log). [TPC]
     NpcAppears {
-        #[serde(flatten)]
-        entity: EntityMatcher,
+        /// NPCs to match (by ID or name)
+        #[serde(default)]
+        selector: Vec<EntitySelector>,
     },
 
     /// Entity dies. [TPC]
     EntityDeath {
-        #[serde(flatten)]
-        entity: EntityMatcher,
+        /// Entities to match (empty = any death)
+        #[serde(default)]
+        selector: Vec<EntitySelector>,
     },
 
     /// NPC sets its target (e.g., sphere targeting player). [T only]
     TargetSet {
-        /// Which NPC is doing the targeting (the source)
-        #[serde(flatten)]
-        entity: EntityMatcher,
+        /// Which NPC is doing the targeting (by ID or name)
+        #[serde(default)]
+        selector: Vec<EntitySelector>,
         /// Who is being targeted (default: any)
         #[serde(default = "EntityFilter::default_any")]
         target: EntityFilter,
@@ -319,7 +320,7 @@ mod tests {
     fn trigger_scope_phase_only() {
         let trigger = Trigger::BossHpAbove {
             hp_percent: 50.0,
-            entity: EntityMatcher::default(),
+            selector: vec![],
         };
         assert!(!trigger.valid_for_timer());
         assert!(trigger.valid_for_phase());

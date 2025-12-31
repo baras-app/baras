@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use super::ComparisonOp;
-use crate::entity_filter::{EntityFilter, EntityFilterMatching, EntitySelector};
+use crate::entity_filter::{EntityFilter, EntityFilterMatching};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Challenge Definition
@@ -331,6 +331,7 @@ impl ChallengeDefinition {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entity_filter::EntitySelector;
 
     fn test_context() -> ChallengeContext {
         let mut ctx = ChallengeContext::default();

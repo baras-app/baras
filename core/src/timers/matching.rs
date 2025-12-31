@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::combat_log::EntityType;
 use crate::context::IStr;
-use crate::entity_filter::{EntityFilter, EntityFilterMatching};
+use crate::entity_filter::EntityFilterMatching;
 use crate::triggers::Trigger;
 
 use super::{EncounterContext, TimerDefinition};

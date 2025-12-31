@@ -9,7 +9,7 @@ use crate::boss::BossEncounterState;
 use crate::combat_log::CombatEvent;
 use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
-use crate::triggers::Trigger;
+use crate::triggers::{EntitySelectorExt, Trigger};
 
 use super::GameSignal;
 
@@ -317,44 +317,44 @@ pub fn check_hp_trigger(
     state: &BossEncounterState,
 ) -> bool {
     match trigger {
-        Trigger::BossHpBelow { hp_percent, entity } => {
+        Trigger::BossHpBelow { hp_percent, selector } => {
             let crossed = old_hp > *hp_percent && new_hp <= *hp_percent;
             if !crossed {
                 return false;
             }
 
             // Check entity filter if specified
-            if entity.is_empty() {
+            if selector.is_empty() {
                 return true; // No filter = any boss
             }
 
-            if entity.matches_npc_id(npc_id) {
+            if selector.matches_npc_id(npc_id) {
                 return true;
             }
 
             // Check by name in hp_by_name (for name-based selectors)
-            if let Some(name) = entity.first_name() {
+            if let Some(name) = selector.first_name() {
                 return state.hp_by_name.contains_key(name);
             }
 
             false
         }
-        Trigger::BossHpAbove { hp_percent, entity } => {
+        Trigger::BossHpAbove { hp_percent, selector } => {
             let crossed = old_hp < *hp_percent && new_hp >= *hp_percent;
             if !crossed {
                 return false;
             }
 
-            if entity.is_empty() {
+            if selector.is_empty() {
                 return true;
             }
 
-            if entity.matches_npc_id(npc_id) {
+            if selector.matches_npc_id(npc_id) {
                 return true;
             }
 
             // Check by name in hp_by_name (for name-based selectors)
-            if let Some(name) = entity.first_name() {
+            if let Some(name) = selector.first_name() {
                 return state.hp_by_name.contains_key(name);
             }
 
@@ -405,29 +405,29 @@ pub fn check_ability_trigger(trigger: &Trigger, event: &CombatEvent) -> bool {
 /// Check if a signal-based phase trigger is satisfied (NpcAppears, EntityDeath, etc.).
 pub fn check_signal_phase_trigger(trigger: &Trigger, signals: &[GameSignal]) -> bool {
     match trigger {
-        Trigger::NpcAppears { entity } => {
+        Trigger::NpcAppears { selector } => {
             signals.iter().any(|s| {
                 if let GameSignal::NpcFirstSeen { npc_id, entity_name, .. } = s {
-                    if entity.matches_npc_id(*npc_id) {
+                    if selector.matches_npc_id(*npc_id) {
                         return true;
                     }
-                    if entity.matches_name(entity_name) {
+                    if selector.matches_name_only(entity_name) {
                         return true;
                     }
                 }
                 false
             })
         }
-        Trigger::EntityDeath { entity } => {
+        Trigger::EntityDeath { selector } => {
             signals.iter().any(|s| {
                 if let GameSignal::EntityDeath { npc_id, entity_name, .. } = s {
-                    if entity.is_empty() {
+                    if selector.is_empty() {
                         return true; // No filter = any death
                     }
-                    if entity.matches_npc_id(*npc_id) {
+                    if selector.matches_npc_id(*npc_id) {
                         return true;
                     }
-                    if entity.matches_name(entity_name) {
+                    if selector.matches_name_only(entity_name) {
                         return true;
                     }
                 }

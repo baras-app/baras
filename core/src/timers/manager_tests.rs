@@ -7,7 +7,7 @@ use chrono::Local;
 use crate::audio::AudioConfig;
 use crate::signal_processor::{GameSignal, SignalHandler};
 use crate::entity_filter::EntityFilter;
-use crate::triggers::{EntityMatcher, AbilitySelector, EffectSelector};
+use crate::triggers::{AbilitySelector, EffectSelector, EntitySelector};
 use super::{TimerDefinition, TimerManager, TimerTrigger};
 
 /// Create a test timer with the given trigger
@@ -146,7 +146,7 @@ fn test_npc_first_seen_triggers_timer() {
     let timer = make_timer(
         "monster_spawn",
         "Dread Monster Spawned",
-        TimerTrigger::NpcAppears { entity: EntityMatcher::by_npc_id(3291675820556288) },
+        TimerTrigger::NpcAppears { selector: vec![EntitySelector::Id(3291675820556288)] },
         30.0,
     );
     manager.load_definitions(vec![timer]);
@@ -646,7 +646,7 @@ fn test_integration_npc_first_seen_timer() {
     let timer = make_timer(
         "monster_spawn",
         "Dread Monster Spawned",
-        TimerTrigger::NpcAppears { entity: EntityMatcher::by_npc_id(3291675820556288) },
+        TimerTrigger::NpcAppears { selector: vec![EntitySelector::Id(3291675820556288)] },
         30.0,
     );
 

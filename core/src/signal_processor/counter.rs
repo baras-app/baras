@@ -7,7 +7,7 @@ use crate::boss::BossEncounterDefinition;
 use crate::combat_log::{CombatEvent, EntityType};
 use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
-use crate::triggers::Trigger;
+use crate::triggers::{EntitySelectorExt, Trigger};
 
 use super::GameSignal;
 
@@ -166,25 +166,25 @@ pub fn check_counter_trigger(
         Trigger::AnyPhaseChange => {
             current_signals.iter().any(|s| matches!(s, GameSignal::PhaseChanged { .. }))
         }
-        Trigger::NpcAppears { entity } => {
+        Trigger::NpcAppears { selector } => {
             current_signals.iter().any(|s| {
                 if let GameSignal::NpcFirstSeen { npc_id, entity_name, .. } = s {
                     // Use unified matching: roster alias → NPC ID → name
-                    entity.matches(&boss_def.entities, *npc_id, Some(entity_name))
+                    selector.matches_with_roster(&boss_def.entities, *npc_id, Some(entity_name))
                 } else {
                     false
                 }
             })
         }
-        Trigger::EntityDeath { entity } => {
+        Trigger::EntityDeath { selector } => {
             current_signals.iter().any(|s| {
                 if let GameSignal::EntityDeath { npc_id, entity_name, .. } = s {
                     // If entity filter is empty, match any death
-                    if entity.is_empty() {
+                    if selector.is_empty() {
                         return true;
                     }
                     // Use unified matching: roster alias → NPC ID → name
-                    entity.matches(&boss_def.entities, *npc_id, Some(entity_name))
+                    selector.matches_with_roster(&boss_def.entities, *npc_id, Some(entity_name))
                 } else {
                     false
                 }
@@ -196,7 +196,7 @@ pub fn check_counter_trigger(
                     if cid == counter_id && *new_value == *value)
             })
         }
-        Trigger::BossHpBelow { hp_percent, entity } => {
+        Trigger::BossHpBelow { hp_percent, selector } => {
             current_signals.iter().any(|s| {
                 if let GameSignal::BossHpChanged { current_hp, max_hp, entity_name, .. } = s {
                     let hp_pct = if *max_hp > 0 {
@@ -208,8 +208,8 @@ pub fn check_counter_trigger(
                         return false;
                     }
                     // Check entity filter if specified
-                    if !entity.is_empty() {
-                        if !entity.matches_name(entity_name) {
+                    if !selector.is_empty() {
+                        if !selector.matches_name_only(entity_name) {
                             return false;
                         }
                     }

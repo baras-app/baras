@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::audio::AudioConfig;
 use crate::boss::CounterCondition;
 use crate::game_data::Difficulty;
-use crate::triggers::Trigger;
+use crate::triggers::{EntitySelectorExt, Trigger};
 
 // Re-export Trigger as TimerTrigger for backward compatibility during migration
 pub use crate::triggers::Trigger as TimerTrigger;
@@ -350,7 +350,7 @@ pub fn trigger_matches_boss_hp(
     current_hp: f32,
 ) -> bool {
     match trigger {
-        Trigger::BossHpBelow { hp_percent, entity } => {
+        Trigger::BossHpBelow { hp_percent, selector } => {
             // Check HP threshold crossing
             let crossed = previous_hp > *hp_percent && current_hp <= *hp_percent;
             if !crossed {
@@ -358,16 +358,16 @@ pub fn trigger_matches_boss_hp(
             }
 
             // Check entity filter (if specified)
-            if entity.is_empty() {
+            if selector.is_empty() {
                 return true; // No filter = any boss
             }
 
             // Check NPC ID first, then name
-            if entity.matches_npc_id(npc_id) {
+            if selector.matches_npc_id(npc_id) {
                 return true;
             }
             if let Some(name) = npc_name {
-                return entity.matches_name(name);
+                return selector.matches_name_only(name);
             }
             false
         }
@@ -425,15 +425,15 @@ pub fn trigger_matches_npc_appears(
     entity_name: Option<&str>,
 ) -> bool {
     match trigger {
-        Trigger::NpcAppears { entity } => {
-            if entity.is_empty() {
+        Trigger::NpcAppears { selector } => {
+            if selector.is_empty() {
                 return false; // Require explicit filter
             }
-            if entity.matches_npc_id(npc_id) {
+            if selector.matches_npc_id(npc_id) {
                 return true;
             }
             if let Some(name) = entity_name {
-                return entity.matches_name(name);
+                return selector.matches_name_only(name);
             }
             false
         }
@@ -451,15 +451,15 @@ pub fn trigger_matches_entity_death(
     entity_name: Option<&str>,
 ) -> bool {
     match trigger {
-        Trigger::EntityDeath { entity } => {
-            if entity.is_empty() {
+        Trigger::EntityDeath { selector } => {
+            if selector.is_empty() {
                 return true; // No filter = any death
             }
-            if entity.matches_npc_id(npc_id) {
+            if selector.matches_npc_id(npc_id) {
                 return true;
             }
             if let Some(name) = entity_name {
-                return entity.matches_name(name);
+                return selector.matches_name_only(name);
             }
             false
         }
@@ -488,15 +488,15 @@ pub fn trigger_matches_target_set(
     source_name: Option<&str>,
 ) -> bool {
     match trigger {
-        Trigger::TargetSet { entity, .. } => {
-            if entity.is_empty() {
+        Trigger::TargetSet { selector, .. } => {
+            if selector.is_empty() {
                 return false; // Require explicit filter
             }
-            if entity.matches_npc_id(source_npc_id) {
+            if selector.matches_npc_id(source_npc_id) {
                 return true;
             }
             if let Some(name) = source_name {
-                return entity.matches_name(name);
+                return selector.matches_name_only(name);
             }
             false
         }
