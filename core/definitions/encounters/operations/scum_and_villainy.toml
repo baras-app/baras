@@ -1,0 +1,128 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Scum and Villainy - Operation
+# ═══════════════════════════════════════════════════════════════════════════════
+# Darvannis operation. 7 bosses + secret boss (Hateful Entity).
+
+[area]
+name = "Scum and Villainy"
+id = 137438993037
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 1: Dash'Roode
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "dashroode"
+name = "Dash'Roode"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "Dash'Roode"
+ids = [3153571147153408, 3058837053505536, 3153575442120704, 3153558262251520]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 2: Titan 6
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "titan6"
+name = "Titan 6"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "Titan 6"
+ids = [3152463045591040, 3016450021261312, 3152467340558336, 3152458750623744]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Secret Boss: Hateful Entity
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "hateful_entity"
+name = "Hateful Entity"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "Hateful Entity"
+ids = [3264737785675776]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 3: Thrasher
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "thrasher"
+name = "Thrasher"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "Thrasher"
+ids = [3154567579566080, 3045819007631360, 3154571874533376, 3154563284598784]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: Operations Chief
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "operations_chief"
+name = "Operations Chief"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "Operations Chief"
+ids = [3157552581836800, 3141940375715840, 3157556876804096, 3157548286869504]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: Olok the Shadow
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "olok"
+name = "Olok the Shadow"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "Olok the Shadow"
+ids = [3154674953748480, 3016445726294016, 3154679248715776, 3154662068846592]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 6: Cartel Warlords
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "cartel_warlords"
+name = "Cartel Warlords"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "Cartel Warlords"
+ids = [3054400352288768, 3054404647256064, 3054408942223360, 3054413237190656, 3156899746807808, 3156904041775104, 3156895451840512]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 7: Dread Master Styrak
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "styrak"
+name = "Dread Master Styrak"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "Dread Master Styrak"
+ids = [3067057620910080, 3152441570754560, 3225679353085952, 3066945951760384, 3152445865721856, 3152407211016192]
+is_boss = true
+is_kill_target = true

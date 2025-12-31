@@ -1,86 +1,89 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Dxun - The Nature of Progress
+# Karagga's Palace - Operation
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4 main bosses: Red, Trandosians, Huntmaster, Apex Vanguard
+# Hutt Cartel themed operation. 5 bosses.
 
 [area]
-name = "Dxun"
-id = 833571547775792
+name = "Karagga's Palace"
+id = 833571547775669
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Red
-# ═══════════════════════════════════════════════════════════════════════════════
-
-[[boss]]
-id = "red"
-name = "Red"
-difficulties = ["story", "veteran", "master"]
-
-[[boss.entities]]
-name = "Red"
-ids = [4246176467517440, 4330233272467456]
-is_boss = true
-is_kill_target = true
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Trandosians (Pack Leader)
+# Boss 1: Bonethrasher
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "trandosians"
-name = "Trandosians"
-difficulties = ["story", "veteran", "master"]
+id = "bonethrasher"
+name = "Bonethrasher"
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
-name = "Titax"
-ids = [4245970309087232]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Greus"
-ids = [4245978899021824]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Kronissus"
-ids = [4245983193989120]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Hissyphus"
-ids = [4245987488956416]
+name = "Bonethrasher"
+ids = [2624491305828352, 2271801476382720, 2624508485697536, 2624474125959168]
 is_boss = true
 is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Huntmaster
+# Boss 2: Jarg & Sorno
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "huntmaster"
-name = "Huntmaster"
-difficulties = ["story", "veteran", "master"]
+id = "jarg_sorno"
+name = "Jarg & Sorno"
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
-name = "Huntmaster"
-ids = [4265104388390912, 4281661487316992, 4330237567434752]
+name = "Jarg"
+ids = [2760500035190784, 2739437515571200, 2760517215059968, 2760482855321600]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Sorno"
+ids = [2760504330158080, 2739441810538496, 2760521510027264, 2760487150288896]
 is_boss = true
 is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 4: Apex Vanguard
+# Boss 3: Foreman Crusher
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "apex_vanguard"
-name = "Apex Vanguard"
-difficulties = ["story", "veteran", "master"]
+id = "foreman_crusher"
+name = "Foreman Crusher"
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
-name = "Apex Vanguard"
-ids = [4282872668094464, 4350020186800128]
+name = "Foreman Crusher"
+ids = [2739888487137280, 2739875602235392, 2760693308719104, 2760637474144256]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: G4-B3 Heavy Fabricator
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "g4b3"
+name = "G4-B3 Heavy Fabricator"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "G4-B3 Heavy Fabricator"
+ids = [2760371186171904, 2747344550363136, 2760375481139200, 2748401112317952]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: Karagga the Unyielding
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "karagga"
+name = "Karagga the Unyielding"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "Karagga the Unyielding"
+ids = [2761200114860032, 2740043105959936, 2761208704794624, 2761191524925440]
 is_boss = true
 is_kill_target = true

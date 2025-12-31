@@ -89,7 +89,7 @@ pub fn check_counter_trigger(
                 return false;
             }
             // Check source filter if specified
-            if !source.is_empty() {
+            if !source.is_any() {
                 let source_name = crate::context::resolve(event.source_entity.name);
                 if !source.matches_name(&source_name)
                     && !source.matches_npc_id(event.source_entity.class_id)
@@ -109,9 +109,9 @@ pub fn check_counter_trigger(
                 return false;
             }
             // Check target filter if specified
-            if !target.is_empty() {
+            if !target.is_any() {
                 // Special case: "local_player" matches player entities
-                if target.is_local_player_filter() {
+                if target.is_local_player() {
                     if event.target_entity.entity_type != EntityType::Player {
                         return false;
                     }
@@ -136,8 +136,8 @@ pub fn check_counter_trigger(
                 return false;
             }
             // Check target filter if specified
-            if !target.is_empty() {
-                if target.is_local_player_filter() {
+            if !target.is_any() {
+                if target.is_local_player() {
                     if event.target_entity.entity_type != EntityType::Player {
                         return false;
                     }
@@ -242,7 +242,7 @@ pub fn check_counter_trigger(
                     {
                         return false;
                     }
-                    if !source.is_empty() {
+                    if !source.is_any() {
                         let source_name_str = crate::context::resolve(*source_name);
                         if !source.matches_name(&source_name_str)
                             && !source.matches_npc_id(*source_npc_id)
@@ -250,7 +250,7 @@ pub fn check_counter_trigger(
                             return false;
                         }
                     }
-                    if !target.is_empty() {
+                    if !target.is_any() {
                         // Targets are typically players (no NPC ID), so only match by name
                         let target_name_str = crate::context::resolve(*target_name);
                         if !target.matches_name(&target_name_str) {

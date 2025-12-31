@@ -11,6 +11,9 @@ pub use matchers::{
     EntitySelectorExt,
 };
 
+// Re-export EntityFilter for use in triggers
+pub use baras_types::EntityFilter;
+
 use serde::{Deserialize, Serialize};
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -69,8 +72,9 @@ pub enum Trigger {
         /// Ability selectors (ID or name).
         #[serde(default)]
         abilities: Vec<AbilitySelector>,
-        #[serde(default)]
-        source: EntityMatcher,
+        /// Who cast the ability (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        source: EntityFilter,
     },
 
     /// Effect/buff is applied. [TPC]
@@ -78,10 +82,12 @@ pub enum Trigger {
         /// Effect selectors (ID or name).
         #[serde(default)]
         effects: Vec<EffectSelector>,
-        #[serde(default)]
-        source: EntityMatcher,
-        #[serde(default)]
-        target: EntityMatcher,
+        /// Who applied the effect (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        source: EntityFilter,
+        /// Who received the effect (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        target: EntityFilter,
     },
 
     /// Effect/buff is removed. [TPC]
@@ -89,10 +95,12 @@ pub enum Trigger {
         /// Effect selectors (ID or name).
         #[serde(default)]
         effects: Vec<EffectSelector>,
-        #[serde(default)]
-        source: EntityMatcher,
-        #[serde(default)]
-        target: EntityMatcher,
+        /// Who applied the effect (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        source: EntityFilter,
+        /// Who lost the effect (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        target: EntityFilter,
     },
 
     /// Damage is taken from an ability. [TPC]
@@ -101,10 +109,12 @@ pub enum Trigger {
         /// Ability selectors (ID or name).
         #[serde(default)]
         abilities: Vec<AbilitySelector>,
-        #[serde(default)]
-        source: EntityMatcher,
-        #[serde(default)]
-        target: EntityMatcher,
+        /// Who dealt the damage (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        source: EntityFilter,
+        /// Who took the damage (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        target: EntityFilter,
     },
 
     // ─── HP Thresholds [TPC / P only] ──────────────────────────────────────
@@ -140,8 +150,12 @@ pub enum Trigger {
 
     /// NPC sets its target (e.g., sphere targeting player). [T only]
     TargetSet {
+        /// Which NPC is doing the targeting (the source)
         #[serde(flatten)]
         entity: EntityMatcher,
+        /// Who is being targeted (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        target: EntityFilter,
     },
 
     // ─── Phase Events [TPC / C only] ───────────────────────────────────────
@@ -247,6 +261,30 @@ impl Trigger {
             _ => false,
         }
     }
+
+    /// Get the source filter from this trigger (for event-based triggers).
+    /// Returns `None` for triggers that don't have a source filter (treated as "any").
+    pub fn source_filter(&self) -> Option<&EntityFilter> {
+        match self {
+            Self::AbilityCast { source, .. }
+            | Self::EffectApplied { source, .. }
+            | Self::EffectRemoved { source, .. }
+            | Self::DamageTaken { source, .. } => Some(source),
+            _ => None,
+        }
+    }
+
+    /// Get the target filter from this trigger (for event-based triggers).
+    /// Returns `None` for triggers that don't have a target filter (treated as "any").
+    pub fn target_filter(&self) -> Option<&EntityFilter> {
+        match self {
+            Self::EffectApplied { target, .. }
+            | Self::EffectRemoved { target, .. }
+            | Self::DamageTaken { target, .. }
+            | Self::TargetSet { target, .. } => Some(target),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -292,7 +330,7 @@ mod tests {
     fn contains_combat_start_nested() {
         let trigger = Trigger::AnyOf {
             conditions: vec![
-                Trigger::AbilityCast { abilities: vec![AbilitySelector::Id(123)], source: EntityMatcher::default() },
+                Trigger::AbilityCast { abilities: vec![AbilitySelector::Id(123)], source: EntityFilter::Any },
                 Trigger::CombatStart,
             ],
         };
@@ -303,7 +341,7 @@ mod tests {
     fn serde_round_trip() {
         let trigger = Trigger::AbilityCast {
             abilities: vec![AbilitySelector::Id(123), AbilitySelector::Id(456)],
-            source: EntityMatcher::by_npc_id(789),
+            source: EntityFilter::Selector(vec![EntitySelector::Id(789)]),
         };
         let toml = toml::to_string(&trigger).unwrap();
         let parsed: Trigger = toml::from_str(&toml).unwrap();
@@ -317,8 +355,8 @@ mod tests {
                 EffectSelector::Id(100),
                 EffectSelector::Name("Burn".to_string()),
             ],
-            source: EntityMatcher::default(),
-            target: EntityMatcher::default(),
+            source: EntityFilter::Any,
+            target: EntityFilter::Any,
         };
         let toml = toml::to_string(&trigger).unwrap();
         let parsed: Trigger = toml::from_str(&toml).unwrap();

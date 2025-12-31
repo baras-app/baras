@@ -26,6 +26,7 @@ fn make_effect(id: &str, name: &str, effect_ids: Vec<u64>) -> EffectDefinition {
     EffectDefinition {
         id: id.to_string(),
         name: name.to_string(),
+        display_text: None,
         enabled: true,
         effects: effect_ids.into_iter().map(EffectSelector::Id).collect(),
         trigger: crate::effects::EffectTriggerMode::default(),
@@ -39,8 +40,10 @@ fn make_effect(id: &str, name: &str, effect_ids: Vec<u64>) -> EffectDefinition {
         max_stacks: 0,
         show_on_raid_frames: true,
         show_on_effects_overlay: false,
+        show_at_secs: 0.0,
         persist_past_death: false,
         track_outside_combat: true,
+        audio: Default::default(),
         on_apply_trigger_timer: None,
         on_expire_trigger_timer: None,
         encounters: Vec::new(),

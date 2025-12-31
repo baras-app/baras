@@ -195,7 +195,7 @@ id = "fs_shield_dps"
 name = "Shield DPS"
 metric = "damage"
 conditions = [
-    { type = "target", match = { npc_ids = [2876425497477120] } }
+    { type = "target", match = { selector = [2876425497477120] } }
 ]
 color = [100, 210, 237, 255]
 
@@ -523,6 +523,6 @@ phase_ids = ["walker_burn"]
 
 [[boss.challenge.conditions]]
 type = "target"
-match = { names = ["Warstrider Battlewalker"] }
+match = { selector = ["Warstrider Battlewalker"] }
 
 

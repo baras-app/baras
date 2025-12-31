@@ -1,86 +1,102 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Dxun - The Nature of Progress
+# The Dread Palace - Operation
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4 main bosses: Red, Trandosians, Huntmaster, Apex Vanguard
+# Companion to Dread Fortress. 5 bosses (4 Dread Masters + Council).
 
 [area]
-name = "Dxun"
-id = 833571547775792
+name = "The Dread Palace"
+id = 137438993410
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Red
-# ═══════════════════════════════════════════════════════════════════════════════
-
-[[boss]]
-id = "red"
-name = "Red"
-difficulties = ["story", "veteran", "master"]
-
-[[boss.entities]]
-name = "Red"
-ids = [4246176467517440, 4330233272467456]
-is_boss = true
-is_kill_target = true
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Trandosians (Pack Leader)
+# Boss 1: Dread Master Bestia
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "trandosians"
-name = "Trandosians"
+id = "bestia"
+name = "Dread Master Bestia"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Titax"
-ids = [4245970309087232]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Greus"
-ids = [4245978899021824]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Kronissus"
-ids = [4245983193989120]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Hissyphus"
-ids = [4245987488956416]
+name = "Dread Master Bestia"
+ids = [3273941900591104]
 is_boss = true
 is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Huntmaster
+# Boss 2: Dread Master Tyrans
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "huntmaster"
-name = "Huntmaster"
+id = "tyrans"
+name = "Dread Master Tyrans"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Huntmaster"
-ids = [4265104388390912, 4281661487316992, 4330237567434752]
+name = "Dread Master Tyrans"
+ids = [3273954785492992]
 is_boss = true
 is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 4: Apex Vanguard
+# Boss 3: Dread Master Calphayus
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "apex_vanguard"
-name = "Apex Vanguard"
+id = "calphayus"
+name = "Dread Master Calphayus"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Apex Vanguard"
-ids = [4282872668094464, 4350020186800128]
+name = "Dread Master Calphayus"
+ids = [3273946195558400, 3284949901770752, 3284954196738048, 3312991743246336, 3349812497874944, 3312983153311744, 3312996038213632, 3312987448279040]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: Dread Master Raptus
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "raptus"
+name = "Dread Master Raptus"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Dread Master Raptus"
+ids = [3303555700097024, 3273950490525696, 3303559995064320, 3302902865068032]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: The Dread Council
+# ═══════════════════════════════════════════════════════════════════════════════
+# Final encounter - all four Dread Masters together.
+
+[[boss]]
+id = "dread_council"
+name = "The Dread Council"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Dread Master Bestia"
+ids = [3273941900591104]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Dread Master Tyrans"
+ids = [3273954785492992]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Dread Master Calphayus"
+ids = [3273946195558400]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Dread Master Raptus"
+ids = [3273950490525696]
 is_boss = true
 is_kill_target = true

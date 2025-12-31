@@ -618,7 +618,7 @@ phase_ids = ["revan_core"]
 
 [[boss.challenge.conditions]]
 type = "target"
-match = { npc_ids = [3447583133401088] }
+match = { selector = [3447583133401088] }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HP Threshold Alerts

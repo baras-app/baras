@@ -296,6 +296,7 @@ resets_counters = ["add_count"]
 
 [[boss.counter]]
 id = "add_count"
+name = "Add Count"
 increment_on = { type = "ability_cast", abilities = [12345] }
 reset_on = { type = "any_phase_change" }
 

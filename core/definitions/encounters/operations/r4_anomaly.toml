@@ -1,86 +1,68 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Dxun - The Nature of Progress
+# R-4 Anomaly - Operation
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4 main bosses: Red, Trandosians, Huntmaster, Apex Vanguard
+# The newest operation. 4 bosses.
 
 [area]
-name = "Dxun"
-id = 833571547775792
+name = "R4"
+id = 833571547775799
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Red
-# ═══════════════════════════════════════════════════════════════════════════════
-
-[[boss]]
-id = "red"
-name = "Red"
-difficulties = ["story", "veteran", "master"]
-
-[[boss.entities]]
-name = "Red"
-ids = [4246176467517440, 4330233272467456]
-is_boss = true
-is_kill_target = true
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Trandosians (Pack Leader)
+# Boss 1: IP-CPT
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "trandosians"
-name = "Trandosians"
+id = "ip_cpt"
+name = "IP-CPT"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Titax"
-ids = [4245970309087232]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Greus"
-ids = [4245978899021824]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Kronissus"
-ids = [4245983193989120]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Hissyphus"
-ids = [4245987488956416]
+name = "IP-CPT"
+ids = [4467247024177152, 4480196350574592, 4480200645541888, 4494653210492928]
 is_boss = true
 is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Huntmaster
+# Boss 2: Watchdog
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "huntmaster"
-name = "Huntmaster"
+id = "watchdog"
+name = "Watchdog"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Huntmaster"
-ids = [4265104388390912, 4281661487316992, 4330237567434752]
+name = "Watchdog"
+ids = [4466177577320448, 4494700455133184]
 is_boss = true
 is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 4: Apex Vanguard
+# Boss 3: Lord Kanoth
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "apex_vanguard"
-name = "Apex Vanguard"
+id = "kanoth"
+name = "Lord Kanoth"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Apex Vanguard"
-ids = [4282872668094464, 4350020186800128]
+name = "Lord Kanoth"
+ids = [4466190462222336, 4494876548792320]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: Lady Dominique
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "dominique"
+name = "Lady Dominique"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Lady Dominique"
+ids = [4466199052156928, 4488524292161536, 4608014577303552]
 is_boss = true
 is_kill_target = true

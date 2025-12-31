@@ -1004,6 +1004,48 @@ impl EntityFilter {
         }
     }
 
+    /// Default for trigger source/target (any entity)
+    pub fn default_any() -> Self {
+        Self::Any
+    }
+
+    /// Returns true if this filter matches anything (no restriction)
+    pub fn is_any(&self) -> bool {
+        matches!(self, Self::Any)
+    }
+
+    /// Returns true if this is the LocalPlayer filter
+    pub fn is_local_player(&self) -> bool {
+        matches!(self, Self::LocalPlayer)
+    }
+
+    /// Returns true if this is the Boss filter
+    pub fn is_boss(&self) -> bool {
+        matches!(self, Self::Boss)
+    }
+
+    /// Check if this filter matches a specific NPC by class ID
+    pub fn matches_npc_id(&self, npc_id: i64) -> bool {
+        match self {
+            Self::Selector(selectors) => selectors.iter().any(|s| {
+                matches!(s, EntitySelector::Id(id) if *id == npc_id)
+            }),
+            Self::AnyNpc | Self::Boss | Self::NpcExceptBoss | Self::Any => true,
+            _ => false,
+        }
+    }
+
+    /// Check if this filter matches by name (case insensitive)
+    pub fn matches_name(&self, name: &str) -> bool {
+        match self {
+            Self::Selector(selectors) => selectors.iter().any(|s| {
+                matches!(s, EntitySelector::Name(n) if n.eq_ignore_ascii_case(name))
+            }),
+            Self::Any => true,
+            _ => false,
+        }
+    }
+
     /// Common options for source/target dropdowns (challenges)
     pub fn common_options() -> &'static [EntityFilter] {
         &[

@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::audio::AudioConfig;
 use crate::boss::CounterCondition;
-use crate::entity_filter::EntityFilter;
 use crate::game_data::Difficulty;
 use crate::triggers::Trigger;
 
@@ -29,16 +28,8 @@ pub struct TimerDefinition {
 
     // ─── Trigger ────────────────────────────────────────────────────────────
 
-    /// What causes this timer to start
+    /// What causes this timer to start (includes source/target filters)
     pub trigger: Trigger,
-
-    /// Source filter for trigger events
-    #[serde(default)]
-    pub source: EntityFilter,
-
-    /// Target filter for trigger events
-    #[serde(default)]
-    pub target: EntityFilter,
 
     // ─── Duration ───────────────────────────────────────────────────────────
 
@@ -497,7 +488,7 @@ pub fn trigger_matches_target_set(
     source_name: Option<&str>,
 ) -> bool {
     match trigger {
-        Trigger::TargetSet { entity } => {
+        Trigger::TargetSet { entity, .. } => {
             if entity.is_empty() {
                 return false; // Require explicit filter
             }

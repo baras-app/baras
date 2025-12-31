@@ -545,10 +545,10 @@ impl TimerManager {
 
     // ─── Entity Filter Matching (delegates to matching module) ─────────────────
 
-    /// Check if source/target filters pass for a timer definition
+    /// Check if source/target filters pass for a trigger
     pub(super) fn matches_source_target_filters(
         &self,
-        def: &TimerDefinition,
+        trigger: &TimerTrigger,
         source_id: i64,
         source_type: EntityType,
         source_name: IStr,
@@ -559,7 +559,7 @@ impl TimerManager {
         target_npc_id: i64,
     ) -> bool {
         matches_source_target_filters(
-            def,
+            trigger,
             source_id, source_type, source_name, source_npc_id,
             target_id, target_type, target_name, target_npc_id,
             self.local_player_id, &self.boss_entity_ids,

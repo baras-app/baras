@@ -44,12 +44,8 @@ pub struct TimerListItem {
     pub phases: Vec<String>,
     pub difficulties: Vec<String>,
 
-    // Trigger info (serialized for frontend)
+    // Trigger info (serialized for frontend, includes source/target filters)
     pub trigger: TimerTrigger,
-
-    // Entity filters (preserved for round-trip, not yet editable in UI)
-    pub source: EntityFilter,
-    pub target: EntityFilter,
 
     // Alert fields
     pub is_alert: bool,
@@ -90,8 +86,6 @@ impl TimerListItem {
             difficulties: timer.difficulties.clone(),
 
             trigger: timer.trigger.clone(),
-            source: timer.source.clone(),
-            target: timer.target.clone(),
 
             is_alert: timer.is_alert,
             alert_text: timer.alert_text.clone(),
@@ -117,8 +111,6 @@ impl TimerListItem {
             name: self.name.clone(),
             display_text: None,
             trigger: self.trigger.clone(),
-            source: self.source.clone(),
-            target: self.target.clone(),
             duration_secs: self.duration_secs,
             is_alert: self.is_alert,
             alert_text: self.alert_text.clone(),
@@ -331,8 +323,6 @@ pub async fn create_encounter_timer(
         name: timer.name.clone(),
         display_text: None,
         trigger: timer.trigger.clone(),
-        source: timer.source.clone(),
-        target: timer.target.clone(),
         duration_secs: timer.duration_secs,
         is_alert: timer.is_alert,
         alert_text: timer.alert_text.clone(),

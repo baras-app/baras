@@ -204,18 +204,8 @@ pub struct BossTimerDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_text: Option<String>,
 
-    /// What triggers this timer
+    /// What triggers this timer (includes source/target filters)
     pub trigger: crate::timers::TimerTrigger,
-
-    /// Source filter for trigger events (who casts/applies)
-    /// Defaults to Any for boss timers since abilities come from NPCs
-    #[serde(default = "crate::serde_defaults::default_entity_filter_any")]
-    pub source: crate::entity_filter::EntityFilter,
-
-    /// Target filter for trigger events (who receives)
-    /// Defaults to Any for boss timers (mechanic could affect anyone)
-    #[serde(default = "crate::serde_defaults::default_entity_filter_any")]
-    pub target: crate::entity_filter::EntityFilter,
 
     /// Duration in seconds (0 = instant, use with is_alert)
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_f32")]
@@ -303,8 +293,6 @@ impl BossTimerDefinition {
             name: self.name.clone(),
             enabled: self.enabled,
             trigger: self.trigger.clone(),
-            source: self.source.clone(),
-            target: self.target.clone(),
             duration_secs: self.duration_secs,
             is_alert: self.is_alert,
             can_be_refreshed: self.can_be_refreshed,

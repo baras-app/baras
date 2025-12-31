@@ -6,13 +6,14 @@ use std::collections::{HashMap, HashSet};
 
 use crate::combat_log::EntityType;
 use crate::context::IStr;
-use crate::entity_filter::EntityFilterMatching;
+use crate::entity_filter::{EntityFilter, EntityFilterMatching};
+use crate::triggers::Trigger;
 
 use super::{EncounterContext, TimerDefinition};
 
-/// Check if source/target filters pass for a timer definition
+/// Check if source/target filters pass for a trigger
 pub(super) fn matches_source_target_filters(
-    def: &TimerDefinition,
+    trigger: &Trigger,
     source_id: i64,
     source_type: EntityType,
     source_name: IStr,
@@ -24,8 +25,21 @@ pub(super) fn matches_source_target_filters(
     local_player_id: Option<i64>,
     boss_entity_ids: &HashSet<i64>,
 ) -> bool {
-    def.source.matches(source_id, source_type, source_name, source_npc_id, local_player_id, boss_entity_ids)
-        && def.target.matches(target_id, target_type, target_name, target_npc_id, local_player_id, boss_entity_ids)
+    // Check source filter if present (None = any, passes)
+    if let Some(source_filter) = trigger.source_filter() {
+        if !source_filter.matches(source_id, source_type, source_name, source_npc_id, local_player_id, boss_entity_ids) {
+            return false;
+        }
+    }
+
+    // Check target filter if present (None = any, passes)
+    if let Some(target_filter) = trigger.target_filter() {
+        if !target_filter.matches(target_id, target_type, target_name, target_npc_id, local_player_id, boss_entity_ids) {
+            return false;
+        }
+    }
+
+    true
 }
 
 /// Check if a timer definition is active for current context

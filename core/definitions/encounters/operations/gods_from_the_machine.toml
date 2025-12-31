@@ -1,86 +1,95 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Dxun - The Nature of Progress
+# The Gods from the Machine - Operation
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4 main bosses: Red, Trandosians, Huntmaster, Apex Vanguard
+# Iokath operation featuring the Old Gods. 5 bosses.
 
 [area]
-name = "Dxun"
-id = 833571547775792
+name = "The Gods from the Machine"
+id = 833571547775765
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Red
-# ═══════════════════════════════════════════════════════════════════════════════
-
-[[boss]]
-id = "red"
-name = "Red"
-difficulties = ["story", "veteran", "master"]
-
-[[boss.entities]]
-name = "Red"
-ids = [4246176467517440, 4330233272467456]
-is_boss = true
-is_kill_target = true
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Trandosians (Pack Leader)
+# Boss 1: TYTH
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "trandosians"
-name = "Trandosians"
+id = "tyth"
+name = "TYTH"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Titax"
-ids = [4245970309087232]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Greus"
-ids = [4245978899021824]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Kronissus"
-ids = [4245983193989120]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Hissyphus"
-ids = [4245987488956416]
+name = "TYTH"
+ids = [4078419339902976, 4078427929837568, 4078415044935680, 4078423634870272]
 is_boss = true
 is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Huntmaster
+# Boss 2: Aivela and Esne
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "huntmaster"
-name = "Huntmaster"
+id = "aivela_esne"
+name = "Aivela and Esne"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Huntmaster"
-ids = [4265104388390912, 4281661487316992, 4330237567434752]
+name = "Aivela"
+ids = [4088525397950464]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Esne"
+ids = [4088538282852352]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities]]
+name = "Codex"
+ids = [4101564918661120]
 is_boss = true
 is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 4: Apex Vanguard
+# Boss 3: NAHUT
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "apex_vanguard"
-name = "Apex Vanguard"
+id = "nahut"
+name = "NAHUT"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Apex Vanguard"
-ids = [4282872668094464, 4350020186800128]
+name = "NAHUT"
+ids = [4122953855795200, 4108011664572416, 4122958150762496, 4122949560827904]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: SCYVA
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "scyva"
+name = "SCYVA"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "SCYVA"
+ids = [4108140513591296, 4126527268585472, 4158791062913024, 4126587398127616, 4158859782389760]
+is_boss = true
+is_kill_target = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: IZAX
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss]]
+id = "izax"
+name = "IZAX"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "IZAX"
+ids = [4108097563918336, 4163128979881984, 4163133274849280]
 is_boss = true
 is_kill_target = true

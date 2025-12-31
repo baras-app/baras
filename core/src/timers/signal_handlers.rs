@@ -35,7 +35,7 @@ pub(super) fn handle_ability(
             d.matches_ability_with_name(ability_id, Some(&ability_name_str))
                 && manager.is_definition_active(d)
                 && manager.matches_source_target_filters(
-                    d, source_id, source_type, source_name, source_npc_id,
+                    &d.trigger, source_id, source_type, source_name, source_npc_id,
                     target_id, target_type, target_name, target_npc_id,
                 )
         })
@@ -76,7 +76,7 @@ pub(super) fn handle_effect_applied(
             d.matches_effect_applied(effect_id)
                 && manager.is_definition_active(d)
                 && manager.matches_source_target_filters(
-                    d, source_id, source_type, source_name, source_npc_id,
+                    &d.trigger, source_id, source_type, source_name, source_npc_id,
                     target_id, target_type, target_name, target_npc_id,
                 )
         })
@@ -120,7 +120,7 @@ pub(super) fn handle_effect_removed(
             d.matches_effect_removed(effect_id)
                 && manager.is_definition_active(d)
                 && manager.matches_source_target_filters(
-                    d, source_id, source_type, source_name, source_npc_id,
+                    &d.trigger, source_id, source_type, source_name, source_npc_id,
                     target_id, target_type, target_name, target_npc_id,
                 )
         })
@@ -296,27 +296,26 @@ pub(super) fn handle_target_set(
 
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.matches_target_set(source_npc_id, Some(&source_name_str)) && manager.is_definition_active(d))
+        .filter(|d| {
+            d.matches_target_set(source_npc_id, Some(&source_name_str))
+                && manager.is_definition_active(d)
+                && manager.matches_source_target_filters(
+                    &d.trigger,
+                    source_entity_id, EntityType::Npc, source_name, source_npc_id,
+                    target_id, target_entity_type, target_name, 0,
+                )
+        })
         .cloned()
         .collect();
 
     for def in matching {
-        // Check source filter (e.g., boss, any_npc - the NPC doing the targeting)
-        // Source is always an NPC for TargetChanged signals
-        if !def.source.matches(source_entity_id, EntityType::Npc, source_name, source_npc_id, manager.local_player_id, &manager.boss_entity_ids) {
-            continue;
-        }
-        // Check target filter (e.g., local_player, any_player, etc.)
-        if !def.target.matches(target_id, target_entity_type, target_name, 0, manager.local_player_id, &manager.boss_entity_ids) {
-            continue;
-        }
         manager.start_timer(&def, timestamp, None);
     }
 
     // Check for cancel triggers on target set
     let source_name_owned = source_name_str.to_string();
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::TargetSet { entity }
+        |t| matches!(t, TimerTrigger::TargetSet { entity, .. }
             if !entity.is_empty() && (entity.matches_npc_id(source_npc_id) || entity.matches_name(&source_name_owned))),
         &format!("target set by {}", source_name_owned)
     );
@@ -345,7 +344,7 @@ pub(super) fn handle_damage_taken(
             d.matches_damage_taken(ability_id, Some(&ability_name_str))
                 && manager.is_definition_active(d)
                 && manager.matches_source_target_filters(
-                    d, source_id, source_type, source_name, source_npc_id,
+                    &d.trigger, source_id, source_type, source_name, source_npc_id,
                     target_id, target_type, target_name, 0,
                 )
         })
