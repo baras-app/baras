@@ -54,24 +54,28 @@ trigger = { type = "any_of", conditions = [
 [[boss.phase]]
 id = "burn"
 name = "Bestia and Monsters"
-trigger = { type = "boss_hp_below", hp_percent = 50.0, npc_id = 3273941900591104 }
+trigger = { type = "boss_hp_below", hp_percent = 50.0, selector = [3273941900591104] }
 
 # ─── Counters ──────────────────────────────────────────────────────────────
 
 [[boss.counter]]
 id = "larva_spawns"
+name = "Larva Spawns"
 increment_on = { type = "ability_cast", abilities = [3292079547482112] }
 
 [[boss.counter]]
 id = "monster_spawns"
+name = "Monster Spawns"
 increment_on = { type = "ability_cast", abilities = [3291675820556288] }
 
 [[boss.counter]]
 id = "monster_deaths"
-increment_on = { type = "entity_death", entity = "Dread Monster" }
+name = "Monster Deaths"
+increment_on = { type = "entity_death", selector = ["Dread Monster"] }
 
 [[boss.counter]]
 id = "dread_scream_casts"
+name = "Dread Scream Casts"
 increment_on = { type = "ability_cast", abilities = [3302391763959808] }
 
 # ─── Challenges ────────────────────────────────────────────────────────────
@@ -93,7 +97,7 @@ name = "Add Damage"
 description = "Total damage dealt to Dread Larva and Dread Monster adds"
 metric = "damage"
 conditions = [
-    { type = "target", match = { npc_ids = [3292079547482112, 3291675820556288] } }
+    { type = "target", match = { selector = [3292079547482112, 3291675820556288] } }
 ]
 
 # Track damage during burn phase

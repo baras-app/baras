@@ -16,10 +16,10 @@ difficulties = ["story", "veteran"]
 [[boss.entities]]
 name = "Malaphar the Savage"
 ids = [
-    3469281308180480,  # Story 16
-    3431245077807104,  # Story 8
-    3469285603147776,  # Veteran 16
-    3469277013213184,  # Veteran 8
+  3469281308180480, # Story 16
+  3431245077807104, # Story 8
+  3469285603147776, # Veteran 16
+  3469277013213184, # Veteran 8
 ]
 is_boss = true
 is_kill_target = true
@@ -95,17 +95,17 @@ difficulties = ["story", "veteran"]
 [[boss.entities]]
 name = "Sword Squadron Unit 1"
 ids = [
-    3468765912104960,  # Veteran 8
-    3468774502039552,  # Veteran 16
-    3468770207072256,  # Story 16
-    3447784996864000,  # Story 8
+  3468765912104960, # Veteran 8
+  3468774502039552, # Veteran 16
+  3468770207072256, # Story 16
+  3447784996864000, # Story 8
 ]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Sword Squadron Unit 2"
-ids = [3447789291831296]  # All difficulties
+ids = [3447789291831296]       # All difficulties
 is_boss = true
 is_kill_target = true
 
@@ -127,7 +127,7 @@ difficulties = ["veteran"]
 id = "ss_gravity_cs"
 name = "Gravity"
 trigger = { type = "combat_start" }
-duration_secs = 40.0  # ORBS: 40s
+duration_secs = 40.0                # ORBS: 40s
 color = [36, 214, 210, 255]
 difficulties = ["veteran"]
 
@@ -138,10 +138,12 @@ difficulties = ["veteran"]
 id = "ss_shield"
 name = "Shield"
 trigger = { type = "any_of", conditions = [
-    { type = "ability_cast", abilities = [3498933762392064] },
-    { type = "timer_expires", timer_id = "ss_shield_cs" },
-    { type = "timer_expires", timer_id = "ss_shield" },
-]}
+  { type = "ability_cast", abilities = [
+    3498933762392064,
+  ] },
+  { type = "timer_expires", timer_id = "ss_shield_cs" },
+  { type = "timer_expires", timer_id = "ss_shield" },
+] }
 duration_secs = 60.0
 color = [29, 39, 224, 255]
 difficulties = ["veteran"]
@@ -199,10 +201,10 @@ difficulties = ["story", "veteran"]
 [[boss.entities]]
 name = "The Underlurker"
 ids = [
-    3411402328899584,  # Story 8
-    3462267626586112,  # Story 16
-    3462263331618816,  # Veteran 8
-    3462271921553408,  # Veteran 16
+  3411402328899584, # Story 8
+  3462267626586112, # Story 16
+  3462263331618816, # Veteran 8
+  3462271921553408, # Veteran 16
 ]
 is_boss = true
 is_kill_target = true
@@ -225,7 +227,9 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "ul_rage_storm"
 name = "Rage Storm"
-trigger = { type = "ability_cast", abilities = [3411423803736064] }  # Collapse → Rage Storm coming
+trigger = { type = "ability_cast", abilities = [
+  3411423803736064,
+] } # Collapse → Rage Storm coming
 duration_secs = 10.5
 color = [224, 35, 33, 255]
 difficulties = ["veteran"]
@@ -233,7 +237,9 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "ul_leap"
 name = "Leap"
-trigger = { type = "ability_cast", abilities = [3411569832624128] }  # Rage Storm → Leap coming
+trigger = { type = "ability_cast", abilities = [
+  3411569832624128,
+] } # Rage Storm → Leap coming
 duration_secs = 9
 color = [180, 184, 23, 255]
 difficulties = ["veteran"]
@@ -251,7 +257,9 @@ difficulties = ["veteran"]
 id = "ul_adds_hp"
 name = "Adds"
 is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 90.0, selector = ["The Underlurker"] }
+trigger = { type = "boss_hp_below", hp_percent = 90.0, selector = [
+  "The Underlurker",
+] }
 alert_text = "Adds Spawn"
 color = [24, 173, 19, 255]
 difficulties = ["veteran"]
@@ -263,12 +271,6 @@ difficulties = ["veteran"]
 id = "revanite_commanders"
 name = "Revanite Commanders"
 difficulties = ["veteran"]
-
-[[boss.phases]]
-id = "three_musketeers_p1"
-name = "Main"
-trigger = { type = "combat_start" }
-
 # its a faceroll do you really need timers ??
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -288,7 +290,7 @@ difficulties = ["story", "veteran"]
 name = "Revan"
 ids = [3431605855059968]
 is_boss = true
-is_kill_target = false  # Core is the actual kill target
+is_kill_target = false   # Core is the actual kill target
 
 [[boss.entities]]
 name = "HK-47"
