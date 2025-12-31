@@ -538,37 +538,6 @@ fn TimerEditForm(
                                         draft.set(d);
                                     }
                                 }
-                                // Source/Target filters for cancel trigger
-                                if trigger_supports_source(&cancel) || trigger_supports_target(&cancel) {
-                                    div { class: "flex gap-md",
-                                        if trigger_supports_source(&cancel) {
-                                            div { class: "flex items-center gap-xs",
-                                                span { class: "text-sm text-secondary", "Source" }
-                                                EntityFilterSelector {
-                                                    value: draft().cancel_source.clone(),
-                                                    on_change: move |f| {
-                                                        let mut d = draft();
-                                                        d.cancel_source = f;
-                                                        draft.set(d);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        if trigger_supports_target(&cancel) {
-                                            div { class: "flex items-center gap-xs",
-                                                span { class: "text-sm text-secondary", "Target" }
-                                                EntityFilterSelector {
-                                                    value: draft().cancel_target.clone(),
-                                                    on_change: move |f| {
-                                                        let mut d = draft();
-                                                        d.cancel_target = f;
-                                                        draft.set(d);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
                                 button {
                                     class: "btn btn-sm",
                                     style: "width: fit-content;",
@@ -1058,8 +1027,6 @@ fn NewTimerForm(
                             target: EntityFilter::Any,
                             counter_condition: None,
                             cancel_trigger: None,
-                            cancel_source: EntityFilter::Any,
-                            cancel_target: EntityFilter::Any,
                             can_be_refreshed: false,
                             repeats: 0,
                             chains_to: None,

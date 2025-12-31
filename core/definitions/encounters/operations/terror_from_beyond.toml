@@ -731,7 +731,7 @@ ids = [
   2938891501830144,
 ]
 is_boss = true
-triggers_encounter = true
+triggers_encounter = false
 
 [[boss.entities]]
 name = "Hypergate Anomaly"

@@ -61,8 +61,6 @@ pub struct TimerListItem {
 
     // Cancel trigger
     pub cancel_trigger: Option<TimerTrigger>,
-    pub cancel_source: EntityFilter,
-    pub cancel_target: EntityFilter,
 
     // Behavior
     pub can_be_refreshed: bool,
@@ -135,8 +133,6 @@ impl TimerListItem {
             alert_text: timer.alert_text.clone(),
 
             cancel_trigger: timer.cancel_trigger.clone(),
-            cancel_source: timer.cancel_source.clone(),
-            cancel_target: timer.cancel_target.clone(),
 
             can_be_refreshed: timer.can_be_refreshed,
             repeats: timer.repeats,
@@ -176,8 +172,6 @@ impl TimerListItem {
             repeats: self.repeats,
             chains_to: self.chains_to.clone(),
             cancel_trigger: self.cancel_trigger.clone(),
-            cancel_source: self.cancel_source.clone(),
-            cancel_target: self.cancel_target.clone(),
             alert_at_secs: self.alert_at_secs,
             show_on_raid_frames: self.show_on_raid_frames,
             show_at_secs: self.show_at_secs,
@@ -644,8 +638,6 @@ pub async fn create_encounter_timer(
         repeats: timer.repeats,
         chains_to: timer.chains_to.clone(),
         cancel_trigger: None,
-        cancel_source: timer.cancel_source.clone(),
-        cancel_target: timer.cancel_target.clone(),
         alert_at_secs: timer.alert_at_secs,
         show_on_raid_frames: timer.show_on_raid_frames,
         show_at_secs: timer.show_at_secs,

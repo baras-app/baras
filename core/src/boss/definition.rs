@@ -268,14 +268,6 @@ pub struct BossTimerDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cancel_trigger: Option<crate::timers::TimerTrigger>,
 
-    /// Source filter for cancel trigger events
-    #[serde(default = "crate::serde_defaults::default_entity_filter_any")]
-    pub cancel_source: crate::entity_filter::EntityFilter,
-
-    /// Target filter for cancel trigger events
-    #[serde(default = "crate::serde_defaults::default_entity_filter_any")]
-    pub cancel_target: crate::entity_filter::EntityFilter,
-
     /// Alert when this many seconds remain
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alert_at_secs: Option<f32>,

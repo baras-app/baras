@@ -229,8 +229,6 @@ pub struct TimerListItem {
 
     // Cancel trigger
     pub cancel_trigger: Option<TimerTrigger>,
-    pub cancel_source: EntityFilter,
-    pub cancel_target: EntityFilter,
 
     // Behavior
     pub can_be_refreshed: bool,
