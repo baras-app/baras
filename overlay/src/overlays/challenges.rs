@@ -245,9 +245,15 @@ impl ChallengeOverlay {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 impl Overlay for ChallengeOverlay {
-    fn update_data(&mut self, data: OverlayData) {
+    fn update_data(&mut self, data: OverlayData) -> bool {
         if let OverlayData::Challenges(challenge_data) = data {
+            // Skip render if both old and new have no challenges
+            let old_empty = self.data.entries.is_empty();
+            let new_empty = challenge_data.entries.is_empty();
             self.set_data(challenge_data);
+            !(old_empty && new_empty)
+        } else {
+            false
         }
     }
 

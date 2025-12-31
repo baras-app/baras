@@ -112,9 +112,12 @@ pub struct OverlayPosition {
 pub trait Overlay: 'static {
     /// Update the overlay with new data
     ///
+    /// Returns `true` if the data changed meaningfully and a re-render is needed.
+    /// Returns `false` if the data is unchanged (e.g., empty -> empty).
+    ///
     /// Implementations should check if the data variant matches their type
-    /// and update accordingly. Mismatched variants are silently ignored.
-    fn update_data(&mut self, data: OverlayData);
+    /// and update accordingly. Mismatched variants return `false`.
+    fn update_data(&mut self, data: OverlayData) -> bool;
 
     /// Update the overlay configuration/appearance
     ///

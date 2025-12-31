@@ -382,7 +382,6 @@ impl TimerManager {
     pub(super) fn start_timer(&mut self, def: &TimerDefinition, timestamp: NaiveDateTime, target_id: Option<i64>) {
         // Alerts are ephemeral notifications, not countdown timers
         if def.is_alert {
-            eprintln!("[ALERT] Fired: {} - {} (audio_enabled={})", def.name, def.alert_text.as_deref().unwrap_or(&def.name), def.audio.enabled);
             self.fired_alerts.push(FiredAlert {
                 id: def.id.clone(),
                 name: def.name.clone(),
@@ -425,7 +424,6 @@ impl TimerManager {
         );
 
         self.active_timers.insert(key.clone(), timer);
-        eprintln!("[TIMER] Added to active_timers: {} (key={:?}, total={})", def.name, key, self.active_timers.len());
 
         // Cancel any timers that have cancel_on_timer pointing to this timer
         self.cancel_timers_on_start(&def.id);
@@ -449,14 +447,12 @@ impl TimerManager {
 
         // Remove cancelled timers
         for key in keys_to_cancel {
-            if let Some(timer) = self.active_timers.remove(&key) {
-                eprintln!("[TIMER] Cancelled '{}' because '{}' started", timer.name, started_timer_id);
-            }
+            self.active_timers.remove(&key);
         }
     }
 
     /// Cancel active timers whose cancel_trigger matches the given predicate
-    pub(super) fn cancel_timers_matching<F>(&mut self, trigger_matches: F, reason: &str)
+    pub(super) fn cancel_timers_matching<F>(&mut self, trigger_matches: F, _reason: &str)
     where
         F: Fn(&TimerTrigger) -> bool,
     {
@@ -474,9 +470,7 @@ impl TimerManager {
             .collect();
 
         for key in keys_to_cancel {
-            if let Some(timer) = self.active_timers.remove(&key) {
-                eprintln!("[TIMER] Cancelled '{}' ({})", timer.name, reason);
-            }
+            self.active_timers.remove(&key);
         }
     }
 
@@ -503,13 +497,11 @@ impl TimerManager {
                 && timer.can_repeat()
             {
                 timer.repeat(current_time);
-                eprintln!("[TIMER] Repeated '{}' ({}/{})", timer.name, timer.repeat_count, timer.max_repeats);
             } else if let Some(timer) = self.active_timers.remove(&key) {
                 // Timer exhausted repeats - fire expiration alert if audio is configured
                 // Only fire on expiration if audio_offset == 0 (otherwise it already played at offset)
                 // Skip if audio_enabled == false
                 if timer.audio_enabled && timer.audio_file.is_some() && timer.audio_offset == 0 {
-                    eprintln!("[TIMER] Expired with audio: {} -> {:?}", timer.name, timer.audio_file);
                     self.fired_alerts.push(FiredAlert {
                         id: timer.definition_id.clone(),
                         name: timer.name.clone(),
@@ -593,7 +585,6 @@ impl SignalHandler for TimerManager {
                 } else {
                     Difficulty::from_game_string(difficulty_name)
                 };
-                eprintln!("[TIMER] Area entered: {} (id: {}, difficulty: {:?})", area_name, area_id, self.context.difficulty);
                 return;
             }
             _ => {}
@@ -701,7 +692,6 @@ impl SignalHandler for TimerManager {
             GameSignal::NpcFirstSeen { entity_id, npc_id, entity_name, timestamp, .. } => {
                 // Track boss entities for multi-boss fights (e.g., Zorn & Toth)
                 if self.boss_npc_class_ids.contains(npc_id) && !self.boss_entity_ids.contains(entity_id) {
-                    eprintln!("[TIMER] Adding boss entity {} (npc_id: {}) to boss_entity_ids", entity_name, npc_id);
                     self.boss_entity_ids.insert(*entity_id);
                 }
                 signal_handlers::handle_npc_first_seen(self, *npc_id, entity_name, *timestamp);
@@ -761,8 +751,7 @@ impl SignalHandler for TimerManager {
             }
 
             // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────
-            GameSignal::BossEncounterDetected { boss_name, entity_id, npc_id, timestamp, .. } => {
-                eprintln!("[TIMER] Boss encounter detected: {} (entity_id: {}, npc_id: {})", boss_name, entity_id, npc_id);
+            GameSignal::BossEncounterDetected { boss_name, entity_id, timestamp, .. } => {
                 self.context.boss_name = Some(boss_name.clone());
 
                 // Track boss entity ID for source/target "boss" filter
@@ -777,7 +766,6 @@ impl SignalHandler for TimerManager {
                             for boss_class_id in def.boss_npc_ids() {
                                 self.boss_npc_class_ids.insert(boss_class_id);
                             }
-                            eprintln!("[TIMER] Tracking {} boss NPC class IDs for multi-boss detection", self.boss_npc_class_ids.len());
                         }
                     }
                 }
@@ -808,11 +796,8 @@ impl SignalHandler for TimerManager {
             GameSignal::PhaseChanged { old_phase, new_phase, timestamp, .. } => {
                 // Handle the old phase ending first (if any)
                 if let Some(ended_phase) = old_phase {
-                    eprintln!("[TIMER] Phase ended: {}", ended_phase);
                     signal_handlers::handle_phase_ended(self, ended_phase, *timestamp);
                 }
-
-                eprintln!("[TIMER] Phase changed to: {}", new_phase);
                 self.current_phase = Some(new_phase.clone());
                 // Trigger phase-entered timers
                 signal_handlers::handle_phase_change(self, new_phase, *timestamp);

@@ -177,9 +177,12 @@ impl BossHealthOverlay {
 // ─────────────────────────────────────────────────────────────────────────────
 
 impl Overlay for BossHealthOverlay {
-    fn update_data(&mut self, data: OverlayData) {
+    fn update_data(&mut self, data: OverlayData) -> bool {
         if let OverlayData::BossHealth(boss_data) = data {
             self.set_data(boss_data);
+            true // Boss health always renders when updated (only sent during combat)
+        } else {
+            false
         }
     }
 

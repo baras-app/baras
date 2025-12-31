@@ -704,36 +704,60 @@ impl CombatService {
         });
 
         // Spawn effects + boss health + audio sampling task (polls continuously)
-        // Checks overlay status flags and combat state to skip unnecessary work
+        // Uses adaptive sleep: fast when active, slow (500ms) when idle
         let shared = self.shared.clone();
         let overlay_tx = self.overlay_tx.clone();
         let audio_tx = self.audio_tx.clone();
         let effects_handle = tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+            // Track previous state to avoid redundant updates
+            let mut last_raid_effect_count: usize = 0;
+            let mut last_effects_count: usize = 0;
 
-                // Check which overlays are active to skip unnecessary work
+            loop {
+                // Check which overlays are active to determine sleep interval
                 let raid_active = shared.raid_overlay_active.load(Ordering::Relaxed);
                 let boss_active = shared.boss_health_overlay_active.load(Ordering::Relaxed);
                 let timer_active = shared.timer_overlay_active.load(Ordering::Relaxed);
                 let effects_active = shared.effects_overlay_active.load(Ordering::Relaxed);
                 let in_combat = shared.in_combat.load(Ordering::Relaxed);
+                let is_live = shared.is_live_tailing.load(Ordering::SeqCst);
 
-                // Skip entire iteration if no relevant overlays are running
-                if !raid_active && !boss_active && !timer_active && !effects_active {
+                // Determine if any work needs to be done
+                let any_overlay_active = raid_active || boss_active || timer_active || effects_active;
+                let needs_audio = is_live && (in_combat || raid_active || effects_active);
+
+                // Adaptive sleep: fast when active, slow when idle
+                // 100ms = 10 updates/sec for smooth countdowns (visual-change detection skips redundant renders)
+                let sleep_ms = if any_overlay_active || needs_audio { 100 } else { 500 };
+                tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
+
+                // Skip processing if nothing needs updating
+                if !any_overlay_active && !needs_audio {
                     continue;
                 }
 
-                // Raid frames: always poll when active (HOTs can tick outside combat)
-                if raid_active &&
-                    let Some(data) = build_raid_frame_data(&shared).await {
-                        let _ = overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data));
+                // Raid frames: only send if there are effects or effects just cleared
+                if raid_active {
+                    if let Some(data) = build_raid_frame_data(&shared).await {
+                        let effect_count: usize = data.frames.iter().map(|f| f.effects.len()).sum();
+                        // Only send if effects exist, or if we need to clear (was non-zero, now zero)
+                        if effect_count > 0 || last_raid_effect_count > 0 {
+                            let _ = overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data));
+                        }
+                        last_raid_effect_count = effect_count;
+                    }
                 }
 
-                // Effects countdown: always poll when active (effects can tick outside combat)
-                if effects_active
-                    && let Some(data) = build_effects_overlay_data(&shared).await {
-                        let _ = overlay_tx.try_send(OverlayUpdate::EffectsOverlayUpdated(data));
+                // Effects countdown: only send if there are effects or effects just cleared
+                if effects_active {
+                    if let Some(data) = build_effects_overlay_data(&shared).await {
+                        let effect_count = data.entries.len();
+                        // Only send if effects exist, or if we need to clear (was non-zero, now zero)
+                        if effect_count > 0 || last_effects_count > 0 {
+                            let _ = overlay_tx.try_send(OverlayUpdate::EffectsOverlayUpdated(data));
+                        }
+                        last_effects_count = effect_count;
+                    }
                 }
 
                 // Effect audio: process in live mode

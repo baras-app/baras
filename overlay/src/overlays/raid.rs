@@ -1078,9 +1078,16 @@ impl RaidOverlay {
 // ─────────────────────────────────────────────────────────────────────────────
 
 impl Overlay for RaidOverlay {
-    fn update_data(&mut self, data: OverlayData) {
+    fn update_data(&mut self, data: OverlayData) -> bool {
         if let OverlayData::Raid(raid_data) = data {
+            // Skip render if both old and new have no players with effects
+            let old_has_effects = self.frames.iter().any(|f| !f.effects.is_empty());
+            let new_has_effects = raid_data.frames.iter().any(|f| !f.effects.is_empty());
+            let skip_render = !old_has_effects && !new_has_effects && self.frames.len() == raid_data.frames.len();
             self.set_frames(raid_data.frames);
+            !skip_render
+        } else {
+            false
         }
     }
 

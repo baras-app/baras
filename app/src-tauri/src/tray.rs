@@ -89,10 +89,8 @@ async fn toggle_all_overlays(
 
     // OverlayManager::hide_all and show_all already update the config visibility
     if currently_visible {
-        if let Err(e) = OverlayManager::hide_all(&overlay_state, &service_handle).await {
-            eprintln!("[TRAY] Failed to hide overlays: {}", e);
-        }
-    } else if let Err(e) = OverlayManager::show_all(&overlay_state, &service_handle).await {
-            eprintln!("[TRAY] Failed to show overlays: {}", e);
+        let _ = OverlayManager::hide_all(&overlay_state, &service_handle).await;
+    } else {
+        let _ = OverlayManager::show_all(&overlay_state, &service_handle).await;
     }
 }

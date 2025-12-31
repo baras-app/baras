@@ -134,18 +134,14 @@ impl EffectsOverlay {
         // Begin frame (clear, background, border)
         self.frame.begin_frame();
 
-        // Sort and limit entries
-        let mut entries = self.data.entries.clone();
-
+        // Sort entries in place if needed
         if self.config.sort_by_remaining {
-            entries.sort_by(|a, b| a.remaining_secs.partial_cmp(&b.remaining_secs).unwrap());
+            self.data.entries.sort_by(|a, b| a.remaining_secs.partial_cmp(&b.remaining_secs).unwrap());
         }
 
-        // Limit to max display
-        entries.truncate(self.config.max_display as usize);
-
         // Nothing to render if no effects
-        if entries.is_empty() {
+        let max_display = self.config.max_display as usize;
+        if self.data.entries.is_empty() {
             self.frame.end_frame();
             return;
         }
@@ -155,7 +151,7 @@ impl EffectsOverlay {
 
         let mut y = padding;
 
-        for entry in &entries {
+        for entry in self.data.entries.iter().take(max_display) {
             let bar_color = color_from_rgba(entry.color);
             let time_text = entry.format_time();
 
@@ -188,9 +184,16 @@ impl EffectsOverlay {
 // ─────────────────────────────────────────────────────────────────────────────
 
 impl Overlay for EffectsOverlay {
-    fn update_data(&mut self, data: OverlayData) {
+    fn update_data(&mut self, data: OverlayData) -> bool {
         if let OverlayData::Effects(effects_data) = data {
+            // Skip render only when transitioning empty → empty
+            // Active effects need every frame for smooth bar animation
+            let was_empty = self.data.entries.is_empty();
+            let is_empty = effects_data.entries.is_empty();
             self.set_data(effects_data);
+            !(was_empty && is_empty)
+        } else {
+            false
         }
     }
 

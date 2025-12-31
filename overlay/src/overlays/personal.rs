@@ -172,9 +172,12 @@ impl PersonalOverlay {
 // ─────────────────────────────────────────────────────────────────────────────
 
 impl Overlay for PersonalOverlay {
-    fn update_data(&mut self, data: OverlayData) {
+    fn update_data(&mut self, data: OverlayData) -> bool {
         if let OverlayData::Personal(stats) = data {
             self.set_stats(stats);
+            true // Personal stats always render when updated
+        } else {
+            false
         }
     }
 

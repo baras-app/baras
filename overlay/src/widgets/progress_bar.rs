@@ -71,34 +71,42 @@ impl ProgressBar {
     }
 
     /// Truncate label to fit within max_width, adding "..." if truncated
+    /// Uses estimation + single verification instead of binary search to reduce measure_text calls
     fn truncate_label_to_width(&self, frame: &mut OverlayFrame, max_width: f32, font_size: f32) -> String {
         let (label_width, _) = frame.measure_text(&self.label, font_size);
         if label_width <= max_width {
             return self.label.clone();
         }
 
-        // Binary search for the right truncation point
         let chars: Vec<char> = self.label.chars().collect();
-        let mut low = 0;
-        let mut high = chars.len();
-
-        while low < high {
-            let mid = (low + high).div_ceil(2);
-            let truncated: String = chars[..mid].iter().collect();
-            let test = format!("{}...", truncated);
-            let (test_width, _) = frame.measure_text(&test, font_size);
-            if test_width <= max_width {
-                low = mid;
-            } else {
-                high = mid - 1;
-            }
+        if chars.is_empty() {
+            return "...".to_string();
         }
 
-        if low == 0 {
-            "...".to_string()
-        } else {
-            let truncated: String = chars[..low].iter().collect();
-            format!("{}...", truncated)
+        // Estimate: assume roughly uniform character width
+        // Calculate how many chars would fit based on ratio
+        let (ellipsis_width, _) = frame.measure_text("...", font_size);
+        let available_width = max_width - ellipsis_width;
+
+        if available_width <= 0.0 {
+            return "...".to_string();
+        }
+
+        // Estimate characters that fit (slightly conservative)
+        let avg_char_width = label_width / chars.len() as f32;
+        let estimated_fit = ((available_width / avg_char_width) * 0.9) as usize;
+        let mut fit_count = estimated_fit.min(chars.len()).max(1);
+
+        // Single verification pass - if too wide, back off linearly
+        loop {
+            let truncated: String = chars[..fit_count].iter().collect();
+            let test = format!("{}...", truncated);
+            let (test_width, _) = frame.measure_text(&test, font_size);
+
+            if test_width <= max_width || fit_count <= 1 {
+                return test;
+            }
+            fit_count -= 1;
         }
     }
 

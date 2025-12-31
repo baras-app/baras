@@ -26,47 +26,23 @@ pub(super) fn handle_ability(
     target_npc_id: i64,
     timestamp: NaiveDateTime,
 ) {
-    // Convert i64 to u64 for matching (game IDs are always positive)
     let ability_id = ability_id as u64;
     let ability_name_str = crate::context::resolve(ability_name);
-
-    // Debug: log all ability activations to verify signal flow
-    eprintln!("[TIMER DEBUG] Ability activated: {} (id: {})", ability_name_str, ability_id);
-
-    // Debug: show which timers have AbilityCast triggers
-    for d in manager.definitions.values() {
-        if d.matches_ability_with_name(ability_id, Some(&ability_name_str)) {
-            eprintln!("[TIMER DEBUG] Timer '{}' matches ability! Checking context...", d.name);
-            let is_active = manager.is_definition_active(d);
-            let matches_filters = manager.matches_source_target_filters(
-                d, source_id, source_type, source_name, source_npc_id,
-                target_id, target_type, target_name, target_npc_id,
-            );
-            eprintln!("[TIMER DEBUG]   is_active={}, matches_filters={}", is_active, matches_filters);
-        }
-    }
 
     let matching: Vec<_> = manager.definitions
         .values()
         .filter(|d| {
-            let matches_ability = d.matches_ability_with_name(ability_id, Some(&ability_name_str));
-            let is_active = manager.is_definition_active(d);
-            let matches_filters = manager.matches_source_target_filters(
-                d, source_id, source_type, source_name, source_npc_id,
-                target_id, target_type, target_name, target_npc_id,
-            );
-            if matches_ability && !is_active {
-                let diff_str = manager.context.difficulty.map(|d| d.config_key()).unwrap_or("none");
-                eprintln!("[TIMER] Ability {} ({}) matches timer '{}' but context filter failed (enc={:?}, boss={:?}, diff={})",
-                    ability_id, ability_name_str, d.name, manager.context.encounter_name, manager.context.boss_name, diff_str);
-            }
-            matches_ability && is_active && matches_filters
+            d.matches_ability_with_name(ability_id, Some(&ability_name_str))
+                && manager.is_definition_active(d)
+                && manager.matches_source_target_filters(
+                    d, source_id, source_type, source_name, source_npc_id,
+                    target_id, target_type, target_name, target_npc_id,
+                )
         })
         .cloned()
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting timer '{}' (ability {} / {})", def.name, ability_id, ability_name_str);
         manager.start_timer(&def, timestamp, Some(target_id));
     }
 
@@ -183,14 +159,6 @@ pub(super) fn handle_boss_hp_change(
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting HP threshold timer '{}' (HP crossed below {}% for {})",
-            def.name,
-            match &def.trigger {
-                TimerTrigger::BossHpBelow { hp_percent, .. } => *hp_percent,
-                _ => 0.0,
-            },
-            npc_name
-        );
         manager.start_timer(&def, timestamp, None);
     }
 
@@ -213,7 +181,6 @@ pub(super) fn handle_phase_change(manager: &mut TimerManager, phase_id: &str, ti
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting phase-triggered timer '{}' (phase: {})", def.name, phase_id);
         manager.start_timer(&def, timestamp, None);
     }
 
@@ -234,7 +201,6 @@ pub(super) fn handle_phase_ended(manager: &mut TimerManager, phase_id: &str, tim
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting phase-ended timer '{}' (phase {} ended)", def.name, phase_id);
         manager.start_timer(&def, timestamp, None);
     }
 
@@ -261,8 +227,6 @@ pub(super) fn handle_counter_change(
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting counter-triggered timer '{}' (counter {} reached {})",
-            def.name, counter_id, new_value);
         manager.start_timer(&def, timestamp, None);
     }
 
@@ -279,24 +243,11 @@ pub(super) fn handle_counter_change(
 pub(super) fn handle_npc_first_seen(manager: &mut TimerManager, npc_id: i64, npc_name: &str, timestamp: NaiveDateTime) {
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| {
-            let matches = d.matches_npc_appears(npc_id, Some(npc_name));
-            if matches {
-                let is_active = manager.is_definition_active(d);
-                if !is_active {
-                    let diff_str = manager.context.difficulty.map(|x| x.config_key()).unwrap_or("none");
-                    eprintln!("[TIMER] NPC {} matches timer '{}' but context filter failed (enc={:?}, boss={:?}, diff={}, timer_diffs={:?})",
-                        npc_name, d.id, manager.context.encounter_name, manager.context.boss_name, diff_str, d.difficulties);
-                }
-                return is_active;
-            }
-            false
-        })
+        .filter(|d| d.matches_npc_appears(npc_id, Some(npc_name)) && manager.is_definition_active(d))
         .cloned()
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting npc-appears timer '{}' (NPC {} appeared)", def.name, npc_name);
         manager.start_timer(&def, timestamp, None);
     }
 
@@ -318,7 +269,6 @@ pub(super) fn handle_entity_death(manager: &mut TimerManager, npc_id: i64, entit
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting death-triggered timer '{}' ({} died)", def.name, entity_name);
         manager.start_timer(&def, timestamp, None);
     }
 
@@ -343,22 +293,10 @@ pub(super) fn handle_target_set(
     timestamp: NaiveDateTime,
 ) {
     let source_name_str = crate::context::resolve(source_name);
-    let target_name_str = crate::context::resolve(target_name);
-
-    eprintln!("[TIMER DEBUG] TargetSet: {} (entity_id: {}, npc_id: {}) → {} (entity_id: {})",
-        source_name_str, source_entity_id, source_npc_id, target_name_str, target_id);
 
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| {
-            let matches_trigger = d.matches_target_set(source_npc_id, Some(&source_name_str));
-            if matches_trigger {
-                let is_active = manager.is_definition_active(d);
-                eprintln!("[TIMER DEBUG]   Timer '{}' matches trigger, is_active={}", d.name, is_active);
-                return is_active;
-            }
-            false
-        })
+        .filter(|d| d.matches_target_set(source_npc_id, Some(&source_name_str)) && manager.is_definition_active(d))
         .cloned()
         .collect();
 
@@ -372,7 +310,6 @@ pub(super) fn handle_target_set(
         if !def.target.matches(target_id, target_entity_type, target_name, 0, manager.local_player_id, &manager.boss_entity_ids) {
             continue;
         }
-        eprintln!("[TIMER] Starting target-set timer '{}' (targeted by {} [{}])", def.name, source_name_str, source_npc_id);
         manager.start_timer(&def, timestamp, None);
     }
 
@@ -416,7 +353,6 @@ pub(super) fn handle_damage_taken(
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting damage-taken timer '{}' (ability {} / {})", def.name, ability_id, ability_name_str);
         manager.start_timer(&def, timestamp, Some(target_id));
     }
 
@@ -448,7 +384,6 @@ pub(super) fn handle_time_elapsed(manager: &mut TimerManager, timestamp: NaiveDa
         .collect();
 
     for def in matching {
-        eprintln!("[TIMER] Starting time-triggered timer '{}' ({:.1}s into combat)", def.name, new_combat_secs);
         manager.start_timer(&def, timestamp, None);
     }
 
@@ -467,26 +402,12 @@ pub(super) fn handle_combat_start(manager: &mut TimerManager, timestamp: NaiveDa
     manager.combat_start_time = Some(timestamp);
     manager.last_combat_secs = 0.0;
 
-    // Debug: show current context
-    eprintln!("[TIMER] combat_start context: area_id={:?}, enc={:?}, boss={:?}, diff={:?}",
-        manager.context.area_id, manager.context.encounter_name,
-        manager.context.boss_name, manager.context.difficulty);
-
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| {
-            let has_trigger = d.triggers_on_combat_start();
-            let is_active = manager.is_definition_active(d);
-            if has_trigger && !is_active {
-                eprintln!("[TIMER] combat_start timer '{}' skipped - context mismatch (area_ids={:?}, boss={:?}, diffs={:?})",
-                    d.id, d.area_ids, d.boss, d.difficulties);
-            }
-            has_trigger && is_active
-        })
+        .filter(|d| d.triggers_on_combat_start() && manager.is_definition_active(d))
         .cloned()
         .collect();
 
-    eprintln!("[TIMER] combat_start matched {} timers", matching.len());
     for def in matching {
         manager.start_timer(&def, timestamp, None);
     }

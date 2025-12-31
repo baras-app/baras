@@ -289,9 +289,12 @@ impl MetricOverlay {
 // ─────────────────────────────────────────────────────────────────────────────
 
 impl Overlay for MetricOverlay {
-    fn update_data(&mut self, data: OverlayData) {
+    fn update_data(&mut self, data: OverlayData) -> bool {
         if let OverlayData::Metrics(entries) = data {
             self.set_entries(entries);
+            true // Metric overlays always render when updated
+        } else {
+            false
         }
     }
 

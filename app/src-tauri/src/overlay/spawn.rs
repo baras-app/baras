@@ -86,8 +86,9 @@ where
                         needs_render = true;
                     }
                     OverlayCommand::UpdateData(data) => {
-                        overlay.update_data(data);
-                        needs_render = true;
+                        if overlay.update_data(data) {
+                            needs_render = true;
+                        }
                     }
                     OverlayCommand::UpdateConfig(config) => {
                         overlay.update_config(config);
@@ -155,7 +156,9 @@ where
             }
 
             // Sleep longer when locked (no interaction), shorter when interactive
-            let sleep_ms = if is_interactive { 16 } else { 50 };
+            // 100ms = 10 polls/sec when locked (smooth countdowns, visual-change detection skips redundant renders)
+            // 16ms = 60 FPS when interactive (for responsive dragging)
+            let sleep_ms = if is_interactive { 16 } else { 100 };
             thread::sleep(std::time::Duration::from_millis(sleep_ms));
         }
     });

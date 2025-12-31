@@ -3,18 +3,41 @@
 //! This provides cross-platform 2D rendering for overlay content.
 //! All rendering is done on the CPU and produces an RGBA pixel buffer.
 #![allow(clippy::too_many_arguments)]
+use std::collections::HashMap;
+
 use cosmic_text::{
-    Attrs, Buffer, Color as CosmicColor, Family, FontSystem, Metrics, Shaping, SwashCache,
+    Attrs, Buffer, Color as CosmicColor, Family, FontSystem, LayoutGlyph, Metrics, Shaping, SwashCache,
 };
 use tiny_skia::{
     Color, FillRule, LineCap, LineJoin, Paint, PathBuilder, PixmapMut, Rect, Stroke, StrokeDash,
     Transform,
 };
 
+/// Maximum entries in the text shaping cache (LRU eviction when exceeded)
+const TEXT_CACHE_MAX_ENTRIES: usize = 512;
+
+/// Cached result of text shaping
+struct CachedText {
+    /// Pre-shaped glyphs ready for rendering
+    glyphs: Vec<LayoutGlyph>,
+    width: f32,
+    height: f32,
+    /// LRU tracking: incremented on each access
+    last_used: u64,
+}
+
+/// Key for text cache: (text content, font size rounded to tenths)
+type TextCacheKey = (String, u32);
+
+
 /// A software renderer for overlay content
 pub struct Renderer {
     font_system: FontSystem,
     swash_cache: SwashCache,
+    /// Cache of shaped text to avoid re-shaping every frame
+    text_cache: HashMap<TextCacheKey, CachedText>,
+    /// Counter for LRU tracking
+    cache_access_counter: u64,
 }
 
 impl Renderer {
@@ -23,7 +46,95 @@ impl Renderer {
         Self {
             font_system: FontSystem::new(),
             swash_cache: SwashCache::new(),
+            text_cache: HashMap::with_capacity(256),
+            cache_access_counter: 0,
         }
+    }
+
+    /// Evict least recently used entries if cache is too large
+    fn evict_lru_if_needed(&mut self) {
+        if self.text_cache.len() <= TEXT_CACHE_MAX_ENTRIES {
+            return;
+        }
+
+        // Find the oldest entries to remove (remove ~25% of cache)
+        let target_size = TEXT_CACHE_MAX_ENTRIES * 3 / 4;
+        let mut entries: Vec<_> = self.text_cache.iter()
+            .map(|(k, v)| (k.clone(), v.last_used))
+            .collect();
+        entries.sort_by_key(|(_, last_used)| *last_used);
+
+        // Remove oldest entries
+        for (key, _) in entries.into_iter().take(self.text_cache.len() - target_size) {
+            self.text_cache.remove(&key);
+        }
+    }
+
+    /// Find cached entry by borrowed key (avoids String allocation on hit)
+    fn find_cached(&mut self, text: &str, font_size_key: u32) -> Option<&mut CachedText> {
+        // Linear search through cache - faster than allocation for small cache hits
+        // Most overlays have <20 unique text strings, so this is efficient
+        self.text_cache.iter_mut()
+            .find(|(k, _)| k.0 == text && k.1 == font_size_key)
+            .map(|(_, v)| v)
+    }
+
+    /// Ensure text is cached, shaping if needed. Returns (width, height).
+    fn ensure_cached(&mut self, text: &str, font_size: f32) -> (f32, f32) {
+        let font_size_key = (font_size * 10.0).round() as u32;
+
+        self.cache_access_counter += 1;
+        let current_access = self.cache_access_counter;
+
+        // Fast path: check cache without allocation
+        if let Some(cached) = self.find_cached(text, font_size_key) {
+            cached.last_used = current_access;
+            return (cached.width, cached.height);
+        }
+
+        // Cache miss - shape the text
+        let metrics = Metrics::new(font_size, font_size * 1.2);
+        let mut text_buffer = Buffer::new(&mut self.font_system, metrics);
+
+        let attrs = Attrs::new().family(Family::Name("Noto Sans"));
+        text_buffer.set_text(&mut self.font_system, text, &attrs, Shaping::Advanced, None);
+        text_buffer.shape_until_scroll(&mut self.font_system, false);
+
+        // Extract glyph data for caching
+        let mut glyphs = Vec::new();
+        let mut width = 0.0f32;
+        let mut height = 0.0f32;
+
+        for run in text_buffer.layout_runs() {
+            width = width.max(run.line_w);
+            height += run.line_height;
+
+            for glyph in run.glyphs.iter() {
+                glyphs.push(glyph.clone());
+            }
+        }
+
+        let cached = CachedText {
+            glyphs,
+            width,
+            height,
+            last_used: current_access,
+        };
+
+        // Store in cache (only allocate String here on miss)
+        let cache_key = (text.to_string(), font_size_key);
+        self.text_cache.insert(cache_key, cached);
+        self.evict_lru_if_needed();
+
+        (width, height)
+    }
+
+    /// Get cached glyphs for drawing. Must call ensure_cached first.
+    fn get_cached_glyphs(&mut self, text: &str, font_size: f32) -> Vec<LayoutGlyph> {
+        let font_size_key = (font_size * 10.0).round() as u32;
+        self.find_cached(text, font_size_key)
+            .map(|c| c.glyphs.clone())
+            .unwrap_or_default()
     }
 
     /// Create a new pixel buffer (RGBA format)
@@ -172,7 +283,7 @@ impl Renderer {
         pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
     }
 
-    /// Draw text at the specified position
+    /// Draw text at the specified position (uses shaping cache)
     pub fn draw_text(
         &mut self,
         buffer: &mut [u8],
@@ -188,12 +299,11 @@ impl Renderer {
             return;
         };
 
-        let metrics = Metrics::new(font_size, font_size * 1.2);
-        let mut text_buffer = Buffer::new(&mut self.font_system, metrics);
+        // Ensure text is cached (shapes if needed)
+        let _ = self.ensure_cached(text, font_size);
 
-        let attrs = Attrs::new().family(Family::Name("Noto Sans"));
-        text_buffer.set_text(&mut self.font_system, text, &attrs, Shaping::Advanced, None);
-        text_buffer.shape_until_scroll(&mut self.font_system, false);
+        // Get glyphs (still need clone due to borrow checker - swash_cache needs &mut self)
+        let glyphs = self.get_cached_glyphs(text, font_size);
 
         let text_color = CosmicColor::rgba(
             (color.red() * 255.0) as u8,
@@ -202,50 +312,33 @@ impl Renderer {
             (color.alpha() * 255.0) as u8,
         );
 
-        // Render each glyph
-        for run in text_buffer.layout_runs() {
-            for glyph in run.glyphs.iter() {
-                let physical_glyph = glyph.physical((x, y), 1.0);
+        // Render each cached glyph
+        for glyph in &glyphs {
+            let physical_glyph = glyph.physical((x, y), 1.0);
 
-                if let Some(image) = self
-                    .swash_cache
-                    .get_image(&mut self.font_system, physical_glyph.cache_key)
-                {
-                    let glyph_x = physical_glyph.x + image.placement.left;
-                    let glyph_y = physical_glyph.y - image.placement.top;
+            if let Some(image) = self
+                .swash_cache
+                .get_image(&mut self.font_system, physical_glyph.cache_key)
+            {
+                let glyph_x = physical_glyph.x + image.placement.left;
+                let glyph_y = physical_glyph.y - image.placement.top;
 
-                    draw_glyph_to_pixmap(
-                        &mut pixmap,
-                        &image.data,
-                        image.placement.width,
-                        image.placement.height,
-                        glyph_x,
-                        glyph_y,
-                        text_color,
-                    );
-                }
+                draw_glyph_to_pixmap(
+                    &mut pixmap,
+                    &image.data,
+                    image.placement.width,
+                    image.placement.height,
+                    glyph_x,
+                    glyph_y,
+                    text_color,
+                );
             }
         }
     }
 
-    /// Measure text dimensions
+    /// Measure text dimensions (uses shaping cache, no glyph clone)
     pub fn measure_text(&mut self, text: &str, font_size: f32) -> (f32, f32) {
-        let metrics = Metrics::new(font_size, font_size * 1.2);
-        let mut text_buffer = Buffer::new(&mut self.font_system, metrics);
-
-        let attrs = Attrs::new().family(Family::SansSerif);
-        text_buffer.set_text(&mut self.font_system, text, &attrs, Shaping::Advanced, None);
-        text_buffer.shape_until_scroll(&mut self.font_system, false);
-
-        let mut width = 0.0f32;
-        let mut height = 0.0f32;
-
-        for run in text_buffer.layout_runs() {
-            width = width.max(run.line_w);
-            height += run.line_height;
-        }
-
-        (width, height)
+        self.ensure_cached(text, font_size)
     }
 }
 

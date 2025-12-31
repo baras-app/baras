@@ -110,7 +110,6 @@ async fn toggle_visibility_hotkey(overlay_state: SharedOverlayState, service_han
     } else {
         let _ = OverlayManager::show_all(&overlay_state, &service_handle).await;
     }
-    eprintln!("[HOTKEY] Toggled visibility to: {}", !is_visible);
 }
 
 /// Hotkey handler: Toggle move mode
@@ -137,7 +136,6 @@ async fn toggle_move_mode_hotkey(overlay_state: SharedOverlayState) {
     for tx in txs {
         let _ = tx.send(OverlayCommand::SetMoveMode(new_mode)).await;
     }
-    eprintln!("[HOTKEY] Toggled move mode to: {}", new_mode);
 }
 
 /// Hotkey handler: Toggle rearrange mode (raid frames)
@@ -161,5 +159,4 @@ async fn toggle_rearrange_mode_hotkey(overlay_state: SharedOverlayState) {
     if let Some(tx) = raid_tx {
         let _ = tx.send(OverlayCommand::SetRearrangeMode(new_mode)).await;
     }
-    eprintln!("[HOTKEY] Toggled rearrange mode to: {}", new_mode);
 }
