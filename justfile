@@ -26,4 +26,5 @@ update-version:
   cd app/src-tauri && \
   sed -i "s|\"version\": \"[^\"]*\"|\"version\": \"$(date +%Y.%m.%d)\"|" tauri.conf.json
 
-
+validate-revan:
+  cargo run --bin baras-validate -- --boss revan --log test-log-files/operations/hm_tos_revan.txt
