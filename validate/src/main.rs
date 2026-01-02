@@ -244,8 +244,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect();
 
             // Process signals through timer manager
+            let encounter = cache.current_encounter();
             for signal in &signals {
-                timer_manager.handle_signal(signal);
+                timer_manager.handle_signal(signal, encounter);
             }
 
             // Capture fired alerts (ephemeral notifications)

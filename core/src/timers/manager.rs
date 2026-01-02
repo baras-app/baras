@@ -16,6 +16,9 @@ use crate::context::IStr;
 
 use super::{ActiveTimer, TimerDefinition, TimerKey, TimerTrigger, TimerPreferences};
 use super::matching::{is_definition_active, matches_source_target_filters};
+
+/// Empty counters map for when no encounter context is available
+static EMPTY_COUNTERS: std::sync::LazyLock<hashbrown::HashMap<String, u32>> = std::sync::LazyLock::new(hashbrown::HashMap::new);
 use super::signal_handlers;
 
 /// Maximum age (in minutes) for events to be processed by timers in live mode.
@@ -79,21 +82,6 @@ pub struct TimerManager {
     /// When true, apply recency threshold to skip old events.
     live_mode: bool,
 
-    // ─── Boss Encounter State (from signals) ───────────────────────────────────
-    /// Current phase (from PhaseChanged signals)
-    pub(super) current_phase: Option<String>,
-
-    /// Counter values (from CounterChanged signals)
-    pub(super) counters: HashMap<String, u32>,
-
-    /// Boss HP by NPC ID (from BossHpChanged signals)
-    pub(super) boss_hp_by_npc: HashMap<i64, f32>,
-
-    /// Combat start time (for TimeElapsed triggers)
-    pub(super) combat_start_time: Option<NaiveDateTime>,
-
-    /// Last checked combat time in seconds (for crossing detection)
-    pub(super) last_combat_secs: f32,
 
     // ─── Entity Filter State ─────────────────────────────────────────────────
     /// Local player's entity ID (for LocalPlayer filter)
@@ -126,11 +114,6 @@ impl TimerManager {
             in_combat: false,
             last_timestamp: None,
             live_mode: true, // Default: apply recency threshold (skip old events)
-            current_phase: None,
-            counters: HashMap::new(),
-            boss_hp_by_npc: HashMap::new(),
-            combat_start_time: None,
-            last_combat_secs: 0.0,
             local_player_id: None,
             boss_entity_ids: HashSet::new(),
             boss_npc_class_ids: HashSet::new(),
@@ -289,21 +272,12 @@ impl TimerManager {
         }
     }
 
-    /// Get the current boss phase (if any)
-    pub fn current_phase(&self) -> Option<&str> {
-        self.current_phase.as_deref()
-    }
-
-    /// Get the current value of a counter
-    pub fn counter_value(&self, counter_id: &str) -> u32 {
-        self.counters.get(counter_id).copied().unwrap_or(0)
-    }
-
     /// Tick to process timer expirations based on real time.
     /// Call periodically to update timers even without new signals.
+    /// Note: Called without encounter context (for render updates).
     pub fn tick(&mut self) {
         if let Some(ts) = self.last_timestamp {
-            self.process_expirations(ts);
+            self.process_expirations(ts, None);
         }
     }
 
@@ -389,12 +363,15 @@ impl TimerManager {
 
     /// Check if a timer definition is active for current context (delegates to matching module)
     /// Also checks preference override for enabled state
-    pub(super) fn is_definition_active(&self, def: &TimerDefinition) -> bool {
+    pub(super) fn is_definition_active(&self, def: &TimerDefinition, encounter: Option<&crate::encounter::CombatEncounter>) -> bool {
         // Check preference override first - user can disable timers via preferences
         if !self.preferences.is_enabled(def) {
             return false;
         }
-        is_definition_active(def, &self.context, self.current_phase.as_deref(), &self.counters)
+        let (current_phase, counters) = encounter
+            .map(|e| (e.current_phase.as_deref(), &e.counters))
+            .unwrap_or((None, &EMPTY_COUNTERS));
+        is_definition_active(def, &self.context, current_phase, counters)
     }
 
     /// Start a timer from a definition
@@ -508,7 +485,7 @@ impl TimerManager {
     }
 
     /// Process timer expirations, repeats, and chains
-    fn process_expirations(&mut self, current_time: NaiveDateTime) {
+    fn process_expirations(&mut self, current_time: NaiveDateTime, encounter: Option<&crate::encounter::CombatEncounter>) {
         self.expired_this_tick.clear();
 
         // Find expired timer keys
@@ -555,7 +532,7 @@ impl TimerManager {
         // Start chained timers (outside the borrow)
         for (next_timer_id, target_id) in chains_to_start {
             if let Some(next_def) = self.definitions.get(&next_timer_id).cloned()
-                && self.is_definition_active(&next_def)
+                && self.is_definition_active(&next_def, encounter)
             {
                 self.start_timer(&next_def, current_time, target_id);
             }
@@ -566,7 +543,7 @@ impl TimerManager {
         for expired_id in expired_ids {
             let matching: Vec<_> = self.definitions
                 .values()
-                .filter(|d| d.matches_timer_expires(&expired_id) && self.is_definition_active(d))
+                .filter(|d| d.matches_timer_expires(&expired_id) && self.is_definition_active(d, encounter))
                 .cloned()
                 .collect();
 
@@ -602,7 +579,7 @@ impl TimerManager {
 }
 
 impl SignalHandler for TimerManager {
-    fn handle_signal(&mut self, signal: &GameSignal) {
+    fn handle_signal(&mut self, signal: &GameSignal, encounter: Option<&crate::encounter::CombatEncounter>) {
         // ─── Context-setting signals: always process (bypass recency filter) ───
         // These establish context for future timer matching, not trigger timers directly.
         match signal {
@@ -659,6 +636,7 @@ impl SignalHandler for TimerManager {
             } => {
                 signal_handlers::handle_ability(
                     self,
+                    encounter,
                     *ability_id,
                     *ability_name,
                     *source_id, *source_entity_type, *source_name, *source_npc_id,
@@ -682,6 +660,7 @@ impl SignalHandler for TimerManager {
             } => {
                 signal_handlers::handle_effect_applied(
                     self,
+                    encounter,
                     *effect_id,
                     *source_id, *source_entity_type, *source_name, *source_npc_id,
                     *target_id, *target_entity_type, *target_name, *target_npc_id,
@@ -703,6 +682,7 @@ impl SignalHandler for TimerManager {
                 // EffectRemoved doesn't include npc_ids in the game log, pass 0
                 signal_handlers::handle_effect_removed(
                     self,
+                    encounter,
                     *effect_id,
                     *source_id, *source_entity_type, *source_name, 0,
                     *target_id, *target_entity_type, *target_name, 0,
@@ -711,7 +691,7 @@ impl SignalHandler for TimerManager {
             }
 
             GameSignal::CombatStarted { timestamp, .. } => {
-                signal_handlers::handle_combat_start(self, *timestamp);
+                signal_handlers::handle_combat_start(self, encounter, *timestamp);
             }
 
             GameSignal::CombatEnded { .. } => {
@@ -719,7 +699,7 @@ impl SignalHandler for TimerManager {
             }
 
             GameSignal::EntityDeath { npc_id, entity_name, timestamp, .. } => {
-                signal_handlers::handle_entity_death(self, *npc_id, entity_name, *timestamp);
+                signal_handlers::handle_entity_death(self, encounter, *npc_id, entity_name, *timestamp);
             }
 
             GameSignal::NpcFirstSeen { entity_id, npc_id, entity_name, timestamp, .. } => {
@@ -727,7 +707,7 @@ impl SignalHandler for TimerManager {
                 if self.boss_npc_class_ids.contains(npc_id) && !self.boss_entity_ids.contains(entity_id) {
                     self.boss_entity_ids.insert(*entity_id);
                 }
-                signal_handlers::handle_npc_first_seen(self, *npc_id, entity_name, *timestamp);
+                signal_handlers::handle_npc_first_seen(self, encounter, *npc_id, entity_name, *timestamp);
             }
 
             // Note: We intentionally DON'T update boss_name from TargetChanged/TargetCleared.
@@ -748,6 +728,7 @@ impl SignalHandler for TimerManager {
                 // Check for TargetSet triggers (e.g., sphere targeting player)
                 signal_handlers::handle_target_set(
                     self,
+                    encounter,
                     *source_id,
                     *source_npc_id,
                     *source_name,
@@ -775,6 +756,7 @@ impl SignalHandler for TimerManager {
             } => {
                 signal_handlers::handle_damage_taken(
                     self,
+                    encounter,
                     *ability_id,
                     *ability_name,
                     *source_id, *source_entity_type, *source_name, *source_npc_id,
@@ -797,12 +779,8 @@ impl SignalHandler for TimerManager {
                     self.boss_npc_class_ids.insert(class_id);
                 }
 
-                // Reset phase and counters for new encounter
-                self.current_phase = None;
-                self.counters.clear();
-                self.boss_hp_by_npc.clear();
                 // Start combat-start timers
-                signal_handlers::handle_combat_start(self, *timestamp);
+                signal_handlers::handle_combat_start(self, encounter, *timestamp);
             }
 
             GameSignal::BossHpChanged { npc_id, entity_name, current_hp, max_hp, timestamp, .. } => {
@@ -811,29 +789,29 @@ impl SignalHandler for TimerManager {
                 } else {
                     100.0
                 };
-                let old_hp = self.boss_hp_by_npc.get(npc_id).copied().unwrap_or(100.0);
-                self.boss_hp_by_npc.insert(*npc_id, new_hp);
+                // Read previous HP from encounter (source of truth)
+                let old_hp = encounter
+                    .and_then(|e| e.hp_by_npc_id.get(npc_id).copied())
+                    .unwrap_or(100.0);
 
                 // Check for HP threshold timer triggers
                 if (old_hp - new_hp).abs() > 0.01 {
-                    signal_handlers::handle_boss_hp_change(self, *npc_id, entity_name, old_hp, new_hp, *timestamp);
+                    signal_handlers::handle_boss_hp_change(self, encounter, *npc_id, entity_name, old_hp, new_hp, *timestamp);
                 }
             }
 
             GameSignal::PhaseChanged { old_phase, new_phase, timestamp, .. } => {
                 // Handle the old phase ending first (if any)
                 if let Some(ended_phase) = old_phase {
-                    signal_handlers::handle_phase_ended(self, ended_phase, *timestamp);
+                    signal_handlers::handle_phase_ended(self, encounter, ended_phase, *timestamp);
                 }
-                self.current_phase = Some(new_phase.clone());
                 // Trigger phase-entered timers
-                signal_handlers::handle_phase_change(self, new_phase, *timestamp);
+                signal_handlers::handle_phase_change(self, encounter, new_phase, *timestamp);
             }
 
             GameSignal::CounterChanged { counter_id, old_value, new_value, timestamp, .. } => {
-                self.counters.insert(counter_id.clone(), *new_value);
                 // Trigger counter-based timers
-                signal_handlers::handle_counter_change(self, counter_id, *old_value, *new_value, *timestamp);
+                signal_handlers::handle_counter_change(self, encounter, counter_id, *old_value, *new_value, *timestamp);
             }
 
             _ => {}
@@ -841,12 +819,12 @@ impl SignalHandler for TimerManager {
 
         // Check for time-elapsed triggers if we're in combat
         if let Some(ts) = self.last_timestamp {
-            signal_handlers::handle_time_elapsed(self, ts);
+            signal_handlers::handle_time_elapsed(self, encounter, ts);
         }
 
         // Process expirations after handling signal
         if let Some(ts) = self.last_timestamp {
-            self.process_expirations(ts);
+            self.process_expirations(ts, encounter);
         }
     }
 
