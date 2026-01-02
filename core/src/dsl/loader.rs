@@ -34,7 +34,7 @@ pub type AreaIndex = HashMap<i64, AreaIndexEntry>;
 
 /// Load boss definitions from a single TOML file
 /// Handles both legacy format (area_name on each boss) and new consolidated format
-pub fn load_bosses_from_fjle(path: &Path) -> Result<Vec<BossEncounterDefinition>, String> {
+pub fn load_bosses_from_file(path: &Path) -> Result<Vec<BossEncounterDefinition>, String> {
     let content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
 
@@ -355,8 +355,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::boss::{ChallengeMetric, ChallengeCondition};
-    use crate::entity_filter::EntityFilter;
+    use crate::dsl::{ChallengeMetric, ChallengeCondition, EntityFilter};
 
     #[test]
     fn test_parse_boss_config() {
@@ -590,7 +589,7 @@ conditions = [
         assert!(matches!(
             &swelling.trigger,
             crate::timers::TimerTrigger::AbilityCast { abilities, .. }
-                if abilities.len() == 1 && matches!(&abilities[0], crate::triggers::AbilitySelector::Id(3294098182111232))
+                if abilities.len() == 1 && matches!(&abilities[0], crate::dsl::AbilitySelector::Id(3294098182111232))
         ));
 
         eprintln!("Successfully loaded Bestia fixture with {} timers", bestia.timers.len());

@@ -1,4 +1,4 @@
-use crate::boss::BossEncounterDefinition;
+use crate::dsl::BossEncounterDefinition;
 use crate::encounter::{CombatEncounter, ProcessingMode, EncounterState, BossHealthEntry};
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{EncounterHistory, create_encounter_summary};

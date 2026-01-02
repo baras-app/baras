@@ -8,7 +8,7 @@ use chrono::NaiveDateTime;
 use crate::combat_log::EntityType;
 use crate::context::IStr;
 
-use crate::triggers::EntitySelectorExt;
+use crate::dsl::EntitySelectorExt;
 use super::{TimerManager, TimerTrigger};
 
 /// Handle ability activation

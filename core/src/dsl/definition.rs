@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::audio::AudioConfig;
+use crate::dsl::audio::AudioConfig;
 use super::{ChallengeDefinition, CounterCondition, CounterDefinition, CounterTrigger, PhaseDefinition};
 
 // ═══════════════════════════════════════════════════════════════════════════

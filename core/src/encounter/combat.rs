@@ -11,13 +11,13 @@
 use chrono::NaiveDateTime;
 use hashbrown::{HashMap, HashSet};
 
-use crate::boss::{BossEncounterDefinition, CounterCondition, CounterDefinition};
+use crate::dsl::{BossEncounterDefinition, CounterCondition, CounterDefinition};
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::IStr;
 use crate::game_data::{effect_id, SHIELD_EFFECT_IDS};
 
 use super::challenge::ChallengeTracker;
-use crate::boss::ChallengeContext;
+use crate::dsl::ChallengeContext;
 use super::effect_instance::EffectInstance;
 use super::entity_info::{NpcInfo, PlayerInfo};
 use super::metrics::MetricAccumulator;

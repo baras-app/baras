@@ -3,7 +3,7 @@
 //! This module provides extension traits for EntitySelector matching
 //! with support for entity roster lookups.
 
-use crate::boss::EntityDefinition;
+use crate::dsl::EntityDefinition;
 
 // Re-export selectors from the shared types crate
 pub use baras_types::{AbilitySelector, EffectSelector, EntitySelector};

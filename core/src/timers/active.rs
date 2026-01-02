@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 
 use chrono::NaiveDateTime;
 
-use crate::audio::AudioConfig;
+use crate::dsl::AudioConfig;
 
 /// An active timer instance
 ///

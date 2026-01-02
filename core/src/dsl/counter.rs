@@ -4,10 +4,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::triggers::Trigger;
+use super::triggers::Trigger;
 
 // Re-export Trigger as CounterTrigger for backward compatibility during migration
-pub use crate::triggers::Trigger as CounterTrigger;
+pub use super::triggers::Trigger as CounterTrigger;
 
 /// A counter that tracks occurrences during a boss fight
 #[derive(Debug, Clone, Serialize, Deserialize)]

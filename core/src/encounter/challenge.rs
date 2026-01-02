@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use baras_types::ChallengeColumns;
-use crate::boss::{ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityInfo};
+use crate::dsl::{ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityInfo};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Challenge Value

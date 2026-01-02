@@ -136,7 +136,7 @@ impl ActiveEffect {
         category: EffectCategory,
         show_on_raid_frames: bool,
         show_on_effects_overlay: bool,
-        audio: &crate::audio::AudioConfig,
+        audio: &crate::dsl::AudioConfig,
     ) -> Self {
         // Calculate lag compensation: how far behind was the game event from system time?
         // This accounts for file I/O delay, processing time, etc.
