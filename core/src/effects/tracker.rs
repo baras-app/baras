@@ -122,9 +122,6 @@ pub struct EffectTracker {
     /// Current game time (latest timestamp from signals)
     current_game_time: Option<NaiveDateTime>,
 
-    /// Whether we're currently in combat
-    in_combat: bool,
-
     /// Whether we're in live mode (tracking effects) vs historical mode (skip)
     /// Defaults to false - must be enabled after initial file load
     live_mode: bool,
@@ -137,10 +134,6 @@ pub struct EffectTracker {
     /// Current target for each entity (source_id -> target info)
     /// Used to resolve target when AbilityActivated has empty/self target
     current_targets: HashMap<i64, TrackedTarget>,
-
-    /// Boss entity IDs currently in combat (from BossHpChanged signals)
-    /// Used for Boss entity filter matching
-    boss_entity_ids: HashSet<i64>,
 }
 
 impl Default for EffectTracker {
@@ -157,11 +150,9 @@ impl EffectTracker {
             active_effects: HashMap::new(),
             local_player_id: None,
             current_game_time: None,
-            in_combat: false,
             live_mode: false, // Start in historical mode
             new_targets: Vec::new(),
             current_targets: HashMap::new(),
-            boss_entity_ids: HashSet::new(),
         }
     }
 
@@ -269,6 +260,7 @@ impl EffectTracker {
         target_npc_id: i64,
         timestamp: NaiveDateTime,
         charges: Option<u8>,
+        encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
         self.current_game_time = Some(timestamp);
 
@@ -303,7 +295,7 @@ impl EffectTracker {
             .find_matching(effect_id as u64, Some(&effect_name_str))
             .into_iter()
             .filter(|def| def.trigger == EffectTriggerMode::EffectApplied)
-            .filter(|def| self.matches_filters(def, source_info, target_info))
+            .filter(|def| self.matches_filters(def, source_info, target_info, encounter))
             .collect();
 
         let is_from_local = self.local_player_id == Some(source_id);
@@ -547,9 +539,6 @@ impl EffectTracker {
 
     /// Handle combat end - optionally clear combat-only effects
     fn handle_combat_ended(&mut self) {
-        self.in_combat = false;
-        self.boss_entity_ids.clear();
-
         // Mark effects that don't track outside combat as removed
         let outside_combat_ids: std::collections::HashSet<_> = self
             .definitions
@@ -571,8 +560,6 @@ impl EffectTracker {
             effect.mark_removed();
         }
         self.current_targets.clear();
-        self.boss_entity_ids.clear();
-        self.in_combat = false;
     }
 
     /// Check if an effect matches source/target filters
@@ -581,14 +568,20 @@ impl EffectTracker {
         def: &EffectDefinition,
         source: EntityInfo,
         target: EntityInfo,
+        encounter: Option<&crate::encounter::CombatEncounter>,
     ) -> bool {
-        def.source.matches(source.id, source.entity_type, source.name, source.npc_id, self.local_player_id, &self.boss_entity_ids)
-            && def.target.matches(target.id, target.entity_type, target.name, target.npc_id, self.local_player_id, &self.boss_entity_ids)
+        // Get boss entity IDs from encounter's HP tracking (entities with tracked HP are bosses)
+        let boss_ids: HashSet<i64> = encounter
+            .map(|e| e.hp_by_entity.keys().copied().collect())
+            .unwrap_or_default();
+
+        def.source.matches(source.id, source.entity_type, source.name, source.npc_id, self.local_player_id, &boss_ids)
+            && def.target.matches(target.id, target.entity_type, target.name, target.npc_id, self.local_player_id, &boss_ids)
     }
 }
 
 impl SignalHandler for EffectTracker {
-    fn handle_signal(&mut self, signal: &GameSignal, _encounter: Option<&crate::encounter::CombatEncounter>) {
+    fn handle_signal(&mut self, signal: &GameSignal, encounter: Option<&crate::encounter::CombatEncounter>) {
         match signal {
             GameSignal::EffectApplied {
                 effect_id,
@@ -621,6 +614,7 @@ impl SignalHandler for EffectTracker {
                     *target_npc_id,
                     *timestamp,
                     *charges,
+                    encounter,
                 );
             }
             GameSignal::EffectRemoved {
@@ -647,9 +641,6 @@ impl SignalHandler for EffectTracker {
             }
             GameSignal::EntityDeath { entity_id, .. } => {
                 self.handle_entity_death(*entity_id);
-            }
-            GameSignal::CombatStarted { .. } => {
-                self.in_combat = true;
             }
             GameSignal::CombatEnded { .. } => {
                 self.handle_combat_ended();
@@ -710,14 +701,7 @@ impl SignalHandler for EffectTracker {
             GameSignal::TargetCleared { source_id, .. } => {
                 self.current_targets.remove(source_id);
             }
-            GameSignal::BossEncounterDetected { entity_id, .. } => {
-                // Track boss entity ID immediately when encounter is detected
-                self.boss_entity_ids.insert(*entity_id);
-            }
-            GameSignal::BossHpChanged { entity_id, .. } => {
-                // Track boss entity IDs for the Boss filter
-                self.boss_entity_ids.insert(*entity_id);
-            }
+            // Boss entity IDs are now read from encounter.hp_by_entity in matches_filters
             _ => {}
         }
     }

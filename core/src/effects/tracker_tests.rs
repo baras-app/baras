@@ -9,6 +9,7 @@ use chrono::{Local, NaiveDateTime};
 
 use crate::combat_log::EntityType;
 use crate::context::IStr;
+use crate::encounter::{CombatEncounter, ProcessingMode};
 use crate::signal_processor::{GameSignal, SignalHandler};
 
 use super::{AbilitySelector, DefinitionSet, EffectCategory, EffectDefinition, EffectTracker, EntityFilter, EffectSelector};
@@ -66,6 +67,15 @@ fn make_tracker(effects: Vec<EffectDefinition>, local_player_id: i64) -> EffectT
     tracker.set_live_mode(true);
     tracker.set_local_player(local_player_id);
     tracker
+}
+
+/// Create a mock encounter with the given entity IDs registered as bosses
+fn make_encounter_with_bosses(boss_ids: &[i64]) -> CombatEncounter {
+    let mut enc = CombatEncounter::new(1, ProcessingMode::Live);
+    for &id in boss_ids {
+        enc.hp_by_entity.insert(id, 100.0);
+    }
+    enc
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -441,14 +451,15 @@ fn test_player_initialized_sets_local_player() {
 }
 
 #[test]
-fn test_boss_hp_changed_tracks_boss_ids() {
+fn test_boss_filter_uses_encounter_context() {
     let mut effect = make_effect("boss_debuff", "Boss Debuff", vec![888]);
     effect.target = EntityFilter::Boss;
 
     let mut tracker = make_tracker(vec![effect], 1);
     let ts = now();
+    let encounter = make_encounter_with_bosses(&[999]);
 
-    // Effect on NPC won't match Boss filter until BossHpChanged
+    // Effect on NPC won't match Boss filter without encounter context
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 888,
         effect_name: IStr::default(),
@@ -466,19 +477,9 @@ fn test_boss_hp_changed_tracks_boss_ids() {
         charges: None,
     }, None);
 
-    assert_eq!(tracker.active_effects().count(), 0, "Should not match - NPC not known as boss");
+    assert_eq!(tracker.active_effects().count(), 0, "Should not match - no encounter context");
 
-    // Mark entity as boss
-    tracker.handle_signal(&GameSignal::BossHpChanged {
-        entity_id: 999,
-        npc_id: 123456,
-        entity_name: "Big Boss".to_string(),
-        current_hp: 1000000,
-        max_hp: 1000000,
-        timestamp: ts,
-    }, None);
-
-    // Now try again
+    // Now try again with encounter context that knows about boss
     tracker.handle_signal(&GameSignal::EffectApplied {
         effect_id: 888,
         effect_name: IStr::default(),
@@ -494,9 +495,9 @@ fn test_boss_hp_changed_tracks_boss_ids() {
         target_npc_id: 999,
         timestamp: ts,
         charges: None,
-    }, None);
+    }, Some(&encounter));
 
-    assert_eq!(tracker.active_effects().count(), 1, "Should match now that NPC is known boss");
+    assert_eq!(tracker.active_effects().count(), 1, "Should match with encounter context");
 }
 
 #[test]
@@ -742,16 +743,7 @@ fn test_filter_npc_except_boss() {
 
     let mut tracker = make_tracker(vec![effect], 1);
     let ts = now();
-
-    // Mark entity 999 as boss
-    tracker.handle_signal(&GameSignal::BossHpChanged {
-        entity_id: 999,
-        npc_id: 123,
-        entity_name: "Boss".to_string(),
-        current_hp: 1000000,
-        max_hp: 1000000,
-        timestamp: ts,
-    }, None);
+    let encounter = make_encounter_with_bosses(&[999]);
 
     // On boss - should NOT match
     tracker.handle_signal(&GameSignal::EffectApplied {
@@ -769,7 +761,7 @@ fn test_filter_npc_except_boss() {
         target_npc_id: 999,
         timestamp: ts,
         charges: None,
-    }, None);
+    }, Some(&encounter));
 
     assert_eq!(tracker.active_effects().count(), 0, "Boss should not match NpcExceptBoss");
 
@@ -786,10 +778,10 @@ fn test_filter_npc_except_boss() {
         target_id: 888,
         target_name: IStr::default(),
         target_entity_type: EntityType::Npc,
-        target_npc_id: 999,
+        target_npc_id: 888,
         timestamp: ts,
         charges: None,
-    }, None);
+    }, Some(&encounter));
 
     assert_eq!(tracker.active_effects().count(), 1, "Non-boss NPC should match");
 }
