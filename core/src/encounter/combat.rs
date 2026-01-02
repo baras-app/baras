@@ -116,6 +116,7 @@ pub struct CombatEncounter {
     pub last_combat_activity_time: Option<NaiveDateTime>,
 
     // ─── Entity Tracking ────────────────────────────────────────────────────
+    /// Local player's entity ID (the player running the parser)
     /// Players in this encounter
     pub players: HashMap<i64, PlayerInfo>,
     /// NPCs in this encounter
@@ -184,7 +185,7 @@ impl CombatEncounter {
         }
     }
 
-    /// Create with a pre-registered player
+    /// Create with a pre-registered local player
     pub fn with_player(id: u64, mode: ProcessingMode, player: PlayerInfo) -> Self {
         let mut enc = Self::new(id, mode);
         enc.players.insert(player.id, player);

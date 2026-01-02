@@ -161,7 +161,7 @@ pub enum SessionEvent {
 /// Signal handler that tracks combat state and triggers metrics updates
 struct CombatSignalHandler {
     shared: Arc<SharedState>,
-    trigger_tx: std::sync::mpsc::Sender<MetricsTrigger>,
+    trigger_tx: mpsc::Sender<MetricsTrigger>,
     /// Channel for area load requests (event-driven, not polled)
     area_load_tx: std::sync::mpsc::Sender<i64>,
     /// Channel for frontend session updates (event-driven, not polled)
@@ -173,7 +173,7 @@ struct CombatSignalHandler {
 impl CombatSignalHandler {
     fn new(
         shared: Arc<SharedState>,
-        trigger_tx: std::sync::mpsc::Sender<MetricsTrigger>,
+        trigger_tx: mpsc::Sender<MetricsTrigger>,
         area_load_tx: std::sync::mpsc::Sender<i64>,
         session_event_tx: std::sync::mpsc::Sender<SessionEvent>,
         overlay_tx: mpsc::Sender<OverlayUpdate>,
@@ -193,12 +193,12 @@ impl SignalHandler for CombatSignalHandler {
         match signal {
             GameSignal::CombatStarted { .. } => {
                 self.shared.in_combat.store(true, Ordering::SeqCst);
-                let _ = self.trigger_tx.send(MetricsTrigger::CombatStarted);
+                let _ = self.trigger_tx.try_send(MetricsTrigger::CombatStarted);
                 let _ = self.session_event_tx.send(SessionEvent::CombatStarted);
             }
             GameSignal::CombatEnded { .. } => {
                 self.shared.in_combat.store(false, Ordering::SeqCst);
-                let _ = self.trigger_tx.send(MetricsTrigger::CombatEnded);
+                let _ = self.trigger_tx.try_send(MetricsTrigger::CombatEnded);
                 let _ = self.session_event_tx.send(SessionEvent::CombatEnded);
                 // Clear boss health and timer overlays
                 let _ = self.overlay_tx.try_send(OverlayUpdate::CombatEnded);
@@ -688,8 +688,8 @@ impl CombatService {
             registry.clear();
         }
 
-        // Create trigger channel for signal-driven metrics updates
-        let (trigger_tx, trigger_rx) = std::sync::mpsc::channel::<MetricsTrigger>();
+        // Create trigger channel for signal-driven metrics updates (tokio channel - no spawn_blocking needed)
+        let (trigger_tx, mut trigger_rx) = mpsc::channel::<MetricsTrigger>(8);
         // Create channel for event-driven area loading (replaces polling)
         let (area_load_tx, area_load_rx) = std::sync::mpsc::channel::<i64>();
         // Create channel for frontend session events (replaces polling)
@@ -867,7 +867,7 @@ impl CombatService {
         eprintln!("[PARSE] Total time: {:.0}ms", timer.elapsed().as_millis());
 
         // Trigger initial metrics send after file processing
-        let _ = trigger_tx.send(MetricsTrigger::InitialLoad);
+        let _ = trigger_tx.try_send(MetricsTrigger::InitialLoad);
 
         // Enable live mode for effect/timer tracking (skip historical events)
         {
@@ -886,19 +886,16 @@ impl CombatService {
         let overlay_tx = self.overlay_tx.clone();
         let metrics_handle = tokio::spawn(async move {
             loop {
-                // Check for triggers (non-blocking with timeout to allow task cancellation)
-                let trigger = tokio::task::spawn_blocking({
-                    let trigger_rx_timeout =
-                        trigger_rx.recv_timeout(std::time::Duration::from_millis(100));
-                    move || trigger_rx_timeout
-                })
-                .await;
+                // Check for triggers with timeout to allow task cancellation
+                let trigger = tokio::time::timeout(
+                    std::time::Duration::from_millis(100),
+                    trigger_rx.recv()
+                ).await;
 
                 let trigger = match trigger {
-                    Ok(Ok(t)) => t,
-                    Ok(Err(std::sync::mpsc::RecvTimeoutError::Timeout)) => continue,
-                    Ok(Err(std::sync::mpsc::RecvTimeoutError::Disconnected)) => break,
-                    Err(_) => break, // JoinError
+                    Ok(Some(t)) => t,
+                    Ok(None) => break,        // Channel closed
+                    Err(_) => continue,       // Timeout - check again
                 };
 
                 // Calculate and send unified combat data
@@ -949,9 +946,9 @@ impl CombatService {
                 let needs_audio = is_live && (in_combat || raid_active || effects_active);
 
                 // Adaptive sleep: fast when active, slow when idle
-                // 100ms = 10 updates/sec for smooth countdowns (visual-change detection skips redundant renders)
+                // 30ms matches tail polling for consistent ~60ms max latency
                 let sleep_ms = if any_overlay_active || needs_audio {
-                    100
+                    30
                 } else {
                     500
                 };
@@ -963,26 +960,37 @@ impl CombatService {
                 }
 
                 // Raid frames: only send if there are effects or effects just cleared
-                if raid_active
-                    && let Some(data) = build_raid_frame_data(&shared).await {
+                if raid_active {
+                    if let Some(data) = build_raid_frame_data(&shared).await {
                         let effect_count: usize = data.frames.iter().map(|f| f.effects.len()).sum();
                         // Only send if effects exist, or if we need to clear (was non-zero, now zero)
                         if effect_count > 0 || last_raid_effect_count > 0 {
                             let _ = overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data));
                         }
                         last_raid_effect_count = effect_count;
+                    } else {
+                        // No effects - just reset counter (overlay handles effect expiry visually)
+                        last_raid_effect_count = 0;
                     }
+                }
 
                 // Effects countdown: only send if there are effects or effects just cleared
-                if effects_active
-                    && let Some(data) = build_effects_overlay_data(&shared).await {
+                if effects_active {
+                    if let Some(data) = build_effects_overlay_data(&shared).await {
                         let effect_count = data.entries.len();
                         // Only send if effects exist, or if we need to clear (was non-zero, now zero)
                         if effect_count > 0 || last_effects_count > 0 {
                             let _ = overlay_tx.try_send(OverlayUpdate::EffectsOverlayUpdated(data));
                         }
                         last_effects_count = effect_count;
+                    } else if last_effects_count > 0 {
+                        // No effects, but we had some before - send clear
+                        let _ = overlay_tx.try_send(OverlayUpdate::EffectsOverlayUpdated(
+                            baras_overlay::EffectsData { entries: vec![] }
+                        ));
+                        last_effects_count = 0;
                     }
+                }
 
                 // Effect audio: process in live mode
                 if shared.is_live_tailing.load(Ordering::SeqCst) {
@@ -1320,17 +1328,17 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
     let session = session_guard.as_ref()?;
     let session = session.read().await;
 
-    // Get lag offset from config
-    let lag_offset_ms = {
-        let config = shared.config.read().await;
-        config.overlay_settings.effect_lag_offset_ms
-    };
-
     // Get effect tracker (Live mode only)
     let effect_tracker = session.effect_tracker()?;
     let Ok(mut tracker) = effect_tracker.lock() else {
         return None;
     };
+
+    // Early out: skip building data if no effects at all (including fading ones)
+    // We need to keep sending updates while effects exist so removals are reflected
+    if !tracker.has_active_effects() {
+        return None;
+    }
 
     // Get local player ID for is_self flag
     let local_player_id = session
@@ -1368,7 +1376,7 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
             effects_by_target
                 .entry(target_id)
                 .or_default()
-                .push(convert_to_raid_effect(effect, lag_offset_ms));
+                .push(convert_to_raid_effect(effect));
         }
     }
 
@@ -1483,12 +1491,6 @@ async fn build_effects_overlay_data(
 ) -> Option<baras_overlay::EffectsData> {
     use baras_overlay::EffectEntry;
 
-    // Get lag offset from config first (before locking tracker)
-    let lag_offset_ms = {
-        let config = shared.config.read().await;
-        config.overlay_settings.effect_lag_offset_ms
-    };
-
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
@@ -1496,6 +1498,11 @@ async fn build_effects_overlay_data(
     // Get effect tracker (Live mode only)
     let effect_tracker = session.effect_tracker()?;
     let tracker = effect_tracker.lock().ok()?;
+
+    // Early out: skip if no effects at all (including fading ones)
+    if !tracker.has_active_effects() {
+        return None;
+    }
 
     // Filter to effects marked for effects overlay and convert to entries
     // Use system time (like raid frames) so countdown ticks smoothly outside combat
@@ -1507,6 +1514,7 @@ async fn build_effects_overlay_data(
             let total = duration.as_secs_f32();
 
             // Calculate remaining using system time (same logic as convert_to_raid_effect)
+            // Lag = time between game event and our processing
             let time_since_processing = effect.applied_instant.elapsed();
             let system_time_at_processing = chrono::Local::now().naive_local()
                 - chrono::Duration::milliseconds(time_since_processing.as_millis() as i64);
@@ -1514,11 +1522,10 @@ async fn build_effects_overlay_data(
                 .signed_duration_since(effect.last_refreshed_at)
                 .num_milliseconds()
                 .max(0) as u64;
-            let total_lag_ms = (lag_ms as i64 + lag_offset_ms as i64).max(0) as u64;
-            let total_lag = std::time::Duration::from_millis(total_lag_ms);
+            let lag = std::time::Duration::from_millis(lag_ms);
 
             // Compensated expiry instant
-            let compensated_expiry = effect.applied_instant + duration - total_lag.min(duration);
+            let compensated_expiry = effect.applied_instant + duration - lag.min(duration);
             let remaining = compensated_expiry.saturating_duration_since(std::time::Instant::now());
             let remaining_secs = remaining.as_secs_f32();
 
@@ -1612,10 +1619,8 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
 
 /// Convert an ActiveEffect (core) to RaidEffect (overlay)
 ///
-/// `lag_offset_ms` is a user-configurable offset that compensates for the delay
-/// between game events occurring and log lines being written/processed.
-/// Positive values make countdowns end earlier, negative values make them end later.
-fn convert_to_raid_effect(effect: &ActiveEffect, lag_offset_ms: i32) -> RaidEffect {
+/// Compensates for the delay between game events and log processing.
+fn convert_to_raid_effect(effect: &ActiveEffect) -> RaidEffect {
     use chrono::Local;
 
     // Determine if this is a buff based on category
@@ -1642,13 +1647,10 @@ fn convert_to_raid_effect(effect: &ActiveEffect, lag_offset_ms: i32) -> RaidEffe
             .signed_duration_since(effect.last_refreshed_at)
             .num_milliseconds()
             .max(0) as u64;
-
-        // Add user-configurable offset for render/processing overhead not captured in timestamps
-        let total_lag_ms = (lag_ms as i64 + lag_offset_ms as i64).max(0) as u64;
-        let total_lag = std::time::Duration::from_millis(total_lag_ms);
+        let lag = std::time::Duration::from_millis(lag_ms);
 
         // Compensate: subtract lag from the calculated expiry
-        let compensated_expiry = effect.applied_instant + dur - total_lag.min(dur);
+        let compensated_expiry = effect.applied_instant + dur - lag.min(dur);
 
         raid_effect = raid_effect
             .with_duration(dur)

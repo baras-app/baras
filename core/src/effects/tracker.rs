@@ -116,15 +116,15 @@ pub struct EffectTracker {
     /// Currently active effects
     active_effects: HashMap<EffectInstanceKey, ActiveEffect>,
 
-    /// Local player entity ID (for source/target filtering)
-    local_player_id: Option<i64>,
-
     /// Current game time (latest timestamp from signals)
     current_game_time: Option<NaiveDateTime>,
 
     /// Whether we're in live mode (tracking effects) vs historical mode (skip)
     /// Defaults to false - must be enabled after initial file load
     live_mode: bool,
+
+    /// Local player ID (set from session cache during signal dispatch)
+    local_player_id: Option<i64>,
 
     /// Queue of targets that received effects from local player.
     /// Drained by the service to attempt registration in the raid registry.
@@ -148,23 +148,29 @@ impl EffectTracker {
         Self {
             definitions,
             active_effects: HashMap::new(),
-            local_player_id: None,
             current_game_time: None,
             live_mode: false, // Start in historical mode
+            local_player_id: None,
             new_targets: Vec::new(),
             current_targets: HashMap::new(),
         }
+    }
+
+    /// Handle signals with explicit local player ID from session cache
+    pub fn handle_signals_with_player(
+        &mut self,
+        signals: &[GameSignal],
+        encounter: Option<&crate::encounter::CombatEncounter>,
+        local_player_id: Option<i64>,
+    ) {
+        self.local_player_id = local_player_id;
+        self.handle_signals(signals, encounter);
     }
 
     /// Enable live mode (start tracking effects)
     /// Call this after initial file load is complete
     pub fn set_live_mode(&mut self, enabled: bool) {
         self.live_mode = enabled;
-    }
-
-    /// Set the local player entity ID (needed for filtering)
-    pub fn set_local_player(&mut self, entity_id: i64) {
-        self.local_player_id = Some(entity_id);
     }
 
     /// Update definitions (e.g., after config reload)
@@ -272,6 +278,8 @@ impl EffectTracker {
             return;
         }
 
+        let local_player_id = self.local_player_id;
+
         // Build entity info for filter matching
         let source_info = EntityInfo {
             id: source_id,
@@ -290,15 +298,15 @@ impl EffectTracker {
         let effect_name_str = crate::context::resolve(effect_name);
 
         // Find matching definitions (only those that trigger on EffectApplied)
-        let matching_defs: Vec<_> = self
-            .definitions
-            .find_matching(effect_id as u64, Some(&effect_name_str))
+        let all_matches = self.definitions.find_matching(effect_id as u64, Some(&effect_name_str));
+
+        let matching_defs: Vec<_> = all_matches
             .into_iter()
             .filter(|def| def.trigger == EffectTriggerMode::EffectApplied)
             .filter(|def| self.matches_filters(def, source_info, target_info, encounter))
             .collect();
 
-        let is_from_local = self.local_player_id == Some(source_id);
+        let is_from_local = local_player_id == Some(source_id);
         let mut should_register = false;
 
         for def in matching_defs {
@@ -413,8 +421,10 @@ impl EffectTracker {
         target_id: i64,
         target_name: IStr,
         timestamp: NaiveDateTime,
+        _encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
         self.current_game_time = Some(timestamp);
+        let local_player_id = self.local_player_id;
 
         // Skip when processing historical data
         if !self.live_mode {
@@ -430,7 +440,7 @@ impl EffectTracker {
             .into_iter()
             .collect();
 
-        let is_from_local = self.local_player_id == Some(source_id);
+        let is_from_local = local_player_id == Some(source_id);
 
         for def in matching_defs {
             let key = EffectInstanceKey {
@@ -570,13 +580,14 @@ impl EffectTracker {
         target: EntityInfo,
         encounter: Option<&crate::encounter::CombatEncounter>,
     ) -> bool {
-        // Get boss entity IDs from encounter's HP tracking (entities with tracked HP are bosses)
+        // Get local player ID from self, boss entity IDs from encounter
+        let local_player_id = self.local_player_id;
         let boss_ids: HashSet<i64> = encounter
             .map(|e| e.hp_by_entity.keys().copied().collect())
             .unwrap_or_default();
 
-        def.source.matches(source.id, source.entity_type, source.name, source.npc_id, self.local_player_id, &boss_ids)
-            && def.target.matches(target.id, target.entity_type, target.name, target.npc_id, self.local_player_id, &boss_ids)
+        def.source.matches(source.id, source.entity_type, source.name, source.npc_id, local_player_id, &boss_ids)
+            && def.target.matches(target.id, target.entity_type, target.name, target.npc_id, local_player_id, &boss_ids)
     }
 }
 
@@ -626,7 +637,7 @@ impl SignalHandler for EffectTracker {
                 timestamp,
                 ..
             } => {
-                self.handle_effect_removed(*effect_id, *effect_name, *source_id, *target_id, *target_name, *timestamp);
+                self.handle_effect_removed(*effect_id, *effect_name, *source_id, *target_id, *target_name, *timestamp, encounter);
             }
             GameSignal::EffectChargesChanged {
                 effect_id,
@@ -648,8 +659,8 @@ impl SignalHandler for EffectTracker {
             GameSignal::AreaEntered { .. } => {
                 self.handle_area_change();
             }
-            GameSignal::PlayerInitialized { entity_id, .. } => {
-                self.set_local_player(*entity_id);
+            GameSignal::PlayerInitialized { .. } => {
+                // Local player ID is now read from encounter context
             }
             GameSignal::AbilityActivated {
                 ability_id,
@@ -662,7 +673,8 @@ impl SignalHandler for EffectTracker {
                 ..
             } => {
                 // Only process abilities from local player
-                if self.local_player_id == Some(*source_id) {
+                let local_player_id = self.local_player_id;
+                if local_player_id == Some(*source_id) {
                     // Resolve target: if target is self/empty, use tracked target from TargetSet
                     let (resolved_id, resolved_name, resolved_type) =
                         if *target_id == *source_id || *target_id == 0 {

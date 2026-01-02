@@ -60,18 +60,34 @@ fn make_definitions(effects: Vec<EffectDefinition>) -> DefinitionSet {
     set
 }
 
-/// Create a tracker in live mode with local player set
-fn make_tracker(effects: Vec<EffectDefinition>, local_player_id: i64) -> EffectTracker {
+/// Create a tracker in live mode
+fn make_tracker(effects: Vec<EffectDefinition>) -> EffectTracker {
     let defs = make_definitions(effects);
     let mut tracker = EffectTracker::new(defs);
     tracker.set_live_mode(true);
-    tracker.set_local_player(local_player_id);
     tracker
+}
+
+/// Create a mock encounter with the given local player ID
+fn make_encounter_with_player(local_player_id: i64) -> CombatEncounter {
+    let mut enc = CombatEncounter::new(1, ProcessingMode::Live);
+    enc.local_player_id = Some(local_player_id);
+    enc
 }
 
 /// Create a mock encounter with the given entity IDs registered as bosses
 fn make_encounter_with_bosses(boss_ids: &[i64]) -> CombatEncounter {
     let mut enc = CombatEncounter::new(1, ProcessingMode::Live);
+    for &id in boss_ids {
+        enc.hp_by_entity.insert(id, 100.0);
+    }
+    enc
+}
+
+/// Create a mock encounter with local player and boss IDs
+fn make_encounter(local_player_id: i64, boss_ids: &[i64]) -> CombatEncounter {
+    let mut enc = CombatEncounter::new(1, ProcessingMode::Live);
+    enc.local_player_id = Some(local_player_id);
     for &id in boss_ids {
         enc.hp_by_entity.insert(id, 100.0);
     }
@@ -85,7 +101,8 @@ fn make_encounter_with_bosses(boss_ids: &[i64]) -> CombatEncounter {
 #[test]
 fn test_effect_applied_creates_active_effect() {
     let effect = make_effect("kolto_probe", "Kolto Probe", vec![12345]);
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
 
     let signal = GameSignal::EffectApplied {
         effect_id: 12345,
@@ -103,7 +120,7 @@ fn test_effect_applied_creates_active_effect() {
         timestamp: now(),
         charges: None,
     };
-    tracker.handle_signal(&signal, None);
+    tracker.handle_signal(&signal, Some(&encounter));
 
     assert!(tracker.has_active_effects(), "Effect should be active");
     let effects: Vec<_> = tracker.active_effects().collect();
@@ -114,7 +131,8 @@ fn test_effect_applied_creates_active_effect() {
 #[test]
 fn test_effect_removed_marks_inactive() {
     let effect = make_effect("debuff", "Debuff", vec![999]);
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Apply effect
@@ -159,7 +177,8 @@ fn test_effect_removed_marks_inactive() {
 #[test]
 fn test_charges_changed_updates_stacks() {
     let effect = make_effect("stacking_buff", "Stacking Buff", vec![555]);
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Apply with initial charges
@@ -198,7 +217,8 @@ fn test_charges_changed_updates_stacks() {
 #[test]
 fn test_entity_death_clears_effects() {
     let effect = make_effect("hot", "HoT", vec![111]);
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Apply effect to target 2
@@ -238,7 +258,8 @@ fn test_entity_death_clears_effects() {
 fn test_persist_past_death_keeps_effect() {
     let mut effect = make_effect("persistent", "Persistent Buff", vec![222]);
     effect.persist_past_death = true;
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Apply effect
@@ -280,7 +301,8 @@ fn test_combat_end_clears_combat_only_effects() {
     let outside_combat = make_effect("persistent_buff", "Persistent Buff", vec![444]);
     // track_outside_combat defaults to true
 
-    let mut tracker = make_tracker(vec![combat_only, outside_combat], 1);
+    let mut tracker = make_tracker(vec![combat_only, outside_combat]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Start combat
@@ -328,7 +350,8 @@ fn test_combat_end_clears_combat_only_effects() {
 #[test]
 fn test_area_entered_clears_all_effects() {
     let effect = make_effect("buff", "Buff", vec![555]);
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Apply effect
@@ -367,7 +390,8 @@ fn test_ability_activated_refreshes_effect() {
     let mut effect = make_effect("refreshable", "Refreshable Hot", vec![666]);
     effect.refresh_abilities = vec![AbilitySelector::Id(100)]; // Ability 100 can refresh this effect
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Apply effect
@@ -386,7 +410,7 @@ fn test_ability_activated_refreshes_effect() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    }, None);
+    }, Some(&encounter));
 
     let effects: Vec<_> = tracker.active_effects().collect();
     let first_refreshed = effects[0].last_refreshed_at;
@@ -405,7 +429,7 @@ fn test_ability_activated_refreshes_effect() {
         target_entity_type: EntityType::Player,
         target_npc_id: 0,
         timestamp: later,
-    }, None);
+    }, Some(&encounter));
 
     let effects: Vec<_> = tracker.active_effects().collect();
     assert!(effects[0].last_refreshed_at > first_refreshed, "Effect should be refreshed");
@@ -455,7 +479,8 @@ fn test_boss_filter_uses_encounter_context() {
     let mut effect = make_effect("boss_debuff", "Boss Debuff", vec![888]);
     effect.target = EntityFilter::Boss;
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
     let encounter = make_encounter_with_bosses(&[999]);
 
@@ -537,7 +562,8 @@ fn test_filter_local_player() {
     let mut effect = make_effect("local", "Local Only", vec![100]);
     effect.source = EntityFilter::LocalPlayer;
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // From local player - should match
@@ -556,7 +582,7 @@ fn test_filter_local_player() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    }, None);
+    }, Some(&encounter));
 
     assert_eq!(tracker.active_effects().count(), 1, "Local player source should match");
 }
@@ -566,7 +592,8 @@ fn test_filter_local_player_rejects_other() {
     let mut effect = make_effect("local", "Local Only", vec![100]);
     effect.source = EntityFilter::LocalPlayer;
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // From other player - should NOT match
@@ -595,7 +622,8 @@ fn test_filter_other_players() {
     let mut effect = make_effect("others", "From Others", vec![100]);
     effect.source = EntityFilter::OtherPlayers;
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // From other player - should match
@@ -614,7 +642,7 @@ fn test_filter_other_players() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    }, None);
+    }, Some(&encounter));
 
     assert_eq!(tracker.active_effects().count(), 1);
 
@@ -634,7 +662,7 @@ fn test_filter_other_players() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    }, None);
+    }, Some(&encounter));
 
     // Still only 1 effect
     assert_eq!(tracker.active_effects().count(), 1, "Local player should not match OtherPlayers");
@@ -645,7 +673,8 @@ fn test_filter_any_player() {
     let mut effect = make_effect("any_player", "Any Player", vec![100]);
     effect.source = EntityFilter::AnyPlayer;
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // From local
@@ -692,7 +721,8 @@ fn test_filter_any_npc() {
     let mut effect = make_effect("npc", "NPC Effect", vec![100]);
     effect.target = EntityFilter::AnyNpc;
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // On NPC - should match
@@ -741,7 +771,8 @@ fn test_filter_npc_except_boss() {
     let mut effect = make_effect("trash", "Trash Mob Debuff", vec![100]);
     effect.target = EntityFilter::NpcExceptBoss;
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
     let encounter = make_encounter_with_bosses(&[999]);
 
@@ -791,7 +822,8 @@ fn test_filter_companion() {
     let mut effect = make_effect("companion", "Companion Buff", vec![100]);
     effect.target = EntityFilter::AnyCompanion;
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // On companion - should match
@@ -840,7 +872,8 @@ fn test_filter_any_player_or_companion() {
     let mut effect = make_effect("friendly", "Friendly Buff", vec![100]);
     effect.target = EntityFilter::AnyPlayerOrCompanion;
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // On player
@@ -908,7 +941,8 @@ fn test_filter_any_matches_everything() {
     effect.source = EntityFilter::Any;
     effect.target = EntityFilter::Any;
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Player to Player
@@ -971,7 +1005,8 @@ fn test_filter_any_matches_everything() {
 #[test]
 fn test_non_matching_effect_id_ignored() {
     let effect = make_effect("specific", "Specific Effect", vec![12345]);
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Wrong effect ID
@@ -1000,7 +1035,8 @@ fn test_target_tracking_for_ability_refresh() {
     let mut effect = make_effect("healing", "Healing Effect", vec![100]);
     effect.refresh_abilities = vec![AbilitySelector::Id(200)];
 
-    let mut tracker = make_tracker(vec![effect], 1);
+    let mut tracker = make_tracker(vec![effect]);
+    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Track target
@@ -1093,7 +1129,7 @@ fn run_effect_integration(fixture_path: &Path, effect: EffectDefinition) -> (usi
             let signals = processor.process_event(event, &mut cache);
             for signal in signals {
                 let before = tracker.active_effects().count();
-                tracker.handle_signal(&signal, None);
+                tracker.handle_signal(&signal, cache.current_encounter());
                 let after = tracker.active_effects().count();
 
                 if after > before {
@@ -1155,7 +1191,7 @@ fn test_integration_combat_clears_effects() {
         if let Some(event) = parser.parse_line(line_num as u64, line) {
             let signals = processor.process_event(event, &mut cache);
             for signal in &signals {
-                tracker.handle_signal(signal, None);
+                tracker.handle_signal(signal, cache.current_encounter());
 
                 if matches!(signal, GameSignal::CombatEnded { .. }) {
                     saw_combat_end = true;

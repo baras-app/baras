@@ -210,10 +210,15 @@ impl ParsingSession {
     }
 
     fn dispatch_signals(&mut self, signals: &[GameSignal]) {
-        // Get current encounter reference for handlers
-        let encounter = self.session_cache
-            .as_ref()
-            .and_then(|cache| cache.current_encounter());
+        let Some(cache) = &self.session_cache else { return };
+
+        // Get current encounter and ensure it has local_player_id from cache
+        let encounter = cache.current_encounter();
+        let local_player_id = if cache.player_initialized {
+            Some(cache.player.id)
+        } else {
+            None
+        };
 
         // Forward to registered signal handlers
         for handler in &mut self.signal_handlers {
@@ -223,7 +228,7 @@ impl ParsingSession {
         // Forward to effect tracker (Live mode only)
         if let Some(tracker) = &self.effect_tracker {
             if let Ok(mut tracker) = tracker.lock() {
-                tracker.handle_signals(signals, encounter);
+                tracker.handle_signals_with_player(signals, encounter, local_player_id);
             }
         }
 

@@ -377,7 +377,6 @@ pub mod overlay_colors {
 
 fn default_true() -> bool { true }
 fn default_opacity() -> u8 { 180 }
-fn default_lag_offset() -> i32 { 750 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Overlay Appearance Config
@@ -842,8 +841,6 @@ pub struct OverlaySettings {
     pub personal_opacity: u8,
     #[serde(default)]
     pub class_icons_enabled: bool,
-    #[serde(default = "default_lag_offset")]
-    pub effect_lag_offset_ms: i32,
     #[serde(default, skip_deserializing)]
     pub default_appearances: HashMap<String, OverlayAppearanceConfig>,
     #[serde(default)]
@@ -879,7 +876,6 @@ impl Default for OverlaySettings {
             metric_opacity: 180,
             personal_opacity: 180,
             class_icons_enabled: false,
-            effect_lag_offset_ms: 750,
             default_appearances: HashMap::new(),
             raid_overlay: RaidOverlaySettings::default(),
             raid_opacity: 180,
