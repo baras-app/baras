@@ -4,6 +4,7 @@
 //! Uses DataFusion SQL queries over parquet files for historical data.
 
 use dioxus::prelude::*;
+use std::collections::HashSet;
 use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api::{self, AbilityBreakdown, EntityBreakdown};
@@ -28,6 +29,27 @@ fn format_pct(n: f64) -> String {
     format!("{:.1}%", n)
 }
 
+fn format_duration(secs: i64) -> String {
+    let mins = secs / 60;
+    let secs = secs % 60;
+    format!("{}:{:02}", mins, secs)
+}
+
+/// Group encounters into sections by area (based on is_phase_start flag)
+fn group_by_area(encounters: &[EncounterSummary]) -> Vec<(String, Option<String>, Vec<&EncounterSummary>)> {
+    let mut sections: Vec<(String, Option<String>, Vec<&EncounterSummary>)> = Vec::new();
+
+    for enc in encounters.iter() {
+        if enc.is_phase_start || sections.is_empty() {
+            sections.push((enc.area_name.clone(), enc.difficulty.clone(), vec![enc]));
+        } else if let Some(section) = sections.last_mut() {
+            section.2.push(enc);
+        }
+    }
+
+    sections
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,6 +66,10 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     // Encounter selection state
     let mut encounters = use_signal(Vec::<EncounterSummary>::new);
     let mut selected_encounter = use_signal(|| props.encounter_idx);
+
+    // Sidebar state
+    let mut show_only_bosses = use_signal(|| false);
+    let mut collapsed_sections = use_signal(HashSet::<String>::new);
 
     // Query result state
     let mut abilities = use_signal(Vec::<AbilityBreakdown>::new);
@@ -120,29 +146,118 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
         });
     };
 
+    // Prepare data for rendering
+    let history = encounters();
+    let bosses_only = show_only_bosses();
+    let collapsed = collapsed_sections();
+
+    // Filter encounters based on boss-only toggle
+    let filtered_history: Vec<_> = if bosses_only {
+        history.iter().filter(|e| e.boss_name.is_some()).cloned().collect()
+    } else {
+        history.clone()
+    };
+
+    // Group encounters by area
+    let sections = group_by_area(&filtered_history);
+
     rsx! {
         div { class: "data-explorer",
-            // Encounter Selector
-            div { class: "encounter-selector",
-                h3 { "Select Encounter" }
-                div { class: "encounter-list",
-                    if encounters.read().is_empty() {
-                        p { class: "hint", "No encounters available. Load a log file first." }
+            // Sidebar with encounter list
+            aside { class: "explorer-sidebar",
+                div { class: "sidebar-header",
+                    h3 {
+                        i { class: "fa-solid fa-list" }
+                        " Encounters"
                     }
-                    for (idx, enc) in encounters.read().iter().enumerate() {
-                        {
-                            let enc_idx = idx as u32;
-                            let is_selected = *selected_encounter.read() == Some(enc_idx);
-                            rsx! {
-                                div {
-                                    class: if is_selected { "encounter-item selected" } else { "encounter-item" },
-                                    onclick: move |_| selected_encounter.set(Some(enc_idx)),
-                                    span { class: "encounter-name", "{enc.display_name}" }
-                                    span { class: "encounter-area", "{enc.area_name}" }
-                                    if enc.success {
-                                        span { class: "encounter-success", "✓" }
-                                    } else {
-                                        span { class: "encounter-wipe", "✗" }
+                    div { class: "history-controls",
+                        label { class: "boss-filter-toggle",
+                            input {
+                                r#type: "checkbox",
+                                checked: bosses_only,
+                                onchange: move |e| show_only_bosses.set(e.checked())
+                            }
+                            span { "Trash" }
+                        }
+                        span { class: "encounter-count",
+                            "{filtered_history.len()}"
+                            if bosses_only { " / {history.len()}" }
+                        }
+                    }
+                }
+
+                div { class: "sidebar-encounter-list",
+                    if history.is_empty() {
+                        div { class: "sidebar-empty",
+                            i { class: "fa-solid fa-inbox" }
+                            p { "No encounters" }
+                            p { class: "hint", "Load a log file to see encounters" }
+                        }
+                    } else {
+                        for (idx, (area_name, difficulty, area_encounters)) in sections.iter().enumerate() {
+                            {
+                                let section_key = format!("{}_{}", idx, area_name);
+                                let is_collapsed = collapsed.contains(&section_key);
+                                let section_key_toggle = section_key.clone();
+                                let chevron_class = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
+
+                                rsx! {
+                                    // Area header (collapsible)
+                                    div {
+                                        class: "sidebar-section-header",
+                                        onclick: move |_| {
+                                            let mut set = collapsed_sections();
+                                            if set.contains(&section_key_toggle) {
+                                                set.remove(&section_key_toggle);
+                                            } else {
+                                                set.insert(section_key_toggle.clone());
+                                            }
+                                            collapsed_sections.set(set);
+                                        },
+                                        i { class: "fa-solid {chevron_class} collapse-icon" }
+                                        span { class: "section-area", "{area_name}" }
+                                        if let Some(diff) = difficulty {
+                                            span { class: "section-difficulty", " • {diff}" }
+                                        }
+                                        span { class: "section-count", " ({area_encounters.len()})" }
+                                    }
+
+                                    // Encounter items (hidden if collapsed)
+                                    if !is_collapsed {
+                                        for (enc_offset, enc) in area_encounters.iter().enumerate() {
+                                            {
+                                                // Calculate global index for this encounter
+                                                let global_idx = filtered_history.iter()
+                                                    .position(|e| e.encounter_id == enc.encounter_id)
+                                                    .map(|i| i as u32);
+                                                let enc_idx = global_idx.unwrap_or(enc_offset as u32);
+                                                let is_selected = *selected_encounter.read() == Some(enc_idx);
+                                                let success_class = if enc.success { "success" } else { "wipe" };
+
+                                                rsx! {
+                                                    div {
+                                                        class: if is_selected { "sidebar-encounter-item selected" } else { "sidebar-encounter-item" },
+                                                        onclick: move |_| selected_encounter.set(Some(enc_idx)),
+                                                        div { class: "encounter-main",
+                                                            span { class: "encounter-name", "{enc.display_name}" }
+                                                            span { class: "result-indicator {success_class}",
+                                                                if enc.success {
+                                                                    i { class: "fa-solid fa-check" }
+                                                                } else {
+                                                                    i { class: "fa-solid fa-skull" }
+                                                                }
+                                                            }
+                                                        }
+                                                        div { class: "encounter-meta",
+                                                            if let Some(time) = &enc.start_time {
+                                                                span { class: "encounter-time", "{time}" }
+                                                            }
+                                                            span { class: "encounter-duration", "({format_duration(enc.duration_seconds)})" }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -151,9 +266,15 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 }
             }
 
-            // Data Panel (only show when encounter selected)
-            if selected_encounter.read().is_some() {
-                div { class: "data-panel",
+            // Data Panel (main content area)
+            div { class: "data-panel",
+                if selected_encounter.read().is_none() {
+                    div { class: "panel-placeholder",
+                        i { class: "fa-solid fa-chart-bar" }
+                        p { "Select an encounter" }
+                        p { class: "hint", "Choose an encounter from the sidebar to view detailed breakdown" }
+                    }
+                } else {
                     // Header
                     div { class: "explorer-header",
                         h3 {

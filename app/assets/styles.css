@@ -4906,3 +4906,380 @@ details[open] .collapsible-summary::before {
 /* ─── Extra Spacing Utilities ────────────────────────────────────────────────── */
 .pl-lg { padding-left: var(--space-lg); }
 .pl-md { padding-left: var(--space-md); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Data Explorer Panel (StarParse-style layout)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.data-explorer {
+  display: flex;
+  gap: 1em;
+  height: 100%;
+  min-height: 500px;
+}
+
+/* Sidebar */
+.explorer-sidebar {
+  width: 280px;
+  min-width: 240px;
+  max-width: 320px;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-accent);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 0.75em;
+  border-bottom: 1px solid var(--border-accent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 0.95em;
+  color: var(--swtor-blue);
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.sidebar-header h3 i {
+  color: var(--swtor-blue-dim);
+}
+
+.sidebar-encounter-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5em;
+}
+
+.sidebar-empty {
+  text-align: center;
+  padding: 2em 1em;
+  color: var(--text-muted);
+}
+
+.sidebar-empty i {
+  font-size: 2em;
+  margin-bottom: 0.5em;
+  display: block;
+  opacity: 0.5;
+}
+
+.sidebar-empty .hint {
+  font-size: 0.85em;
+  color: var(--text-disabled);
+  margin-top: 0.5em;
+}
+
+/* Section headers (area grouping) */
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.5em 0.5em;
+  margin: 0.25em 0;
+  cursor: pointer;
+  font-size: 0.8em;
+  color: var(--swtor-blue-dim);
+  background: var(--blue-alpha-5);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.sidebar-section-header:hover {
+  background: var(--blue-alpha-8);
+}
+
+.sidebar-section-header .collapse-icon {
+  font-size: 0.75em;
+  width: 1em;
+  text-align: center;
+}
+
+.sidebar-section-header .section-area {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.sidebar-section-header .section-difficulty {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.sidebar-section-header .section-count {
+  margin-left: auto;
+  color: var(--text-disabled);
+  font-size: 0.9em;
+}
+
+/* Encounter items in sidebar */
+.sidebar-encounter-item {
+  padding: 0.6em 0.75em;
+  margin: 0.2em 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid transparent;
+  transition: all 0.15s;
+}
+
+.sidebar-encounter-item:hover {
+  background: var(--blue-alpha-5);
+}
+
+.sidebar-encounter-item.selected {
+  background: var(--blue-alpha-10);
+  border-left-color: var(--swtor-blue);
+}
+
+.sidebar-encounter-item .encounter-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+
+.sidebar-encounter-item .encounter-name {
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-encounter-item .result-indicator {
+  font-size: 0.75em;
+  flex-shrink: 0;
+}
+
+.sidebar-encounter-item .result-indicator.success {
+  color: var(--color-success);
+}
+
+.sidebar-encounter-item .result-indicator.wipe {
+  color: var(--color-error);
+}
+
+.sidebar-encounter-item .encounter-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-top: 0.25em;
+  font-size: 0.75em;
+  color: var(--text-muted);
+}
+
+.sidebar-encounter-item .encounter-time {
+  opacity: 0.8;
+}
+
+.sidebar-encounter-item .encounter-duration {
+  opacity: 0.7;
+}
+
+/* Data Panel (main content) */
+.data-explorer .data-panel {
+  flex: 1;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-accent);
+  padding: 1em;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.panel-placeholder i {
+  font-size: 3em;
+  margin-bottom: 0.5em;
+  opacity: 0.3;
+}
+
+.panel-placeholder p {
+  margin: 0.25em 0;
+}
+
+.panel-placeholder .hint {
+  font-size: 0.85em;
+  color: var(--text-disabled);
+}
+
+.explorer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1em;
+  padding-bottom: 0.75em;
+  border-bottom: 1px solid var(--border-accent);
+}
+
+.explorer-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+  color: var(--text-primary);
+}
+
+.loading-indicator {
+  font-size: 0.85em;
+  color: var(--swtor-blue);
+}
+
+.loading-indicator::before {
+  content: "";
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.5em;
+  border: 2px solid var(--swtor-blue);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-message {
+  padding: 0.75em 1em;
+  margin-bottom: 1em;
+  background: rgba(200, 80, 80, 0.15);
+  border: 1px solid rgba(200, 80, 80, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--color-error);
+  font-size: 0.9em;
+}
+
+/* Explorer content (two-column) */
+.explorer-content {
+  display: flex;
+  gap: 1em;
+  flex: 1;
+  min-height: 0;
+}
+
+.entity-section {
+  width: 200px;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+}
+
+.entity-section h4 {
+  margin: 0 0 0.5em 0;
+  font-size: 0.9em;
+  color: var(--swtor-blue-dim);
+}
+
+.entity-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.entity-row {
+  padding: 0.5em 0.75em;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.15s;
+}
+
+.entity-row:last-child {
+  border-bottom: none;
+}
+
+.entity-row:hover {
+  background: var(--blue-alpha-5);
+}
+
+.entity-row.selected {
+  background: var(--blue-alpha-10);
+}
+
+.entity-row .entity-name {
+  display: block;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.2em;
+}
+
+.entity-row .entity-value {
+  font-size: 0.8em;
+  color: var(--swtor-blue);
+  margin-right: 0.5em;
+}
+
+.entity-row .entity-abilities {
+  font-size: 0.75em;
+  color: var(--text-muted);
+}
+
+.ability-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ability-section h4 {
+  margin: 0 0 0.5em 0;
+  font-size: 0.9em;
+  color: var(--swtor-blue-dim);
+}
+
+.ability-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.ability-table th,
+.ability-table td {
+  padding: 0.5em 0.75em;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ability-table th {
+  background: var(--blue-alpha-5);
+  color: var(--swtor-blue-dim);
+  font-weight: 500;
+  font-size: 0.9em;
+  position: sticky;
+  top: 0;
+}
+
+.ability-table th.num,
+.ability-table td.num {
+  text-align: right;
+}
+
+.ability-table tbody tr:hover {
+  background: var(--blue-alpha-5);
+}
+
+.ability-table tbody tr:last-child td {
+  border-bottom: none;
+}
