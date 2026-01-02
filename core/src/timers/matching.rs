@@ -2,7 +2,8 @@
 //!
 //! Contains entity filter matching and definition context checking.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
+use hashbrown::HashMap;
 
 use crate::combat_log::EntityType;
 use crate::context::IStr;

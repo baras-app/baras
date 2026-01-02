@@ -588,7 +588,7 @@ impl EffectTracker {
 }
 
 impl SignalHandler for EffectTracker {
-    fn handle_signal(&mut self, signal: &GameSignal) {
+    fn handle_signal(&mut self, signal: &GameSignal, _encounter: Option<&crate::encounter::CombatEncounter>) {
         match signal {
             GameSignal::EffectApplied {
                 effect_id,

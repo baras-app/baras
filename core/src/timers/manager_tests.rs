@@ -62,7 +62,7 @@ fn test_combat_start_triggers_timer() {
         timestamp: now(),
         encounter_id: 1,
     };
-    manager.handle_signal(&signal);
+    manager.handle_signal(&signal, None);
 
     // Timer should now be active
     let active = manager.active_timers();
@@ -96,7 +96,7 @@ fn test_ability_cast_triggers_timer() {
         target_npc_id: 0,
         timestamp: now(),
     };
-    manager.handle_signal(&signal);
+    manager.handle_signal(&signal, None);
 
     let active = manager.active_timers();
     assert_eq!(active.len(), 1, "Expected 1 active timer");
@@ -131,7 +131,7 @@ fn test_effect_applied_triggers_timer() {
         timestamp: now(),
         charges: None,
     };
-    manager.handle_signal(&signal);
+    manager.handle_signal(&signal, None);
 
     let active = manager.active_timers();
     assert_eq!(active.len(), 1);
@@ -157,7 +157,7 @@ fn test_npc_first_seen_triggers_timer() {
         entity_name: "Dread Monster".to_string(),
         timestamp: now(),
     };
-    manager.handle_signal(&signal);
+    manager.handle_signal(&signal, None);
 
     let active = manager.active_timers();
     assert_eq!(active.len(), 1);
@@ -196,7 +196,7 @@ fn test_anyof_condition_triggers_on_either() {
         target_npc_id: 0,
         timestamp: now(),
     };
-    manager.handle_signal(&signal1);
+    manager.handle_signal(&signal1, None);
 
     assert_eq!(manager.active_timers().len(), 1, "First condition should trigger");
 
@@ -204,7 +204,7 @@ fn test_anyof_condition_triggers_on_either() {
     manager.handle_signal(&GameSignal::CombatEnded {
         timestamp: now(),
         encounter_id: 1,
-    });
+    }, None);
 
     let signal2 = GameSignal::AbilityActivated {
         ability_id: 222,
@@ -219,7 +219,7 @@ fn test_anyof_condition_triggers_on_either() {
         target_npc_id: 0,
         timestamp: now(),
     };
-    manager.handle_signal(&signal2);
+    manager.handle_signal(&signal2, None);
 
     assert_eq!(manager.active_timers().len(), 1, "Second condition should also trigger");
 }
@@ -247,7 +247,7 @@ fn test_anyof_mixed_trigger_types() {
         timestamp: now(),
         encounter_id: 1,
     };
-    manager.handle_signal(&signal);
+    manager.handle_signal(&signal, None);
 
     assert_eq!(manager.active_timers().len(), 1, "CombatStart in AnyOf should trigger");
 }
@@ -280,7 +280,7 @@ fn test_cancel_on_timer() {
     manager.handle_signal(&GameSignal::CombatStarted {
         timestamp: now(),
         encounter_id: 1,
-    });
+    }, None);
 
     let active = manager.active_timers();
     assert_eq!(active.len(), 1);
@@ -299,7 +299,7 @@ fn test_cancel_on_timer() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: now(),
-    });
+    }, None);
 
     let active = manager.active_timers();
     assert_eq!(active.len(), 1, "Only Timer B should remain");
@@ -332,7 +332,7 @@ fn test_wrong_ability_does_not_trigger() {
         target_npc_id: 0,
         timestamp: now(),
     };
-    manager.handle_signal(&signal);
+    manager.handle_signal(&signal, None);
 
     assert!(manager.active_timers().is_empty(), "Wrong ability should not trigger");
 }
@@ -353,14 +353,14 @@ fn test_combat_end_clears_timers() {
     manager.handle_signal(&GameSignal::CombatStarted {
         timestamp: now(),
         encounter_id: 1,
-    });
+    }, None);
     assert_eq!(manager.active_timers().len(), 1);
 
     // End combat
     manager.handle_signal(&GameSignal::CombatEnded {
         timestamp: now(),
         encounter_id: 1,
-    });
+    }, None);
 
     assert!(manager.active_timers().is_empty(), "CombatEnded should clear timers");
 }
@@ -391,7 +391,7 @@ fn test_timer_expires_triggers_chain() {
     manager.handle_signal(&GameSignal::CombatStarted {
         timestamp: start_time,
         encounter_id: 1,
-    });
+    }, None);
 
     let active = manager.active_timers();
     assert_eq!(active.len(), 1);
@@ -411,7 +411,7 @@ fn test_timer_expires_triggers_chain() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: after_expiry,
-    });
+    }, None);
     manager.tick();
 
     // Timer A should be gone, Timer B should now be active
@@ -438,7 +438,7 @@ fn test_timer_expires_without_chain() {
     manager.handle_signal(&GameSignal::CombatStarted {
         timestamp: start_time,
         encounter_id: 1,
-    });
+    }, None);
 
     assert_eq!(manager.active_timers().len(), 1);
 
@@ -456,7 +456,7 @@ fn test_timer_expires_without_chain() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: after_expiry,
-    });
+    }, None);
     manager.tick();
 
     // Timer should be gone
@@ -485,7 +485,7 @@ fn test_phase_ended_triggers_timer() {
         old_phase: None,
         new_phase: "phase_1".to_string(),
         timestamp: now(),
-    });
+    }, None);
     assert!(manager.active_timers().is_empty(), "PhaseEntered should not trigger PhaseEnded timer");
 
     // Transition to phase_2 - phase_1 ended, should trigger
@@ -494,7 +494,7 @@ fn test_phase_ended_triggers_timer() {
         old_phase: Some("phase_1".to_string()),
         new_phase: "phase_2".to_string(),
         timestamp: now(),
-    });
+    }, None);
 
     let active = manager.active_timers();
     assert_eq!(active.len(), 1, "PhaseEnded timer should trigger when phase_1 ends");
@@ -529,7 +529,7 @@ fn test_phase_entered_and_ended_both_trigger() {
         old_phase: Some("phase_1".to_string()),
         new_phase: "phase_2".to_string(),
         timestamp: now(),
-    });
+    }, None);
 
     let active = manager.active_timers();
     assert_eq!(active.len(), 2, "Both phase entered and ended timers should trigger");
@@ -567,7 +567,7 @@ fn run_timer_integration(fixture_path: &Path, timer: TimerDefinition) -> Vec<Str
             let signals = processor.process_event(event, &mut cache);
             for signal in signals {
                 let before = manager.active_timers().len();
-                manager.handle_signal(&signal);
+                manager.handle_signal(&signal, None);
                 let after = manager.active_timers().len();
 
                 // Track newly activated timers
@@ -693,7 +693,7 @@ fn test_multi_timer_chain_a_b_c() {
     manager.handle_signal(&GameSignal::CombatStarted {
         timestamp: start_time,
         encounter_id: 1,
-    });
+    }, None);
 
     assert_eq!(manager.active_timers().len(), 1);
     assert_eq!(manager.active_timers()[0].name, "Timer A");
@@ -712,7 +712,7 @@ fn test_multi_timer_chain_a_b_c() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: t1,
-    });
+    }, None);
     manager.tick();
 
     assert_eq!(manager.active_timers().len(), 1, "Timer B should be active");
@@ -732,7 +732,7 @@ fn test_multi_timer_chain_a_b_c() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: t2,
-    });
+    }, None);
     manager.tick();
 
     assert_eq!(manager.active_timers().len(), 1, "Timer C should be active");
@@ -752,7 +752,7 @@ fn test_multi_timer_chain_a_b_c() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: t3,
-    });
+    }, None);
     manager.tick();
 
     assert!(manager.active_timers().is_empty(), "All timers should have expired");
@@ -791,7 +791,7 @@ fn test_cancel_on_timer_with_chain() {
     manager.handle_signal(&GameSignal::CombatStarted {
         timestamp: start_time,
         encounter_id: 1,
-    });
+    }, None);
 
     let active = manager.active_timers();
     assert_eq!(active.len(), 2, "Both Timer A and Timer B should be active");
@@ -811,7 +811,7 @@ fn test_cancel_on_timer_with_chain() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: after_expiry,
-    });
+    }, None);
     manager.tick();
 
     let active = manager.active_timers();
@@ -851,7 +851,7 @@ fn test_timer_refresh_resets_expiration() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: start_time,
-    });
+    }, None);
 
     assert_eq!(manager.active_timers().len(), 1);
     let initial_remaining = manager.active_timers()[0].remaining_secs(start_time);
@@ -872,7 +872,7 @@ fn test_timer_refresh_resets_expiration() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: t1,
-    });
+    }, None);
 
     assert_eq!(manager.active_timers().len(), 1, "Should still be one timer");
 
@@ -917,7 +917,7 @@ fn test_timer_no_refresh_when_disabled() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: start_time,
-    });
+    }, None);
 
     // Advance 3 seconds
     let t1 = start_time + chrono::Duration::seconds(3);
@@ -935,7 +935,7 @@ fn test_timer_no_refresh_when_disabled() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_npc_id: 0,
         timestamp: t1,
-    });
+    }, None);
 
     assert_eq!(manager.active_timers().len(), 1, "Should still be one timer (no duplicate)");
 }
@@ -982,7 +982,7 @@ fn test_integration_timer_expiration_with_real_log() {
         if let Some(event) = parser.parse_line(line_num as u64, line) {
             let signals = processor.process_event(event, &mut cache);
             for signal in signals {
-                manager.handle_signal(&signal);
+                manager.handle_signal(&signal, None);
                 manager.tick();
 
                 for t in manager.active_timers() {

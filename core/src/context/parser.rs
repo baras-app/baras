@@ -187,19 +187,24 @@ impl ParsingSession {
     }
 
     fn dispatch_signals(&mut self, signals: &[GameSignal]) {
+        // Get current encounter reference for handlers
+        let encounter = self.session_cache
+            .as_ref()
+            .and_then(|cache| cache.current_encounter());
+
         // Forward to registered signal handlers
         for handler in &mut self.signal_handlers {
-            handler.handle_signals(signals);
+            handler.handle_signals(signals, encounter);
         }
 
         // Forward to effect tracker (kept separate for query access)
         if let Ok(mut tracker) = self.effect_tracker.lock() {
-            tracker.handle_signals(signals);
+            tracker.handle_signals(signals, encounter);
         }
 
         // Forward to timer manager
         if let Ok(mut timer_mgr) = self.timer_manager.lock() {
-            timer_mgr.handle_signals(signals);
+            timer_mgr.handle_signals(signals, encounter);
         }
     }
 

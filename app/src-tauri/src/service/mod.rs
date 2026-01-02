@@ -189,7 +189,7 @@ impl CombatSignalHandler {
 }
 
 impl SignalHandler for CombatSignalHandler {
-    fn handle_signal(&mut self, signal: &GameSignal) {
+    fn handle_signal(&mut self, signal: &GameSignal, _encounter: Option<&baras_core::encounter::CombatEncounter>) {
         match signal {
             GameSignal::CombatStarted { .. } => {
                 self.shared.in_combat.store(true, Ordering::SeqCst);

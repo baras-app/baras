@@ -576,7 +576,7 @@ fn test_bestia_complete_encounter() {
                 }
 
                 // Feed to timer manager
-                timer_manager.handle_signal(signal);
+                timer_manager.handle_signal(signal, cache.current_encounter());
             }
 
             // Tick timers and check active state

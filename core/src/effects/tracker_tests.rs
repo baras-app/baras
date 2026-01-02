@@ -93,7 +93,7 @@ fn test_effect_applied_creates_active_effect() {
         timestamp: now(),
         charges: None,
     };
-    tracker.handle_signal(&signal);
+    tracker.handle_signal(&signal, None);
 
     assert!(tracker.has_active_effects(), "Effect should be active");
     let effects: Vec<_> = tracker.active_effects().collect();
@@ -123,7 +123,7 @@ fn test_effect_removed_marks_inactive() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert!(tracker.has_active_effects());
 
@@ -138,7 +138,7 @@ fn test_effect_removed_marks_inactive() {
         target_entity_type: crate::combat_log::EntityType::Player,
         target_name: crate::context::IStr::default(),
         timestamp: ts,
-    });
+    }, None);
 
     // Effect is marked removed but still in map until tick cleans it
     let effects: Vec<_> = tracker.active_effects().collect();
@@ -168,7 +168,7 @@ fn test_charges_changed_updates_stacks() {
         target_npc_id: 0,
         timestamp: ts,
         charges: Some(1),
-    });
+    }, None);
 
     // Update charges
     tracker.handle_signal(&GameSignal::EffectChargesChanged {
@@ -179,7 +179,7 @@ fn test_charges_changed_updates_stacks() {
         target_id: 2,
         timestamp: ts,
         charges: 3,
-    });
+    }, None);
 
     let effects: Vec<_> = tracker.active_effects().collect();
     assert_eq!(effects[0].stacks, 3);
@@ -207,7 +207,7 @@ fn test_entity_death_clears_effects() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert!(tracker.has_active_effects());
 
@@ -218,7 +218,7 @@ fn test_entity_death_clears_effects() {
         npc_id: 0,
         entity_name: "Target".to_string(),
         timestamp: ts,
-    });
+    }, None);
 
     let effects: Vec<_> = tracker.active_effects().collect();
     assert!(effects[0].removed_at.is_some(), "Effect should be marked removed on death");
@@ -247,7 +247,7 @@ fn test_persist_past_death_keeps_effect() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     // Target dies
     tracker.handle_signal(&GameSignal::EntityDeath {
@@ -256,7 +256,7 @@ fn test_persist_past_death_keeps_effect() {
         npc_id: 0,
         entity_name: "Target".to_string(),
         timestamp: ts,
-    });
+    }, None);
 
     let effects: Vec<_> = tracker.active_effects().collect();
     assert!(effects[0].removed_at.is_none(), "Persistent effect should survive death");
@@ -277,7 +277,7 @@ fn test_combat_end_clears_combat_only_effects() {
     tracker.handle_signal(&GameSignal::CombatStarted {
         timestamp: ts,
         encounter_id: 1,
-    });
+    }, None);
 
     // Apply both effects
     for effect_id in [333, 444] {
@@ -296,7 +296,7 @@ fn test_combat_end_clears_combat_only_effects() {
             target_npc_id: 0,
             timestamp: ts,
             charges: None,
-        });
+        }, None);
     }
 
     assert_eq!(tracker.active_effects().count(), 2);
@@ -305,7 +305,7 @@ fn test_combat_end_clears_combat_only_effects() {
     tracker.handle_signal(&GameSignal::CombatEnded {
         timestamp: ts,
         encounter_id: 1,
-    });
+    }, None);
 
     let effects: Vec<_> = tracker.active_effects().collect();
     let combat_effect = effects.iter().find(|e| e.definition_id == "combat_buff");
@@ -337,7 +337,7 @@ fn test_area_entered_clears_all_effects() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     // Change area
     tracker.handle_signal(&GameSignal::AreaEntered {
@@ -346,7 +346,7 @@ fn test_area_entered_clears_all_effects() {
         difficulty_id: 0,
         difficulty_name: String::new(),
         timestamp: ts,
-    });
+    }, None);
 
     let effects: Vec<_> = tracker.active_effects().collect();
     assert!(effects[0].removed_at.is_some(), "Effect should be cleared on area change");
@@ -376,7 +376,7 @@ fn test_ability_activated_refreshes_effect() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     let effects: Vec<_> = tracker.active_effects().collect();
     let first_refreshed = effects[0].last_refreshed_at;
@@ -395,7 +395,7 @@ fn test_ability_activated_refreshes_effect() {
         target_entity_type: EntityType::Player,
         target_npc_id: 0,
         timestamp: later,
-    });
+    }, None);
 
     let effects: Vec<_> = tracker.active_effects().collect();
     assert!(effects[0].last_refreshed_at > first_refreshed, "Effect should be refreshed");
@@ -415,7 +415,7 @@ fn test_player_initialized_sets_local_player() {
     tracker.handle_signal(&GameSignal::PlayerInitialized {
         entity_id: 42,
         timestamp: ts,
-    });
+    }, None);
 
     // Now effects from player 42 should be tracked as local
     tracker.handle_signal(&GameSignal::EffectApplied {
@@ -433,7 +433,7 @@ fn test_player_initialized_sets_local_player() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     let effects: Vec<_> = tracker.active_effects().collect();
     assert_eq!(effects.len(), 1);
@@ -464,7 +464,7 @@ fn test_boss_hp_changed_tracks_boss_ids() {
         target_npc_id: 999,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 0, "Should not match - NPC not known as boss");
 
@@ -476,7 +476,7 @@ fn test_boss_hp_changed_tracks_boss_ids() {
         current_hp: 1000000,
         max_hp: 1000000,
         timestamp: ts,
-    });
+    }, None);
 
     // Now try again
     tracker.handle_signal(&GameSignal::EffectApplied {
@@ -494,7 +494,7 @@ fn test_boss_hp_changed_tracks_boss_ids() {
         target_npc_id: 999,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 1, "Should match now that NPC is known boss");
 }
@@ -522,7 +522,7 @@ fn test_live_mode_required_for_tracking() {
         timestamp: now(),
         charges: None,
     };
-    tracker.handle_signal(&signal);
+    tracker.handle_signal(&signal, None);
 
     assert!(!tracker.has_active_effects(), "Should not track in historical mode");
 }
@@ -555,7 +555,7 @@ fn test_filter_local_player() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 1, "Local player source should match");
 }
@@ -584,7 +584,7 @@ fn test_filter_local_player_rejects_other() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 0, "Other player source should not match LocalPlayer filter");
 }
@@ -613,7 +613,7 @@ fn test_filter_other_players() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 1);
 
@@ -633,7 +633,7 @@ fn test_filter_other_players() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     // Still only 1 effect
     assert_eq!(tracker.active_effects().count(), 1, "Local player should not match OtherPlayers");
@@ -663,7 +663,7 @@ fn test_filter_any_player() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     // From other
     tracker.handle_signal(&GameSignal::EffectApplied {
@@ -681,7 +681,7 @@ fn test_filter_any_player() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 2, "Both players should match AnyPlayer");
 }
@@ -710,7 +710,7 @@ fn test_filter_any_npc() {
         target_npc_id: 999,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 1);
 
@@ -730,7 +730,7 @@ fn test_filter_any_npc() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 1, "Player should not match AnyNpc");
 }
@@ -751,7 +751,7 @@ fn test_filter_npc_except_boss() {
         current_hp: 1000000,
         max_hp: 1000000,
         timestamp: ts,
-    });
+    }, None);
 
     // On boss - should NOT match
     tracker.handle_signal(&GameSignal::EffectApplied {
@@ -769,7 +769,7 @@ fn test_filter_npc_except_boss() {
         target_npc_id: 999,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 0, "Boss should not match NpcExceptBoss");
 
@@ -789,7 +789,7 @@ fn test_filter_npc_except_boss() {
         target_npc_id: 999,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 1, "Non-boss NPC should match");
 }
@@ -818,7 +818,7 @@ fn test_filter_companion() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 1);
 
@@ -838,7 +838,7 @@ fn test_filter_companion() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 1, "Player should not match AnyCompanion");
 }
@@ -867,7 +867,7 @@ fn test_filter_any_player_or_companion() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     // On companion
     tracker.handle_signal(&GameSignal::EffectApplied {
@@ -885,7 +885,7 @@ fn test_filter_any_player_or_companion() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 2, "Both player and companion should match");
 
@@ -905,7 +905,7 @@ fn test_filter_any_player_or_companion() {
         target_npc_id: 999,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 2, "NPC should not match");
 }
@@ -935,7 +935,7 @@ fn test_filter_any_matches_everything() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     // NPC to NPC
     tracker.handle_signal(&GameSignal::EffectApplied {
@@ -953,7 +953,7 @@ fn test_filter_any_matches_everything() {
         target_npc_id: 999,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     // Player to Companion
     tracker.handle_signal(&GameSignal::EffectApplied {
@@ -971,7 +971,7 @@ fn test_filter_any_matches_everything() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 3, "Any filter should match all");
 }
@@ -998,7 +998,7 @@ fn test_non_matching_effect_id_ignored() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     assert_eq!(tracker.active_effects().count(), 0, "Non-matching effect ID should be ignored");
 }
@@ -1021,7 +1021,7 @@ fn test_target_tracking_for_ability_refresh() {
         target_npc_id: 0,
         target_entity_type: EntityType::Player,
         timestamp: ts,
-    });
+    }, None);
 
     // Apply effect to target
     tracker.handle_signal(&GameSignal::EffectApplied {
@@ -1039,7 +1039,7 @@ fn test_target_tracking_for_ability_refresh() {
         target_npc_id: 0,
         timestamp: ts,
         charges: None,
-    });
+    }, None);
 
     // Use ability with self-target (should resolve to tracked target)
     let later = ts + chrono::Duration::seconds(2);
@@ -1055,7 +1055,7 @@ fn test_target_tracking_for_ability_refresh() {
         target_entity_type: EntityType::Player,
         target_npc_id: 0,
         timestamp: later,
-    });
+    }, None);
 
     let effects: Vec<_> = tracker.active_effects().collect();
     assert!(effects[0].last_refreshed_at > ts, "Effect should be refreshed via tracked target");
@@ -1064,7 +1064,7 @@ fn test_target_tracking_for_ability_refresh() {
     tracker.handle_signal(&GameSignal::TargetCleared {
         source_id: 1,
         timestamp: later,
-    });
+    }, None);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1101,7 +1101,7 @@ fn run_effect_integration(fixture_path: &Path, effect: EffectDefinition) -> (usi
             let signals = processor.process_event(event, &mut cache);
             for signal in signals {
                 let before = tracker.active_effects().count();
-                tracker.handle_signal(&signal);
+                tracker.handle_signal(&signal, None);
                 let after = tracker.active_effects().count();
 
                 if after > before {
@@ -1163,7 +1163,7 @@ fn test_integration_combat_clears_effects() {
         if let Some(event) = parser.parse_line(line_num as u64, line) {
             let signals = processor.process_event(event, &mut cache);
             for signal in &signals {
-                tracker.handle_signal(signal);
+                tracker.handle_signal(signal, None);
 
                 if matches!(signal, GameSignal::CombatEnded { .. }) {
                     saw_combat_end = true;

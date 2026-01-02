@@ -7,6 +7,7 @@ use chrono::NaiveDateTime;
 
 use crate::combat_log::EntityType;
 use crate::context::IStr;
+use crate::encounter::CombatEncounter;
 
 use crate::dsl::EntitySelectorExt;
 use super::{TimerManager, TimerTrigger};
@@ -14,6 +15,7 @@ use super::{TimerManager, TimerTrigger};
 /// Handle ability activation
 pub(super) fn handle_ability(
     manager: &mut TimerManager,
+    encounter: Option<&CombatEncounter>,
     ability_id: i64,
     ability_name: IStr,
     source_id: i64,
@@ -33,7 +35,7 @@ pub(super) fn handle_ability(
         .values()
         .filter(|d| {
             d.matches_ability_with_name(ability_id, Some(ability_name_str))
-                && manager.is_definition_active(d)
+                && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger, source_id, source_type, source_name, source_npc_id,
                     target_id, target_type, target_name, target_npc_id,
@@ -56,6 +58,7 @@ pub(super) fn handle_ability(
 /// Handle effect applied
 pub(super) fn handle_effect_applied(
     manager: &mut TimerManager,
+    encounter: Option<&CombatEncounter>,
     effect_id: i64,
     source_id: i64,
     source_type: EntityType,
@@ -74,7 +77,7 @@ pub(super) fn handle_effect_applied(
         .values()
         .filter(|d| {
             d.matches_effect_applied(effect_id)
-                && manager.is_definition_active(d)
+                && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger, source_id, source_type, source_name, source_npc_id,
                     target_id, target_type, target_name, target_npc_id,
@@ -100,6 +103,7 @@ pub(super) fn handle_effect_applied(
 /// so npc_id params will typically be 0.
 pub(super) fn handle_effect_removed(
     manager: &mut TimerManager,
+    encounter: Option<&CombatEncounter>,
     effect_id: i64,
     source_id: i64,
     source_type: EntityType,
@@ -118,7 +122,7 @@ pub(super) fn handle_effect_removed(
         .values()
         .filter(|d| {
             d.matches_effect_removed(effect_id)
-                && manager.is_definition_active(d)
+                && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger, source_id, source_type, source_name, source_npc_id,
                     target_id, target_type, target_name, target_npc_id,
@@ -141,6 +145,7 @@ pub(super) fn handle_effect_removed(
 /// Handle boss HP change - check for HP threshold triggers
 pub(super) fn handle_boss_hp_change(
     manager: &mut TimerManager,
+    encounter: Option<&CombatEncounter>,
     npc_id: i64,
     npc_name: &str,
     previous_hp: f32,
@@ -154,7 +159,7 @@ pub(super) fn handle_boss_hp_change(
 
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.matches_boss_hp_threshold(npc_id, Some(npc_name), previous_hp, current_hp) && manager.is_definition_active(d))
+        .filter(|d| d.matches_boss_hp_threshold(npc_id, Some(npc_name), previous_hp, current_hp) && manager.is_definition_active(d, encounter))
         .cloned()
         .collect();
 
@@ -173,10 +178,10 @@ pub(super) fn handle_boss_hp_change(
 }
 
 /// Handle phase change - check for PhaseEntered triggers
-pub(super) fn handle_phase_change(manager: &mut TimerManager, phase_id: &str, timestamp: NaiveDateTime) {
+pub(super) fn handle_phase_change(manager: &mut TimerManager, encounter: Option<&CombatEncounter>, phase_id: &str, timestamp: NaiveDateTime) {
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.matches_phase_entered(phase_id) && manager.is_definition_active(d))
+        .filter(|d| d.matches_phase_entered(phase_id) && manager.is_definition_active(d, encounter))
         .cloned()
         .collect();
 
@@ -193,10 +198,10 @@ pub(super) fn handle_phase_change(manager: &mut TimerManager, phase_id: &str, ti
 }
 
 /// Handle phase ended - check for PhaseEnded triggers
-pub(super) fn handle_phase_ended(manager: &mut TimerManager, phase_id: &str, timestamp: NaiveDateTime) {
+pub(super) fn handle_phase_ended(manager: &mut TimerManager, encounter: Option<&CombatEncounter>, phase_id: &str, timestamp: NaiveDateTime) {
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.matches_phase_ended(phase_id) && manager.is_definition_active(d))
+        .filter(|d| d.matches_phase_ended(phase_id) && manager.is_definition_active(d, encounter))
         .cloned()
         .collect();
 
@@ -215,6 +220,7 @@ pub(super) fn handle_phase_ended(manager: &mut TimerManager, phase_id: &str, tim
 /// Handle counter change - check for CounterReaches triggers
 pub(super) fn handle_counter_change(
     manager: &mut TimerManager,
+    encounter: Option<&CombatEncounter>,
     counter_id: &str,
     old_value: u32,
     new_value: u32,
@@ -222,7 +228,7 @@ pub(super) fn handle_counter_change(
 ) {
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.matches_counter_reaches(counter_id, old_value, new_value) && manager.is_definition_active(d))
+        .filter(|d| d.matches_counter_reaches(counter_id, old_value, new_value) && manager.is_definition_active(d, encounter))
         .cloned()
         .collect();
 
@@ -240,10 +246,10 @@ pub(super) fn handle_counter_change(
 }
 
 /// Handle NPC first seen - check for NpcAppears triggers
-pub(super) fn handle_npc_first_seen(manager: &mut TimerManager, npc_id: i64, npc_name: &str, timestamp: NaiveDateTime) {
+pub(super) fn handle_npc_first_seen(manager: &mut TimerManager, encounter: Option<&CombatEncounter>, npc_id: i64, npc_name: &str, timestamp: NaiveDateTime) {
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.matches_npc_appears(npc_id, Some(npc_name)) && manager.is_definition_active(d))
+        .filter(|d| d.matches_npc_appears(npc_id, Some(npc_name)) && manager.is_definition_active(d, encounter))
         .cloned()
         .collect();
 
@@ -261,10 +267,10 @@ pub(super) fn handle_npc_first_seen(manager: &mut TimerManager, npc_id: i64, npc
 }
 
 /// Handle entity death - check for EntityDeath triggers
-pub(super) fn handle_entity_death(manager: &mut TimerManager, npc_id: i64, entity_name: &str, timestamp: NaiveDateTime) {
+pub(super) fn handle_entity_death(manager: &mut TimerManager, encounter: Option<&CombatEncounter>, npc_id: i64, entity_name: &str, timestamp: NaiveDateTime) {
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.matches_entity_death(npc_id, Some(entity_name)) && manager.is_definition_active(d))
+        .filter(|d| d.matches_entity_death(npc_id, Some(entity_name)) && manager.is_definition_active(d, encounter))
         .cloned()
         .collect();
 
@@ -284,6 +290,7 @@ pub(super) fn handle_entity_death(manager: &mut TimerManager, npc_id: i64, entit
 /// Handle target set - check for TargetSet triggers (e.g., sphere targeting player)
 pub(super) fn handle_target_set(
     manager: &mut TimerManager,
+    encounter: Option<&CombatEncounter>,
     source_entity_id: i64,
     source_npc_id: i64,
     source_name: IStr,
@@ -298,7 +305,7 @@ pub(super) fn handle_target_set(
         .values()
         .filter(|d| {
             d.matches_target_set(source_npc_id, Some(source_name_str))
-                && manager.is_definition_active(d)
+                && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger,
                     source_entity_id, EntityType::Npc, source_name, source_npc_id,
@@ -324,6 +331,7 @@ pub(super) fn handle_target_set(
 /// Handle damage taken - check for DamageTaken triggers (tank busters, raid damage, etc.)
 pub(super) fn handle_damage_taken(
     manager: &mut TimerManager,
+    encounter: Option<&CombatEncounter>,
     ability_id: i64,
     ability_name: IStr,
     source_id: i64,
@@ -342,7 +350,7 @@ pub(super) fn handle_damage_taken(
         .values()
         .filter(|d| {
             d.matches_damage_taken(ability_id, Some(&ability_name_str))
-                && manager.is_definition_active(d)
+                && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger, source_id, source_type, source_name, source_npc_id,
                     target_id, target_type, target_name, 0,
@@ -363,13 +371,14 @@ pub(super) fn handle_damage_taken(
 }
 
 /// Handle time elapsed - check for TimeElapsed triggers
-pub(super) fn handle_time_elapsed(manager: &mut TimerManager, timestamp: NaiveDateTime) {
-    let Some(start_time) = manager.combat_start_time else {
+pub(super) fn handle_time_elapsed(manager: &mut TimerManager, encounter: Option<&CombatEncounter>, _timestamp: NaiveDateTime) {
+    let Some(enc) = encounter else {
         return;
     };
 
-    let new_combat_secs = (timestamp - start_time).num_milliseconds() as f32 / 1000.0;
-    let old_combat_secs = manager.last_combat_secs;
+    // Read combat time from encounter (source of truth)
+    let new_combat_secs = enc.combat_time_secs;
+    let old_combat_secs = enc.prev_combat_time_secs;
 
     // Only check if time has progressed
     if new_combat_secs <= old_combat_secs {
@@ -378,12 +387,12 @@ pub(super) fn handle_time_elapsed(manager: &mut TimerManager, timestamp: NaiveDa
 
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.matches_time_elapsed(old_combat_secs, new_combat_secs) && manager.is_definition_active(d))
+        .filter(|d| d.matches_time_elapsed(old_combat_secs, new_combat_secs) && manager.is_definition_active(d, encounter))
         .cloned()
         .collect();
 
     for def in matching {
-        manager.start_timer(&def, timestamp, None);
+        manager.start_timer(&def, _timestamp, None);
     }
 
     // Check for cancel triggers on time elapsed
@@ -391,19 +400,15 @@ pub(super) fn handle_time_elapsed(manager: &mut TimerManager, timestamp: NaiveDa
         |t| matches!(t, TimerTrigger::TimeElapsed { secs } if old_combat_secs < *secs && new_combat_secs >= *secs),
         &format!("{:.1}s elapsed", new_combat_secs)
     );
-
-    manager.last_combat_secs = new_combat_secs;
 }
 
 /// Handle combat start - start combat-triggered timers
-pub(super) fn handle_combat_start(manager: &mut TimerManager, timestamp: NaiveDateTime) {
+pub(super) fn handle_combat_start(manager: &mut TimerManager, encounter: Option<&CombatEncounter>, timestamp: NaiveDateTime) {
     manager.in_combat = true;
-    manager.combat_start_time = Some(timestamp);
-    manager.last_combat_secs = 0.0;
 
     let matching: Vec<_> = manager.definitions
         .values()
-        .filter(|d| d.triggers_on_combat_start() && manager.is_definition_active(d))
+        .filter(|d| d.triggers_on_combat_start() && manager.is_definition_active(d, encounter))
         .cloned()
         .collect();
 
@@ -417,12 +422,7 @@ pub(super) fn clear_combat_timers(manager: &mut TimerManager) {
     manager.in_combat = false;
     manager.active_timers.clear();
     manager.fired_alerts.clear();
-    manager.current_phase = None;
-    manager.counters.clear();
-    manager.boss_hp_by_npc.clear();
     manager.boss_entity_ids.clear();
-    manager.combat_start_time = None;
-    manager.last_combat_secs = 0.0;
     // Clear encounter context so timers don't trigger in subsequent trash fights
     manager.context.boss_name = None;
     manager.clear_boss_npc_class_ids();
