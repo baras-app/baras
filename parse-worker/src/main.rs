@@ -146,8 +146,6 @@ fn process_and_write_encounters(
     output_dir: &Path,
 ) -> Result<(Vec<EncounterSummary>, String), String> {
     let mut cache = SessionCache::new();
-    cache.store_events = false; // Don't store in encounter, we use our own buffer
-
     let mut processor = EventProcessor::new();
     let mut writer = EncounterWriter::with_capacity(50_000);
     let mut encounter_summaries = Vec::new();

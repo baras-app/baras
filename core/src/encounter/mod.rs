@@ -65,7 +65,6 @@ impl BossHealthEntry {
 pub struct Encounter {
     pub id: u64,
     pub state: EncounterState,
-    pub events: Vec<CombatEvent>,
     pub enter_combat_time: Option<NaiveDateTime>,
     pub exit_combat_time: Option<NaiveDateTime>,
     pub last_combat_activity_time: Option<NaiveDateTime>,
@@ -85,7 +84,6 @@ impl Encounter {
         Self {
             id,
             state: EncounterState::NotStarted,
-            events: Vec::new(),
             enter_combat_time: None,
             exit_combat_time: None,
             last_combat_activity_time: None,
@@ -103,13 +101,6 @@ impl Encounter {
         let mut enc = Self::new(id);
         enc.players.insert(player.id, player);
         enc
-    }
-
-    /// Clear stored events to free memory.
-    /// Call after metrics are calculated and events are no longer needed.
-    pub fn clear_events(&mut self) {
-        self.events.clear();
-        self.events.shrink_to_fit();
     }
 
     // --- Entity State ---
