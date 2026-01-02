@@ -8,7 +8,8 @@
 //! Output: JSON to stdout with encounter summaries and final byte position.
 
 use baras_core::combat_log::{CombatEvent, LogParser};
-use baras_core::context::parse_log_filename;
+use baras_core::context::{parse_log_filename, resolve};
+use baras_core::encounter::summary::EncounterSummary;
 use baras_core::signal_processor::{EventProcessor, GameSignal};
 use baras_core::state::SessionCache;
 use baras_core::storage::{encounter_filename, EncounterWriter, EventMetadata};
@@ -19,6 +20,23 @@ use rayon::prelude::*;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+/// Player session info for main process.
+#[derive(Debug, Serialize)]
+struct PlayerInfo {
+    name: String,
+    class_name: String,
+    discipline_name: String,
+    entity_id: i64,
+}
+
+/// Area info for main process.
+#[derive(Debug, Serialize)]
+struct AreaInfoOutput {
+    area_name: String,
+    area_id: i64,
+    difficulty_name: String,
+}
 
 /// Output sent to main process via stdout.
 #[derive(Debug, Serialize)]
@@ -31,20 +49,12 @@ struct ParseOutput {
     encounter_count: usize,
     /// Encounter summaries for the main process.
     encounters: Vec<EncounterSummary>,
-    /// Current area info at end of file.
-    area_name: String,
+    /// Player info at end of file.
+    player: PlayerInfo,
+    /// Area info at end of file.
+    area: AreaInfoOutput,
     /// Elapsed time in milliseconds.
     elapsed_ms: u128,
-}
-
-/// Summary of an encounter for the main process.
-#[derive(Debug, Serialize)]
-struct EncounterSummary {
-    idx: u32,
-    duration_secs: f32,
-    player_count: usize,
-    npc_count: usize,
-    state: String,
 }
 
 fn main() {
@@ -129,14 +139,15 @@ fn parse_file(
     let event_count = events.len();
 
     // Process events and write encounters
-    let (encounters, area_name) = process_and_write_encounters(events, output_dir)?;
+    let (encounters, player, area) = process_and_write_encounters(events, output_dir)?;
 
     Ok(ParseOutput {
         end_pos,
         event_count,
         encounter_count: encounters.len(),
         encounters,
-        area_name,
+        player,
+        area,
         elapsed_ms: 0, // Filled in by caller
     })
 }
@@ -144,11 +155,10 @@ fn parse_file(
 fn process_and_write_encounters(
     events: Vec<CombatEvent>,
     output_dir: &Path,
-) -> Result<(Vec<EncounterSummary>, String), String> {
+) -> Result<(Vec<EncounterSummary>, PlayerInfo, AreaInfoOutput), String> {
     let mut cache = SessionCache::new();
     let mut processor = EventProcessor::new();
     let mut writer = EncounterWriter::with_capacity(50_000);
-    let mut encounter_summaries = Vec::new();
     let mut current_encounter_idx: u32 = 0;
     let mut pending_write = false;
 
@@ -158,6 +168,8 @@ fn process_and_write_encounters(
         writer.push_event(&event, &metadata);
 
         // Process through state machine
+        // Note: CombatEnded triggers push_new_encounter which calls finalize_current_encounter
+        // which creates the summary and adds it to encounter_history
         let signals = processor.process_event(event, &mut cache);
 
         // Check for combat end signal
@@ -176,17 +188,6 @@ fn process_and_write_encounters(
                     .write_to_file(&path)
                     .map_err(|e| format!("Failed to write parquet: {}", e))?;
 
-                // Add summary
-                if let Some(enc) = cache.last_combat_encounter() {
-                    encounter_summaries.push(EncounterSummary {
-                        idx: current_encounter_idx,
-                        duration_secs: enc.duration_seconds().unwrap_or(0) as f32,
-                        player_count: enc.players.len(),
-                        npc_count: enc.npcs.len(),
-                        state: format!("{:?}", enc.state),
-                    });
-                }
-
                 writer.clear();
                 current_encounter_idx += 1;
             }
@@ -201,8 +202,28 @@ fn process_and_write_encounters(
         let _ = writer.write_to_file(&path);
     }
 
-    let area_name = cache.current_area.area_name.clone();
-    Ok((encounter_summaries, area_name))
+    // Get all summaries that were created during processing
+    // (push_new_encounter -> finalize_current_encounter -> create_summary)
+    let encounter_summaries: Vec<EncounterSummary> = cache.encounter_history
+        .summaries()
+        .to_vec();
+
+    // Extract player info (name is IStr, needs resolve)
+    let player = PlayerInfo {
+        name: resolve(cache.player.name).to_string(),
+        class_name: cache.player.class_name.clone(),
+        discipline_name: cache.player.discipline_name.clone(),
+        entity_id: cache.player.id,
+    };
+
+    // Extract area info
+    let area = AreaInfoOutput {
+        area_name: cache.current_area.area_name.clone(),
+        area_id: cache.current_area.area_id,
+        difficulty_name: cache.current_area.difficulty_name.clone(),
+    };
+
+    Ok((encounter_summaries, player, area))
 }
 
 fn build_metadata(cache: &SessionCache, encounter_idx: u32) -> EventMetadata {

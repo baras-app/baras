@@ -4,7 +4,7 @@
 //! classification of encounters by phase type, and human-readable naming.
 
 use hashbrown::HashMap;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 use super::metrics::PlayerMetrics;
 use super::PhaseType;
@@ -15,7 +15,7 @@ use crate::combat_log::EntityType;
 use crate::context::resolve;
 
 /// Summary of a completed encounter with computed metrics
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncounterSummary {
     pub encounter_id: u64,
     pub display_name: String,

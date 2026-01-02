@@ -28,7 +28,7 @@ pub enum EncounterState {
 }
 
 /// Classification of the phase/content type where an encounter occurred
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum PhaseType {
     #[default]
     OpenWorld,

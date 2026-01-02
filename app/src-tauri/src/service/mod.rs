@@ -38,31 +38,35 @@ use crate::audio::{AudioEvent, AudioSender, AudioService};
 // Parse Worker IPC
 // ─────────────────────────────────────────────────────────────────────────────
 
+use baras_core::encounter::summary::EncounterSummary;
+
+/// Player info from parse worker subprocess.
+#[derive(Debug, serde::Deserialize)]
+struct WorkerPlayerInfo {
+    name: String,
+    class_name: String,
+    discipline_name: String,
+    entity_id: i64,
+}
+
+/// Area info from parse worker subprocess.
+#[derive(Debug, serde::Deserialize)]
+struct WorkerAreaInfo {
+    area_name: String,
+    area_id: i64,
+    difficulty_name: String,
+}
+
 /// Output from the parse worker subprocess (matches parse-worker JSON output).
 #[derive(Debug, serde::Deserialize)]
 struct ParseWorkerOutput {
     end_pos: u64,
     event_count: usize,
     encounter_count: usize,
-    #[allow(dead_code)]
-    encounters: Vec<ParseWorkerEncounter>,
-    #[allow(dead_code)]
-    area_name: String,
+    encounters: Vec<EncounterSummary>,
+    player: WorkerPlayerInfo,
+    area: WorkerAreaInfo,
     elapsed_ms: u128,
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct ParseWorkerEncounter {
-    #[allow(dead_code)]
-    idx: u32,
-    #[allow(dead_code)]
-    duration_secs: f32,
-    #[allow(dead_code)]
-    player_count: usize,
-    #[allow(dead_code)]
-    npc_count: usize,
-    #[allow(dead_code)]
-    state: String,
 }
 
 /// Fallback to streaming parse if subprocess fails.
@@ -787,10 +791,43 @@ impl CombatService {
         match output {
             Ok(output) if output.status.success() => {
                 // Parse JSON result from subprocess
-                if let Ok(result) = String::from_utf8(output.stdout) {
-                    if let Ok(parse_result) = serde_json::from_str::<ParseWorkerOutput>(&result) {
+                let json_result = String::from_utf8(output.stdout)
+                    .map_err(|e| format!("Invalid UTF-8: {}", e))
+                    .and_then(|result| {
+                        serde_json::from_str::<ParseWorkerOutput>(&result)
+                            .map_err(|e| format!("JSON parse error: {} (input: {})", e, &result[..result.len().min(500)]))
+                    });
+
+                match json_result {
+                    Ok(parse_result) => {
                         let mut session_guard = session.write().await;
                         session_guard.current_byte = Some(parse_result.end_pos);
+
+                        // Import encounter summaries and session metadata from subprocess
+                        if let Some(cache) = &mut session_guard.session_cache {
+                            for summary in parse_result.encounters {
+                                cache.encounter_history.add(summary);
+                            }
+
+                            // Import player info
+                            cache.player.name = baras_core::context::intern(&parse_result.player.name);
+                            cache.player.id = parse_result.player.entity_id;
+                            cache.player.class_name = parse_result.player.class_name.clone();
+                            cache.player.discipline_name = parse_result.player.discipline_name.clone();
+                            cache.player_initialized = true;
+
+                            // Import area info
+                            cache.current_area.area_name = parse_result.area.area_name.clone();
+                            cache.current_area.area_id = parse_result.area.area_id;
+                            cache.current_area.difficulty_name = parse_result.area.difficulty_name.clone();
+                        }
+
+                        // Enable live parquet writing (continues from where subprocess left off)
+                        session_guard.enable_live_parquet(
+                            encounters_dir.clone(),
+                            parse_result.encounter_count as u32,
+                        );
+
                         session_guard.finalize_session();
                         session_guard.sync_timer_context();
                         drop(session_guard);
@@ -801,6 +838,13 @@ impl CombatService {
                             parse_result.encounter_count,
                             parse_result.elapsed_ms
                         );
+
+                        // Notify frontend to refresh session info
+                        let _ = self.app_handle.emit("session-updated", "FileLoaded");
+                    }
+                    Err(e) => {
+                        eprintln!("[PARSE] Subprocess output parse failed: {}", e);
+                        fallback_streaming_parse(&reader, &session).await;
                     }
                 }
             }

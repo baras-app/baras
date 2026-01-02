@@ -11,6 +11,32 @@ use crate::signal_processor::{EventProcessor, GameSignal, SignalHandler};
 use crate::state::SessionCache;
 use crate::boss::BossEncounterDefinition;
 use crate::timers::{TimerDefinition, TimerManager};
+use crate::storage::{encounter_filename, EncounterWriter, EventMetadata};
+
+/// Build metadata for parquet event row (standalone to avoid borrow conflicts)
+fn build_event_metadata(cache: &SessionCache, encounter_idx: u32) -> EventMetadata {
+    let boss_def = cache.active_boss_definition();
+
+    EventMetadata {
+        encounter_idx,
+        phase_id: cache.boss_state.current_phase.clone(),
+        phase_name: cache.boss_state.current_phase.as_ref().and_then(|phase_id| {
+            boss_def.and_then(|def| {
+                def.phases
+                    .iter()
+                    .find(|p| &p.id == phase_id)
+                    .map(|p| p.name.clone())
+            })
+        }),
+        area_name: cache.current_area.area_name.clone(),
+        boss_name: boss_def.map(|d| d.name.clone()),
+        difficulty: if cache.current_area.difficulty_name.is_empty() {
+            None
+        } else {
+            Some(cache.current_area.difficulty_name.clone())
+        },
+    }
+}
 
 /// A live parsing session that processes combat events and tracks game state.
 ///
@@ -34,6 +60,14 @@ pub struct ParsingSession {
     /// Timer manager for boss/mechanic countdown timers.
     /// Wrapped in Arc<Mutex> for shared access between signal dispatch and overlay queries.
     timer_manager: Arc<Mutex<TimerManager>>,
+
+    // Live parquet writing (for streaming mode)
+    /// Directory where encounter parquet files are written
+    encounters_dir: Option<PathBuf>,
+    /// Current encounter index (continues from subprocess)
+    encounter_idx: u32,
+    /// Event buffer for current encounter
+    encounter_writer: Option<EncounterWriter>,
 }
 
 impl Default for ParsingSession {
@@ -47,6 +81,9 @@ impl Default for ParsingSession {
             signal_handlers: Vec::new(),
             effect_tracker: Arc::new(Mutex::new(EffectTracker::default())),
             timer_manager: Arc::new(Mutex::new(TimerManager::default())),
+            encounters_dir: None,
+            encounter_idx: 0,
+            encounter_writer: None,
         }
     }
 }
@@ -72,6 +109,9 @@ impl ParsingSession {
             signal_handlers: Vec::new(),
             effect_tracker: Arc::new(Mutex::new(EffectTracker::new(definitions))),
             timer_manager: Arc::new(Mutex::new(TimerManager::default())),
+            encounters_dir: None,
+            encounter_idx: 0,
+            encounter_writer: None,
         }
     }
 
@@ -83,9 +123,51 @@ impl ParsingSession {
     /// Process a single event through the processor and dispatch signals
     pub fn process_event(&mut self, event: CombatEvent) {
         if let Some(cache) = &mut self.session_cache {
+            // Write event to parquet buffer if live writing is enabled
+            if let Some(writer) = &mut self.encounter_writer {
+                let metadata = build_event_metadata(cache, self.encounter_idx);
+                writer.push_event(&event, &metadata);
+            }
+
             let signals = self.processor.process_event(event, cache);
+
+            // Flush parquet on combat end
+            let should_flush = signals.iter().any(|s| matches!(s, GameSignal::CombatEnded { .. }));
+
             self.dispatch_signals(&signals);
+
+            if should_flush {
+                self.flush_encounter_parquet();
+            }
         }
+    }
+
+    /// Flush current encounter buffer to parquet file
+    fn flush_encounter_parquet(&mut self) {
+        let Some(writer) = &mut self.encounter_writer else { return };
+        if writer.is_empty() { return; }
+
+        let Some(dir) = &self.encounters_dir else { return };
+
+        let filename = encounter_filename(self.encounter_idx);
+        let path = dir.join(&filename);
+
+        if let Err(e) = writer.write_to_file(&path) {
+            eprintln!("[PARQUET] Failed to write encounter {}: {}", self.encounter_idx, e);
+        } else {
+            eprintln!("[PARQUET] Wrote encounter {} ({} events)", self.encounter_idx, writer.len());
+        }
+
+        writer.clear();
+        self.encounter_idx += 1;
+    }
+
+    /// Enable live parquet writing for streaming mode.
+    /// Call after subprocess completes to continue writing encounters.
+    pub fn enable_live_parquet(&mut self, encounters_dir: PathBuf, starting_idx: u32) {
+        self.encounters_dir = Some(encounters_dir);
+        self.encounter_idx = starting_idx;
+        self.encounter_writer = Some(EncounterWriter::with_capacity(10_000));
     }
 
     /// Process multiple events

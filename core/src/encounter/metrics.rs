@@ -1,7 +1,7 @@
 use super::IStr;
 use super::EntityType;
 use crate::context::resolve;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Default)]
 pub struct MetricAccumulator {
@@ -139,7 +139,7 @@ impl EntityMetrics {
 
 /// Unified player metrics struct for use across crate boundaries.
 /// This is the canonical representation used by service and overlay layers.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlayerMetrics {
     pub entity_id: i64,
     pub name: String,

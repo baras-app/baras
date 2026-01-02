@@ -124,7 +124,7 @@ pub fn HistoryPanel() -> Element {
             // Extract payload from event object (Tauri events have { payload: "..." } structure)
             if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
                 && let Some(event_type) = payload.as_string()
-                && (event_type.contains("CombatEnded") || event_type.contains("TailingModeChanged")) {
+                && (event_type.contains("CombatEnded") || event_type.contains("TailingModeChanged") || event_type.contains("FileLoaded")) {
                     spawn(async move {
                         let result = api::get_encounter_history().await;
                         if let Ok(history) = serde_wasm_bindgen::from_value::<Vec<EncounterSummary>>(result) {
