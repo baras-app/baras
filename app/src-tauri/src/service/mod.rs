@@ -72,9 +72,6 @@ async fn fallback_streaming_parse(
 ) {
     let timer = std::time::Instant::now();
     let mut session_guard = session.write().await;
-    if let Some(cache) = &mut session_guard.session_cache {
-        cache.store_events = false;
-    }
     let session_date = session_guard.game_session_date.unwrap_or_default();
     let result = reader.read_log_file_streaming(session_date, |event| {
         session_guard.process_event(event);
@@ -84,10 +81,6 @@ async fn fallback_streaming_parse(
         session_guard.current_byte = Some(end_pos);
         session_guard.finalize_session();
         session_guard.sync_timer_context();
-
-        if let Some(cache) = &mut session_guard.session_cache {
-            cache.store_events = true;
-        }
 
         eprintln!(
             "[PARSE] Fallback streaming: {} events in {:.0}ms",

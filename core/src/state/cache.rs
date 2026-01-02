@@ -6,7 +6,7 @@ use crate::state::info::AreaInfo;
 use crate::game_data::{lookup_boss, register_hp_overlay_entity, lookup_registered_name, clear_boss_registry};
 use std::collections::{HashSet, VecDeque};
 
-const CACHE_DEFAULT_CAPACITY: usize = 3;
+const CACHE_DEFAULT_CAPACITY: usize = 2;
 
 /// Pure storage for session state.
 /// Routing logic lives in EventProcessor.
@@ -63,7 +63,7 @@ impl SessionCache {
             active_boss_idx: None,
             boss_state: BossEncounterState::new(),
             seen_npc_instances: HashSet::new(),
-            store_events: true, // Default to storing for live tailing
+            store_events: false, // Events go to parquet, not memory
         };
         cache.push_new_encounter();
         cache
