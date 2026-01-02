@@ -92,12 +92,13 @@ fn build_area_index_recursive(dir: &Path, index: &mut AreaIndex) -> Result<(), S
             build_area_index_recursive(&path, index)?;
         } else if path.extension().is_some_and(|ext| ext == "toml")
             && let Ok(Some(area)) = load_area_config(&path)
-                && area.area_id != 0 {
-                    index.insert(area.area_id, AreaIndexEntry {
-                        name: area.name,
-                        area_id: area.area_id,
-                        file_path: path,
-                    });
+            && area.area_id != 0
+        {
+            index.insert(area.area_id, AreaIndexEntry {
+                name: area.name,
+                area_id: area.area_id,
+                file_path: path,
+            });
         }
     }
 

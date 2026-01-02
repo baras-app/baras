@@ -351,16 +351,18 @@ impl CombatService {
         // Build index from bundled directory
         if let Some(ref path) = bundled_dir
             && path.exists()
-            && let Ok(area_index) = build_area_index(path) {
-                index.extend(area_index);
-            }
+            && let Ok(area_index) = build_area_index(path)
+        {
+            index.extend(area_index);
+        }
 
         // Build index from custom directory (can override bundled)
         if let Some(ref path) = custom_dir
             && path.exists()
-            && let Ok(area_index) = build_area_index(path) {
-                index.extend(area_index);
-            }
+            && let Ok(area_index) = build_area_index(path)
+        {
+            index.extend(area_index);
+        }
 
         index
     }
@@ -713,6 +715,7 @@ impl CombatService {
         self.shared.current_area_id.store(0, Ordering::SeqCst);
 
         // Add signal handler that triggers metrics on combat state changes
+        let area_load_tx_clone = area_load_tx.clone();
         let handler = CombatSignalHandler::new(
             self.shared.clone(),
             trigger_tx.clone(),
@@ -839,6 +842,11 @@ impl CombatService {
                             parse_result.encounter_count,
                             parse_result.elapsed_ms
                         );
+
+                        // Trigger boss definition loading for initial area (if known)
+                        if parse_result.area.area_id != 0 {
+                            let _ = area_load_tx_clone.send(parse_result.area.area_id);
+                        }
 
                         // Notify frontend to refresh session info
                         let _ = self.app_handle.emit("session-updated", "FileLoaded");
