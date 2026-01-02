@@ -271,6 +271,59 @@ pub fn App() -> Element {
                     }
                     p { class: "subtitle", "Battle Analysis and Raid Assessment System" }
                 }
+                // Session indicator (always visible)
+                div { class: "header-session-indicator",
+                    // Watcher status dot
+                    span {
+                        class: if !live_tailing { "status-dot paused" }
+                            else if watching { "status-dot watching" }
+                            else { "status-dot not-watching" },
+                        title: if !live_tailing { "Paused" } else if watching { "Watching" } else { "Not watching" }
+                    }
+                    // Viewing indicator
+                    {
+                        let current_meta = log_files().iter().find(|f| f.path == current_file).cloned();
+                        let display = current_meta.as_ref()
+                            .map(|f| f.character_name.clone().unwrap_or_else(|| f.display_name.clone()))
+                            .unwrap_or_else(|| "None".to_string());
+                        let date = current_meta.as_ref().map(|f| f.date.clone()).unwrap_or_default();
+                        let is_latest = log_files().first().map(|f| f.path == current_file).unwrap_or(false);
+                        rsx! {
+                            span {
+                                class: if is_latest { "session-file latest" } else { "session-file" },
+                                title: if is_latest { format!("Viewing latest: {} - {}", display, date) } else { format!("Viewing: {} - {}", display, date) },
+                                if is_latest {
+                                    i { class: "fa-solid fa-clock" }
+                                } else {
+                                    i { class: "fa-solid fa-file-lines" }
+                                }
+                                " {display}"
+                            }
+                        }
+                    }
+                    // Resume button when paused
+                    if !live_tailing {
+                        button {
+                            class: "btn-header-resume",
+                            title: "Resume live tailing",
+                            onclick: move |_| {
+                                spawn(async move {
+                                    api::resume_live_tailing().await;
+                                    is_live_tailing.set(true);
+                                });
+                            },
+                            i { class: "fa-solid fa-play" }
+                        }
+                    }
+                    // Restart watcher button
+                    button {
+                        class: "btn-header-restart",
+                        title: "Restart watcher",
+                        onclick: move |_| { spawn(async move { api::restart_watcher().await; }); },
+                        i { class: "fa-solid fa-rotate" }
+                    }
+                }
+
                 // Quick overlay controls with profile dropdown
                 div { class: "header-overlay-controls",
                     // Profile dropdown (no label, compact)
@@ -455,58 +508,6 @@ pub fn App() -> Element {
                                         if info.in_combat { "In Combat" } else { "Out of Combat" }
                                     }
                                 }
-                            }
-                        }
-                    }
-
-                    section { class: "active-file-panel",
-                        // Latest file (newest in directory)
-                        {
-                            let latest = log_files().first().cloned();
-                            let latest_display = format_file_info(&latest);
-                            rsx! {
-                                div { class: "file-info",
-                                    span { class: "label", i { class: "fa-solid fa-clock" } " Latest: " }
-                                    span { class: "value", "{latest_display}" }
-                                }
-                            }
-                        }
-                        // Current file (the one being viewed)
-                        {
-                            let current_meta = log_files().iter().find(|f| f.path == current_file).cloned();
-                            let current_display = format_file_info(&current_meta);
-                            rsx! {
-                                div { class: "file-info",
-                                    span { class: "label", i { class: "fa-solid fa-file-lines" } " Viewing: " }
-                                    span { class: "value", "{current_display}" }
-                                }
-                            }
-                        }
-                        div { class: "watcher-status",
-                            if live_tailing {
-                                span { class: if watching { "status-dot watching" } else { "status-dot not-watching" } }
-                                span { class: "status-text", if watching { "Watching" } else { "Not Watching" } }
-                            } else {
-                                span { class: "status-dot paused" }
-                                span { class: "status-text", "Paused" }
-                                button {
-                                    class: "btn btn-resume-live",
-                                    title: "Resume live tailing",
-                                    onclick: move |_| {
-                                        spawn(async move {
-                                            api::resume_live_tailing().await;
-                                            is_live_tailing.set(true);
-                                        });
-                                    },
-                                    i { class: "fa-solid fa-play" }
-                                    " Resume Live"
-                                }
-                            }
-                            button {
-                                class: "btn-restart-watcher",
-                                title: "Restart watcher",
-                                onclick: move |_| { spawn(async move { api::restart_watcher().await; }); },
-                                i { class: "fa-solid fa-rotate" }
                             }
                         }
                     }
@@ -1249,31 +1250,6 @@ pub fn App() -> Element {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-/// Format file info as "Name - Date Time" (e.g., "Jerran Zeva - 2025-12-23 05:08")
-fn format_file_info(file: &Option<LogFileInfo>) -> String {
-    let Some(file) = file else {
-        return "Loading...".to_string();
-    };
-
-    // Extract time from filename: combat_2025-12-23_05_08_23_179323.txt -> 05:08
-    let time = file.path
-        .rsplit(['/', '\\'])
-        .next()
-        .and_then(|filename| {
-            let parts: Vec<&str> = filename.split('_').collect();
-            // parts: ["combat", "2025-12-23", "05", "08", "23", "179323.txt"]
-            if parts.len() >= 4 {
-                Some(format!("{}:{}", parts[2], parts[3]))
-            } else {
-                None
-            }
-        })
-        .unwrap_or_default();
-
-    let name = file.character_name.as_deref().unwrap_or("Unknown");
-    format!("{} - {} {}", name, file.date, time)
-}
 
 #[allow(clippy::too_many_arguments)]
 fn apply_status(

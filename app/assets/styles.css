@@ -374,6 +374,86 @@ select optgroup {
   cursor: not-allowed;
 }
 
+/* Header session indicator (always visible) */
+.header-session-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.3em 0.6em;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(80, 80, 90, 0.3);
+  font-size: 0.8em;
+  max-width: 220px;
+}
+
+.header-session-indicator .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.header-session-indicator .status-dot.watching {
+  background-color: #5aaa7a;
+  box-shadow: 0 0 6px rgba(90, 170, 122, 0.5);
+}
+
+.header-session-indicator .status-dot.not-watching {
+  background-color: var(--text-muted);
+}
+
+.header-session-indicator .status-dot.paused {
+  background-color: #d4a850;
+  box-shadow: 0 0 6px rgba(212, 168, 80, 0.5);
+}
+
+.header-session-indicator .session-file {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.header-session-indicator .session-file i {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.header-session-indicator .session-file.latest i {
+  color: var(--swtor-blue-dim);
+}
+
+.btn-header-resume,
+.btn-header-restart {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.2em;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-header-resume:hover,
+.btn-header-restart:hover {
+  color: var(--swtor-blue);
+}
+
+.btn-header-resume {
+  color: #d4a850;
+}
+
+.btn-header-resume:hover {
+  color: #e8c060;
+}
+
 .btn-header-files {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(80, 80, 90, 0.4);
@@ -1601,142 +1681,6 @@ details[open] .collapsible-summary::before {
 .save-status.error {
   color: #c44;
   background: rgba(200, 60, 60, 0.1);
-}
-
-/* Active file panel (above overlays) */
-.active-file-panel {
-  width: 100%;
-  max-width: 100%;
-  background: var(--gradient-panel);
-  border-radius: var(--radius-xl);
-  padding: 0.75vh 1vw;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25vh;
-  border: 1px solid var(--blue-alpha-10);
-}
-
-.active-file-panel .file-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  font-size: clamp(0.6rem, 1.3vh, 0.85rem);
-}
-
-.active-file-panel .file-info .label {
-  color: var(--swtor-blue-dim);
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-  flex-shrink: 0;
-}
-
-.active-file-panel .file-info .value {
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.active-file-panel .file-info .filename {
-  font-family: monospace;
-  font-size: 0.9em;
-}
-
-/* Watcher status indicator */
-.watcher-status {
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-  margin-top: 0.4vh;
-  padding-top: 0.4vh;
-  border-top: 1px solid var(--blue-alpha-10);
-  font-size: clamp(0.55rem, 1.2vh, 0.8rem);
-}
-
-.watcher-status .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.watcher-status .status-dot.watching {
-  background-color: #5aaa7a;
-  box-shadow: 0 0 6px rgba(90, 170, 122, 0.4);
-}
-
-.watcher-status .status-dot.not-watching {
-  background-color: var(--text-muted);
-  box-shadow: none;
-}
-
-.watcher-status .status-dot.paused {
-  background-color: #d4a850;
-  box-shadow: 0 0 6px rgba(212, 168, 80, 0.4);
-}
-
-.watcher-status .status-text {
-  color: var(--text-muted);
-}
-
-.btn-resume-live {
-  margin-left: 0.5em;
-  padding: 0.25em 0.6em;
-  font-size: 0.85em;
-  background: linear-gradient(
-    180deg,
-    var(--blue-alpha-20) 0%,
-    rgba(45, 90, 140, 0.15) 100%
-  );
-  border: 1px solid var(--swtor-blue);
-  border-radius: var(--radius-md);
-  color: var(--swtor-blue);
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-}
-
-.btn-resume-live:hover {
-  background: linear-gradient(
-    180deg,
-    var(--border-accent-strong) 0%,
-    rgba(55, 100, 155, 0.2) 100%
-  );
-  box-shadow: 0 0 12px var(--blue-alpha-25);
-}
-
-.btn-resume-live:active {
-  background: linear-gradient(
-    180deg,
-    rgba(74, 158, 255, 0.35) 0%,
-    rgba(45, 90, 140, 0.25) 100%
-  );
-}
-
-.btn-restart-watcher {
-  margin-left: auto;
-  padding: 0.2em 0.5em;
-  min-width: unset;
-  font-size: 0.85em;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--blue-alpha-20);
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-restart-watcher:hover {
-  background: var(--blue-alpha-10);
-  color: var(--swtor-blue);
-  border-color: var(--border-accent-strong);
-}
-
-.btn-restart-watcher:active {
-  background: var(--blue-alpha-15);
 }
 
 /* General settings modal */
