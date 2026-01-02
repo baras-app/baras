@@ -5,10 +5,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::CounterCondition;
-use crate::triggers::Trigger;
+use super::triggers::Trigger;
 
 // Re-export Trigger as PhaseTrigger for backward compatibility during migration
-pub use crate::triggers::Trigger as PhaseTrigger;
+pub use super::triggers::Trigger as PhaseTrigger;
 
 /// A phase within a boss encounter
 #[derive(Debug, Clone, Serialize, Deserialize)]

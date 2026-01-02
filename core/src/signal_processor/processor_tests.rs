@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use crate::boss::BossConfig;
+use crate::dsl::BossConfig;
 use crate::combat_log::LogParser;
 use crate::state::SessionCache;
 

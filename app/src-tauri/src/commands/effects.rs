@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
-use baras_core::audio::AudioConfig;
+use baras_core::dsl::AudioConfig;
 use baras_core::effects::{
     DefinitionConfig, EffectCategory, EffectDefinition, EffectSelector, EffectTriggerMode,
     EntityFilter,

@@ -5,13 +5,13 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::audio::AudioConfig;
-use crate::boss::CounterCondition;
+use crate::dsl::AudioConfig;
+use crate::dsl::CounterCondition;
 use crate::game_data::Difficulty;
-use crate::triggers::{EntitySelectorExt, Trigger};
+use crate::dsl::{EntitySelectorExt, Trigger};
 
 // Re-export Trigger as TimerTrigger for backward compatibility during migration
-pub use crate::triggers::Trigger as TimerTrigger;
+pub use crate::dsl::Trigger as TimerTrigger;
 
 /// Definition of a timer (loaded from config)
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use chrono::{Local, NaiveDateTime};
 
-use crate::boss::BossEncounterDefinition;
+use crate::dsl::BossEncounterDefinition;
 use crate::combat_log::EntityType;
 use crate::signal_processor::{GameSignal, SignalHandler};
 use crate::game_data::Difficulty;
@@ -433,7 +433,7 @@ impl TimerManager {
         }
 
         // Build audio config with preference overrides
-        let audio_with_prefs = crate::audio::AudioConfig {
+        let audio_with_prefs = crate::dsl::AudioConfig {
             enabled: audio_enabled,
             file: audio_file,
             offset: def.audio.offset,

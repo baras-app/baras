@@ -4,7 +4,7 @@
 //! This module processes combat events through the challenge tracker to accumulate
 //! metrics that are later evaluated to determine success/failure.
 
-use crate::boss::EntityInfo;
+use crate::dsl::EntityInfo;
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::resolve;
 use crate::game_data::{effect_id, effect_type_id};

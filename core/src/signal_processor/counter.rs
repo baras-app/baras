@@ -3,11 +3,11 @@
 //! Counters track occurrences during boss encounters (e.g., add spawns, ability casts).
 //! This module handles detecting when counters should increment based on game events.
 
-use crate::boss::BossEncounterDefinition;
+use crate::dsl::BossEncounterDefinition;
 use crate::combat_log::{CombatEvent, EntityType};
 use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
-use crate::triggers::{EntitySelectorExt, Trigger};
+use crate::dsl::{EntitySelectorExt, Trigger};
 
 use super::GameSignal;
 

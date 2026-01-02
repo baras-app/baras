@@ -4,10 +4,10 @@
 
 use chrono::Local;
 
-use crate::audio::AudioConfig;
+use crate::dsl::AudioConfig;
 use crate::signal_processor::{GameSignal, SignalHandler};
-use crate::entity_filter::EntityFilter;
-use crate::triggers::{AbilitySelector, EffectSelector, EntitySelector};
+use crate::dsl::EntityFilter;
+use crate::dsl::{AbilitySelector, EffectSelector, EntitySelector};
 use super::{TimerDefinition, TimerManager, TimerTrigger};
 
 /// Create a test timer with the given trigger

@@ -9,7 +9,7 @@ use crate::context::{AppConfig, parse_log_filename};
 use crate::effects::{DefinitionSet, EffectTracker};
 use crate::signal_processor::{EventProcessor, GameSignal, SignalHandler};
 use crate::state::SessionCache;
-use crate::boss::BossEncounterDefinition;
+use crate::dsl::BossEncounterDefinition;
 use crate::timers::{TimerDefinition, TimerManager};
 use crate::storage::{encounter_filename, EncounterWriter, EventMetadata};
 

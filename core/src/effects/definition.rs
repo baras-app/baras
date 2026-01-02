@@ -5,11 +5,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::audio::AudioConfig;
+use crate::dsl::AudioConfig;
 
 // Re-export EntityFilter from shared module
-pub use crate::entity_filter::EntityFilter;
-pub use crate::triggers::{AbilitySelector, EffectSelector};
+pub use crate::dsl::EntityFilter;
+pub use crate::dsl::{AbilitySelector, EffectSelector};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Effect Definitions
