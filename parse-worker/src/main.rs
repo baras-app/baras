@@ -164,7 +164,7 @@ fn process_and_write_encounters(
 
     for event in events {
         // Build metadata for this event
-        let metadata = build_metadata(&cache, current_encounter_idx);
+        let metadata = EventMetadata::from_cache(&cache, current_encounter_idx, event.timestamp);
         writer.push_event(&event, &metadata);
 
         // Process through state machine
@@ -224,30 +224,4 @@ fn process_and_write_encounters(
     };
 
     Ok((encounter_summaries, player, area))
-}
-
-fn build_metadata(cache: &SessionCache, encounter_idx: u32) -> EventMetadata {
-    let enc = cache.current_encounter();
-    let boss_def = enc.and_then(|e| e.active_boss_definition());
-    let current_phase = enc.and_then(|e| e.current_phase.clone());
-
-    EventMetadata {
-        encounter_idx,
-        phase_id: current_phase.clone(),
-        phase_name: current_phase.as_ref().and_then(|phase_id| {
-            boss_def.and_then(|def| {
-                def.phases
-                    .iter()
-                    .find(|p| &p.id == phase_id)
-                    .map(|p| p.name.clone())
-            })
-        }),
-        area_name: cache.current_area.area_name.clone(),
-        boss_name: boss_def.map(|d| d.name.clone()),
-        difficulty: if cache.current_area.difficulty_name.is_empty() {
-            None
-        } else {
-            Some(cache.current_area.difficulty_name.clone())
-        },
-    }
 }

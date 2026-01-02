@@ -13,33 +13,6 @@ use crate::dsl::BossEncounterDefinition;
 use crate::timers::{TimerDefinition, TimerManager};
 use crate::storage::{encounter_filename, EncounterWriter, EventMetadata};
 
-/// Build metadata for parquet event row (standalone to avoid borrow conflicts)
-fn build_event_metadata(cache: &SessionCache, encounter_idx: u32) -> EventMetadata {
-    let enc = cache.current_encounter();
-    let boss_def = enc.and_then(|e| e.active_boss_definition());
-    let current_phase = enc.and_then(|e| e.current_phase.clone());
-
-    EventMetadata {
-        encounter_idx,
-        phase_id: current_phase.clone(),
-        phase_name: current_phase.as_ref().and_then(|phase_id| {
-            boss_def.and_then(|def| {
-                def.phases
-                    .iter()
-                    .find(|p| &p.id == phase_id)
-                    .map(|p| p.name.clone())
-            })
-        }),
-        area_name: cache.current_area.area_name.clone(),
-        boss_name: boss_def.map(|d| d.name.clone()),
-        difficulty: if cache.current_area.difficulty_name.is_empty() {
-            None
-        } else {
-            Some(cache.current_area.difficulty_name.clone())
-        },
-    }
-}
-
 /// A parsing session that processes combat events and tracks game state.
 ///
 /// The session maintains:
@@ -150,7 +123,7 @@ impl ParsingSession {
         if let Some(cache) = &mut self.session_cache {
             // Write event to parquet buffer if live writing is enabled
             if let Some(writer) = &mut self.encounter_writer {
-                let metadata = build_event_metadata(cache, self.encounter_idx);
+                let metadata = EventMetadata::from_cache(cache, self.encounter_idx, event.timestamp);
                 writer.push_event(&event, &metadata);
             }
 
