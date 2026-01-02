@@ -177,6 +177,8 @@ pub enum GameSignal {
         entity_id: i64,
         /// NPC class/template ID
         npc_id: i64,
+        /// All NPC class IDs for this boss encounter (for entity tracking)
+        boss_npc_class_ids: Vec<i64>,
         timestamp: NaiveDateTime,
     },
 

@@ -80,9 +80,6 @@ pub struct TimerManager {
     live_mode: bool,
 
     // ─── Boss Encounter State (from signals) ───────────────────────────────────
-    /// Boss definitions indexed by area name (for timer extraction)
-    boss_definitions: HashMap<String, Vec<BossEncounterDefinition>>,
-
     /// Current phase (from PhaseChanged signals)
     pub(super) current_phase: Option<String>,
 
@@ -129,7 +126,6 @@ impl TimerManager {
             in_combat: false,
             last_timestamp: None,
             live_mode: true, // Default: apply recency threshold (skip old events)
-            boss_definitions: HashMap::new(),
             current_phase: None,
             counters: HashMap::new(),
             boss_hp_by_npc: HashMap::new(),
@@ -201,17 +197,17 @@ impl TimerManager {
         self.load_definitions(definitions);
     }
 
-    /// Load boss definitions (indexed by area name for quick lookup)
-    /// Also extracts boss timers into the main definitions map
+    /// Load boss definitions and extract their timer definitions.
+    /// Only the timer definitions are stored - boss definitions are managed by SessionCache.
     pub fn load_boss_definitions(&mut self, bosses: Vec<BossEncounterDefinition>) {
-        self.boss_definitions.clear();
-
         // Clear existing boss-related timer definitions (keep generic ones)
         // We'll re-add them from the fresh boss definitions
         self.definitions.retain(|id, _| !id.contains('_') || id.starts_with("generic_"));
 
         let mut timer_count = 0;
         let mut duplicate_count = 0;
+        let boss_count = bosses.len();
+
         for boss in bosses {
             // Extract boss timers and convert to TimerDefinition
             for boss_timer in &boss.timers {
@@ -238,25 +234,17 @@ impl TimerManager {
                     timer_count += 1;
                 }
             }
-
-            self.boss_definitions
-                .entry(boss.area_name.clone())
-                .or_default()
-                .push(boss);
         }
 
-        let boss_count: usize = self.boss_definitions.values().map(|v| v.len()).sum();
         if duplicate_count > 0 {
             eprintln!(
-                "TimerManager: loaded {} bosses, {} timers ({} DUPLICATES SKIPPED - check your timer definitions!)",
-                boss_count, timer_count, duplicate_count
+                "TimerManager: extracted {} timers from {} bosses ({} DUPLICATES SKIPPED)",
+                timer_count, boss_count, duplicate_count
             );
         } else {
             eprintln!(
-                "TimerManager: loaded {} bosses across {} areas, {} boss timers",
-                boss_count,
-                self.boss_definitions.len(),
-                timer_count
+                "TimerManager: extracted {} timers from {} boss definitions",
+                timer_count, boss_count
             );
         }
 
@@ -636,7 +624,7 @@ impl SignalHandler for TimerManager {
         }
 
         // Skip timer-triggering signals if no definitions loaded
-        if self.definitions.is_empty() && self.boss_definitions.is_empty() {
+        if self.definitions.is_empty() {
             return;
         }
 
@@ -796,23 +784,17 @@ impl SignalHandler for TimerManager {
             }
 
             // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────
-            GameSignal::BossEncounterDetected { boss_name, entity_id, timestamp, .. } => {
+            GameSignal::BossEncounterDetected { boss_name, entity_id, boss_npc_class_ids, timestamp, .. } => {
                 self.context.boss_name = Some(boss_name.clone());
 
                 // Track boss entity ID for source/target "boss" filter
                 self.boss_entity_ids.insert(*entity_id);
 
-                // Also store boss NPC class IDs so we can track additional boss entities
-                // (e.g., in a multi-boss fight like Zorn & Toth)
+                // Store boss NPC class IDs from signal (for tracking additional boss entities
+                // in multi-boss fights like Zorn & Toth)
                 self.boss_npc_class_ids.clear();
-                if let Some(area_name) = &self.context.encounter_name {
-                    if let Some(boss_defs) = self.boss_definitions.get(area_name) {
-                        if let Some(def) = boss_defs.iter().find(|d| &d.name == boss_name) {
-                            for boss_class_id in def.boss_npc_ids() {
-                                self.boss_npc_class_ids.insert(boss_class_id);
-                            }
-                        }
-                    }
+                for &class_id in boss_npc_class_ids {
+                    self.boss_npc_class_ids.insert(class_id);
                 }
 
                 // Reset phase and counters for new encounter

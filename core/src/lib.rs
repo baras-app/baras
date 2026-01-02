@@ -25,7 +25,7 @@ pub use effects::{ActiveEffect, DefinitionConfig, DefinitionSet, EffectCategory,
 pub use entity_filter::EntityFilter;
 pub use encounter::metrics::PlayerMetrics;
 pub use encounter::summary::{EncounterSummary, EncounterHistory};
-pub use encounter::{PhaseType, BossHealthEntry};
+pub use encounter::{PhaseType, BossHealthEntry, CombatEncounter, ProcessingMode, ActiveBoss};
 pub use signal_processor::{EventProcessor, GameSignal, SignalHandler};
 pub use game_data::*;
 pub use state::SessionCache;
@@ -34,6 +34,6 @@ pub use triggers::{AbilitySelector, EffectSelector, EntitySelector};
 pub use audio::AudioConfig;
 pub use query::{EncounterQuery, AbilityBreakdown, EntityBreakdown, TimeSeriesPoint};
 pub use boss::{
-    BossConfig, BossEncounterDefinition, BossEncounterState, BossTimerDefinition, CounterCondition,
+    BossConfig, BossEncounterDefinition, BossTimerDefinition, CounterCondition,
     CounterDefinition, PhaseDefinition, PhaseTrigger, load_bosses_from_dir,
 };

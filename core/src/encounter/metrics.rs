@@ -1,5 +1,5 @@
-use super::IStr;
-use super::EntityType;
+use crate::context::IStr;
+use crate::combat_log::EntityType;
 use crate::context::resolve;
 use serde::{Serialize, Deserialize};
 

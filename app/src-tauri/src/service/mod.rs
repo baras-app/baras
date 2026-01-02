@@ -1199,10 +1199,10 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 
     // Build challenge data from encounter's tracker (persists with encounter, not boss state)
     let challenges = if encounter.challenge_tracker.is_active() {
-        let boss_name = cache
-            .active_boss_idx
-            .and_then(|idx| cache.boss_definitions.get(idx).map(|def| def.name.clone()));
-        let overall_duration = cache.boss_state.combat_time_secs.max(1.0);
+        let boss_name = encounter
+            .active_boss_idx()
+            .and_then(|idx| encounter.boss_definitions().get(idx).map(|def| def.name.clone()));
+        let overall_duration = encounter.combat_time_secs.max(1.0);
         let current_time = chrono::Local::now().naive_local();
 
         let entries: Vec<ChallengeEntry> = encounter
@@ -1277,18 +1277,17 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         None
     };
 
-    // Get phase info from boss state
+    // Get phase info from encounter's boss state
     // Look up the phase display name from the boss definition
-    let current_phase = cache.boss_state.current_phase.as_ref().and_then(|phase_id| {
-        cache.active_boss_definition().and_then(|def| {
+    let current_phase = encounter.current_phase.as_ref().and_then(|phase_id| {
+        encounter.active_boss_definition().and_then(|def| {
             def.phases
                 .iter()
                 .find(|p| &p.id == phase_id)
                 .map(|p| p.name.clone())
         })
     });
-    let phase_time_secs = cache
-        .boss_state
+    let phase_time_secs = encounter
         .phase_started_at
         .map(|start| {
             let now = chrono::Local::now().naive_local();

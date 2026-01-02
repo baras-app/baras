@@ -21,8 +21,8 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
         _ => return, // No active challenge tracking
     };
 
-    // Build context from current boss state (phase, counters, HP)
-    let ctx = cache.boss_state.challenge_context(&boss_npc_ids);
+    // Build context from current encounter state (phase, counters, HP)
+    let ctx = cache.current_encounter().unwrap().challenge_context(&boss_npc_ids);
 
     // Get local player ID for local_player matching
     let local_player_id = cache.player.id;

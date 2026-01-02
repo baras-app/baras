@@ -34,7 +34,7 @@ pub type AreaIndex = HashMap<i64, AreaIndexEntry>;
 
 /// Load boss definitions from a single TOML file
 /// Handles both legacy format (area_name on each boss) and new consolidated format
-pub fn load_bosses_from_file(path: &Path) -> Result<Vec<BossEncounterDefinition>, String> {
+pub fn load_bosses_from_fjle(path: &Path) -> Result<Vec<BossEncounterDefinition>, String> {
     let content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
 

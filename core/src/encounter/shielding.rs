@@ -1,7 +1,7 @@
 use crate::combat_log::CombatEvent;
 use chrono::NaiveDateTime;
 use super::EffectInstance;
-use super::Encounter;
+use super::CombatEncounter;
 
 /// Grace period when another shield is still active (tighter window)
 const ABSORPTION_INSIDE_DELAY_MS: i64 = 500;
@@ -23,7 +23,7 @@ struct ShieldInfo {
     is_removed: bool,
 }
 
-impl Encounter {
+impl CombatEncounter {
     /// Process a damage event that has absorption.
     /// - If exactly one shield is active: attribute immediately
     /// - If multiple shields active: queue for later resolution

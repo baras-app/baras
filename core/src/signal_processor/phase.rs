@@ -5,8 +5,8 @@
 
 use chrono::NaiveDateTime;
 
-use crate::boss::BossEncounterState;
 use crate::combat_log::CombatEvent;
+use crate::encounter::CombatEncounter;
 use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
 use crate::triggers::{EntitySelectorExt, Trigger};
@@ -25,14 +25,17 @@ pub fn check_hp_phase_transitions(
     npc_id: i64,
     timestamp: NaiveDateTime,
 ) -> Vec<GameSignal> {
-    let Some(def_idx) = cache.active_boss_idx else {
+    let Some(enc) = cache.current_encounter() else {
+        return Vec::new();
+    };
+    let Some(def_idx) = enc.active_boss_idx() else {
         return Vec::new();
     };
 
-    let def = &cache.boss_definitions[def_idx];
+    let def = &enc.boss_definitions()[def_idx];
     let counter_defs = def.counters.clone();
-    let current_phase = cache.boss_state.current_phase.clone();
-    let previous_phase = cache.boss_state.previous_phase.clone();
+    let current_phase = enc.current_phase.clone();
+    let previous_phase = enc.previous_phase.clone();
 
     for phase in &def.phases {
         if current_phase.as_ref() == Some(&phase.id) {
@@ -47,23 +50,21 @@ pub fn check_hp_phase_transitions(
         }
 
         if let Some(ref cond) = phase.counter_condition {
-            if !cache.boss_state.check_counter_condition(cond) {
+            if !enc.check_counter_condition(cond) {
                 continue;
             }
         }
 
-        if check_hp_trigger(&phase.start_trigger, old_hp, new_hp, npc_id, &cache.boss_state) {
-            let old_phase = cache.boss_state.current_phase.clone();
+        if check_hp_trigger(&phase.start_trigger, old_hp, new_hp, npc_id, enc) {
+            let old_phase = enc.current_phase.clone();
             let new_phase_id = phase.id.clone();
             let boss_id = def.id.clone();
             let resets = phase.resets_counters.clone();
 
-            cache.boss_state.set_phase(&new_phase_id, timestamp);
-            cache.boss_state.reset_counters_to_initial(&resets, &counter_defs);
-
-            if let Some(enc) = cache.current_encounter_mut() {
-                enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
-            }
+            let enc = cache.current_encounter_mut().unwrap();
+            enc.set_phase(&new_phase_id, timestamp);
+            enc.reset_counters_to_initial(&resets, &counter_defs);
+            enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
 
             return vec![GameSignal::PhaseChanged {
                 boss_id,
@@ -83,14 +84,17 @@ pub fn check_ability_phase_transitions(
     cache: &mut SessionCache,
     current_signals: &[GameSignal],
 ) -> Vec<GameSignal> {
-    let Some(def_idx) = cache.active_boss_idx else {
+    let Some(enc) = cache.current_encounter() else {
+        return Vec::new();
+    };
+    let Some(def_idx) = enc.active_boss_idx() else {
         return Vec::new();
     };
 
-    let def = &cache.boss_definitions[def_idx];
+    let def = &enc.boss_definitions()[def_idx];
     let counter_defs = def.counters.clone();
-    let current_phase = cache.boss_state.current_phase.clone();
-    let previous_phase = cache.boss_state.previous_phase.clone();
+    let current_phase = enc.current_phase.clone();
+    let previous_phase = enc.previous_phase.clone();
 
     for phase in &def.phases {
         if current_phase.as_ref() == Some(&phase.id) {
@@ -105,7 +109,7 @@ pub fn check_ability_phase_transitions(
         }
 
         if let Some(ref cond) = phase.counter_condition {
-            if !cache.boss_state.check_counter_condition(cond) {
+            if !enc.check_counter_condition(cond) {
                 continue;
             }
         }
@@ -114,17 +118,15 @@ pub fn check_ability_phase_transitions(
             || check_signal_phase_trigger(&phase.start_trigger, current_signals);
 
         if trigger_matched {
-            let old_phase = cache.boss_state.current_phase.clone();
+            let old_phase = enc.current_phase.clone();
             let new_phase_id = phase.id.clone();
             let boss_id = def.id.clone();
             let resets = phase.resets_counters.clone();
 
-            cache.boss_state.set_phase(&new_phase_id, event.timestamp);
-            cache.boss_state.reset_counters_to_initial(&resets, &counter_defs);
-
-            if let Some(enc) = cache.current_encounter_mut() {
-                enc.challenge_tracker.set_phase(&new_phase_id, event.timestamp);
-            }
+            let enc = cache.current_encounter_mut().unwrap();
+            enc.set_phase(&new_phase_id, event.timestamp);
+            enc.reset_counters_to_initial(&resets, &counter_defs);
+            enc.challenge_tracker.set_phase(&new_phase_id, event.timestamp);
 
             return vec![GameSignal::PhaseChanged {
                 boss_id,
@@ -144,15 +146,18 @@ pub fn check_entity_phase_transitions(
     current_signals: &[GameSignal],
     timestamp: NaiveDateTime,
 ) -> Vec<GameSignal> {
-    let Some(def_idx) = cache.active_boss_idx else {
+    let Some(enc) = cache.current_encounter() else {
+        return Vec::new();
+    };
+    let Some(def_idx) = enc.active_boss_idx() else {
         return Vec::new();
     };
 
-    let phases: Vec<_> = cache.boss_definitions[def_idx].phases.clone();
-    let counter_defs = cache.boss_definitions[def_idx].counters.clone();
-    let boss_id = cache.boss_definitions[def_idx].id.clone();
-    let current_phase = cache.boss_state.current_phase.clone();
-    let previous_phase = cache.boss_state.previous_phase.clone();
+    let phases: Vec<_> = enc.boss_definitions()[def_idx].phases.clone();
+    let counter_defs = enc.boss_definitions()[def_idx].counters.clone();
+    let boss_id = enc.boss_definitions()[def_idx].id.clone();
+    let current_phase = enc.current_phase.clone();
+    let previous_phase = enc.previous_phase.clone();
 
     let mut signals = Vec::new();
 
@@ -169,22 +174,20 @@ pub fn check_entity_phase_transitions(
         }
 
         if let Some(ref cond) = phase.counter_condition {
-            if !cache.boss_state.check_counter_condition(cond) {
+            if !enc.check_counter_condition(cond) {
                 continue;
             }
         }
 
         if check_signal_phase_trigger(&phase.start_trigger, current_signals) {
-            let old_phase = cache.boss_state.current_phase.clone();
+            let old_phase = enc.current_phase.clone();
             let new_phase_id = phase.id.clone();
             let resets = phase.resets_counters.clone();
 
-            cache.boss_state.set_phase(&new_phase_id, timestamp);
-            cache.boss_state.reset_counters_to_initial(&resets, &counter_defs);
-
-            if let Some(enc) = cache.current_encounter_mut() {
-                enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
-            }
+            let enc = cache.current_encounter_mut().unwrap();
+            enc.set_phase(&new_phase_id, timestamp);
+            enc.reset_counters_to_initial(&resets, &counter_defs);
+            enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
 
             signals.push(GameSignal::PhaseChanged {
                 boss_id: boss_id.clone(),
@@ -205,21 +208,28 @@ pub fn check_time_phase_transitions(
     cache: &mut SessionCache,
     timestamp: NaiveDateTime,
 ) -> Vec<GameSignal> {
-    let Some(def_idx) = cache.active_boss_idx else {
+    let Some(enc) = cache.current_encounter_mut() else {
         return Vec::new();
     };
+    if enc.active_boss_idx().is_none() {
+        return Vec::new();
+    }
 
-    let (old_time, new_time) = cache.boss_state.update_combat_time(timestamp);
+    let (old_time, new_time) = enc.update_combat_time(timestamp);
 
     if new_time <= old_time {
         return Vec::new();
     }
 
-    let phases: Vec<_> = cache.boss_definitions[def_idx].phases.clone();
-    let counter_defs = cache.boss_definitions[def_idx].counters.clone();
-    let boss_id = cache.boss_definitions[def_idx].id.clone();
-    let current_phase = cache.boss_state.current_phase.clone();
-    let previous_phase = cache.boss_state.previous_phase.clone();
+    // Need to reborrow after mutation
+    let enc = cache.current_encounter().unwrap();
+    let def_idx = enc.active_boss_idx().unwrap();
+
+    let phases: Vec<_> = enc.boss_definitions()[def_idx].phases.clone();
+    let counter_defs = enc.boss_definitions()[def_idx].counters.clone();
+    let boss_id = enc.boss_definitions()[def_idx].id.clone();
+    let current_phase = enc.current_phase.clone();
+    let previous_phase = enc.previous_phase.clone();
 
     for phase in &phases {
         if current_phase.as_ref() == Some(&phase.id) {
@@ -234,22 +244,20 @@ pub fn check_time_phase_transitions(
         }
 
         if let Some(ref cond) = phase.counter_condition {
-            if !cache.boss_state.check_counter_condition(cond) {
+            if !enc.check_counter_condition(cond) {
                 continue;
             }
         }
 
         if check_time_trigger(&phase.start_trigger, old_time, new_time) {
-            let old_phase = cache.boss_state.current_phase.clone();
+            let old_phase = enc.current_phase.clone();
             let new_phase_id = phase.id.clone();
             let resets = phase.resets_counters.clone();
 
-            cache.boss_state.set_phase(&new_phase_id, timestamp);
-            cache.boss_state.reset_counters_to_initial(&resets, &counter_defs);
-
-            if let Some(enc) = cache.current_encounter_mut() {
-                enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
-            }
+            let enc = cache.current_encounter_mut().unwrap();
+            enc.set_phase(&new_phase_id, timestamp);
+            enc.reset_counters_to_initial(&resets, &counter_defs);
+            enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
 
             return vec![GameSignal::PhaseChanged {
                 boss_id,
@@ -270,14 +278,17 @@ pub fn check_phase_end_triggers(
     cache: &SessionCache,
     current_signals: &[GameSignal],
 ) -> Vec<GameSignal> {
-    let Some(def_idx) = cache.active_boss_idx else {
+    let Some(enc) = cache.current_encounter() else {
         return Vec::new();
     };
-    let Some(current_phase_id) = &cache.boss_state.current_phase else {
+    let Some(def_idx) = enc.active_boss_idx() else {
+        return Vec::new();
+    };
+    let Some(current_phase_id) = &enc.current_phase else {
         return Vec::new();
     };
 
-    let def = &cache.boss_definitions[def_idx];
+    let def = &enc.boss_definitions()[def_idx];
 
     let Some(phase) = def.phases.iter().find(|p| &p.id == current_phase_id) else {
         return Vec::new();
@@ -314,7 +325,7 @@ pub fn check_hp_trigger(
     old_hp: f32,
     new_hp: f32,
     npc_id: i64,
-    state: &BossEncounterState,
+    enc: &CombatEncounter,
 ) -> bool {
     match trigger {
         Trigger::BossHpBelow { hp_percent, selector } => {
@@ -334,7 +345,7 @@ pub fn check_hp_trigger(
 
             // Check by name in hp_by_name (for name-based selectors)
             if let Some(name) = selector.first_name() {
-                return state.hp_by_name.contains_key(name);
+                return enc.hp_by_name.contains_key(name);
             }
 
             false
@@ -355,13 +366,13 @@ pub fn check_hp_trigger(
 
             // Check by name in hp_by_name (for name-based selectors)
             if let Some(name) = selector.first_name() {
-                return state.hp_by_name.contains_key(name);
+                return enc.hp_by_name.contains_key(name);
             }
 
             false
         }
         Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| check_hp_trigger(c, old_hp, new_hp, npc_id, state))
+            conditions.iter().any(|c| check_hp_trigger(c, old_hp, new_hp, npc_id, enc))
         }
         _ => false,
     }

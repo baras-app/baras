@@ -17,17 +17,25 @@ pub fn check_counter_increments(
     cache: &mut SessionCache,
     current_signals: &[GameSignal],
 ) -> Vec<GameSignal> {
-    let Some(def_idx) = cache.active_boss_idx else {
-        return Vec::new();
+    // Clone the definition upfront to avoid borrow conflicts
+    let (counters, def) = {
+        let Some(enc) = cache.current_encounter() else {
+            return Vec::new();
+        };
+        let Some(def_idx) = enc.active_boss_idx() else {
+            return Vec::new();
+        };
+        let def = enc.boss_definitions()[def_idx].clone();
+        (def.counters.clone(), def)
     };
 
-    let def = &cache.boss_definitions[def_idx];
     let mut signals = Vec::new();
 
-    for counter in &def.counters {
+    for counter in &counters {
         // Check increment_on trigger
-        if check_counter_trigger(&counter.increment_on, event, current_signals, def) {
-            let (old_value, new_value) = cache.boss_state.modify_counter(
+        if check_counter_trigger(&counter.increment_on, event, current_signals, &def) {
+            let enc = cache.current_encounter_mut().unwrap();
+            let (old_value, new_value) = enc.modify_counter(
                 &counter.id,
                 counter.decrement, // Legacy: use decrement flag for increment_on
                 counter.set_value,
@@ -43,8 +51,9 @@ pub fn check_counter_increments(
 
         // Check decrement_on trigger (always decrements)
         if let Some(ref decrement_trigger) = counter.decrement_on {
-            if check_counter_trigger(decrement_trigger, event, current_signals, def) {
-                let (old_value, new_value) = cache.boss_state.modify_counter(
+            if check_counter_trigger(decrement_trigger, event, current_signals, &def) {
+                let enc = cache.current_encounter_mut().unwrap();
+                let (old_value, new_value) = enc.modify_counter(
                     &counter.id,
                     true, // Always decrement
                     None, // Never set_value for decrement_on

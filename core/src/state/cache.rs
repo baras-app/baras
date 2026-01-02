@@ -1,9 +1,9 @@
-use crate::boss::{BossEncounterDefinition, BossEncounterState};
-use crate::encounter::{Encounter, EncounterState, BossHealthEntry};
+use crate::boss::BossEncounterDefinition;
+use crate::encounter::{CombatEncounter, ProcessingMode, EncounterState, BossHealthEntry};
 use crate::encounter::entity_info::PlayerInfo;
-use crate::encounter::summary::{EncounterHistory, create_summary};
+use crate::encounter::summary::{EncounterHistory, create_encounter_summary};
 use crate::state::info::AreaInfo;
-use crate::game_data::{lookup_boss, register_hp_overlay_entity, lookup_registered_name, clear_boss_registry};
+use crate::game_data::{register_hp_overlay_entity, clear_boss_registry};
 use std::collections::{HashSet, VecDeque};
 
 const CACHE_DEFAULT_CAPACITY: usize = 2;
@@ -20,19 +20,14 @@ pub struct SessionCache {
     pub current_area: AreaInfo,
 
     // Encounter tracking - fixed-size window for live encounters
-    encounters: VecDeque<Encounter>,
+    encounters: VecDeque<CombatEncounter>,
     next_encounter_id: u64,
 
     // Full encounter history for current file
     pub encounter_history: EncounterHistory,
 
-    // Boss encounter system
-    /// Boss encounter definitions for the current area (loaded on AreaEntered)
-    pub boss_definitions: Vec<BossEncounterDefinition>,
-    /// Index into boss_definitions for the currently active encounter (None = no boss detected)
-    pub active_boss_idx: Option<usize>,
-    /// Runtime state for the active boss encounter
-    pub boss_state: BossEncounterState,
+    // Boss encounter definitions (area-scoped, copied into each encounter)
+    boss_definitions: Vec<BossEncounterDefinition>,
 
     // NPC tracking (session-scoped)
     /// NPC instance log IDs that have been seen in this session (for NpcFirstSeen signals)
@@ -56,8 +51,6 @@ impl SessionCache {
             next_encounter_id: 0,
             encounter_history: EncounterHistory::new(),
             boss_definitions: Vec::new(),
-            active_boss_idx: None,
-            boss_state: BossEncounterState::new(),
             seen_npc_instances: HashSet::new(),
         };
         cache.push_new_encounter();
@@ -73,7 +66,7 @@ impl SessionCache {
             return;
         }
 
-        if let Some(summary) = create_summary(
+        if let Some(summary) = create_encounter_summary(
             encounter,
             &self.current_area,
             &mut self.encounter_history,
@@ -86,16 +79,16 @@ impl SessionCache {
         // Finalize the current encounter before creating a new one
         self.finalize_current_encounter();
 
-        // Reset boss encounter state for the new encounter
-        self.reset_boss_encounter();
-
         let id = self.next_encounter_id;
 
-        let encounter = if self.player_initialized {
-            Encounter::with_player(id, self.player.clone())
+        let mut encounter = if self.player_initialized {
+            CombatEncounter::with_player(id, ProcessingMode::Live, self.player.clone())
         } else {
-            Encounter::new(id)
+            CombatEncounter::new(id, ProcessingMode::Live)
         };
+
+        // Copy boss definitions into the new encounter
+        encounter.load_boss_definitions(self.boss_definitions.clone());
 
         self.next_encounter_id += 1;
         self.encounters.push_back(encounter);
@@ -111,33 +104,33 @@ impl SessionCache {
 
     // --- Accessors ---
 
-    pub fn current_encounter(&self) -> Option<&Encounter> {
+    pub fn current_encounter(&self) -> Option<&CombatEncounter> {
         self.encounters.back()
     }
 
-    pub fn current_encounter_mut(&mut self) -> Option<&mut Encounter> {
+    pub fn current_encounter_mut(&mut self) -> Option<&mut CombatEncounter> {
         self.encounters.back_mut()
     }
 
-    pub fn encounters(&self) -> impl Iterator<Item = &Encounter> {
+    pub fn encounters(&self) -> impl Iterator<Item = &CombatEncounter> {
         self.encounters.iter()
     }
 
-    pub fn encounters_mut(&mut self) -> impl Iterator<Item = &mut Encounter> {
+    pub fn encounters_mut(&mut self) -> impl Iterator<Item = &mut CombatEncounter> {
         self.encounters.iter_mut()
     }
 
-    pub fn encounter_by_id(&self, id: u64) -> Option<&Encounter> {
+    pub fn encounter_by_id(&self, id: u64) -> Option<&CombatEncounter> {
         self.encounters.iter().find(|e| e.id == id)
     }
 
-    pub fn last_combat_encounter(&self) -> Option<&Encounter> {
+    pub fn last_combat_encounter(&self) -> Option<&CombatEncounter> {
         self.encounters
             .iter()
             .rfind(|e| e.state != EncounterState::NotStarted)
     }
 
-    pub fn last_combat_encounter_mut(&mut self) -> Option<&mut Encounter> {
+    pub fn last_combat_encounter_mut(&mut self) -> Option<&mut CombatEncounter> {
         self.encounters
             .iter_mut()
             .rfind(|e| e.state != EncounterState::NotStarted)
@@ -149,43 +142,30 @@ impl SessionCache {
 
     // --- Boss Health ---
 
-    /// Get current health of all bosses from boss_state (realtime tracking)
+    /// Get current health of all bosses from the current encounter
     pub fn get_boss_health(&self) -> Vec<BossHealthEntry> {
-        let mut entries: Vec<_> = self.boss_state.hp_raw
-            .iter()
-            .filter_map(|(&npc_id, &(current, max))| {
-                // Try registry first (custom definitions), then hardcoded boss data
-                let name = lookup_registered_name(npc_id)
-                    .or_else(|| lookup_boss(npc_id).map(|info| info.boss.to_string()))?;
-                Some(BossHealthEntry {
-                    name,
-                    current: current as i32,
-                    max: max as i32,
-                    first_seen_at: self.boss_state.first_seen.get(&npc_id).copied(),
-                })
-            })
-            .filter(|b| b.max > 0)
-            .collect();
-
-        // Sort by encounter order (first_seen_at)
-        entries.sort_by_key(|e| e.first_seen_at);
-        entries
+        self.current_encounter()
+            .map(|enc| enc.get_boss_health())
+            .unwrap_or_default()
     }
 
     // --- Boss Encounter Management ---
 
-
+    /// Get the boss definitions (area-scoped)
+    pub fn boss_definitions(&self) -> &[BossEncounterDefinition] {
+        &self.boss_definitions
+    }
 
     /// Clear boss definitions (e.g., when leaving an instance).
     /// Also clears the global boss registry.
     pub fn clear_boss_definitions(&mut self) {
         clear_boss_registry();
         self.boss_definitions.clear();
-        self.active_boss_idx = None;
     }
 
     /// Load boss definitions for the current area.
     /// Replaces any existing definitions and registers HP overlay entities.
+    /// Also updates the current encounter with the new definitions.
     pub fn load_boss_definitions(&mut self, definitions: Vec<BossEncounterDefinition>) {
         // Register HP overlay entities for name lookup
         for def in &definitions {
@@ -195,22 +175,28 @@ impl SessionCache {
                 }
             }
         }
-        self.boss_definitions = definitions;
-        self.active_boss_idx = None;
+        self.boss_definitions = definitions.clone();
+
+        // Update current encounter with the definitions
+        if let Some(enc) = self.current_encounter_mut() {
+            enc.load_boss_definitions(definitions);
+        }
     }
 
     /// Try to detect which boss encounter is active based on an NPC class ID.
-    /// Returns the definition index if a match is found.
+    /// Delegates to the current encounter.
     pub fn detect_boss_encounter(&mut self, npc_class_id: i64) -> Option<usize> {
+        let enc = self.current_encounter_mut()?;
+
         // If already tracking a boss, don't switch mid-fight
-        if self.active_boss_idx.is_some() {
-            return self.active_boss_idx;
+        if enc.active_boss_idx().is_some() {
+            return enc.active_boss_idx();
         }
 
-        // Search definitions for matching NPC ID (checks entity roster)
-        for (idx, def) in self.boss_definitions.iter().enumerate() {
+        // Search definitions for matching NPC ID
+        for (idx, def) in enc.boss_definitions().iter().enumerate() {
             if def.matches_npc_id(npc_class_id) {
-                self.active_boss_idx = Some(idx);
+                enc.set_active_boss_idx(Some(idx));
                 return Some(idx);
             }
         }
@@ -220,13 +206,13 @@ impl SessionCache {
 
     /// Get the currently active boss encounter definition (if any).
     pub fn active_boss_definition(&self) -> Option<&BossEncounterDefinition> {
-        self.active_boss_idx.and_then(|idx| self.boss_definitions.get(idx))
+        self.current_encounter()?.active_boss_definition()
     }
 
-    /// Reset boss encounter state (on combat end).
-    /// Clears active_boss_idx and resets boss_state, but keeps definitions.
+    /// Reset boss encounter state in the current encounter.
     pub fn reset_boss_encounter(&mut self) {
-        self.active_boss_idx = None;
-        self.boss_state.reset();
+        if let Some(enc) = self.current_encounter_mut() {
+            enc.reset_boss_state();
+        }
     }
 }

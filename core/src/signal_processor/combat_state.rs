@@ -140,12 +140,13 @@ fn handle_in_combat(
         .unwrap_or(false);
 
     // Check if all kill targets are dead (boss encounter victory condition)
-    let all_kill_targets_dead = cache.active_boss_idx.map_or(false, |idx| {
-        let kill_target_ids: Vec<i64> = cache.boss_definitions[idx]
+    let all_kill_targets_dead = cache.current_encounter().map_or(false, |enc| {
+        let Some(def_idx) = enc.active_boss_idx() else { return false };
+        let kill_target_ids: Vec<i64> = enc.boss_definitions()[def_idx]
             .kill_targets()
             .flat_map(|e| e.ids.iter().copied())
             .collect();
-        cache.boss_state.all_kill_targets_dead(&kill_target_ids)
+        enc.all_kill_targets_dead(&kill_target_ids)
     });
 
     if effect_id == effect_id::ENTERCOMBAT {

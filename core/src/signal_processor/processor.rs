@@ -193,12 +193,12 @@ impl EventProcessor {
             let npc_id = event.target_entity.class_id;
             if event.target_entity.entity_type == EntityType::Npc
                 && npc_id != 0
-                && let Some(def_idx) = cache.active_boss_idx
+                && let Some(enc) = cache.current_encounter_mut()
+                && let Some(def) = enc.active_boss_definition()
             {
-                let def = &cache.boss_definitions[def_idx];
                 // Check if this NPC is a kill target
                 if def.kill_targets().any(|e| e.ids.contains(&npc_id)) {
-                    cache.boss_state.mark_kill_target_dead(npc_id);
+                    enc.mark_kill_target_dead(npc_id);
                 }
             }
 
@@ -276,18 +276,20 @@ impl EventProcessor {
     /// When a known boss NPC is first seen in combat, activates the encounter.
     fn handle_boss_detection(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
         // Already tracking a boss encounter
-        if cache.active_boss_idx.is_some() {
+        let Some(enc) = cache.current_encounter() else {
+            return Vec::new();
+        };
+        if enc.active_boss_idx().is_some() {
             return Vec::new();
         }
 
-        // Only detect bosses when actually in combat (prevents spurious detection
-        // from post-combat DoT ticks hitting dead bosses)
-        if !cache.current_encounter().is_some_and(|e| e.state == EncounterState::InCombat) {
+        // Only detect bosses when actually in combat
+        if enc.state != EncounterState::InCombat {
             return Vec::new();
         }
 
         // No boss definitions loaded for this area
-        if cache.boss_definitions.is_empty() {
+        if enc.boss_definitions().is_empty() {
             return Vec::new();
         }
 
@@ -295,15 +297,15 @@ impl EventProcessor {
         let entities_to_check = [&event.source_entity, &event.target_entity];
 
         for entity in entities_to_check {
-            // Only check NPCs
             if entity.entity_type != EntityType::Npc || entity.class_id == 0 {
                 continue;
             }
 
             // Try to detect boss encounter from this NPC
             if let Some(idx) = cache.detect_boss_encounter(entity.class_id) {
-                // Clone data from definition before taking mutable borrows
-                let def = &cache.boss_definitions[idx];
+                // Get the encounter mutably and extract data from definition
+                let enc = cache.current_encounter_mut().unwrap();
+                let def = &enc.boss_definitions()[idx];
                 let challenges = def.challenges.clone();
                 let counters = def.counters.clone();
                 let npc_ids: Vec<i64> = def.boss_npc_ids().collect();
@@ -311,16 +313,11 @@ impl EventProcessor {
                 let boss_name = def.name.clone();
                 let initial_phase = def.initial_phase().cloned();
 
-                // Start combat timer in boss state
-                cache.boss_state.start_combat(event.timestamp);
-
-                // Start challenge tracker on the encounter (persists with encounter, not boss state)
-                // Also set initial phase on challenge tracker for duration tracking
-                if let Some(enc) = cache.current_encounter_mut() {
-                    enc.challenge_tracker.start(challenges, npc_ids, event.timestamp);
-                    if let Some(ref initial) = initial_phase {
-                        enc.challenge_tracker.set_phase(&initial.id, event.timestamp);
-                    }
+                // Start combat timer and challenge tracker
+                enc.start_combat(event.timestamp);
+                enc.challenge_tracker.start(challenges, npc_ids.clone(), event.timestamp);
+                if let Some(ref initial) = initial_phase {
+                    enc.challenge_tracker.set_phase(&initial.id, event.timestamp);
                 }
 
                 let mut signals = vec![GameSignal::BossEncounterDetected {
@@ -329,13 +326,14 @@ impl EventProcessor {
                     definition_idx: idx,
                     entity_id: entity.log_id,
                     npc_id: entity.class_id,
+                    boss_npc_class_ids: npc_ids,
                     timestamp: event.timestamp,
                 }];
 
                 // Activate initial phase (CombatStart trigger)
                 if let Some(ref initial) = initial_phase {
-                    cache.boss_state.set_phase(&initial.id, event.timestamp);
-                    cache.boss_state.reset_counters_to_initial(&initial.resets_counters, &counters);
+                    enc.set_phase(&initial.id, event.timestamp);
+                    enc.reset_counters_to_initial(&initial.resets_counters, &counters);
 
                     signals.push(GameSignal::PhaseChanged {
                         boss_id: def_id,
@@ -355,7 +353,10 @@ impl EventProcessor {
     /// Track boss HP changes and evaluate phase transitions.
     fn handle_boss_hp_and_phases(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
         // No active boss encounter
-        let Some(def_idx) = cache.active_boss_idx else {
+        let Some(enc) = cache.current_encounter() else {
+            return Vec::new();
+        };
+        let Some(def_idx) = enc.active_boss_idx() else {
             return Vec::new();
         };
 
@@ -367,8 +368,9 @@ impl EventProcessor {
                 continue;
             }
 
-            // Check if this NPC is part of the active boss encounter (boss entity)
-            let def = &cache.boss_definitions[def_idx];
+            // Check if this NPC is part of the active boss encounter
+            let enc = cache.current_encounter().unwrap();
+            let def = &enc.boss_definitions()[def_idx];
             if !def.matches_npc_id(entity.class_id) {
                 continue;
             }
@@ -379,7 +381,8 @@ impl EventProcessor {
             }
 
             // Update boss state and check if HP changed
-            if let Some((old_hp, new_hp)) = cache.boss_state.update_entity_hp(
+            let enc = cache.current_encounter_mut().unwrap();
+            if let Some((old_hp, new_hp)) = enc.update_entity_hp(
                 entity.log_id,
                 entity.class_id,
                 resolve(entity.name),
@@ -387,7 +390,6 @@ impl EventProcessor {
                 max_hp,
                 event.timestamp,
             ) {
-                // NpcFirstSeen is now emitted globally in handle_npc_first_seen
                 signals.push(GameSignal::BossHpChanged {
                     entity_id: entity.log_id,
                     npc_id: entity.class_id,

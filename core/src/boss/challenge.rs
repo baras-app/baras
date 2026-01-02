@@ -521,6 +521,9 @@ mod tests {
                     matcher: EntityFilter::Boss,
                 },
             ],
+            enabled: true,
+            color: None,
+            columns: ChallengeColumns::default(),
         };
 
         // Both conditions pass
@@ -547,6 +550,9 @@ mod tests {
             description: None,
             metric: ChallengeMetric::Damage,
             conditions: vec![],
+            enabled: true,
+            color: None,
+            columns: ChallengeColumns::default(),
         };
 
         // Empty conditions = always matches
@@ -599,6 +605,9 @@ mod tests {
             conditions: vec![ChallengeCondition::Target {
                 matcher: EntityFilter::Boss,
             }],
+            enabled: true,
+            color: None,
+            columns: ChallengeColumns::default(),
         };
 
         let add_damage_challenge = ChallengeDefinition {
@@ -613,6 +622,9 @@ mod tests {
                     EntitySelector::Id(DREAD_MONSTER_NPC_ID),
                 ]),
             }],
+            enabled: true,
+            color: None,
+            columns: ChallengeColumns::default(),
         };
 
         // Track accumulated values
@@ -760,6 +772,9 @@ mod tests {
                     matcher: EntityFilter::Boss,
                 },
             ],
+            enabled: true,
+            color: None,
+            columns: ChallengeColumns::default(),
         };
 
         // Track metrics

@@ -227,12 +227,14 @@ fn process_and_write_encounters(
 }
 
 fn build_metadata(cache: &SessionCache, encounter_idx: u32) -> EventMetadata {
-    let boss_def = cache.active_boss_definition();
+    let enc = cache.current_encounter();
+    let boss_def = enc.and_then(|e| e.active_boss_definition());
+    let current_phase = enc.and_then(|e| e.current_phase.clone());
 
     EventMetadata {
         encounter_idx,
-        phase_id: cache.boss_state.current_phase.clone(),
-        phase_name: cache.boss_state.current_phase.as_ref().and_then(|phase_id| {
+        phase_id: current_phase.clone(),
+        phase_name: current_phase.as_ref().and_then(|phase_id| {
             boss_def.and_then(|def| {
                 def.phases
                     .iter()

@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 use super::metrics::PlayerMetrics;
 use super::PhaseType;
-use super::Encounter;
+use super::CombatEncounter;
 use crate::state::info::AreaInfo;
 use crate::game_data::{lookup_boss, lookup_area_content_type, BossInfo, ContentType, is_pvp_area};
 use crate::combat_log::EntityType;
@@ -112,7 +112,7 @@ impl EncounterHistory {
 /// Classify an encounter's phase type and find the primary boss (if any)
 /// Uses area info to determine phase type for trash encounters
 pub fn classify_encounter(
-    encounter: &Encounter,
+    encounter: &CombatEncounter,
     area: &AreaInfo,
 ) -> (PhaseType, Option<&'static BossInfo>) {
     // Find the first boss NPC in the encounter (sorted by first_seen_at for consistency)
@@ -154,13 +154,13 @@ pub fn classify_encounter(
 }
 
 /// Determine if an encounter was successful (clean exit, not a wipe)
-pub fn determine_success(encounter: &Encounter) -> bool {
+pub fn determine_success(encounter: &CombatEncounter) -> bool {
     !encounter.all_players_dead && encounter.exit_combat_time.is_some()
 }
 
-/// Create an EncounterSummary from a completed encounter
-pub fn create_summary(
-    encounter: &Encounter,
+/// Create an EncounterSummary from a completed CombatEncounter
+pub fn create_encounter_summary(
+    encounter: &CombatEncounter,
     area: &AreaInfo,
     history: &mut EncounterHistory,
 ) -> Option<EncounterSummary> {
