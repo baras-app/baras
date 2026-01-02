@@ -210,6 +210,11 @@ pub fn run() {
             // Audio
             commands::pick_audio_file,
             commands::list_bundled_sounds,
+            // Query commands
+            commands::query_damage_by_ability,
+            commands::query_entity_breakdown,
+            commands::query_dps_over_time,
+            commands::list_encounter_files,
             // Updater
             #[cfg(desktop)]
             updater::check_update,

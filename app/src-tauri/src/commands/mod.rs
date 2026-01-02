@@ -13,6 +13,7 @@
 mod effects;
 mod overlay;
 mod parsely;
+mod query;
 mod service;
 mod timers;
 
@@ -20,5 +21,6 @@ mod timers;
 pub use effects::*;
 pub use overlay::*;
 pub use parsely::*;
+pub use query::*;
 pub use service::*;
 pub use timers::*;

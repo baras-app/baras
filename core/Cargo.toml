@@ -26,3 +26,4 @@ encoding_rs = "0.8"
 toml = "0.9"
 arrow = { version = "54", default-features = false, features = ["ipc"] }
 parquet = { version = "54", default-features = false, features = ["arrow", "snap", "zstd"] }
+datafusion = { version = "45", default-features = false, features = ["parquet"] }

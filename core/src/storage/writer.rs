@@ -123,28 +123,17 @@ impl EncounterWriter {
         self.rows.clear();
     }
 
-    /// Write buffered rows to a parquet file.
-    pub fn write_to_file(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    /// Get a RecordBatch snapshot of buffered rows for querying.
+    /// Returns None if buffer is empty.
+    pub fn to_record_batch(&self) -> Option<RecordBatch> {
         if self.rows.is_empty() {
-            return Ok(());
+            return None;
         }
-
-        let schema = Self::schema();
-        let batch = self.build_record_batch(&schema)?;
-
-        let file = File::create(path)?;
-        let props = WriterProperties::builder()
-            .set_compression(Compression::ZSTD(Default::default()))
-            .build();
-
-        let mut writer = ArrowWriter::try_new(file, schema, Some(props))?;
-        writer.write(&batch)?;
-        writer.close()?;
-
-        Ok(())
+        self.build_record_batch(&Self::schema()).ok()
     }
 
-    fn schema() -> Arc<Schema> {
+    /// Get the schema for encounter event data.
+    pub fn schema() -> Arc<Schema> {
         Arc::new(Schema::new(vec![
             Field::new(
                 "timestamp",
@@ -170,6 +159,27 @@ impl EncounterWriter {
             Field::new("boss_name", DataType::Utf8, true),
             Field::new("difficulty", DataType::Utf8, true),
         ]))
+    }
+
+    /// Write buffered rows to a parquet file.
+    pub fn write_to_file(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+        if self.rows.is_empty() {
+            return Ok(());
+        }
+
+        let schema = Self::schema();
+        let batch = self.build_record_batch(&schema)?;
+
+        let file = File::create(path)?;
+        let props = WriterProperties::builder()
+            .set_compression(Compression::ZSTD(Default::default()))
+            .build();
+
+        let mut writer = ArrowWriter::try_new(file, schema, Some(props))?;
+        writer.write(&batch)?;
+        writer.close()?;
+
+        Ok(())
     }
 
     fn build_record_batch(

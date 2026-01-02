@@ -289,6 +289,16 @@ impl ParsingSession {
         }
     }
 
+    /// Get the encounters directory path (for querying historical parquet files).
+    pub fn encounters_dir(&self) -> Option<&std::path::PathBuf> {
+        self.encounters_dir.as_ref()
+    }
+
+    /// Get the current encounter writer (for querying live data).
+    pub fn encounter_writer(&self) -> Option<&crate::storage::EncounterWriter> {
+        self.encounter_writer.as_ref()
+    }
+
     /// Sync timer context from session cache (call after initial file parse).
     ///
     /// This ensures the TimerManager knows the current area even if parsing

@@ -300,8 +300,9 @@ pub async fn get_app_version() -> String {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Get encounter history summaries
-pub async fn get_encounter_history() -> JsValue {
-    invoke("get_encounter_history", JsValue::NULL).await
+pub async fn get_encounter_history() -> Option<Vec<crate::components::history_panel::EncounterSummary>> {
+    let result = invoke("get_encounter_history", JsValue::NULL).await;
+    from_js(result)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -635,4 +636,91 @@ pub async fn install_update() -> Result<(), String> {
     } else {
         Ok(())
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Query Commands (Data Explorer)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Damage breakdown by ability
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct AbilityBreakdown {
+    pub ability_name: String,
+    pub ability_id: i64,
+    pub total_value: f64,
+    pub hit_count: i64,
+    pub crit_count: i64,
+    pub crit_rate: f64,
+    pub max_hit: f64,
+    pub avg_hit: f64,
+}
+
+/// Damage breakdown by entity
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct EntityBreakdown {
+    pub source_name: String,
+    pub source_id: i64,
+    pub total_value: f64,
+    pub abilities_used: i64,
+}
+
+/// DPS over time data point
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct TimeSeriesPoint {
+    pub bucket_start_ms: i64,
+    pub total_value: f64,
+}
+
+/// Query damage by ability for an encounter.
+/// Pass encounter_idx for historical, or None for live encounter.
+pub async fn query_damage_by_ability(encounter_idx: Option<u32>, source_name: Option<&str>) -> Option<Vec<AbilityBreakdown>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    if let Some(name) = source_name {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("sourceName"), &JsValue::from_str(name)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("sourceName"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("query_damage_by_ability", obj.into()).await;
+    from_js(result)
+}
+
+/// Query breakdown by source entity.
+pub async fn query_entity_breakdown(encounter_idx: Option<u32>) -> Option<Vec<EntityBreakdown>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("query_entity_breakdown", obj.into()).await;
+    from_js(result)
+}
+
+/// Query DPS over time with specified bucket size.
+pub async fn query_dps_over_time(encounter_idx: Option<u32>, bucket_ms: i64, source_name: Option<&str>) -> Option<Vec<TimeSeriesPoint>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    js_sys::Reflect::set(&obj, &JsValue::from_str("bucketMs"), &JsValue::from_f64(bucket_ms as f64)).unwrap();
+    if let Some(name) = source_name {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("sourceName"), &JsValue::from_str(name)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("sourceName"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("query_dps_over_time", obj.into()).await;
+    from_js(result)
+}
+
+/// List available encounter parquet files.
+pub async fn list_encounter_files() -> Option<Vec<u32>> {
+    let result = invoke("list_encounter_files", JsValue::NULL).await;
+    from_js(result)
 }

@@ -8,6 +8,7 @@ pub mod encounter;
 pub mod entity_filter;
 pub mod signal_processor;
 pub mod game_data;
+pub mod query;
 pub mod serde_defaults;
 pub mod state;
 pub mod storage;
@@ -31,6 +32,7 @@ pub use state::SessionCache;
 pub use timers::{ActiveTimer, TimerDefinition, TimerKey, TimerManager, TimerTrigger};
 pub use triggers::{AbilitySelector, EffectSelector, EntitySelector};
 pub use audio::AudioConfig;
+pub use query::{EncounterQuery, AbilityBreakdown, EntityBreakdown, TimeSeriesPoint};
 pub use boss::{
     BossConfig, BossEncounterDefinition, BossEncounterState, BossTimerDefinition, CounterCondition,
     CounterDefinition, PhaseDefinition, PhaseTrigger, load_bosses_from_dir,

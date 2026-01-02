@@ -7,7 +7,7 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::console;
 
 use crate::api;
-use crate::components::{EffectEditorPanel, EncounterEditorPanel, HistoryPanel, SettingsPanel};
+use crate::components::{DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel, HistoryPanel, SettingsPanel};
 use crate::types::{LogFileInfo, MetricType, OverlaySettings, OverlayStatus, OverlayType, SessionInfo, UpdateInfo};
 
 static CSS: Asset = asset!("/assets/styles.css");
@@ -398,6 +398,12 @@ pub fn App() -> Element {
                     i { class: "fa-solid fa-heart-pulse" }
                     " Effects"
                 }
+                button {
+                    class: if active_tab() == "explorer" { "tab-btn active" } else { "tab-btn" },
+                    onclick: move |_| active_tab.set("explorer".to_string()),
+                    i { class: "fa-solid fa-magnifying-glass-chart" }
+                    " Data Explorer"
+                }
             }
 
             // Tab Content
@@ -735,6 +741,13 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 if active_tab() == "effects" {
                     EffectEditorPanel {}
+                }
+
+                // ─────────────────────────────────────────────────────────────
+                // Data Explorer Tab
+                // ─────────────────────────────────────────────────────────────
+                if active_tab() == "explorer" {
+                    DataExplorerPanel {}
                 }
             }
 
