@@ -4,6 +4,7 @@
 //! Reacts to signals to start, refresh, and expire timers.
 
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{Local, NaiveDateTime};
@@ -55,8 +56,8 @@ pub struct FiredAlert {
 /// Reacts to signals to start, pause, and reset timers.
 #[derive(Debug)]
 pub struct TimerManager {
-    /// Timer definitions indexed by ID
-    pub(super) definitions: HashMap<String, TimerDefinition>,
+    /// Timer definitions indexed by ID (Arc for cheap cloning in signal handlers)
+    pub(super) definitions: HashMap<String, Arc<TimerDefinition>>,
 
     /// User preferences (color, audio, enabled overrides)
     preferences: TimerPreferences,
@@ -161,7 +162,7 @@ impl TimerManager {
                     duplicate_count += 1;
                     continue;
                 }
-                self.definitions.insert(def.id.clone(), def);
+                self.definitions.insert(def.id.clone(), Arc::new(def));
             }
         }
         if duplicate_count > 0 {
@@ -213,7 +214,7 @@ impl TimerManager {
                         continue;
                     }
 
-                    self.definitions.insert(timer_def.id.clone(), timer_def);
+                    self.definitions.insert(timer_def.id.clone(), Arc::new(timer_def));
                     timer_count += 1;
                 }
             }
