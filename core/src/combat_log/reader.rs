@@ -14,7 +14,7 @@ use tokio::io::{AsyncBufReadExt, AsyncSeekExt, BufReader};
 use tokio::sync::RwLock;
 use tokio::time::{Duration, sleep};
 
-const TAIL_SLEEP_DURATION: Duration = Duration::from_millis(100);
+const TAIL_SLEEP_DURATION: Duration = Duration::from_millis(30);
 
 pub struct Reader {
     path: PathBuf,
