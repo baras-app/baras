@@ -11,18 +11,18 @@
 use chrono::NaiveDateTime;
 use hashbrown::{HashMap, HashSet};
 
-use crate::dsl::{BossEncounterDefinition, CounterCondition, CounterDefinition};
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::IStr;
-use crate::game_data::{effect_id, SHIELD_EFFECT_IDS};
+use crate::dsl::{BossEncounterDefinition, CounterCondition, CounterDefinition};
+use crate::game_data::{SHIELD_EFFECT_IDS, effect_id};
 
 use super::challenge::ChallengeTracker;
-use crate::dsl::ChallengeContext;
 use super::effect_instance::EffectInstance;
 use super::entity_info::{NpcInfo, PlayerInfo};
 use super::metrics::MetricAccumulator;
 use super::shielding::PendingAbsorption;
 use super::{BossHealthEntry, EncounterState};
+use crate::dsl::ChallengeContext;
 
 /// Processing mode for the encounter
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -283,7 +283,11 @@ impl CombatEncounter {
         self.hp_by_name.insert(name.to_string(), new_percent);
 
         // Update legacy single-boss tracking if this is the active boss
-        if self.active_boss.as_ref().is_some_and(|b| b.entity_id == entity_id) {
+        if self
+            .active_boss
+            .as_ref()
+            .is_some_and(|b| b.entity_id == entity_id)
+        {
             self.boss_hp_percent = new_percent;
             if let Some(ref mut boss) = self.active_boss {
                 boss.current_hp = current;
@@ -350,7 +354,12 @@ impl CombatEncounter {
     }
 
     /// Check if a specific boss is below HP threshold
-    pub fn is_boss_hp_below(&self, npc_id: Option<i64>, name: Option<&str>, threshold: f32) -> bool {
+    pub fn is_boss_hp_below(
+        &self,
+        npc_id: Option<i64>,
+        name: Option<&str>,
+        threshold: f32,
+    ) -> bool {
         if let Some(id) = npc_id
             && let Some(hp) = self.hp_by_npc_id.get(&id)
         {
@@ -371,7 +380,12 @@ impl CombatEncounter {
     }
 
     /// Check if a specific boss is above HP threshold
-    pub fn is_boss_hp_above(&self, npc_id: Option<i64>, name: Option<&str>, threshold: f32) -> bool {
+    pub fn is_boss_hp_above(
+        &self,
+        npc_id: Option<i64>,
+        name: Option<&str>,
+        threshold: f32,
+    ) -> bool {
         if let Some(id) = npc_id
             && let Some(hp) = self.hp_by_npc_id.get(&id)
         {
@@ -459,7 +473,12 @@ impl CombatEncounter {
 
     /// Modify a counter (increment, decrement, or set_value)
     /// Returns (old_value, new_value)
-    pub fn modify_counter(&mut self, counter_id: &str, decrement: bool, set_value: Option<u32>) -> (u32, u32) {
+    pub fn modify_counter(
+        &mut self,
+        counter_id: &str,
+        decrement: bool,
+        set_value: Option<u32>,
+    ) -> (u32, u32) {
         let old_value = self.get_counter(counter_id);
         let new_value = if let Some(val) = set_value {
             val
@@ -502,7 +521,11 @@ impl CombatEncounter {
     }
 
     /// Reset multiple counters to their initial values
-    pub fn reset_counters_to_initial(&mut self, counter_ids: &[String], definitions: &[CounterDefinition]) {
+    pub fn reset_counters_to_initial(
+        &mut self,
+        counter_ids: &[String],
+        definitions: &[CounterDefinition],
+    ) {
         for id in counter_ids {
             let initial = definitions
                 .iter()
@@ -552,9 +575,9 @@ impl CombatEncounter {
         use chrono::TimeDelta;
 
         let enter = self.enter_combat_time?;
-        let terminal = self.exit_combat_time.unwrap_or_else(|| {
-            chrono::offset::Local::now().naive_local()
-        });
+        let terminal = self
+            .exit_combat_time
+            .unwrap_or_else(|| chrono::offset::Local::now().naive_local());
 
         let mut duration = terminal.signed_duration_since(enter);
 
@@ -580,7 +603,12 @@ impl CombatEncounter {
     // Entity State
     // ═══════════════════════════════════════════════════════════════════════
 
-    pub fn set_entity_death(&mut self, entity_id: i64, entity_type: &EntityType, timestamp: NaiveDateTime) {
+    pub fn set_entity_death(
+        &mut self,
+        entity_id: i64,
+        entity_type: &EntityType,
+        timestamp: NaiveDateTime,
+    ) {
         match entity_type {
             EntityType::Player => {
                 if let Some(player) = self.players.get_mut(&entity_id) {
@@ -617,7 +645,8 @@ impl CombatEncounter {
     }
 
     pub fn check_all_players_dead(&mut self) {
-        self.all_players_dead = !self.players.is_empty() && self.players.values().all(|p| p.is_dead);
+        self.all_players_dead =
+            !self.players.is_empty() && self.players.values().all(|p| p.is_dead);
     }
 
     pub fn track_event_entities(&mut self, event: &CombatEvent) {
@@ -634,11 +663,13 @@ impl CombatEncounter {
     fn try_track_entity(&mut self, entity: &Entity, timestamp: NaiveDateTime) {
         match entity.entity_type {
             EntityType::Player => {
-                self.players.entry(entity.log_id).or_insert_with(|| PlayerInfo {
-                    id: entity.log_id,
-                    name: entity.name,
-                    ..Default::default()
-                });
+                self.players
+                    .entry(entity.log_id)
+                    .or_insert_with(|| PlayerInfo {
+                        id: entity.log_id,
+                        name: entity.name,
+                        ..Default::default()
+                    });
             }
             EntityType::Npc | EntityType::Companion => {
                 self.npcs.entry(entity.log_id).or_insert_with(|| NpcInfo {
@@ -655,7 +686,10 @@ impl CombatEncounter {
     }
 
     pub fn is_active(&self) -> bool {
-        matches!(self.state, EncounterState::InCombat | EncounterState::PostCombat { .. })
+        matches!(
+            self.state,
+            EncounterState::InCombat | EncounterState::PostCombat { .. }
+        )
     }
 
     fn get_entity_name(&self, id: i64) -> Option<IStr> {
@@ -728,11 +762,15 @@ impl CombatEncounter {
 
         let avoid = resolve(event.details.avoid_type);
         let is_defense = matches!(avoid, "dodge" | "parry" | "resist" | "deflect");
-        let is_natural_shield = avoid == "shield" && event.details.dmg_effective == event.details.dmg_amount;
+        let is_natural_shield =
+            avoid == "shield" && event.details.dmg_effective == event.details.dmg_amount;
 
         // Source accumulation
         {
-            let source = self.accumulated_data.entry(event.source_entity.log_id).or_default();
+            let source = self
+                .accumulated_data
+                .entry(event.source_entity.log_id)
+                .or_default();
 
             if event.details.dmg_amount > 0 {
                 source.damage_dealt += event.details.dmg_amount as i64;
@@ -775,7 +813,10 @@ impl CombatEncounter {
 
         // Target accumulation
         {
-            let target = self.accumulated_data.entry(event.target_entity.log_id).or_default();
+            let target = self
+                .accumulated_data
+                .entry(event.target_entity.log_id)
+                .or_default();
 
             if event.details.dmg_amount > 0 {
                 target.damage_received += event.details.dmg_amount as i64;

@@ -1,10 +1,11 @@
 use crate::dsl::BossEncounterDefinition;
-use crate::encounter::{CombatEncounter, ProcessingMode, EncounterState, BossHealthEntry};
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{EncounterHistory, create_encounter_summary};
+use crate::encounter::{BossHealthEntry, CombatEncounter, EncounterState, ProcessingMode};
+use crate::game_data::{clear_boss_registry, register_hp_overlay_entity};
 use crate::state::info::AreaInfo;
-use crate::game_data::{register_hp_overlay_entity, clear_boss_registry};
 use std::collections::{HashSet, VecDeque};
+use std::sync::Arc;
 
 const CACHE_DEFAULT_CAPACITY: usize = 2;
 
@@ -27,7 +28,7 @@ pub struct SessionCache {
     pub encounter_history: EncounterHistory,
 
     // Boss encounter definitions (area-scoped, copied into each encounter)
-    boss_definitions: Vec<BossEncounterDefinition>,
+    boss_definitions: Arc<Vec<BossEncounterDefinition>>,
 
     // NPC tracking (session-scoped)
     /// NPC instance log IDs that have been seen in this session (for NpcFirstSeen signals)
@@ -50,7 +51,7 @@ impl SessionCache {
             encounters: VecDeque::with_capacity(CACHE_DEFAULT_CAPACITY),
             next_encounter_id: 0,
             encounter_history: EncounterHistory::new(),
-            boss_definitions: Vec::new(),
+            boss_definitions: Arc::new(Vec::new()),
             seen_npc_instances: HashSet::new(),
         };
         cache.push_new_encounter();
@@ -61,16 +62,16 @@ impl SessionCache {
 
     /// Finalize the current encounter and add it to history (if it had combat)
     pub fn finalize_current_encounter(&mut self) {
-        let Some(encounter) = self.encounters.back() else { return };
+        let Some(encounter) = self.encounters.back() else {
+            return;
+        };
         if encounter.state == EncounterState::NotStarted {
             return;
         }
 
-        if let Some(summary) = create_encounter_summary(
-            encounter,
-            &self.current_area,
-            &mut self.encounter_history,
-        ) {
+        if let Some(summary) =
+            create_encounter_summary(encounter, &self.current_area, &mut self.encounter_history)
+        {
             self.encounter_history.add(summary);
         }
     }
@@ -88,7 +89,7 @@ impl SessionCache {
         };
 
         // Copy boss definitions into the new encounter
-        encounter.load_boss_definitions(self.boss_definitions.clone());
+        encounter.load_boss_definitions(self.boss_definitions.to_vec());
 
         self.next_encounter_id += 1;
         self.encounters.push_back(encounter);
@@ -160,7 +161,7 @@ impl SessionCache {
     /// Also clears the global boss registry.
     pub fn clear_boss_definitions(&mut self) {
         clear_boss_registry();
-        self.boss_definitions.clear();
+        self.boss_definitions = Arc::new(Vec::new());
     }
 
     /// Load boss definitions for the current area.
@@ -175,11 +176,12 @@ impl SessionCache {
                 }
             }
         }
-        self.boss_definitions = definitions.clone();
+        let definitions = Arc::new(definitions);
+        self.boss_definitions = Arc::clone(&definitions);
 
-        // Update current encounter with the definitions
+        // Update current encounter with the definitions (clone from Arc)
         if let Some(enc) = self.current_encounter_mut() {
-            enc.load_boss_definitions(definitions);
+            enc.load_boss_definitions(definitions.to_vec());
         }
     }
 

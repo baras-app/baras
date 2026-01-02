@@ -40,15 +40,16 @@ fn build_event_metadata(cache: &SessionCache, encounter_idx: u32) -> EventMetada
     }
 }
 
-/// A live parsing session that processes combat events and tracks game state.
+/// A parsing session that processes combat events and tracks game state.
 ///
 /// The session maintains:
 /// - Event processing pipeline (encounters, metrics)
-/// - Effect tracking (HoTs, debuffs, shields for overlay display)
+/// - Effect tracking (HoTs, debuffs, shields for overlay display) - Live mode only
+/// - Timer tracking (boss mechanics countdown timers) - Live mode only
 /// - Signal handlers for cross-cutting concerns
 ///
-/// Effect tracking is independent of encounter lifecycle - flushing encounters
-/// does not affect active effects. Effects represent current game state snapshot.
+/// In Live mode, effect and timer tracking are enabled for overlay display.
+/// In Historical mode, these components are not created to save memory.
 pub struct ParsingSession {
     pub current_byte: Option<u64>,
     pub active_file: Option<PathBuf>,
@@ -57,11 +58,11 @@ pub struct ParsingSession {
     processor: EventProcessor,
     signal_handlers: Vec<Box<dyn SignalHandler + Send + Sync>>,
     /// Effect tracker for HoT/debuff/shield overlay display.
-    /// Wrapped in Arc<Mutex> for shared access between signal dispatch and overlay queries.
-    effect_tracker: Arc<Mutex<EffectTracker>>,
+    /// Only created in Live mode. None in Historical mode.
+    effect_tracker: Option<Arc<Mutex<EffectTracker>>>,
     /// Timer manager for boss/mechanic countdown timers.
-    /// Wrapped in Arc<Mutex> for shared access between signal dispatch and overlay queries.
-    timer_manager: Arc<Mutex<TimerManager>>,
+    /// Only created in Live mode. None in Historical mode.
+    timer_manager: Option<Arc<Mutex<TimerManager>>>,
 
     // Live parquet writing (for streaming mode)
     /// Directory where encounter parquet files are written
@@ -73,7 +74,15 @@ pub struct ParsingSession {
 }
 
 impl Default for ParsingSession {
+    /// Creates a Live mode session with effect and timer tracking enabled.
     fn default() -> Self {
+        Self::live()
+    }
+}
+
+impl ParsingSession {
+    /// Create a Live mode session with effect and timer tracking.
+    pub fn live() -> Self {
         Self {
             current_byte: None,
             active_file: None,
@@ -81,20 +90,34 @@ impl Default for ParsingSession {
             session_cache: Some(SessionCache::new()),
             processor: EventProcessor::new(),
             signal_handlers: Vec::new(),
-            effect_tracker: Arc::new(Mutex::new(EffectTracker::default())),
-            timer_manager: Arc::new(Mutex::new(TimerManager::default())),
+            effect_tracker: Some(Arc::new(Mutex::new(EffectTracker::default()))),
+            timer_manager: Some(Arc::new(Mutex::new(TimerManager::default()))),
             encounters_dir: None,
             encounter_idx: 0,
             encounter_writer: None,
         }
     }
-}
 
-impl ParsingSession {
-    /// Create a new parsing session for a log file.
+    /// Create a Historical mode session without effect/timer tracking.
+    pub fn historical() -> Self {
+        Self {
+            current_byte: None,
+            active_file: None,
+            game_session_date: None,
+            session_cache: Some(SessionCache::new()),
+            processor: EventProcessor::new(),
+            signal_handlers: Vec::new(),
+            effect_tracker: None,
+            timer_manager: None,
+            encounters_dir: None,
+            encounter_idx: 0,
+            encounter_writer: None,
+        }
+    }
+
+    /// Create a new Live mode parsing session for a log file.
     ///
-    /// Effect tracking is always enabled. Pass a `DefinitionSet` to configure
-    /// which effects to track, or use `DefinitionSet::default()` for an empty set.
+    /// This is the primary constructor for live file tailing with effect and timer tracking.
     pub fn new(path: PathBuf, definitions: DefinitionSet) -> Self {
         let date_stamp = path
             .file_name()
@@ -109,8 +132,8 @@ impl ParsingSession {
             session_cache: Some(SessionCache::new()),
             processor: EventProcessor::new(),
             signal_handlers: Vec::new(),
-            effect_tracker: Arc::new(Mutex::new(EffectTracker::new(definitions))),
-            timer_manager: Arc::new(Mutex::new(TimerManager::default())),
+            effect_tracker: Some(Arc::new(Mutex::new(EffectTracker::new(definitions)))),
+            timer_manager: Some(Arc::new(Mutex::new(TimerManager::default()))),
             encounters_dir: None,
             encounter_idx: 0,
             encounter_writer: None,
@@ -197,78 +220,97 @@ impl ParsingSession {
             handler.handle_signals(signals, encounter);
         }
 
-        // Forward to effect tracker (kept separate for query access)
-        if let Ok(mut tracker) = self.effect_tracker.lock() {
-            tracker.handle_signals(signals, encounter);
+        // Forward to effect tracker (Live mode only)
+        if let Some(tracker) = &self.effect_tracker {
+            if let Ok(mut tracker) = tracker.lock() {
+                tracker.handle_signals(signals, encounter);
+            }
         }
 
-        // Forward to timer manager
-        if let Ok(mut timer_mgr) = self.timer_manager.lock() {
-            timer_mgr.handle_signals(signals, encounter);
+        // Forward to timer manager (Live mode only)
+        if let Some(timer_mgr) = &self.timer_manager {
+            if let Ok(mut timer_mgr) = timer_mgr.lock() {
+                timer_mgr.handle_signals(signals, encounter);
+            }
         }
     }
 
     /// Get a shared reference to the effect tracker for overlay queries.
-    ///
-    /// The returned Arc can be cloned and held by overlay code for periodic queries.
-    /// Lock the mutex to access `active_effects()` or `effects_for_target()`.
-    pub fn effect_tracker(&self) -> Arc<Mutex<EffectTracker>> {
-        Arc::clone(&self.effect_tracker)
+    /// Returns None in Historical mode.
+    pub fn effect_tracker(&self) -> Option<Arc<Mutex<EffectTracker>>> {
+        self.effect_tracker.as_ref().map(Arc::clone)
     }
 
     /// Get a shared reference to the timer manager for overlay queries.
-    pub fn timer_manager(&self) -> Arc<Mutex<TimerManager>> {
-        Arc::clone(&self.timer_manager)
+    /// Returns None in Historical mode.
+    pub fn timer_manager(&self) -> Option<Arc<Mutex<TimerManager>>> {
+        self.timer_manager.as_ref().map(Arc::clone)
     }
 
     /// Tick the effect tracker and timer manager to update expiration state.
     ///
     /// Call this periodically (e.g., at overlay refresh rate ~10fps) to ensure
-    /// duration-expired effects and timers are updated.
+    /// duration-expired effects and timers are updated. No-op in Historical mode.
     pub fn tick(&self) {
-        if let Ok(mut tracker) = self.effect_tracker.lock() {
-            tracker.tick();
+        if let Some(tracker) = &self.effect_tracker {
+            if let Ok(mut tracker) = tracker.lock() {
+                tracker.tick();
+            }
         }
-        if let Ok(mut timer_mgr) = self.timer_manager.lock() {
-            timer_mgr.tick();
+        if let Some(timer_mgr) = &self.timer_manager {
+            if let Ok(mut timer_mgr) = timer_mgr.lock() {
+                timer_mgr.tick();
+            }
         }
     }
 
-    /// Update effect definitions (e.g., after config reload).
+    /// Update effect definitions (e.g., after config reload). No-op in Historical mode.
     pub fn set_definitions(&self, definitions: DefinitionSet) {
-        if let Ok(mut tracker) = self.effect_tracker.lock() {
-            tracker.set_definitions(definitions);
+        if let Some(tracker) = &self.effect_tracker {
+            if let Ok(mut tracker) = tracker.lock() {
+                tracker.set_definitions(definitions);
+            }
         }
     }
 
     /// Enable/disable live mode for effect tracking.
     /// Call with `true` after initial file load to start tracking effects.
+    /// No-op in Historical mode (session has no effect tracker).
     pub fn set_effect_live_mode(&self, enabled: bool) {
-        if let Ok(mut tracker) = self.effect_tracker.lock() {
-            tracker.set_live_mode(enabled);
+        if let Some(tracker) = &self.effect_tracker {
+            if let Ok(mut tracker) = tracker.lock() {
+                tracker.set_live_mode(enabled);
+            }
         }
     }
 
     /// Enable/disable live mode for timer tracking.
     /// Call with `true` after initial file load to filter stale events.
+    /// No-op in Historical mode (session has no timer manager).
     pub fn set_timer_live_mode(&self, enabled: bool) {
-        if let Ok(mut timer_mgr) = self.timer_manager.lock() {
-            timer_mgr.set_live_mode(enabled);
+        if let Some(timer_mgr) = &self.timer_manager {
+            if let Ok(mut timer_mgr) = timer_mgr.lock() {
+                timer_mgr.set_live_mode(enabled);
+            }
         }
     }
 
-    /// Update timer definitions (e.g., after config reload).
+    /// Update timer definitions (e.g., after config reload). No-op in Historical mode.
     pub fn set_timer_definitions(&self, definitions: Vec<TimerDefinition>) {
-        if let Ok(mut timer_mgr) = self.timer_manager.lock() {
-            timer_mgr.set_definitions(definitions);
+        if let Some(timer_mgr) = &self.timer_manager {
+            if let Ok(mut timer_mgr) = timer_mgr.lock() {
+                timer_mgr.set_definitions(definitions);
+            }
         }
     }
 
     /// Update boss definitions (for boss detection and phase tracking).
     /// NOTE: This only updates TimerManager. For full support, use `load_boss_definitions`.
     pub fn set_boss_definitions(&self, bosses: Vec<BossEncounterDefinition>) {
-        if let Ok(mut timer_mgr) = self.timer_manager.lock() {
-            timer_mgr.load_boss_definitions(bosses);
+        if let Some(timer_mgr) = &self.timer_manager {
+            if let Ok(mut timer_mgr) = timer_mgr.lock() {
+                timer_mgr.load_boss_definitions(bosses);
+            }
         }
     }
 
@@ -280,9 +322,11 @@ impl ParsingSession {
             cache.load_boss_definitions(bosses.clone());
         }
 
-        // Update TimerManager (for timer activation)
-        if let Ok(mut timer_mgr) = self.timer_manager.lock() {
-            timer_mgr.load_boss_definitions(bosses);
+        // Update TimerManager (for timer activation) - Live mode only
+        if let Some(timer_mgr) = &self.timer_manager {
+            if let Ok(mut timer_mgr) = timer_mgr.lock() {
+                timer_mgr.load_boss_definitions(bosses);
+            }
         }
     }
 
@@ -310,8 +354,12 @@ impl ParsingSession {
     ///
     /// This ensures the TimerManager knows the current area even if parsing
     /// started mid-session (no AreaEntered signal was received).
+    /// No-op in Historical mode (session has no timer manager).
     pub fn sync_timer_context(&self) {
         let Some(cache) = &self.session_cache else {
+            return;
+        };
+        let Some(timer_mgr) = &self.timer_manager else {
             return;
         };
 
@@ -323,7 +371,7 @@ impl ParsingSession {
         let difficulty = crate::game_data::Difficulty::from_game_string(&area.difficulty_name);
         let area_id = if area.area_id != 0 { Some(area.area_id) } else { None };
 
-        if let Ok(mut timer_mgr) = self.timer_manager.lock() {
+        if let Ok(mut timer_mgr) = timer_mgr.lock() {
             timer_mgr.set_context(
                 area_id,
                 Some(area.area_name.clone()),

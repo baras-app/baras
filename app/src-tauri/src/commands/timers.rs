@@ -480,12 +480,13 @@ pub async fn update_encounter_timer(
         save_timer_preferences(&prefs)?;
         eprintln!("[TIMERS] Saved preferences for timer '{}'", timer.timer_id);
 
-        // Update the live session's preferences
+        // Update the live session's preferences (Live mode only)
         if let Some(session) = service.shared.session.read().await.as_ref() {
             let session = session.read().await;
-            let timer_mgr = session.timer_manager();
-            if let Ok(mut mgr) = timer_mgr.lock() {
-                mgr.set_preferences(prefs);
+            if let Some(timer_mgr) = session.timer_manager() {
+                if let Ok(mut mgr) = timer_mgr.lock() {
+                    mgr.set_preferences(prefs);
+                }
             }
         }
     }
@@ -2275,12 +2276,13 @@ pub async fn set_timer_enabled(
     prefs.update_enabled(&key, enabled);
     save_timer_preferences(&prefs)?;
 
-    // Update the live session's timer manager preferences
+    // Update the live session's timer manager preferences (Live mode only)
     if let Some(session) = service.shared.session.read().await.as_ref() {
         let session = session.read().await;
-        let timer_mgr = session.timer_manager();
-        if let Ok(mut mgr) = timer_mgr.lock() {
-            mgr.set_preferences(prefs);
+        if let Some(timer_mgr) = session.timer_manager() {
+            if let Ok(mut mgr) = timer_mgr.lock() {
+                mgr.set_preferences(prefs);
+            }
         }
     }
 
@@ -2309,12 +2311,13 @@ pub async fn set_timer_audio(
 
     save_timer_preferences(&prefs)?;
 
-    // Update live session
+    // Update live session (Live mode only)
     if let Some(session) = service.shared.session.read().await.as_ref() {
         let session = session.read().await;
-        let timer_mgr = session.timer_manager();
-        if let Ok(mut mgr) = timer_mgr.lock() {
-            mgr.set_preferences(prefs);
+        if let Some(timer_mgr) = session.timer_manager() {
+            if let Ok(mut mgr) = timer_mgr.lock() {
+                mgr.set_preferences(prefs);
+            }
         }
     }
 
@@ -2335,12 +2338,13 @@ pub async fn set_timer_color(
     prefs.update_color(&key, color);
     save_timer_preferences(&prefs)?;
 
-    // Update live session
+    // Update live session (Live mode only)
     if let Some(session) = service.shared.session.read().await.as_ref() {
         let session = session.read().await;
-        let timer_mgr = session.timer_manager();
-        if let Ok(mut mgr) = timer_mgr.lock() {
-            mgr.set_preferences(prefs);
+        if let Some(timer_mgr) = session.timer_manager() {
+            if let Ok(mut mgr) = timer_mgr.lock() {
+                mgr.set_preferences(prefs);
+            }
         }
     }
 
@@ -2360,12 +2364,13 @@ pub async fn reset_timer_preference(
     prefs.clear(&key);
     save_timer_preferences(&prefs)?;
 
-    // Update live session
+    // Update live session (Live mode only)
     if let Some(session) = service.shared.session.read().await.as_ref() {
         let session = session.read().await;
-        let timer_mgr = session.timer_manager();
-        if let Ok(mut mgr) = timer_mgr.lock() {
-            mgr.set_preferences(prefs);
+        if let Some(timer_mgr) = session.timer_manager() {
+            if let Ok(mut mgr) = timer_mgr.lock() {
+                mgr.set_preferences(prefs);
+            }
         }
     }
 

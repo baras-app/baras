@@ -1,7 +1,7 @@
-use crate::context::IStr;
 use crate::combat_log::EntityType;
+use crate::context::IStr;
 use crate::context::resolve;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default)]
 pub struct MetricAccumulator {
@@ -42,7 +42,6 @@ pub struct MetricAccumulator {
     pub threat_generated: f64,
     pub taunt_count: u32,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct EntityMetrics {

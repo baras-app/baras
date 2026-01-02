@@ -697,13 +697,14 @@ impl CombatService {
 
         let mut session = ParsingSession::new(path.clone(), self.definitions.clone());
 
-        // Load timer preferences into the session's timer manager
+        // Load timer preferences into the session's timer manager (Live mode only)
         if let Some(prefs_path) = Self::timer_preferences_path() {
-            let timer_mgr = session.timer_manager();
-            if let Ok(mut mgr) = timer_mgr.lock()
-                && let Err(e) = mgr.load_preferences(&prefs_path) {
-                    eprintln!("Warning: Failed to load timer preferences: {}", e);
-                }
+            if let Some(timer_mgr) = session.timer_manager() {
+                if let Ok(mut mgr) = timer_mgr.lock()
+                    && let Err(e) = mgr.load_preferences(&prefs_path) {
+                        eprintln!("Warning: Failed to load timer preferences: {}", e);
+                    }
+            }
         }
 
         // Timer/boss definitions are now lazy-loaded when AreaEntered signal fires
@@ -1325,8 +1326,8 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
         config.overlay_settings.effect_lag_offset_ms
     };
 
-    // Get effect tracker
-    let effect_tracker = session.effect_tracker();
+    // Get effect tracker (Live mode only)
+    let effect_tracker = session.effect_tracker()?;
     let Ok(mut tracker) = effect_tracker.lock() else {
         return None;
     };
@@ -1435,8 +1436,8 @@ async fn build_timer_data_with_audio(
     let session = session_guard.as_ref()?;
     let session = session.read().await;
 
-    // Get active timers from timer manager (mutable for countdown checking)
-    let timer_mgr = session.timer_manager();
+    // Get active timers from timer manager (Live mode only, mutable for countdown checking)
+    let timer_mgr = session.timer_manager()?;
     let mut timer_mgr = timer_mgr.lock().ok()?;
 
     // Always take alerts (even after combat ends, timer expirations need to play)
@@ -1492,8 +1493,8 @@ async fn build_effects_overlay_data(
     let session = session_guard.as_ref()?;
     let session = session.read().await;
 
-    // Get effect tracker
-    let effect_tracker = session.effect_tracker();
+    // Get effect tracker (Live mode only)
+    let effect_tracker = session.effect_tracker()?;
     let tracker = effect_tracker.lock().ok()?;
 
     // Filter to effects marked for effects overlay and convert to entries
@@ -1564,8 +1565,10 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
     };
     let session = session_arc.read().await;
 
-    // Get effect tracker
-    let effect_tracker = session.effect_tracker();
+    // Get effect tracker (Live mode only)
+    let Some(effect_tracker) = session.effect_tracker() else {
+        return EffectAudioResult { countdowns, alerts };
+    };
     let Ok(mut tracker) = effect_tracker.lock() else {
         return EffectAudioResult { countdowns, alerts };
     };
