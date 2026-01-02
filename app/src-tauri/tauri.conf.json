@@ -38,6 +38,9 @@
       "deb",
       "nsis"
     ],
+    "externalBin": [
+      "binaries/baras-parse-worker"
+    ],
     "resources": {
       "../../core/definitions/effects/*": "definitions/effects/",
       "../../core/definitions/encounters/**/*": "definitions/encounters/",

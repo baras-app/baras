@@ -9,6 +9,12 @@
 //! - `router` - Routes service updates to overlay threads
 //! - `hotkeys` - Global hotkey registration (Windows/macOS only)
 
+// Use mimalloc on Linux for lower memory fragmentation
+// (glibc malloc keeps freed memory in arenas, causing RSS to grow monotonically)
+#[cfg(target_os = "linux")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 mod audio;
 mod commands;
 #[cfg(not(target_os = "linux"))]

@@ -259,6 +259,7 @@ pub struct ParseResult {
 }
 
 /// Parse an entire log file, processing events through the session.
+/// Uses streaming to avoid allocating all events at once.
 pub async fn parse_file(state: Arc<RwLock<ParsingSession>>) -> Result<ParseResult, String> {
     let timer = std::time::Instant::now();
 
@@ -269,21 +270,21 @@ pub async fn parse_file(state: Arc<RwLock<ParsingSession>>) -> Result<ParseResul
 
     let reader = Reader::from(active_path, Arc::clone(&state));
 
-    let (events, end_pos) = reader
-        .read_log_file()
-        .await
+    // Stream-parse: process events one at a time without collecting
+    let mut s = state.write().await;
+    let session_date = s.game_session_date.unwrap_or_default();
+    let (end_pos, events_count) = reader
+        .read_log_file_streaming(session_date, |event| {
+            s.process_event(event);
+        })
         .map_err(|e| format!("failed to parse log file: {}", e))?;
 
-    let events_count = events.len();
-    let elapsed_ms = timer.elapsed().as_millis();
+    s.current_byte = Some(end_pos);
+    // Sync area context to timer manager (handles mid-session starts)
+    s.sync_timer_context();
+    drop(s);
 
-    {
-        let mut s = state.write().await;
-        s.current_byte = Some(end_pos);
-        s.process_events(events);
-        // Sync area context to timer manager (handles mid-session starts)
-        s.sync_timer_context();
-    }
+    let elapsed_ms = timer.elapsed().as_millis();
 
     Ok(ParseResult {
         events_count,

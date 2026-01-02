@@ -29,8 +29,12 @@ impl Reader {
         }
     }
 
-    // processing full log file, don't want to always write to session cache
-    pub async fn read_log_file(&self) -> Result<(Vec<CombatEvent>, u64)> {
+    /// Parallel-parse log file, returning all events.
+    /// Fast but allocates Vec<CombatEvent>. Call mi_collect after processing.
+    pub fn read_log_file_parallel(
+        &self,
+        session_date: chrono::NaiveDateTime,
+    ) -> Result<(Vec<CombatEvent>, u64)> {
         let file = fs::File::open(&self.path)?;
         let mmap = unsafe { Mmap::map(&file)? };
         let bytes = mmap.as_ref();
@@ -48,14 +52,8 @@ impl Reader {
         if start < bytes.len() {
             line_ranges.push((start, bytes.len()));
         }
-        let date = &self
-            .state
-            .read()
-            .await
-            .game_session_date
-            .unwrap_or_default();
 
-        let parser = LogParser::new(*date);
+        let parser = LogParser::new(session_date);
         let events: Vec<CombatEvent> = line_ranges
             .par_iter()
             .enumerate()
@@ -66,6 +64,55 @@ impl Reader {
             .collect();
 
         Ok((events, end_pos))
+    }
+
+    /// Stream-parse log file, calling `on_event` for each parsed event.
+    ///
+    /// This avoids allocating a giant Vec of all events, keeping memory stable.
+    /// Returns the final byte position and event count.
+    ///
+    /// Note: `session_date` must be passed in to avoid deadlock when caller holds session lock.
+    pub fn read_log_file_streaming<F>(
+        &self,
+        session_date: chrono::NaiveDateTime,
+        mut on_event: F,
+    ) -> Result<(u64, usize)>
+    where
+        F: FnMut(CombatEvent),
+    {
+        let file = fs::File::open(&self.path)?;
+        let mmap = unsafe { Mmap::map(&file)? };
+        let bytes = mmap.as_ref();
+        let end_pos = bytes.len() as u64;
+
+        let parser = LogParser::new(session_date);
+        let mut event_count = 0usize;
+        let mut line_number = 0u64;
+        let mut start = 0usize;
+
+        // Parse line by line using memchr for fast newline detection
+        for end in memchr_iter(b'\n', bytes) {
+            if end > start {
+                let (line, _, _) = WINDOWS_1252.decode(&bytes[start..end]);
+                if let Some(event) = parser.parse_line(line_number, &line) {
+                    on_event(event);
+                    event_count += 1;
+                }
+                line_number += 1;
+            }
+            start = end + 1;
+        }
+
+        // Handle final line without trailing newline
+        if start < bytes.len() {
+            let (line, _, _) = WINDOWS_1252.decode(&bytes[start..]);
+            if let Some(event) = parser.parse_line(line_number, &line) {
+                on_event(event);
+                event_count += 1;
+            }
+        }
+
+        Ok((end_pos, event_count))
     }
 
     //tailing live log file always write to session cache

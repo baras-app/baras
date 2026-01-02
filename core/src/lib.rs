@@ -10,6 +10,7 @@ pub mod signal_processor;
 pub mod game_data;
 pub mod serde_defaults;
 pub mod state;
+pub mod storage;
 pub mod timers;
 pub mod triggers;
 

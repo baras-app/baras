@@ -38,6 +38,10 @@ pub struct SessionCache {
     /// NPC instance log IDs that have been seen in this session (for NpcFirstSeen signals)
     /// Tracks by log_id (instance) not class_id (template) so each spawn is detected
     pub seen_npc_instances: HashSet<i64>,
+
+    /// Whether to store raw events in encounters.
+    /// Set to false during historical file loads to save memory (metrics use accumulated_data).
+    pub store_events: bool,
 }
 
 impl Default for SessionCache {
@@ -59,6 +63,7 @@ impl SessionCache {
             active_boss_idx: None,
             boss_state: BossEncounterState::new(),
             seen_npc_instances: HashSet::new(),
+            store_events: true, // Default to storing for live tailing
         };
         cache.push_new_encounter();
         cache
@@ -121,6 +126,18 @@ impl SessionCache {
 
     pub fn encounters(&self) -> impl Iterator<Item = &Encounter> {
         self.encounters.iter()
+    }
+
+    pub fn encounters_mut(&mut self) -> impl Iterator<Item = &mut Encounter> {
+        self.encounters.iter_mut()
+    }
+
+    /// Clear events from all encounters to free memory.
+    /// Metrics in `accumulated_data` are preserved.
+    pub fn clear_all_encounter_events(&mut self) {
+        for enc in &mut self.encounters {
+            enc.clear_events();
+        }
     }
 
     pub fn encounter_by_id(&self, id: u64) -> Option<&Encounter> {

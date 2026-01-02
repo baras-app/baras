@@ -31,3 +31,8 @@ pub fn empty_istr() -> IStr {
 pub fn resolve(key: IStr) -> &'static str {
     interner().resolve(&key)
 }
+
+/// Get the number of interned strings (for debugging memory usage).
+pub fn interner_len() -> usize {
+    interner().len()
+}

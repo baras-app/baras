@@ -105,6 +105,13 @@ impl Encounter {
         enc
     }
 
+    /// Clear stored events to free memory.
+    /// Call after metrics are calculated and events are no longer needed.
+    pub fn clear_events(&mut self) {
+        self.events.clear();
+        self.events.shrink_to_fit();
+    }
+
     // --- Entity State ---
 
     pub fn set_entity_death(
