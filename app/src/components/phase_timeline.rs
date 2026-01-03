@@ -17,10 +17,12 @@ fn format_time(secs: f32) -> String {
 /// All instances of the same phase type will get the same color.
 fn phase_color(phase_id: &str) -> String {
     // Simple hash function to get a consistent hue
-    let hash: u32 = phase_id.bytes().fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32));
+    let hash: u32 = phase_id
+        .bytes()
+        .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32));
     let hue = hash % 360;
     // Vary saturation/lightness slightly based on hash for visual distinction
-    let sat = 45 + (hash % 20);  // 45-65%
+    let sat = 45 + (hash % 20); // 45-65%
     let light = 35 + (hash % 15); // 35-50%
     format!("hsl({}, {}%, {}%)", hue, sat, light)
 }
@@ -43,16 +45,22 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
 
     // Drag state: start_time when dragging
     let mut drag_start = use_signal(|| None::<f32>);
-    let mut committed_range = use_signal(|| None::<TimeRange>);  // Persists after drag until acknowledged
+    let mut committed_range = use_signal(|| None::<TimeRange>); // Persists after drag until acknowledged
 
     // Calculate percentage position for a time value
     let time_to_pct = |t: f32| -> f32 {
-        if duration > 0.0 { (t / duration) * 100.0 } else { 0.0 }
+        if duration > 0.0 {
+            (t / duration) * 100.0
+        } else {
+            0.0
+        }
     };
 
     // Handle clicking on a phase segment
     let select_phase = move |phase: &PhaseSegment| {
-        props.on_range_change.call(TimeRange::new(phase.start_secs, phase.end_secs));
+        props
+            .on_range_change
+            .call(TimeRange::new(phase.start_secs, phase.end_secs));
     };
 
     // Handle reset to full range
@@ -63,17 +71,16 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
 
     // Helper: convert client X to time value using track bounds
     let client_x_to_time = move |client_x: f64| -> Option<f32> {
-        if let Some(window) = web_sys::window() {
-            if let Some(document) = window.document() {
-                if let Some(el) = document.get_element_by_id("phase-timeline-track") {
-                    let rect = el.get_bounding_client_rect();
-                    let x = client_x - rect.left();
-                    let width = rect.width();
-                    if width > 0.0 && duration > 0.0 {
-                        let pct = (x / width).clamp(0.0, 1.0);
-                        return Some((pct as f32) * duration);
-                    }
-                }
+        if let Some(window) = web_sys::window()
+            && let Some(document) = window.document()
+            && let Some(el) = document.get_element_by_id("phase-timeline-track")
+        {
+            let rect = el.get_bounding_client_rect();
+            let x = client_x - rect.left();
+            let width = rect.width();
+            if width > 0.0 && duration > 0.0 {
+                let pct = (x / width).clamp(0.0, 1.0);
+                return Some((pct as f32) * duration);
             }
         }
         None
@@ -106,17 +113,18 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
             None => return,
         };
 
-        use wasm_bindgen::prelude::*;
         use wasm_bindgen::JsCast;
+        use wasm_bindgen::prelude::*;
 
         // Mousemove handler
         let drag_start_clone = drag_start.clone();
         let mut committed_range_clone = committed_range.clone();
-        let on_mousemove = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
-            if let Some(start_time) = *drag_start_clone.read() {
-                if let Some(el) = web_sys::window()
-                    .and_then(|w| w.document())
-                    .and_then(|d| d.get_element_by_id("phase-timeline-track"))
+        let on_mousemove =
+            Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
+                if let Some(start_time) = *drag_start_clone.read()
+                    && let Some(el) = web_sys::window()
+                        .and_then(|w| w.document())
+                        .and_then(|d| d.get_element_by_id("phase-timeline-track"))
                 {
                     let rect = el.get_bounding_client_rect();
                     let x = e.client_x() as f64 - rect.left();
@@ -132,18 +140,18 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                         committed_range_clone.set(Some(TimeRange::new(start, end)));
                     }
                 }
-            }
-        });
+            });
 
         // Mouseup handler
         let mut drag_start_clone2 = drag_start.clone();
         let mut committed_range_clone2 = committed_range.clone();
         let on_range_change = props.on_range_change.clone();
-        let on_mouseup = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
-            if let Some(start_time) = *drag_start_clone2.read() {
-                if let Some(el) = web_sys::window()
-                    .and_then(|w| w.document())
-                    .and_then(|d| d.get_element_by_id("phase-timeline-track"))
+        let on_mouseup =
+            Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
+                if let Some(start_time) = *drag_start_clone2.read()
+                    && let Some(el) = web_sys::window()
+                        .and_then(|w| w.document())
+                        .and_then(|d| d.get_element_by_id("phase-timeline-track"))
                 {
                     let rect = el.get_bounding_client_rect();
                     let x = e.client_x() as f64 - rect.left();
@@ -169,13 +177,14 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                         on_range_change.call(final_range);
                     }
                 }
-            }
-            drag_start_clone2.set(None);
-        });
+                drag_start_clone2.set(None);
+            });
 
         // Add listeners
-        let _ = document.add_event_listener_with_callback("mousemove", on_mousemove.as_ref().unchecked_ref());
-        let _ = document.add_event_listener_with_callback("mouseup", on_mouseup.as_ref().unchecked_ref());
+        let _ = document
+            .add_event_listener_with_callback("mousemove", on_mousemove.as_ref().unchecked_ref());
+        let _ = document
+            .add_event_listener_with_callback("mouseup", on_mouseup.as_ref().unchecked_ref());
 
         // Store closures to prevent dropping
         on_mousemove.forget();
@@ -187,7 +196,7 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
     let display_range = if is_dragging {
         committed_range.read().unwrap_or(range)
     } else {
-        range  // Always use props range when not dragging
+        range // Always use props range when not dragging
     };
 
     rsx! {

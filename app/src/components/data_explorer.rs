@@ -8,7 +8,10 @@ use std::collections::HashSet;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
-use crate::api::{self, AbilityBreakdown, BreakdownMode, DataTab, EncounterTimeline, EntityBreakdown, PlayerDeath, RaidOverviewRow, TimeRange};
+use crate::api::{
+    self, AbilityBreakdown, BreakdownMode, DataTab, EncounterTimeline, EntityBreakdown,
+    PlayerDeath, RaidOverviewRow, TimeRange,
+};
 use crate::components::charts_panel::ChartsPanel;
 use crate::components::combat_log::CombatLog;
 use crate::components::history_panel::EncounterSummary;
@@ -62,18 +65,17 @@ fn resize_overview_chart(chart: &JsValue) {
 }
 
 fn dispose_overview_chart(element_id: &str) {
-    if let Some(window) = web_sys::window() {
-        if let Some(document) = window.document() {
-            if let Some(element) = document.get_element_by_id(element_id) {
-                let instance = echarts_get_instance(&element);
-                if !instance.is_null() && !instance.is_undefined() {
-                    let dispose = js_sys::Reflect::get(&instance, &JsValue::from_str("dispose"))
-                        .ok()
-                        .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
-                    if let Some(func) = dispose {
-                        let _ = func.call0(&instance);
-                    }
-                }
+    if let Some(window) = web_sys::window()
+        && let Some(document) = window.document()
+        && let Some(element) = document.get_element_by_id(element_id)
+    {
+        let instance = echarts_get_instance(&element);
+        if !instance.is_null() && !instance.is_undefined() {
+            let dispose = js_sys::Reflect::get(&instance, &JsValue::from_str("dispose"))
+                .ok()
+                .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
+            if let Some(func) = dispose {
+                let _ = func.call0(&instance);
             }
         }
     }
@@ -85,60 +87,142 @@ fn build_donut_option(title: &str, data: &[(String, f64)], color: &str) -> JsVal
 
     // Title
     let title_obj = js_sys::Object::new();
-    js_sys::Reflect::set(&title_obj, &JsValue::from_str("text"), &JsValue::from_str(title)).unwrap();
-    js_sys::Reflect::set(&title_obj, &JsValue::from_str("left"), &JsValue::from_str("center")).unwrap();
-    js_sys::Reflect::set(&title_obj, &JsValue::from_str("top"), &JsValue::from_str("5")).unwrap();
+    js_sys::Reflect::set(
+        &title_obj,
+        &JsValue::from_str("text"),
+        &JsValue::from_str(title),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &title_obj,
+        &JsValue::from_str("left"),
+        &JsValue::from_str("center"),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &title_obj,
+        &JsValue::from_str("top"),
+        &JsValue::from_str("5"),
+    )
+    .unwrap();
     let title_style = js_sys::Object::new();
-    js_sys::Reflect::set(&title_style, &JsValue::from_str("color"), &JsValue::from_str("#e0e0e0")).unwrap();
-    js_sys::Reflect::set(&title_style, &JsValue::from_str("fontSize"), &JsValue::from_f64(13.0)).unwrap();
-    js_sys::Reflect::set(&title_style, &JsValue::from_str("fontWeight"), &JsValue::from_str("600")).unwrap();
+    js_sys::Reflect::set(
+        &title_style,
+        &JsValue::from_str("color"),
+        &JsValue::from_str("#e0e0e0"),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &title_style,
+        &JsValue::from_str("fontSize"),
+        &JsValue::from_f64(13.0),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &title_style,
+        &JsValue::from_str("fontWeight"),
+        &JsValue::from_str("600"),
+    )
+    .unwrap();
     js_sys::Reflect::set(&title_obj, &JsValue::from_str("textStyle"), &title_style).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("title"), &title_obj).unwrap();
 
     // Tooltip
     let tooltip = js_sys::Object::new();
-    js_sys::Reflect::set(&tooltip, &JsValue::from_str("trigger"), &JsValue::from_str("item")).unwrap();
-    js_sys::Reflect::set(&tooltip, &JsValue::from_str("formatter"), &JsValue::from_str("{b}: {c} ({d}%)")).unwrap();
+    js_sys::Reflect::set(
+        &tooltip,
+        &JsValue::from_str("trigger"),
+        &JsValue::from_str("item"),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &tooltip,
+        &JsValue::from_str("formatter"),
+        &JsValue::from_str("{b}: {c} ({d}%)"),
+    )
+    .unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("tooltip"), &tooltip).unwrap();
 
     // Series (donut)
     let series_arr = js_sys::Array::new();
     let series = js_sys::Object::new();
-    js_sys::Reflect::set(&series, &JsValue::from_str("type"), &JsValue::from_str("pie")).unwrap();
+    js_sys::Reflect::set(
+        &series,
+        &JsValue::from_str("type"),
+        &JsValue::from_str("pie"),
+    )
+    .unwrap();
     js_sys::Reflect::set(&series, &JsValue::from_str("radius"), &{
         let arr = js_sys::Array::new();
         arr.push(&JsValue::from_str("35%"));
         arr.push(&JsValue::from_str("65%"));
         arr.into()
-    }).unwrap();
+    })
+    .unwrap();
     js_sys::Reflect::set(&series, &JsValue::from_str("center"), &{
         let arr = js_sys::Array::new();
         arr.push(&JsValue::from_str("50%"));
         arr.push(&JsValue::from_str("55%"));
         arr.into()
-    }).unwrap();
+    })
+    .unwrap();
 
     // Label formatting
     let label = js_sys::Object::new();
     js_sys::Reflect::set(&label, &JsValue::from_str("show"), &JsValue::TRUE).unwrap();
-    js_sys::Reflect::set(&label, &JsValue::from_str("formatter"), &JsValue::from_str("{b}")).unwrap();
-    js_sys::Reflect::set(&label, &JsValue::from_str("color"), &JsValue::from_str("#ccc")).unwrap();
-    js_sys::Reflect::set(&label, &JsValue::from_str("fontSize"), &JsValue::from_f64(10.0)).unwrap();
+    js_sys::Reflect::set(
+        &label,
+        &JsValue::from_str("formatter"),
+        &JsValue::from_str("{b}"),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &label,
+        &JsValue::from_str("color"),
+        &JsValue::from_str("#ccc"),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &label,
+        &JsValue::from_str("fontSize"),
+        &JsValue::from_f64(10.0),
+    )
+    .unwrap();
     js_sys::Reflect::set(&series, &JsValue::from_str("label"), &label).unwrap();
 
     // Emphasis
     let emphasis = js_sys::Object::new();
     let emph_label = js_sys::Object::new();
     js_sys::Reflect::set(&emph_label, &JsValue::from_str("show"), &JsValue::TRUE).unwrap();
-    js_sys::Reflect::set(&emph_label, &JsValue::from_str("fontSize"), &JsValue::from_f64(12.0)).unwrap();
-    js_sys::Reflect::set(&emph_label, &JsValue::from_str("fontWeight"), &JsValue::from_str("bold")).unwrap();
+    js_sys::Reflect::set(
+        &emph_label,
+        &JsValue::from_str("fontSize"),
+        &JsValue::from_f64(12.0),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &emph_label,
+        &JsValue::from_str("fontWeight"),
+        &JsValue::from_str("bold"),
+    )
+    .unwrap();
     js_sys::Reflect::set(&emphasis, &JsValue::from_str("label"), &emph_label).unwrap();
     js_sys::Reflect::set(&series, &JsValue::from_str("emphasis"), &emphasis).unwrap();
 
     // Item style with base color
     let item_style = js_sys::Object::new();
-    js_sys::Reflect::set(&item_style, &JsValue::from_str("borderColor"), &JsValue::from_str("#1a1a1a")).unwrap();
-    js_sys::Reflect::set(&item_style, &JsValue::from_str("borderWidth"), &JsValue::from_f64(2.0)).unwrap();
+    js_sys::Reflect::set(
+        &item_style,
+        &JsValue::from_str("borderColor"),
+        &JsValue::from_str("#1a1a1a"),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &item_style,
+        &JsValue::from_str("borderWidth"),
+        &JsValue::from_f64(2.0),
+    )
+    .unwrap();
     js_sys::Reflect::set(&series, &JsValue::from_str("itemStyle"), &item_style).unwrap();
 
     // Color palette based on base color with variations
@@ -154,7 +238,12 @@ fn build_donut_option(title: &str, data: &[(String, f64)], color: &str) -> JsVal
     for (name, value) in data {
         let item = js_sys::Object::new();
         js_sys::Reflect::set(&item, &JsValue::from_str("name"), &JsValue::from_str(name)).unwrap();
-        js_sys::Reflect::set(&item, &JsValue::from_str("value"), &JsValue::from_f64(*value)).unwrap();
+        js_sys::Reflect::set(
+            &item,
+            &JsValue::from_str("value"),
+            &JsValue::from_f64(*value),
+        )
+        .unwrap();
         data_arr.push(&item);
     }
     js_sys::Reflect::set(&series, &JsValue::from_str("data"), &data_arr).unwrap();
@@ -191,7 +280,7 @@ fn parse_hsl(color: &str) -> Option<(f64, f64, f64)> {
     if !color.starts_with("hsl(") || !color.ends_with(")") {
         return None;
     }
-    let inner = &color[4..color.len()-1];
+    let inner = &color[4..color.len() - 1];
     let parts: Vec<&str> = inner.split(',').collect();
     if parts.len() != 3 {
         return None;
@@ -228,7 +317,9 @@ fn format_duration(secs: i64) -> String {
 }
 
 /// Group encounters into sections by area (based on is_phase_start flag)
-fn group_by_area(encounters: &[EncounterSummary]) -> Vec<(String, Option<String>, Vec<&EncounterSummary>)> {
+fn group_by_area(
+    encounters: &[EncounterSummary],
+) -> Vec<(String, Option<String>, Vec<&EncounterSummary>)> {
     let mut sections: Vec<(String, Option<String>, Vec<&EncounterSummary>)> = Vec::new();
 
     for enc in encounters.iter() {
@@ -297,7 +388,8 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     // Memoized overview table data (rows + totals) - prevents recomputation on every render
     let overview_table_data = use_memo(move || {
         let data = overview_data.read();
-        let rows: Vec<RaidOverviewRow> = data.iter()
+        let rows: Vec<RaidOverviewRow> = data
+            .iter()
             .filter(|r| r.entity_type == "Player" || r.entity_type == "Companion")
             .cloned()
             .collect();
@@ -314,27 +406,42 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
         let total_hps: f64 = rows.iter().map(|r| r.hps).sum();
         let total_ehps: f64 = rows.iter().map(|r| r.ehps).sum();
 
-        (rows, total_damage, total_dps, total_threat, total_tps,
-         total_damage_taken, total_dtps, total_aps, total_healing, total_hps, total_ehps)
+        (
+            rows,
+            total_damage,
+            total_dps,
+            total_threat,
+            total_tps,
+            total_damage_taken,
+            total_dtps,
+            total_aps,
+            total_healing,
+            total_hps,
+            total_ehps,
+        )
     });
 
     // Memoized chart data for overview donut charts (derived from table data)
     let chart_data = use_memo(move || {
         let (rows, ..) = overview_table_data();
 
-        let damage_data: Vec<(String, f64)> = rows.iter()
+        let damage_data: Vec<(String, f64)> = rows
+            .iter()
             .filter(|r| r.damage_total > 0.0)
             .map(|r| (r.name.clone(), r.damage_total))
             .collect();
-        let threat_data: Vec<(String, f64)> = rows.iter()
+        let threat_data: Vec<(String, f64)> = rows
+            .iter()
             .filter(|r| r.threat_total > 0.0)
             .map(|r| (r.name.clone(), r.threat_total))
             .collect();
-        let healing_data: Vec<(String, f64)> = rows.iter()
+        let healing_data: Vec<(String, f64)> = rows
+            .iter()
             .filter(|r| r.healing_effective > 0.0)
             .map(|r| (r.name.clone(), r.healing_effective))
             .collect();
-        let taken_data: Vec<(String, f64)> = rows.iter()
+        let taken_data: Vec<(String, f64)> = rows
+            .iter()
             .filter(|r| r.damage_taken_total > 0.0)
             .map(|r| (r.name.clone(), r.damage_taken_total))
             .collect();
@@ -357,39 +464,40 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             gloo_timers::future::TimeoutFuture::new(100).await;
 
             // Damage chart
-            if !damage_data.is_empty() {
-                if let Some(chart) = init_overview_chart("donut-damage") {
-                    let opt = build_donut_option("Damage", &damage_data, "hsl(0, 70%, 60%)");
-                    set_chart_option(&chart, &opt);
-                    resize_overview_chart(&chart);
-                }
+            if !damage_data.is_empty()
+                && let Some(chart) = init_overview_chart("donut-damage")
+            {
+                let opt = build_donut_option("Damage", &damage_data, "hsl(0, 70%, 60%)");
+                set_chart_option(&chart, &opt);
+                resize_overview_chart(&chart);
             }
 
             // Threat chart
-            if !threat_data.is_empty() {
-                if let Some(chart) = init_overview_chart("donut-threat") {
-                    let opt = build_donut_option("Threat", &threat_data, "hsl(45, 70%, 55%)");
-                    set_chart_option(&chart, &opt);
-                    resize_overview_chart(&chart);
-                }
+            if !threat_data.is_empty()
+                && let Some(chart) = init_overview_chart("donut-threat")
+            {
+                let opt = build_donut_option("Threat", &threat_data, "hsl(45, 70%, 55%)");
+                set_chart_option(&chart, &opt);
+                resize_overview_chart(&chart);
             }
 
             // Healing chart (effective healing)
-            if !healing_data.is_empty() {
-                if let Some(chart) = init_overview_chart("donut-healing") {
-                    let opt = build_donut_option("Effective Healing", &healing_data, "hsl(120, 50%, 50%)");
-                    set_chart_option(&chart, &opt);
-                    resize_overview_chart(&chart);
-                }
+            if !healing_data.is_empty()
+                && let Some(chart) = init_overview_chart("donut-healing")
+            {
+                let opt =
+                    build_donut_option("Effective Healing", &healing_data, "hsl(120, 50%, 50%)");
+                set_chart_option(&chart, &opt);
+                resize_overview_chart(&chart);
             }
 
             // Damage Taken chart
-            if !taken_data.is_empty() {
-                if let Some(chart) = init_overview_chart("donut-taken") {
-                    let opt = build_donut_option("Damage Taken", &taken_data, "hsl(30, 70%, 55%)");
-                    set_chart_option(&chart, &opt);
-                    resize_overview_chart(&chart);
-                }
+            if !taken_data.is_empty()
+                && let Some(chart) = init_overview_chart("donut-taken")
+            {
+                let opt = build_donut_option("Damage Taken", &taken_data, "hsl(30, 70%, 55%)");
+                set_chart_option(&chart, &opt);
+                resize_overview_chart(&chart);
             }
         });
     });
@@ -485,7 +593,9 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 None
             };
             let mode = *breakdown_mode.read();
-            match api::query_breakdown(tab, idx, None, None, entity_filter, Some(&mode), duration).await {
+            match api::query_breakdown(tab, idx, None, None, entity_filter, Some(&mode), duration)
+                .await
+            {
                 Some(data) => abilities.set(data),
                 None => error_msg.set(Some("Failed to load ability breakdown".to_string())),
             }
@@ -529,7 +639,17 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 None
             };
             let mode = *breakdown_mode.read();
-            if let Some(data) = api::query_breakdown(tab, idx, src.as_deref(), Some(&tr), entity_filter, Some(&mode), filtered_duration).await {
+            if let Some(data) = api::query_breakdown(
+                tab,
+                idx,
+                src.as_deref(),
+                Some(&tr),
+                entity_filter,
+                Some(&mode),
+                filtered_duration,
+            )
+            .await
+            {
                 abilities.set(data);
             }
 
@@ -558,9 +678,23 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             } else {
                 None
             };
-            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 { None } else { Some(tr) };
+            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+                None
+            } else {
+                Some(tr)
+            };
             let duration = timeline.read().as_ref().map(|t| t.duration_secs);
-            if let Some(data) = api::query_breakdown(tab, idx, None, tr_opt.as_ref(), entity_filter, Some(&mode), duration).await {
+            if let Some(data) = api::query_breakdown(
+                tab,
+                idx,
+                None,
+                tr_opt.as_ref(),
+                entity_filter,
+                Some(&mode),
+                duration,
+            )
+            .await
+            {
                 abilities.set(data);
             }
             loading.set(false);
@@ -584,19 +718,34 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
         selected_source.set(new_source.clone());
 
         // Use time_range if not default
-        let tr_opt = if tr.start == 0.0 && tr.end == 0.0 { None } else { Some(tr) };
+        let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+            None
+        } else {
+            Some(tr)
+        };
 
         spawn(async move {
             loading.set(true);
             // Apply entity filter only when no specific source is selected
-            let entity_filter: Option<&[&str]> = if new_source.is_none() && *show_players_only.read() {
-                Some(&["Player", "Companion"])
-            } else {
-                None
-            };
+            let entity_filter: Option<&[&str]> =
+                if new_source.is_none() && *show_players_only.read() {
+                    Some(&["Player", "Companion"])
+                } else {
+                    None
+                };
             let mode = *breakdown_mode.read();
             let duration = timeline.read().as_ref().map(|t| t.duration_secs);
-            if let Some(data) = api::query_breakdown(tab, idx, new_source.as_deref(), tr_opt.as_ref(), entity_filter, Some(&mode), duration).await {
+            if let Some(data) = api::query_breakdown(
+                tab,
+                idx,
+                new_source.as_deref(),
+                tr_opt.as_ref(),
+                entity_filter,
+                Some(&mode),
+                duration,
+            )
+            .await
+            {
                 abilities.set(data);
             }
             loading.set(false);
@@ -608,7 +757,10 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
         let history = encounters();
         let bosses_only = show_only_bosses();
         if bosses_only {
-            history.into_iter().filter(|e| e.boss_name.is_some()).collect()
+            history
+                .into_iter()
+                .filter(|e| e.boss_name.is_some())
+                .collect()
         } else {
             history
         }
@@ -617,7 +769,8 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     // Memoized sections - groups encounters by area
     let sections = use_memo(move || {
         let filtered = filtered_history();
-        group_by_area(&filtered).into_iter()
+        group_by_area(&filtered)
+            .into_iter()
             .map(|(area, diff, encs)| (area, diff, encs.into_iter().cloned().collect::<Vec<_>>()))
             .collect::<Vec<_>>()
     });
@@ -625,7 +778,9 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     // Memoized entity list for detailed view - filtered by player/all toggle
     let entity_list = use_memo(move || {
         let players_only = *show_players_only.read();
-        entities.read().iter()
+        entities
+            .read()
+            .iter()
             .filter(|e| !players_only || e.entity_type == "Player" || e.entity_type == "Companion")
             .cloned()
             .collect::<Vec<_>>()

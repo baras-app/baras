@@ -12,11 +12,8 @@ pub mod history_panel;
 pub mod phase_timeline;
 pub mod settings_panel;
 
-pub use charts_panel::ChartsPanel;
-pub use combat_log::CombatLog;
 pub use data_explorer::DataExplorerPanel;
 pub use effect_editor::EffectEditorPanel;
 pub use encounter_editor::EncounterEditorPanel;
 pub use history_panel::HistoryPanel;
-pub use phase_timeline::PhaseTimelineFilter;
 pub use settings_panel::SettingsPanel;

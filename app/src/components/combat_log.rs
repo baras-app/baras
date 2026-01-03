@@ -62,7 +62,7 @@ fn row_class(row: &CombatLogRow) -> String {
 
     // Effect type based coloring
     if row.value > 0 {
-        if row.effect_name.contains("Damage") || row.damage_type.len() > 0 {
+        if row.effect_name.contains("Damage") || row.damage_type.is_empty() {
             classes.push("log-damage");
         } else {
             classes.push("log-heal");
@@ -133,14 +133,22 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         let source = source_filter.read().clone();
         let target = target_filter.read().clone();
         let search = search_debounce.read().clone();
-        let search_opt = if search.is_empty() { None } else { Some(search) };
+        let search_opt = if search.is_empty() {
+            None
+        } else {
+            Some(search)
+        };
 
         spawn(async move {
             // Reset scroll position
             scroll_top.set(0.0);
             loaded_offset.set(0);
 
-            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 { None } else { Some(&tr) };
+            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+                None
+            } else {
+                Some(&tr)
+            };
 
             // Get total count
             if let Some(count) = api::query_combat_log_count(
@@ -149,7 +157,9 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 target.as_deref(),
                 search_opt.as_deref(),
                 tr_opt,
-            ).await {
+            )
+            .await
+            {
                 total_count.set(count);
             }
 
@@ -162,7 +172,9 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 target.as_deref(),
                 search_opt.as_deref(),
                 tr_opt,
-            ).await {
+            )
+            .await
+            {
                 rows.set(data);
             }
         });
@@ -207,8 +219,16 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         let new_offset = start_idx.saturating_sub(OVERSCAN) as u64;
 
         spawn(async move {
-            let search_opt = if search.is_empty() { None } else { Some(search) };
-            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 { None } else { Some(&tr) };
+            let search_opt = if search.is_empty() {
+                None
+            } else {
+                Some(search)
+            };
+            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+                None
+            } else {
+                Some(&tr)
+            };
 
             if let Some(data) = api::query_combat_log(
                 Some(idx),
@@ -218,7 +238,9 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 target.as_deref(),
                 search_opt.as_deref(),
                 tr_opt,
-            ).await {
+            )
+            .await
+            {
                 loaded_offset.set(new_offset);
                 rows.set(data);
             }
@@ -288,15 +310,12 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 id: "combat-log-scroll",
                 onscroll: move |_| {
                     // Get scroll position from DOM element
-                    if let Some(window) = web_sys::window() {
-                        if let Some(doc) = window.document() {
-                            if let Some(elem) = doc.get_element_by_id("combat-log-scroll") {
-                                if let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>() {
+                    if let Some(window) = web_sys::window()
+                        && let Some(doc) = window.document()
+                            && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
+                                && let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>() {
                                     scroll_top.set(html_elem.scroll_top() as f64);
                                     container_height.set(html_elem.client_height() as f64);
-                                }
-                            }
-                        }
                     }
                 },
                 // Header row (sticky)

@@ -58,32 +58,30 @@ fn resize_chart(chart: &JsValue) {
 
 fn resize_all_charts() {
     for id in ["chart-dps", "chart-hps", "chart-dtps"] {
-        if let Some(window) = web_sys::window() {
-            if let Some(document) = window.document() {
-                if let Some(element) = document.get_element_by_id(id) {
-                    let instance = echarts_get_instance(&element);
-                    if !instance.is_null() && !instance.is_undefined() {
-                        resize_chart(&instance);
-                    }
-                }
+        if let Some(window) = web_sys::window()
+            && let Some(document) = window.document()
+            && let Some(element) = document.get_element_by_id(id)
+        {
+            let instance = echarts_get_instance(&element);
+            if !instance.is_null() && !instance.is_undefined() {
+                resize_chart(&instance);
             }
         }
     }
 }
 
 fn dispose_chart(element_id: &str) {
-    if let Some(window) = web_sys::window() {
-        if let Some(document) = window.document() {
-            if let Some(element) = document.get_element_by_id(element_id) {
-                let instance = echarts_get_instance(&element);
-                if !instance.is_null() && !instance.is_undefined() {
-                    let dispose = js_sys::Reflect::get(&instance, &JsValue::from_str("dispose"))
-                        .ok()
-                        .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
-                    if let Some(func) = dispose {
-                        let _ = func.call0(&instance);
-                    }
-                }
+    if let Some(window) = web_sys::window()
+        && let Some(document) = window.document()
+        && let Some(element) = document.get_element_by_id(element_id)
+    {
+        let instance = echarts_get_instance(&element);
+        if !instance.is_null() && !instance.is_undefined() {
+            let dispose = js_sys::Reflect::get(&instance, &JsValue::from_str("dispose"))
+                .ok()
+                .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
+            if let Some(func) = dispose {
+                let _ = func.call0(&instance);
             }
         }
     }
@@ -94,18 +92,38 @@ fn build_time_series_option(
     title: &str,
     color: &str,
     fill_color: &str,
-    effect_windows: &[(EffectWindow, &str)],  // (window, color)
+    effect_windows: &[(EffectWindow, &str)], // (window, color)
     y_axis_name: &str,
 ) -> JsValue {
     let obj = js_sys::Object::new();
 
     // Title
     let title_obj = js_sys::Object::new();
-    js_sys::Reflect::set(&title_obj, &JsValue::from_str("text"), &JsValue::from_str(title)).unwrap();
-    js_sys::Reflect::set(&title_obj, &JsValue::from_str("left"), &JsValue::from_str("center")).unwrap();
+    js_sys::Reflect::set(
+        &title_obj,
+        &JsValue::from_str("text"),
+        &JsValue::from_str(title),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &title_obj,
+        &JsValue::from_str("left"),
+        &JsValue::from_str("center"),
+    )
+    .unwrap();
     let title_style = js_sys::Object::new();
-    js_sys::Reflect::set(&title_style, &JsValue::from_str("color"), &JsValue::from_str("#e0e0e0")).unwrap();
-    js_sys::Reflect::set(&title_style, &JsValue::from_str("fontSize"), &JsValue::from_f64(12.0)).unwrap();
+    js_sys::Reflect::set(
+        &title_style,
+        &JsValue::from_str("color"),
+        &JsValue::from_str("#e0e0e0"),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &title_style,
+        &JsValue::from_str("fontSize"),
+        &JsValue::from_f64(12.0),
+    )
+    .unwrap();
     js_sys::Reflect::set(&title_obj, &JsValue::from_str("textStyle"), &title_style).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("title"), &title_obj).unwrap();
 
@@ -114,16 +132,34 @@ fn build_time_series_option(
     js_sys::Reflect::set(&grid, &JsValue::from_str("left"), &JsValue::from_str("60")).unwrap();
     js_sys::Reflect::set(&grid, &JsValue::from_str("right"), &JsValue::from_str("20")).unwrap();
     js_sys::Reflect::set(&grid, &JsValue::from_str("top"), &JsValue::from_str("35")).unwrap();
-    js_sys::Reflect::set(&grid, &JsValue::from_str("bottom"), &JsValue::from_str("25")).unwrap();
+    js_sys::Reflect::set(
+        &grid,
+        &JsValue::from_str("bottom"),
+        &JsValue::from_str("25"),
+    )
+    .unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("grid"), &grid).unwrap();
 
     // X-Axis (time in seconds) - format as M:SS
     let x_axis = js_sys::Object::new();
-    js_sys::Reflect::set(&x_axis, &JsValue::from_str("type"), &JsValue::from_str("value")).unwrap();
+    js_sys::Reflect::set(
+        &x_axis,
+        &JsValue::from_str("type"),
+        &JsValue::from_str("value"),
+    )
+    .unwrap();
     let axis_label = js_sys::Object::new();
-    js_sys::Reflect::set(&axis_label, &JsValue::from_str("color"), &JsValue::from_str("#888")).unwrap();
+    js_sys::Reflect::set(
+        &axis_label,
+        &JsValue::from_str("color"),
+        &JsValue::from_str("#888"),
+    )
+    .unwrap();
     // Formatter function to display M:SS
-    let formatter = js_sys::Function::new_with_args("v", "var m = Math.floor(v / 60); var s = Math.floor(v % 60); return m + ':' + (s < 10 ? '0' : '') + s;");
+    let formatter = js_sys::Function::new_with_args(
+        "v",
+        "var m = Math.floor(v / 60); var s = Math.floor(v % 60); return m + ':' + (s < 10 ? '0' : '') + s;",
+    );
     js_sys::Reflect::set(&axis_label, &JsValue::from_str("formatter"), &formatter).unwrap();
     js_sys::Reflect::set(&x_axis, &JsValue::from_str("axisLabel"), &axis_label).unwrap();
     // Hide gridlines
@@ -134,10 +170,25 @@ fn build_time_series_option(
 
     // Y-Axis
     let y_axis = js_sys::Object::new();
-    js_sys::Reflect::set(&y_axis, &JsValue::from_str("type"), &JsValue::from_str("value")).unwrap();
-    js_sys::Reflect::set(&y_axis, &JsValue::from_str("name"), &JsValue::from_str(y_axis_name)).unwrap();
+    js_sys::Reflect::set(
+        &y_axis,
+        &JsValue::from_str("type"),
+        &JsValue::from_str("value"),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &y_axis,
+        &JsValue::from_str("name"),
+        &JsValue::from_str(y_axis_name),
+    )
+    .unwrap();
     let y_label = js_sys::Object::new();
-    js_sys::Reflect::set(&y_label, &JsValue::from_str("color"), &JsValue::from_str("#888")).unwrap();
+    js_sys::Reflect::set(
+        &y_label,
+        &JsValue::from_str("color"),
+        &JsValue::from_str("#888"),
+    )
+    .unwrap();
     js_sys::Reflect::set(&y_axis, &JsValue::from_str("axisLabel"), &y_label).unwrap();
     // Hide gridlines
     let y_split = js_sys::Object::new();
@@ -147,7 +198,12 @@ fn build_time_series_option(
 
     // Tooltip
     let tooltip = js_sys::Object::new();
-    js_sys::Reflect::set(&tooltip, &JsValue::from_str("trigger"), &JsValue::from_str("axis")).unwrap();
+    js_sys::Reflect::set(
+        &tooltip,
+        &JsValue::from_str("trigger"),
+        &JsValue::from_str("axis"),
+    )
+    .unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("tooltip"), &tooltip).unwrap();
 
     // Build time spine: fill ALL seconds from 0 to max with values (0 if no data)
@@ -186,20 +242,50 @@ fn build_time_series_option(
 
     // Series 1: Raw data (thin line with colored fill)
     let series = js_sys::Object::new();
-    js_sys::Reflect::set(&series, &JsValue::from_str("type"), &JsValue::from_str("line")).unwrap();
-    js_sys::Reflect::set(&series, &JsValue::from_str("name"), &JsValue::from_str("Burst")).unwrap();
+    js_sys::Reflect::set(
+        &series,
+        &JsValue::from_str("type"),
+        &JsValue::from_str("line"),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &series,
+        &JsValue::from_str("name"),
+        &JsValue::from_str("Burst"),
+    )
+    .unwrap();
     js_sys::Reflect::set(&series, &JsValue::from_str("smooth"), &JsValue::FALSE).unwrap(); // No smoothing for raw data
-    js_sys::Reflect::set(&series, &JsValue::from_str("symbol"), &JsValue::from_str("none")).unwrap();
+    js_sys::Reflect::set(
+        &series,
+        &JsValue::from_str("symbol"),
+        &JsValue::from_str("none"),
+    )
+    .unwrap();
 
     // Thin line style for raw data
     let line_style = js_sys::Object::new();
-    js_sys::Reflect::set(&line_style, &JsValue::from_str("color"), &JsValue::from_str(color)).unwrap();
-    js_sys::Reflect::set(&line_style, &JsValue::from_str("width"), &JsValue::from_f64(1.0)).unwrap();
+    js_sys::Reflect::set(
+        &line_style,
+        &JsValue::from_str("color"),
+        &JsValue::from_str(color),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &line_style,
+        &JsValue::from_str("width"),
+        &JsValue::from_f64(1.0),
+    )
+    .unwrap();
     js_sys::Reflect::set(&series, &JsValue::from_str("lineStyle"), &line_style).unwrap();
 
     // Area style with matching fill color (higher opacity)
     let area_style = js_sys::Object::new();
-    js_sys::Reflect::set(&area_style, &JsValue::from_str("color"), &JsValue::from_str(fill_color)).unwrap();
+    js_sys::Reflect::set(
+        &area_style,
+        &JsValue::from_str("color"),
+        &JsValue::from_str(fill_color),
+    )
+    .unwrap();
     js_sys::Reflect::set(&series, &JsValue::from_str("areaStyle"), &area_style).unwrap();
 
     // Data points from dense array
@@ -219,13 +305,28 @@ fn build_time_series_option(
     for (window, win_color) in effect_windows {
         let region = js_sys::Array::new();
         let start = js_sys::Object::new();
-        js_sys::Reflect::set(&start, &JsValue::from_str("xAxis"), &JsValue::from_f64(window.start_secs as f64)).unwrap();
+        js_sys::Reflect::set(
+            &start,
+            &JsValue::from_str("xAxis"),
+            &JsValue::from_f64(window.start_secs as f64),
+        )
+        .unwrap();
         // Set per-region itemStyle for individual colors
         let region_style = js_sys::Object::new();
-        js_sys::Reflect::set(&region_style, &JsValue::from_str("color"), &JsValue::from_str(win_color)).unwrap();
+        js_sys::Reflect::set(
+            &region_style,
+            &JsValue::from_str("color"),
+            &JsValue::from_str(win_color),
+        )
+        .unwrap();
         js_sys::Reflect::set(&start, &JsValue::from_str("itemStyle"), &region_style).unwrap();
         let end = js_sys::Object::new();
-        js_sys::Reflect::set(&end, &JsValue::from_str("xAxis"), &JsValue::from_f64(window.end_secs as f64)).unwrap();
+        js_sys::Reflect::set(
+            &end,
+            &JsValue::from_str("xAxis"),
+            &JsValue::from_f64(window.end_secs as f64),
+        )
+        .unwrap();
         region.push(&start);
         region.push(&end);
         mark_data.push(&region);
@@ -237,16 +338,46 @@ fn build_time_series_option(
 
     // Series 2: Moving average (thicker line, no fill)
     let avg_series = js_sys::Object::new();
-    js_sys::Reflect::set(&avg_series, &JsValue::from_str("type"), &JsValue::from_str("line")).unwrap();
-    js_sys::Reflect::set(&avg_series, &JsValue::from_str("name"), &JsValue::from_str("Average")).unwrap();
+    js_sys::Reflect::set(
+        &avg_series,
+        &JsValue::from_str("type"),
+        &JsValue::from_str("line"),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &avg_series,
+        &JsValue::from_str("name"),
+        &JsValue::from_str("Average"),
+    )
+    .unwrap();
     js_sys::Reflect::set(&avg_series, &JsValue::from_str("smooth"), &JsValue::TRUE).unwrap();
-    js_sys::Reflect::set(&avg_series, &JsValue::from_str("symbol"), &JsValue::from_str("none")).unwrap();
+    js_sys::Reflect::set(
+        &avg_series,
+        &JsValue::from_str("symbol"),
+        &JsValue::from_str("none"),
+    )
+    .unwrap();
 
     // Thicker line style for average
     let avg_line_style = js_sys::Object::new();
-    js_sys::Reflect::set(&avg_line_style, &JsValue::from_str("color"), &JsValue::from_str(color)).unwrap();
-    js_sys::Reflect::set(&avg_line_style, &JsValue::from_str("width"), &JsValue::from_f64(2.5)).unwrap();
-    js_sys::Reflect::set(&avg_series, &JsValue::from_str("lineStyle"), &avg_line_style).unwrap();
+    js_sys::Reflect::set(
+        &avg_line_style,
+        &JsValue::from_str("color"),
+        &JsValue::from_str(color),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &avg_line_style,
+        &JsValue::from_str("width"),
+        &JsValue::from_f64(2.5),
+    )
+    .unwrap();
+    js_sys::Reflect::set(
+        &avg_series,
+        &JsValue::from_str("lineStyle"),
+        &avg_line_style,
+    )
+    .unwrap();
 
     // Average data points
     let avg_arr = js_sys::Array::new();
@@ -335,12 +466,12 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
 
     // Effect highlight colors (for multiple selections)
     const EFFECT_COLORS: [&str; 6] = [
-        "rgba(255, 200, 50, 0.35)",   // Gold
-        "rgba(100, 200, 255, 0.35)",  // Cyan
-        "rgba(255, 100, 150, 0.35)",  // Pink
-        "rgba(150, 255, 100, 0.35)",  // Lime
-        "rgba(200, 150, 255, 0.35)",  // Purple
-        "rgba(255, 180, 100, 0.35)",  // Orange
+        "rgba(255, 200, 50, 0.35)",  // Gold
+        "rgba(100, 200, 255, 0.35)", // Cyan
+        "rgba(255, 100, 150, 0.35)", // Pink
+        "rgba(150, 255, 100, 0.35)", // Lime
+        "rgba(200, 150, 255, 0.35)", // Purple
+        "rgba(255, 180, 100, 0.35)", // Orange
     ];
 
     // Load entities on mount and auto-select first player
@@ -375,15 +506,25 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             loading.set(true);
 
             // Fetch all three time series
-            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 { None } else { Some(&tr) };
+            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+                None
+            } else {
+                Some(&tr)
+            };
 
-            if let Some(data) = api::query_dps_over_time(idx, bucket_ms, entity.as_deref(), tr_opt).await {
+            if let Some(data) =
+                api::query_dps_over_time(idx, bucket_ms, entity.as_deref(), tr_opt).await
+            {
                 dps_data.set(data);
             }
-            if let Some(data) = api::query_hps_over_time(idx, bucket_ms, entity.as_deref(), tr_opt).await {
+            if let Some(data) =
+                api::query_hps_over_time(idx, bucket_ms, entity.as_deref(), tr_opt).await
+            {
                 hps_data.set(data);
             }
-            if let Some(data) = api::query_dtps_over_time(idx, bucket_ms, entity.as_deref(), tr_opt).await {
+            if let Some(data) =
+                api::query_dtps_over_time(idx, bucket_ms, entity.as_deref(), tr_opt).await
+            {
                 dtps_data.set(data);
             }
 
@@ -399,10 +540,17 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
         let entity = selected_entity.read().clone();
 
         spawn(async move {
-            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 { None } else { Some(&tr) };
+            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+                None
+            } else {
+                Some(&tr)
+            };
 
-            if let Some(data) = api::query_effect_uptime(idx, entity.as_deref(), tr_opt, duration).await {
-                let (active, passive): (Vec<_>, Vec<_>) = data.into_iter().partition(|e| e.is_active);
+            if let Some(data) =
+                api::query_effect_uptime(idx, entity.as_deref(), tr_opt, duration).await
+            {
+                let (active, passive): (Vec<_>, Vec<_>) =
+                    data.into_iter().partition(|e| e.is_active);
                 active_effects.set(active);
                 passive_effects.set(passive);
             }
@@ -421,10 +569,17 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
             effect_windows.set(Vec::new());
         } else {
             spawn(async move {
-                let tr_opt = if tr.start == 0.0 && tr.end == 0.0 { None } else { Some(&tr) };
+                let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+                    None
+                } else {
+                    Some(&tr)
+                };
                 let mut all_windows = Vec::new();
                 for (eid, color) in effects {
-                    if let Some(windows) = api::query_effect_windows(idx, eid, entity.as_deref(), tr_opt, duration).await {
+                    if let Some(windows) =
+                        api::query_effect_windows(idx, eid, entity.as_deref(), tr_opt, duration)
+                            .await
+                    {
                         for w in windows {
                             all_windows.push((w, color));
                         }
@@ -447,33 +602,63 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
         let windows = effect_windows.read().clone();
 
         // Dispose hidden charts immediately to prevent overlap
-        if !show_dps_val { dispose_chart("chart-dps"); }
-        if !show_hps_val { dispose_chart("chart-hps"); }
-        if !show_dtps_val { dispose_chart("chart-dtps"); }
+        if !show_dps_val {
+            dispose_chart("chart-dps");
+        }
+        if !show_hps_val {
+            dispose_chart("chart-hps");
+        }
+        if !show_dtps_val {
+            dispose_chart("chart-dtps");
+        }
 
         spawn(async move {
             // Delay to ensure DOM elements exist after render
             gloo_timers::future::TimeoutFuture::new(150).await;
 
-            if show_dps_val && !dps.is_empty() {
-                if let Some(chart) = init_chart("chart-dps") {
-                    let option = build_time_series_option(&dps, "DPS", "#e74c3c", "rgba(231, 76, 60, 0.15)", &windows, "DPS");
-                    set_chart_option(&chart, &option);
-                }
+            if show_dps_val
+                && !dps.is_empty()
+                && let Some(chart) = init_chart("chart-dps")
+            {
+                let option = build_time_series_option(
+                    &dps,
+                    "DPS",
+                    "#e74c3c",
+                    "rgba(231, 76, 60, 0.15)",
+                    &windows,
+                    "DPS",
+                );
+                set_chart_option(&chart, &option);
             }
 
-            if show_hps_val && !hps.is_empty() {
-                if let Some(chart) = init_chart("chart-hps") {
-                    let option = build_time_series_option(&hps, "HPS", "#2ecc71", "rgba(46, 204, 113, 0.15)", &windows, "HPS");
-                    set_chart_option(&chart, &option);
-                }
+            if show_hps_val
+                && !hps.is_empty()
+                && let Some(chart) = init_chart("chart-hps")
+            {
+                let option = build_time_series_option(
+                    &hps,
+                    "HPS",
+                    "#2ecc71",
+                    "rgba(46, 204, 113, 0.15)",
+                    &windows,
+                    "HPS",
+                );
+                set_chart_option(&chart, &option);
             }
 
-            if show_dtps_val && !dtps.is_empty() {
-                if let Some(chart) = init_chart("chart-dtps") {
-                    let option = build_time_series_option(&dtps, "DTPS", "#e67e22", "rgba(230, 126, 34, 0.15)", &windows, "DTPS");
-                    set_chart_option(&chart, &option);
-                }
+            if show_dtps_val
+                && !dtps.is_empty()
+                && let Some(chart) = init_chart("chart-dtps")
+            {
+                let option = build_time_series_option(
+                    &dtps,
+                    "DTPS",
+                    "#e67e22",
+                    "rgba(230, 126, 34, 0.15)",
+                    &windows,
+                    "DTPS",
+                );
+                set_chart_option(&chart, &option);
             }
 
             // Resize all visible charts after DOM has settled
