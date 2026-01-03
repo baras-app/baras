@@ -14,7 +14,8 @@ use tauri::{AppHandle, Manager, State};
 
 use baras_core::dsl::AudioConfig;
 use baras_core::boss::{
-    BossTimerDefinition, BossWithPath, load_bosses_with_paths, save_bosses_to_file,
+    BossTimerDefinition, BossWithPath, load_bosses_with_custom, load_area_config,
+    save_bosses_to_file, AreaType,
 };
 use baras_core::effects::EntityFilter;
 use baras_core::timers::TimerTrigger;
@@ -199,6 +200,30 @@ fn get_bundled_encounters_dir(app_handle: &AppHandle) -> Option<PathBuf> {
             tauri::path::BaseDirectory::Resource,
         )
         .ok()
+}
+
+/// Load bosses from a specific file, merging with custom overlay if present.
+/// This is the single source of truth for loading boss data in the editor.
+fn load_bosses_for_file(file_path: &Path) -> Result<Vec<BossWithPath>, String> {
+    let user_dir = get_user_encounters_dir();
+    let bosses = load_bosses_with_custom(file_path, user_dir.as_deref())?;
+
+    // Get category from area config
+    let category = load_area_config(file_path)
+        .ok()
+        .flatten()
+        .map(|a| a.area_type.to_category())
+        .unwrap_or(AreaType::Other.to_category())
+        .to_string();
+
+    Ok(bosses
+        .into_iter()
+        .map(|boss| BossWithPath {
+            boss,
+            file_path: file_path.to_path_buf(),
+            category: category.clone(),
+        })
+        .collect())
 }
 
 /// Ensure user encounters directory exists (for custom overlay files)
@@ -1435,28 +1460,15 @@ pub async fn get_timers_for_area(file_path: String) -> Result<Vec<TimerListItem>
         return Err(format!("File not found: {}", file_path));
     }
 
-    // Load bosses from this specific file
-    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
-        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+    let bosses = load_bosses_for_file(&path)?;
     let prefs = load_timer_preferences();
 
-    // Filter to only bosses from this file and flatten timers
-    let mut items = Vec::new();
-    for boss_with_path in &bosses {
-        if boss_with_path.file_path == path {
-            for timer in &boss_with_path.boss.timers {
-                items.push(TimerListItem::from_boss_timer(
-                    boss_with_path,
-                    timer,
-                    &prefs,
-                ));
-            }
-        }
-    }
+    let mut items: Vec<_> = bosses
+        .iter()
+        .flat_map(|b| b.boss.timers.iter().map(|t| TimerListItem::from_boss_timer(b, t, &prefs)))
+        .collect();
 
-    // Sort by boss name, then timer name
     items.sort_by(|a, b| a.boss_name.cmp(&b.boss_name).then(a.name.cmp(&b.name)));
-
     Ok(items)
 }
 
@@ -1469,12 +1481,10 @@ pub async fn get_bosses_for_area(file_path: String) -> Result<Vec<BossListItem>,
         return Err(format!("File not found: {}", file_path));
     }
 
-    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
-        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+    let bosses = load_bosses_for_file(&path)?;
 
     let items: Vec<_> = bosses
         .iter()
-        .filter(|b| b.file_path == path)
         .map(|b| BossListItem {
             id: b.boss.id.clone(),
             name: b.boss.name.clone(),
@@ -1733,20 +1743,14 @@ pub async fn get_phases_for_area(file_path: String) -> Result<Vec<PhaseListItem>
         return Err(format!("File not found: {}", file_path));
     }
 
-    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
-        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+    let bosses = load_bosses_for_file(&path)?;
 
-    let mut items = Vec::new();
-    for boss_with_path in &bosses {
-        if boss_with_path.file_path == path {
-            for phase in &boss_with_path.boss.phases {
-                items.push(PhaseListItem::from_boss_phase(boss_with_path, phase));
-            }
-        }
-    }
+    let mut items: Vec<_> = bosses
+        .iter()
+        .flat_map(|b| b.boss.phases.iter().map(|p| PhaseListItem::from_boss_phase(b, p)))
+        .collect();
 
     items.sort_by(|a, b| a.boss_name.cmp(&b.boss_name).then(a.name.cmp(&b.name)));
-
     Ok(items)
 }
 
@@ -1976,20 +1980,14 @@ pub async fn get_counters_for_area(file_path: String) -> Result<Vec<CounterListI
         return Err(format!("File not found: {}", file_path));
     }
 
-    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
-        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+    let bosses = load_bosses_for_file(&path)?;
 
-    let mut items = Vec::new();
-    for boss_with_path in &bosses {
-        if boss_with_path.file_path == path {
-            for counter in &boss_with_path.boss.counters {
-                items.push(CounterListItem::from_boss_counter(boss_with_path, counter));
-            }
-        }
-    }
+    let mut items: Vec<_> = bosses
+        .iter()
+        .flat_map(|b| b.boss.counters.iter().map(|c| CounterListItem::from_boss_counter(b, c)))
+        .collect();
 
     items.sort_by(|a, b| a.boss_name.cmp(&b.boss_name).then(a.id.cmp(&b.id)));
-
     Ok(items)
 }
 
@@ -2225,20 +2223,12 @@ pub async fn get_challenges_for_area(file_path: String) -> Result<Vec<ChallengeL
         return Err(format!("File not found: {}", file_path));
     }
 
-    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
-        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+    let bosses = load_bosses_for_file(&path)?;
 
-    let mut items = Vec::new();
-    for boss_with_path in &bosses {
-        if boss_with_path.file_path == path {
-            for challenge in &boss_with_path.boss.challenges {
-                items.push(ChallengeListItem::from_boss_challenge(
-                    boss_with_path,
-                    challenge,
-                ));
-            }
-        }
-    }
+    let mut items: Vec<_> = bosses
+        .iter()
+        .flat_map(|b| b.boss.challenges.iter().map(|c| ChallengeListItem::from_boss_challenge(b, c)))
+        .collect();
 
     items.sort_by(|a, b| a.boss_name.cmp(&b.boss_name).then(a.id.cmp(&b.id)));
 
@@ -2462,20 +2452,14 @@ pub async fn get_entities_for_area(file_path: String) -> Result<Vec<EntityListIt
         return Err(format!("File not found: {}", file_path));
     }
 
-    let bosses = load_bosses_with_paths(path.parent().unwrap_or(&path))
-        .map_err(|e| format!("Failed to load bosses: {}", e))?;
+    let bosses = load_bosses_for_file(&path)?;
 
-    let mut items = Vec::new();
-    for boss_with_path in &bosses {
-        if boss_with_path.file_path == path {
-            for entity in &boss_with_path.boss.entities {
-                items.push(EntityListItem::from_boss_entity(boss_with_path, entity));
-            }
-        }
-    }
+    let mut items: Vec<_> = bosses
+        .iter()
+        .flat_map(|b| b.boss.entities.iter().map(|e| EntityListItem::from_boss_entity(b, e)))
+        .collect();
 
     items.sort_by(|a, b| a.boss_name.cmp(&b.boss_name).then(a.name.cmp(&b.name)));
-
     Ok(items)
 }
 
