@@ -8,6 +8,19 @@ The **Battle Analysis and Raid Assessment System** (BARAS) is the ultimate compa
 
 **NOTE**: BARAS is still undergoing active development and is not yet complete. Find a bug? Have a feature you want added? Let us know!
 
+## Installation
+
+### Windows
+
+1. Download the latest release from the [Releases page](https://github.com/baras-app/baras/releases)
+3. Run the `.exe`
+
+### Linux
+
+1. Download the latest AppImage from the [Releases page](https://github.com/baras-app/baras/releases)
+2. Make executable: `chmod +x baras`
+3. Run the AppImage
+
 ## Features
 
 ### General
@@ -22,55 +35,6 @@ The **Battle Analysis and Raid Assessment System** (BARAS) is the ultimate compa
 - **File Management** - Load in historical files, easily see the character and date. Set BARAS to automatically delete empty files and old logs.
 - **Parsely Integration** - Upload logs directly to parsely.io from the UI.
 
-### Overlays
-
-**Smooth dragging, intuitive management, highly customizable**
-
-<p align="center">
-  <img src="etc/overlay-controls.png" alt="Overlay Controls" width="500">
-</p>
-
-- **Customization** - All overlays come with a variety of customization options. Choose your own colors, background opacity, and more for every element on the screen.
-- **Profiles** - Save up to 12 overlay profiles that you can swap between in a flash.
-
-<p align="center">
-  <img src="etc/overlay-customization.png" alt="Overlay Customization" width="500">
-</p>
-
-- **Real-time Metrics** - Overlays for common metrics such as DPS, EHPS, and Threat.
-- **Raid Frames** - A click-to-swap raid frame that displays HoTs and other raid effects. No dragging. No agonizing waits for the final player sitting on fleet to zone into the phase.
-  - Click where you want a player to go anytime, anywhere!
-  - Preset 4, 8, or 16 man configurations and be ready to heal any raid frame configuration!
-  - Separate swap and move modes, never accidentally move your frames again!
-
-<p align="center">
-  <img src="etc/frames-1.png" alt="Raid Frames" width="600">
-  <br><br>
-  <img src="etc/frames-move-mode.png" alt="Raid Frames Move Mode" width="400">
-</p>
-
-- **Boss Health** - Smooth rendering of boss health. Disappears when the combat ends, no screen clutter.
-- **Personal Statistics** - Pick and choose your own set of personal statistics and encounter information.
-
-### Effects and Timers
-
-- **Effects** - Monitor buffs, debuffs, and cooldowns. Build your own effect logic that you can choose to show on the raid frame or a dedicated overlay. You can choose the color for every effect!
-
-<p align="center">
-  <img src="etc/effects-interface.png" alt="Effects Interface" width="550">
-</p>
-
-- **Timers & Alerts** - Fully configurable feature rich interface for building timers. Build your own timers with complex conditions.
-
-<p align="center">
-  <img src="etc/timer-interface.png" alt="Timer Interface" width="550">
-</p>
-
-- **Encounter History** - View summary statistics of past encounters, with an intelligent classification system so you can easily find a specific pull.
-
-<p align="center">
-  <img src="etc/encounter-history.png" alt="Encounter History" width="550">
-</p>
 
 ## Planned Features
 
@@ -88,19 +52,7 @@ The **Battle Analysis and Raid Assessment System** (BARAS) is the ultimate compa
 | Windows 10/11 | Fully supported                                                          |
 | Linux         | Wayland DEs that support zwlr layershell (KDE, Sway, Hyprland, and more) |
 
-## Installation
 
-### Windows
-
-1. Download the latest release from the [Releases page](https://github.com/baras-app/baras/releases)
-3. Run the `.exe`
-
-### Linux
-
-1. Download the latest AppImage from the [Releases page](https://github.com/baras-app/baras/releases)
-2. Make executable: `chmod +x baras`
-3. Run the AppImage
-   
 
 ## Quick Start
 
