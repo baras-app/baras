@@ -7,13 +7,15 @@
 //!
 //! Output: JSON to stdout with encounter summaries and final byte position.
 
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 use baras_core::combat_log::{CombatEvent, LogParser};
 use baras_core::context::{parse_log_filename, resolve};
-use baras_core::dsl::{load_bosses_from_dir, BossEncounterDefinition};
+use baras_core::dsl::{BossEncounterDefinition, load_bosses_from_dir};
 use baras_core::encounter::summary::EncounterSummary;
 use baras_core::signal_processor::{EventProcessor, GameSignal};
 use baras_core::state::SessionCache;
-use baras_core::storage::{encounter_filename, EncounterWriter, EventMetadata};
+use baras_core::storage::{EncounterWriter, EventMetadata, encounter_filename};
 use encoding_rs::WINDOWS_1252;
 use memchr::memchr_iter;
 use memmap2::Mmap;
@@ -61,7 +63,9 @@ struct ParseOutput {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 4 {
-        eprintln!("Usage: baras-parse-worker <file_path> <session_id> <output_dir> [definitions_dir]");
+        eprintln!(
+            "Usage: baras-parse-worker <file_path> <session_id> <output_dir> [definitions_dir]"
+        );
         std::process::exit(1);
     }
 
@@ -79,16 +83,14 @@ fn main() {
     // Load boss definitions if path provided
     let boss_definitions = definitions_dir
         .as_ref()
-        .and_then(|dir| {
-            match load_bosses_from_dir(dir) {
-                Ok(bosses) => {
-                    eprintln!("[PARSE-WORKER] Loaded {} boss definitions", bosses.len());
-                    Some(bosses)
-                }
-                Err(e) => {
-                    eprintln!("[PARSE-WORKER] Failed to load definitions: {}", e);
-                    None
-                }
+        .and_then(|dir| match load_bosses_from_dir(dir) {
+            Ok(bosses) => {
+                eprintln!("[PARSE-WORKER] Loaded {} boss definitions", bosses.len());
+                Some(bosses)
+            }
+            Err(e) => {
+                eprintln!("[PARSE-WORKER] Failed to load definitions: {}", e);
+                None
             }
         })
         .unwrap_or_default();
@@ -159,7 +161,8 @@ fn parse_file(
     let event_count = events.len();
 
     // Process events and write encounters
-    let (encounters, player, area) = process_and_write_encounters(events, output_dir, boss_definitions)?;
+    let (encounters, player, area) =
+        process_and_write_encounters(events, output_dir, boss_definitions)?;
 
     Ok(ParseOutput {
         end_pos,
@@ -229,9 +232,7 @@ fn process_and_write_encounters(
 
     // Get all summaries that were created during processing
     // (push_new_encounter -> finalize_current_encounter -> create_summary)
-    let encounter_summaries: Vec<EncounterSummary> = cache.encounter_history
-        .summaries()
-        .to_vec();
+    let encounter_summaries: Vec<EncounterSummary> = cache.encounter_history.summaries().to_vec();
 
     // Extract player info (name is IStr, needs resolve)
     let player = PlayerInfo {
