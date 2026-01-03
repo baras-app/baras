@@ -78,8 +78,6 @@ jobs:
           releaseBody: ${{ inputs.release_notes }}
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
-          updaterJsonKeepUniversal: true
 
   build-windows:
     runs-on: windows-latest
@@ -122,5 +120,52 @@ jobs:
           releaseBody: ${{ inputs.release_notes }}
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
-          updaterJsonKeepUniversal: true
+
+  update-manifest:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate latest.json
+        env:
+          VERSION: ${{ inputs.version }}
+          NOTES: ${{ inputs.release_notes }}
+        run: |
+          # Wait for release assets to be available
+          sleep 10
+
+          # Download signatures
+          LINUX_SIG=$(curl -sL "https://github.com/baras-app/baras/releases/download/v${VERSION}/BARAS_${VERSION}_amd64.AppImage.sig")
+          WINDOWS_SIG=$(curl -sL "https://github.com/baras-app/baras/releases/download/v${VERSION}/BARAS_${VERSION}_x64-setup.exe.sig")
+
+          # Generate latest.json
+          cat > latest.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": "${NOTES}",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "linux-x86_64": {
+                "signature": "${LINUX_SIG}",
+                "url": "https://github.com/baras-app/baras/releases/download/v${VERSION}/BARAS_${VERSION}_amd64.AppImage"
+              },
+              "windows-x86_64": {
+                "signature": "${WINDOWS_SIG}",
+                "url": "https://github.com/baras-app/baras/releases/download/v${VERSION}/BARAS_${VERSION}_x64-setup.exe"
+              }
+            }
+          }
+          EOF
+
+          cat latest.json
+
+      - name: Commit latest.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          git commit -m "Update latest.json for v${{ inputs.version }}"
+          git push
