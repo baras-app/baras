@@ -30,7 +30,8 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
-            libxdo-dev
+            libxdo-dev \
+            libasound2-dev
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
