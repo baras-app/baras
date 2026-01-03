@@ -644,8 +644,9 @@ pub async fn install_update() -> Result<(), String> {
 
 // Re-export query types from shared types crate
 pub use baras_types::{
-    AbilityBreakdown, BreakdownMode, DataTab, EncounterTimeline, EntityBreakdown, PhaseSegment,
-    RaidOverviewRow, TimeRange, TimeSeriesPoint,
+    AbilityBreakdown, BreakdownMode, CombatLogRow, DataTab, EffectChartData, EffectWindow,
+    EncounterTimeline, EntityBreakdown, PhaseSegment, PlayerDeath, RaidOverviewRow, TimeRange,
+    TimeSeriesPoint,
 };
 
 /// Query ability breakdown for an encounter and data tab.
@@ -784,5 +785,241 @@ pub async fn query_encounter_timeline(encounter_idx: Option<u32>) -> Option<Enco
         js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
     }
     let result = invoke("query_encounter_timeline", obj.into()).await;
+    from_js(result)
+}
+
+/// Query HPS over time with specified bucket size.
+pub async fn query_hps_over_time(
+    encounter_idx: Option<u32>,
+    bucket_ms: i64,
+    source_name: Option<&str>,
+    time_range: Option<&TimeRange>,
+) -> Option<Vec<TimeSeriesPoint>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    js_sys::Reflect::set(&obj, &JsValue::from_str("bucketMs"), &JsValue::from_f64(bucket_ms as f64)).unwrap();
+    if let Some(name) = source_name {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("sourceName"), &JsValue::from_str(name)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("sourceName"), &JsValue::NULL).unwrap();
+    }
+    if let Some(tr) = time_range {
+        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &tr_js).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("query_hps_over_time", obj.into()).await;
+    from_js(result)
+}
+
+/// Query DTPS over time with specified bucket size.
+pub async fn query_dtps_over_time(
+    encounter_idx: Option<u32>,
+    bucket_ms: i64,
+    target_name: Option<&str>,
+    time_range: Option<&TimeRange>,
+) -> Option<Vec<TimeSeriesPoint>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    js_sys::Reflect::set(&obj, &JsValue::from_str("bucketMs"), &JsValue::from_f64(bucket_ms as f64)).unwrap();
+    if let Some(name) = target_name {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("targetName"), &JsValue::from_str(name)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("targetName"), &JsValue::NULL).unwrap();
+    }
+    if let Some(tr) = time_range {
+        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &tr_js).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("query_dtps_over_time", obj.into()).await;
+    from_js(result)
+}
+
+/// Query effect uptime statistics for charts panel.
+pub async fn query_effect_uptime(
+    encounter_idx: Option<u32>,
+    target_name: Option<&str>,
+    time_range: Option<&TimeRange>,
+    duration_secs: f32,
+) -> Option<Vec<EffectChartData>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    if let Some(name) = target_name {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("targetName"), &JsValue::from_str(name)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("targetName"), &JsValue::NULL).unwrap();
+    }
+    if let Some(tr) = time_range {
+        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &tr_js).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &JsValue::NULL).unwrap();
+    }
+    js_sys::Reflect::set(&obj, &JsValue::from_str("durationSecs"), &JsValue::from_f64(duration_secs as f64)).unwrap();
+    let result = invoke("query_effect_uptime", obj.into()).await;
+    from_js(result)
+}
+
+/// Query individual time windows for a specific effect.
+pub async fn query_effect_windows(
+    encounter_idx: Option<u32>,
+    effect_id: i64,
+    target_name: Option<&str>,
+    time_range: Option<&TimeRange>,
+    duration_secs: f32,
+) -> Option<Vec<EffectWindow>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    js_sys::Reflect::set(&obj, &JsValue::from_str("effectId"), &JsValue::from_f64(effect_id as f64)).unwrap();
+    if let Some(name) = target_name {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("targetName"), &JsValue::from_str(name)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("targetName"), &JsValue::NULL).unwrap();
+    }
+    if let Some(tr) = time_range {
+        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &tr_js).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &JsValue::NULL).unwrap();
+    }
+    js_sys::Reflect::set(&obj, &JsValue::from_str("durationSecs"), &JsValue::from_f64(duration_secs as f64)).unwrap();
+    let result = invoke("query_effect_windows", obj.into()).await;
+    from_js(result)
+}
+
+/// Query combat log rows with pagination for virtual scrolling.
+pub async fn query_combat_log(
+    encounter_idx: Option<u32>,
+    offset: u64,
+    limit: u64,
+    source_filter: Option<&str>,
+    target_filter: Option<&str>,
+    search_filter: Option<&str>,
+    time_range: Option<&TimeRange>,
+) -> Option<Vec<CombatLogRow>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    js_sys::Reflect::set(&obj, &JsValue::from_str("offset"), &JsValue::from_f64(offset as f64)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("limit"), &JsValue::from_f64(limit as f64)).unwrap();
+    if let Some(s) = source_filter {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("sourceFilter"), &JsValue::from_str(s)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("sourceFilter"), &JsValue::NULL).unwrap();
+    }
+    if let Some(t) = target_filter {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("targetFilter"), &JsValue::from_str(t)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("targetFilter"), &JsValue::NULL).unwrap();
+    }
+    if let Some(s) = search_filter {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("searchFilter"), &JsValue::from_str(s)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("searchFilter"), &JsValue::NULL).unwrap();
+    }
+    if let Some(tr) = time_range {
+        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &tr_js).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("query_combat_log", obj.into()).await;
+    from_js(result)
+}
+
+/// Get total count of combat log rows for pagination.
+pub async fn query_combat_log_count(
+    encounter_idx: Option<u32>,
+    source_filter: Option<&str>,
+    target_filter: Option<&str>,
+    search_filter: Option<&str>,
+    time_range: Option<&TimeRange>,
+) -> Option<u64> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    if let Some(s) = source_filter {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("sourceFilter"), &JsValue::from_str(s)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("sourceFilter"), &JsValue::NULL).unwrap();
+    }
+    if let Some(t) = target_filter {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("targetFilter"), &JsValue::from_str(t)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("targetFilter"), &JsValue::NULL).unwrap();
+    }
+    if let Some(s) = search_filter {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("searchFilter"), &JsValue::from_str(s)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("searchFilter"), &JsValue::NULL).unwrap();
+    }
+    if let Some(tr) = time_range {
+        let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &tr_js).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("query_combat_log_count", obj.into()).await;
+    from_js(result)
+}
+
+/// Get distinct source names for combat log filter dropdown.
+pub async fn query_source_names(encounter_idx: Option<u32>) -> Option<Vec<String>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("query_source_names", obj.into()).await;
+    from_js(result)
+}
+
+/// Get distinct target names for combat log filter dropdown.
+pub async fn query_target_names(encounter_idx: Option<u32>) -> Option<Vec<String>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("query_target_names", obj.into()).await;
+    from_js(result)
+}
+
+/// Query player deaths in an encounter.
+pub async fn query_player_deaths(encounter_idx: Option<u32>) -> Option<Vec<PlayerDeath>> {
+    let obj = js_sys::Object::new();
+    if let Some(idx) = encounter_idx {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::from_f64(idx as f64)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("encounterIdx"), &JsValue::NULL).unwrap();
+    }
+    let result = invoke("query_player_deaths", obj.into()).await;
     from_js(result)
 }

@@ -28,7 +28,7 @@ pub struct EventRow {
     pub source_id: i64,
     pub source_name: String,
     pub source_class_id: i64,
-    pub source_entity_type: String,
+    pub source_entity_type: &'static str,
     pub source_hp: i32,
     pub source_max_hp: i32,
 
@@ -36,7 +36,7 @@ pub struct EventRow {
     pub target_id: i64,
     pub target_name: String,
     pub target_class_id: i64,
-    pub target_entity_type: String,
+    pub target_entity_type: &'static str,
     pub target_hp: i32,
     pub target_max_hp: i32,
 
@@ -142,14 +142,14 @@ impl EventRow {
 }
 
 /// Convert EntityType enum to string for storage
-fn entity_type_str(entity_type: &crate::combat_log::EntityType) -> String {
+fn entity_type_str(entity_type: &crate::combat_log::EntityType) -> &'static str {
     use crate::combat_log::EntityType;
     match entity_type {
-        EntityType::Player => "Player".to_string(),
-        EntityType::Npc => "Npc".to_string(),
-        EntityType::Companion => "Companion".to_string(),
-        EntityType::Empty => "".to_string(),
-        EntityType::SelfReference => "Self".to_string(),
+        EntityType::Player => "Player",
+        EntityType::Npc => "Npc",
+        EntityType::Companion => "Companion",
+        EntityType::Empty => "",
+        EntityType::SelfReference => "Self",
     }
 }
 
@@ -409,7 +409,7 @@ impl EncounterWriter {
             source_id.append_value(row.source_id);
             source_name.append_value(&row.source_name);
             source_class_id.append_value(row.source_class_id);
-            source_entity_type.append_value(&row.source_entity_type);
+            source_entity_type.append_value(row.source_entity_type);
             source_hp.append_value(row.source_hp);
             source_max_hp.append_value(row.source_max_hp);
 
@@ -417,7 +417,7 @@ impl EncounterWriter {
             target_id.append_value(row.target_id);
             target_name.append_value(&row.target_name);
             target_class_id.append_value(row.target_class_id);
-            target_entity_type.append_value(&row.target_entity_type);
+            target_entity_type.append_value(row.target_entity_type);
             target_hp.append_value(row.target_hp);
             target_max_hp.append_value(row.target_max_hp);
 

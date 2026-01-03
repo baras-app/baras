@@ -32,11 +32,12 @@ impl EventProcessor {
 
     /// Process an incoming event.
     /// Updates the cache and returns signals for cross-cutting concerns.
+    /// Returns the event back along with signals to avoid cloning.
     pub fn process_event(
         &mut self,
         event: CombatEvent,
         cache: &mut SessionCache,
-    ) -> Vec<GameSignal> {
+    ) -> (Vec<GameSignal>, CombatEvent) {
         let mut signals = Vec::new();
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -93,9 +94,9 @@ impl EventProcessor {
         // PHASE 3: Combat State Machine
         // ═══════════════════════════════════════════════════════════════════════
 
-        signals.extend(combat_state::advance_combat_state(event, cache, self.post_combat_threshold_ms));
+        signals.extend(combat_state::advance_combat_state(&event, cache, self.post_combat_threshold_ms));
 
-        signals
+        (signals, event)
     }
 
     fn update_primary_player(&self, event: &CombatEvent, cache: &mut SessionCache) {

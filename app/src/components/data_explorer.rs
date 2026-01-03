@@ -5,13 +5,202 @@
 
 use dioxus::prelude::*;
 use std::collections::HashSet;
-use wasm_bindgen::prelude::Closure;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
-use crate::api::{self, AbilityBreakdown, BreakdownMode, DataTab, EncounterTimeline, EntityBreakdown, RaidOverviewRow, TimeRange};
+use crate::api::{self, AbilityBreakdown, BreakdownMode, DataTab, EncounterTimeline, EntityBreakdown, PlayerDeath, RaidOverviewRow, TimeRange};
+use crate::components::charts_panel::ChartsPanel;
+use crate::components::combat_log::CombatLog;
 use crate::components::history_panel::EncounterSummary;
 use crate::components::phase_timeline::PhaseTimelineFilter;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ECharts JS Interop for Overview Donut Charts
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = echarts, js_name = init)]
+    fn echarts_init(dom: &web_sys::Element) -> JsValue;
+
+    #[wasm_bindgen(js_namespace = echarts, js_name = getInstanceByDom)]
+    fn echarts_get_instance(dom: &web_sys::Element) -> JsValue;
+}
+
+fn init_overview_chart(element_id: &str) -> Option<JsValue> {
+    let window = web_sys::window()?;
+    let document = window.document()?;
+    let element = document.get_element_by_id(element_id)?;
+
+    // Check if instance already exists
+    let existing = echarts_get_instance(&element);
+    if !existing.is_null() && !existing.is_undefined() {
+        return Some(existing);
+    }
+
+    Some(echarts_init(&element))
+}
+
+fn set_chart_option(chart: &JsValue, option: &JsValue) {
+    let set_option = js_sys::Reflect::get(chart, &JsValue::from_str("setOption"))
+        .ok()
+        .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
+
+    if let Some(func) = set_option {
+        let _ = func.call1(chart, option);
+    }
+}
+
+fn resize_overview_chart(chart: &JsValue) {
+    let resize = js_sys::Reflect::get(chart, &JsValue::from_str("resize"))
+        .ok()
+        .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
+
+    if let Some(func) = resize {
+        let _ = func.call0(chart);
+    }
+}
+
+fn dispose_overview_chart(element_id: &str) {
+    if let Some(window) = web_sys::window() {
+        if let Some(document) = window.document() {
+            if let Some(element) = document.get_element_by_id(element_id) {
+                let instance = echarts_get_instance(&element);
+                if !instance.is_null() && !instance.is_undefined() {
+                    let dispose = js_sys::Reflect::get(&instance, &JsValue::from_str("dispose"))
+                        .ok()
+                        .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
+                    if let Some(func) = dispose {
+                        let _ = func.call0(&instance);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Build donut chart option for ECharts
+fn build_donut_option(title: &str, data: &[(String, f64)], color: &str) -> JsValue {
+    let obj = js_sys::Object::new();
+
+    // Title
+    let title_obj = js_sys::Object::new();
+    js_sys::Reflect::set(&title_obj, &JsValue::from_str("text"), &JsValue::from_str(title)).unwrap();
+    js_sys::Reflect::set(&title_obj, &JsValue::from_str("left"), &JsValue::from_str("center")).unwrap();
+    js_sys::Reflect::set(&title_obj, &JsValue::from_str("top"), &JsValue::from_str("5")).unwrap();
+    let title_style = js_sys::Object::new();
+    js_sys::Reflect::set(&title_style, &JsValue::from_str("color"), &JsValue::from_str("#e0e0e0")).unwrap();
+    js_sys::Reflect::set(&title_style, &JsValue::from_str("fontSize"), &JsValue::from_f64(13.0)).unwrap();
+    js_sys::Reflect::set(&title_style, &JsValue::from_str("fontWeight"), &JsValue::from_str("600")).unwrap();
+    js_sys::Reflect::set(&title_obj, &JsValue::from_str("textStyle"), &title_style).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("title"), &title_obj).unwrap();
+
+    // Tooltip
+    let tooltip = js_sys::Object::new();
+    js_sys::Reflect::set(&tooltip, &JsValue::from_str("trigger"), &JsValue::from_str("item")).unwrap();
+    js_sys::Reflect::set(&tooltip, &JsValue::from_str("formatter"), &JsValue::from_str("{b}: {c} ({d}%)")).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("tooltip"), &tooltip).unwrap();
+
+    // Series (donut)
+    let series_arr = js_sys::Array::new();
+    let series = js_sys::Object::new();
+    js_sys::Reflect::set(&series, &JsValue::from_str("type"), &JsValue::from_str("pie")).unwrap();
+    js_sys::Reflect::set(&series, &JsValue::from_str("radius"), &{
+        let arr = js_sys::Array::new();
+        arr.push(&JsValue::from_str("35%"));
+        arr.push(&JsValue::from_str("65%"));
+        arr.into()
+    }).unwrap();
+    js_sys::Reflect::set(&series, &JsValue::from_str("center"), &{
+        let arr = js_sys::Array::new();
+        arr.push(&JsValue::from_str("50%"));
+        arr.push(&JsValue::from_str("55%"));
+        arr.into()
+    }).unwrap();
+
+    // Label formatting
+    let label = js_sys::Object::new();
+    js_sys::Reflect::set(&label, &JsValue::from_str("show"), &JsValue::TRUE).unwrap();
+    js_sys::Reflect::set(&label, &JsValue::from_str("formatter"), &JsValue::from_str("{b}")).unwrap();
+    js_sys::Reflect::set(&label, &JsValue::from_str("color"), &JsValue::from_str("#ccc")).unwrap();
+    js_sys::Reflect::set(&label, &JsValue::from_str("fontSize"), &JsValue::from_f64(10.0)).unwrap();
+    js_sys::Reflect::set(&series, &JsValue::from_str("label"), &label).unwrap();
+
+    // Emphasis
+    let emphasis = js_sys::Object::new();
+    let emph_label = js_sys::Object::new();
+    js_sys::Reflect::set(&emph_label, &JsValue::from_str("show"), &JsValue::TRUE).unwrap();
+    js_sys::Reflect::set(&emph_label, &JsValue::from_str("fontSize"), &JsValue::from_f64(12.0)).unwrap();
+    js_sys::Reflect::set(&emph_label, &JsValue::from_str("fontWeight"), &JsValue::from_str("bold")).unwrap();
+    js_sys::Reflect::set(&emphasis, &JsValue::from_str("label"), &emph_label).unwrap();
+    js_sys::Reflect::set(&series, &JsValue::from_str("emphasis"), &emphasis).unwrap();
+
+    // Item style with base color
+    let item_style = js_sys::Object::new();
+    js_sys::Reflect::set(&item_style, &JsValue::from_str("borderColor"), &JsValue::from_str("#1a1a1a")).unwrap();
+    js_sys::Reflect::set(&item_style, &JsValue::from_str("borderWidth"), &JsValue::from_f64(2.0)).unwrap();
+    js_sys::Reflect::set(&series, &JsValue::from_str("itemStyle"), &item_style).unwrap();
+
+    // Color palette based on base color with variations
+    let colors = generate_color_palette(color, data.len());
+    let color_arr = js_sys::Array::new();
+    for c in colors {
+        color_arr.push(&JsValue::from_str(&c));
+    }
+    js_sys::Reflect::set(&obj, &JsValue::from_str("color"), &color_arr).unwrap();
+
+    // Data
+    let data_arr = js_sys::Array::new();
+    for (name, value) in data {
+        let item = js_sys::Object::new();
+        js_sys::Reflect::set(&item, &JsValue::from_str("name"), &JsValue::from_str(name)).unwrap();
+        js_sys::Reflect::set(&item, &JsValue::from_str("value"), &JsValue::from_f64(*value)).unwrap();
+        data_arr.push(&item);
+    }
+    js_sys::Reflect::set(&series, &JsValue::from_str("data"), &data_arr).unwrap();
+
+    series_arr.push(&series);
+    js_sys::Reflect::set(&obj, &JsValue::from_str("series"), &series_arr).unwrap();
+
+    // No animation for faster renders
+    js_sys::Reflect::set(&obj, &JsValue::from_str("animation"), &JsValue::FALSE).unwrap();
+
+    obj.into()
+}
+
+/// Generate a color palette with variations from a base HSL color
+fn generate_color_palette(base_color: &str, count: usize) -> Vec<String> {
+    // Parse base HSL values from color string like "hsl(0, 70%, 60%)"
+    let (h, s, l) = parse_hsl(base_color).unwrap_or((0.0, 70.0, 60.0));
+
+    let mut colors = Vec::with_capacity(count);
+    for i in 0..count {
+        // Vary lightness and slightly vary hue for each slice
+        let hue_offset = (i as f64 * 15.0) % 360.0;
+        let light_offset = (i as f64 * 5.0) % 20.0 - 10.0;
+        let new_h = (h + hue_offset) % 360.0;
+        let new_l = (l + light_offset).clamp(35.0, 75.0);
+        colors.push(format!("hsl({:.0}, {:.0}%, {:.0}%)", new_h, s, new_l));
+    }
+    colors
+}
+
+fn parse_hsl(color: &str) -> Option<(f64, f64, f64)> {
+    // Parse "hsl(h, s%, l%)" format
+    let color = color.trim();
+    if !color.starts_with("hsl(") || !color.ends_with(")") {
+        return None;
+    }
+    let inner = &color[4..color.len()-1];
+    let parts: Vec<&str> = inner.split(',').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+    let h: f64 = parts[0].trim().parse().ok()?;
+    let s: f64 = parts[1].trim().trim_end_matches('%').parse().ok()?;
+    let l: f64 = parts[2].trim().trim_end_matches('%').parse().ok()?;
+    Some((h, s, l))
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper Functions
@@ -97,6 +286,13 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     // Overview mode - true shows raid overview (default), false shows detailed tabs
     let mut show_overview = use_signal(|| true);
     let mut overview_data = use_signal(Vec::<RaidOverviewRow>::new);
+    let mut player_deaths = use_signal(Vec::<PlayerDeath>::new);
+
+    // Charts mode - show time series charts with effect highlighting
+    let mut show_charts = use_signal(|| false);
+
+    // Combat Log mode - show virtualized combat log table
+    let mut show_combat_log = use_signal(|| false);
 
     // Load encounter list on mount
     use_effect(move || {
@@ -140,6 +336,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             abilities.set(Vec::new());
             entities.set(Vec::new());
             overview_data.set(Vec::new());
+            player_deaths.set(Vec::new());
             selected_source.set(None);
             timeline.set(None);
             time_range.set(TimeRange::default());
@@ -164,6 +361,11 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             // Load raid overview data
             if let Some(data) = api::query_raid_overview(idx, None, duration).await {
                 overview_data.set(data);
+            }
+
+            // Load player deaths for death tracker
+            if let Some(deaths) = api::query_player_deaths(idx).await {
+                player_deaths.set(deaths);
             }
 
             // Load entity breakdown for current tab (no time filter on initial load)
@@ -207,10 +409,11 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
         spawn(async move {
             loading.set(true);
 
-            let duration = timeline.read().as_ref().map(|t| t.duration_secs);
+            // Use filtered duration for DPS/HPS calculations, not full encounter duration
+            let filtered_duration = Some(tr.end - tr.start);
 
             // Reload raid overview with time filter
-            if let Some(data) = api::query_raid_overview(idx, Some(&tr), duration).await {
+            if let Some(data) = api::query_raid_overview(idx, Some(&tr), filtered_duration).await {
                 overview_data.set(data);
             }
 
@@ -226,7 +429,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 None
             };
             let mode = *breakdown_mode.read();
-            if let Some(data) = api::query_breakdown(tab, idx, src.as_deref(), Some(&tr), entity_filter, Some(&mode), duration).await {
+            if let Some(data) = api::query_breakdown(tab, idx, src.as_deref(), Some(&tr), entity_filter, Some(&mode), filtered_duration).await {
                 abilities.set(data);
             }
 
@@ -378,13 +581,10 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
 
                                     // Encounter items (hidden if collapsed)
                                     if !is_collapsed {
-                                        for (enc_offset, enc) in area_encounters.iter().enumerate() {
+                                        for enc in area_encounters.iter() {
                                             {
-                                                // Calculate global index for this encounter
-                                                let global_idx = filtered_history.iter()
-                                                    .position(|e| e.encounter_id == enc.encounter_id)
-                                                    .map(|i| i as u32);
-                                                let enc_idx = global_idx.unwrap_or(enc_offset as u32);
+                                                // Use actual encounter_id for parquet file lookup
+                                                let enc_idx = enc.encounter_id as u32;
                                                 let is_selected = *selected_encounter.read() == Some(enc_idx);
                                                 let success_class = if enc.success { "success" } else { "wipe" };
 
@@ -440,32 +640,42 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                         }
                     }
 
-                    // Data tab selector (Overview, Damage, Healing, Damage Taken, Healing Taken)
+                    // Data tab selector (Overview, Damage, Healing, Damage Taken, Healing Taken, Charts)
                     div { class: "data-tab-selector",
                         button {
-                            class: if *show_overview.read() { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| show_overview.set(true),
+                            class: if *show_overview.read() && !*show_charts.read() && !*show_combat_log.read() { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| { show_overview.set(true); show_charts.set(false); show_combat_log.set(false); },
                             "Overview"
                         }
                         button {
-                            class: if !*show_overview.read() && *selected_tab.read() == DataTab::Damage { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(false); selected_tab.set(DataTab::Damage); },
+                            class: if !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read() && *selected_tab.read() == DataTab::Damage { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(false); selected_tab.set(DataTab::Damage); },
                             "Damage"
                         }
                         button {
-                            class: if !*show_overview.read() && *selected_tab.read() == DataTab::Healing { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(false); selected_tab.set(DataTab::Healing); },
+                            class: if !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read() && *selected_tab.read() == DataTab::Healing { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(false); selected_tab.set(DataTab::Healing); },
                             "Healing"
                         }
                         button {
-                            class: if !*show_overview.read() && *selected_tab.read() == DataTab::DamageTaken { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(false); selected_tab.set(DataTab::DamageTaken); },
+                            class: if !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read() && *selected_tab.read() == DataTab::DamageTaken { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(false); selected_tab.set(DataTab::DamageTaken); },
                             "Damage Taken"
                         }
                         button {
-                            class: if !*show_overview.read() && *selected_tab.read() == DataTab::HealingTaken { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(false); selected_tab.set(DataTab::HealingTaken); },
+                            class: if !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read() && *selected_tab.read() == DataTab::HealingTaken { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(false); selected_tab.set(DataTab::HealingTaken); },
                             "Healing Taken"
+                        }
+                        button {
+                            class: if *show_charts.read() { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| { show_overview.set(false); show_charts.set(true); show_combat_log.set(false); },
+                            "Charts"
+                        }
+                        button {
+                            class: if *show_combat_log.read() { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(true); },
+                            "Combat Log"
                         }
                     }
 
@@ -474,9 +684,26 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                         div { class: "error-message", "{err}" }
                     }
 
-                    // Content area - Overview or Detailed view
-                    if *show_overview.read() {
-                        // Raid Overview Table
+                    // Content area - Overview, Charts, Combat Log, or Detailed view
+                    if *show_combat_log.read() {
+                        // Combat Log Panel
+                        if let Some(enc_idx) = *selected_encounter.read() {
+                            CombatLog {
+                                encounter_idx: enc_idx,
+                                time_range: time_range(),
+                            }
+                        }
+                    } else if *show_charts.read() {
+                        // Charts Panel
+                        if let Some(tl) = timeline.read().as_ref() {
+                            ChartsPanel {
+                                encounter_idx: *selected_encounter.read(),
+                                duration_secs: tl.duration_secs,
+                                time_range: time_range(),
+                            }
+                        }
+                    } else if *show_overview.read() {
+                        // Raid Overview - Donut Charts + Table
                         div { class: "overview-section",
                             {
                                 // Filter to only show Players/Companions
@@ -484,7 +711,120 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                     .filter(|r| r.entity_type == "Player" || r.entity_type == "Companion")
                                     .cloned()
                                     .collect();
+
+                                // Calculate totals for footer row
+                                let total_damage: f64 = rows.iter().map(|r| r.damage_total).sum();
+                                let total_dps: f64 = rows.iter().map(|r| r.dps).sum();
+                                let total_threat: f64 = rows.iter().map(|r| r.threat_total).sum();
+                                let total_tps: f64 = rows.iter().map(|r| r.tps).sum();
+                                let total_damage_taken: f64 = rows.iter().map(|r| r.damage_taken_total).sum();
+                                let total_dtps: f64 = rows.iter().map(|r| r.dtps).sum();
+                                let total_aps: f64 = rows.iter().map(|r| r.aps).sum();
+                                let total_healing: f64 = rows.iter().map(|r| r.healing_total).sum();
+                                let total_hps: f64 = rows.iter().map(|r| r.hps).sum();
+                                let total_ehps: f64 = rows.iter().map(|r| r.ehps).sum();
+
+                                // Prepare data for donut charts
+                                let damage_data: Vec<(String, f64)> = rows.iter()
+                                    .filter(|r| r.damage_total > 0.0)
+                                    .map(|r| (r.name.clone(), r.damage_total))
+                                    .collect();
+                                let threat_data: Vec<(String, f64)> = rows.iter()
+                                    .filter(|r| r.threat_total > 0.0)
+                                    .map(|r| (r.name.clone(), r.threat_total))
+                                    .collect();
+                                let healing_data: Vec<(String, f64)> = rows.iter()
+                                    .filter(|r| r.healing_effective > 0.0)
+                                    .map(|r| (r.name.clone(), r.healing_effective))
+                                    .collect();
+                                let taken_data: Vec<(String, f64)> = rows.iter()
+                                    .filter(|r| r.damage_taken_total > 0.0)
+                                    .map(|r| (r.name.clone(), r.damage_taken_total))
+                                    .collect();
+
+                                // Render donut charts via effect when data changes
+                                spawn(async move {
+                                    // Small delay to ensure DOM is ready
+                                    gloo_timers::future::TimeoutFuture::new(100).await;
+
+                                    // Damage chart
+                                    if !damage_data.is_empty() {
+                                        if let Some(chart) = init_overview_chart("donut-damage") {
+                                            let opt = build_donut_option("Damage", &damage_data, "hsl(0, 70%, 60%)");
+                                            set_chart_option(&chart, &opt);
+                                            resize_overview_chart(&chart);
+                                        }
+                                    }
+
+                                    // Threat chart
+                                    if !threat_data.is_empty() {
+                                        if let Some(chart) = init_overview_chart("donut-threat") {
+                                            let opt = build_donut_option("Threat", &threat_data, "hsl(45, 70%, 55%)");
+                                            set_chart_option(&chart, &opt);
+                                            resize_overview_chart(&chart);
+                                        }
+                                    }
+
+                                    // Healing chart (effective healing)
+                                    if !healing_data.is_empty() {
+                                        if let Some(chart) = init_overview_chart("donut-healing") {
+                                            let opt = build_donut_option("Effective Healing", &healing_data, "hsl(120, 50%, 50%)");
+                                            set_chart_option(&chart, &opt);
+                                            resize_overview_chart(&chart);
+                                        }
+                                    }
+
+                                    // Damage Taken chart
+                                    if !taken_data.is_empty() {
+                                        if let Some(chart) = init_overview_chart("donut-taken") {
+                                            let opt = build_donut_option("Damage Taken", &taken_data, "hsl(30, 70%, 55%)");
+                                            set_chart_option(&chart, &opt);
+                                            resize_overview_chart(&chart);
+                                        }
+                                    }
+                                });
+
+                                // Read deaths for death tracker
+                                let deaths = player_deaths.read().clone();
+
                                 rsx! {
+                                    // Death Tracker (only shown if deaths occurred) - at top for visibility
+                                    if !deaths.is_empty() {
+                                        div { class: "death-tracker",
+                                            h4 { class: "death-tracker-title",
+                                                i { class: "fa-solid fa-skull" }
+                                                " Deaths ({deaths.len()})"
+                                            }
+                                            div { class: "death-list",
+                                                for death in deaths.iter() {
+                                                    {
+                                                        let name = death.name.clone();
+                                                        let death_time = death.death_time_secs;
+                                                        let time_str = format_duration(death_time as i64);
+                                                        rsx! {
+                                                            button {
+                                                                class: "death-item",
+                                                                title: "Click to view 10 seconds before death in Combat Log",
+                                                                onclick: move |_| {
+                                                                    // Set time range to 10 seconds before death
+                                                                    let start = (death_time - 10.0).max(0.0);
+                                                                    time_range.set(TimeRange { start, end: death_time });
+                                                                    // Switch to combat log
+                                                                    show_overview.set(false);
+                                                                    show_charts.set(false);
+                                                                    show_combat_log.set(true);
+                                                                },
+                                                                span { class: "death-name", "{name}" }
+                                                                span { class: "death-time", "@ {time_str}" }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Table first
                                     table { class: "overview-table",
                                         thead {
                                             tr {
@@ -526,6 +866,33 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                                     td { class: "num heal", "{format_number(row.ehps)}" }
                                                 }
                                             }
+                                        }
+                                        tfoot {
+                                            tr { class: "totals-row",
+                                                td { class: "name-col", "Group Total" }
+                                                td { class: "num dmg", "{format_number(total_damage)}" }
+                                                td { class: "num dmg", "{format_number(total_dps)}" }
+                                                td { class: "num threat", "{format_number(total_threat)}" }
+                                                td { class: "num threat", "{format_number(total_tps)}" }
+                                                td { class: "num taken", "{format_number(total_damage_taken)}" }
+                                                td { class: "num taken", "{format_number(total_dtps)}" }
+                                                td { class: "num taken", "{format_number(total_aps)}" }
+                                                td { class: "num heal", "{format_number(total_healing)}" }
+                                                td { class: "num heal", "{format_number(total_hps)}" }
+                                                td { class: "num heal", "" }
+                                                td { class: "num heal", "{format_number(total_ehps)}" }
+                                            }
+                                        }
+                                    }
+
+                                    // Donut Charts Grid (2x2 below table)
+                                    div { class: "overview-charts-section",
+                                        h4 { class: "overview-charts-title", "Breakdown by Player" }
+                                        div { class: "overview-charts-grid",
+                                            div { id: "donut-damage", class: "overview-donut-chart" }
+                                            div { id: "donut-threat", class: "overview-donut-chart" }
+                                            div { id: "donut-healing", class: "overview-donut-chart" }
+                                            div { id: "donut-taken", class: "overview-donut-chart" }
                                         }
                                     }
                                 }
@@ -596,59 +963,59 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                             "All Abilities"
                                         }
                                     }
-                                // Breakdown mode toggles (nested hierarchy)
-                                // Labels change based on tab: outgoing uses "Target", incoming uses "Source"
-                                {
-                                    let is_outgoing = selected_tab.read().is_outgoing();
-                                    let type_label = if is_outgoing { "Target type" } else { "Source type" };
-                                    let instance_label = if is_outgoing { "Target instance" } else { "Source instance" };
-                                    rsx! {
-                                        div { class: "breakdown-controls",
-                                            span { class: "breakdown-label", "Breakdown by" }
-                                            div { class: "breakdown-options",
-                                                label { class: "breakdown-option primary",
-                                                    input {
-                                                        r#type: "checkbox",
-                                                        checked: breakdown_mode.read().by_ability,
-                                                        disabled: true, // Always on
-                                                    }
-                                                    "Ability"
-                                                }
-                                                div { class: "breakdown-nested",
-                                                    label { class: "breakdown-option",
+                                    // Breakdown mode toggles (nested hierarchy)
+                                    // Labels change based on tab: outgoing uses "Target", incoming uses "Source"
+                                    {
+                                        let is_outgoing = selected_tab.read().is_outgoing();
+                                        let type_label = if is_outgoing { "Target type" } else { "Source type" };
+                                        let instance_label = if is_outgoing { "Target instance" } else { "Source instance" };
+                                        rsx! {
+                                            div { class: "breakdown-controls",
+                                                span { class: "breakdown-label", "Breakdown by" }
+                                                div { class: "breakdown-options",
+                                                    label { class: "breakdown-option primary",
                                                         input {
                                                             r#type: "checkbox",
-                                                            checked: breakdown_mode.read().by_target_type,
-                                                            onchange: move |e| {
-                                                                let mut mode = *breakdown_mode.read();
-                                                                mode.by_target_type = e.checked();
-                                                                // If disabling target type, also disable target instance
-                                                                if !e.checked() {
-                                                                    mode.by_target_instance = false;
+                                                            checked: breakdown_mode.read().by_ability,
+                                                            disabled: true, // Always on
+                                                        }
+                                                        "Ability"
+                                                    }
+                                                    div { class: "breakdown-nested",
+                                                        label { class: "breakdown-option",
+                                                            input {
+                                                                r#type: "checkbox",
+                                                                checked: breakdown_mode.read().by_target_type,
+                                                                onchange: move |e| {
+                                                                    let mut mode = *breakdown_mode.read();
+                                                                    mode.by_target_type = e.checked();
+                                                                    // If disabling target type, also disable target instance
+                                                                    if !e.checked() {
+                                                                        mode.by_target_instance = false;
+                                                                    }
+                                                                    breakdown_mode.set(mode);
                                                                 }
-                                                                breakdown_mode.set(mode);
                                                             }
+                                                            "{type_label}"
                                                         }
-                                                        "{type_label}"
-                                                    }
-                                                    label { class: "breakdown-option nested",
-                                                        input {
-                                                            r#type: "checkbox",
-                                                            checked: breakdown_mode.read().by_target_instance,
-                                                            disabled: !breakdown_mode.read().by_target_type,
-                                                            onchange: move |e| {
-                                                                let mut mode = *breakdown_mode.read();
-                                                                mode.by_target_instance = e.checked();
-                                                                breakdown_mode.set(mode);
+                                                        label { class: "breakdown-option nested",
+                                                            input {
+                                                                r#type: "checkbox",
+                                                                checked: breakdown_mode.read().by_target_instance,
+                                                                disabled: !breakdown_mode.read().by_target_type,
+                                                                onchange: move |e| {
+                                                                    let mut mode = *breakdown_mode.read();
+                                                                    mode.by_target_instance = e.checked();
+                                                                    breakdown_mode.set(mode);
+                                                                }
                                                             }
+                                                            "{instance_label}"
                                                         }
-                                                        "{instance_label}"
                                                     }
                                                 }
                                             }
                                         }
                                     }
-                                }
                                 }
                                 // Table with dynamic columns
                                 {

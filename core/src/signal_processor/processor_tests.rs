@@ -62,7 +62,7 @@ fn collect_signals_from_fixture_ext(
                 eprintln!("  type_id: {}", event.effect.type_id);
                 eprintln!("  source: {:?}", crate::context::resolve(event.source_entity.name));
             }
-            let signals = processor.process_event(event, &mut cache);
+            let (signals, _event) = processor.process_event(event, &mut cache);
             if debug && !signals.is_empty() {
                 for s in &signals {
                     eprintln!("  -> Signal: {}", signal_type_name(s));
@@ -404,7 +404,8 @@ fn test_boss_hp_and_phase_signals() {
     let mut signals = Vec::new();
     for (line_num, line) in content.lines().enumerate() {
         if let Some(event) = parser.parse_line(line_num as u64, line) {
-            signals.extend(processor.process_event(event, &mut cache));
+            let (sigs, _) = processor.process_event(event, &mut cache);
+            signals.extend(sigs);
         }
     }
 
@@ -544,7 +545,7 @@ fn test_bestia_complete_encounter() {
     // Process all events
     for (line_num, line) in content.lines().enumerate() {
         if let Some(event) = parser.parse_line(line_num as u64, line) {
-            let signals = processor.process_event(event, &mut cache);
+            let (signals, _) = processor.process_event(event, &mut cache);
 
             for signal in &signals {
                 // Track phase/boss signals
@@ -565,9 +566,9 @@ fn test_bestia_complete_encounter() {
                         let swelling_despair: i64 = 3294098182111232;
                         let dread_strike: i64 = 3294841211453440;
                         let combusting_seed: i64 = 3294102477078528;
-                        if *ability_id == swelling_despair
-                            || *ability_id == dread_strike
-                            || *ability_id == combusting_seed
+                        if ability_id == &swelling_despair
+                            || ability_id == &dread_strike
+                            || ability_id == &combusting_seed
                         {
                             ability_timer_triggers += 1;
                         }

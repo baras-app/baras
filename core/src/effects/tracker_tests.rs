@@ -1125,7 +1125,7 @@ fn run_effect_integration(fixture_path: &Path, effect: EffectDefinition) -> (usi
 
     for (line_num, line) in content.lines().enumerate() {
         if let Some(event) = parser.parse_line(line_num as u64, line) {
-            let signals = processor.process_event(event, &mut cache);
+            let (signals, _) = processor.process_event(event, &mut cache);
             for signal in signals {
                 let before = tracker.active_effects().count();
                 tracker.handle_signal(&signal, cache.current_encounter());
@@ -1188,7 +1188,7 @@ fn test_integration_combat_clears_effects() {
 
     for (line_num, line) in content.lines().enumerate() {
         if let Some(event) = parser.parse_line(line_num as u64, line) {
-            let signals = processor.process_event(event, &mut cache);
+            let (signals, _) = processor.process_event(event, &mut cache);
             for signal in &signals {
                 tracker.handle_signal(signal, cache.current_encounter());
 

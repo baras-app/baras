@@ -435,6 +435,12 @@ pub fn App() -> Element {
                     i { class: "fa-solid fa-chart-line" }
                     " Session"
                 }
+               button {
+                    class: if active_tab() == "explorer" { "tab-btn active" } else { "tab-btn" },
+                    onclick: move |_| active_tab.set("explorer".to_string()),
+                    i { class: "fa-solid fa-magnifying-glass-chart" }
+                    " Data Explorer"
+                }
                 button {
                     class: if active_tab() == "overlays" { "tab-btn active" } else { "tab-btn" },
                     onclick: move |_| active_tab.set("overlays".to_string()),
@@ -445,7 +451,7 @@ pub fn App() -> Element {
                     class: if active_tab() == "timers" { "tab-btn active" } else { "tab-btn" },
                     onclick: move |_| active_tab.set("timers".to_string()),
                     i { class: "fa-solid fa-skull" }
-                    " Boss Encounters"
+                    " Encounter Builder"
                 }
                 button {
                     class: if active_tab() == "effects" { "tab-btn active" } else { "tab-btn" },
@@ -453,12 +459,7 @@ pub fn App() -> Element {
                     i { class: "fa-solid fa-heart-pulse" }
                     " Effects"
                 }
-                button {
-                    class: if active_tab() == "explorer" { "tab-btn active" } else { "tab-btn" },
-                    onclick: move |_| active_tab.set("explorer".to_string()),
-                    i { class: "fa-solid fa-magnifying-glass-chart" }
-                    " Data Explorer"
-                }
+
             }
 
             // Tab Content
@@ -660,7 +661,7 @@ pub fn App() -> Element {
                                         timers_enabled.set(!timers_on);
                                     }
                                 }); },
-                                "Timers"
+                                "Encounter Timers"
                             }
                             button {
                                 class: if effects_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
@@ -669,7 +670,7 @@ pub fn App() -> Element {
                                         effects_enabled.set(!effects_on);
                                     }
                                 }); },
-                                "Effects Countdown"
+                                "Effects Timers"
                             }
                             button {
                                 class: if challenges_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },

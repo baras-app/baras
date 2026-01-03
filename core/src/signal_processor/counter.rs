@@ -50,8 +50,8 @@ pub fn check_counter_increments(
         }
 
         // Check decrement_on trigger (always decrements)
-        if let Some(ref decrement_trigger) = counter.decrement_on {
-            if check_counter_trigger(decrement_trigger, event, current_signals, &def) {
+        if let Some(ref decrement_trigger) = counter.decrement_on
+            && check_counter_trigger(decrement_trigger, event, current_signals, &def) {
                 let enc = cache.current_encounter_mut().unwrap();
                 let (old_value, new_value) = enc.modify_counter(
                     &counter.id,
@@ -65,7 +65,6 @@ pub fn check_counter_increments(
                     new_value,
                     timestamp: event.timestamp,
                 });
-            }
         }
     }
 
@@ -93,14 +92,14 @@ pub fn check_counter_trigger(
             let ability_id = event.action.action_id as u64;
             let ability_name = crate::context::resolve(event.action.name);
             if !abilities.is_empty()
-                && !abilities.iter().any(|s| s.matches(ability_id, Some(&ability_name)))
+                && !abilities.iter().any(|s| s.matches(ability_id, Some(ability_name)))
             {
                 return false;
             }
             // Check source filter if specified
             if !source.is_any() {
                 let source_name = crate::context::resolve(event.source_entity.name);
-                if !source.matches_name(&source_name)
+                if !source.matches_name(source_name)
                     && !source.matches_npc_id(event.source_entity.class_id)
                 {
                     return false;
@@ -114,7 +113,7 @@ pub fn check_counter_trigger(
             }
             let eff_id = event.effect.effect_id as u64;
             let eff_name = crate::context::resolve(event.effect.effect_name);
-            if !effects.is_empty() && !effects.iter().any(|s| s.matches(eff_id, Some(&eff_name))) {
+            if !effects.is_empty() && !effects.iter().any(|s| s.matches(eff_id, Some(eff_name))) {
                 return false;
             }
             // Check target filter if specified
@@ -126,7 +125,7 @@ pub fn check_counter_trigger(
                     }
                 } else {
                     let target_name = crate::context::resolve(event.target_entity.name);
-                    if !target.matches_name(&target_name)
+                    if !target.matches_name(target_name)
                         && !target.matches_npc_id(event.target_entity.class_id)
                     {
                         return false;
@@ -141,7 +140,7 @@ pub fn check_counter_trigger(
             }
             let eff_id = event.effect.effect_id as u64;
             let eff_name = crate::context::resolve(event.effect.effect_name);
-            if !effects.is_empty() && !effects.iter().any(|s| s.matches(eff_id, Some(&eff_name))) {
+            if !effects.is_empty() && !effects.iter().any(|s| s.matches(eff_id, Some(eff_name))) {
                 return false;
             }
             // Check target filter if specified
@@ -152,7 +151,7 @@ pub fn check_counter_trigger(
                     }
                 } else {
                     let target_name = crate::context::resolve(event.target_entity.name);
-                    if !target.matches_name(&target_name)
+                    if !target.matches_name(target_name)
                         && !target.matches_npc_id(event.target_entity.class_id)
                     {
                         return false;
@@ -217,10 +216,9 @@ pub fn check_counter_trigger(
                         return false;
                     }
                     // Check entity filter if specified
-                    if !selector.is_empty() {
-                        if !selector.matches_name_only(entity_name) {
+                    if !selector.is_empty()
+                        && !selector.matches_name_only(entity_name) {
                             return false;
-                        }
                     }
                     true
                 } else {
@@ -247,13 +245,13 @@ pub fn check_counter_trigger(
                 {
                     let ability_name_str = crate::context::resolve(*ability_name);
                     if !abilities.is_empty()
-                        && !abilities.iter().any(|s| s.matches(*ability_id as u64, Some(&ability_name_str)))
+                        && !abilities.iter().any(|s| s.matches(*ability_id as u64, Some(ability_name_str)))
                     {
                         return false;
                     }
                     if !source.is_any() {
                         let source_name_str = crate::context::resolve(*source_name);
-                        if !source.matches_name(&source_name_str)
+                        if !source.matches_name(source_name_str)
                             && !source.matches_npc_id(*source_npc_id)
                         {
                             return false;
@@ -262,7 +260,7 @@ pub fn check_counter_trigger(
                     if !target.is_any() {
                         // Targets are typically players (no NPC ID), so only match by name
                         let target_name_str = crate::context::resolve(*target_name);
-                        if !target.matches_name(&target_name_str) {
+                        if !target.matches_name(target_name_str) {
                             return false;
                         }
                     }

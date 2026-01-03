@@ -6,7 +6,17 @@ asset_dir = "assets"
 
 [web.app]
 title = "baras"
+index_html = "index.html"
 
 [web.watcher]
 reload_html = true
 watch_path = ["src", "assets"]
+
+[web.resource]
+script = []
+
+[web.resource.dev]
+script = ["https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"]
+
+[web.resource.release]
+script = ["https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"]

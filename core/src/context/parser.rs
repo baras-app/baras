@@ -123,7 +123,7 @@ impl ParsingSession {
         if let Some(cache) = &mut self.session_cache {
             // Process event FIRST to detect phase transitions, boss detection, etc.
             // This updates cache state (including current_phase) before we capture metadata.
-            let signals = self.processor.process_event(event.clone(), cache);
+            let (signals, event) = self.processor.process_event(event, cache);
 
             // Write event to parquet buffer AFTER processing
             // (so metadata captures the updated phase state)
@@ -177,7 +177,7 @@ impl ParsingSession {
 
         if let Some(cache) = &mut self.session_cache {
             for event in events {
-                let signals = self.processor.process_event(event, cache);
+                let (signals, _event) = self.processor.process_event(event, cache);
                 all_signals.extend(signals);
             }
         }

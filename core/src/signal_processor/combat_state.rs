@@ -21,12 +21,12 @@ pub const COMBAT_TIMEOUT_SECONDS: i64 = 60;
 
 /// Advance the combat state machine and emit CombatStarted/CombatEnded signals.
 pub fn advance_combat_state(
-    event: CombatEvent,
+    event: &CombatEvent,
     cache: &mut SessionCache,
     post_combat_threshold_ms: i64,
 ) -> Vec<GameSignal> {
     // Track effect applications/removals for shield absorption
-    track_encounter_effects(&event, cache);
+    track_encounter_effects(event, cache);
 
     let effect_id = event.effect.effect_id;
     let effect_type_id = event.effect.type_id;
@@ -68,7 +68,7 @@ fn track_encounter_effects(event: &CombatEvent, cache: &mut SessionCache) {
 }
 
 fn handle_not_started(
-    event: CombatEvent,
+    event: &CombatEvent,
     cache: &mut SessionCache,
     effect_id: i64,
     timestamp: NaiveDateTime,
@@ -79,8 +79,8 @@ fn handle_not_started(
         if let Some(enc) = cache.current_encounter_mut() {
             enc.state = EncounterState::InCombat;
             enc.enter_combat_time = Some(timestamp);
-            enc.track_event_entities(&event);
-            enc.accumulate_data(&event);
+            enc.track_event_entities(event);
+            enc.accumulate_data(event);
 
             signals.push(GameSignal::CombatStarted {
                 timestamp,
@@ -90,7 +90,7 @@ fn handle_not_started(
     } else {
         // Buffer non-damage events for the upcoming encounter
         if let Some(enc) = cache.current_encounter_mut() {
-            enc.accumulate_data(&event);
+            enc.accumulate_data(event);
         }
     }
 
@@ -98,7 +98,7 @@ fn handle_not_started(
 }
 
 fn handle_in_combat(
-    event: CombatEvent,
+    event: &CombatEvent,
     cache: &mut SessionCache,
     effect_id: i64,
     effect_type_id: i64,
@@ -206,8 +206,8 @@ fn handle_in_combat(
     } else {
         // Normal combat event
         if let Some(enc) = cache.current_encounter_mut() {
-            enc.track_event_entities(&event);
-            enc.accumulate_data(&event);
+            enc.track_event_entities(event);
+            enc.accumulate_data(event);
             if effect_id == effect_id::DAMAGE || effect_id == effect_id::HEAL {
                 enc.last_combat_activity_time = Some(timestamp);
             }
@@ -218,7 +218,7 @@ fn handle_in_combat(
 }
 
 fn handle_post_combat(
-    event: CombatEvent,
+    event: &CombatEvent,
     cache: &mut SessionCache,
     effect_id: i64,
     timestamp: NaiveDateTime,
@@ -233,7 +233,7 @@ fn handle_post_combat(
         if let Some(enc) = cache.current_encounter_mut() {
             enc.state = EncounterState::InCombat;
             enc.enter_combat_time = Some(timestamp);
-            enc.accumulate_data(&event);
+            enc.accumulate_data(event);
         }
 
         signals.push(GameSignal::CombatStarted {
@@ -247,8 +247,8 @@ fn handle_post_combat(
         if elapsed <= post_combat_threshold_ms {
             // Trailing damage - assign to ending encounter
             if let Some(enc) = cache.current_encounter_mut() {
-                enc.track_event_entities(&event);
-                enc.accumulate_data(&event);
+                enc.track_event_entities(event);
+                enc.accumulate_data(event);
             }
         } else {
             // Beyond grace period - discard and start fresh
@@ -258,7 +258,7 @@ fn handle_post_combat(
         // Non-damage event - goes to next encounter
         cache.push_new_encounter();
         if let Some(enc) = cache.current_encounter_mut() {
-            enc.accumulate_data(&event);
+            enc.accumulate_data(event);
         }
     }
 

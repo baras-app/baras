@@ -564,7 +564,7 @@ fn run_timer_integration(fixture_path: &Path, timer: TimerDefinition) -> Vec<Str
 
     for (line_num, line) in content.lines().enumerate() {
         if let Some(event) = parser.parse_line(line_num as u64, line) {
-            let signals = processor.process_event(event, &mut cache);
+            let (signals, _) = processor.process_event(event, &mut cache);
             for signal in signals {
                 let before = manager.active_timers().len();
                 manager.handle_signal(&signal, None);
@@ -980,7 +980,7 @@ fn test_integration_timer_expiration_with_real_log() {
 
     for (line_num, line) in content.lines().enumerate() {
         if let Some(event) = parser.parse_line(line_num as u64, line) {
-            let signals = processor.process_event(event, &mut cache);
+            let (signals, _) = processor.process_event(event, &mut cache);
             for signal in signals {
                 manager.handle_signal(&signal, None);
                 manager.tick();

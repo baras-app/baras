@@ -457,6 +457,48 @@
 .data-tab:nth-child(5).active::after { background: hsl(180, 60%, 45%); }  /* Healing Taken - teal */
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Raid Overview - Donut Charts Grid (2x2 below table)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.overview-charts-section {
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.overview-charts-title {
+    margin: 0 0 var(--space-sm) 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.overview-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+}
+
+.overview-donut-chart {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    height: 280px;
+    width: 100%;
+}
+
+/* Responsive: stack on very small screens */
+@media (max-width: 800px) {
+    .overview-charts-grid {
+        grid-template-columns: 1fr;
+    }
+    .overview-donut-chart {
+        height: 250px;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Raid Overview Table
    ───────────────────────────────────────────────────────────────────────────── */
 
@@ -520,3 +562,448 @@
 .overview-table .threat { color: hsl(45, 70%, 60%); }
 .overview-table .taken { color: hsl(30, 70%, 60%); }
 .overview-table .heal { color: hsl(120, 50%, 60%); }
+
+/* Totals row styling */
+.overview-table tfoot .totals-row {
+    background: var(--bg-tertiary);
+    border-top: 2px solid var(--border-subtle);
+    font-weight: 600;
+}
+
+.overview-table tfoot .totals-row td {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.overview-table tfoot .totals-row .name-col {
+    color: var(--accent-gold);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Death Tracker
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.death-tracker {
+    background: hsla(0, 40%, 20%, 0.4);
+    border: 1px solid hsl(0, 50%, 35%);
+    border-radius: var(--radius-sm);
+    padding: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
+.death-tracker-title {
+    margin: 0 0 var(--space-xs) 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: hsl(0, 60%, 65%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.death-tracker-title i {
+    font-size: 14px;
+}
+
+.death-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.death-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: hsla(0, 30%, 25%, 0.6);
+    border: 1px solid hsl(0, 40%, 35%);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 11px;
+}
+
+.death-item:hover {
+    background: hsla(0, 40%, 30%, 0.8);
+    border-color: hsl(0, 50%, 45%);
+    transform: translateY(-1px);
+}
+
+.death-name {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.death-time {
+    color: hsl(0, 50%, 60%);
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Charts Panel
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.charts-panel {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: var(--space-sm);
+    height: 100%;
+    min-height: 400px;
+}
+
+/* Main content area - charts on top, effects below */
+.charts-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    overflow: hidden;
+}
+
+/* Charts sidebar (entity selection) */
+.charts-sidebar {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    padding: var(--space-sm);
+    overflow-y: auto;
+}
+
+.charts-sidebar .sidebar-section {
+    margin-bottom: var(--space-md);
+}
+
+.charts-sidebar h4 {
+    margin: 0 0 var(--space-xs) 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+
+.charts-sidebar .entity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.charts-sidebar .entity-item {
+    padding: 6px 8px;
+    font-size: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.charts-sidebar .entity-item:hover {
+    background: var(--bg-hover);
+}
+
+.charts-sidebar .entity-item.selected {
+    background: rgba(255, 200, 50, 0.15);
+    color: var(--accent-gold);
+    font-weight: 600;
+    border: 2px solid var(--accent-gold);
+    box-shadow: 0 0 8px rgba(255, 200, 50, 0.3);
+}
+
+/* Chart toggles */
+.chart-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.chart-toggles label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+.chart-toggles input {
+    margin: 0;
+    cursor: pointer;
+}
+
+.toggle-dps { color: #e74c3c; }
+.toggle-hps { color: #2ecc71; }
+.toggle-dtps { color: #e67e22; }
+
+/* Charts area - takes up available space */
+.charts-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.charts-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-md);
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.chart-container {
+    width: 100%;
+    flex: 1;
+    min-height: 150px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+}
+
+/* Empty chart state */
+.chart-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-style: italic;
+}
+
+/* Effects row - horizontal layout below charts */
+.effects-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm);
+}
+
+.effects-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    padding: var(--space-sm);
+}
+
+.effects-section h4 {
+    margin: 0 0 var(--space-xs) 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.effects-empty {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-style: italic;
+    padding: var(--space-xs);
+}
+
+/* Effect table wrapper - scrollable container with fixed max height */
+.effect-table-wrapper {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+/* Effect table */
+.effect-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.effect-table th,
+.effect-table td {
+    padding: 4px 6px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.effect-table th {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    position: sticky;
+    top: 0;
+    background: var(--bg-tertiary);
+    z-index: 1;
+}
+
+.effect-table th.num,
+.effect-table td.num {
+    text-align: right;
+    font-family: var(--font-mono);
+}
+
+.effect-table tbody tr {
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.effect-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.effect-table tbody tr.selected {
+    background: var(--effect-color, rgba(255, 200, 50, 0.2));
+}
+
+.effect-table tbody tr.selected td:first-child {
+    border-left: 3px solid var(--effect-color, var(--accent-gold));
+    padding-left: 3px;
+}
+
+/* Charts tab color */
+.data-tab:nth-child(6).active::after { background: hsl(270, 60%, 55%); }  /* Charts - purple */
+.data-tab:nth-child(7).active::after { background: hsl(180, 60%, 45%); }  /* Combat Log - teal */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Combat Log Panel
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.combat-log-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+/* Filter bar */
+.log-filters {
+    display: flex;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+    align-items: center;
+}
+
+.log-filter-select {
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 12px;
+    min-width: 140px;
+}
+
+.log-filter-select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+.log-search {
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 12px;
+    flex: 1;
+    max-width: 200px;
+}
+
+.log-search:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+.log-search::placeholder {
+    color: var(--text-muted);
+}
+
+.log-count {
+    color: var(--text-muted);
+    font-size: 11px;
+    margin-left: auto;
+}
+
+/* Table container */
+.log-table-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+}
+
+/* Header row */
+.log-header {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #1a1a1a;
+    border-bottom: 2px solid var(--border-subtle);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.log-header .log-cell {
+    padding: 6px 4px;
+}
+
+/* Virtual scroll container */
+.log-virtual-container {
+    position: relative;
+}
+
+/* Row styling */
+.log-row {
+    display: flex;
+    height: 24px;
+    align-items: center;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 11px;
+    font-family: var(--font-mono);
+}
+
+.log-row:hover {
+    background: var(--bg-hover);
+}
+
+/* Cell widths */
+.log-cell {
+    padding: 0 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.log-time { width: 70px; flex-shrink: 0; color: var(--text-muted); }
+.log-source { width: 120px; flex-shrink: 0; }
+.log-type { width: 90px; flex-shrink: 0; font-size: 10px; }
+.log-target { width: 120px; flex-shrink: 0; }
+.log-ability { flex: 1; min-width: 150px; }
+.log-value { width: 70px; flex-shrink: 0; text-align: right; }
+.log-absorbed { width: 50px; flex-shrink: 0; text-align: right; color: var(--text-muted); }
+.log-overheal { width: 50px; flex-shrink: 0; text-align: right; color: var(--text-muted); }
+.log-threat { width: 60px; flex-shrink: 0; text-align: right; color: var(--text-muted); }
+
+/* Effect type colors */
+.log-apply { color: hsl(120, 50%, 50%); }
+.log-remove { color: hsl(0, 50%, 60%); }
+.log-event { color: hsl(200, 50%, 60%); }
+
+/* Row type colors */
+.log-damage .log-value { color: hsl(0, 70%, 60%); }
+.log-heal .log-value { color: hsl(120, 70%, 50%); }
+.log-crit .log-value { font-weight: 700; }
+.log-avoid .log-ability { color: hsl(40, 70%, 60%); font-style: italic; }
+
+/* Alternating row backgrounds for readability */
+.log-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}

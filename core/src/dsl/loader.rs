@@ -54,6 +54,11 @@ pub fn load_bosses_from_file(path: &Path) -> Result<Vec<BossEncounterDefinition>
         }
     }
 
+    // Build lookup indexes for O(1) NPC matching
+    for boss in &mut bosses {
+        boss.build_indexes();
+    }
+
     Ok(bosses)
 }
 
@@ -289,6 +294,11 @@ pub fn load_bosses_with_custom(
                     custom_path.display()
                 );
                 bosses = merge_boss_lists(bosses, custom_bosses);
+
+                // Rebuild indexes after merge (custom may have added entities)
+                for boss in &mut bosses {
+                    boss.build_indexes();
+                }
             }
             Err(e) => {
                 eprintln!("Warning: Failed to load custom file {}: {}", custom_path.display(), e);

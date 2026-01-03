@@ -564,18 +564,9 @@ fn save_timer_to_custom_file(
         b
     } else {
         // Create minimal boss entry for the overlay
-        #[allow(deprecated)]
         bosses.push(BossEncounterDefinition {
             id: boss_id.to_string(),
-            name: String::new(), // Will be merged from bundled
-            area_name: String::new(),
-            area_id: 0,
-            difficulties: vec![],
-            timers: vec![],
-            phases: vec![],
-            counters: vec![],
-            challenges: vec![],
-            entities: vec![],
+            ..Default::default()
         });
         bosses.last_mut().unwrap()
     };
@@ -1168,18 +1159,13 @@ pub async fn create_boss(
     }
 
     // Create new boss definition
-    #[allow(deprecated)]
     let new_boss = BossEncounterDefinition {
         id: boss.id.clone(),
         name: boss.name.clone(),
         area_name: boss.area_name.clone(),
         area_id: boss.area_id,
         difficulties: boss.difficulties.clone(),
-        timers: vec![],
-        phases: vec![],
-        counters: vec![],
-        challenges: vec![],
-        entities: vec![],
+        ..Default::default()
     };
 
     bosses.push(new_boss);

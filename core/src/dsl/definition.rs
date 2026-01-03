@@ -3,6 +3,7 @@
 //! Definitions are loaded from TOML config files and describe boss encounters
 //! with their phases, counters, timers, and challenges.
 
+use hashbrown::HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::dsl::audio::AudioConfig;
@@ -147,7 +148,7 @@ impl EntityDefinition {
 
 /// Definition of a boss encounter (e.g., "Dread Guard", "Brontes")
 /// Uses an entity roster pattern: define NPCs once, reference by name.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BossEncounterDefinition {
     /// Unique identifier (e.g., "apex_vanguard")
     pub id: String,
@@ -192,6 +193,9 @@ pub struct BossEncounterDefinition {
     /// Challenge definitions for tracking metrics
     #[serde(default, alias = "challenge")]
     pub challenges: Vec<ChallengeDefinition>,
+
+    #[serde(skip)]
+    pub all_npc_ids: HashSet<i64>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -423,9 +427,13 @@ impl BossEncounterDefinition {
         self.area_name.eq_ignore_ascii_case(area_name)
     }
 
+    pub fn build_indexes(&mut self) {
+        self.all_npc_ids = self.entities.iter().flat_map(|e| e.ids.iter().copied()).collect();
+    }
+
     /// Check if any entity in this encounter has the given NPC class ID
     pub fn matches_npc_id(&self, npc_id: i64) -> bool {
-        self.all_entity_ids().any(|id| id == npc_id)
+        self.all_npc_ids.contains(&npc_id)
     }
 }
 

@@ -15,12 +15,14 @@ use arrow::record_batch::RecordBatch;
 use datafusion::datasource::MemTable;
 use datafusion::prelude::*;
 
+use crate::game_data::effect_id;
 use crate::storage::EncounterWriter;
 
 // Re-export query types from shared types crate
 pub use baras_types::{
-    AbilityBreakdown, BreakdownMode, DataTab, EncounterTimeline, EntityBreakdown, PhaseSegment,
-    RaidOverviewRow, TimeRange, TimeSeriesPoint,
+    AbilityBreakdown, BreakdownMode, CombatLogRow, DataTab, EffectChartData, EffectWindow,
+    EncounterTimeline, EntityBreakdown, PhaseSegment, PlayerDeath, RaidOverviewRow, TimeRange,
+    TimeSeriesPoint,
 };
 
 /// Escape single quotes for SQL string literals (O'Brien -> O''Brien)
@@ -93,6 +95,25 @@ fn scalar_f32(batches: &[RecordBatch]) -> f32 {
         if b.num_rows() == 0 { return None; }
         col_f32(b, 0).ok().and_then(|v| v.first().copied())
     }).unwrap_or(0.0)
+}
+
+fn col_i32(batch: &RecordBatch, idx: usize) -> Result<Vec<i32>, String> {
+    let col = batch.column(idx);
+    if let Some(a) = col.as_any().downcast_ref::<Int32Array>() {
+        return Ok((0..a.len()).map(|i| a.value(i)).collect());
+    }
+    if let Some(a) = col.as_any().downcast_ref::<Int64Array>() {
+        return Ok((0..a.len()).map(|i| a.value(i) as i32).collect());
+    }
+    Err(format!("col {idx}: expected i32, got {:?}", col.data_type()))
+}
+
+fn col_bool(batch: &RecordBatch, idx: usize) -> Result<Vec<bool>, String> {
+    let col = batch.column(idx);
+    if let Some(a) = col.as_any().downcast_ref::<arrow::array::BooleanArray>() {
+        return Ok((0..a.len()).map(|i| a.value(i)).collect());
+    }
+    Err(format!("col {idx}: expected bool, got {:?}", col.data_type()))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -386,7 +407,7 @@ impl EncounterQuery {
                 COALESCE(t.absorbed_total, 0) as absorbed_total,
                 COALESCE(h.healing_total, 0) as healing_total,
                 COALESCE(h.healing_effective, 0) as healing_effective,
-                COALESCE(h.healing_effective * 100.0 / NULLIF((SELECT total FROM total_effective_healing), 0), 0) as healing_pct
+                COALESCE(h.healing_effective * 100.0 / NULLIF(h.healing_total, 0), 0) as healing_pct
             FROM damage_dealt d
             FULL OUTER JOIN damage_taken t ON d.name = t.name
             FULL OUTER JOIN healing_done h ON COALESCE(d.name, t.name) = h.name
@@ -428,7 +449,8 @@ impl EncounterQuery {
     }
 
     pub async fn dps_over_time(&self, bucket_ms: i64, source_name: Option<&str>, time_range: Option<&TimeRange>) -> Result<Vec<TimeSeriesPoint>, String> {
-        let mut conditions = vec!["dmg_amount > 0".to_string()];
+        let bucket_secs = (bucket_ms as f64 / 1000.0).max(1.0);
+        let mut conditions = vec!["dmg_amount > 0".to_string(), "combat_time_secs IS NOT NULL".to_string()];
         if let Some(n) = source_name {
             conditions.push(format!("source_name = '{}'", sql_escape(n)));
         }
@@ -438,7 +460,77 @@ impl EncounterQuery {
         let filter = format!("WHERE {}", conditions.join(" AND "));
 
         let batches = self.sql(&format!(r#"
-            SELECT (CAST(timestamp AS BIGINT) / {bucket_ms}) * {bucket_ms} as bucket_start_ms,
+            SELECT CAST(FLOOR(combat_time_secs / {bucket_secs}) * {bucket_secs} * 1000 AS BIGINT) as bucket_start_ms,
+                   SUM(dmg_amount) as total_value
+            FROM events {filter}
+            GROUP BY bucket_start_ms ORDER BY bucket_start_ms
+        "#)).await?;
+
+        let mut results = Vec::new();
+        for batch in &batches {
+            let buckets = col_i64(batch, 0)?;
+            let values = col_f64(batch, 1)?;
+            for i in 0..batch.num_rows() {
+                results.push(TimeSeriesPoint { bucket_start_ms: buckets[i], total_value: values[i] });
+            }
+        }
+        Ok(results)
+    }
+
+    /// Query HPS (healing per second) over time, bucketed by time interval.
+    pub async fn hps_over_time(
+        &self,
+        bucket_ms: i64,
+        source_name: Option<&str>,
+        time_range: Option<&TimeRange>,
+    ) -> Result<Vec<TimeSeriesPoint>, String> {
+        let bucket_secs = (bucket_ms as f64 / 1000.0).max(1.0);
+        let mut conditions = vec!["heal_amount > 0".to_string(), "combat_time_secs IS NOT NULL".to_string()];
+        if let Some(n) = source_name {
+            conditions.push(format!("source_name = '{}'", sql_escape(n)));
+        }
+        if let Some(tr) = time_range {
+            conditions.push(tr.sql_filter());
+        }
+        let filter = format!("WHERE {}", conditions.join(" AND "));
+
+        let batches = self.sql(&format!(r#"
+            SELECT CAST(FLOOR(combat_time_secs / {bucket_secs}) * {bucket_secs} * 1000 AS BIGINT) as bucket_start_ms,
+                   SUM(heal_amount) as total_value
+            FROM events {filter}
+            GROUP BY bucket_start_ms ORDER BY bucket_start_ms
+        "#)).await?;
+
+        let mut results = Vec::new();
+        for batch in &batches {
+            let buckets = col_i64(batch, 0)?;
+            let values = col_f64(batch, 1)?;
+            for i in 0..batch.num_rows() {
+                results.push(TimeSeriesPoint { bucket_start_ms: buckets[i], total_value: values[i] });
+            }
+        }
+        Ok(results)
+    }
+
+    /// Query DTPS (damage taken per second) over time for a target entity.
+    pub async fn dtps_over_time(
+        &self,
+        bucket_ms: i64,
+        target_name: Option<&str>,
+        time_range: Option<&TimeRange>,
+    ) -> Result<Vec<TimeSeriesPoint>, String> {
+        let bucket_secs = (bucket_ms as f64 / 1000.0).max(1.0);
+        let mut conditions = vec!["dmg_amount > 0".to_string(), "combat_time_secs IS NOT NULL".to_string()];
+        if let Some(n) = target_name {
+            conditions.push(format!("target_name = '{}'", sql_escape(n)));
+        }
+        if let Some(tr) = time_range {
+            conditions.push(tr.sql_filter());
+        }
+        let filter = format!("WHERE {}", conditions.join(" AND "));
+
+        let batches = self.sql(&format!(r#"
+            SELECT CAST(FLOOR(combat_time_secs / {bucket_secs}) * {bucket_secs} * 1000 AS BIGINT) as bucket_start_ms,
                    SUM(dmg_amount) as total_value
             FROM events {filter}
             GROUP BY bucket_start_ms ORDER BY bucket_start_ms
@@ -457,6 +549,7 @@ impl EncounterQuery {
 
     /// Get encounter timeline with phase segments (handles repeated phases).
     pub async fn encounter_timeline(&self) -> Result<EncounterTimeline, String> {
+        // Calculate duration from combat_time_secs (only includes actual combat events)
         let duration_secs = scalar_f32(&self.sql(
             "SELECT COALESCE(MAX(combat_time_secs), 0) FROM events WHERE combat_time_secs IS NOT NULL"
         ).await?);
@@ -516,5 +609,392 @@ impl EncounterQuery {
         }
 
         Ok(EncounterTimeline { duration_secs, phases })
+    }
+
+    /// Query effect uptime statistics for the charts panel.
+    /// Returns aggregated data per effect (count, duration, uptime%).
+    /// Effects are classified as active (triggered by ability) or passive (proc/auto-applied).
+    pub async fn query_effect_uptime(
+        &self,
+        target_name: Option<&str>,
+        time_range: Option<&TimeRange>,
+        duration_secs: f32,
+    ) -> Result<Vec<EffectChartData>, String> {
+        // Effect type IDs (the type of log event)
+        const APPLY_EFFECT: i64 = 836045448945477;
+        const REMOVE_EFFECT: i64 = 836045448945478;
+        // Effect IDs (what specifically happened)
+        const ABILITY_ACTIVATE: i64 = 836045448945479;
+        // Exclude damage/heal "effects" which are action results, not buffs
+        const DAMAGE_EFFECT: i64 = 836045448945501;
+        const HEAL_EFFECT: i64 = 836045448945500;
+
+        let target_filter = target_name
+            .map(|n| format!("AND target_name = '{}'", sql_escape(n)))
+            .unwrap_or_default();
+        let time_filter = time_range
+            .map(|tr| format!("AND {}", tr.sql_filter()))
+            .unwrap_or_default();
+        let duration = duration_secs.max(0.001);
+
+        // Query pairs ApplyEffect with RemoveEffect events, calculates duration,
+        // and detects active vs passive based on whether there's an AbilityActivate
+        // event at the same timestamp (within 0.15s tolerance).
+        // We use time binning to enable equi-join (DataFusion doesn't support EXISTS).
+        // Group by effect_name only (not effect_id) to consolidate variants.
+        // Cap uptime at 100% since overlapping windows aren't merged.
+        let batches = self.sql(&format!(r#"
+            WITH applies AS (
+                SELECT effect_id, effect_name, target_name, combat_time_secs as apply_time,
+                       CAST(FLOOR(combat_time_secs * 10) AS BIGINT) as time_bin,
+                       ROW_NUMBER() OVER (PARTITION BY effect_id, target_name ORDER BY combat_time_secs) as seq
+                FROM events
+                WHERE effect_type_id = {APPLY_EFFECT}
+                  AND effect_id NOT IN ({DAMAGE_EFFECT}, {HEAL_EFFECT})
+                  {target_filter}
+                  {time_filter}
+            ),
+            removes AS (
+                SELECT effect_id, target_name, combat_time_secs as remove_time,
+                       ROW_NUMBER() OVER (PARTITION BY effect_id, target_name ORDER BY combat_time_secs) as seq
+                FROM events
+                WHERE effect_type_id = {REMOVE_EFFECT}
+                  AND effect_id NOT IN ({DAMAGE_EFFECT}, {HEAL_EFFECT})
+                  {target_filter}
+                  {time_filter}
+            ),
+            ability_bins_raw AS (
+                SELECT DISTINCT CAST(FLOOR(combat_time_secs * 10) AS BIGINT) as time_bin
+                FROM events
+                WHERE effect_id = {ABILITY_ACTIVATE}
+                  {time_filter}
+            ),
+            ability_bins AS (
+                SELECT time_bin FROM ability_bins_raw
+                UNION SELECT time_bin + 1 FROM ability_bins_raw
+                UNION SELECT time_bin - 1 FROM ability_bins_raw
+            ),
+            paired AS (
+                SELECT a.effect_id, a.effect_name, a.apply_time, a.time_bin,
+                       COALESCE(r.remove_time, {duration}) as remove_time
+                FROM applies a
+                LEFT JOIN removes r ON a.effect_id = r.effect_id
+                    AND a.target_name = r.target_name
+                    AND a.seq = r.seq
+            ),
+            classified AS (
+                SELECT p.effect_id, p.effect_name, p.apply_time,
+                       LEAST(p.remove_time, {duration}) - p.apply_time as duration_secs,
+                       CASE WHEN ab.time_bin IS NOT NULL THEN true ELSE false END as is_active
+                FROM paired p
+                LEFT JOIN ability_bins ab ON p.time_bin = ab.time_bin
+                WHERE p.remove_time > p.apply_time
+            ),
+            aggregated AS (
+                SELECT MIN(effect_id) as effect_id, effect_name, is_active,
+                       COUNT(*) as count,
+                       SUM(duration_secs) as total_duration
+                FROM classified
+                GROUP BY effect_name, is_active
+            )
+            SELECT effect_id, effect_name, is_active, count, total_duration,
+                   LEAST(total_duration * 100.0 / {duration}, 100.0) as uptime_pct
+            FROM aggregated
+            ORDER BY total_duration DESC
+        "#)).await?;
+
+        let mut results = Vec::new();
+        for batch in &batches {
+            let effect_ids = col_i64(batch, 0)?;
+            let effect_names = col_strings(batch, 1)?;
+            // is_active comes as a boolean, but DataFusion might return it as various types
+            let is_actives: Vec<bool> = {
+                let col = batch.column(2);
+                if let Some(a) = col.as_any().downcast_ref::<arrow::array::BooleanArray>() {
+                    (0..a.len()).map(|i| a.value(i)).collect()
+                } else {
+                    // Fallback: treat as all passive
+                    vec![false; batch.num_rows()]
+                }
+            };
+            let counts = col_i64(batch, 3)?;
+            let total_durations = col_f32(batch, 4)?;
+            let uptime_pcts = col_f32(batch, 5)?;
+
+            for i in 0..batch.num_rows() {
+                results.push(EffectChartData {
+                    effect_id: effect_ids[i],
+                    effect_name: effect_names[i].clone(),
+                    is_active: is_actives[i],
+                    count: counts[i],
+                    total_duration_secs: total_durations[i],
+                    uptime_pct: uptime_pcts[i],
+                });
+            }
+        }
+        Ok(results)
+    }
+
+    /// Query individual time windows for a specific effect (for chart highlighting).
+    pub async fn query_effect_windows(
+        &self,
+        effect_id: i64,
+        target_name: Option<&str>,
+        time_range: Option<&TimeRange>,
+        duration_secs: f32,
+    ) -> Result<Vec<EffectWindow>, String> {
+        const APPLY_EFFECT: i64 = 836045448945477;
+        const REMOVE_EFFECT: i64 = 836045448945478;
+
+        let target_filter = target_name
+            .map(|n| format!("AND target_name = '{}'", sql_escape(n)))
+            .unwrap_or_default();
+        let time_filter = time_range
+            .map(|tr| format!("AND {}", tr.sql_filter()))
+            .unwrap_or_default();
+        let duration = duration_secs.max(0.001);
+
+        let batches = self.sql(&format!(r#"
+            WITH applies AS (
+                SELECT combat_time_secs as apply_time, target_name,
+                       ROW_NUMBER() OVER (PARTITION BY target_name ORDER BY combat_time_secs) as seq
+                FROM events
+                WHERE effect_type_id = {APPLY_EFFECT}
+                  AND effect_id = {effect_id}
+                  {target_filter}
+                  {time_filter}
+            ),
+            removes AS (
+                SELECT combat_time_secs as remove_time, target_name,
+                       ROW_NUMBER() OVER (PARTITION BY target_name ORDER BY combat_time_secs) as seq
+                FROM events
+                WHERE effect_type_id = {REMOVE_EFFECT}
+                  AND effect_id = {effect_id}
+                  {target_filter}
+                  {time_filter}
+            )
+            SELECT a.apply_time as start_secs,
+                   LEAST(COALESCE(r.remove_time, {duration}), {duration}) as end_secs
+            FROM applies a
+            LEFT JOIN removes r ON a.target_name = r.target_name AND a.seq = r.seq
+            WHERE COALESCE(r.remove_time, {duration}) > a.apply_time
+            ORDER BY start_secs
+        "#)).await?;
+
+        let mut results = Vec::new();
+        for batch in &batches {
+            let starts = col_f32(batch, 0)?;
+            let ends = col_f32(batch, 1)?;
+            for i in 0..batch.num_rows() {
+                results.push(EffectWindow {
+                    start_secs: starts[i],
+                    end_secs: ends[i],
+                });
+            }
+        }
+        Ok(results)
+    }
+
+    /// Query combat log rows for the combat log viewer.
+    /// Supports pagination via offset/limit for virtual scrolling.
+    /// Returns rows ordered by combat_time_secs.
+    pub async fn query_combat_log(
+        &self,
+        offset: u64,
+        limit: u64,
+        source_filter: Option<&str>,
+        target_filter: Option<&str>,
+        search_filter: Option<&str>,
+        time_range: Option<&TimeRange>,
+    ) -> Result<Vec<CombatLogRow>, String> {
+        let mut where_clauses = vec!["combat_time_secs IS NOT NULL".to_string()];
+
+        if let Some(source) = source_filter {
+            where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
+        }
+        if let Some(target) = target_filter {
+            where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
+        }
+        if let Some(search) = search_filter {
+            let escaped = sql_escape(search);
+            where_clauses.push(format!(
+                "(source_name LIKE '%{0}%' OR target_name LIKE '%{0}%' OR ability_name LIKE '%{0}%' OR effect_name LIKE '%{0}%')",
+                escaped
+            ));
+        }
+        if let Some(tr) = time_range {
+            where_clauses.push(tr.sql_filter());
+        }
+
+        let where_clause = where_clauses.join(" AND ");
+
+        let batches = self.sql(&format!(r#"
+            SELECT
+                ROW_NUMBER() OVER (ORDER BY combat_time_secs) as row_idx,
+                combat_time_secs,
+                source_name,
+                source_entity_type,
+                target_name,
+                target_entity_type,
+                effect_type_name,
+                ability_name,
+                effect_name,
+                COALESCE(dmg_effective, 0) + COALESCE(heal_effective, 0) as value,
+                COALESCE(dmg_absorbed, 0) as absorbed,
+                GREATEST(COALESCE(heal_amount, 0) - COALESCE(heal_effective, 0), 0) as overheal,
+                COALESCE(threat, 0.0) as threat,
+                is_crit,
+                COALESCE(dmg_type, '') as damage_type,
+                COALESCE(avoid_type, '') as avoid_type
+            FROM events
+            WHERE {where_clause}
+            ORDER BY combat_time_secs
+            LIMIT {limit} OFFSET {offset}
+        "#)).await?;
+
+        let mut results = Vec::new();
+        for batch in &batches {
+            let row_idxs = col_i64(batch, 0)?;
+            let times = col_f32(batch, 1)?;
+            let source_names = col_strings(batch, 2)?;
+            let source_types = col_strings(batch, 3)?;
+            let target_names = col_strings(batch, 4)?;
+            let target_types = col_strings(batch, 5)?;
+            let effect_types = col_strings(batch, 6)?;
+            let ability_names = col_strings(batch, 7)?;
+            let effect_names = col_strings(batch, 8)?;
+            let values = col_i32(batch, 9)?;
+            let absorbeds = col_i32(batch, 10)?;
+            let overheals = col_i32(batch, 11)?;
+            let threats = col_f32(batch, 12)?;
+            let is_crits = col_bool(batch, 13)?;
+            let damage_types = col_strings(batch, 14)?;
+            let avoid_types = col_strings(batch, 15)?;
+
+            for i in 0..batch.num_rows() {
+                results.push(CombatLogRow {
+                    row_idx: row_idxs[i] as u64,
+                    time_secs: times[i],
+                    source_name: source_names[i].clone(),
+                    source_type: source_types[i].clone(),
+                    target_name: target_names[i].clone(),
+                    target_type: target_types[i].clone(),
+                    effect_type: effect_types[i].clone(),
+                    ability_name: ability_names[i].clone(),
+                    effect_name: effect_names[i].clone(),
+                    value: values[i],
+                    absorbed: absorbeds[i],
+                    overheal: overheals[i],
+                    threat: threats[i],
+                    is_crit: is_crits[i],
+                    damage_type: damage_types[i].clone(),
+                    avoid_type: avoid_types[i].clone(),
+                });
+            }
+        }
+        Ok(results)
+    }
+
+    /// Get total count of combat log rows (for pagination).
+    pub async fn query_combat_log_count(
+        &self,
+        source_filter: Option<&str>,
+        target_filter: Option<&str>,
+        search_filter: Option<&str>,
+        time_range: Option<&TimeRange>,
+    ) -> Result<u64, String> {
+        let mut where_clauses = vec!["combat_time_secs IS NOT NULL".to_string()];
+
+        if let Some(source) = source_filter {
+            where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
+        }
+        if let Some(target) = target_filter {
+            where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
+        }
+        if let Some(search) = search_filter {
+            let escaped = sql_escape(search);
+            where_clauses.push(format!(
+                "(source_name LIKE '%{0}%' OR target_name LIKE '%{0}%' OR ability_name LIKE '%{0}%' OR effect_name LIKE '%{0}%')",
+                escaped
+            ));
+        }
+        if let Some(tr) = time_range {
+            where_clauses.push(tr.sql_filter());
+        }
+
+        let where_clause = where_clauses.join(" AND ");
+
+        let batches = self.sql(&format!(
+            "SELECT COUNT(*) FROM events WHERE {where_clause}"
+        )).await?;
+
+        let count = batches.first()
+            .and_then(|b| col_i64(b, 0).ok())
+            .and_then(|v| v.first().copied())
+            .unwrap_or(0) as u64;
+
+        Ok(count)
+    }
+
+    /// Get distinct source names for filter dropdown.
+    pub async fn query_source_names(&self) -> Result<Vec<String>, String> {
+        let batches = self.sql(
+            "SELECT DISTINCT source_name FROM events WHERE combat_time_secs IS NOT NULL ORDER BY source_name"
+        ).await?;
+
+        let mut results = Vec::new();
+        for batch in &batches {
+            results.extend(col_strings(batch, 0)?);
+        }
+        Ok(results)
+    }
+
+    /// Get distinct target names for filter dropdown.
+    pub async fn query_target_names(&self) -> Result<Vec<String>, String> {
+        let batches = self.sql(
+            "SELECT DISTINCT target_name FROM events WHERE combat_time_secs IS NOT NULL ORDER BY target_name"
+        ).await?;
+
+        let mut results = Vec::new();
+        for batch in &batches {
+            results.extend(col_strings(batch, 0)?);
+        }
+        Ok(results)
+    }
+
+    /// Query player deaths in the encounter.
+    /// Returns a list of player deaths ordered by time.
+    pub async fn query_player_deaths(&self) -> Result<Vec<PlayerDeath>, String> {
+        // Death events are identified by effect_id::DEATH
+        // and target_entity_type = 'Player' or 'Companion'
+        let sql = format!(
+            r#"
+            SELECT
+                target_name,
+                combat_time_secs
+            FROM events
+            WHERE effect_id = {}
+              AND (target_entity_type = 'Player' OR target_entity_type = 'Companion')
+              AND combat_time_secs IS NOT NULL
+            ORDER BY combat_time_secs ASC
+            "#,
+            effect_id::DEATH
+        );
+
+        let batches = self.sql(&sql).await?;
+
+        let mut results = Vec::new();
+        for batch in &batches {
+            let names = col_strings(batch, 0)?;
+            let times = col_f32(batch, 1)?;
+
+            for (name, time) in names.into_iter().zip(times) {
+                results.push(PlayerDeath {
+                    name,
+                    death_time_secs: time,
+                });
+            }
+        }
+        Ok(results)
     }
 }

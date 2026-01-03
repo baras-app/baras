@@ -191,7 +191,7 @@ fn process_and_write_encounters(
     for event in events {
         // Process event FIRST to detect phase transitions, boss detection, etc.
         // This updates cache state (including current_phase) before we capture metadata.
-        let signals = processor.process_event(event.clone(), &mut cache);
+        let (signals, event) = processor.process_event(event, &mut cache);
 
         // Build metadata AFTER processing so phase state is current
         let metadata = EventMetadata::from_cache(&cache, current_encounter_idx, event.timestamp);

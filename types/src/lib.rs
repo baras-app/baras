@@ -22,6 +22,8 @@ pub enum DataTab {
     DamageTaken,
     /// Healing received (group by source who healed)
     HealingTaken,
+    /// Time series charts with effect analysis
+    Charts,
 }
 
 impl DataTab {
@@ -47,6 +49,7 @@ impl DataTab {
             DataTab::Healing => "HPS",
             DataTab::DamageTaken => "DTPS",
             DataTab::HealingTaken => "HTPS",
+            DataTab::Charts => "Rate", // Charts tab doesn't use this
         }
     }
 }
@@ -148,6 +151,74 @@ pub struct RaidOverviewRow {
 pub struct TimeSeriesPoint {
     pub bucket_start_ms: i64,
     pub total_value: f64,
+}
+
+/// Time window when an effect was active (for chart highlighting).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EffectWindow {
+    pub start_secs: f32,
+    pub end_secs: f32,
+}
+
+/// Effect uptime data for the charts panel.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EffectChartData {
+    pub effect_id: i64,
+    pub effect_name: String,
+    /// True if triggered by ability activation (active), false if passive/proc
+    pub is_active: bool,
+    /// Number of times effect was applied
+    pub count: i64,
+    /// Total duration in seconds
+    pub total_duration_secs: f32,
+    /// Uptime percentage (0-100)
+    pub uptime_pct: f32,
+}
+
+/// A player death event for the death tracker.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlayerDeath {
+    /// Player name
+    pub name: String,
+    /// Time of death in seconds from combat start
+    pub death_time_secs: f32,
+}
+
+/// A single row in the combat log viewer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CombatLogRow {
+    /// Row index for virtual scrolling
+    pub row_idx: u64,
+    /// Combat time in seconds from start
+    pub time_secs: f32,
+    /// Source entity name
+    pub source_name: String,
+    /// Source entity type (Player, Companion, NPC)
+    pub source_type: String,
+    /// Target entity name
+    pub target_name: String,
+    /// Target entity type
+    pub target_type: String,
+    /// Effect type (ApplyEffect, Event, Damage, Heal, etc.)
+    pub effect_type: String,
+    /// Ability name
+    pub ability_name: String,
+    /// Effect/result name (for buffs/debuffs)
+    pub effect_name: String,
+    /// Damage or heal value (effective)
+    pub value: i32,
+    /// Absorbed amount
+    pub absorbed: i32,
+    /// Overheal amount (heal_amount - heal_effective)
+    pub overheal: i32,
+    /// Threat generated
+    pub threat: f32,
+    /// Whether this was a critical hit
+    pub is_crit: bool,
+    /// Damage type name
+    pub damage_type: String,
+    /// Avoid type (miss, dodge, parry, etc.)
+    pub avoid_type: String,
 }
 
 /// A phase segment - one occurrence of a phase (phases can repeat).
