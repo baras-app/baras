@@ -183,9 +183,21 @@ pub struct EncounterQuery<'a> {
 }
 
 impl EncounterQuery<'_> {
+    /// Execute SQL query, returning empty results if table doesn't exist.
+    /// This prevents panics when queries are made before parquet data is loaded.
     async fn sql(&self, query: &str) -> Result<Vec<RecordBatch>, String> {
-        let df = self.ctx.sql(query).await.map_err(|e| e.to_string())?;
-        df.collect().await.map_err(|e| e.to_string())
+        match self.ctx.sql(query).await {
+            Ok(df) => df.collect().await.map_err(|e| e.to_string()),
+            Err(e) => {
+                let msg = e.to_string();
+                // Return empty results for missing table (common during startup or empty encounters)
+                if msg.contains("not found") || msg.contains("does not exist") {
+                    Ok(vec![])
+                } else {
+                    Err(msg)
+                }
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

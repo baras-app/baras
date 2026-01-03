@@ -202,7 +202,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         }
     });
 
-    // Calculate virtual scroll window
+    // Calculate virtual scroll window (for rendering)
     let total = *total_count.read() as usize;
     let scroll = *scroll_top.read();
     let height = *container_height.read();
@@ -212,57 +212,71 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let visible_count = ((height / ROW_HEIGHT) as usize) + OVERSCAN * 2;
     let end_idx = (start_idx + visible_count).min(total);
 
-    // Get rows for current viewport
-    let current_rows = rows.read();
-    let offset = *loaded_offset.read() as usize;
-
-    // Check if we need to load more data
-    let need_load = start_idx < offset || end_idx > offset + current_rows.len();
-
-    if need_load && !current_rows.is_empty() {
+    // Load more data when scrolling beyond current buffer
+    // Must read signals INSIDE the effect for Dioxus to track them as dependencies
+    use_effect({
         let idx = props.encounter_idx;
-        let tr = time_range_signal.read().clone();
-        let source = source_filter.read().clone();
-        let target = target_filter.read().clone();
-        let search = search_debounce.read().clone();
-        let new_offset = start_idx.saturating_sub(OVERSCAN) as u64;
+        move || {
+            // Read scroll signals inside effect so Dioxus tracks them
+            let total = *total_count.read() as usize;
+            let scroll = *scroll_top.read();
+            let height = *container_height.read();
 
-        spawn(async move {
-            let search_opt = if search.is_empty() {
-                None
-            } else {
-                Some(search)
-            };
-            let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
-                None
-            } else {
-                Some(&tr)
-            };
+            let start_idx = ((scroll / ROW_HEIGHT) as usize).saturating_sub(OVERSCAN);
+            let visible_count = ((height / ROW_HEIGHT) as usize) + OVERSCAN * 2;
+            let end_idx = (start_idx + visible_count).min(total);
 
-            if let Some(data) = api::query_combat_log(
-                Some(idx),
-                new_offset,
-                PAGE_SIZE,
-                source.as_deref(),
-                target.as_deref(),
-                search_opt.as_deref(),
-                tr_opt,
-            )
-            .await
-            {
-                loaded_offset.set(new_offset);
-                rows.set(data);
+            let offset = *loaded_offset.read() as usize;
+            let rows_len = rows.read().len();
+            let need_load = start_idx < offset || end_idx > offset + rows_len;
+
+            if need_load && rows_len > 0 {
+                let tr = time_range_signal.read().clone();
+                let source = source_filter.read().clone();
+                let target = target_filter.read().clone();
+                let search = search_debounce.read().clone();
+                let new_offset = start_idx.saturating_sub(OVERSCAN) as u64;
+
+                spawn(async move {
+                    let search_opt = if search.is_empty() {
+                        None
+                    } else {
+                        Some(search)
+                    };
+                    let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+                        None
+                    } else {
+                        Some(&tr)
+                    };
+
+                    if let Some(data) = api::query_combat_log(
+                        Some(idx),
+                        new_offset,
+                        PAGE_SIZE,
+                        source.as_deref(),
+                        target.as_deref(),
+                        search_opt.as_deref(),
+                        tr_opt,
+                    )
+                    .await
+                    {
+                        loaded_offset.set(new_offset);
+                        rows.set(data);
+                    }
+                });
             }
-        });
-    }
+        }
+    });
 
     // Slice visible rows from loaded data (with bounds safety)
-    let visible_rows: Vec<&CombatLogRow> = if !current_rows.is_empty() {
+    let current_rows = rows.read();
+    let offset = *loaded_offset.read() as usize;
+    let visible_rows: Vec<CombatLogRow> = if !current_rows.is_empty() {
         let rel_start = start_idx.saturating_sub(offset).min(current_rows.len());
         let rel_end = end_idx.saturating_sub(offset).min(current_rows.len());
         // Ensure start <= end
         if rel_start < rel_end {
-            current_rows[rel_start..rel_end].iter().collect()
+            current_rows[rel_start..rel_end].to_vec()
         } else {
             vec![]
         }
@@ -356,7 +370,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         for row in visible_rows.iter() {
                             div {
                                 key: "{row.row_idx}",
-                                class: "{row_class(row)}",
+                                class: "{row_class(&row)}",
                                 div { class: "log-cell log-time", "{format_time(row.time_secs)}" }
                                 div { class: "log-cell log-source", "{row.source_name}" }
                                 div { class: "log-cell log-type {effect_type_class(&row.effect_type)}", "{row.effect_type}" }
