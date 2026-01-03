@@ -294,6 +294,106 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     // Combat Log mode - show virtualized combat log table
     let mut show_combat_log = use_signal(|| false);
 
+    // Memoized overview table data (rows + totals) - prevents recomputation on every render
+    let overview_table_data = use_memo(move || {
+        let data = overview_data.read();
+        let rows: Vec<RaidOverviewRow> = data.iter()
+            .filter(|r| r.entity_type == "Player" || r.entity_type == "Companion")
+            .cloned()
+            .collect();
+
+        // Calculate totals
+        let total_damage: f64 = rows.iter().map(|r| r.damage_total).sum();
+        let total_dps: f64 = rows.iter().map(|r| r.dps).sum();
+        let total_threat: f64 = rows.iter().map(|r| r.threat_total).sum();
+        let total_tps: f64 = rows.iter().map(|r| r.tps).sum();
+        let total_damage_taken: f64 = rows.iter().map(|r| r.damage_taken_total).sum();
+        let total_dtps: f64 = rows.iter().map(|r| r.dtps).sum();
+        let total_aps: f64 = rows.iter().map(|r| r.aps).sum();
+        let total_healing: f64 = rows.iter().map(|r| r.healing_total).sum();
+        let total_hps: f64 = rows.iter().map(|r| r.hps).sum();
+        let total_ehps: f64 = rows.iter().map(|r| r.ehps).sum();
+
+        (rows, total_damage, total_dps, total_threat, total_tps,
+         total_damage_taken, total_dtps, total_aps, total_healing, total_hps, total_ehps)
+    });
+
+    // Memoized chart data for overview donut charts (derived from table data)
+    let chart_data = use_memo(move || {
+        let (rows, ..) = overview_table_data();
+
+        let damage_data: Vec<(String, f64)> = rows.iter()
+            .filter(|r| r.damage_total > 0.0)
+            .map(|r| (r.name.clone(), r.damage_total))
+            .collect();
+        let threat_data: Vec<(String, f64)> = rows.iter()
+            .filter(|r| r.threat_total > 0.0)
+            .map(|r| (r.name.clone(), r.threat_total))
+            .collect();
+        let healing_data: Vec<(String, f64)> = rows.iter()
+            .filter(|r| r.healing_effective > 0.0)
+            .map(|r| (r.name.clone(), r.healing_effective))
+            .collect();
+        let taken_data: Vec<(String, f64)> = rows.iter()
+            .filter(|r| r.damage_taken_total > 0.0)
+            .map(|r| (r.name.clone(), r.damage_taken_total))
+            .collect();
+
+        (damage_data, threat_data, healing_data, taken_data)
+    });
+
+    // Effect to initialize/update overview donut charts when data changes
+    use_effect(move || {
+        let (damage_data, threat_data, healing_data, taken_data) = chart_data();
+        let is_overview = *show_overview.read() && !*show_charts.read() && !*show_combat_log.read();
+
+        // Only initialize charts when overview is visible and we have an encounter
+        if !is_overview || selected_encounter.read().is_none() {
+            return;
+        }
+
+        spawn(async move {
+            // Small delay to ensure DOM is ready
+            gloo_timers::future::TimeoutFuture::new(100).await;
+
+            // Damage chart
+            if !damage_data.is_empty() {
+                if let Some(chart) = init_overview_chart("donut-damage") {
+                    let opt = build_donut_option("Damage", &damage_data, "hsl(0, 70%, 60%)");
+                    set_chart_option(&chart, &opt);
+                    resize_overview_chart(&chart);
+                }
+            }
+
+            // Threat chart
+            if !threat_data.is_empty() {
+                if let Some(chart) = init_overview_chart("donut-threat") {
+                    let opt = build_donut_option("Threat", &threat_data, "hsl(45, 70%, 55%)");
+                    set_chart_option(&chart, &opt);
+                    resize_overview_chart(&chart);
+                }
+            }
+
+            // Healing chart (effective healing)
+            if !healing_data.is_empty() {
+                if let Some(chart) = init_overview_chart("donut-healing") {
+                    let opt = build_donut_option("Effective Healing", &healing_data, "hsl(120, 50%, 50%)");
+                    set_chart_option(&chart, &opt);
+                    resize_overview_chart(&chart);
+                }
+            }
+
+            // Damage Taken chart
+            if !taken_data.is_empty() {
+                if let Some(chart) = init_overview_chart("donut-taken") {
+                    let opt = build_donut_option("Damage Taken", &taken_data, "hsl(30, 70%, 55%)");
+                    set_chart_option(&chart, &opt);
+                    resize_overview_chart(&chart);
+                }
+            }
+        });
+    });
+
     // Load encounter list on mount
     use_effect(move || {
         spawn(async move {
@@ -503,20 +603,33 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
         });
     };
 
-    // Prepare data for rendering
-    let history = encounters();
-    let bosses_only = show_only_bosses();
-    let collapsed = collapsed_sections();
+    // Memoized filtered history - only recomputes when encounters or filter changes
+    let filtered_history = use_memo(move || {
+        let history = encounters();
+        let bosses_only = show_only_bosses();
+        if bosses_only {
+            history.into_iter().filter(|e| e.boss_name.is_some()).collect()
+        } else {
+            history
+        }
+    });
 
-    // Filter encounters based on boss-only toggle
-    let filtered_history: Vec<_> = if bosses_only {
-        history.iter().filter(|e| e.boss_name.is_some()).cloned().collect()
-    } else {
-        history.clone()
-    };
+    // Memoized sections - groups encounters by area
+    let sections = use_memo(move || {
+        let filtered = filtered_history();
+        group_by_area(&filtered).into_iter()
+            .map(|(area, diff, encs)| (area, diff, encs.into_iter().cloned().collect::<Vec<_>>()))
+            .collect::<Vec<_>>()
+    });
 
-    // Group encounters by area
-    let sections = group_by_area(&filtered_history);
+    // Memoized entity list for detailed view - filtered by player/all toggle
+    let entity_list = use_memo(move || {
+        let players_only = *show_players_only.read();
+        entities.read().iter()
+            .filter(|e| !players_only || e.entity_type == "Player" || e.entity_type == "Companion")
+            .cloned()
+            .collect::<Vec<_>>()
+    });
 
     rsx! {
         div { class: "data-explorer",
@@ -531,30 +644,30 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                         label { class: "boss-filter-toggle",
                             input {
                                 r#type: "checkbox",
-                                checked: bosses_only,
+                                checked: *show_only_bosses.read(),
                                 onchange: move |e| show_only_bosses.set(e.checked())
                             }
                             span { "Trash" }
                         }
                         span { class: "encounter-count",
-                            "{filtered_history.len()}"
-                            if bosses_only { " / {history.len()}" }
+                            "{filtered_history().len()}"
+                            if *show_only_bosses.read() { " / {encounters().len()}" }
                         }
                     }
                 }
 
                 div { class: "sidebar-encounter-list",
-                    if history.is_empty() {
+                    if encounters().is_empty() {
                         div { class: "sidebar-empty",
                             i { class: "fa-solid fa-inbox" }
                             p { "No encounters" }
                             p { class: "hint", "Load a log file to see encounters" }
                         }
                     } else {
-                        for (idx, (area_name, difficulty, area_encounters)) in sections.iter().enumerate() {
+                        for (idx, (area_name, difficulty, area_encounters)) in sections().iter().enumerate() {
                             {
                                 let section_key = format!("{}_{}", idx, area_name);
-                                let is_collapsed = collapsed.contains(&section_key);
+                                let is_collapsed = collapsed_sections().contains(&section_key);
                                 let section_key_toggle = section_key.clone();
                                 let chevron_class = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
 
@@ -704,91 +817,12 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                         }
                     } else if *show_overview.read() {
                         // Raid Overview - Donut Charts + Table
+                        // Uses memoized overview_table_data - charts initialized via use_effect above
                         div { class: "overview-section",
+                            // Death Tracker (only shown if deaths occurred) - at top for visibility
                             {
-                                // Filter to only show Players/Companions
-                                let rows: Vec<_> = overview_data.read().iter()
-                                    .filter(|r| r.entity_type == "Player" || r.entity_type == "Companion")
-                                    .cloned()
-                                    .collect();
-
-                                // Calculate totals for footer row
-                                let total_damage: f64 = rows.iter().map(|r| r.damage_total).sum();
-                                let total_dps: f64 = rows.iter().map(|r| r.dps).sum();
-                                let total_threat: f64 = rows.iter().map(|r| r.threat_total).sum();
-                                let total_tps: f64 = rows.iter().map(|r| r.tps).sum();
-                                let total_damage_taken: f64 = rows.iter().map(|r| r.damage_taken_total).sum();
-                                let total_dtps: f64 = rows.iter().map(|r| r.dtps).sum();
-                                let total_aps: f64 = rows.iter().map(|r| r.aps).sum();
-                                let total_healing: f64 = rows.iter().map(|r| r.healing_total).sum();
-                                let total_hps: f64 = rows.iter().map(|r| r.hps).sum();
-                                let total_ehps: f64 = rows.iter().map(|r| r.ehps).sum();
-
-                                // Prepare data for donut charts
-                                let damage_data: Vec<(String, f64)> = rows.iter()
-                                    .filter(|r| r.damage_total > 0.0)
-                                    .map(|r| (r.name.clone(), r.damage_total))
-                                    .collect();
-                                let threat_data: Vec<(String, f64)> = rows.iter()
-                                    .filter(|r| r.threat_total > 0.0)
-                                    .map(|r| (r.name.clone(), r.threat_total))
-                                    .collect();
-                                let healing_data: Vec<(String, f64)> = rows.iter()
-                                    .filter(|r| r.healing_effective > 0.0)
-                                    .map(|r| (r.name.clone(), r.healing_effective))
-                                    .collect();
-                                let taken_data: Vec<(String, f64)> = rows.iter()
-                                    .filter(|r| r.damage_taken_total > 0.0)
-                                    .map(|r| (r.name.clone(), r.damage_taken_total))
-                                    .collect();
-
-                                // Render donut charts via effect when data changes
-                                spawn(async move {
-                                    // Small delay to ensure DOM is ready
-                                    gloo_timers::future::TimeoutFuture::new(100).await;
-
-                                    // Damage chart
-                                    if !damage_data.is_empty() {
-                                        if let Some(chart) = init_overview_chart("donut-damage") {
-                                            let opt = build_donut_option("Damage", &damage_data, "hsl(0, 70%, 60%)");
-                                            set_chart_option(&chart, &opt);
-                                            resize_overview_chart(&chart);
-                                        }
-                                    }
-
-                                    // Threat chart
-                                    if !threat_data.is_empty() {
-                                        if let Some(chart) = init_overview_chart("donut-threat") {
-                                            let opt = build_donut_option("Threat", &threat_data, "hsl(45, 70%, 55%)");
-                                            set_chart_option(&chart, &opt);
-                                            resize_overview_chart(&chart);
-                                        }
-                                    }
-
-                                    // Healing chart (effective healing)
-                                    if !healing_data.is_empty() {
-                                        if let Some(chart) = init_overview_chart("donut-healing") {
-                                            let opt = build_donut_option("Effective Healing", &healing_data, "hsl(120, 50%, 50%)");
-                                            set_chart_option(&chart, &opt);
-                                            resize_overview_chart(&chart);
-                                        }
-                                    }
-
-                                    // Damage Taken chart
-                                    if !taken_data.is_empty() {
-                                        if let Some(chart) = init_overview_chart("donut-taken") {
-                                            let opt = build_donut_option("Damage Taken", &taken_data, "hsl(30, 70%, 55%)");
-                                            set_chart_option(&chart, &opt);
-                                            resize_overview_chart(&chart);
-                                        }
-                                    }
-                                });
-
-                                // Read deaths for death tracker
-                                let deaths = player_deaths.read().clone();
-
+                                let deaths = player_deaths.read();
                                 rsx! {
-                                    // Death Tracker (only shown if deaths occurred) - at top for visibility
                                     if !deaths.is_empty() {
                                         div { class: "death-tracker",
                                             h4 { class: "death-tracker-title",
@@ -806,10 +840,8 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                                                 class: "death-item",
                                                                 title: "Click to view 10 seconds before death in Combat Log",
                                                                 onclick: move |_| {
-                                                                    // Set time range to 10 seconds before death
                                                                     let start = (death_time - 10.0).max(0.0);
                                                                     time_range.set(TimeRange { start, end: death_time });
-                                                                    // Switch to combat log
                                                                     show_overview.set(false);
                                                                     show_charts.set(false);
                                                                     show_combat_log.set(true);
@@ -823,8 +855,15 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                             }
                                         }
                                     }
+                                }
+                            }
 
-                                    // Table first
+                            // Overview table - uses memoized data
+                            {
+                                let (rows, total_damage, total_dps, total_threat, total_tps,
+                                     total_damage_taken, total_dtps, total_aps, total_healing,
+                                     total_hps, total_ehps) = overview_table_data();
+                                rsx! {
                                     table { class: "overview-table",
                                         thead {
                                             tr {
@@ -921,30 +960,22 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                     }
                                 }
                                 div { class: "entity-list",
-                                    {
-                                        let players_only = *show_players_only.read();
-                                        let entity_list: Vec<_> = entities.read().iter()
-                                            .filter(|e| !players_only || e.entity_type == "Player" || e.entity_type == "Companion")
-                                            .cloned()
-                                            .collect();
-                                        rsx! {
-                                            for entity in entity_list.iter() {
-                                                {
-                                                    let name = entity.source_name.clone();
-                                                    let is_selected = selected_source.read().as_ref() == Some(&name);
-                                                    let is_npc = entity.entity_type == "Npc";
-                                                    rsx! {
-                                                        div {
-                                                            class: if is_selected { "entity-row selected" } else if is_npc { "entity-row npc" } else { "entity-row" },
-                                                            onclick: {
-                                                                let name = name.clone();
-                                                                move |_| on_source_click(name.clone())
-                                                            },
-                                                            span { class: "entity-name", "{entity.source_name}" }
-                                                            span { class: "entity-value", "{format_number(entity.total_value)}" }
-                                                            span { class: "entity-abilities", "{entity.abilities_used} abilities" }
-                                                        }
-                                                    }
+                                    // Uses memoized entity_list
+                                    for entity in entity_list().iter() {
+                                        {
+                                            let name = entity.source_name.clone();
+                                            let is_selected = selected_source.read().as_ref() == Some(&name);
+                                            let is_npc = entity.entity_type == "Npc";
+                                            rsx! {
+                                                div {
+                                                    class: if is_selected { "entity-row selected" } else if is_npc { "entity-row npc" } else { "entity-row" },
+                                                    onclick: {
+                                                        let name = name.clone();
+                                                        move |_| on_source_click(name.clone())
+                                                    },
+                                                    span { class: "entity-name", "{entity.source_name}" }
+                                                    span { class: "entity-value", "{format_number(entity.total_value)}" }
+                                                    span { class: "entity-abilities", "{entity.abilities_used} abilities" }
                                                 }
                                             }
                                         }
