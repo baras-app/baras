@@ -38,10 +38,10 @@ The **Battle Analysis and Raid Assessment System** (BARAS) is the ultimate compa
 
 ## Planned Features
 
-- [ ] Complete data exploration tool
-- [ ] Raid challenges and boss phase tracking
+- [X] Complete data exploration tool
+- [X] Raid challenges and boss phase tracking
 - [ ] Community curated set of default Timers and effects
-- [ ] Timer/effect icons and audio cues
+- [X] Timer/effect audio cues
 - [ ] PvP Support
 - [ ] Class and ability icons
 
