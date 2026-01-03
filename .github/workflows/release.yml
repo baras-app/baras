@@ -54,6 +54,12 @@ jobs:
             https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20250213-2/linuxdeploy-x86_64.AppImage
           chmod +x ${{ runner.temp }}/tauri-tools/linuxdeploy/linuxdeploy-x86_64.AppImage
 
+      - name: Build parse-worker sidecar
+        run: |
+          cargo build --release --package baras-parse-worker
+          mkdir -p app/src-tauri/binaries
+          cp target/release/baras-parse-worker app/src-tauri/binaries/baras-parse-worker-x86_64-unknown-linux-gnu
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -94,6 +100,12 @@ jobs:
 
       - name: Install Dioxus and Tauri CLIs
         run: cargo binstall dioxus-cli tauri-cli --no-confirm --force
+
+      - name: Build parse-worker sidecar
+        run: |
+          cargo build --release --package baras-parse-worker
+          mkdir -p app/src-tauri/binaries
+          cp target/release/baras-parse-worker.exe app/src-tauri/binaries/baras-parse-worker-x86_64-pc-windows-msvc.exe
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0

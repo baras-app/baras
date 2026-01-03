@@ -5,6 +5,7 @@
 #
 # Run with:
 #   cargo run --release --package baras-validate -- \
+#     --definitions test-definitions/encounters \
 #     --log test-log-files/operations/nim_ec_zorn_toth.txt \
 #     --boss dsl_coverage_test --all-abilities
 #
