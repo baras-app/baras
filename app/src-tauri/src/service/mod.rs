@@ -344,7 +344,7 @@ impl CombatService {
             .ok();
 
         // Custom definitions: user's config directory
-        let custom_dir = dirs::config_dir().map(|p| p.join("baras").join("encounters"));
+        let custom_dir = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
 
         let mut index = baras_core::boss::AreaIndex::new();
 

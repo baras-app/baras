@@ -13,6 +13,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = "0.4"
 rayon = "1.11"
+dirs = "6.0"
 encoding_rs = "0.8"
 memchr = "2.7"
 memmap2 = "0.9"

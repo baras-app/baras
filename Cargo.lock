@@ -745,6 +745,7 @@ version = "0.1.0"
 dependencies = [
  "baras-core",
  "chrono",
+ "dirs",
  "encoding_rs",
  "memchr",
  "memmap2",

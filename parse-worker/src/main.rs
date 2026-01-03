@@ -11,7 +11,7 @@
 
 use baras_core::combat_log::{CombatEvent, LogParser};
 use baras_core::context::{parse_log_filename, resolve};
-use baras_core::dsl::{BossEncounterDefinition, load_bosses_from_dir};
+use baras_core::dsl::{BossEncounterDefinition, load_bosses_from_dir, merge_boss_definition};
 use baras_core::encounter::summary::EncounterSummary;
 use baras_core::signal_processor::{EventProcessor, GameSignal};
 use baras_core::state::SessionCache;
@@ -80,20 +80,47 @@ fn main() {
         std::process::exit(1);
     }
 
-    // Load boss definitions if path provided
-    let boss_definitions = definitions_dir
-        .as_ref()
-        .and_then(|dir| match load_bosses_from_dir(dir) {
+    // Load boss definitions from bundled dir (passed as arg) and user config dir
+    let mut boss_definitions: Vec<BossEncounterDefinition> = Vec::new();
+
+    // 1. Load from bundled directory
+    if let Some(ref dir) = definitions_dir {
+        match load_bosses_from_dir(dir) {
             Ok(bosses) => {
-                eprintln!("[PARSE-WORKER] Loaded {} boss definitions", bosses.len());
-                Some(bosses)
+                eprintln!("[PARSE-WORKER] Loaded {} bundled boss definitions", bosses.len());
+                boss_definitions = bosses;
             }
             Err(e) => {
-                eprintln!("[PARSE-WORKER] Failed to load definitions: {}", e);
-                None
+                eprintln!("[PARSE-WORKER] Failed to load bundled definitions: {}", e);
             }
-        })
-        .unwrap_or_default();
+        }
+    }
+
+    // 2. Load from user config directory (standalone + overlay user encounters)
+    if let Some(user_dir) = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters")) {
+        if user_dir.exists() {
+            match load_bosses_from_dir(&user_dir) {
+                Ok(user_bosses) => {
+                    if !user_bosses.is_empty() {
+                        eprintln!("[PARSE-WORKER] Loaded {} user boss definitions", user_bosses.len());
+                        // Merge: field-level merge for existing bosses, append new ones
+                        for user_boss in user_bosses {
+                            if let Some(existing) = boss_definitions.iter_mut().find(|b| b.id == user_boss.id) {
+                                // Field-level merge: timers, phases, entities, etc. by ID
+                                merge_boss_definition(existing, user_boss);
+                            } else {
+                                // New standalone boss - just add it
+                                boss_definitions.push(user_boss);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[PARSE-WORKER] Failed to load user definitions: {}", e);
+                }
+            }
+        }
+    }
 
     let timer = std::time::Instant::now();
 

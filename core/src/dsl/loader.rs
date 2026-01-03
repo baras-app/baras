@@ -274,17 +274,26 @@ pub fn find_custom_file(bundled_path: &Path, user_dir: &Path) -> Option<PathBuf>
     None
 }
 
-/// Load bosses from a bundled file, merging with custom overlay if present
+/// Load bosses from a file, merging with custom overlay if the file is bundled.
+/// If the file is already in the user config directory, it's loaded directly (no overlay).
 pub fn load_bosses_with_custom(
-    bundled_path: &Path,
+    file_path: &Path,
     user_dir: Option<&Path>,
 ) -> Result<Vec<BossEncounterDefinition>, String> {
-    // Load bundled definitions
-    let mut bosses = load_bosses_from_file(bundled_path)?;
+    // Load definitions from the file
+    let mut bosses = load_bosses_from_file(file_path)?;
 
-    // Look for custom overlay file
-    if let Some(user_dir) = user_dir
-        && let Some(custom_path) = find_custom_file(bundled_path, user_dir)
+    // Only look for custom overlay if this file is NOT already in the user directory
+    // (user-created standalone encounters don't need overlays)
+    let is_user_file = user_dir.is_some_and(|ud| {
+        file_path.canonicalize().ok()
+            .zip(ud.canonicalize().ok())
+            .is_some_and(|(fp, ud)| fp.starts_with(ud))
+    });
+
+    if !is_user_file
+        && let Some(user_dir) = user_dir
+        && let Some(custom_path) = find_custom_file(file_path, user_dir)
     {
         match load_bosses_from_file(&custom_path) {
             Ok(custom_bosses) => {
@@ -329,7 +338,7 @@ fn merge_boss_lists(
 
 /// Merge a custom boss definition into a base (bundled) definition
 /// Element-level merging: matching IDs replace, new IDs append
-fn merge_boss_definition(base: &mut BossEncounterDefinition, custom: BossEncounterDefinition) {
+pub fn merge_boss_definition(base: &mut BossEncounterDefinition, custom: BossEncounterDefinition) {
     // Merge timers by ID
     merge_by_id(&mut base.timers, custom.timers, |t| &t.id);
 
