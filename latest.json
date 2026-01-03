@@ -1,15 +1,15 @@
 {
   "version": "2026.1.3",
-  "notes": "release auto update testing attempt 2",
-  "pub_date": "2026-01-03T11:28:34Z",
+  "notes": "Auto-update release",
+  "pub_date": "2026-01-03T12:00:00Z",
   "platforms": {
     "linux-x86_64": {
-      "signature": "",
-      "url": "https://github.com/baras-app/baras/releases/download/v2026.1.3/"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTY0pJZnZRK3YyNHNWbjBTK2hKT0JhTktucEg3dVJ1NVI1MTYzbXhiNVk1RU1wR1ZTMERVbVNTKzZzQkpOeTRuWnRxRlh2SzlpbFRhbUx0TU1ZczkvQzdkVG1BNmlFelFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY3NDQxNDIzCWZpbGU6QkFSQVNfMjAyNi4xLjNfYW1kNjQuQXBwSW1hZ2UKNlo3Mmc3ekdwcGxSNTdmMXJvdGloejRIR3lteW5hMnRlT3poSURPN2Q1RFlhOSt4Y3dEUW5NbEIvUDMyMUxFZTg0UVExQW05S3JoeDBPWGhuTHEyQnc9PQo=",
+      "url": "https://github.com/baras-app/baras/releases/download/v2026.1.3/BARAS_2026.1.3_amd64.AppImage"
     },
     "windows-x86_64": {
-      "signature": "",
-      "url": "https://github.com/baras-app/baras/releases/download/v2026.1.3/"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTY0pJZnZRK3YyNHBsNWIvMkZ3enMvRjh1Ym1XOERJRlZia3haekxHVVNwQWUrSWZWZ2w2UDFDeUtybkR2cldQejF6MHBCenFMSHdzUjB4NFREbkVwaTNqWXV2Q3RjR2dVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY3NDQxNjM4CWZpbGU6QkFSQVNfMjAyNi4xLjNfeDY0LXNldHVwLmV4ZQplZGsxblpicjhWek1IQ2xCWGlpZFFQWkhhQVY3eGUwK01PUWRMK25RWlYzQ1o3VlhiT2tyVnpBVG9LZFZUUncxNEMwMzZVczkxR0hNWklVZHp4bXhCUT09Cg==",
+      "url": "https://github.com/baras-app/baras/releases/download/v2026.1.3/BARAS_2026.1.3_x64-setup.exe"
     }
   }
 }
