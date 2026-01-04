@@ -735,7 +735,9 @@ pub fn EntitySelectorEditor(
 
     rsx! {
         div { class: "flex-col gap-xs items-start",
-            span { class: "text-sm text-secondary text-left", "{label}:" }
+            if !label.is_empty() {
+                span { class: "text-sm text-secondary text-left", "{label}:" }
+            }
 
             // Selector chips
             div { class: "flex flex-wrap gap-xs",

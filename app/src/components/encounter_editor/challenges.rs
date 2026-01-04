@@ -8,12 +8,13 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::types::{
     BossWithPath, ChallengeColumns, ChallengeCondition, ChallengeDefinition, ChallengeMetric,
-    ComparisonOp, EncounterItem, EntityFilter, EntitySelector,
+    ComparisonOp, EncounterItem, EntityFilter,
 };
 use crate::utils::parse_hex_color;
 
 use super::tabs::EncounterData;
 use super::timers::PhaseSelector;
+use super::triggers::EntitySelectorEditor;
 use super::InlineNameCreator;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -778,92 +779,14 @@ fn EntityFilterSelect(
                 match &matcher {
                     EntityFilter::Selector(selectors) => {
                         rsx! {
-                            SelectorChipEditor {
+                            EntitySelectorEditor {
+                                label: "",
                                 selectors: selectors.clone(),
                                 on_change: move |new_sels| on_change.call(EntityFilter::Selector(new_sels))
                             }
                         }
                     }
                     _ => rsx! {}
-                }
-            }
-        }
-    }
-}
-
-/// Unified chip editor for entity selectors (IDs or names)
-#[component]
-fn SelectorChipEditor(
-    selectors: Vec<EntitySelector>,
-    on_change: EventHandler<Vec<EntitySelector>>,
-) -> Element {
-    let mut new_input = use_signal(String::new);
-    let sels_for_keydown = selectors.clone();
-    let sels_for_click = selectors.clone();
-
-    rsx! {
-        div { class: "flex-col gap-xs",
-            // Selector chips
-            if !selectors.is_empty() {
-                div { class: "flex flex-wrap gap-xs",
-                    for (idx, sel) in selectors.iter().enumerate() {
-                        {
-                            let sels_clone = selectors.clone();
-                            let display = sel.display();
-                            rsx! {
-                                span { class: "chip",
-                                    "{display}"
-                                    button {
-                                        class: "chip-remove",
-                                        onclick: move |_| {
-                                            let mut new_sels = sels_clone.clone();
-                                            new_sels.remove(idx);
-                                            on_change.call(new_sels);
-                                        },
-                                        "×"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Add new selector (parses to ID if numeric, name otherwise)
-            div { class: "flex gap-xs",
-                input {
-                    r#type: "text",
-                    class: "input-inline",
-                    style: "width: 150px;",
-                    placeholder: "ID or Name",
-                    value: "{new_input}",
-                    oninput: move |e| new_input.set(e.value()),
-                    onkeydown: move |e| {
-                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
-                            let sel = EntitySelector::from_input(&new_input());
-                            let mut new_sels = sels_for_keydown.clone();
-                            if !new_sels.contains(&sel) {
-                                new_sels.push(sel);
-                                on_change.call(new_sels);
-                            }
-                            new_input.set(String::new());
-                        }
-                    }
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| {
-                        if !new_input().trim().is_empty() {
-                            let sel = EntitySelector::from_input(&new_input());
-                            let mut new_sels = sels_for_click.clone();
-                            if !new_sels.contains(&sel) {
-                                new_sels.push(sel);
-                                on_change.call(new_sels);
-                            }
-                            new_input.set(String::new());
-                        }
-                    },
-                    "Add"
                 }
             }
         }
