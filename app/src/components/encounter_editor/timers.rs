@@ -9,6 +9,7 @@ use crate::api;
 use crate::types::{
     AudioConfig, BossWithPath, BossTimerDefinition, EncounterItem, EntityFilter, Trigger,
 };
+use crate::utils::parse_hex_color;
 
 use super::conditions::CounterConditionEditor;
 use super::tabs::EncounterData;
@@ -1034,18 +1035,3 @@ pub fn PhaseSelector(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-fn parse_hex_color(hex: &str) -> Option<[u8; 4]> {
-    let hex = hex.trim_start_matches('#');
-    if hex.len() >= 6 {
-        let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
-        let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
-        let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
-        Some([r, g, b, 255])
-    } else {
-        None
-    }
-}
