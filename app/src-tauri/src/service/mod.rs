@@ -1209,21 +1209,21 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
     let encounter_time_secs = encounter.duration_seconds().unwrap_or(0) as u64;
 
     // Classify the encounter to get phase type and boss info
-    let (phase_type, boss_info) = classify_encounter(encounter, &cache.current_area);
+    let (encounter_type, boss_info) = classify_encounter(encounter, &cache.current_area);
 
     // Generate encounter name - if there's a boss use that, otherwise use phase type
     let encounter_name = if let Some(boss) = boss_info {
         Some(boss.boss.to_string())
     } else {
         // Use phase type for trash/non-boss encounters
-        Some(format!("{:?}", phase_type))
+        Some(format!("{:?}", encounter_type))
     };
 
     // Get difficulty from area info, fallback to phase type name for non-instanced content
     let difficulty = if !cache.current_area.difficulty_name.is_empty() {
         Some(cache.current_area.difficulty_name.clone())
     } else {
-        Some(format!("{:?}", phase_type))
+        Some(format!("{:?}", encounter_type))
     };
 
     // Calculate metrics for all players

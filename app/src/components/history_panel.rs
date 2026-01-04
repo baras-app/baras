@@ -46,7 +46,7 @@ pub struct PlayerMetrics {
 pub struct EncounterSummary {
     pub encounter_id: u64,
     pub display_name: String,
-    pub phase_type: String,
+    pub encounter_type: String,
     pub start_time: Option<String>,
     pub duration_seconds: i64,
     pub success: bool,

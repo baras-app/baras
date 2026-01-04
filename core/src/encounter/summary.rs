@@ -19,7 +19,7 @@ use crate::state::info::AreaInfo;
 pub struct EncounterSummary {
     pub encounter_id: u64,
     pub display_name: String,
-    pub phase_type: PhaseType,
+    pub encounter_type: PhaseType,
     /// ISO 8601 formatted start time (or None if unknown)
     pub start_time: Option<String>,
     pub duration_seconds: i64,
@@ -78,8 +78,8 @@ impl EncounterHistory {
     }
 
     /// Generate a human-readable name for an encounter based on its type and boss
-    pub fn generate_name(&mut self, phase_type: PhaseType, boss_info: Option<&BossInfo>) -> String {
-        match (phase_type, boss_info) {
+    pub fn generate_name(&mut self, encounter_type: PhaseType, boss_info: Option<&BossInfo>) -> String {
+        match (encounter_type, boss_info) {
             // Boss encounter: "Brontes - 7"
             (_, Some(info)) => {
                 let count = self
@@ -180,9 +180,9 @@ pub fn create_encounter_summary(
     let is_phase_start = history.check_area_change(&area.area_name);
 
     // Classify using area info
-    let (phase_type, boss_info) = classify_encounter(encounter, area);
+    let (encounter_type, boss_info) = classify_encounter(encounter, area);
 
-    let display_name = history.generate_name(phase_type, boss_info);
+    let display_name = history.generate_name(encounter_type, boss_info);
 
     // Calculate metrics and filter to players only
     let player_metrics: Vec<PlayerMetrics> = encounter
@@ -223,7 +223,7 @@ pub fn create_encounter_summary(
     Some(EncounterSummary {
         encounter_id: encounter.id,
         display_name,
-        phase_type,
+        encounter_type,
         start_time: encounter
             .enter_combat_time
             .map(|t| t.format("%Y-%m-%dT%H:%M:%S").to_string()),
