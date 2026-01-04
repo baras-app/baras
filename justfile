@@ -40,3 +40,6 @@ update-version:
 
 validate-revan:
   cargo run --bin baras-validate -- --boss revan --log test-log-files/operations/hm_tos_revan.txt
+
+validate-xr:
+  cargo run --bin baras-validate -- --boss propagator_core_xr53 --log test-log-files/operations/hm_propagator.txt
