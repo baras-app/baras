@@ -9,9 +9,23 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::types::{BossWithPath, EncounterItem, EntityDefinition};
 
+use super::InlineNameCreator;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Entities Tab
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Create a default entity definition
+fn default_entity(name: String) -> EntityDefinition {
+    EntityDefinition {
+        name,
+        ids: vec![],
+        is_boss: false,
+        triggers_encounter: None, // Uses is_boss default
+        is_kill_target: false,
+        show_on_hp_overlay: None, // Uses is_boss default
+    }
+}
 
 #[component]
 pub fn EntitiesTab(
@@ -20,7 +34,6 @@ pub fn EntitiesTab(
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let mut expanded_entity = use_signal(|| None::<String>);
-    let mut show_new_entity = use_signal(|| false);
 
     // Extract entities from BossWithPath
     let entities = boss_with_path.boss.entities.clone();
@@ -30,48 +43,42 @@ pub fn EntitiesTab(
             // Header
             div { class: "flex items-center justify-between mb-sm",
                 span { class: "text-sm text-secondary", "{entities.len()} entities" }
-                button {
-                    class: "btn btn-success btn-sm",
-                    onclick: move |_| show_new_entity.set(true),
-                    "+ New Entity"
+                {
+                    let bwp = boss_with_path.clone();
+                    let entities_for_create = entities.clone();
+                    rsx! {
+                        InlineNameCreator {
+                            button_label: "+ New Entity",
+                            placeholder: "Entity name...",
+                            on_create: move |name: String| {
+                                let entities_clone = entities_for_create.clone();
+                                let boss_id = bwp.boss.id.clone();
+                                let file_path = bwp.file_path.clone();
+                                let entity = default_entity(name);
+                                let item = EncounterItem::Entity(entity);
+                                spawn(async move {
+                                    match api::create_encounter_item(&boss_id, &file_path, &item).await {
+                                        Ok(EncounterItem::Entity(created)) => {
+                                            let created_name = created.name.clone();
+                                            let mut current = entities_clone;
+                                            current.push(created);
+                                            on_change.call(current);
+                                            expanded_entity.set(Some(created_name));
+                                            on_status.call(("Created".to_string(), false));
+                                        }
+                                        Ok(_) => on_status.call(("Unexpected response type".to_string(), true)),
+                                        Err(e) => on_status.call((e, true)),
+                                    }
+                                });
+                            }
+                        }
+                    }
                 }
             }
 
             // Help text
             div { class: "text-xs text-muted mb-sm",
                 "Add NPCs to the entity roster by game ids. Entity roster names can be used as selectors for source/target filter conditions."
-            }
-
-            // New entity form
-            if show_new_entity() {
-                {
-                    let bwp = boss_with_path.clone();
-                    let entities_for_create = entities.clone();
-                    rsx! {
-                        NewEntityForm {
-                            boss_with_path: bwp.clone(),
-                            on_create: move |new_entity: EntityDefinition| {
-                                let entities_clone = entities_for_create.clone();
-                                let boss_id = bwp.boss.id.clone();
-                                let file_path = bwp.file_path.clone();
-                                let item = EncounterItem::Entity(new_entity.clone());
-                                spawn(async move {
-                                    match api::create_encounter_item(&boss_id, &file_path, &item).await {
-                                        Ok(EncounterItem::Entity(created)) => {
-                                            let mut current = entities_clone;
-                                            current.push(created);
-                                            on_change.call(current);
-                                            on_status.call(("Created".to_string(), false));
-                                        }
-                                        _ => on_status.call(("Failed to create".to_string(), true)),
-                                    }
-                                });
-                                show_new_entity.set(false);
-                            },
-                            on_cancel: move |_| show_new_entity.set(false),
-                        }
-                    }
-                }
             }
 
             // Entity list
@@ -367,122 +374,6 @@ fn EntityEditForm(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// New Entity Form
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn NewEntityForm(
-    boss_with_path: BossWithPath,
-    on_create: EventHandler<EntityDefinition>,
-    on_cancel: EventHandler<()>,
-) -> Element {
-    let mut name = use_signal(|| String::new());
-    let mut ids = use_signal(Vec::<i64>::new);
-    let mut is_boss = use_signal(|| false);
-    let mut triggers_encounter = use_signal(|| false);
-    let mut is_kill_target = use_signal(|| false);
-    let mut show_on_hp_overlay = use_signal(|| false);
-
-    // Suppress unused variable warning - boss_with_path is used for context in parent
-    let _ = &boss_with_path;
-
-    let handle_create = move |_| {
-        // DSL type - Option<bool> for triggers_encounter and show_on_hp_overlay
-        // If they match the is_boss default, use None to let backend use default
-        let is_boss_val = is_boss();
-        let triggers_val = triggers_encounter();
-        let show_hp_val = show_on_hp_overlay();
-
-        let new_entity = EntityDefinition {
-            name: name(),
-            ids: ids(),
-            is_boss: is_boss_val,
-            // Only set explicit value if different from is_boss default
-            triggers_encounter: if triggers_val != is_boss_val { Some(triggers_val) } else { None },
-            is_kill_target: is_kill_target(),
-            show_on_hp_overlay: if show_hp_val != is_boss_val { Some(show_hp_val) } else { None },
-        };
-        on_create.call(new_entity);
-    };
-
-    rsx! {
-        div { class: "new-item-form mb-md",
-            div { class: "form-row-hz",
-                label { "Name" }
-                input {
-                    class: "input-inline",
-                    style: "width: 200px;",
-                    placeholder: "e.g., Styrak",
-                    value: "{name}",
-                    oninput: move |e| name.set(e.value())
-                }
-            }
-
-            div { class: "form-row-hz", style: "align-items: flex-start;",
-                label { style: "padding-top: 6px;", "NPC IDs" }
-                NpcIdChipEditor {
-                    ids: ids(),
-                    on_change: move |new_ids| ids.set(new_ids)
-                }
-            }
-
-            div { class: "form-section",
-                div { class: "flex gap-md flex-wrap",
-                    label { class: "flex items-center gap-xs cursor-pointer",
-                        input {
-                            r#type: "checkbox",
-                            checked: is_boss(),
-                            onchange: move |e| is_boss.set(e.checked())
-                        }
-                        "Is Boss"
-                    }
-
-                    label { class: "flex items-center gap-xs cursor-pointer",
-                        input {
-                            r#type: "checkbox",
-                            checked: triggers_encounter(),
-                            onchange: move |e| triggers_encounter.set(e.checked())
-                        }
-                        "Triggers Encounter"
-                    }
-
-                    label { class: "flex items-center gap-xs cursor-pointer",
-                        input {
-                            r#type: "checkbox",
-                            checked: is_kill_target(),
-                            onchange: move |e| is_kill_target.set(e.checked())
-                        }
-                        "Kill Target"
-                    }
-
-                    label { class: "flex items-center gap-xs cursor-pointer",
-                        input {
-                            r#type: "checkbox",
-                            checked: show_on_hp_overlay(),
-                            onchange: move |e| show_on_hp_overlay.set(e.checked())
-                        }
-                        "Show on HP Overlay"
-                    }
-                }
-            }
-
-            div { class: "flex gap-xs mt-sm",
-                button {
-                    class: if name().is_empty() { "btn btn-sm" } else { "btn btn-success btn-sm" },
-                    disabled: name().is_empty(),
-                    onclick: handle_create,
-                    "Create Entity"
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| on_cancel.call(()),
-                    "Cancel"
-                }
-            }
-        }
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NPC ID Chip Editor

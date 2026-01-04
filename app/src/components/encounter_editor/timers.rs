@@ -13,6 +13,7 @@ use crate::types::{
 use super::conditions::CounterConditionEditor;
 use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
+use super::InlineNameCreator;
 
 /// Check if a trigger type supports source filtering
 /// Only event-based triggers with source actors make sense to filter
@@ -44,6 +45,32 @@ fn trigger_supports_target(trigger: &Trigger) -> bool {
 // Timers Tab
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Create a default timer definition with sensible defaults
+fn default_timer(name: String) -> BossTimerDefinition {
+    BossTimerDefinition {
+        id: String::new(), // Backend generates from name
+        name,
+        display_text: None,
+        trigger: Trigger::CombatStart,
+        duration_secs: 30.0,
+        is_alert: false,
+        alert_text: None,
+        color: [255, 128, 0, 255], // Orange
+        phases: vec![],
+        counter_condition: None,
+        difficulties: vec!["story".to_string(), "veteran".to_string(), "master".to_string()],
+        enabled: true,
+        can_be_refreshed: false,
+        repeats: 0,
+        chains_to: None,
+        cancel_trigger: None,
+        alert_at_secs: None,
+        show_on_raid_frames: false,
+        show_at_secs: 0.0,
+        audio: AudioConfig::default(),
+    }
+}
+
 #[component]
 pub fn TimersTab(
     boss_with_path: BossWithPath,
@@ -52,7 +79,6 @@ pub fn TimersTab(
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let mut expanded_timer = use_signal(|| None::<String>);
-    let mut show_new_timer = use_signal(|| false);
 
     // Extract timers from BossWithPath
     let timers = boss_with_path.boss.timers.clone();
@@ -62,41 +88,34 @@ pub fn TimersTab(
             // Header
             div { class: "flex items-center justify-between mb-sm",
                 span { class: "text-sm text-secondary", "{timers.len()} timers" }
-                button {
-                    class: "btn btn-success btn-sm",
-                    onclick: move |_| show_new_timer.set(true),
-                    "+ New Timer"
-                }
-            }
-
-            // New timer form
-            if show_new_timer() {
                 {
                     let bwp = boss_with_path.clone();
                     let timers_for_create = timers.clone();
                     rsx! {
-                        NewTimerForm {
-                            boss_with_path: bwp.clone(),
-                            encounter_data: encounter_data.clone(),
-                            on_create: move |new_timer: BossTimerDefinition| {
+                        InlineNameCreator {
+                            button_label: "+ New Timer",
+                            placeholder: "Timer name...",
+                            on_create: move |name: String| {
                                 let timers_clone = timers_for_create.clone();
                                 let boss_id = bwp.boss.id.clone();
                                 let file_path = bwp.file_path.clone();
-                                let item = EncounterItem::Timer(new_timer.clone());
+                                let timer = default_timer(name);
+                                let item = EncounterItem::Timer(timer);
                                 spawn(async move {
                                     match api::create_encounter_item(&boss_id, &file_path, &item).await {
                                         Ok(EncounterItem::Timer(created)) => {
+                                            let created_id = created.id.clone();
                                             let mut current = timers_clone;
                                             current.push(created);
                                             on_change.call(current);
+                                            expanded_timer.set(Some(created_id));
                                             on_status.call(("Created".to_string(), false));
                                         }
-                                        _ => on_status.call(("Failed to create".to_string(), true)),
+                                        Ok(_) => on_status.call(("Unexpected response type".to_string(), true)),
+                                        Err(e) => on_status.call((e, true)),
                                     }
                                 });
-                                show_new_timer.set(false);
-                            },
-                            on_cancel: move |_| show_new_timer.set(false),
+                            }
                         }
                     }
                 }
@@ -869,189 +888,6 @@ fn TimerEditForm(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// New Timer Form
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn NewTimerForm(
-    boss_with_path: BossWithPath,
-    encounter_data: EncounterData,
-    on_create: EventHandler<BossTimerDefinition>,
-    on_cancel: EventHandler<()>,
-) -> Element {
-    let mut name = use_signal(String::new);
-    let mut duration = use_signal(|| 30.0f32);
-    let mut show_at_secs = use_signal(|| 0.0f32);
-    let mut color = use_signal(|| [255u8, 128, 0, 255]);
-    let mut trigger = use_signal(|| Trigger::CombatStart);
-    let mut difficulties = use_signal(|| vec!["story".to_string(), "veteran".to_string(), "master".to_string()]);
-
-    let color_hex = format!("#{:02x}{:02x}{:02x}", color()[0], color()[1], color()[2]);
-
-    rsx! {
-        div { class: "new-timer-form mb-md",
-            div { class: "flex items-center justify-between mb-sm",
-                h4 { class: "text-primary", "New Timer" }
-                button {
-                    class: "btn btn-ghost btn-sm",
-                    onclick: move |_| on_cancel.call(()),
-                    "×"
-                }
-            }
-
-            // Name
-            div { class: "form-row-hz",
-                label { "Name" }
-                input {
-                    class: "input-inline",
-                    r#type: "text",
-                    style: "width: 250px;",
-                    placeholder: "e.g., Rocket Salvo",
-                    value: "{name}",
-                    oninput: move |e| name.set(e.value())
-                }
-            }
-
-            // Difficulties
-            div { class: "form-row-hz",
-                label { "Difficulties" }
-                div { class: "flex gap-xs",
-                    for diff in ["story", "veteran", "master"] {
-                        {
-                            let diff_str = diff.to_string();
-                            let is_active = difficulties().contains(&diff_str);
-                            let diff_clone = diff_str.clone();
-
-                            rsx! {
-                                button {
-                                    class: if is_active { "toggle-btn active" } else { "toggle-btn" },
-                                    onclick: move |_| {
-                                        let mut d = difficulties();
-                                        if d.contains(&diff_clone) {
-                                            d.retain(|x| x != &diff_clone);
-                                        } else {
-                                            d.push(diff_clone.clone());
-                                        }
-                                        difficulties.set(d);
-                                    },
-                                    "{diff}"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Duration and Color
-            div { class: "form-row-hz",
-                label { "Duration" }
-                input {
-                    class: "input-inline",
-                    r#type: "number",
-                    step: "0.1",
-                    min: "0",
-                    style: "width: 70px;",
-                    value: "{duration}",
-                    oninput: move |e| {
-                        if let Ok(val) = e.value().parse::<f32>() {
-                            duration.set(val);
-                        }
-                    }
-                }
-                span { class: "text-muted", "sec" }
-
-                span { class: "ml-md" }
-                label { class: "text-sm text-secondary", "Color" }
-                input {
-                    class: "color-picker",
-                    r#type: "color",
-                    value: "{color_hex}",
-                    oninput: move |e| {
-                        if let Some(c) = parse_hex_color(&e.value()) {
-                            color.set(c);
-                        }
-                    }
-                }
-            }
-
-            // Show At
-            div { class: "form-row-hz",
-                label { "Show at" }
-                input {
-                    r#type: "number",
-                    class: "input-inline",
-                    style: "width: 60px;",
-                    min: "0",
-                    max: "{duration() as u32}",
-                    value: "{show_at_secs() as u32}",
-                    oninput: move |e| {
-                        if let Ok(val) = e.value().parse::<f32>() {
-                            // Clamp to duration
-                            show_at_secs.set(val.min(duration()).max(0.0));
-                        }
-                    }
-                }
-                span { class: "text-sm text-secondary", "sec remaining (0 = always)" }
-            }
-
-            // Trigger
-            div { class: "form-row-hz",
-                label { "Trigger" }
-                ComposableTriggerEditor {
-                    trigger: trigger(),
-                    encounter_data: encounter_data.clone(),
-                    on_change: move |t| trigger.set(t)
-                }
-            }
-
-            // Actions
-            div { class: "flex gap-sm",
-                button {
-                    class: if name().is_empty() { "btn btn-sm" } else { "btn btn-success btn-sm" },
-                    disabled: name().is_empty(),
-                    onclick: move |_| {
-                        // Create timer with DSL fields only - context comes from boss_with_path
-                        on_create.call(BossTimerDefinition {
-                            id: String::new(), // Auto-generated from name by backend
-                            name: name(),
-                            display_text: None,
-                            trigger: trigger(),
-                            duration_secs: duration(),
-                            is_alert: false,
-                            alert_text: None,
-                            color: color(),
-                            phases: vec![],
-                            counter_condition: None,
-                            difficulties: difficulties(),
-                            enabled: true,
-                            can_be_refreshed: false,
-                            repeats: 0,
-                            chains_to: None,
-                            cancel_trigger: None,
-                            alert_at_secs: None,
-                            show_on_raid_frames: false,
-                            show_at_secs: show_at_secs(),
-                            audio: AudioConfig {
-                                enabled: false,
-                                file: None,
-                                offset: 0,
-                                countdown_start: 3,
-                                countdown_voice: None,
-                            },
-                        });
-                    },
-                    "Create Timer"
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| on_cancel.call(()),
-                    "Cancel"
-                }
-            }
-        }
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entity Filter Selector

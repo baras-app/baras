@@ -15,6 +15,74 @@ pub mod triggers;
 
 use dioxus::prelude::*;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared: Inline Name Creator
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Reusable inline name input component for creating new items.
+/// Handles show/hide state internally. Calls `on_create` with the entered name.
+#[component]
+pub fn InlineNameCreator(
+    button_label: &'static str,
+    placeholder: &'static str,
+    on_create: EventHandler<String>,
+) -> Element {
+    let mut show_input = use_signal(|| false);
+    let mut name = use_signal(String::new);
+
+    rsx! {
+        if show_input() {
+            div { class: "flex items-center gap-xs",
+                input {
+                    class: "input-inline",
+                    r#type: "text",
+                    placeholder: placeholder,
+                    style: "width: 180px;",
+                    value: "{name}",
+                    autofocus: true,
+                    oninput: move |e| name.set(e.value()),
+                    onkeydown: move |e| {
+                        if e.key() == Key::Enter && !name().is_empty() {
+                            on_create.call(name());
+                            show_input.set(false);
+                            name.set(String::new());
+                        } else if e.key() == Key::Escape {
+                            show_input.set(false);
+                            name.set(String::new());
+                        }
+                    }
+                }
+                button {
+                    class: "btn btn-success btn-sm",
+                    disabled: name().is_empty(),
+                    onclick: move |_| {
+                        if !name().is_empty() {
+                            on_create.call(name());
+                            show_input.set(false);
+                            name.set(String::new());
+                        }
+                    },
+                    "Create"
+                }
+                button {
+                    class: "btn btn-ghost btn-sm",
+                    onclick: move |_| {
+                        show_input.set(false);
+                        name.set(String::new());
+                    },
+                    "×"
+                }
+            }
+        } else {
+            button {
+                class: "btn btn-success btn-sm",
+                onclick: move |_| show_input.set(true),
+                "{button_label}"
+            }
+        }
+    }
+}
+
 use crate::api;
 use crate::types::{AreaListItem, BossWithPath};
 

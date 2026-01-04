@@ -14,6 +14,7 @@ use crate::utils::parse_hex_color;
 
 use super::tabs::EncounterData;
 use super::timers::PhaseSelector;
+use super::InlineNameCreator;
 
 /// Generate a preview of the ID that will be created (mirrors backend logic)
 fn preview_id(boss_id: &str, name: &str) -> String {
@@ -33,6 +34,21 @@ fn preview_id(boss_id: &str, name: &str) -> String {
 // Challenges Tab
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Create a default challenge definition
+fn default_challenge(name: String) -> ChallengeDefinition {
+    ChallengeDefinition {
+        id: String::new(), // Backend generates ID
+        name,
+        display_text: None,
+        description: None,
+        metric: ChallengeMetric::Damage,
+        conditions: vec![],
+        enabled: true,
+        color: None,
+        columns: ChallengeColumns::TotalPercent,
+    }
+}
+
 #[component]
 pub fn ChallengesTab(
     boss_with_path: BossWithPath,
@@ -41,7 +57,6 @@ pub fn ChallengesTab(
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let mut expanded_challenge = use_signal(|| None::<String>);
-    let mut show_new_challenge = use_signal(|| false);
 
     // Extract challenges from BossWithPath
     let challenges = boss_with_path.boss.challenges.clone();
@@ -51,40 +66,34 @@ pub fn ChallengesTab(
             // Header
             div { class: "flex items-center justify-between mb-sm",
                 span { class: "text-sm text-secondary", "{challenges.len()} challenges" }
-                button {
-                    class: "btn btn-success btn-sm",
-                    onclick: move |_| show_new_challenge.set(true),
-                    "+ New Challenge"
-                }
-            }
-
-            // New challenge form
-            if show_new_challenge() {
                 {
                     let bwp = boss_with_path.clone();
                     let challenges_for_create = challenges.clone();
                     rsx! {
-                        NewChallengeForm {
-                            boss_with_path: bwp.clone(),
-                            on_create: move |new_challenge: ChallengeDefinition| {
+                        InlineNameCreator {
+                            button_label: "+ New Challenge",
+                            placeholder: "Challenge name...",
+                            on_create: move |name: String| {
                                 let challenges_clone = challenges_for_create.clone();
                                 let boss_id = bwp.boss.id.clone();
                                 let file_path = bwp.file_path.clone();
-                                let item = EncounterItem::Challenge(new_challenge.clone());
+                                let challenge = default_challenge(name);
+                                let item = EncounterItem::Challenge(challenge);
                                 spawn(async move {
                                     match api::create_encounter_item(&boss_id, &file_path, &item).await {
                                         Ok(EncounterItem::Challenge(created)) => {
+                                            let created_id = created.id.clone();
                                             let mut current = challenges_clone;
                                             current.push(created);
                                             on_change.call(current);
+                                            expanded_challenge.set(Some(created_id));
                                             on_status.call(("Created".to_string(), false));
                                         }
-                                        _ => on_status.call(("Failed to create".to_string(), true)),
+                                        Ok(_) => on_status.call(("Unexpected response type".to_string(), true)),
+                                        Err(e) => on_status.call((e, true)),
                                     }
                                 });
-                                show_new_challenge.set(false);
-                            },
-                            on_cancel: move |_| show_new_challenge.set(false),
+                            }
                         }
                     }
                 }
@@ -843,8 +852,8 @@ fn NpcIdChipEditor(
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),
                     onkeydown: move |e| {
-                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
-                            if let Ok(id) = new_input().trim().parse::<i64>() {
+                        if e.key() == Key::Enter && !new_input().trim().is_empty()
+                            && let Ok(id) = new_input().trim().parse::<i64>() {
                                 let mut new_ids = ids_for_keydown.clone();
                                 if !new_ids.contains(&id) {
                                     new_ids.push(id);
@@ -852,7 +861,6 @@ fn NpcIdChipEditor(
                                 }
                                 new_input.set(String::new());
                             }
-                        }
                     }
                 }
                 button {
@@ -1033,98 +1041,3 @@ fn SelectorChipEditor(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// New Challenge Form
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn NewChallengeForm(
-    boss_with_path: BossWithPath,
-    on_create: EventHandler<ChallengeDefinition>,
-    on_cancel: EventHandler<()>,
-) -> Element {
-    let mut name = use_signal(|| "New Challenge".to_string());
-    let mut metric = use_signal(|| ChallengeMetric::Damage);
-
-    // Preview the ID that will be generated
-    let boss_id_for_preview = boss_with_path.boss.id.clone();
-    let generated_id = use_memo(move || preview_id(&boss_id_for_preview, &name()));
-
-    let handle_create = move |_| {
-        // DSL type - no context fields, backend generates ID
-        let new_challenge = ChallengeDefinition {
-            id: String::new(),
-            name: name(),
-            display_text: None,
-            description: None,
-            metric: metric(),
-            conditions: vec![],
-            enabled: true,
-            color: None,
-            columns: ChallengeColumns::TotalPercent,
-        };
-        on_create.call(new_challenge);
-    };
-
-    rsx! {
-        div { class: "new-item-form mb-md",
-            div { class: "form-row-hz",
-                label { "Name" }
-                input {
-                    class: "input-inline",
-                    style: "width: 300px;",
-                    value: "{name}",
-                    oninput: move |e| name.set(e.value())
-                }
-            }
-
-            div { class: "form-row-hz",
-                label { "ID" }
-                code { class: "tag-muted text-mono text-xs", "{generated_id}" }
-                span { class: "text-xs text-muted ml-xs", "(auto-generated)" }
-            }
-
-            div { class: "form-row-hz",
-                label { "Metric" }
-                select {
-                    class: "input-inline",
-                    value: "{metric():?}",
-                    onchange: move |e| {
-                        let m = match e.value().as_str() {
-                            "Damage" => ChallengeMetric::Damage,
-                            "Healing" => ChallengeMetric::Healing,
-                            "DamageTaken" => ChallengeMetric::DamageTaken,
-                            "HealingTaken" => ChallengeMetric::HealingTaken,
-                            "AbilityCount" => ChallengeMetric::AbilityCount,
-                            "EffectCount" => ChallengeMetric::EffectCount,
-                            "Deaths" => ChallengeMetric::Deaths,
-                            "Threat" => ChallengeMetric::Threat,
-                            _ => ChallengeMetric::Damage,
-                        };
-                        metric.set(m);
-                    },
-                    for m in ChallengeMetric::all() {
-                        option {
-                            value: "{m:?}",
-                            selected: metric() == *m,
-                            "{m.label()}"
-                        }
-                    }
-                }
-            }
-
-            div { class: "flex gap-xs mt-sm",
-                button {
-                    class: if name().is_empty() { "btn btn-sm" } else { "btn btn-success btn-sm" },
-                    disabled: name().is_empty(),
-                    onclick: handle_create,
-                    "Create Challenge"
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| on_cancel.call(()),
-                    "Cancel"
-                }
-            }
-        }
-    }
-}

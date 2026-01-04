@@ -10,6 +10,7 @@ use crate::types::{BossWithPath, CounterDefinition, EncounterItem, EntityFilter,
 
 use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
+use super::InlineNameCreator;
 
 /// Generate a preview of the ID that will be created (mirrors backend logic)
 fn preview_id(boss_id: &str, name: &str) -> String {
@@ -29,6 +30,24 @@ fn preview_id(boss_id: &str, name: &str) -> String {
 // Counters Tab
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Create a default counter definition
+fn default_counter(name: String) -> CounterDefinition {
+    CounterDefinition {
+        id: String::new(), // Backend will generate
+        name,
+        display_text: None,
+        increment_on: Trigger::AbilityCast {
+            abilities: vec![],
+            source: EntityFilter::default(),
+        },
+        decrement_on: None,
+        reset_on: Trigger::CombatEnd,
+        initial_value: 0,
+        decrement: false,
+        set_value: None,
+    }
+}
+
 #[component]
 pub fn CountersTab(
     boss_with_path: BossWithPath,
@@ -37,7 +56,6 @@ pub fn CountersTab(
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let mut expanded_counter = use_signal(|| None::<String>);
-    let mut show_new_counter = use_signal(|| false);
 
     // Extract counters from BossWithPath
     let counters = boss_with_path.boss.counters.clone();
@@ -47,41 +65,34 @@ pub fn CountersTab(
             // Header
             div { class: "flex items-center justify-between mb-sm",
                 span { class: "text-sm text-secondary", "{counters.len()} counters" }
-                button {
-                    class: "btn btn-success btn-sm",
-                    onclick: move |_| show_new_counter.set(true),
-                    "+ New Counter"
-                }
-            }
-
-            // New counter form
-            if show_new_counter() {
                 {
                     let bwp = boss_with_path.clone();
                     let counters_for_create = counters.clone();
                     rsx! {
-                        NewCounterForm {
-                            boss_with_path: bwp.clone(),
-                            encounter_data: encounter_data.clone(),
-                            on_create: move |new_counter: CounterDefinition| {
+                        InlineNameCreator {
+                            button_label: "+ New Counter",
+                            placeholder: "Counter name...",
+                            on_create: move |name: String| {
                                 let counters_clone = counters_for_create.clone();
                                 let boss_id = bwp.boss.id.clone();
                                 let file_path = bwp.file_path.clone();
-                                let item = EncounterItem::Counter(new_counter.clone());
+                                let counter = default_counter(name);
+                                let item = EncounterItem::Counter(counter);
                                 spawn(async move {
                                     match api::create_encounter_item(&boss_id, &file_path, &item).await {
                                         Ok(EncounterItem::Counter(created)) => {
+                                            let created_id = created.id.clone();
                                             let mut current = counters_clone;
                                             current.push(created);
                                             on_change.call(current);
+                                            expanded_counter.set(Some(created_id));
                                             on_status.call(("Created".to_string(), false));
                                         }
-                                        _ => on_status.call(("Failed to create".to_string(), true)),
+                                        Ok(_) => on_status.call(("Unexpected response type".to_string(), true)),
+                                        Err(e) => on_status.call((e, true)),
                                     }
                                 });
-                                show_new_counter.set(false);
-                            },
-                            on_cancel: move |_| show_new_counter.set(false),
+                            }
                         }
                     }
                 }
@@ -427,124 +438,3 @@ fn CounterEditForm(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// New Counter Form
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn NewCounterForm(
-    boss_with_path: BossWithPath,
-    encounter_data: EncounterData,
-    on_create: EventHandler<CounterDefinition>,
-    on_cancel: EventHandler<()>,
-) -> Element {
-    let mut name = use_signal(|| "New Counter".to_string());
-    let mut increment_on = use_signal(|| Trigger::AbilityCast {
-        abilities: vec![],
-        source: EntityFilter::default(),
-    });
-    let mut decrement_on = use_signal(|| None::<Trigger>);
-    let mut reset_on = use_signal(|| Trigger::CombatEnd);
-
-    // Preview the ID that will be generated
-    let boss_id_for_preview = boss_with_path.boss.id.clone();
-    let generated_id = use_memo(move || preview_id(&boss_id_for_preview, &name()));
-
-    let handle_create = move |_| {
-        // Create counter with DSL fields only - context comes from boss_with_path
-        let new_counter = CounterDefinition {
-            id: String::new(), // Backend will generate
-            name: name(),
-            display_text: None,
-            increment_on: increment_on(),
-            decrement_on: decrement_on(),
-            reset_on: reset_on(),
-            initial_value: 0,
-            decrement: false,
-            set_value: None,
-        };
-        on_create.call(new_counter);
-    };
-
-    rsx! {
-        div { class: "new-item-form mb-md",
-            div { class: "form-row-hz",
-                label { "Name" }
-                input {
-                    class: "input-inline",
-                    style: "width: 200px;",
-                    value: "{name}",
-                    oninput: move |e| name.set(e.value())
-                }
-            }
-
-            div { class: "form-row-hz",
-                label { "ID" }
-                code { class: "tag-muted text-mono text-xs", "{generated_id}" }
-                span { class: "text-xs text-muted ml-xs", "(auto-generated)" }
-            }
-
-            div { class: "form-row-hz", style: "align-items: flex-start;",
-                label { style: "padding-top: 6px;", "Increment On" }
-                ComposableTriggerEditor {
-                    trigger: increment_on(),
-                    encounter_data: encounter_data.clone(),
-                    on_change: move |t| increment_on.set(t),
-                }
-            }
-
-            div { class: "form-row-hz", style: "align-items: flex-start;",
-                label { style: "padding-top: 6px;", "Decrement On" }
-                div { class: "flex-col gap-xs",
-                    div { class: "flex items-center gap-xs",
-                        input {
-                            r#type: "checkbox",
-                            checked: decrement_on().is_some(),
-                            onchange: move |_| {
-                                decrement_on.set(if decrement_on().is_some() {
-                                    None
-                                } else {
-                                    Some(Trigger::AbilityCast {
-                                        abilities: vec![],
-                                        source: EntityFilter::default(),
-                                    })
-                                });
-                            }
-                        }
-                        span { class: "text-xs text-muted", "(enable separate decrement trigger)" }
-                    }
-                    if let Some(ref trigger) = decrement_on() {
-                        ComposableTriggerEditor {
-                            trigger: trigger.clone(),
-                            encounter_data: encounter_data.clone(),
-                            on_change: move |t| decrement_on.set(Some(t)),
-                        }
-                    }
-                }
-            }
-
-            div { class: "form-row-hz", style: "align-items: flex-start;",
-                label { style: "padding-top: 6px;", "Reset On" }
-                ComposableTriggerEditor {
-                    trigger: reset_on(),
-                    encounter_data: encounter_data.clone(),
-                    on_change: move |t| reset_on.set(t),
-                }
-            }
-
-            div { class: "flex gap-xs mt-sm",
-                button {
-                    class: if name().is_empty() { "btn btn-sm" } else { "btn btn-success btn-sm" },
-                    disabled: name().is_empty(),
-                    onclick: handle_create,
-                    "Create Counter"
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| on_cancel.call(()),
-                    "Cancel"
-                }
-            }
-        }
-    }
-}
