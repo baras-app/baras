@@ -1,14 +1,15 @@
 //! Counter editing tab
 //!
 //! CRUD for boss counter definitions.
+//! Uses CounterDefinition DSL type directly.
 
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{BossListItem, CounterListItem, CounterTrigger, EntityFilter};
+use crate::types::{BossWithPath, CounterDefinition, EncounterItem, EntityFilter, Trigger};
 
 use super::tabs::EncounterData;
-use super::triggers::CounterTriggerEditor;
+use super::triggers::ComposableTriggerEditor;
 
 /// Generate a preview of the ID that will be created (mirrors backend logic)
 fn preview_id(boss_id: &str, name: &str) -> String {
@@ -30,14 +31,16 @@ fn preview_id(boss_id: &str, name: &str) -> String {
 
 #[component]
 pub fn CountersTab(
-    boss: BossListItem,
-    counters: Vec<CounterListItem>,
+    boss_with_path: BossWithPath,
     encounter_data: EncounterData,
-    on_change: EventHandler<Vec<CounterListItem>>,
+    on_change: EventHandler<Vec<CounterDefinition>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let mut expanded_counter = use_signal(|| None::<String>);
     let mut show_new_counter = use_signal(|| false);
+
+    // Extract counters from BossWithPath
+    let counters = boss_with_path.boss.counters.clone();
 
     rsx! {
         div { class: "counters-tab",
@@ -54,21 +57,26 @@ pub fn CountersTab(
             // New counter form
             if show_new_counter() {
                 {
+                    let bwp = boss_with_path.clone();
                     let counters_for_create = counters.clone();
                     rsx! {
                         NewCounterForm {
-                            boss: boss.clone(),
+                            boss_with_path: bwp.clone(),
                             encounter_data: encounter_data.clone(),
-                            on_create: move |new_counter: CounterListItem| {
+                            on_create: move |new_counter: CounterDefinition| {
                                 let counters_clone = counters_for_create.clone();
+                                let boss_id = bwp.boss.id.clone();
+                                let file_path = bwp.file_path.clone();
+                                let item = EncounterItem::Counter(new_counter.clone());
                                 spawn(async move {
-                                    if let Some(created) = api::create_counter(&new_counter).await {
-                                        let mut current = counters_clone;
-                                        current.push(created);
-                                        on_change.call(current);
-                                        on_status.call(("Created".to_string(), false));
-                                    } else {
-                                        on_status.call(("Failed to create".to_string(), true));
+                                    match api::create_encounter_item(&boss_id, &file_path, &item).await {
+                                        Ok(EncounterItem::Counter(created)) => {
+                                            let mut current = counters_clone;
+                                            current.push(created);
+                                            on_change.call(current);
+                                            on_status.call(("Created".to_string(), false));
+                                        }
+                                        _ => on_status.call(("Failed to create".to_string(), true)),
                                     }
                                 });
                                 show_new_counter.set(false);
@@ -93,6 +101,7 @@ pub fn CountersTab(
                             CounterRow {
                                 key: "{counter_key}",
                                 counter: counter.clone(),
+                                boss_with_path: boss_with_path.clone(),
                                 expanded: is_expanded,
                                 encounter_data: encounter_data.clone(),
                                 on_toggle: move |_| {
@@ -117,12 +126,13 @@ pub fn CountersTab(
 
 #[component]
 fn CounterRow(
-    counter: CounterListItem,
+    counter: CounterDefinition,
+    boss_with_path: BossWithPath,
     expanded: bool,
-    all_counters: Vec<CounterListItem>,
+    all_counters: Vec<CounterDefinition>,
     encounter_data: EncounterData,
     on_toggle: EventHandler<()>,
-    on_change: EventHandler<Vec<CounterListItem>>,
+    on_change: EventHandler<Vec<CounterDefinition>>,
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
@@ -146,46 +156,52 @@ fn CounterRow(
 
             // Expanded content
             if expanded {
-                div { class: "list-item-body",
-                    CounterEditForm {
-                        counter: counter.clone(),
-                        encounter_data: encounter_data,
-                        on_save: move |updated: CounterListItem| {
-                            on_status.call(("Saving...".to_string(), false));
-                            spawn(async move {
-                                if api::update_counter(&updated).await {
-                                    on_status.call(("Saved".to_string(), false));
-                                } else {
-                                    on_status.call(("Failed to save".to_string(), true));
-                                }
-                            });
-                        },
-                        on_delete: {
-                            let all_counters = all_counters.clone();
-                            move |counter_to_delete: CounterListItem| {
-                                let all_counters = all_counters.clone();
-                                spawn(async move {
-                                    match api::delete_counter(
-                                        &counter_to_delete.id,
-                                        &counter_to_delete.boss_id,
-                                        &counter_to_delete.file_path
-                                    ).await {
-                                        Ok(_) => {
-                                            let updated: Vec<_> = all_counters.iter()
-                                                .filter(|c| c.id != counter_to_delete.id)
-                                                .cloned()
-                                                .collect();
-                                            on_change.call(updated);
-                                            on_collapse.call(());
-                                            on_status.call(("Deleted".to_string(), false));
+                {
+                    let bwp_for_save = boss_with_path.clone();
+                    let bwp_for_delete = boss_with_path.clone();
+                    rsx! {
+                        div { class: "list-item-body",
+                            CounterEditForm {
+                                counter: counter.clone(),
+                                encounter_data: encounter_data,
+                                on_save: move |updated: CounterDefinition| {
+                                    on_status.call(("Saving...".to_string(), false));
+                                    let boss_id = bwp_for_save.boss.id.clone();
+                                    let file_path = bwp_for_save.file_path.clone();
+                                    let item = EncounterItem::Counter(updated);
+                                    spawn(async move {
+                                        match api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                                            Ok(_) => on_status.call(("Saved".to_string(), false)),
+                                            Err(_) => on_status.call(("Failed to save".to_string(), true)),
                                         }
-                                        Err(err) => {
-                                            on_status.call((err, true));
-                                        }
+                                    });
+                                },
+                                on_delete: {
+                                    let all_counters = all_counters.clone();
+                                    move |counter_to_delete: CounterDefinition| {
+                                        let all_counters = all_counters.clone();
+                                        let boss_id = bwp_for_delete.boss.id.clone();
+                                        let file_path = bwp_for_delete.file_path.clone();
+                                        spawn(async move {
+                                            match api::delete_encounter_item("counter", &counter_to_delete.id, &boss_id, &file_path).await {
+                                                Ok(_) => {
+                                                    let updated: Vec<_> = all_counters.iter()
+                                                        .filter(|c| c.id != counter_to_delete.id)
+                                                        .cloned()
+                                                        .collect();
+                                                    on_change.call(updated);
+                                                    on_collapse.call(());
+                                                    on_status.call(("Deleted".to_string(), false));
+                                                }
+                                                Err(err) => {
+                                                    on_status.call((err, true));
+                                                }
+                                            }
+                                        });
                                     }
-                                });
+                                },
                             }
-                        },
+                        }
                     }
                 }
             }
@@ -199,10 +215,10 @@ fn CounterRow(
 
 #[component]
 fn CounterEditForm(
-    counter: CounterListItem,
+    counter: CounterDefinition,
     encounter_data: EncounterData,
-    on_save: EventHandler<CounterListItem>,
-    on_delete: EventHandler<CounterListItem>,
+    on_save: EventHandler<CounterDefinition>,
+    on_delete: EventHandler<CounterDefinition>,
 ) -> Element {
     // Clone values needed for closures and display
     let counter_id_display = counter.id.clone();
@@ -264,7 +280,7 @@ fn CounterEditForm(
             // ─── Increment Trigger ───────────────────────────────────────────
             div { class: "form-row-hz", style: "align-items: flex-start;",
                 label { style: "padding-top: 6px;", "Increment On" }
-                CounterTriggerEditor {
+                ComposableTriggerEditor {
                     trigger: draft().increment_on,
                     encounter_data: encounter_data.clone(),
                     on_change: move |t| {
@@ -288,7 +304,7 @@ fn CounterEditForm(
                                 d.decrement_on = if d.decrement_on.is_some() {
                                     None
                                 } else {
-                                    Some(CounterTrigger::AbilityCast {
+                                    Some(Trigger::AbilityCast {
                                         abilities: vec![],
                                         source: EntityFilter::default(),
                                     })
@@ -299,7 +315,7 @@ fn CounterEditForm(
                         span { class: "text-xs text-muted", "(enable separate decrement trigger)" }
                     }
                     if let Some(ref decrement_trigger) = draft().decrement_on {
-                        CounterTriggerEditor {
+                        ComposableTriggerEditor {
                             trigger: decrement_trigger.clone(),
                             encounter_data: encounter_data.clone(),
                             on_change: move |t| {
@@ -315,7 +331,7 @@ fn CounterEditForm(
             // ─── Reset Trigger ───────────────────────────────────────────────
             div { class: "form-row-hz", style: "align-items: flex-start;",
                 label { style: "padding-top: 6px;", "Reset On" }
-                CounterTriggerEditor {
+                ComposableTriggerEditor {
                     trigger: draft().reset_on,
                     encounter_data: encounter_data.clone(),
                     on_change: move |t| {
@@ -417,31 +433,29 @@ fn CounterEditForm(
 
 #[component]
 fn NewCounterForm(
-    boss: BossListItem,
+    boss_with_path: BossWithPath,
     encounter_data: EncounterData,
-    on_create: EventHandler<CounterListItem>,
+    on_create: EventHandler<CounterDefinition>,
     on_cancel: EventHandler<()>,
 ) -> Element {
     let mut name = use_signal(|| "New Counter".to_string());
-    let mut increment_on = use_signal(|| CounterTrigger::AbilityCast {
+    let mut increment_on = use_signal(|| Trigger::AbilityCast {
         abilities: vec![],
         source: EntityFilter::default(),
     });
-    let mut decrement_on = use_signal(|| None::<CounterTrigger>);
-    let mut reset_on = use_signal(|| CounterTrigger::CombatEnd);
+    let mut decrement_on = use_signal(|| None::<Trigger>);
+    let mut reset_on = use_signal(|| Trigger::CombatEnd);
 
     // Preview the ID that will be generated
-    let boss_id_for_preview = boss.id.clone();
+    let boss_id_for_preview = boss_with_path.boss.id.clone();
     let generated_id = use_memo(move || preview_id(&boss_id_for_preview, &name()));
 
     let handle_create = move |_| {
-        let new_counter = CounterListItem {
+        // Create counter with DSL fields only - context comes from boss_with_path
+        let new_counter = CounterDefinition {
             id: String::new(), // Backend will generate
             name: name(),
             display_text: None,
-            boss_id: boss.id.clone(),
-            boss_name: boss.name.clone(),
-            file_path: boss.file_path.clone(),
             increment_on: increment_on(),
             decrement_on: decrement_on(),
             reset_on: reset_on(),
@@ -472,7 +486,7 @@ fn NewCounterForm(
 
             div { class: "form-row-hz", style: "align-items: flex-start;",
                 label { style: "padding-top: 6px;", "Increment On" }
-                CounterTriggerEditor {
+                ComposableTriggerEditor {
                     trigger: increment_on(),
                     encounter_data: encounter_data.clone(),
                     on_change: move |t| increment_on.set(t),
@@ -490,7 +504,7 @@ fn NewCounterForm(
                                 decrement_on.set(if decrement_on().is_some() {
                                     None
                                 } else {
-                                    Some(CounterTrigger::AbilityCast {
+                                    Some(Trigger::AbilityCast {
                                         abilities: vec![],
                                         source: EntityFilter::default(),
                                     })
@@ -500,7 +514,7 @@ fn NewCounterForm(
                         span { class: "text-xs text-muted", "(enable separate decrement trigger)" }
                     }
                     if let Some(ref trigger) = decrement_on() {
-                        CounterTriggerEditor {
+                        ComposableTriggerEditor {
                             trigger: trigger.clone(),
                             encounter_data: encounter_data.clone(),
                             on_change: move |t| decrement_on.set(Some(t)),
@@ -511,7 +525,7 @@ fn NewCounterForm(
 
             div { class: "form-row-hz", style: "align-items: flex-start;",
                 label { style: "padding-top: 6px;", "Reset On" }
-                CounterTriggerEditor {
+                ComposableTriggerEditor {
                     trigger: reset_on(),
                     encounter_data: encounter_data.clone(),
                     on_change: move |t| reset_on.set(t),

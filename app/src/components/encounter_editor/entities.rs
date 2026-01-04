@@ -2,11 +2,12 @@
 //!
 //! CRUD for boss entity (NPC) roster definitions.
 //! Entities define which NPCs are bosses, adds, triggers, and kill targets.
+//! Uses EntityDefinition DSL type directly.
 
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{BossListItem, EntityListItem};
+use crate::types::{BossWithPath, EncounterItem, EntityDefinition};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entities Tab
@@ -14,13 +15,15 @@ use crate::types::{BossListItem, EntityListItem};
 
 #[component]
 pub fn EntitiesTab(
-    boss: BossListItem,
-    entities: Vec<EntityListItem>,
-    on_change: EventHandler<Vec<EntityListItem>>,
+    boss_with_path: BossWithPath,
+    on_change: EventHandler<Vec<EntityDefinition>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let mut expanded_entity = use_signal(|| None::<String>);
     let mut show_new_entity = use_signal(|| false);
+
+    // Extract entities from BossWithPath
+    let entities = boss_with_path.boss.entities.clone();
 
     rsx! {
         div { class: "entities-tab",
@@ -42,20 +45,25 @@ pub fn EntitiesTab(
             // New entity form
             if show_new_entity() {
                 {
+                    let bwp = boss_with_path.clone();
                     let entities_for_create = entities.clone();
                     rsx! {
                         NewEntityForm {
-                            boss: boss.clone(),
-                            on_create: move |new_entity: EntityListItem| {
+                            boss_with_path: bwp.clone(),
+                            on_create: move |new_entity: EntityDefinition| {
                                 let entities_clone = entities_for_create.clone();
+                                let boss_id = bwp.boss.id.clone();
+                                let file_path = bwp.file_path.clone();
+                                let item = EncounterItem::Entity(new_entity.clone());
                                 spawn(async move {
-                                    if let Some(created) = api::create_entity(&new_entity).await {
-                                        let mut current = entities_clone;
-                                        current.push(created);
-                                        on_change.call(current);
-                                        on_status.call(("Created".to_string(), false));
-                                    } else {
-                                        on_status.call(("Failed to create".to_string(), true));
+                                    match api::create_encounter_item(&boss_id, &file_path, &item).await {
+                                        Ok(EncounterItem::Entity(created)) => {
+                                            let mut current = entities_clone;
+                                            current.push(created);
+                                            on_change.call(current);
+                                            on_status.call(("Created".to_string(), false));
+                                        }
+                                        _ => on_status.call(("Failed to create".to_string(), true)),
                                     }
                                 });
                                 show_new_entity.set(false);
@@ -80,6 +88,7 @@ pub fn EntitiesTab(
                             EntityRow {
                                 key: "{entity_key}",
                                 entity: entity.clone(),
+                                boss_with_path: boss_with_path.clone(),
                                 expanded: is_expanded,
                                 on_toggle: move |_| {
                                     expanded_entity.set(if is_expanded { None } else { Some(entity_key.clone()) });
@@ -103,15 +112,20 @@ pub fn EntitiesTab(
 
 #[component]
 fn EntityRow(
-    entity: EntityListItem,
+    entity: EntityDefinition,
+    boss_with_path: BossWithPath,
     expanded: bool,
-    all_entities: Vec<EntityListItem>,
+    all_entities: Vec<EntityDefinition>,
     on_toggle: EventHandler<()>,
-    on_change: EventHandler<Vec<EntityListItem>>,
+    on_change: EventHandler<Vec<EntityDefinition>>,
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
     let id_count = entity.ids.len();
+
+    // Extract context for API calls
+    let boss_id = boss_with_path.boss.id.clone();
+    let file_path = boss_with_path.file_path.clone();
 
     rsx! {
         div { class: "list-item",
@@ -125,18 +139,23 @@ fn EntityRow(
                 if entity.is_boss {
                     span { class: "tag tag-danger", "Boss" }
                 }
-                if entity.triggers_encounter {
+                // triggers_encounter defaults to is_boss when None
+                if entity.triggers_encounter.unwrap_or(entity.is_boss) {
                     span { class: "tag tag-warning", "Trigger" }
                 }
                 if entity.is_kill_target {
                     span { class: "tag tag-success", "Kill Target" }
                 }
                 // Show HP overlay tag when behavior differs from is_boss default
-                if entity.show_on_hp_overlay && !entity.is_boss {
-                    span { class: "tag tag-info", "HP Overlay" }
-                }
-                if !entity.show_on_hp_overlay && entity.is_boss {
-                    span { class: "tag tag-muted", "HP Hidden" }
+                {
+                    let shows_hp = entity.show_on_hp_overlay.unwrap_or(entity.is_boss);
+                    if shows_hp && !entity.is_boss {
+                        rsx! { span { class: "tag tag-info", "HP Overlay" } }
+                    } else if !shows_hp && entity.is_boss {
+                        rsx! { span { class: "tag tag-muted", "HP Hidden" } }
+                    } else {
+                        rsx! {}
+                    }
                 }
             }
 
@@ -145,39 +164,49 @@ fn EntityRow(
                 {
                     let all_entities_for_save = all_entities.clone();
                     let all_entities_for_delete = all_entities.clone();
+                    let boss_id_save = boss_id.clone();
+                    let file_path_save = file_path.clone();
+                    let boss_id_delete = boss_id.clone();
+                    let file_path_delete = file_path.clone();
+
                     rsx! {
                         div { class: "list-item-body",
                             EntityEditForm {
                                 entity: entity.clone(),
-                                on_save: move |(updated, original_name): (EntityListItem, String)| {
+                                on_save: move |(updated, original_name): (EntityDefinition, String)| {
                                     let all = all_entities_for_save.clone();
+                                    let boss_id = boss_id_save.clone();
+                                    let file_path = file_path_save.clone();
+                                    let item = EncounterItem::Entity(updated.clone());
+                                    // Entity uses name as ID, so pass original_name for lookup
+                                    let orig_id = if original_name != updated.name { Some(original_name.clone()) } else { None };
                                     on_status.call(("Saving...".to_string(), false));
                                     spawn(async move {
-                                        if api::update_entity(&updated, &original_name).await {
-                                            // Update local state
-                                            let new_list: Vec<_> = all.iter()
-                                                .map(|e| if e.name == original_name { updated.clone() } else { e.clone() })
-                                                .collect();
-                                            on_change.call(new_list);
-                                            on_status.call(("Saved".to_string(), false));
-                                        } else {
-                                            on_status.call(("Failed to save".to_string(), true));
+                                        match api::update_encounter_item(&boss_id, &file_path, &item, orig_id.as_deref()).await {
+                                            Ok(_) => {
+                                                // Update local state
+                                                let new_list: Vec<_> = all.iter()
+                                                    .map(|e| if e.name == original_name { updated.clone() } else { e.clone() })
+                                                    .collect();
+                                                on_change.call(new_list);
+                                                on_status.call(("Saved".to_string(), false));
+                                            }
+                                            Err(_) => on_status.call(("Failed to save".to_string(), true)),
                                         }
                                     });
                                 },
                                 on_delete: {
                                     let all_entities = all_entities_for_delete.clone();
-                                    move |entity_to_delete: EntityListItem| {
+                                    move |entity_to_delete: EntityDefinition| {
                                         let all_entities = all_entities.clone();
+                                        let boss_id = boss_id_delete.clone();
+                                        let file_path = file_path_delete.clone();
+                                        let entity_name = entity_to_delete.name.clone();
                                         spawn(async move {
-                                            match api::delete_entity(
-                                                &entity_to_delete.name,
-                                                &entity_to_delete.boss_id,
-                                                &entity_to_delete.file_path
-                                            ).await {
+                                            match api::delete_encounter_item("entity", &entity_name, &boss_id, &file_path).await {
                                                 Ok(_) => {
                                                     let updated: Vec<_> = all_entities.iter()
-                                                        .filter(|e| e.name != entity_to_delete.name)
+                                                        .filter(|e| e.name != entity_name)
                                                         .cloned()
                                                         .collect();
                                                     on_change.call(updated);
@@ -206,9 +235,9 @@ fn EntityRow(
 
 #[component]
 fn EntityEditForm(
-    entity: EntityListItem,
-    on_save: EventHandler<(EntityListItem, String)>,
-    on_delete: EventHandler<EntityListItem>,
+    entity: EntityDefinition,
+    on_save: EventHandler<(EntityDefinition, String)>,
+    on_delete: EventHandler<EntityDefinition>,
 ) -> Element {
     let original_name = entity.name.clone();
     let mut draft = use_signal(|| entity.clone());
@@ -279,10 +308,10 @@ fn EntityEditForm(
                     label { class: "flex items-center gap-xs cursor-pointer",
                         input {
                             r#type: "checkbox",
-                            checked: draft().triggers_encounter,
+                            checked: draft().triggers_encounter.unwrap_or(draft().is_boss),
                             onchange: move |e| {
                                 let mut d = draft();
-                                d.triggers_encounter = e.checked();
+                                d.triggers_encounter = Some(e.checked());
                                 draft.set(d);
                             }
                         }
@@ -307,10 +336,10 @@ fn EntityEditForm(
                     label { class: "flex items-center gap-xs cursor-pointer",
                         input {
                             r#type: "checkbox",
-                            checked: draft().show_on_hp_overlay,
+                            checked: draft().show_on_hp_overlay.unwrap_or(draft().is_boss),
                             onchange: move |e| {
                                 let mut d = draft();
-                                d.show_on_hp_overlay = e.checked();
+                                d.show_on_hp_overlay = Some(e.checked());
                                 draft.set(d);
                             }
                         }
@@ -344,8 +373,8 @@ fn EntityEditForm(
 
 #[component]
 fn NewEntityForm(
-    boss: BossListItem,
-    on_create: EventHandler<EntityListItem>,
+    boss_with_path: BossWithPath,
+    on_create: EventHandler<EntityDefinition>,
     on_cancel: EventHandler<()>,
 ) -> Element {
     let mut name = use_signal(|| String::new());
@@ -355,17 +384,24 @@ fn NewEntityForm(
     let mut is_kill_target = use_signal(|| false);
     let mut show_on_hp_overlay = use_signal(|| false);
 
+    // Suppress unused variable warning - boss_with_path is used for context in parent
+    let _ = &boss_with_path;
+
     let handle_create = move |_| {
-        let new_entity = EntityListItem {
+        // DSL type - Option<bool> for triggers_encounter and show_on_hp_overlay
+        // If they match the is_boss default, use None to let backend use default
+        let is_boss_val = is_boss();
+        let triggers_val = triggers_encounter();
+        let show_hp_val = show_on_hp_overlay();
+
+        let new_entity = EntityDefinition {
             name: name(),
-            boss_id: boss.id.clone(),
-            boss_name: boss.name.clone(),
-            file_path: boss.file_path.clone(),
             ids: ids(),
-            is_boss: is_boss(),
-            triggers_encounter: triggers_encounter(),
+            is_boss: is_boss_val,
+            // Only set explicit value if different from is_boss default
+            triggers_encounter: if triggers_val != is_boss_val { Some(triggers_val) } else { None },
             is_kill_target: is_kill_target(),
-            show_on_hp_overlay: show_on_hp_overlay(),
+            show_on_hp_overlay: if show_hp_val != is_boss_val { Some(show_hp_val) } else { None },
         };
         on_create.call(new_entity);
     };

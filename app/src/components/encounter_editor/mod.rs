@@ -1,6 +1,7 @@
 //! Encounter Editor
 //!
 //! Full CRUD for the BossEncounter DSL: timers, phases, counters, challenges, entities.
+//! Uses unified BossWithPath type and EncounterItem enum for streamlined data handling.
 
 mod conditions;
 mod counters;
@@ -15,10 +16,7 @@ pub mod triggers;
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{
-    AreaListItem, BossListItem, ChallengeListItem, CounterListItem, EntityListItem,
-    PhaseListItem, TimerListItem,
-};
+use crate::types::{AreaListItem, BossWithPath};
 
 pub use tabs::BossTabs;
 
@@ -33,13 +31,8 @@ pub fn EncounterEditorPanel() -> Element {
     let mut selected_area = use_signal(|| None::<AreaListItem>);
     let mut loading_areas = use_signal(|| true);
 
-    // Boss state (loaded on area selection)
-    let mut bosses = use_signal(Vec::<BossListItem>::new);
-    let mut timers = use_signal(Vec::<TimerListItem>::new);
-    let mut phases = use_signal(Vec::<PhaseListItem>::new);
-    let mut counters = use_signal(Vec::<CounterListItem>::new);
-    let mut challenges = use_signal(Vec::<ChallengeListItem>::new);
-    let mut entities = use_signal(Vec::<EntityListItem>::new);
+    // Boss state - unified: one signal holds all bosses with their items
+    let mut bosses = use_signal(Vec::<BossWithPath>::new);
     let mut loading_bosses = use_signal(|| false);
 
     // UI state
@@ -69,37 +62,22 @@ pub fn EncounterEditorPanel() -> Element {
         });
     });
 
-    // Load bosses when area is selected
+    // Load bosses when area is selected - single unified call
     let mut load_area_data = move |area: AreaListItem| {
         let file_path = area.file_path.clone();
         selected_area.set(Some(area));
         loading_bosses.set(true);
         bosses.set(Vec::new());
-        timers.set(Vec::new());
-        phases.set(Vec::new());
-        counters.set(Vec::new());
-        challenges.set(Vec::new());
-        entities.set(Vec::new());
         expanded_boss.set(None);
 
         spawn(async move {
-            if let Some(b) = api::get_bosses_for_area(&file_path).await {
-                bosses.set(b);
-            }
-            if let Some(t) = api::get_timers_for_area(&file_path).await {
-                timers.set(t);
-            }
-            if let Some(p) = api::get_phases_for_area(&file_path).await {
-                phases.set(p);
-            }
-            if let Some(c) = api::get_counters_for_area(&file_path).await {
-                counters.set(c);
-            }
-            if let Some(ch) = api::get_challenges_for_area(&file_path).await {
-                challenges.set(ch);
-            }
-            if let Some(e) = api::get_entities_for_area(&file_path).await {
-                entities.set(e);
+            match api::fetch_area_bosses(&file_path).await {
+                Some(b) => {
+                    bosses.set(b);
+                }
+                None => {
+                    web_sys::console::error_1(&"[UI] fetch_area_bosses returned None - deserialization failed!".into());
+                }
             }
             loading_bosses.set(false);
         });
@@ -213,28 +191,29 @@ pub fn EncounterEditorPanel() -> Element {
                     // New boss form
                     if show_new_boss() {
                         if let Some(area) = selected_area() {
-                            new_forms::NewBossForm {
-                                area: area,
-                                on_create: move |new_boss| {
-                                    spawn(async move {
-                                        if let Some(created) = api::create_boss(&new_boss).await {
-                                            let mut current = bosses();
-                                            current.push(BossListItem {
-                                                id: created.id,
-                                                name: created.name,
-                                                area_name: created.area_name,
-                                                category: String::new(),
-                                                file_path: created.file_path,
+                            {
+                                let file_path = area.file_path.clone();
+                                rsx! {
+                                    new_forms::NewBossForm {
+                                        area: area,
+                                        on_create: move |new_boss| {
+                                            let fp = file_path.clone();
+                                            spawn(async move {
+                                                if api::create_boss(&new_boss).await.is_some() {
+                                                    // Reload area to get fresh BossWithPath
+                                                    if let Some(b) = api::fetch_area_bosses(&fp).await {
+                                                        bosses.set(b);
+                                                    }
+                                                    status_message.set(Some(("Boss created".to_string(), false)));
+                                                } else {
+                                                    status_message.set(Some(("Failed to create".to_string(), true)));
+                                                }
                                             });
-                                            bosses.set(current);
-                                            status_message.set(Some(("Boss created".to_string(), false)));
-                                        } else {
-                                            status_message.set(Some(("Failed to create".to_string(), true)));
-                                        }
-                                    });
-                                    show_new_boss.set(false);
-                                },
-                                on_cancel: move |_| show_new_boss.set(false),
+                                            show_new_boss.set(false);
+                                        },
+                                        on_cancel: move |_| show_new_boss.set(false),
+                                    }
+                                }
                             }
                         }
                     }
@@ -243,18 +222,16 @@ pub fn EncounterEditorPanel() -> Element {
                     if bosses().is_empty() {
                         div { class: "empty-state", "No bosses in this area" }
                     } else {
-                        for boss in bosses() {
+                        for bwp in bosses() {
                             {
-                                let is_expanded = expanded_boss() == Some(boss.id.clone());
-                                let boss_id = boss.id.clone();
-                                let boss_timers: Vec<_> = timers().into_iter()
-                                    .filter(|t| t.boss_id == boss.id)
-                                    .collect();
-                                let timer_count = boss_timers.len();
-                                let phase_count = phases().iter().filter(|p| p.boss_id == boss.id).count();
-                                let counter_count = counters().iter().filter(|c| c.boss_id == boss.id).count();
-                                let challenge_count = challenges().iter().filter(|c| c.boss_id == boss.id).count();
-                                let entity_count = entities().iter().filter(|e| e.boss_id == boss.id).count();
+                                let is_expanded = expanded_boss() == Some(bwp.boss.id.clone());
+                                let boss_id = bwp.boss.id.clone();
+                                // Extract counts directly from BossWithPath
+                                let timer_count = bwp.boss.timers.len();
+                                let phase_count = bwp.boss.phases.len();
+                                let counter_count = bwp.boss.counters.len();
+                                let challenge_count = bwp.boss.challenges.len();
+                                let entity_count = bwp.boss.entities.len();
 
                                 rsx! {
                                     div { class: "list-item",
@@ -264,8 +241,8 @@ pub fn EncounterEditorPanel() -> Element {
                                                 expanded_boss.set(if is_expanded { None } else { Some(boss_id.clone()) });
                                             },
                                             span { class: "list-item-expand", if is_expanded { "▼" } else { "▶" } }
-                                            span { class: "font-medium text-primary", "{boss.name}" }
-                                            span { class: "text-xs text-mono text-muted", "{boss.id}" }
+                                            span { class: "font-medium text-primary", "{bwp.boss.name}" }
+                                            span { class: "text-xs text-mono text-muted", "{bwp.boss.id}" }
                                             if timer_count > 0 {
                                                 span { class: "tag", "{timer_count} timers" }
                                             }
@@ -286,13 +263,13 @@ pub fn EncounterEditorPanel() -> Element {
                                         if is_expanded {
                                             div { class: "list-item-body",
                                                 BossTabs {
-                                                    boss: boss.clone(),
-                                                    timers: boss_timers,
-                                                    on_timer_change: move |new_timers: Vec<TimerListItem>| {
-                                                        let mut all = timers();
-                                                        all.retain(|t| t.boss_id != boss.id);
-                                                        all.extend(new_timers);
-                                                        timers.set(all);
+                                                    boss_with_path: bwp.clone(),
+                                                    on_boss_change: move |updated: BossWithPath| {
+                                                        let mut all = bosses();
+                                                        if let Some(idx) = all.iter().position(|b| b.boss.id == updated.boss.id) {
+                                                            all[idx] = updated;
+                                                            bosses.set(all);
+                                                        }
                                                     },
                                                     on_status: move |msg| status_message.set(Some(msg)),
                                                 }

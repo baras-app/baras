@@ -1,11 +1,14 @@
 //! Timer editing tab
 //!
 //! Full CRUD for boss timers with all fields exposed.
+//! Uses BossTimerDefinition DSL type directly.
 
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{AudioConfig, BossListItem, EntityFilter, TimerListItem, TimerTrigger};
+use crate::types::{
+    AudioConfig, BossWithPath, BossTimerDefinition, EncounterItem, EntityFilter, Trigger,
+};
 
 use super::conditions::CounterConditionEditor;
 use super::tabs::EncounterData;
@@ -13,26 +16,26 @@ use super::triggers::ComposableTriggerEditor;
 
 /// Check if a trigger type supports source filtering
 /// Only event-based triggers with source actors make sense to filter
-fn trigger_supports_source(trigger: &TimerTrigger) -> bool {
+fn trigger_supports_source(trigger: &Trigger) -> bool {
     match trigger {
-        TimerTrigger::AbilityCast { .. }
-        | TimerTrigger::EffectApplied { .. }
-        | TimerTrigger::EffectRemoved { .. } => true,
+        Trigger::AbilityCast { .. }
+        | Trigger::EffectApplied { .. }
+        | Trigger::EffectRemoved { .. } => true,
         // For composite triggers, check if any sub-condition supports source
-        TimerTrigger::AnyOf { conditions } => conditions.iter().any(trigger_supports_source),
+        Trigger::AnyOf { conditions } => conditions.iter().any(trigger_supports_source),
         _ => false,
     }
 }
 
 /// Check if a trigger type supports target filtering
 /// Only event-based triggers with target actors make sense to filter
-fn trigger_supports_target(trigger: &TimerTrigger) -> bool {
+fn trigger_supports_target(trigger: &Trigger) -> bool {
     match trigger {
-        TimerTrigger::EffectApplied { .. }
-        | TimerTrigger::EffectRemoved { .. }
-        | TimerTrigger::TargetSet { .. } => true,
+        Trigger::EffectApplied { .. }
+        | Trigger::EffectRemoved { .. }
+        | Trigger::TargetSet { .. } => true,
         // For composite triggers, check if any sub-condition supports target
-        TimerTrigger::AnyOf { conditions } => conditions.iter().any(trigger_supports_target),
+        Trigger::AnyOf { conditions } => conditions.iter().any(trigger_supports_target),
         _ => false,
     }
 }
@@ -43,14 +46,16 @@ fn trigger_supports_target(trigger: &TimerTrigger) -> bool {
 
 #[component]
 pub fn TimersTab(
-    boss: BossListItem,
-    timers: Vec<TimerListItem>,
+    boss_with_path: BossWithPath,
     encounter_data: EncounterData,
-    on_change: EventHandler<Vec<TimerListItem>>,
+    on_change: EventHandler<Vec<BossTimerDefinition>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let mut expanded_timer = use_signal(|| None::<String>);
     let mut show_new_timer = use_signal(|| false);
+
+    // Extract timers from BossWithPath
+    let timers = boss_with_path.boss.timers.clone();
 
     rsx! {
         div { class: "timers-tab",
@@ -67,21 +72,26 @@ pub fn TimersTab(
             // New timer form
             if show_new_timer() {
                 {
+                    let bwp = boss_with_path.clone();
                     let timers_for_create = timers.clone();
                     rsx! {
                         NewTimerForm {
-                            boss: boss.clone(),
+                            boss_with_path: bwp.clone(),
                             encounter_data: encounter_data.clone(),
-                            on_create: move |new_timer: TimerListItem| {
+                            on_create: move |new_timer: BossTimerDefinition| {
                                 let timers_clone = timers_for_create.clone();
+                                let boss_id = bwp.boss.id.clone();
+                                let file_path = bwp.file_path.clone();
+                                let item = EncounterItem::Timer(new_timer.clone());
                                 spawn(async move {
-                                    if let Some(created) = api::create_encounter_timer(&new_timer).await {
-                                        let mut current = timers_clone;
-                                        current.push(created);
-                                        on_change.call(current);
-                                        on_status.call(("Created".to_string(), false));
-                                    } else {
-                                        on_status.call(("Failed to create".to_string(), true));
+                                    match api::create_encounter_item(&boss_id, &file_path, &item).await {
+                                        Ok(EncounterItem::Timer(created)) => {
+                                            let mut current = timers_clone;
+                                            current.push(created);
+                                            on_change.call(current);
+                                            on_status.call(("Created".to_string(), false));
+                                        }
+                                        _ => on_status.call(("Failed to create".to_string(), true)),
                                     }
                                 });
                                 show_new_timer.set(false);
@@ -98,7 +108,7 @@ pub fn TimersTab(
             } else {
                 for timer in timers.clone() {
                     {
-                        let timer_key = timer.timer_id.clone();
+                        let timer_key = timer.id.clone();
                         let is_expanded = expanded_timer() == Some(timer_key.clone());
                         let timers_for_row = timers.clone();
 
@@ -107,6 +117,7 @@ pub fn TimersTab(
                                 key: "{timer_key}",
                                 timer: timer.clone(),
                                 all_timers: timers_for_row,
+                                boss_with_path: boss_with_path.clone(),
                                 encounter_data: encounter_data.clone(),
                                 expanded: is_expanded,
                                 on_toggle: move |_| {
@@ -130,12 +141,13 @@ pub fn TimersTab(
 
 #[component]
 fn TimerRow(
-    timer: TimerListItem,
-    all_timers: Vec<TimerListItem>,
+    timer: BossTimerDefinition,
+    all_timers: Vec<BossTimerDefinition>,
+    boss_with_path: BossWithPath,
     encounter_data: EncounterData,
     expanded: bool,
     on_toggle: EventHandler<()>,
-    on_change: EventHandler<Vec<TimerListItem>>,
+    on_change: EventHandler<Vec<BossTimerDefinition>>,
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
@@ -144,6 +156,8 @@ fn TimerRow(
     let timer_for_audio = timer.clone();
     let timers_for_enable = all_timers.clone();
     let timers_for_audio = all_timers.clone();
+    let bwp_for_enable = boss_with_path.clone();
+    let bwp_for_audio = boss_with_path.clone();
 
     rsx! {
         div { class: "list-item",
@@ -160,7 +174,7 @@ fn TimerRow(
                         style: "background: {color_hex};"
                     }
                     span { class: "font-medium text-primary truncate", "{timer.name}" }
-                    span { class: "text-xs text-mono text-muted truncate", "{timer.timer_id}" }
+                    span { class: "text-xs text-mono text-muted truncate", "{timer.id}" }
                     span { class: "tag", "{timer.trigger.label()}" }
                     span { class: "text-sm text-secondary", "{timer.duration_secs:.1}s" }
                 }
@@ -176,12 +190,15 @@ fn TimerRow(
                             let mut updated = timer_for_enable.clone();
                             updated.enabled = !updated.enabled;
                             let mut current = timers_for_enable.clone();
-                            if let Some(idx) = current.iter().position(|t| t.timer_id == updated.timer_id) {
+                            if let Some(idx) = current.iter().position(|t| t.id == updated.id) {
                                 current[idx] = updated.clone();
                                 on_change.call(current);
                             }
+                            let boss_id = bwp_for_enable.boss.id.clone();
+                            let file_path = bwp_for_enable.file_path.clone();
+                            let item = EncounterItem::Timer(updated);
                             spawn(async move {
-                                api::update_encounter_timer(&updated).await;
+                                let _ = api::update_encounter_item(&boss_id, &file_path, &item, None).await;
                             });
                         },
                         span {
@@ -199,12 +216,15 @@ fn TimerRow(
                             let mut updated = timer_for_audio.clone();
                             updated.audio.enabled = !updated.audio.enabled;
                             let mut current = timers_for_audio.clone();
-                            if let Some(idx) = current.iter().position(|t| t.timer_id == updated.timer_id) {
+                            if let Some(idx) = current.iter().position(|t| t.id == updated.id) {
                                 current[idx] = updated.clone();
                                 on_change.call(current);
                             }
+                            let boss_id = bwp_for_audio.boss.id.clone();
+                            let file_path = bwp_for_audio.file_path.clone();
+                            let item = EncounterItem::Timer(updated);
                             spawn(async move {
-                                api::update_encounter_timer(&updated).await;
+                                let _ = api::update_encounter_item(&boss_id, &file_path, &item, None).await;
                             });
                         },
                         span {
@@ -220,6 +240,7 @@ fn TimerRow(
                 TimerEditForm {
                     timer: timer.clone(),
                     all_timers: all_timers,
+                    boss_with_path: boss_with_path,
                     encounter_data: encounter_data,
                     on_change: on_change,
                     on_status: on_status,
@@ -236,10 +257,11 @@ fn TimerRow(
 
 #[component]
 fn TimerEditForm(
-    timer: TimerListItem,
-    all_timers: Vec<TimerListItem>,
+    timer: BossTimerDefinition,
+    all_timers: Vec<BossTimerDefinition>,
+    boss_with_path: BossWithPath,
     encounter_data: EncounterData,
-    on_change: EventHandler<Vec<TimerListItem>>,
+    on_change: EventHandler<Vec<BossTimerDefinition>>,
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
@@ -254,18 +276,21 @@ fn TimerEditForm(
     // Save handler
     let handle_save = {
         let timers = all_timers.clone();
+        let bwp = boss_with_path.clone();
         move |_| {
             let updated = draft();
             let mut current = timers.clone();
-            if let Some(idx) = current.iter().position(|t| t.timer_id == updated.timer_id) {
+            if let Some(idx) = current.iter().position(|t| t.id == updated.id) {
                 current[idx] = updated.clone();
                 on_change.call(current);
             }
+            let boss_id = bwp.boss.id.clone();
+            let file_path = bwp.file_path.clone();
+            let item = EncounterItem::Timer(updated);
             spawn(async move {
-                if api::update_encounter_timer(&updated).await {
-                    on_status.call(("Saved".to_string(), false));
-                } else {
-                    on_status.call(("Failed to save".to_string(), true));
+                match api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                    Ok(_) => on_status.call(("Saved".to_string(), false)),
+                    Err(_) => on_status.call(("Failed to save".to_string(), true)),
                 }
             });
         }
@@ -275,14 +300,17 @@ fn TimerEditForm(
     let handle_delete = {
         let timer_del = timer.clone();
         let timers = all_timers.clone();
+        let bwp = boss_with_path.clone();
         move |_| {
             let t = timer_del.clone();
             let timers_clone = timers.clone();
+            let boss_id = bwp.boss.id.clone();
+            let file_path = bwp.file_path.clone();
             spawn(async move {
-                match api::delete_encounter_timer(&t.timer_id, &t.boss_id, &t.file_path).await {
+                match api::delete_encounter_item("timer", &t.id, &boss_id, &file_path).await {
                     Ok(_) => {
                         let filtered: Vec<_> = timers_clone.into_iter()
-                            .filter(|timer| timer.timer_id != t.timer_id)
+                            .filter(|timer| timer.id != t.id)
                             .collect();
                         on_change.call(filtered);
                         on_collapse.call(());
@@ -300,11 +328,14 @@ fn TimerEditForm(
     let handle_duplicate = {
         let timer_dup = timer.clone();
         let timers = all_timers.clone();
+        let bwp = boss_with_path.clone();
         move |_| {
             let t = timer_dup.clone();
             let ts = timers.clone();
+            let boss_id = bwp.boss.id.clone();
+            let file_path = bwp.file_path.clone();
             spawn(async move {
-                if let Some(new_timer) = api::duplicate_encounter_timer(&t.timer_id, &t.boss_id, &t.file_path).await {
+                if let Some(new_timer) = api::duplicate_encounter_timer(&t.id, &boss_id, &file_path).await {
                     let mut current = ts;
                     current.push(new_timer);
                     on_change.call(current);
@@ -318,8 +349,8 @@ fn TimerEditForm(
 
     // Get other timer IDs for chains_to dropdown
     let other_timer_ids: Vec<String> = all_timers.iter()
-        .filter(|t| t.timer_id != timer.timer_id)
-        .map(|t| t.timer_id.clone())
+        .filter(|t| t.id != timer.id)
+        .map(|t| t.id.clone())
         .collect();
 
     rsx! {
@@ -330,7 +361,7 @@ fn TimerEditForm(
                 div { class: "timer-edit-left",
                     div { class: "form-row-hz",
                         label { "Timer ID" }
-                        code { class: "tag-muted text-mono text-xs", "{timer_display.timer_id}" }
+                        code { class: "tag-muted text-mono text-xs", "{timer_display.id}" }
                     }
 
                     div { class: "form-row-hz",
@@ -440,40 +471,8 @@ fn TimerEditForm(
                         }
                     }
 
-                    // Source/Target filters - shown only for applicable trigger types
-                    if trigger_supports_source(&draft().trigger) || trigger_supports_target(&draft().trigger) {
-                        div { class: "form-row-hz",
-                            label { "" } // Empty label for alignment
-                            div { class: "flex gap-md",
-                                if trigger_supports_source(&draft().trigger) {
-                                    div { class: "flex items-center gap-xs",
-                                        span { class: "text-sm text-secondary", "Source" }
-                                        EntityFilterSelector {
-                                            value: draft().source.clone(),
-                                            on_change: move |f| {
-                                                let mut d = draft();
-                                                d.source = f;
-                                                draft.set(d);
-                                            }
-                                        }
-                                    }
-                                }
-                                if trigger_supports_target(&draft().trigger) {
-                                    div { class: "flex items-center gap-xs",
-                                        span { class: "text-sm text-secondary", "Target" }
-                                        EntityFilterSelector {
-                                            value: draft().target.clone(),
-                                            on_change: move |f| {
-                                                let mut d = draft();
-                                                d.target = f;
-                                                draft.set(d);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // Note: Source/Target filtering is now handled within the trigger conditions
+                    // via the ComposableTriggerEditor component
 
                     div { class: "form-row-hz",
                         label { "Options" }
@@ -560,7 +559,7 @@ fn TimerEditForm(
                                     class: "btn btn-sm",
                                     onclick: move |_| {
                                         let mut d = draft();
-                                        d.cancel_trigger = Some(TimerTrigger::CombatStart);
+                                        d.cancel_trigger = Some(Trigger::CombatStart);
                                         draft.set(d);
                                     },
                                     "+ Add Cancel Trigger"
@@ -864,8 +863,8 @@ fn TimerEditForm(
                 }
             }
 
-            // File info
-            div { class: "mt-sm text-xs text-muted", "File: {timer_display.file_path}" }
+            // File info (from context)
+            div { class: "mt-sm text-xs text-muted", "File: {boss_with_path.file_path}" }
         }
     }
 }
@@ -876,16 +875,16 @@ fn TimerEditForm(
 
 #[component]
 fn NewTimerForm(
-    boss: BossListItem,
+    boss_with_path: BossWithPath,
     encounter_data: EncounterData,
-    on_create: EventHandler<TimerListItem>,
+    on_create: EventHandler<BossTimerDefinition>,
     on_cancel: EventHandler<()>,
 ) -> Element {
     let mut name = use_signal(String::new);
     let mut duration = use_signal(|| 30.0f32);
     let mut show_at_secs = use_signal(|| 0.0f32);
     let mut color = use_signal(|| [255u8, 128, 0, 255]);
-    let mut trigger = use_signal(|| TimerTrigger::CombatStart);
+    let mut trigger = use_signal(|| Trigger::CombatStart);
     let mut difficulties = use_signal(|| vec!["story".to_string(), "veteran".to_string(), "master".to_string()]);
 
     let color_hex = format!("#{:02x}{:02x}{:02x}", color()[0], color()[1], color()[2]);
@@ -1012,39 +1011,33 @@ fn NewTimerForm(
                     class: if name().is_empty() { "btn btn-sm" } else { "btn btn-success btn-sm" },
                     disabled: name().is_empty(),
                     onclick: move |_| {
-                        on_create.call(TimerListItem {
-                            timer_id: String::new(),
-                            boss_id: boss.id.clone(),
-                            boss_name: boss.name.clone(),
-                            area_name: boss.area_name.clone(),
-                            category: boss.category.clone(),
-                            file_path: boss.file_path.clone(),
+                        // Create timer with DSL fields only - context comes from boss_with_path
+                        on_create.call(BossTimerDefinition {
+                            id: String::new(), // Auto-generated from name by backend
                             name: name(),
                             display_text: None,
-                            enabled: true,
+                            trigger: trigger(),
                             duration_secs: duration(),
+                            is_alert: false,
+                            alert_text: None,
                             color: color(),
                             phases: vec![],
-                            difficulties: difficulties(),
-                            trigger: trigger(),
-                            source: EntityFilter::Any,
-                            target: EntityFilter::Any,
                             counter_condition: None,
-                            cancel_trigger: None,
+                            difficulties: difficulties(),
+                            enabled: true,
                             can_be_refreshed: false,
                             repeats: 0,
                             chains_to: None,
+                            cancel_trigger: None,
                             alert_at_secs: None,
-                            is_alert: false,
-                            alert_text: None,
                             show_on_raid_frames: false,
                             show_at_secs: show_at_secs(),
                             audio: AudioConfig {
                                 enabled: false,
                                 file: None,
-                                offset: 0, // 0 = on expiration
-                                countdown_start: 3, // Default to 3 seconds
-                                countdown_voice: None, // Default to Amy
+                                offset: 0,
+                                countdown_start: 3,
+                                countdown_voice: None,
                             },
                         });
                     },

@@ -1,13 +1,14 @@
 //! Challenge editing tab
 //!
 //! CRUD for boss challenge definitions.
+//! Uses ChallengeDefinition DSL type directly.
 
 use dioxus::prelude::*;
 
 use crate::api;
 use crate::types::{
-    BossListItem, ChallengeColumns, ChallengeCondition, ChallengeListItem, ChallengeMetric,
-    ComparisonOp, EntityFilter, EntitySelector,
+    BossWithPath, ChallengeColumns, ChallengeCondition, ChallengeDefinition, ChallengeMetric,
+    ComparisonOp, EncounterItem, EntityFilter, EntitySelector,
 };
 use crate::utils::parse_hex_color;
 
@@ -34,14 +35,16 @@ fn preview_id(boss_id: &str, name: &str) -> String {
 
 #[component]
 pub fn ChallengesTab(
-    boss: BossListItem,
-    challenges: Vec<ChallengeListItem>,
+    boss_with_path: BossWithPath,
     encounter_data: EncounterData,
-    on_change: EventHandler<Vec<ChallengeListItem>>,
+    on_change: EventHandler<Vec<ChallengeDefinition>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let mut expanded_challenge = use_signal(|| None::<String>);
     let mut show_new_challenge = use_signal(|| false);
+
+    // Extract challenges from BossWithPath
+    let challenges = boss_with_path.boss.challenges.clone();
 
     rsx! {
         div { class: "challenges-tab",
@@ -58,20 +61,25 @@ pub fn ChallengesTab(
             // New challenge form
             if show_new_challenge() {
                 {
+                    let bwp = boss_with_path.clone();
                     let challenges_for_create = challenges.clone();
                     rsx! {
                         NewChallengeForm {
-                            boss: boss.clone(),
-                            on_create: move |new_challenge: ChallengeListItem| {
+                            boss_with_path: bwp.clone(),
+                            on_create: move |new_challenge: ChallengeDefinition| {
                                 let challenges_clone = challenges_for_create.clone();
+                                let boss_id = bwp.boss.id.clone();
+                                let file_path = bwp.file_path.clone();
+                                let item = EncounterItem::Challenge(new_challenge.clone());
                                 spawn(async move {
-                                    if let Some(created) = api::create_challenge(&new_challenge).await {
-                                        let mut current = challenges_clone;
-                                        current.push(created);
-                                        on_change.call(current);
-                                        on_status.call(("Created".to_string(), false));
-                                    } else {
-                                        on_status.call(("Failed to create".to_string(), true));
+                                    match api::create_encounter_item(&boss_id, &file_path, &item).await {
+                                        Ok(EncounterItem::Challenge(created)) => {
+                                            let mut current = challenges_clone;
+                                            current.push(created);
+                                            on_change.call(current);
+                                            on_status.call(("Created".to_string(), false));
+                                        }
+                                        _ => on_status.call(("Failed to create".to_string(), true)),
                                     }
                                 });
                                 show_new_challenge.set(false);
@@ -96,6 +104,7 @@ pub fn ChallengesTab(
                             ChallengeRow {
                                 key: "{challenge_key}",
                                 challenge: challenge.clone(),
+                                boss_with_path: boss_with_path.clone(),
                                 expanded: is_expanded,
                                 encounter_data: encounter_data.clone(),
                                 on_toggle: move |_| {
@@ -120,17 +129,22 @@ pub fn ChallengesTab(
 
 #[component]
 fn ChallengeRow(
-    challenge: ChallengeListItem,
+    challenge: ChallengeDefinition,
+    boss_with_path: BossWithPath,
     expanded: bool,
-    all_challenges: Vec<ChallengeListItem>,
+    all_challenges: Vec<ChallengeDefinition>,
     encounter_data: EncounterData,
     on_toggle: EventHandler<()>,
-    on_change: EventHandler<Vec<ChallengeListItem>>,
+    on_change: EventHandler<Vec<ChallengeDefinition>>,
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
     let metric_label = challenge.metric.label();
     let condition_count = challenge.conditions.len();
+
+    // Extract context for API calls
+    let boss_id = boss_with_path.boss.id.clone();
+    let file_path = boss_with_path.file_path.clone();
 
     rsx! {
         div { class: "list-item",
@@ -148,46 +162,56 @@ fn ChallengeRow(
 
             // Expanded content
             if expanded {
-                div { class: "list-item-body",
-                    ChallengeEditForm {
-                        challenge: challenge.clone(),
-                        encounter_data: encounter_data,
-                        on_save: move |updated: ChallengeListItem| {
-                            on_status.call(("Saving...".to_string(), false));
-                            spawn(async move {
-                                if api::update_challenge(&updated).await {
-                                    on_status.call(("Saved".to_string(), false));
-                                } else {
-                                    on_status.call(("Failed to save".to_string(), true));
-                                }
-                            });
-                        },
-                        on_delete: {
-                            let all_challenges = all_challenges.clone();
-                            move |challenge_to_delete: ChallengeListItem| {
-                                let all_challenges = all_challenges.clone();
-                                spawn(async move {
-                                    match api::delete_challenge(
-                                        &challenge_to_delete.id,
-                                        &challenge_to_delete.boss_id,
-                                        &challenge_to_delete.file_path
-                                    ).await {
-                                        Ok(_) => {
-                                            let updated: Vec<_> = all_challenges.iter()
-                                                .filter(|c| c.id != challenge_to_delete.id)
-                                                .cloned()
-                                                .collect();
-                                            on_change.call(updated);
-                                            on_collapse.call(());
-                                            on_status.call(("Deleted".to_string(), false));
+                {
+                    let boss_id_save = boss_id.clone();
+                    let file_path_save = file_path.clone();
+                    let boss_id_delete = boss_id.clone();
+                    let file_path_delete = file_path.clone();
+
+                    rsx! {
+                        div { class: "list-item-body",
+                            ChallengeEditForm {
+                                challenge: challenge.clone(),
+                                encounter_data: encounter_data,
+                                on_save: move |updated: ChallengeDefinition| {
+                                    let boss_id = boss_id_save.clone();
+                                    let file_path = file_path_save.clone();
+                                    let item = EncounterItem::Challenge(updated);
+                                    on_status.call(("Saving...".to_string(), false));
+                                    spawn(async move {
+                                        match api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                                            Ok(_) => on_status.call(("Saved".to_string(), false)),
+                                            Err(_) => on_status.call(("Failed to save".to_string(), true)),
                                         }
-                                        Err(err) => {
-                                            on_status.call((err, true));
-                                        }
+                                    });
+                                },
+                                on_delete: {
+                                    let all_challenges = all_challenges.clone();
+                                    move |challenge_to_delete: ChallengeDefinition| {
+                                        let all_challenges = all_challenges.clone();
+                                        let boss_id = boss_id_delete.clone();
+                                        let file_path = file_path_delete.clone();
+                                        let challenge_id = challenge_to_delete.id.clone();
+                                        spawn(async move {
+                                            match api::delete_encounter_item("challenge", &challenge_id, &boss_id, &file_path).await {
+                                                Ok(_) => {
+                                                    let updated: Vec<_> = all_challenges.iter()
+                                                        .filter(|c| c.id != challenge_id)
+                                                        .cloned()
+                                                        .collect();
+                                                    on_change.call(updated);
+                                                    on_collapse.call(());
+                                                    on_status.call(("Deleted".to_string(), false));
+                                                }
+                                                Err(err) => {
+                                                    on_status.call((err, true));
+                                                }
+                                            }
+                                        });
                                     }
-                                });
+                                },
                             }
-                        },
+                        }
                     }
                 }
             }
@@ -201,10 +225,10 @@ fn ChallengeRow(
 
 #[component]
 fn ChallengeEditForm(
-    challenge: ChallengeListItem,
+    challenge: ChallengeDefinition,
     encounter_data: EncounterData,
-    on_save: EventHandler<ChallengeListItem>,
-    on_delete: EventHandler<ChallengeListItem>,
+    on_save: EventHandler<ChallengeDefinition>,
+    on_delete: EventHandler<ChallengeDefinition>,
 ) -> Element {
     // Clone values needed for closures and display
     let challenge_id_display = challenge.id.clone();
@@ -1014,26 +1038,24 @@ fn SelectorChipEditor(
 
 #[component]
 fn NewChallengeForm(
-    boss: BossListItem,
-    on_create: EventHandler<ChallengeListItem>,
+    boss_with_path: BossWithPath,
+    on_create: EventHandler<ChallengeDefinition>,
     on_cancel: EventHandler<()>,
 ) -> Element {
     let mut name = use_signal(|| "New Challenge".to_string());
     let mut metric = use_signal(|| ChallengeMetric::Damage);
 
     // Preview the ID that will be generated
-    let boss_id_for_preview = boss.id.clone();
+    let boss_id_for_preview = boss_with_path.boss.id.clone();
     let generated_id = use_memo(move || preview_id(&boss_id_for_preview, &name()));
 
     let handle_create = move |_| {
-        let new_challenge = ChallengeListItem {
-            id: String::new(), // Backend will generate
+        // DSL type - no context fields, backend generates ID
+        let new_challenge = ChallengeDefinition {
+            id: String::new(),
             name: name(),
             display_text: None,
             description: None,
-            boss_id: boss.id.clone(),
-            boss_name: boss.name.clone(),
-            file_path: boss.file_path.clone(),
             metric: metric(),
             conditions: vec![],
             enabled: true,

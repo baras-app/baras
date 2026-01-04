@@ -1,15 +1,16 @@
 //! Phase editing tab
 //!
 //! CRUD for boss phase definitions.
+//! Uses PhaseDefinition DSL type directly.
 
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{BossListItem, PhaseListItem, PhaseTrigger};
+use crate::types::{BossWithPath, EncounterItem, PhaseDefinition, Trigger};
 
 use super::conditions::CounterConditionEditor;
 use super::tabs::EncounterData;
-use super::triggers::PhaseTriggerEditor;
+use super::triggers::ComposableTriggerEditor;
 
 /// Generate a preview of the ID that will be created (mirrors backend logic)
 fn preview_id(boss_id: &str, name: &str) -> String {
@@ -31,14 +32,16 @@ fn preview_id(boss_id: &str, name: &str) -> String {
 
 #[component]
 pub fn PhasesTab(
-    boss: BossListItem,
-    phases: Vec<PhaseListItem>,
+    boss_with_path: BossWithPath,
     encounter_data: EncounterData,
-    on_change: EventHandler<Vec<PhaseListItem>>,
+    on_change: EventHandler<Vec<PhaseDefinition>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let mut expanded_phase = use_signal(|| None::<String>);
     let mut show_new_phase = use_signal(|| false);
+
+    // Extract phases from BossWithPath
+    let phases = boss_with_path.boss.phases.clone();
 
     // Get phase IDs for preceded_by dropdown
     let phase_ids: Vec<String> = phases.iter().map(|p| p.id.clone()).collect();
@@ -58,22 +61,27 @@ pub fn PhasesTab(
             // New phase form
             if show_new_phase() {
                 {
+                    let bwp = boss_with_path.clone();
                     let phases_for_create = phases.clone();
                     rsx! {
                         NewPhaseForm {
-                            boss: boss.clone(),
+                            boss_with_path: bwp.clone(),
                             phase_ids: phase_ids.clone(),
                             encounter_data: encounter_data.clone(),
-                            on_create: move |new_phase: PhaseListItem| {
+                            on_create: move |new_phase: PhaseDefinition| {
                                 let phases_clone = phases_for_create.clone();
+                                let boss_id = bwp.boss.id.clone();
+                                let file_path = bwp.file_path.clone();
+                                let item = EncounterItem::Phase(new_phase.clone());
                                 spawn(async move {
-                                    if let Some(created) = api::create_phase(&new_phase).await {
-                                        let mut current = phases_clone;
-                                        current.push(created);
-                                        on_change.call(current);
-                                        on_status.call(("Created".to_string(), false));
-                                    } else {
-                                        on_status.call(("Failed to create".to_string(), true));
+                                    match api::create_encounter_item(&boss_id, &file_path, &item).await {
+                                        Ok(EncounterItem::Phase(created)) => {
+                                            let mut current = phases_clone;
+                                            current.push(created);
+                                            on_change.call(current);
+                                            on_status.call(("Created".to_string(), false));
+                                        }
+                                        _ => on_status.call(("Failed to create".to_string(), true)),
                                     }
                                 });
                                 show_new_phase.set(false);
@@ -99,6 +107,7 @@ pub fn PhasesTab(
                                 key: "{phase_key}",
                                 phase: phase.clone(),
                                 all_phases: phases_for_row,
+                                boss_with_path: boss_with_path.clone(),
                                 expanded: is_expanded,
                                 encounter_data: encounter_data.clone(),
                                 on_toggle: move |_| {
@@ -122,12 +131,13 @@ pub fn PhasesTab(
 
 #[component]
 fn PhaseRow(
-    phase: PhaseListItem,
-    all_phases: Vec<PhaseListItem>,
+    phase: PhaseDefinition,
+    all_phases: Vec<PhaseDefinition>,
+    boss_with_path: BossWithPath,
     expanded: bool,
     encounter_data: EncounterData,
     on_toggle: EventHandler<()>,
-    on_change: EventHandler<Vec<PhaseListItem>>,
+    on_change: EventHandler<Vec<PhaseDefinition>>,
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
@@ -149,28 +159,34 @@ fn PhaseRow(
             if expanded {
                 {
                     let all_phases_for_delete = all_phases.clone();
+                    let bwp_for_save = boss_with_path.clone();
+                    let bwp_for_delete = boss_with_path.clone();
                     rsx! {
                         div { class: "list-item-body",
                             PhaseEditForm {
                                 phase: phase.clone(),
                                 all_phases: all_phases,
                                 encounter_data: encounter_data,
-                                on_save: move |updated: PhaseListItem| {
+                                on_save: move |updated: PhaseDefinition| {
                                     on_status.call(("Saving...".to_string(), false));
+                                    let boss_id = bwp_for_save.boss.id.clone();
+                                    let file_path = bwp_for_save.file_path.clone();
+                                    let item = EncounterItem::Phase(updated);
                                     spawn(async move {
-                                        if api::update_phase(&updated).await {
-                                            on_status.call(("Saved".to_string(), false));
-                                        } else {
-                                            on_status.call(("Failed to save".to_string(), true));
+                                        match api::update_encounter_item(&boss_id, &file_path, &item, None).await {
+                                            Ok(_) => on_status.call(("Saved".to_string(), false)),
+                                            Err(_) => on_status.call(("Failed to save".to_string(), true)),
                                         }
                                     });
                                 },
                                 on_delete: {
                                     let all_phases = all_phases_for_delete.clone();
-                                    move |phase_to_delete: PhaseListItem| {
+                                    move |phase_to_delete: PhaseDefinition| {
                                         let all_phases = all_phases.clone();
+                                        let boss_id = bwp_for_delete.boss.id.clone();
+                                        let file_path = bwp_for_delete.file_path.clone();
                                         spawn(async move {
-                                            match api::delete_phase(&phase_to_delete.id, &phase_to_delete.boss_id, &phase_to_delete.file_path).await {
+                                            match api::delete_encounter_item("phase", &phase_to_delete.id, &boss_id, &file_path).await {
                                                 Ok(_) => {
                                                     let updated: Vec<_> = all_phases.iter()
                                                         .filter(|p| p.id != phase_to_delete.id)
@@ -202,11 +218,11 @@ fn PhaseRow(
 
 #[component]
 fn PhaseEditForm(
-    phase: PhaseListItem,
-    all_phases: Vec<PhaseListItem>,
+    phase: PhaseDefinition,
+    all_phases: Vec<PhaseDefinition>,
     encounter_data: EncounterData,
-    on_save: EventHandler<PhaseListItem>,
-    on_delete: EventHandler<PhaseListItem>,
+    on_save: EventHandler<PhaseDefinition>,
+    on_delete: EventHandler<PhaseDefinition>,
 ) -> Element {
     // Clone values needed for closures and display
     let phase_id_display = phase.id.clone();
@@ -273,7 +289,7 @@ fn PhaseEditForm(
             // ─── Start Trigger ───────────────────────────────────────────────
             div { class: "form-row-hz", style: "align-items: flex-start;",
                 label { style: "padding-top: 6px;", "Trigger" }
-                PhaseTriggerEditor {
+                ComposableTriggerEditor {
                     trigger: draft().start_trigger,
                     encounter_data: encounter_data.clone(),
                     on_change: move |t| {
@@ -289,7 +305,7 @@ fn PhaseEditForm(
                 label { style: "padding-top: 6px;", "End On" }
                 if let Some(end) = draft().end_trigger.clone() {
                     div { class: "flex-col gap-xs",
-                        PhaseTriggerEditor {
+                        ComposableTriggerEditor {
                             trigger: end,
                             encounter_data: encounter_data.clone(),
                             on_change: move |t| {
@@ -316,7 +332,7 @@ fn PhaseEditForm(
                             class: "btn btn-sm",
                             onclick: move |_| {
                                 let mut d = draft();
-                                d.end_trigger = Some(PhaseTrigger::CombatStart);
+                                d.end_trigger = Some(Trigger::CombatStart);
                                 draft.set(d);
                             },
                             "+ Add End Trigger"
@@ -395,28 +411,26 @@ fn PhaseEditForm(
 
 #[component]
 fn NewPhaseForm(
-    boss: BossListItem,
+    boss_with_path: BossWithPath,
     phase_ids: Vec<String>,
     encounter_data: EncounterData,
-    on_create: EventHandler<PhaseListItem>,
+    on_create: EventHandler<PhaseDefinition>,
     on_cancel: EventHandler<()>,
 ) -> Element {
     let mut name = use_signal(|| "New Phase".to_string());
-    let mut start_trigger = use_signal(|| PhaseTrigger::CombatStart);
+    let mut start_trigger = use_signal(|| Trigger::CombatStart);
     let mut preceded_by = use_signal(|| None::<String>);
 
     // Preview the ID that will be generated
-    let boss_id_for_preview = boss.id.clone();
+    let boss_id_for_preview = boss_with_path.boss.id.clone();
     let generated_id = use_memo(move || preview_id(&boss_id_for_preview, &name()));
 
     let handle_create = move |_| {
-        let new_phase = PhaseListItem {
+        // Create phase with DSL fields only - context comes from boss_with_path
+        let new_phase = PhaseDefinition {
             id: String::new(), // Generated by backend
             name: name(),
             display_text: None,
-            boss_id: boss.id.clone(),
-            boss_name: boss.name.clone(),
-            file_path: boss.file_path.clone(),
             start_trigger: start_trigger(),
             end_trigger: None,
             preceded_by: preceded_by(),
@@ -462,7 +476,7 @@ fn NewPhaseForm(
 
             div { class: "form-section",
                 div { class: "font-bold text-sm mb-xs", "Start Trigger" }
-                PhaseTriggerEditor {
+                ComposableTriggerEditor {
                     trigger: start_trigger(),
                     encounter_data: encounter_data.clone(),
                     on_change: move |t| start_trigger.set(t),

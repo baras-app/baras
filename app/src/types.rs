@@ -190,7 +190,214 @@ pub struct AudioConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Timer Editor Types
+// DSL Types (mirror backend for direct use)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Boss definition with file path context (mirrors baras_core::boss::BossWithPath)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BossWithPath {
+    pub boss: BossEncounterDefinition,
+    pub file_path: String,
+    pub category: String,
+}
+
+/// Full boss encounter definition (mirrors baras_core::dsl::BossEncounterDefinition)
+/// NOTE: Uses snake_case to match core type serialization (no camelCase transform)
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct BossEncounterDefinition {
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub area_name: String,
+    #[serde(default)]
+    pub area_id: i64,
+    #[serde(default)]
+    pub difficulties: Vec<String>,
+    #[serde(default)]
+    pub entities: Vec<EntityDefinition>,
+    #[serde(default)]
+    pub phases: Vec<PhaseDefinition>,
+    #[serde(default)]
+    pub counters: Vec<CounterDefinition>,
+    #[serde(default, rename = "timer")]
+    pub timers: Vec<BossTimerDefinition>,
+    #[serde(default)]
+    pub challenges: Vec<ChallengeDefinition>,
+}
+
+/// Timer definition (mirrors baras_core::dsl::BossTimerDefinition)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BossTimerDefinition {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub display_text: Option<String>,
+    pub trigger: Trigger,
+    #[serde(default)]
+    pub duration_secs: f32,
+    #[serde(default)]
+    pub is_alert: bool,
+    #[serde(default)]
+    pub alert_text: Option<String>,
+    #[serde(default = "default_timer_color")]
+    pub color: [u8; 4],
+    #[serde(default)]
+    pub phases: Vec<String>,
+    #[serde(default)]
+    pub counter_condition: Option<CounterCondition>,
+    #[serde(default)]
+    pub difficulties: Vec<String>,
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub can_be_refreshed: bool,
+    #[serde(default)]
+    pub repeats: u8,
+    #[serde(default)]
+    pub chains_to: Option<String>,
+    #[serde(default)]
+    pub cancel_trigger: Option<Trigger>,
+    #[serde(default)]
+    pub alert_at_secs: Option<f32>,
+    #[serde(default)]
+    pub show_on_raid_frames: bool,
+    #[serde(default)]
+    pub show_at_secs: f32,
+    #[serde(default)]
+    pub audio: AudioConfig,
+}
+
+fn default_timer_color() -> [u8; 4] { [255, 128, 0, 255] }
+
+/// Phase definition (mirrors baras_core::dsl::PhaseDefinition)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PhaseDefinition {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub display_text: Option<String>,
+    #[serde(alias = "trigger")]
+    pub start_trigger: Trigger,
+    #[serde(default)]
+    pub end_trigger: Option<Trigger>,
+    #[serde(default)]
+    pub preceded_by: Option<String>,
+    #[serde(default)]
+    pub counter_condition: Option<CounterCondition>,
+    #[serde(default)]
+    pub resets_counters: Vec<String>,
+}
+
+/// Counter definition (mirrors baras_core::dsl::CounterDefinition)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CounterDefinition {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub display_text: Option<String>,
+    pub increment_on: Trigger,
+    #[serde(default)]
+    pub decrement_on: Option<Trigger>,
+    #[serde(default = "default_reset_trigger")]
+    pub reset_on: Trigger,
+    #[serde(default)]
+    pub initial_value: u32,
+    #[serde(default)]
+    pub decrement: bool,
+    #[serde(default)]
+    pub set_value: Option<u32>,
+}
+
+fn default_reset_trigger() -> Trigger { Trigger::CombatEnd }
+
+/// Challenge definition (mirrors baras_core::dsl::ChallengeDefinition)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ChallengeDefinition {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub display_text: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    pub metric: ChallengeMetric,
+    #[serde(default)]
+    pub conditions: Vec<ChallengeCondition>,
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub color: Option<[u8; 4]>,
+    #[serde(default)]
+    pub columns: ChallengeColumns,
+}
+
+/// Entity definition (mirrors baras_core::dsl::EntityDefinition)
+/// NOTE: triggers_encounter and show_on_hp_overlay are Option<bool> to match backend
+/// - None means "use is_boss value as default"
+/// - Some(true/false) means explicitly set
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EntityDefinition {
+    pub name: String,
+    #[serde(default)]
+    pub ids: Vec<i64>,
+    #[serde(default)]
+    pub is_boss: bool,
+    /// Defaults to is_boss if None
+    #[serde(default)]
+    pub triggers_encounter: Option<bool>,
+    #[serde(default)]
+    pub is_kill_target: bool,
+    /// Defaults to is_boss if None
+    #[serde(default)]
+    pub show_on_hp_overlay: Option<bool>,
+}
+
+/// Unified encounter item enum for CRUD operations (mirrors backend EncounterItem)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "item_type", rename_all = "snake_case")]
+pub enum EncounterItem {
+    Timer(BossTimerDefinition),
+    Phase(PhaseDefinition),
+    Counter(CounterDefinition),
+    Challenge(ChallengeDefinition),
+    Entity(EntityDefinition),
+}
+
+impl EncounterItem {
+    pub fn id(&self) -> &str {
+        match self {
+            Self::Timer(t) => &t.id,
+            Self::Phase(p) => &p.id,
+            Self::Counter(c) => &c.id,
+            Self::Challenge(c) => &c.id,
+            Self::Entity(e) => &e.name,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Timer(t) => &t.name,
+            Self::Phase(p) => &p.name,
+            Self::Counter(c) => &c.name,
+            Self::Challenge(c) => &c.name,
+            Self::Entity(e) => &e.name,
+        }
+    }
+
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Self::Timer(_) => "timer",
+            Self::Phase(_) => "phase",
+            Self::Counter(_) => "counter",
+            Self::Challenge(_) => "challenge",
+            Self::Entity(_) => "entity",
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timer Editor Types (LEGACY - to be removed after migration)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Flattened timer item for the timer editor list view
@@ -611,7 +818,7 @@ pub struct ChallengeListItem {
 
 fn default_enabled() -> bool { true }
 
-/// Entity list item for the encounter editor
+/// Entity list item for the encounter editor (LEGACY - use EntityDefinition)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EntityListItem {
@@ -623,12 +830,14 @@ pub struct EntityListItem {
     pub ids: Vec<i64>,
     #[serde(default)]
     pub is_boss: bool,
+    /// Defaults to is_boss if None
     #[serde(default)]
-    pub triggers_encounter: bool,
+    pub triggers_encounter: Option<bool>,
     #[serde(default)]
     pub is_kill_target: bool,
+    /// Defaults to is_boss if None
     #[serde(default)]
-    pub show_on_hp_overlay: bool,
+    pub show_on_hp_overlay: Option<bool>,
 }
 
 /// Boss item for full editing

@@ -45,7 +45,13 @@ fn build_args<T: Serialize + ?Sized>(key: &str, value: &T) -> JsValue {
 
 /// Deserialize a JsValue into a type, returning None on failure
 fn from_js<T: serde::de::DeserializeOwned>(value: JsValue) -> Option<T> {
-    serde_wasm_bindgen::from_value(value).ok()
+    match serde_wasm_bindgen::from_value(value) {
+        Ok(v) => Some(v),
+        Err(e) => {
+            web_sys::console::error_1(&format!("[API] Deserialization error: {:?}", e).into());
+            None
+        }
+    }
 }
 
 /// Invoke a Tauri command that may return an error, catching the rejection
@@ -338,10 +344,78 @@ pub async fn get_encounter_history() -> Option<Vec<crate::components::history_pa
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Timer Editor Commands
+// Unified Encounter Item Commands (NEW - replaces type-specific commands)
 // ─────────────────────────────────────────────────────────────────────────────
 
-use crate::types::{AreaListItem, BossListItem, TimerListItem};
+use crate::types::{BossWithPath, EncounterItem};
+
+/// Fetch all bosses for an area file with full encounter data
+pub async fn fetch_area_bosses(file_path: &str) -> Option<Vec<BossWithPath>> {
+    let args = build_args("filePath", file_path);
+    let result = invoke("fetch_area_bosses", args).await;
+    from_js(result)
+}
+
+/// Create a new encounter item (timer, phase, counter, challenge, or entity)
+pub async fn create_encounter_item(
+    boss_id: &str,
+    file_path: &str,
+    item: &EncounterItem,
+) -> Result<EncounterItem, String> {
+    let obj = js_sys::Object::new();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
+    let item_js = serde_wasm_bindgen::to_value(item).unwrap_or(JsValue::NULL);
+    js_sys::Reflect::set(&obj, &JsValue::from_str("item"), &item_js).unwrap();
+
+    let result = try_invoke("create_encounter_item", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to deserialize created item".to_string())
+}
+
+/// Update an existing encounter item
+pub async fn update_encounter_item(
+    boss_id: &str,
+    file_path: &str,
+    item: &EncounterItem,
+    original_id: Option<&str>,
+) -> Result<EncounterItem, String> {
+    let obj = js_sys::Object::new();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
+    let item_js = serde_wasm_bindgen::to_value(item).unwrap_or(JsValue::NULL);
+    js_sys::Reflect::set(&obj, &JsValue::from_str("item"), &item_js).unwrap();
+    if let Some(orig) = original_id {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("originalId"), &JsValue::from_str(orig)).unwrap();
+    } else {
+        js_sys::Reflect::set(&obj, &JsValue::from_str("originalId"), &JsValue::NULL).unwrap();
+    }
+
+    let result = try_invoke("update_encounter_item", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to deserialize updated item".to_string())
+}
+
+/// Delete an encounter item
+pub async fn delete_encounter_item(
+    item_type: &str,
+    item_id: &str,
+    boss_id: &str,
+    file_path: &str,
+) -> Result<(), String> {
+    let obj = js_sys::Object::new();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("itemType"), &JsValue::from_str(item_type)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("itemId"), &JsValue::from_str(item_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
+
+    try_invoke("delete_encounter_item", obj.into()).await?;
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timer Editor Commands (LEGACY - to be removed after migration)
+// ─────────────────────────────────────────────────────────────────────────────
+
+use crate::types::{AreaListItem, BossListItem, BossTimerDefinition, TimerListItem};
 
 /// Update an existing timer
 /// Returns true on success. Tauri commands returning Result<(), E> serialize Ok(()) as null.
@@ -364,8 +438,8 @@ pub async fn delete_encounter_timer(timer_id: &str, boss_id: &str, file_path: &s
     Ok(true)
 }
 
-/// Duplicate a timer
-pub async fn duplicate_encounter_timer(timer_id: &str, boss_id: &str, file_path: &str) -> Option<TimerListItem> {
+/// Duplicate a timer (returns DSL type, backend generates new ID)
+pub async fn duplicate_encounter_timer(timer_id: &str, boss_id: &str, file_path: &str) -> Option<BossTimerDefinition> {
     let obj = js_sys::Object::new();
     js_sys::Reflect::set(&obj, &JsValue::from_str("timerId"), &JsValue::from_str(timer_id)).unwrap();
     js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();

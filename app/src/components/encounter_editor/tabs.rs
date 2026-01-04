@@ -1,13 +1,13 @@
 //! Tab navigation for boss editing
 //!
 //! Each boss expands to show tabs: [Timers] [Phases] [Counters] [Challenges] [Entities]
-//! All encounter data is loaded here and passed down to tabs.
+//! All encounter data comes from BossWithPath - no additional loading needed.
 
 use dioxus::prelude::*;
 
-use crate::api;
 use crate::types::{
-    BossListItem, ChallengeListItem, CounterListItem, EntityListItem, PhaseListItem, TimerListItem,
+    BossWithPath, BossTimerDefinition, PhaseDefinition, CounterDefinition,
+    ChallengeDefinition, EntityDefinition,
 };
 
 use super::challenges::ChallengesTab;
@@ -48,20 +48,31 @@ impl BossTab {
     }
 }
 
-/// Centralized encounter data for all tabs
+/// Encounter data for child components (references into BossWithPath)
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct EncounterData {
-    pub timers: Vec<TimerListItem>,
-    pub phases: Vec<PhaseListItem>,
-    pub counters: Vec<CounterListItem>,
-    pub challenges: Vec<ChallengeListItem>,
-    pub entities: Vec<EntityListItem>,
+    pub timers: Vec<BossTimerDefinition>,
+    pub phases: Vec<PhaseDefinition>,
+    pub counters: Vec<CounterDefinition>,
+    pub challenges: Vec<ChallengeDefinition>,
+    pub entities: Vec<EntityDefinition>,
 }
 
 impl EncounterData {
+    /// Build from BossWithPath
+    pub fn from_boss(bwp: &BossWithPath) -> Self {
+        Self {
+            timers: bwp.boss.timers.clone(),
+            phases: bwp.boss.phases.clone(),
+            counters: bwp.boss.counters.clone(),
+            challenges: bwp.boss.challenges.clone(),
+            entities: bwp.boss.entities.clone(),
+        }
+    }
+
     /// Get timer IDs for dropdowns
     pub fn timer_ids(&self) -> Vec<String> {
-        self.timers.iter().map(|t| t.timer_id.clone()).collect()
+        self.timers.iter().map(|t| t.id.clone()).collect()
     }
 
     /// Get phase IDs for dropdowns
@@ -87,72 +98,20 @@ impl EncounterData {
 /// Tab container for a single boss
 #[component]
 pub fn BossTabs(
-    boss: BossListItem,
-    timers: Vec<TimerListItem>,
-    on_timer_change: EventHandler<Vec<TimerListItem>>,
+    boss_with_path: BossWithPath,
+    on_boss_change: EventHandler<BossWithPath>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
     let mut active_tab = use_signal(|| BossTab::Timers);
-    let mut loading = use_signal(|| true);
 
-    // Centralized encounter data
-    let mut phases = use_signal(Vec::<PhaseListItem>::new);
-    let mut counters = use_signal(Vec::<CounterListItem>::new);
-    let mut challenges = use_signal(Vec::<ChallengeListItem>::new);
-    let mut entities = use_signal(Vec::<EntityListItem>::new);
+    // Build encounter data from BossWithPath (no async loading needed!)
+    let encounter_data = EncounterData::from_boss(&boss_with_path);
 
-    // Filter timers for this boss (timers come from parent)
-    let boss_timers: Vec<TimerListItem> = timers
-        .iter()
-        .filter(|t| t.boss_id == boss.id)
-        .cloned()
-        .collect();
-
-    // Build encounter data for child components
-    let encounter_data = EncounterData {
-        timers: boss_timers.clone(),
-        phases: phases(),
-        counters: counters(),
-        challenges: challenges(),
-        entities: entities(),
-    };
-
-    let timer_count = boss_timers.len();
-    let phase_count = phases().len();
-    let counter_count = counters().len();
-    let challenge_count = challenges().len();
-    let entity_count = entities().len();
-
-    // Load all encounter data on mount
-    let file_path = boss.file_path.clone();
-    let boss_id = boss.id.clone();
-    use_effect(move || {
-        let file_path = file_path.clone();
-        let boss_id = boss_id.clone();
-        spawn(async move {
-            // Load phases
-            if let Some(p) = api::get_phases_for_area(&file_path).await {
-                let boss_phases: Vec<_> = p.into_iter().filter(|p| p.boss_id == boss_id).collect();
-                phases.set(boss_phases);
-            }
-            // Load counters
-            if let Some(c) = api::get_counters_for_area(&file_path).await {
-                let boss_counters: Vec<_> = c.into_iter().filter(|c| c.boss_id == boss_id).collect();
-                counters.set(boss_counters);
-            }
-            // Load challenges
-            if let Some(ch) = api::get_challenges_for_area(&file_path).await {
-                let boss_challenges: Vec<_> = ch.into_iter().filter(|c| c.boss_id == boss_id).collect();
-                challenges.set(boss_challenges);
-            }
-            // Load entities
-            if let Some(e) = api::get_entities_for_area(&file_path).await {
-                let boss_entities: Vec<_> = e.into_iter().filter(|e| e.boss_id == boss_id).collect();
-                entities.set(boss_entities);
-            }
-            loading.set(false);
-        });
-    });
+    let timer_count = boss_with_path.boss.timers.len();
+    let phase_count = boss_with_path.boss.phases.len();
+    let counter_count = boss_with_path.boss.counters.len();
+    let challenge_count = boss_with_path.boss.challenges.len();
+    let entity_count = boss_with_path.boss.entities.len();
 
     rsx! {
         div { class: "boss-tabs",
@@ -186,50 +145,60 @@ pub fn BossTabs(
                 match active_tab() {
                     BossTab::Timers => rsx! {
                         TimersTab {
-                            boss: boss.clone(),
-                            timers: boss_timers,
+                            boss_with_path: boss_with_path.clone(),
                             encounter_data: encounter_data.clone(),
-                            on_change: move |updated| {
-                                let mut all_timers = timers.clone();
-                                all_timers.retain(|t| t.boss_id != boss.id);
-                                all_timers.extend(updated);
-                                on_timer_change.call(all_timers);
+                            on_change: move |updated_timers: Vec<BossTimerDefinition>| {
+                                let mut bwp = boss_with_path.clone();
+                                bwp.boss.timers = updated_timers;
+                                on_boss_change.call(bwp);
                             },
                             on_status: on_status,
                         }
                     },
                     BossTab::Phases => rsx! {
                         PhasesTab {
-                            boss: boss.clone(),
-                            phases: phases(),
+                            boss_with_path: boss_with_path.clone(),
                             encounter_data: encounter_data.clone(),
-                            on_change: move |updated| phases.set(updated),
+                            on_change: move |updated_phases: Vec<PhaseDefinition>| {
+                                let mut bwp = boss_with_path.clone();
+                                bwp.boss.phases = updated_phases;
+                                on_boss_change.call(bwp);
+                            },
                             on_status: on_status,
                         }
                     },
                     BossTab::Counters => rsx! {
                         CountersTab {
-                            boss: boss.clone(),
-                            counters: counters(),
+                            boss_with_path: boss_with_path.clone(),
                             encounter_data: encounter_data.clone(),
-                            on_change: move |updated| counters.set(updated),
+                            on_change: move |updated_counters: Vec<CounterDefinition>| {
+                                let mut bwp = boss_with_path.clone();
+                                bwp.boss.counters = updated_counters;
+                                on_boss_change.call(bwp);
+                            },
                             on_status: on_status,
                         }
                     },
                     BossTab::Challenges => rsx! {
                         ChallengesTab {
-                            boss: boss.clone(),
-                            challenges: challenges(),
+                            boss_with_path: boss_with_path.clone(),
                             encounter_data: encounter_data.clone(),
-                            on_change: move |updated| challenges.set(updated),
+                            on_change: move |updated_challenges: Vec<ChallengeDefinition>| {
+                                let mut bwp = boss_with_path.clone();
+                                bwp.boss.challenges = updated_challenges;
+                                on_boss_change.call(bwp);
+                            },
                             on_status: on_status,
                         }
                     },
                     BossTab::Entities => rsx! {
                         EntitiesTab {
-                            boss: boss.clone(),
-                            entities: entities(),
-                            on_change: move |updated| entities.set(updated),
+                            boss_with_path: boss_with_path.clone(),
+                            on_change: move |updated_entities: Vec<EntityDefinition>| {
+                                let mut bwp = boss_with_path.clone();
+                                bwp.boss.entities = updated_entities;
+                                on_boss_change.call(bwp);
+                            },
                             on_status: on_status,
                         }
                     },
