@@ -3,7 +3,6 @@
 use std::io::Write;
 use std::path::PathBuf;
 
-use encoding_rs::WINDOWS_1252;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use reqwest::multipart::{Form, Part};
@@ -28,10 +27,9 @@ pub async fn upload_to_parsely(
     path: PathBuf,
     handle: State<'_, ServiceHandle>,
 ) -> Result<ParselyUploadResponse, String> {
-    // Read file as bytes (SWTOR logs are Windows-1252 encoded, not UTF-8)
-    let file_bytes = std::fs::read(&path).map_err(|e| format!("Failed to read log file: {}", e))?;
-
-    if file_bytes.is_empty() {
+    // Quick metadata check before reading
+    let metadata = std::fs::metadata(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+    if metadata.len() == 0 {
         return Ok(ParselyUploadResponse {
             success: false,
             link: None,
@@ -39,31 +37,8 @@ pub async fn upload_to_parsely(
         });
     }
 
-    // Decode as Windows-1252 for content inspection
-    let (log_content, _, had_errors) = WINDOWS_1252.decode(&file_bytes);
-
-    if had_errors {
-        return Ok(ParselyUploadResponse {
-            success: false,
-            link: None,
-            error: Some("File appears to be corrupted".to_string()),
-        });
-    }
-
-    // Check if file has combat data (look for combat log markers)
-    let has_combat = log_content.contains("EnterCombat")
-        || log_content.contains("ExitCombat")
-        || log_content.contains("ApplyEffect");
-
-    if !has_combat {
-        return Ok(ParselyUploadResponse {
-            success: false,
-            link: None,
-            error: Some("File has no combat encounters".to_string()),
-        });
-    }
-
-    // Gzip compress the original bytes (already in Windows-1252)
+    // Read and compress
+    let file_bytes = std::fs::read(&path).map_err(|e| format!("Failed to read log file: {}", e))?;
     let compressed =
         gzip_compress(&file_bytes).map_err(|e| format!("Failed to compress: {}", e))?;
 
@@ -84,7 +59,7 @@ pub async fn upload_to_parsely(
 
     // Add credentials if configured
     let config = handle.config().await;
-    if !config.parsely.username.is_empty() {
+    if !config.parsely.username.is_empty() && !config.parsely.password.is_empty() {
         form = form.text("username", config.parsely.username.clone());
         form = form.text("password", config.parsely.password.clone());
         if !config.parsely.guild.is_empty() {
