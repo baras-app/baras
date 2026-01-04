@@ -412,31 +412,10 @@ pub async fn delete_encounter_item(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Timer Editor Commands (LEGACY - to be removed after migration)
+// Encounter Editor Commands
 // ─────────────────────────────────────────────────────────────────────────────
 
-use crate::types::{AreaListItem, BossListItem, BossTimerDefinition, TimerListItem};
-
-/// Update an existing timer
-/// Returns true on success. Tauri commands returning Result<(), E> serialize Ok(()) as null.
-pub async fn update_encounter_timer(timer: &TimerListItem) -> bool {
-    let args = build_args("timer", timer);
-    let _result = invoke("update_encounter_timer", args).await;
-    // If we reach here without throwing, the command succeeded (null is valid for ())
-    true
-}
-
-/// Delete a timer
-/// Returns Ok(true) on success, Err with message if deletion not allowed (bundled items).
-pub async fn delete_encounter_timer(timer_id: &str, boss_id: &str, file_path: &str) -> Result<bool, String> {
-    let obj = js_sys::Object::new();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("timerId"), &JsValue::from_str(timer_id)).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
-
-    try_invoke("delete_encounter_timer", obj.into()).await?;
-    Ok(true)
-}
+use crate::types::{AreaListItem, BossTimerDefinition};
 
 /// Duplicate a timer (returns DSL type, backend generates new ID)
 pub async fn duplicate_encounter_timer(timer_id: &str, boss_id: &str, file_path: &str) -> Option<BossTimerDefinition> {
@@ -449,30 +428,9 @@ pub async fn duplicate_encounter_timer(timer_id: &str, boss_id: &str, file_path:
     from_js(result)
 }
 
-/// Create a new timer
-pub async fn create_encounter_timer(timer: &TimerListItem) -> Option<TimerListItem> {
-    let args = build_args("timer", timer);
-    let result = invoke("create_encounter_timer", args).await;
-    from_js(result)
-}
-
 /// Get area index for lazy-loading timer editor
 pub async fn get_area_index() -> Option<Vec<AreaListItem>> {
     let result = invoke("get_area_index", JsValue::NULL).await;
-    from_js(result)
-}
-
-/// Get timers for a specific area file
-pub async fn get_timers_for_area(file_path: &str) -> Option<Vec<TimerListItem>> {
-    let args = build_args("filePath", file_path);
-    let result = invoke("get_timers_for_area", args).await;
-    from_js(result)
-}
-
-/// Get bosses for a specific area file
-pub async fn get_bosses_for_area(file_path: &str) -> Option<Vec<BossListItem>> {
-    let args = build_args("filePath", file_path);
-    let result = invoke("get_bosses_for_area", args).await;
     from_js(result)
 }
 
@@ -490,166 +448,6 @@ pub async fn create_area(area: &NewAreaRequest) -> Option<String> {
     let args = build_args("area", area);
     let result = invoke("create_area", args).await;
     from_js(result)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Phase Editor Commands
-// ─────────────────────────────────────────────────────────────────────────────
-
-use crate::types::PhaseListItem;
-
-/// Get phases for a specific area file
-pub async fn get_phases_for_area(file_path: &str) -> Option<Vec<PhaseListItem>> {
-    let args = build_args("filePath", file_path);
-    let result = invoke("get_phases_for_area", args).await;
-    from_js(result)
-}
-
-/// Update an existing phase
-pub async fn update_phase(phase: &PhaseListItem) -> bool {
-    let args = build_args("phase", phase);
-    let _result = invoke("update_phase", args).await;
-    true
-}
-
-/// Create a new phase
-pub async fn create_phase(phase: &PhaseListItem) -> Option<PhaseListItem> {
-    let args = build_args("phase", phase);
-    let result = invoke("create_phase", args).await;
-    from_js(result)
-}
-
-/// Delete a phase
-/// Returns Ok(true) on success, Err with message if deletion not allowed (bundled items).
-pub async fn delete_phase(phase_id: &str, boss_id: &str, file_path: &str) -> Result<bool, String> {
-    let obj = js_sys::Object::new();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("phaseId"), &JsValue::from_str(phase_id)).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
-
-    try_invoke("delete_phase", obj.into()).await?;
-    Ok(true)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Counter Editor Commands
-// ─────────────────────────────────────────────────────────────────────────────
-
-use crate::types::CounterListItem;
-
-/// Get counters for a specific area file
-pub async fn get_counters_for_area(file_path: &str) -> Option<Vec<CounterListItem>> {
-    let args = build_args("filePath", file_path);
-    let result = invoke("get_counters_for_area", args).await;
-    from_js(result)
-}
-
-/// Update an existing counter
-pub async fn update_counter(counter: &CounterListItem) -> bool {
-    let args = build_args("counter", counter);
-    let _result = invoke("update_counter", args).await;
-    true
-}
-
-/// Create a new counter
-pub async fn create_counter(counter: &CounterListItem) -> Option<CounterListItem> {
-    let args = build_args("counter", counter);
-    let result = invoke("create_counter", args).await;
-    from_js(result)
-}
-
-/// Delete a counter
-/// Returns Ok(true) on success, Err with message if deletion not allowed (bundled items).
-pub async fn delete_counter(counter_id: &str, boss_id: &str, file_path: &str) -> Result<bool, String> {
-    let obj = js_sys::Object::new();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("counterId"), &JsValue::from_str(counter_id)).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
-
-    try_invoke("delete_counter", obj.into()).await?;
-    Ok(true)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Challenge Editor Commands
-// ─────────────────────────────────────────────────────────────────────────────
-
-use crate::types::ChallengeListItem;
-
-/// Get challenges for a specific area file
-pub async fn get_challenges_for_area(file_path: &str) -> Option<Vec<ChallengeListItem>> {
-    let args = build_args("filePath", file_path);
-    let result = invoke("get_challenges_for_area", args).await;
-    from_js(result)
-}
-
-/// Update an existing challenge
-pub async fn update_challenge(challenge: &ChallengeListItem) -> bool {
-    let args = build_args("challenge", challenge);
-    let _result = invoke("update_challenge", args).await;
-    true
-}
-
-/// Create a new challenge
-pub async fn create_challenge(challenge: &ChallengeListItem) -> Option<ChallengeListItem> {
-    let args = build_args("challenge", challenge);
-    let result = invoke("create_challenge", args).await;
-    from_js(result)
-}
-
-/// Delete a challenge
-/// Returns Ok(true) on success, Err with message if deletion not allowed (bundled items).
-pub async fn delete_challenge(challenge_id: &str, boss_id: &str, file_path: &str) -> Result<bool, String> {
-    let obj = js_sys::Object::new();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("challengeId"), &JsValue::from_str(challenge_id)).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
-
-    try_invoke("delete_challenge", obj.into()).await?;
-    Ok(true)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Entity Editor Commands
-// ─────────────────────────────────────────────────────────────────────────────
-
-use crate::types::EntityListItem;
-
-/// Get entities for a specific area file
-pub async fn get_entities_for_area(file_path: &str) -> Option<Vec<EntityListItem>> {
-    let args = build_args("filePath", file_path);
-    let result = invoke("get_entities_for_area", args).await;
-    from_js(result)
-}
-
-/// Update an existing entity
-pub async fn update_entity(entity: &EntityListItem, original_name: &str) -> bool {
-    let obj = js_sys::Object::new();
-    let entity_js = serde_wasm_bindgen::to_value(entity).unwrap_or(JsValue::NULL);
-    js_sys::Reflect::set(&obj, &JsValue::from_str("entity"), &entity_js).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("originalName"), &JsValue::from_str(original_name)).unwrap();
-
-    let _result = invoke("update_entity", obj.into()).await;
-    true
-}
-
-/// Create a new entity
-pub async fn create_entity(entity: &EntityListItem) -> Option<EntityListItem> {
-    let args = build_args("entity", entity);
-    let result = invoke("create_entity", args).await;
-    from_js(result)
-}
-
-/// Delete an entity
-/// Returns Ok(true) on success, Err with message if deletion not allowed (bundled items).
-pub async fn delete_entity(entity_name: &str, boss_id: &str, file_path: &str) -> Result<bool, String> {
-    let obj = js_sys::Object::new();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("entityName"), &JsValue::from_str(entity_name)).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("bossId"), &JsValue::from_str(boss_id)).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("filePath"), &JsValue::from_str(file_path)).unwrap();
-
-    try_invoke("delete_entity", obj.into()).await?;
-    Ok(true)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -726,12 +524,6 @@ pub async fn upload_to_parsely(path: &str) -> Option<ParselyUploadResponse> {
 pub async fn pick_audio_file() -> Option<String> {
     let result = invoke("pick_audio_file", JsValue::NULL).await;
     from_js(result).unwrap_or(None)
-}
-
-/// List bundled alert sounds (Alarm.mp3, Alert.mp3, etc.)
-pub async fn list_bundled_sounds() -> Vec<String> {
-    let result = invoke("list_bundled_sounds", JsValue::NULL).await;
-    from_js(result).unwrap_or_default()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -877,12 +669,6 @@ pub async fn query_dps_over_time(encounter_idx: Option<u32>, bucket_ms: i64, sou
         js_sys::Reflect::set(&obj, &JsValue::from_str("timeRange"), &JsValue::NULL).unwrap();
     }
     let result = invoke("query_dps_over_time", obj.into()).await;
-    from_js(result)
-}
-
-/// List available encounter parquet files.
-pub async fn list_encounter_files() -> Option<Vec<u32>> {
-    let result = invoke("list_encounter_files", JsValue::NULL).await;
     from_js(result)
 }
 

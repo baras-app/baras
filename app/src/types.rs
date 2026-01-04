@@ -227,6 +227,8 @@ pub struct BossEncounterDefinition {
     pub challenges: Vec<ChallengeDefinition>,
 }
 
+fn default_enabled() -> bool { true }
+
 /// Timer definition (mirrors baras_core::dsl::BossTimerDefinition)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BossTimerDefinition {
@@ -364,102 +366,11 @@ pub enum EncounterItem {
     Entity(EntityDefinition),
 }
 
-impl EncounterItem {
-    pub fn id(&self) -> &str {
-        match self {
-            Self::Timer(t) => &t.id,
-            Self::Phase(p) => &p.id,
-            Self::Counter(c) => &c.id,
-            Self::Challenge(c) => &c.id,
-            Self::Entity(e) => &e.name,
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Timer(t) => &t.name,
-            Self::Phase(p) => &p.name,
-            Self::Counter(c) => &c.name,
-            Self::Challenge(c) => &c.name,
-            Self::Entity(e) => &e.name,
-        }
-    }
-
-    pub fn type_name(&self) -> &'static str {
-        match self {
-            Self::Timer(_) => "timer",
-            Self::Phase(_) => "phase",
-            Self::Counter(_) => "counter",
-            Self::Challenge(_) => "challenge",
-            Self::Entity(_) => "entity",
-        }
-    }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Timer Editor Types (LEGACY - to be removed after migration)
+// Encounter Editor Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Flattened timer item for the timer editor list view
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct TimerListItem {
-    // Identity
-    pub timer_id: String,
-    pub boss_id: String,
-    pub boss_name: String,
-    pub area_name: String,
-    pub category: String,
-    pub file_path: String,
-
-    // Timer data
-    pub name: String,
-    pub display_text: Option<String>,
-    pub enabled: bool,
-    pub duration_secs: f32,
-    pub color: [u8; 4],
-    pub phases: Vec<String>,
-    pub difficulties: Vec<String>,
-
-    // Trigger info
-    pub trigger: TimerTrigger,
-
-    // Entity filters (from trigger)
-    pub source: EntityFilter,
-    pub target: EntityFilter,
-
-    // Counter guard condition
-    pub counter_condition: Option<CounterCondition>,
-
-    // Alert fields
-    pub is_alert: bool,
-    pub alert_text: Option<String>,
-
-    // Cancel trigger
-    pub cancel_trigger: Option<TimerTrigger>,
-
-    // Behavior
-    pub can_be_refreshed: bool,
-    pub repeats: u8,
-    pub chains_to: Option<String>,
-    pub alert_at_secs: Option<f32>,
-    pub show_on_raid_frames: bool,
-    pub show_at_secs: f32,
-
-    // Audio
-    pub audio: AudioConfig,
-}
-
-/// Minimal boss info for the "New Timer" dropdown
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct BossListItem {
-    pub id: String,
-    pub name: String,
-    pub area_name: String,
-    pub category: String,
-    pub file_path: String,
-}
-
-/// Area summary for lazy-loading timer editor
+/// Area summary for lazy-loading encounter editor
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AreaListItem {
@@ -644,55 +555,6 @@ pub struct CounterCondition {
     pub value: u32,
 }
 
-/// Phase list item for the encounter editor
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PhaseListItem {
-    pub id: String,
-    pub name: String,
-    /// Optional in-game display text (defaults to name if not set)
-    #[serde(default)]
-    pub display_text: Option<String>,
-    pub boss_id: String,
-    pub boss_name: String,
-    pub file_path: String,
-    pub start_trigger: PhaseTrigger,
-    #[serde(default)]
-    pub end_trigger: Option<PhaseTrigger>,
-    #[serde(default)]
-    pub preceded_by: Option<String>,
-    #[serde(default)]
-    pub counter_condition: Option<CounterCondition>,
-    #[serde(default)]
-    pub resets_counters: Vec<String>,
-}
-
-/// Counter list item for the encounter editor
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CounterListItem {
-    pub id: String,
-    /// Display name (used for ID generation)
-    pub name: String,
-    /// Optional in-game display text (defaults to name if not set)
-    #[serde(default)]
-    pub display_text: Option<String>,
-    pub boss_id: String,
-    pub boss_name: String,
-    pub file_path: String,
-    pub increment_on: CounterTrigger,
-    #[serde(default)]
-    pub decrement_on: Option<CounterTrigger>,
-    #[serde(default)]
-    pub reset_on: CounterTrigger,
-    #[serde(default)]
-    pub initial_value: u32,
-    #[serde(default)]
-    pub decrement: bool,
-    #[serde(default)]
-    pub set_value: Option<u32>,
-}
-
 /// Challenge metric types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -786,58 +648,6 @@ impl ChallengeCondition {
             Self::BossHpRange { .. } => "Boss HP Range",
         }
     }
-}
-
-/// Challenge list item for the encounter editor
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ChallengeListItem {
-    pub id: String,
-    pub name: String,
-    /// Optional in-game display text (defaults to name if not set)
-    #[serde(default)]
-    pub display_text: Option<String>,
-    #[serde(default)]
-    pub description: Option<String>,
-    pub boss_id: String,
-    pub boss_name: String,
-    pub file_path: String,
-    pub metric: ChallengeMetric,
-    #[serde(default)]
-    pub conditions: Vec<ChallengeCondition>,
-    /// Whether this challenge is enabled for overlay display
-    #[serde(default = "default_enabled")]
-    pub enabled: bool,
-    /// Bar color [r, g, b, a] (None = use overlay default)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub color: Option<[u8; 4]>,
-    /// Which columns to display for this challenge
-    #[serde(default)]
-    pub columns: ChallengeColumns,
-}
-
-fn default_enabled() -> bool { true }
-
-/// Entity list item for the encounter editor (LEGACY - use EntityDefinition)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EntityListItem {
-    pub name: String,
-    pub boss_id: String,
-    pub boss_name: String,
-    pub file_path: String,
-    #[serde(default)]
-    pub ids: Vec<i64>,
-    #[serde(default)]
-    pub is_boss: bool,
-    /// Defaults to is_boss if None
-    #[serde(default)]
-    pub triggers_encounter: Option<bool>,
-    #[serde(default)]
-    pub is_kill_target: bool,
-    /// Defaults to is_boss if None
-    #[serde(default)]
-    pub show_on_hp_overlay: Option<bool>,
 }
 
 /// Boss item for full editing

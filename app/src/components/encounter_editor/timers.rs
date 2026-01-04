@@ -15,32 +15,6 @@ use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
 use super::InlineNameCreator;
 
-/// Check if a trigger type supports source filtering
-/// Only event-based triggers with source actors make sense to filter
-fn trigger_supports_source(trigger: &Trigger) -> bool {
-    match trigger {
-        Trigger::AbilityCast { .. }
-        | Trigger::EffectApplied { .. }
-        | Trigger::EffectRemoved { .. } => true,
-        // For composite triggers, check if any sub-condition supports source
-        Trigger::AnyOf { conditions } => conditions.iter().any(trigger_supports_source),
-        _ => false,
-    }
-}
-
-/// Check if a trigger type supports target filtering
-/// Only event-based triggers with target actors make sense to filter
-fn trigger_supports_target(trigger: &Trigger) -> bool {
-    match trigger {
-        Trigger::EffectApplied { .. }
-        | Trigger::EffectRemoved { .. }
-        | Trigger::TargetSet { .. } => true,
-        // For composite triggers, check if any sub-condition supports target
-        Trigger::AnyOf { conditions } => conditions.iter().any(trigger_supports_target),
-        _ => false,
-    }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Timers Tab
 // ─────────────────────────────────────────────────────────────────────────────

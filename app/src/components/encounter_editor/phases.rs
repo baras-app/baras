@@ -13,20 +13,6 @@ use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
 use super::InlineNameCreator;
 
-/// Generate a preview of the ID that will be created (mirrors backend logic)
-fn preview_id(boss_id: &str, name: &str) -> String {
-    let name_part: String = name
-        .to_lowercase()
-        .chars()
-        .map(|c| if c.is_alphanumeric() { c } else { '_' })
-        .collect::<String>()
-        .split('_')
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join("_");
-    format!("{}_{}", boss_id, name_part)
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Phases Tab
 // ─────────────────────────────────────────────────────────────────────────────
