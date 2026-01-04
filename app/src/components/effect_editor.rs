@@ -11,7 +11,7 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::types::{AbilitySelector, AudioConfig, EffectCategory, EffectListItem, EffectSelector, EffectTriggerMode, EntityFilter, Trigger};
 use crate::utils::parse_hex_color;
-use super::encounter_editor::triggers::EffectSelectorEditor;
+use super::encounter_editor::triggers::{AbilitySelectorEditor, EffectSelectorEditor};
 
 /// UI-level trigger type for effect tracking
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -977,90 +977,6 @@ fn EntityFilterSelect(
                     value: "{opt.label()}",
                     selected: *opt == value,
                     "{opt.label()}"
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Ability Selector Editor (ID or Name, with chips displayed above input)
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn AbilitySelectorEditor(
-    label: &'static str,
-    selectors: Vec<AbilitySelector>,
-    on_change: EventHandler<Vec<AbilitySelector>>,
-) -> Element {
-    let mut new_input = use_signal(String::new);
-
-    let selectors_for_keydown = selectors.clone();
-    let selectors_for_click = selectors.clone();
-
-    rsx! {
-        div { class: "flex-col gap-xs items-start",
-            span { class: "text-sm text-secondary text-left", "{label}:" }
-
-            // Selector chips (displayed above the input)
-            div { class: "flex flex-wrap gap-xs",
-                for (idx, sel) in selectors.iter().enumerate() {
-                    {
-                        let selectors_clone = selectors.clone();
-                        let display = sel.display();
-                        rsx! {
-                            span { class: "chip",
-                                "{display}"
-                                button {
-                                    class: "chip-remove",
-                                    onclick: move |_| {
-                                        let mut new_sels = selectors_clone.clone();
-                                        new_sels.remove(idx);
-                                        on_change.call(new_sels);
-                                    },
-                                    "×"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Add new selector
-            div { class: "flex gap-xs",
-                input {
-                    r#type: "text",
-                    class: "input-inline",
-                    style: "width: 180px;",
-                    placeholder: "ID or Name (Enter)",
-                    value: "{new_input}",
-                    oninput: move |e| new_input.set(e.value()),
-                    onkeydown: move |e| {
-                        if e.key() == Key::Enter && !new_input().trim().is_empty() {
-                            let selector = AbilitySelector::from_input(&new_input());
-                            let mut new_sels = selectors_for_keydown.clone();
-                            if !new_sels.iter().any(|s| s.display() == selector.display()) {
-                                new_sels.push(selector);
-                                on_change.call(new_sels);
-                            }
-                            new_input.set(String::new());
-                        }
-                    }
-                }
-                button {
-                    class: "btn btn-sm",
-                    onclick: move |_| {
-                        if !new_input().trim().is_empty() {
-                            let selector = AbilitySelector::from_input(&new_input());
-                            let mut new_sels = selectors_for_click.clone();
-                            if !new_sels.iter().any(|s| s.display() == selector.display()) {
-                                new_sels.push(selector);
-                                on_change.call(new_sels);
-                            }
-                            new_input.set(String::new());
-                        }
-                    },
-                    "Add"
                 }
             }
         }
