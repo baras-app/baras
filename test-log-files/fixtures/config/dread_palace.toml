@@ -4,6 +4,7 @@
 [area]
 name = "Dread Palace"
 area_id = 833575842743088  # Placeholder - would need real ID
+area_type = "operation"
 category = "operations"
 
 [[boss]]

@@ -113,6 +113,10 @@ fn main() {
                                 boss_definitions.push(user_boss);
                             }
                         }
+                        // Rebuild indexes after merge (entities may have been added)
+                        for boss in &mut boss_definitions {
+                            boss.build_indexes();
+                        }
                     }
                 }
                 Err(e) => {

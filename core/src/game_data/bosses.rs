@@ -50,6 +50,19 @@ pub enum ContentType {
     Flashpoint,
     LairBoss,
     TrainingDummy,
+    OpenWorld,
+}
+
+impl From<crate::dsl::AreaType> for ContentType {
+    fn from(area_type: crate::dsl::AreaType) -> Self {
+        match area_type {
+            crate::dsl::AreaType::Operation => ContentType::Operation,
+            crate::dsl::AreaType::Flashpoint => ContentType::Flashpoint,
+            crate::dsl::AreaType::LairBoss => ContentType::LairBoss,
+            crate::dsl::AreaType::TrainingDummy => ContentType::TrainingDummy,
+            crate::dsl::AreaType::OpenWorld => ContentType::OpenWorld,
+        }
+    }
 }
 
 /// Difficulty mode

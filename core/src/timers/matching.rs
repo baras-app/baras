@@ -9,8 +9,9 @@ use crate::combat_log::EntityType;
 use crate::context::IStr;
 use crate::dsl::EntityFilterMatching;
 use crate::dsl::Trigger;
+use crate::encounter::CombatEncounter;
 
-use super::{EncounterContext, TimerDefinition};
+use super::TimerDefinition;
 
 /// Check if source/target filters pass for a trigger
 pub(super) fn matches_source_target_filters(
@@ -43,19 +44,31 @@ pub(super) fn matches_source_target_filters(
     true
 }
 
-/// Check if a timer definition is active for current context
+/// Check if a timer definition is active for current encounter context.
+/// Reads context directly from the encounter (single source of truth).
 pub(super) fn is_definition_active(
     def: &TimerDefinition,
-    context: &EncounterContext,
-    current_phase: Option<&str>,
-    counters: &HashMap<String, u32>,
+    encounter: Option<&CombatEncounter>,
 ) -> bool {
+    // Extract context from encounter
+    let (area_id, area_name, boss_name, difficulty, current_phase, counters) = match encounter {
+        Some(enc) => (
+            enc.area_id,
+            enc.area_name.as_deref(),
+            enc.active_boss.as_ref().map(|b| b.name.as_str()),
+            enc.difficulty,
+            enc.current_phase.as_deref(),
+            &enc.counters,
+        ),
+        None => (None, None, None, None, None, &*EMPTY_COUNTERS),
+    };
+
     // First check basic context (area, boss, difficulty)
     if !def.enabled || !def.is_active_for_context(
-        context.area_id,
-        context.encounter_name.as_deref(),
-        context.boss_name.as_deref(),
-        context.difficulty,
+        area_id,
+        area_name,
+        boss_name,
+        difficulty,
     ) {
         return false;
     }
@@ -81,3 +94,6 @@ pub(super) fn is_definition_active(
 
     true
 }
+
+/// Empty counters for when no encounter is available
+static EMPTY_COUNTERS: std::sync::LazyLock<HashMap<String, u32>> = std::sync::LazyLock::new(HashMap::new);

@@ -26,8 +26,8 @@ pub enum AreaType {
     LairBoss,
     /// Training dummy (parsing area)
     TrainingDummy,
-    /// Other/unknown content
-    Other,
+    /// Open world content (heroics, dailies, etc.)
+    OpenWorld,
 }
 
 impl AreaType {
@@ -38,7 +38,7 @@ impl AreaType {
             AreaType::Flashpoint => "flashpoints",
             AreaType::LairBoss => "lair_bosses",
             AreaType::TrainingDummy => "other",
-            AreaType::Other => "other",
+            AreaType::OpenWorld => "open_world",
         }
     }
 }
@@ -167,6 +167,11 @@ pub struct BossEncounterDefinition {
     /// In consolidated format, this is populated from the [area] header
     #[serde(default, skip_serializing_if = "is_zero")]
     pub area_id: i64,
+
+    /// Content type for this encounter (Operation, Flashpoint, etc.)
+    /// In consolidated format, this is populated from the [area] header
+    #[serde(default)]
+    pub area_type: AreaType,
 
     /// Difficulties this boss config applies to (empty = all)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

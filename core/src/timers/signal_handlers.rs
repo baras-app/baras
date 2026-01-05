@@ -425,7 +425,6 @@ pub(super) fn clear_combat_timers(manager: &mut TimerManager) {
     manager.active_timers.clear();
     manager.fired_alerts.clear();
     manager.boss_entity_ids.clear();
-    // Clear encounter context so timers don't trigger in subsequent trash fights
-    manager.context.boss_name = None;
+    // Boss name is now read from encounter.active_boss directly
     manager.clear_boss_npc_class_ids();
 }
