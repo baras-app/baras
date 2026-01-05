@@ -1106,7 +1106,6 @@ impl RaidOverlay {
             let frame = &self.frames[i];
             // All non-empty frames can be cleared (including self)
             if !frame.is_empty() && self.hit_test_clear_button(frame.slot, px, py) {
-                eprintln!("[RAID-OVERLAY] Queuing ClearSlot({})", frame.slot);
                 self.pending_registry_actions
                     .push(RaidRegistryAction::ClearSlot(frame.slot));
                 self.needs_render = true;
@@ -1118,7 +1117,6 @@ impl RaidOverlay {
         if let Some(slot) = self.hit_test(px, py) {
             if let Some((a, b)) = self.swap_state.on_click(slot) {
                 // Queue swap action - registry will update, then data will flow back
-                eprintln!("[RAID-OVERLAY] Queuing SwapSlots({}, {})", a, b);
                 self.pending_registry_actions
                     .push(RaidRegistryAction::SwapSlots(a, b));
                 self.needs_render = true;
@@ -1213,5 +1211,9 @@ impl Overlay for RaidOverlay {
 
     fn take_pending_registry_actions(&mut self) -> Vec<RaidRegistryAction> {
         std::mem::take(&mut self.pending_registry_actions)
+    }
+
+    fn needs_render(&self) -> bool {
+        self.needs_render
     }
 }

@@ -116,6 +116,8 @@ pub enum ServiceCommand {
     OpenHistoricalFile(PathBuf),
     /// Resume live tailing (switch to newest file)
     ResumeLiveTailing,
+    /// Trigger immediate raid frame data refresh (after registry changes)
+    RefreshRaidFrames,
 }
 
 /// Updates sent to the overlay system
@@ -525,6 +527,12 @@ impl CombatService {
                     };
                     if let Some(path) = newest {
                         self.start_tailing(path).await;
+                    }
+                }
+                ServiceCommand::RefreshRaidFrames => {
+                    // Immediately send updated raid frame data to overlay
+                    if let Some(data) = build_raid_frame_data(&self.shared).await {
+                        let _ = self.overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data));
                     }
                 }
             }
@@ -987,17 +995,15 @@ impl CombatService {
                     continue;
                 }
 
-                // Raid frames: only send if there are effects or effects just cleared
+                // Raid frames: send whenever there are effects
                 if raid_active {
                     if let Some(data) = build_raid_frame_data(&shared).await {
                         let effect_count: usize = data.frames.iter().map(|f| f.effects.len()).sum();
-                        // Only send if effects exist, or if we need to clear (was non-zero, now zero)
                         if effect_count > 0 || last_raid_effect_count > 0 {
                             let _ = overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data));
                         }
                         last_raid_effect_count = effect_count;
                     } else {
-                        // No effects - just reset counter (overlay handles effect expiry visually)
                         last_raid_effect_count = 0;
                     }
                 }
@@ -1362,9 +1368,15 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
         return None;
     };
 
-    // Early out: skip building data if no effects at all (including fading ones)
-    // We need to keep sending updates while effects exist so removals are reflected
-    if !tracker.has_active_effects() {
+    // Lock registry
+    let Ok(mut registry) = shared.raid_registry.lock() else {
+        return None;
+    };
+
+    // Early out: skip building data if no effects AND no registered players
+    // We need to keep sending updates while effects exist OR players are registered
+    // so that removals/clears are reflected in the overlay
+    if !tracker.has_active_effects() && registry.is_empty() {
         return None;
     }
 
@@ -1374,11 +1386,6 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
         .as_ref()
         .map(|c| c.player.id)
         .unwrap_or(0);
-
-    // Lock registry
-    let Ok(mut registry) = shared.raid_registry.lock() else {
-        return None;
-    };
 
     // Process new targets queue - these are entities that JUST received an effect from local player
     // The registry handles duplicate rejection via try_register

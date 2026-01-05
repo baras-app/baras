@@ -198,4 +198,12 @@ pub trait Overlay: 'static {
     fn take_pending_registry_actions(&mut self) -> Vec<RaidRegistryAction> {
         Vec::new()
     }
+
+    /// Check if the overlay has internal state requiring a render.
+    /// Returns `true` if the overlay has pending state changes (e.g., click handling)
+    /// that require a render pass. The overlay's `render()` method clears this flag.
+    /// Default implementation returns `false` (most overlays don't track this internally).
+    fn needs_render(&self) -> bool {
+        false
+    }
 }

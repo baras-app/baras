@@ -134,6 +134,11 @@ where
                 }
             }
 
+            // Check if overlay's internal state requires a render (e.g., click handling)
+            if overlay.needs_render() {
+                needs_render = true;
+            }
+
             // Check for pending resize
             if overlay.frame().window().pending_size().is_some() {
                 needs_render = true;

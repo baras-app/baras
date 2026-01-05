@@ -242,6 +242,7 @@ impl ServiceHandle {
         if let Ok(mut registry) = self.shared.raid_registry.lock() {
             registry.swap_slots(slot_a, slot_b);
         }
+        self.refresh_raid_frames().await;
     }
 
     /// Remove a slot from the raid registry
@@ -249,6 +250,7 @@ impl ServiceHandle {
         if let Ok(mut registry) = self.shared.raid_registry.lock() {
             registry.remove_slot(slot);
         }
+        self.refresh_raid_frames().await;
     }
 
     /// Clear all raid registry slots
@@ -256,6 +258,12 @@ impl ServiceHandle {
         if let Ok(mut registry) = self.shared.raid_registry.lock() {
             registry.clear();
         }
+        self.refresh_raid_frames().await;
+    }
+
+    /// Trigger immediate raid frame refresh
+    async fn refresh_raid_frames(&self) {
+        let _ = self.cmd_tx.send(ServiceCommand::RefreshRaidFrames).await;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
