@@ -87,3 +87,51 @@ name = "Karagga the Unyielding"
 ids = [2761200114860032, 2740043105959936, 2761208704794624, 2761191524925440]
 is_boss = true
 is_kill_target = true
+
+[[boss.timer]]
+id = "burning_oil"
+name = "Burning Oil"
+trigger = { type = "ability_cast", abilities = [
+  2778384279011328,
+], source = "boss" }
+duration_secs = 15.0
+color = [179, 26, 26, 255]
+cancel_trigger = { type = "combat_end" }
+
+[[boss.timer]]
+id = "mouse_droids"
+name = "Mouse Droids"
+trigger = { type = "ability_cast", abilities = [
+  2778268314894336,
+], source = "boss" }
+duration_secs = 59.0
+color = [255, 230, 128, 255]
+cancel_trigger = { type = "combat_end" }
+
+[[boss.timer]]
+id = "tunneling_drill"
+name = "Tunneling Drill"
+trigger = { type = "ability_cast", abilities = [
+  2778294084698112,
+], source = "boss" }
+duration_secs = 24.5
+color = [179, 204, 255, 255]
+cancel_trigger = { type = "combat_end" }
+
+[[boss.timer]]
+id = "cluster_bombs"
+name = "Cluster Bombs"
+trigger = { type = "ability_cast", abilities = [
+  2778276904828928,
+], source = "boss" }
+duration_secs = 20.0
+color = [102, 51, 102, 255]
+cancel_trigger = { type = "combat_end" }
+
+[[boss.timer]]
+id = "cluster_bombs_soon"
+name = "Cluster Bombs Soon"
+trigger = { type = "timer_expires", timer_id = "cluster_bombs" }
+duration_secs = 5.0
+color = [179, 128, 179, 255]
+cancel_trigger = { type = "timer_started", timer_id = "cluster_bombs" }
