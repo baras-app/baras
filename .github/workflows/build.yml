@@ -26,7 +26,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
+            libwebkit2gtk-4.1-0=2.44.0-2 \
+            libwebkit2gtk-4.1-dev=2.44.0-2 \
+            libjavascriptcoregtk-4.1-0=2.44.0-2 \
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
@@ -67,7 +69,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_TOOLKIT_PATH: ${{ runner.temp }}/tauri-tools
-          NO_STRIP: 'true'
         with:
           projectPath: app
           tauriScript: cargo tauri
