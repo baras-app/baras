@@ -2,7 +2,7 @@ use crate::dsl::BossEncounterDefinition;
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{EncounterHistory, create_encounter_summary};
 use crate::encounter::{BossHealthEntry, CombatEncounter, EncounterState, ProcessingMode};
-use crate::game_data::{clear_boss_registry, register_hp_overlay_entity};
+use crate::game_data::{Difficulty, clear_boss_registry, register_hp_overlay_entity};
 use crate::state::info::AreaInfo;
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
@@ -87,6 +87,22 @@ impl SessionCache {
         } else {
             CombatEncounter::new(id, ProcessingMode::Live)
         };
+
+        // Set context from current area
+        encounter.set_difficulty(Difficulty::from_game_string(
+            &self.current_area.difficulty_name,
+        ));
+        let area_id = if self.current_area.area_id != 0 {
+            Some(self.current_area.area_id)
+        } else {
+            None
+        };
+        let area_name = if self.current_area.area_name.is_empty() {
+            None
+        } else {
+            Some(self.current_area.area_name.clone())
+        };
+        encounter.set_area(area_id, area_name);
 
         // Copy boss definitions into the new encounter
         encounter.load_boss_definitions(self.boss_definitions.to_vec());
@@ -209,12 +225,5 @@ impl SessionCache {
     /// Get the currently active boss encounter definition (if any).
     pub fn active_boss_definition(&self) -> Option<&BossEncounterDefinition> {
         self.current_encounter()?.active_boss_definition()
-    }
-
-    /// Reset boss encounter state in the current encounter.
-    pub fn reset_boss_encounter(&mut self) {
-        if let Some(enc) = self.current_encounter_mut() {
-            enc.reset_boss_state();
-        }
     }
 }

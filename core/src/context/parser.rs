@@ -7,11 +7,16 @@ use tokio::sync::RwLock;
 use crate::combat_log::{CombatEvent, Reader};
 use crate::context::{AppConfig, parse_log_filename};
 use crate::effects::{DefinitionSet, EffectTracker};
+use crate::game_data::effect_type_id;
 use crate::signal_processor::{EventProcessor, GameSignal, SignalHandler};
 use crate::state::SessionCache;
 use crate::dsl::BossEncounterDefinition;
 use crate::timers::{TimerDefinition, TimerManager};
 use crate::storage::{encounter_filename, EncounterWriter, EventMetadata};
+
+/// Callback type for loading boss definitions when entering a new area.
+/// Takes area_id, returns definitions if found.
+pub type DefinitionLoader = Box<dyn Fn(i64) -> Option<Vec<BossEncounterDefinition>> + Send + Sync>;
 
 /// A parsing session that processes combat events and tracks game state.
 ///
@@ -44,6 +49,12 @@ pub struct ParsingSession {
     encounter_idx: u32,
     /// Event buffer for current encounter
     encounter_writer: Option<EncounterWriter>,
+
+    /// Callback for loading boss definitions when entering a new area.
+    /// Set by the app layer to enable sync loading of definitions.
+    definition_loader: Option<Arc<DefinitionLoader>>,
+    /// Last loaded area ID (to avoid reloading on duplicate events)
+    loaded_area_id: i64,
 }
 
 impl Default for ParsingSession {
@@ -68,10 +79,13 @@ impl ParsingSession {
             encounters_dir: None,
             encounter_idx: 0,
             encounter_writer: None,
+            definition_loader: None,
+            loaded_area_id: 0,
         }
     }
 
     /// Create a Historical mode session without effect/timer tracking.
+    /// Historical mode doesn't need definition loading (no timers).
     pub fn historical() -> Self {
         Self {
             current_byte: None,
@@ -85,6 +99,8 @@ impl ParsingSession {
             encounters_dir: None,
             encounter_idx: 0,
             encounter_writer: None,
+            definition_loader: None,
+            loaded_area_id: 0,
         }
     }
 
@@ -110,7 +126,15 @@ impl ParsingSession {
             encounters_dir: None,
             encounter_idx: 0,
             encounter_writer: None,
+            definition_loader: None,
+            loaded_area_id: 0,
         }
+    }
+
+    /// Set the definition loader callback for sync loading on AreaEntered.
+    /// This enables the session to load boss definitions when entering a new area.
+    pub fn set_definition_loader(&mut self, loader: Arc<DefinitionLoader>) {
+        self.definition_loader = Some(loader);
     }
 
     /// Register a signal handler to receive game signals
@@ -120,6 +144,21 @@ impl ParsingSession {
 
     /// Process a single event through the processor and dispatch signals
     pub fn process_event(&mut self, event: CombatEvent) {
+        // Sync load definitions on AreaEntered BEFORE processing
+        // This ensures boss definitions are available when combat events arrive
+        if event.effect.type_id == effect_type_id::AREAENTERED {
+            let area_id = event.effect.effect_id as i64;
+            if area_id != 0 && area_id != self.loaded_area_id {
+                if let Some(loader) = &self.definition_loader {
+                    if let Some(bosses) = loader(area_id) {
+                        self.load_boss_definitions(bosses);
+                        eprintln!("[PARSER] Sync loaded boss definitions for area_id={}", area_id);
+                    }
+                    self.loaded_area_id = area_id;
+                }
+            }
+        }
+
         if let Some(cache) = &mut self.session_cache {
             // Process event FIRST to detect phase transitions, boss detection, etc.
             // This updates cache state (including current_phase) before we capture metadata.
@@ -333,35 +372,13 @@ impl ParsingSession {
 
     /// Sync timer context from session cache (call after initial file parse).
     ///
-    /// This ensures the TimerManager knows the current area even if parsing
-    /// started mid-session (no AreaEntered signal was received).
-    /// No-op in Historical mode (session has no timer manager).
+    /// Previously this synced area/difficulty to TimerManager's EncounterContext.
+    /// Now that context is read directly from CombatEncounter, this is a no-op.
+    /// The method is kept for API compatibility.
     pub fn sync_timer_context(&self) {
-        let Some(cache) = &self.session_cache else {
-            return;
-        };
-        let Some(timer_mgr) = &self.timer_manager else {
-            return;
-        };
-
-        let area = &cache.current_area;
-        if area.area_name.is_empty() {
-            return;
-        }
-
-        let difficulty = crate::game_data::Difficulty::from_game_string(&area.difficulty_name);
-        let area_id = if area.area_id != 0 { Some(area.area_id) } else { None };
-
-        if let Ok(mut timer_mgr) = timer_mgr.lock() {
-            timer_mgr.set_context(
-                area_id,
-                Some(area.area_name.clone()),
-                None, // Boss will be detected on target change
-                difficulty,
-            );
-            eprintln!("[TIMER] Synced initial context from cache: area={} (id={:?}), difficulty={:?}",
-                area.area_name, area_id, difficulty);
-        }
+        // Context is now read directly from CombatEncounter.
+        // Encounters get area/difficulty set when they start (see cache.rs start_encounter).
+        // No manual sync needed.
     }
 }
 

@@ -16,7 +16,12 @@ use super::{EventProcessor, GameSignal};
 /// Load boss definitions from a TOML config file
 fn load_boss_config(path: &Path) -> Option<BossConfig> {
     let content = std::fs::read_to_string(path).ok()?;
-    toml::from_str(&content).ok()
+    let mut config: BossConfig = toml::from_str(&content).ok()?;
+    // Build indexes for NPC ID matching (not populated by serde)
+    for boss in &mut config.bosses {
+        boss.build_indexes();
+    }
+    Some(config)
 }
 
 /// Parse a fixture file and collect all emitted signals

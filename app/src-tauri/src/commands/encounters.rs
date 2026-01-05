@@ -219,7 +219,7 @@ fn load_file_with_custom(file_path: &Path) -> Result<Vec<BossWithPath>, String> 
         .ok()
         .flatten()
         .map(|a| a.area_type.to_category())
-        .unwrap_or(AreaType::Other.to_category())
+        .unwrap_or(AreaType::OpenWorld.to_category())
         .to_string();
 
     Ok(bosses
@@ -783,7 +783,8 @@ pub async fn create_area(area: NewAreaRequest) -> Result<String, String> {
         "operation" => AreaType::Operation,
         "flashpoint" => AreaType::Flashpoint,
         "lair_boss" => AreaType::LairBoss,
-        _ => AreaType::Other,
+        "training_dummy" => AreaType::TrainingDummy,
+        _ => AreaType::OpenWorld,
     };
 
     let content = format!(

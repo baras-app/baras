@@ -725,7 +725,18 @@ impl CombatService {
             }
         }
 
-        // Timer/boss definitions are now lazy-loaded when AreaEntered signal fires
+        // Set up sync definition loader for AreaEntered events (fixes race condition)
+        let area_index = self.area_index.clone();
+        let user_encounters_dir = dirs::config_dir()
+            .map(|p| p.join("baras").join("definitions").join("encounters"));
+        let loader: baras_core::context::DefinitionLoader = Box::new(move |area_id: i64| {
+            use baras_core::boss::load_bosses_with_custom;
+            area_index.get(&area_id).and_then(|entry| {
+                load_bosses_with_custom(&entry.file_path, user_encounters_dir.as_deref()).ok()
+            })
+        });
+        session.set_definition_loader(std::sync::Arc::new(loader));
+
         // Reset area tracking for new session
         self.loaded_area_id = 0;
         self.shared.current_area_id.store(0, Ordering::SeqCst);

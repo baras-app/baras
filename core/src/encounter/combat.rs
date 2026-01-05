@@ -14,7 +14,7 @@ use hashbrown::{HashMap, HashSet};
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::IStr;
 use crate::dsl::{BossEncounterDefinition, CounterCondition, CounterDefinition};
-use crate::game_data::{SHIELD_EFFECT_IDS, effect_id};
+use crate::game_data::{Difficulty, SHIELD_EFFECT_IDS, effect_id};
 
 use super::challenge::ChallengeTracker;
 use super::effect_instance::EffectInstance;
@@ -68,6 +68,12 @@ pub struct CombatEncounter {
     pub id: u64,
     /// Processing mode (Live vs Historical)
     pub mode: ProcessingMode,
+    /// Encounter difficulty (set from current area)
+    pub difficulty: Option<Difficulty>,
+    /// Area ID from game (primary matching key for timers)
+    pub area_id: Option<i64>,
+    /// Area name from game (for display/logging)
+    pub area_name: Option<String>,
 
     // ─── Boss Definitions (loaded on area enter) ────────────────────────────
     /// Boss definitions for current area
@@ -143,6 +149,9 @@ impl CombatEncounter {
         Self {
             id,
             mode,
+            difficulty: None,
+            area_id: None,
+            area_name: None,
 
             // Boss definitions
             boss_definitions: Vec::new(),
@@ -220,6 +229,17 @@ impl CombatEncounter {
     /// Get the active boss definition index
     pub fn active_boss_idx(&self) -> Option<usize> {
         self.active_boss_idx
+    }
+
+    /// Set the encounter difficulty
+    pub fn set_difficulty(&mut self, difficulty: Option<Difficulty>) {
+        self.difficulty = difficulty;
+    }
+
+    /// Set the area context for this encounter
+    pub fn set_area(&mut self, area_id: Option<i64>, area_name: Option<String>) {
+        self.area_id = area_id;
+        self.area_name = area_name;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -51,6 +51,8 @@ pub fn load_bosses_from_file(path: &Path) -> Result<Vec<BossEncounterDefinition>
             if boss.area_id == 0 {
                 boss.area_id = area.area_id;
             }
+            // Always inherit area_type from header (source of truth for consolidated files)
+            boss.area_type = area.area_type;
         }
     }
 
@@ -153,7 +155,7 @@ fn load_bosses_with_paths_recursive(
                         .ok()
                         .flatten()
                         .map(|a| a.area_type.to_category())
-                        .unwrap_or(AreaType::Other.to_category())
+                        .unwrap_or(AreaType::OpenWorld.to_category())
                         .to_string();
 
                     for boss in file_bosses {

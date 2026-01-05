@@ -12,32 +12,18 @@ use chrono::{Local, NaiveDateTime};
 use crate::combat_log::EntityType;
 use crate::context::{IStr, resolve};
 use crate::dsl::BossEncounterDefinition;
-use crate::game_data::Difficulty;
 use crate::signal_processor::{GameSignal, SignalHandler};
 
 use super::matching::{is_definition_active, matches_source_target_filters};
-use super::{ActiveTimer, TimerDefinition, TimerKey, TimerPreferences, TimerTrigger};
-
-/// Empty counters map for when no encounter context is available
-static EMPTY_COUNTERS: std::sync::LazyLock<hashbrown::HashMap<String, u32>> =
-    std::sync::LazyLock::new(hashbrown::HashMap::new);
 use super::signal_handlers;
+use super::{ActiveTimer, TimerDefinition, TimerKey, TimerPreferences, TimerTrigger};
 
 /// Maximum age (in minutes) for events to be processed by timers in live mode.
 /// Events older than this are skipped since timers are only useful for recent/live events.
 /// This is only checked when `live_mode` is true (after initial batch load).
 const TIMER_RECENCY_THRESHOLD_MINS: i64 = 5;
 
-/// Current encounter context for filtering timers
-#[derive(Debug, Clone, Default)]
-pub struct EncounterContext {
-    /// Area name from game (for display/logging)
-    pub encounter_name: Option<String>,
-    /// Area ID from game (primary matching key - more reliable than name)
-    pub area_id: Option<i64>,
-    pub boss_name: Option<String>,
-    pub difficulty: Option<Difficulty>,
-}
+// EncounterContext removed: context now read directly from CombatEncounter
 
 /// A fired alert (ephemeral notification, not a countdown timer)
 #[derive(Debug, Clone)]
@@ -71,9 +57,6 @@ pub struct TimerManager {
 
     /// Timers that expired this tick (for chaining)
     expired_this_tick: Vec<String>,
-
-    /// Current encounter context for filtering
-    pub(super) context: EncounterContext,
 
     /// Whether we're currently in combat
     pub(super) in_combat: bool,
@@ -111,7 +94,6 @@ impl TimerManager {
             active_timers: HashMap::new(),
             fired_alerts: Vec::new(),
             expired_this_tick: Vec::new(),
-            context: EncounterContext::default(),
             in_combat: false,
             last_timestamp: None,
             live_mode: true, // Default: apply recency threshold (skip old events)
@@ -369,24 +351,9 @@ impl TimerManager {
         &self.fired_alerts
     }
 
-    /// Set encounter context for filtering
-    pub fn set_context(
-        &mut self,
-        area_id: Option<i64>,
-        encounter: Option<String>,
-        boss: Option<String>,
-        difficulty: Option<Difficulty>,
-    ) {
-        self.context = EncounterContext {
-            area_id,
-            encounter_name: encounter,
-            boss_name: boss,
-            difficulty,
-        };
-    }
-
-    /// Check if a timer definition is active for current context (delegates to matching module)
-    /// Also checks preference override for enabled state
+    /// Check if a timer definition is active for current encounter context.
+    /// Reads context directly from the encounter (single source of truth).
+    /// Also checks preference override for enabled state.
     pub(super) fn is_definition_active(
         &self,
         def: &TimerDefinition,
@@ -396,10 +363,7 @@ impl TimerManager {
         if !self.preferences.is_enabled(def) {
             return false;
         }
-        let (current_phase, counters) = encounter
-            .map(|e| (e.current_phase.as_deref(), &e.counters))
-            .unwrap_or((None, &EMPTY_COUNTERS));
-        is_definition_active(def, &self.context, current_phase, counters)
+        is_definition_active(def, encounter)
     }
 
     /// Start a timer from a definition
@@ -640,21 +604,8 @@ impl SignalHandler for TimerManager {
                 self.local_player_id = Some(*entity_id);
                 return;
             }
-            GameSignal::AreaEntered {
-                area_id,
-                area_name,
-                difficulty_name,
-                ..
-            } => {
-                self.context.area_id = Some(*area_id);
-                self.context.encounter_name = Some(area_name.clone());
-                self.context.difficulty = if difficulty_name.is_empty() {
-                    None
-                } else {
-                    Difficulty::from_game_string(difficulty_name)
-                };
-                return;
-            }
+            // AreaEntered: Context is now read from CombatEncounter directly
+            GameSignal::AreaEntered { .. } => return,
             _ => {}
         }
 
@@ -877,13 +828,12 @@ impl SignalHandler for TimerManager {
 
             // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────
             GameSignal::BossEncounterDetected {
-                boss_name,
                 entity_id,
                 boss_npc_class_ids,
                 timestamp,
                 ..
             } => {
-                self.context.boss_name = Some(boss_name.clone());
+                // Boss name is now read from CombatEncounter.active_boss directly
 
                 // Track boss entity ID for source/target "boss" filter
                 self.boss_entity_ids.insert(*entity_id);

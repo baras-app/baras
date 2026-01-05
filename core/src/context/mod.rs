@@ -14,4 +14,4 @@ pub use config::{
 pub use background_tasks::BackgroundTasks;
 pub use log_files::{DirectoryIndex, parse_log_filename};
 pub use interner::{IStr, intern, resolve, empty_istr};
-pub use parser::{ParsingSession, ParseResult, parse_file, resolve_log_path};
+pub use parser::{ParsingSession, ParseResult, parse_file, resolve_log_path, DefinitionLoader};
