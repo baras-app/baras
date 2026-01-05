@@ -567,42 +567,20 @@ fn ChallengeConditionRow(
                                 }
                             }
                         }
-                        ChallengeCondition::Ability { ability_ids } => {
-                            let ids_str = ability_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
-                            rsx! {
-                                input {
-                                    class: "input-inline text-mono",
-                                    style: "width: 100%;",
-                                    placeholder: "ability_id1, ability_id2, ...",
-                                    value: "{ids_str}",
-                                    oninput: move |e| {
-                                        let ids: Vec<u64> = e.value()
-                                            .split(',')
-                                            .filter_map(|s| s.trim().parse().ok())
-                                            .collect();
-                                        on_change.call(ChallengeCondition::Ability { ability_ids: ids });
-                                    }
-                                }
+                        ChallengeCondition::Ability { ability_ids } => rsx! {
+                            IdListInput {
+                                ids: ability_ids.clone(),
+                                placeholder: "ability_id1, ability_id2, ...",
+                                on_change: move |ids| on_change.call(ChallengeCondition::Ability { ability_ids: ids })
                             }
-                        }
-                        ChallengeCondition::Effect { effect_ids } => {
-                            let ids_str = effect_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
-                            rsx! {
-                                input {
-                                    class: "input-inline text-mono",
-                                    style: "width: 100%;",
-                                    placeholder: "effect_id1, effect_id2, ...",
-                                    value: "{ids_str}",
-                                    oninput: move |e| {
-                                        let ids: Vec<u64> = e.value()
-                                            .split(',')
-                                            .filter_map(|s| s.trim().parse().ok())
-                                            .collect();
-                                        on_change.call(ChallengeCondition::Effect { effect_ids: ids });
-                                    }
-                                }
+                        },
+                        ChallengeCondition::Effect { effect_ids } => rsx! {
+                            IdListInput {
+                                ids: effect_ids.clone(),
+                                placeholder: "effect_id1, effect_id2, ...",
+                                on_change: move |ids| on_change.call(ChallengeCondition::Effect { effect_ids: ids })
                             }
-                        }
+                        },
                         ChallengeCondition::Counter { counter_id, operator, value } => {
                             let counter_id_for_select = counter_id.clone();
                             let counter_id_for_input = counter_id.clone();
@@ -732,3 +710,29 @@ fn ChallengeConditionRow(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Comma-separated ID input
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[component]
+fn IdListInput(
+    ids: Vec<u64>,
+    placeholder: &'static str,
+    on_change: EventHandler<Vec<u64>>,
+) -> Element {
+    let ids_str = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+    rsx! {
+        input {
+            class: "input-inline text-mono",
+            style: "width: 100%;",
+            placeholder: placeholder,
+            value: "{ids_str}",
+            oninput: move |e| {
+                let parsed: Vec<u64> = e.value()
+                    .split(',')
+                    .filter_map(|s| s.trim().parse().ok())
+                    .collect();
+                on_change.call(parsed);
+            }
+        }
+    }
+}
