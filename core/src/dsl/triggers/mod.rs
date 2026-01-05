@@ -11,6 +11,7 @@ pub use matchers::{AbilitySelector, EffectSelector, EntitySelector, EntitySelect
 // Re-export EntityFilter for use in triggers
 pub use baras_types::EntityFilter;
 
+use crate::dsl::EntityDefinition;
 use serde::{Deserialize, Serialize};
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -368,6 +369,7 @@ impl Trigger {
     /// The entity whose HP changed must match the selector.
     pub fn matches_boss_hp_below(
         &self,
+        entities: &[EntityDefinition],
         npc_id: i64,
         entity_name: &str,
         old_hp: f32,
@@ -386,11 +388,11 @@ impl Trigger {
                     return true;
                 }
 
-                // Check if THIS entity matches by NPC ID or name (case-insensitive)
-                selector.matches_npc_id(npc_id) || selector.matches_name_only(entity_name)
+                // Match via roster alias → NPC ID → name
+                selector.matches_with_roster(entities, npc_id, Some(entity_name))
             }
             Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_boss_hp_below(npc_id, entity_name, old_hp, new_hp))
+                conditions.iter().any(|c| c.matches_boss_hp_below(entities, npc_id, entity_name, old_hp, new_hp))
             }
             _ => false,
         }
@@ -400,6 +402,7 @@ impl Trigger {
     /// Used for heal-check mechanics.
     pub fn matches_boss_hp_above(
         &self,
+        entities: &[EntityDefinition],
         npc_id: i64,
         entity_name: &str,
         old_hp: f32,
@@ -418,45 +421,47 @@ impl Trigger {
                     return true;
                 }
 
-                // Check if THIS entity matches by NPC ID or name (case-insensitive)
-                selector.matches_npc_id(npc_id) || selector.matches_name_only(entity_name)
+                // Match via roster alias → NPC ID → name
+                selector.matches_with_roster(entities, npc_id, Some(entity_name))
             }
             Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_boss_hp_above(npc_id, entity_name, old_hp, new_hp))
+                conditions.iter().any(|c| c.matches_boss_hp_above(entities, npc_id, entity_name, old_hp, new_hp))
             }
             _ => false,
         }
     }
 
     /// Check if trigger matches NPC first appearing.
-    pub fn matches_npc_appears(&self, npc_id: i64, entity_name: &str) -> bool {
+    pub fn matches_npc_appears(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: &str) -> bool {
         match self {
             Self::NpcAppears { selector } => {
                 // Require explicit filter for NPC appears
                 if selector.is_empty() {
                     return false;
                 }
-                selector.matches_npc_id(npc_id) || selector.matches_name_only(entity_name)
+                // Match via roster alias → NPC ID → name
+                selector.matches_with_roster(entities, npc_id, Some(entity_name))
             }
             Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_npc_appears(npc_id, entity_name))
+                conditions.iter().any(|c| c.matches_npc_appears(entities, npc_id, entity_name))
             }
             _ => false,
         }
     }
 
     /// Check if trigger matches entity death.
-    pub fn matches_entity_death(&self, npc_id: i64, entity_name: &str) -> bool {
+    pub fn matches_entity_death(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: &str) -> bool {
         match self {
             Self::EntityDeath { selector } => {
                 // Empty selector = any death
                 if selector.is_empty() {
                     return true;
                 }
-                selector.matches_npc_id(npc_id) || selector.matches_name_only(entity_name)
+                // Match via roster alias → NPC ID → name
+                selector.matches_with_roster(entities, npc_id, Some(entity_name))
             }
             Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_entity_death(npc_id, entity_name))
+                conditions.iter().any(|c| c.matches_entity_death(entities, npc_id, entity_name))
             }
             _ => false,
         }

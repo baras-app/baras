@@ -272,7 +272,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|e| e.is_boss)
         .flat_map(|e| e.ids.iter().copied())
         .collect();
-    challenge_tracker.start(boss_def.challenges.clone(), boss_npc_ids.clone(), session_date);
+    challenge_tracker.start(boss_def.challenges.clone(), boss_def.entities.clone(), boss_npc_ids.clone(), session_date);
 
     let mut challenge_ctx = ChallengeContext::default();
     challenge_ctx.boss_npc_ids = boss_npc_ids;

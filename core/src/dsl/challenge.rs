@@ -13,6 +13,7 @@ use baras_types::ChallengeColumns;
 use serde::{Deserialize, Serialize};
 
 use super::ComparisonOp;
+use crate::dsl::EntityDefinition;
 use crate::dsl::entity_filter::{EntityFilter, EntityFilterMatching};
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -249,6 +250,7 @@ impl ChallengeCondition {
     pub fn matches(
         &self,
         ctx: &ChallengeContext,
+        entities: &[EntityDefinition],
         source: Option<&EntityInfo>,
         target: Option<&EntityInfo>,
         ability_id: Option<u64>,
@@ -263,6 +265,7 @@ impl ChallengeCondition {
 
             ChallengeCondition::Source { matcher } => source.is_some_and(|s| {
                 matcher.matches_challenge(
+                    entities,
                     s.is_player,
                     s.is_local_player,
                     &s.name,
@@ -273,6 +276,7 @@ impl ChallengeCondition {
 
             ChallengeCondition::Target { matcher } => target.is_some_and(|t| {
                 matcher.matches_challenge(
+                    entities,
                     t.is_player,
                     t.is_local_player,
                     &t.name,
@@ -323,6 +327,7 @@ impl ChallengeDefinition {
     pub fn matches(
         &self,
         ctx: &ChallengeContext,
+        entities: &[EntityDefinition],
         source: Option<&EntityInfo>,
         target: Option<&EntityInfo>,
         ability_id: Option<u64>,
@@ -336,7 +341,7 @@ impl ChallengeDefinition {
         // All conditions must pass (AND logic)
         self.conditions
             .iter()
-            .all(|c| c.matches(ctx, source, target, ability_id, effect_id))
+            .all(|c| c.matches(ctx, entities, source, target, ability_id, effect_id))
     }
 }
 // ═══════════════════════════════════════════════════════════════════════════
@@ -384,6 +389,7 @@ mod tests {
     /// Helper to call matches_challenge on EntityFilter using EntityInfo
     fn filter_matches(filter: &EntityFilter, info: &EntityInfo, boss_ids: &[i64]) -> bool {
         filter.matches_challenge(
+            &[],
             info.is_player,
             info.is_local_player,
             &info.name,
@@ -435,12 +441,12 @@ mod tests {
         let cond = ChallengeCondition::Phase {
             phase_ids: vec!["burn".to_string()],
         };
-        assert!(cond.matches(&ctx, None, None, None, None));
+        assert!(cond.matches(&ctx, &[], None, None, None, None));
 
         let cond_miss = ChallengeCondition::Phase {
             phase_ids: vec!["p1".to_string()],
         };
-        assert!(!cond_miss.matches(&ctx, None, None, None, None));
+        assert!(!cond_miss.matches(&ctx, &[], None, None, None, None));
     }
 
     #[test]
@@ -450,10 +456,10 @@ mod tests {
         let cond = ChallengeCondition::Ability {
             ability_ids: vec![100, 200],
         };
-        assert!(cond.matches(&ctx, None, None, Some(100), None));
-        assert!(cond.matches(&ctx, None, None, Some(200), None));
-        assert!(!cond.matches(&ctx, None, None, Some(300), None));
-        assert!(!cond.matches(&ctx, None, None, None, None));
+        assert!(cond.matches(&ctx, &[], None, None, Some(100), None));
+        assert!(cond.matches(&ctx, &[], None, None, Some(200), None));
+        assert!(!cond.matches(&ctx, &[], None, None, Some(300), None));
+        assert!(!cond.matches(&ctx, &[], None, None, None, None));
     }
 
     #[test]
@@ -465,21 +471,21 @@ mod tests {
             operator: ComparisonOp::Eq,
             value: 5,
         };
-        assert!(cond_eq.matches(&ctx, None, None, None, None));
+        assert!(cond_eq.matches(&ctx, &[], None, None, None, None));
 
         let cond_gt = ChallengeCondition::Counter {
             counter_id: "stacks".to_string(),
             operator: ComparisonOp::Gt,
             value: 3,
         };
-        assert!(cond_gt.matches(&ctx, None, None, None, None));
+        assert!(cond_gt.matches(&ctx, &[], None, None, None, None));
 
         let cond_lt = ChallengeCondition::Counter {
             counter_id: "stacks".to_string(),
             operator: ComparisonOp::Lt,
             value: 3,
         };
-        assert!(!cond_lt.matches(&ctx, None, None, None, None));
+        assert!(!cond_lt.matches(&ctx, &[], None, None, None, None));
     }
 
     #[test]
@@ -492,14 +498,14 @@ mod tests {
             max_hp: Some(30.0),
             npc_id: Some(1001),
         };
-        assert!(cond_in_range.matches(&ctx, None, None, None, None));
+        assert!(cond_in_range.matches(&ctx, &[], None, None, None, None));
 
         let cond_above = ChallengeCondition::BossHpRange {
             min_hp: Some(30.0),
             max_hp: None,
             npc_id: Some(1001),
         };
-        assert!(!cond_above.matches(&ctx, None, None, None, None));
+        assert!(!cond_above.matches(&ctx, &[], None, None, None, None));
     }
 
     #[test]
@@ -527,16 +533,16 @@ mod tests {
         };
 
         // Both conditions pass
-        assert!(challenge.matches(&ctx, None, Some(&boss), None, None));
+        assert!(challenge.matches(&ctx, &[], None, Some(&boss), None, None));
 
         // Wrong phase
         let mut wrong_phase_ctx = ctx.clone();
         wrong_phase_ctx.current_phase = Some("p1".to_string());
-        assert!(!challenge.matches(&wrong_phase_ctx, None, Some(&boss), None, None));
+        assert!(!challenge.matches(&wrong_phase_ctx, &[], None, Some(&boss), None, None));
 
         // Wrong target (add instead of boss)
         let add = EntityInfo::npc(2, "Add", 9999);
-        assert!(!challenge.matches(&ctx, None, Some(&add), None, None));
+        assert!(!challenge.matches(&ctx, &[], None, Some(&add), None, None));
     }
 
     #[test]
@@ -556,7 +562,7 @@ mod tests {
         };
 
         // Empty conditions = always matches
-        assert!(challenge.matches(&ctx, None, None, None, None));
+        assert!(challenge.matches(&ctx, &[], None, None, None, None));
     }
 
     #[test]
@@ -660,6 +666,7 @@ mod tests {
             // Check boss damage challenge (include 0-damage immune events for tracking)
             if boss_damage_challenge.matches(
                 &ctx,
+                &[],
                 Some(&source_info),
                 Some(&target_info),
                 Some(event.action.action_id as u64),
@@ -676,6 +683,7 @@ mod tests {
             // Check add damage challenge (skip 0-damage)
             if damage > 0 && add_damage_challenge.matches(
                 &ctx,
+                &[],
                 Some(&source_info),
                 Some(&target_info),
                 Some(event.action.action_id as u64),
@@ -841,6 +849,7 @@ mod tests {
                     // Also test the challenge matcher
                     if burn_phase_challenge.matches(
                         &ctx,
+                        &[],
                         Some(&source_info),
                         Some(&target_info),
                         Some(event.action.action_id as u64),

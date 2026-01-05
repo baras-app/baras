@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dsl::AudioConfig;
 use crate::dsl::CounterCondition;
+use crate::dsl::EntityDefinition;
 use crate::game_data::Difficulty;
 use crate::dsl::Trigger;
 
@@ -153,13 +154,14 @@ impl TimerDefinition {
     /// Delegates to unified `Trigger::matches_boss_hp_below`.
     pub fn matches_boss_hp_threshold(
         &self,
+        entities: &[EntityDefinition],
         npc_id: i64,
         npc_name: Option<&str>,
         previous_hp: f32,
         current_hp: f32,
     ) -> bool {
         // Provide empty string if no name (trigger will match on ID if selector is empty)
-        self.trigger.matches_boss_hp_below(npc_id, npc_name.unwrap_or(""), previous_hp, current_hp)
+        self.trigger.matches_boss_hp_below(entities, npc_id, npc_name.unwrap_or(""), previous_hp, current_hp)
     }
 
     /// Check if this timer triggers on a specific phase being entered.
@@ -187,14 +189,14 @@ impl TimerDefinition {
 
     /// Check if this timer triggers when an NPC first appears.
     /// Delegates to unified `Trigger::matches_npc_appears`.
-    pub fn matches_npc_appears(&self, npc_id: i64, entity_name: Option<&str>) -> bool {
-        self.trigger.matches_npc_appears(npc_id, entity_name.unwrap_or(""))
+    pub fn matches_npc_appears(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: Option<&str>) -> bool {
+        self.trigger.matches_npc_appears(entities, npc_id, entity_name.unwrap_or(""))
     }
 
     /// Check if this timer triggers on entity death.
     /// Delegates to unified `Trigger::matches_entity_death`.
-    pub fn matches_entity_death(&self, npc_id: i64, entity_name: Option<&str>) -> bool {
-        self.trigger.matches_entity_death(npc_id, entity_name.unwrap_or(""))
+    pub fn matches_entity_death(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: Option<&str>) -> bool {
+        self.trigger.matches_entity_death(entities, npc_id, entity_name.unwrap_or(""))
     }
 
     /// Check if this timer triggers at a specific combat time.

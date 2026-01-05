@@ -6,6 +6,7 @@
 use chrono::NaiveDateTime;
 
 use crate::combat_log::CombatEvent;
+use crate::dsl::EntityDefinition;
 use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
 use crate::dsl::Trigger;
@@ -55,7 +56,7 @@ pub fn check_hp_phase_transitions(
             }
         }
 
-        if check_hp_trigger(&phase.start_trigger, old_hp, new_hp, npc_id, entity_name) {
+        if check_hp_trigger(&phase.start_trigger, &def.entities, old_hp, new_hp, npc_id, entity_name) {
             let old_phase = enc.current_phase.clone();
             let new_phase_id = phase.id.clone();
             let boss_id = def.id.clone();
@@ -115,7 +116,7 @@ pub fn check_ability_phase_transitions(
         }
 
         let trigger_matched = check_ability_trigger(&phase.start_trigger, event)
-            || check_signal_phase_trigger(&phase.start_trigger, current_signals);
+            || check_signal_phase_trigger(&phase.start_trigger, &def.entities, current_signals);
 
         if trigger_matched {
             let old_phase = enc.current_phase.clone();
@@ -153,9 +154,11 @@ pub fn check_entity_phase_transitions(
         return Vec::new();
     };
 
-    let phases: Vec<_> = enc.boss_definitions()[def_idx].phases.clone();
-    let counter_defs = enc.boss_definitions()[def_idx].counters.clone();
-    let boss_id = enc.boss_definitions()[def_idx].id.clone();
+    let def = &enc.boss_definitions()[def_idx];
+    let phases: Vec<_> = def.phases.clone();
+    let counter_defs = def.counters.clone();
+    let boss_id = def.id.clone();
+    let entities = def.entities.clone();
     let current_phase = enc.current_phase.clone();
     let previous_phase = enc.previous_phase.clone();
 
@@ -179,7 +182,7 @@ pub fn check_entity_phase_transitions(
             }
         }
 
-        if check_signal_phase_trigger(&phase.start_trigger, current_signals) {
+        if check_signal_phase_trigger(&phase.start_trigger, &entities, current_signals) {
             let old_phase = enc.current_phase.clone();
             let new_phase_id = phase.id.clone();
             let resets = phase.resets_counters.clone();
@@ -305,7 +308,7 @@ pub fn check_phase_end_triggers(
         }];
     }
 
-    if check_signal_phase_trigger(end_trigger, current_signals) {
+    if check_signal_phase_trigger(end_trigger, &def.entities, current_signals) {
         return vec![GameSignal::PhaseEndTriggered {
             phase_id: current_phase_id.clone(),
             timestamp: event.timestamp,
@@ -323,13 +326,14 @@ pub fn check_phase_end_triggers(
 /// Delegates to unified `Trigger::matches_boss_hp_below` and `matches_boss_hp_above`.
 pub fn check_hp_trigger(
     trigger: &Trigger,
+    entities: &[EntityDefinition],
     old_hp: f32,
     new_hp: f32,
     npc_id: i64,
     entity_name: &str,
 ) -> bool {
-    trigger.matches_boss_hp_below(npc_id, entity_name, old_hp, new_hp)
-        || trigger.matches_boss_hp_above(npc_id, entity_name, old_hp, new_hp)
+    trigger.matches_boss_hp_below(entities, npc_id, entity_name, old_hp, new_hp)
+        || trigger.matches_boss_hp_above(entities, npc_id, entity_name, old_hp, new_hp)
 }
 
 /// Check if an ability/effect-based phase trigger is satisfied.
@@ -367,16 +371,16 @@ pub fn check_ability_trigger(trigger: &Trigger, event: &CombatEvent) -> bool {
 
 /// Check if a signal-based phase trigger is satisfied (NpcAppears, EntityDeath, etc.).
 /// Iterates through signals and delegates matching to unified Trigger methods.
-pub fn check_signal_phase_trigger(trigger: &Trigger, signals: &[GameSignal]) -> bool {
+pub fn check_signal_phase_trigger(trigger: &Trigger, entities: &[EntityDefinition], signals: &[GameSignal]) -> bool {
     for signal in signals {
         match signal {
             GameSignal::NpcFirstSeen { npc_id, entity_name, .. } => {
-                if trigger.matches_npc_appears(*npc_id, entity_name) {
+                if trigger.matches_npc_appears(entities, *npc_id, entity_name) {
                     return true;
                 }
             }
             GameSignal::EntityDeath { npc_id, entity_name, .. } => {
-                if trigger.matches_entity_death(*npc_id, entity_name) {
+                if trigger.matches_entity_death(entities, *npc_id, entity_name) {
                     return true;
                 }
             }

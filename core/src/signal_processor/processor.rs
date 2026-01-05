@@ -324,6 +324,7 @@ impl EventProcessor {
                 let def = &enc.boss_definitions()[idx];
                 let challenges = def.challenges.clone();
                 let counters = def.counters.clone();
+                let entities = def.entities.clone();
                 let npc_ids: Vec<i64> = def.boss_npc_ids().collect();
                 let def_id = def.id.clone();
                 let boss_name = def.name.clone();
@@ -340,7 +341,7 @@ impl EventProcessor {
 
                 // Start combat timer and challenge tracker
                 enc.start_combat(event.timestamp);
-                enc.challenge_tracker.start(challenges, npc_ids.clone(), event.timestamp);
+                enc.challenge_tracker.start(challenges, entities, npc_ids.clone(), event.timestamp);
                 if let Some(ref initial) = initial_phase {
                     enc.challenge_tracker.set_phase(&initial.id, event.timestamp);
                 }

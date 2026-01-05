@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use baras_types::ChallengeColumns;
-use crate::dsl::{ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityInfo};
+use crate::dsl::{ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityDefinition, EntityInfo};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Challenge Value
@@ -73,6 +73,9 @@ pub struct ChallengeTracker {
     /// Accumulated values by challenge ID
     values: HashMap<String, ChallengeValue>,
 
+    /// Entity roster for name → NPC ID resolution
+    entities: Vec<EntityDefinition>,
+
     /// Boss NPC IDs for entity matching
     boss_npc_ids: Vec<i64>,
 
@@ -98,10 +101,12 @@ impl ChallengeTracker {
     pub fn start(
         &mut self,
         challenges: Vec<ChallengeDefinition>,
+        entities: Vec<EntityDefinition>,
         boss_npc_ids: Vec<i64>,
         timestamp: chrono::NaiveDateTime,
     ) {
         self.definitions = challenges;
+        self.entities = entities;
         self.boss_npc_ids = boss_npc_ids;
         self.values.clear();
         self.phase_durations.clear();
@@ -308,7 +313,7 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(ctx, Some(source), Some(target), Some(ability_id), None)
+            if def.matches(ctx, &self.entities, Some(source), Some(target), Some(ability_id), None)
                 && let Some(val) = self.values.get_mut(&def.id)
             {
                 let entity = if track_source { source } else { target };
@@ -358,7 +363,7 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(ctx, Some(source), Some(target), Some(ability_id), None)
+            if def.matches(ctx, &self.entities, Some(source), Some(target), Some(ability_id), None)
                 && let Some(val) = self.values.get_mut(&def.id)
             {
                 let entity = if track_source { source } else { target };
@@ -398,7 +403,7 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(ctx, Some(source), Some(target), Some(ability_id), None)
+            if def.matches(ctx, &self.entities, Some(source), Some(target), Some(ability_id), None)
                 && let Some(val) = self.values.get_mut(&def.id)
                 && source.is_player
             {
@@ -435,7 +440,7 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(ctx, Some(source), Some(target), None, Some(effect_id))
+            if def.matches(ctx, &self.entities, Some(source), Some(target), None, Some(effect_id))
                 && let Some(val) = self.values.get_mut(&def.id)
                 && source.is_player
             {
@@ -470,7 +475,7 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(ctx, None, Some(entity), None, None)
+            if def.matches(ctx, &self.entities, None, Some(entity), None, None)
                 && let Some(val) = self.values.get_mut(&def.id)
                 && entity.is_player
             {
@@ -507,7 +512,7 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(ctx, Some(source), Some(target), None, None)
+            if def.matches(ctx, &self.entities, Some(source), Some(target), None, None)
                 && let Some(val) = self.values.get_mut(&def.id)
                 && source.is_player
             {
