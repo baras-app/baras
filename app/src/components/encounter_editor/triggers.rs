@@ -55,6 +55,69 @@ fn IdSelector(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Entity Filter Dropdown (for source/target filters)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Dropdown selector for EntityFilter values (source/target)
+/// Supports all standard options plus Selector for specific entities
+#[component]
+pub fn EntityFilterDropdown(
+    label: &'static str,
+    value: EntityFilter,
+    options: &'static [EntityFilter],
+    on_change: EventHandler<EntityFilter>,
+) -> Element {
+    let is_selector = matches!(value, EntityFilter::Selector(_));
+    let selectors = if let EntityFilter::Selector(s) = &value { s.clone() } else { vec![] };
+
+    rsx! {
+        div { class: "flex-col gap-xs",
+            div { class: "flex items-center gap-xs",
+                if !label.is_empty() {
+                    span { class: "text-sm text-secondary", "{label}:" }
+                }
+                select {
+                    class: "select",
+                    style: "width: 160px;",
+                    onchange: move |e| {
+                        let selected = e.value();
+                        if selected == "Specific (ID or Name)" {
+                            on_change.call(EntityFilter::Selector(vec![]));
+                        } else {
+                            for opt in options {
+                                if opt.label() == selected {
+                                    on_change.call(opt.clone());
+                                    break;
+                                }
+                            }
+                        }
+                    },
+                    for opt in options.iter() {
+                        option {
+                            value: "{opt.label()}",
+                            selected: *opt == value,
+                            "{opt.label()}"
+                        }
+                    }
+                    option {
+                        value: "Specific (ID or Name)",
+                        selected: is_selector,
+                        "Specific (ID or Name)"
+                    }
+                }
+            }
+            if is_selector {
+                EntitySelectorEditor {
+                    label: "",
+                    selectors: selectors,
+                    on_change: move |sels| on_change.call(EntityFilter::Selector(sels))
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Boss Entity Selector (for HP threshold triggers)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -352,32 +415,144 @@ pub fn SimpleTriggerEditor(
                 match trigger.clone() {
                     TimerTrigger::CombatStart => rsx! {},
                     TimerTrigger::Manual => rsx! {},
-                    TimerTrigger::AbilityCast { abilities, .. } => rsx! {
-                        AbilitySelectorEditor {
-                            label: "Abilities",
-                            selectors: abilities,
-                            on_change: move |sels| on_change.call(TimerTrigger::AbilityCast { abilities: sels, source: EntityFilter::default() })
+                    TimerTrigger::AbilityCast { abilities, source } => {
+                        let source_for_abilities = source.clone();
+                        let abilities_for_source = abilities.clone();
+                        rsx! {
+                            AbilitySelectorEditor {
+                                label: "Abilities",
+                                selectors: abilities,
+                                on_change: move |sels| on_change.call(TimerTrigger::AbilityCast {
+                                    abilities: sels,
+                                    source: source_for_abilities.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Source",
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::AbilityCast {
+                                    abilities: abilities_for_source.clone(),
+                                    source: f,
+                                })
+                            }
                         }
                     },
-                    TimerTrigger::EffectApplied { effects, .. } => rsx! {
-                        EffectSelectorEditor {
-                            label: "Effects",
-                            selectors: effects,
-                            on_change: move |sels| on_change.call(TimerTrigger::EffectApplied { effects: sels, source: EntityFilter::default(), target: EntityFilter::default() })
+                    TimerTrigger::EffectApplied { effects, source, target } => {
+                        let source_for_effects = source.clone();
+                        let target_for_effects = target.clone();
+                        let effects_for_source = effects.clone();
+                        let target_for_source = target.clone();
+                        let effects_for_target = effects.clone();
+                        let source_for_target = source.clone();
+                        rsx! {
+                            EffectSelectorEditor {
+                                label: "Effects",
+                                selectors: effects,
+                                on_change: move |sels| on_change.call(TimerTrigger::EffectApplied {
+                                    effects: sels,
+                                    source: source_for_effects.clone(),
+                                    target: target_for_effects.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Source",
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::EffectApplied {
+                                    effects: effects_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::EffectApplied {
+                                    effects: effects_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
+                            }
                         }
                     },
-                    TimerTrigger::EffectRemoved { effects, .. } => rsx! {
-                        EffectSelectorEditor {
-                            label: "Effects",
-                            selectors: effects,
-                            on_change: move |sels| on_change.call(TimerTrigger::EffectRemoved { effects: sels, source: EntityFilter::default(), target: EntityFilter::default() })
+                    TimerTrigger::EffectRemoved { effects, source, target } => {
+                        let source_for_effects = source.clone();
+                        let target_for_effects = target.clone();
+                        let effects_for_source = effects.clone();
+                        let target_for_source = target.clone();
+                        let effects_for_target = effects.clone();
+                        let source_for_target = source.clone();
+                        rsx! {
+                            EffectSelectorEditor {
+                                label: "Effects",
+                                selectors: effects,
+                                on_change: move |sels| on_change.call(TimerTrigger::EffectRemoved {
+                                    effects: sels,
+                                    source: source_for_effects.clone(),
+                                    target: target_for_effects.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Source",
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::EffectRemoved {
+                                    effects: effects_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::EffectRemoved {
+                                    effects: effects_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
+                            }
                         }
                     },
-                    TimerTrigger::DamageTaken { abilities, .. } => rsx! {
-                        AbilitySelectorEditor {
-                            label: "Abilities",
-                            selectors: abilities,
-                            on_change: move |sels| on_change.call(TimerTrigger::DamageTaken { abilities: sels, source: EntityFilter::default(), target: EntityFilter::default() })
+                    TimerTrigger::DamageTaken { abilities, source, target } => {
+                        let source_for_abilities = source.clone();
+                        let target_for_abilities = target.clone();
+                        let abilities_for_source = abilities.clone();
+                        let target_for_source = target.clone();
+                        let abilities_for_target = abilities.clone();
+                        let source_for_target = source.clone();
+                        rsx! {
+                            AbilitySelectorEditor {
+                                label: "Abilities",
+                                selectors: abilities,
+                                on_change: move |sels| on_change.call(TimerTrigger::DamageTaken {
+                                    abilities: sels,
+                                    source: source_for_abilities.clone(),
+                                    target: target_for_abilities.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Source",
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::DamageTaken {
+                                    abilities: abilities_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::DamageTaken {
+                                    abilities: abilities_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
+                            }
                         }
                     },
                     TimerTrigger::TimerExpires { timer_id } => {
@@ -517,14 +692,27 @@ pub fn SimpleTriggerEditor(
                             })
                         }
                     },
-                    TimerTrigger::TargetSet { selector, target: _ } => rsx! {
-                        EntitySelectorEditor {
-                            label: "NPC (Setter)",
-                            selectors: selector.clone(),
-                            on_change: move |sels| on_change.call(TimerTrigger::TargetSet {
-                                selector: sels,
-                                target: EntityFilter::default(),
-                            })
+                    TimerTrigger::TargetSet { selector, target } => {
+                        let target_for_selector = target.clone();
+                        let selector_for_target = selector.clone();
+                        rsx! {
+                            EntitySelectorEditor {
+                                label: "NPC (Setter)",
+                                selectors: selector.clone(),
+                                on_change: move |sels| on_change.call(TimerTrigger::TargetSet {
+                                    selector: sels,
+                                    target: target_for_selector.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::TargetSet {
+                                    selector: selector_for_target.clone(),
+                                    target: f,
+                                })
+                            }
                         }
                     },
                     TimerTrigger::TimeElapsed { secs } => rsx! {
@@ -1103,32 +1291,144 @@ fn SimplePhaseTriggerEditor(
                             }
                         }
                     },
-                    PhaseTrigger::AbilityCast { abilities, .. } => rsx! {
-                        AbilitySelectorEditor {
-                            label: "Abilities",
-                            selectors: abilities,
-                            on_change: move |sels| on_change.call(PhaseTrigger::AbilityCast { abilities: sels, source: EntityFilter::default() })
+                    PhaseTrigger::AbilityCast { abilities, source } => {
+                        let source_for_abilities = source.clone();
+                        let abilities_for_source = abilities.clone();
+                        rsx! {
+                            AbilitySelectorEditor {
+                                label: "Abilities",
+                                selectors: abilities,
+                                on_change: move |sels| on_change.call(PhaseTrigger::AbilityCast {
+                                    abilities: sels,
+                                    source: source_for_abilities.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Source",
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(PhaseTrigger::AbilityCast {
+                                    abilities: abilities_for_source.clone(),
+                                    source: f,
+                                })
+                            }
                         }
                     },
-                    PhaseTrigger::EffectApplied { effects, .. } => rsx! {
-                        EffectSelectorEditor {
-                            label: "Effects",
-                            selectors: effects,
-                            on_change: move |sels| on_change.call(PhaseTrigger::EffectApplied { effects: sels, source: EntityFilter::default(), target: EntityFilter::default() })
+                    PhaseTrigger::EffectApplied { effects, source, target } => {
+                        let source_for_effects = source.clone();
+                        let target_for_effects = target.clone();
+                        let effects_for_source = effects.clone();
+                        let target_for_source = target.clone();
+                        let effects_for_target = effects.clone();
+                        let source_for_target = source.clone();
+                        rsx! {
+                            EffectSelectorEditor {
+                                label: "Effects",
+                                selectors: effects,
+                                on_change: move |sels| on_change.call(PhaseTrigger::EffectApplied {
+                                    effects: sels,
+                                    source: source_for_effects.clone(),
+                                    target: target_for_effects.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Source",
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(PhaseTrigger::EffectApplied {
+                                    effects: effects_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(PhaseTrigger::EffectApplied {
+                                    effects: effects_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
+                            }
                         }
                     },
-                    PhaseTrigger::EffectRemoved { effects, .. } => rsx! {
-                        EffectSelectorEditor {
-                            label: "Effects",
-                            selectors: effects,
-                            on_change: move |sels| on_change.call(PhaseTrigger::EffectRemoved { effects: sels, source: EntityFilter::default(), target: EntityFilter::default() })
+                    PhaseTrigger::EffectRemoved { effects, source, target } => {
+                        let source_for_effects = source.clone();
+                        let target_for_effects = target.clone();
+                        let effects_for_source = effects.clone();
+                        let target_for_source = target.clone();
+                        let effects_for_target = effects.clone();
+                        let source_for_target = source.clone();
+                        rsx! {
+                            EffectSelectorEditor {
+                                label: "Effects",
+                                selectors: effects,
+                                on_change: move |sels| on_change.call(PhaseTrigger::EffectRemoved {
+                                    effects: sels,
+                                    source: source_for_effects.clone(),
+                                    target: target_for_effects.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Source",
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(PhaseTrigger::EffectRemoved {
+                                    effects: effects_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(PhaseTrigger::EffectRemoved {
+                                    effects: effects_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
+                            }
                         }
                     },
-                    PhaseTrigger::DamageTaken { abilities, .. } => rsx! {
-                        AbilitySelectorEditor {
-                            label: "Abilities",
-                            selectors: abilities,
-                            on_change: move |sels| on_change.call(PhaseTrigger::DamageTaken { abilities: sels, source: EntityFilter::default(), target: EntityFilter::default() })
+                    PhaseTrigger::DamageTaken { abilities, source, target } => {
+                        let source_for_abilities = source.clone();
+                        let target_for_abilities = target.clone();
+                        let abilities_for_source = abilities.clone();
+                        let target_for_source = target.clone();
+                        let abilities_for_target = abilities.clone();
+                        let source_for_target = source.clone();
+                        rsx! {
+                            AbilitySelectorEditor {
+                                label: "Abilities",
+                                selectors: abilities,
+                                on_change: move |sels| on_change.call(PhaseTrigger::DamageTaken {
+                                    abilities: sels,
+                                    source: source_for_abilities.clone(),
+                                    target: target_for_abilities.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Source",
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(PhaseTrigger::DamageTaken {
+                                    abilities: abilities_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(PhaseTrigger::DamageTaken {
+                                    abilities: abilities_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
+                            }
                         }
                     },
                     PhaseTrigger::CounterReaches { counter_id, value } => {
@@ -1326,26 +1626,25 @@ pub fn CounterTriggerEditor(
                     | CounterTrigger::AnyPhaseChange | CounterTrigger::Never => rsx! {},
 
                     CounterTrigger::AbilityCast { abilities, source } => {
-                        let source_for_change = source.clone();
+                        let source_for_abilities = source.clone();
+                        let abilities_for_source = abilities.clone();
                         rsx! {
                             AbilitySelectorEditor {
                                 label: "Abilities",
-                                selectors: abilities.clone(),
+                                selectors: abilities,
                                 on_change: move |sels| on_change.call(CounterTrigger::AbilityCast {
                                     abilities: sels,
-                                    source: source_for_change.clone(),
+                                    source: source_for_abilities.clone(),
                                 })
                             }
-                            EntitySelectorEditor {
+                            EntityFilterDropdown {
                                 label: "Source",
-                                selectors: vec![],
-                                on_change: {
-                                    let abilities = abilities.clone();
-                                    move |_sels| on_change.call(CounterTrigger::AbilityCast {
-                                        abilities: abilities.clone(),
-                                        source: EntityFilter::default(),
-                                    })
-                                }
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(CounterTrigger::AbilityCast {
+                                    abilities: abilities_for_source.clone(),
+                                    source: f,
+                                })
                             }
                         }
                     },
@@ -1353,41 +1652,39 @@ pub fn CounterTriggerEditor(
                     CounterTrigger::EffectApplied { effects, source, target } => {
                         let source_for_effects = source.clone();
                         let target_for_effects = target.clone();
-                        let source_for_source = source.clone();
+                        let effects_for_source = effects.clone();
                         let target_for_source = target.clone();
+                        let effects_for_target = effects.clone();
+                        let source_for_target = source.clone();
                         rsx! {
                             EffectSelectorEditor {
                                 label: "Effects",
-                                selectors: effects.clone(),
+                                selectors: effects,
                                 on_change: move |sels| on_change.call(CounterTrigger::EffectApplied {
                                     effects: sels,
                                     source: source_for_effects.clone(),
                                     target: target_for_effects.clone(),
                                 })
                             }
-                            EntitySelectorEditor {
+                            EntityFilterDropdown {
                                 label: "Source",
-                                selectors: vec![],
-                                on_change: {
-                                    let effects = effects.clone();
-                                    move |_sels| on_change.call(CounterTrigger::EffectApplied {
-                                        effects: effects.clone(),
-                                        source: EntityFilter::default(),
-                                        target: target_for_source.clone(),
-                                    })
-                                }
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(CounterTrigger::EffectApplied {
+                                    effects: effects_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
                             }
-                            EntitySelectorEditor {
+                            EntityFilterDropdown {
                                 label: "Target",
-                                selectors: vec![],
-                                on_change: {
-                                    let effects = effects.clone();
-                                    move |_sels| on_change.call(CounterTrigger::EffectApplied {
-                                        effects: effects.clone(),
-                                        source: source_for_source.clone(),
-                                        target: EntityFilter::default(),
-                                    })
-                                }
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(CounterTrigger::EffectApplied {
+                                    effects: effects_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
                             }
                         }
                     },
@@ -1395,41 +1692,39 @@ pub fn CounterTriggerEditor(
                     CounterTrigger::EffectRemoved { effects, source, target } => {
                         let source_for_effects = source.clone();
                         let target_for_effects = target.clone();
-                        let source_for_source = source.clone();
+                        let effects_for_source = effects.clone();
                         let target_for_source = target.clone();
+                        let effects_for_target = effects.clone();
+                        let source_for_target = source.clone();
                         rsx! {
                             EffectSelectorEditor {
                                 label: "Effects",
-                                selectors: effects.clone(),
+                                selectors: effects,
                                 on_change: move |sels| on_change.call(CounterTrigger::EffectRemoved {
                                     effects: sels,
                                     source: source_for_effects.clone(),
                                     target: target_for_effects.clone(),
                                 })
                             }
-                            EntitySelectorEditor {
+                            EntityFilterDropdown {
                                 label: "Source",
-                                selectors: vec![],
-                                on_change: {
-                                    let effects = effects.clone();
-                                    move |_sels| on_change.call(CounterTrigger::EffectRemoved {
-                                        effects: effects.clone(),
-                                        source: EntityFilter::default(),
-                                        target: target_for_source.clone(),
-                                    })
-                                }
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(CounterTrigger::EffectRemoved {
+                                    effects: effects_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
                             }
-                            EntitySelectorEditor {
+                            EntityFilterDropdown {
                                 label: "Target",
-                                selectors: vec![],
-                                on_change: {
-                                    let effects = effects.clone();
-                                    move |_sels| on_change.call(CounterTrigger::EffectRemoved {
-                                        effects: effects.clone(),
-                                        source: source_for_source.clone(),
-                                        target: EntityFilter::default(),
-                                    })
-                                }
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(CounterTrigger::EffectRemoved {
+                                    effects: effects_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
                             }
                         }
                     },
@@ -1437,41 +1732,39 @@ pub fn CounterTriggerEditor(
                     CounterTrigger::DamageTaken { abilities, source, target } => {
                         let source_for_abilities = source.clone();
                         let target_for_abilities = target.clone();
-                        let source_for_source = source.clone();
+                        let abilities_for_source = abilities.clone();
                         let target_for_source = target.clone();
+                        let abilities_for_target = abilities.clone();
+                        let source_for_target = source.clone();
                         rsx! {
                             AbilitySelectorEditor {
                                 label: "Abilities",
-                                selectors: abilities.clone(),
+                                selectors: abilities,
                                 on_change: move |sels| on_change.call(CounterTrigger::DamageTaken {
                                     abilities: sels,
                                     source: source_for_abilities.clone(),
                                     target: target_for_abilities.clone(),
                                 })
                             }
-                            EntitySelectorEditor {
+                            EntityFilterDropdown {
                                 label: "Source",
-                                selectors: vec![],
-                                on_change: {
-                                    let abilities = abilities.clone();
-                                    move |_sels| on_change.call(CounterTrigger::DamageTaken {
-                                        abilities: abilities.clone(),
-                                        source: EntityFilter::default(),
-                                        target: target_for_source.clone(),
-                                    })
-                                }
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(CounterTrigger::DamageTaken {
+                                    abilities: abilities_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
                             }
-                            EntitySelectorEditor {
+                            EntityFilterDropdown {
                                 label: "Target",
-                                selectors: vec![],
-                                on_change: {
-                                    let abilities = abilities.clone();
-                                    move |_sels| on_change.call(CounterTrigger::DamageTaken {
-                                        abilities: abilities.clone(),
-                                        source: source_for_source.clone(),
-                                        target: EntityFilter::default(),
-                                    })
-                                }
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(CounterTrigger::DamageTaken {
+                                    abilities: abilities_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
                             }
                         }
                     },

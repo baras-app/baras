@@ -11,7 +11,7 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::types::{AbilitySelector, AudioConfig, EffectCategory, EffectListItem, EffectSelector, EffectTriggerMode, EntityFilter, Trigger};
 use crate::utils::parse_hex_color;
-use super::encounter_editor::triggers::{AbilitySelectorEditor, EffectSelectorEditor};
+use super::encounter_editor::triggers::{AbilitySelectorEditor, EffectSelectorEditor, EntityFilterDropdown};
 
 /// UI-level trigger type for effect tracking
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -640,7 +640,8 @@ fn EffectEditForm(
             // Source and Target filters
             div { class: "form-row-hz",
                 label { "Source" }
-                EntityFilterSelect {
+                EntityFilterDropdown {
+                    label: "",
                     value: draft().source.clone(),
                     options: EntityFilter::source_options(),
                     on_change: move |f| {
@@ -650,7 +651,8 @@ fn EffectEditForm(
                     }
                 }
                 label { "Target" }
-                EntityFilterSelect {
+                EntityFilterDropdown {
+                    label: "",
                     value: draft().target.clone(),
                     options: EntityFilter::target_options(),
                     on_change: move |f| {
@@ -952,38 +954,6 @@ fn EffectEditForm(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Entity Filter Select
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn EntityFilterSelect(
-    value: EntityFilter,
-    options: &'static [EntityFilter],
-    on_change: EventHandler<EntityFilter>,
-) -> Element {
-    rsx! {
-        select {
-            onchange: move |e| {
-                let selected = e.value();
-                for opt in options {
-                    if opt.label() == selected {
-                        on_change.call(opt.clone());
-                        break;
-                    }
-                }
-            },
-            for opt in options.iter() {
-                option {
-                    value: "{opt.label()}",
-                    selected: *opt == value,
-                    "{opt.label()}"
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Trigger Abilities Editor (for AbilityCast triggers)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1221,13 +1191,15 @@ fn NewEffectForm(
             // Source and Target
             div { class: "form-row-hz",
                 label { "Source" }
-                EntityFilterSelect {
+                EntityFilterDropdown {
+                    label: "",
                     value: source(),
                     options: EntityFilter::source_options(),
                     on_change: move |f| source.set(f)
                 }
                 label { "Target" }
-                EntityFilterSelect {
+                EntityFilterDropdown {
+                    label: "",
                     value: target(),
                     options: EntityFilter::target_options(),
                     on_change: move |f| target.set(f)

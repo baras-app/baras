@@ -14,7 +14,7 @@ use crate::utils::parse_hex_color;
 
 use super::tabs::EncounterData;
 use super::timers::PhaseSelector;
-use super::triggers::EntitySelectorEditor;
+use super::triggers::EntityFilterDropdown;
 use super::InlineNameCreator;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -545,8 +545,10 @@ fn ChallengeConditionRow(
                         }
                         ChallengeCondition::Source { matcher } => {
                             rsx! {
-                                EntityFilterSelect {
-                                    matcher: matcher.clone(),
+                                EntityFilterDropdown {
+                                    label: "",
+                                    value: matcher.clone(),
+                                    options: EntityFilter::common_options(),
                                     on_change: move |m| {
                                         on_change.call(ChallengeCondition::Source { matcher: m });
                                     }
@@ -555,8 +557,10 @@ fn ChallengeConditionRow(
                         }
                         ChallengeCondition::Target { matcher } => {
                             rsx! {
-                                EntityFilterSelect {
-                                    matcher: matcher.clone(),
+                                EntityFilterDropdown {
+                                    label: "",
+                                    value: matcher.clone(),
+                                    options: EntityFilter::common_options(),
                                     on_change: move |m| {
                                         on_change.call(ChallengeCondition::Target { matcher: m });
                                     }
@@ -722,72 +726,6 @@ fn ChallengeConditionRow(
                 style: "flex-shrink: 0;",
                 onclick: move |_| on_remove.call(()),
                 "×"
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Entity Filter Select
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn EntityFilterSelect(
-    matcher: EntityFilter,
-    on_change: EventHandler<EntityFilter>,
-) -> Element {
-    let matcher_type = match &matcher {
-        EntityFilter::Boss => "boss",
-        EntityFilter::NpcExceptBoss => "npc_except_boss",
-        EntityFilter::AnyNpc => "any_npc",
-        EntityFilter::AnyPlayer => "any_player",
-        EntityFilter::LocalPlayer => "local_player",
-        EntityFilter::Any => "any",
-        EntityFilter::Selector(_) => "selector",
-        _ => "any", // Handle other variants
-    };
-
-    rsx! {
-        div { class: "flex-col gap-xs",
-            select {
-                class: "input-inline",
-                value: "{matcher_type}",
-                onchange: move |e| {
-                    let new_matcher = match e.value().as_str() {
-                        "boss" => EntityFilter::Boss,
-                        "npc_except_boss" => EntityFilter::NpcExceptBoss,
-                        "any_npc" => EntityFilter::AnyNpc,
-                        "any_player" => EntityFilter::AnyPlayer,
-                        "local_player" => EntityFilter::LocalPlayer,
-                        "any" => EntityFilter::Any,
-                        "selector" => EntityFilter::Selector(vec![]),
-                        _ => EntityFilter::Any,
-                    };
-                    on_change.call(new_matcher);
-                },
-                option { value: "boss", "Boss" }
-                option { value: "npc_except_boss", "Adds (Non-Boss)" }
-                option { value: "any_npc", "Any NPC" }
-                option { value: "any_player", "Any Player" }
-                option { value: "local_player", "Local Player" }
-                option { value: "any", "Any" }
-                option { value: "selector", "Specific (ID or Name)" }
-            }
-
-            // Chip-based input for selector
-            {
-                match &matcher {
-                    EntityFilter::Selector(selectors) => {
-                        rsx! {
-                            EntitySelectorEditor {
-                                label: "",
-                                selectors: selectors.clone(),
-                                on_change: move |new_sels| on_change.call(EntityFilter::Selector(new_sels))
-                            }
-                        }
-                    }
-                    _ => rsx! {}
-                }
             }
         }
     }

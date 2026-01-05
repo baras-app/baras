@@ -1297,7 +1297,6 @@ impl AppConfig {
 #[serde(rename_all = "snake_case")]
 pub enum EntityFilter {
     /// The local player only
-    #[default]
     LocalPlayer,
     /// Local player's companion
     OtherPlayers,
@@ -1320,6 +1319,7 @@ pub enum EntityFilter {
     /// Specific entities by selector (IDs, names, or roster aliases)
     Selector(Vec<EntitySelector>),
     /// Any entity whatsoever
+    #[default]
     Any,
 }
 
@@ -1414,28 +1414,37 @@ impl EntityFilter {
         }
     }
 
-    /// Common filters for source field (timers/effects)
+    /// All filters for source field (timers/effects/triggers)
     pub fn source_options() -> &'static [EntityFilter] {
         &[
+            Self::Any,
             Self::LocalPlayer,
             Self::OtherPlayers,
             Self::AnyPlayer,
+            Self::AnyCompanion,
+            Self::AnyPlayerOrCompanion,
+            Self::GroupMembers,
+            Self::GroupMembersExceptLocal,
             Self::Boss,
+            Self::NpcExceptBoss,
             Self::AnyNpc,
-            Self::Any,
         ]
     }
 
-    /// Common filters for target field (timers/effects)
+    /// All filters for target field (timers/effects/triggers)
     pub fn target_options() -> &'static [EntityFilter] {
         &[
+            Self::Any,
             Self::LocalPlayer,
+            Self::OtherPlayers,
+            Self::AnyPlayer,
+            Self::AnyCompanion,
+            Self::AnyPlayerOrCompanion,
             Self::GroupMembers,
             Self::GroupMembersExceptLocal,
-            Self::AnyPlayer,
             Self::Boss,
+            Self::NpcExceptBoss,
             Self::AnyNpc,
-            Self::Any,
         ]
     }
 }

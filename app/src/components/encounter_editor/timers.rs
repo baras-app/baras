@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 
 use crate::api;
 use crate::types::{
-    AudioConfig, BossWithPath, BossTimerDefinition, EncounterItem, EntityFilter, Trigger,
+    AudioConfig, BossWithPath, BossTimerDefinition, EncounterItem, Trigger,
 };
 use crate::utils::parse_hex_color;
 
@@ -863,80 +863,6 @@ fn TimerEditForm(
     }
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Entity Filter Selector
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn EntityFilterSelector(
-    value: EntityFilter,
-    on_change: EventHandler<EntityFilter>,
-) -> Element {
-    use baras_types::EntitySelector;
-
-    let current_value = value.type_name();
-    let selector_value = if let EntityFilter::Selector(selectors) = &value {
-        selectors.first().map(|s| s.display()).unwrap_or_default()
-    } else {
-        String::new()
-    };
-
-    rsx! {
-        div { class: "flex-col gap-xs",
-            select {
-                class: "select",
-                style: "width: 160px;",
-                value: "{current_value}",
-                onchange: move |e| {
-                    let new_filter = match e.value().as_str() {
-                        "any" => EntityFilter::Any,
-                        "local_player" => EntityFilter::LocalPlayer,
-                        "other_players" => EntityFilter::OtherPlayers,
-                        "any_player" => EntityFilter::AnyPlayer,
-                        "any_companion" => EntityFilter::AnyCompanion,
-                        "group_members" => EntityFilter::GroupMembers,
-                        "group_members_except_local" => EntityFilter::GroupMembersExceptLocal,
-                        "boss" => EntityFilter::Boss,
-                        "npc_except_boss" => EntityFilter::NpcExceptBoss,
-                        "any_npc" => EntityFilter::AnyNpc,
-                        "selector" => EntityFilter::Selector(vec![]),
-                        _ => EntityFilter::Any,
-                    };
-                    on_change.call(new_filter);
-                },
-                option { value: "any", "Any" }
-                option { value: "local_player", "Local Player" }
-                option { value: "local_companion", "Local Companion" }
-                option { value: "local_player_or_companion", "Local + Companion" }
-                option { value: "other_players", "Other Players" }
-                option { value: "any_player", "Any Player" }
-                option { value: "any_companion", "Any Companion" }
-                option { value: "any_player_or_companion", "Any Player/Companion" }
-                option { value: "group_members", "Group Members" }
-                option { value: "group_members_except_local", "Group (Except Local)" }
-                option { value: "boss", "Boss" }
-                option { value: "npc_except_boss", "NPC (Except Boss)" }
-                option { value: "any_npc", "Any NPC" }
-                option { value: "selector", "Specific (ID or Name)" }
-            }
-
-            if matches!(value, EntityFilter::Selector(_)) {
-                input {
-                    class: "input-inline",
-                    r#type: "text",
-                    style: "width: 100%;",
-                    placeholder: "NPC ID or entity name",
-                    value: "{selector_value}",
-                    oninput: move |e| {
-                        let selector = EntitySelector::from_input(&e.value());
-                        on_change.call(EntityFilter::Selector(vec![selector]))
-                    }
-                }
-            }
-        }
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase Selector (multi-select dropdown)
