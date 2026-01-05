@@ -13,13 +13,19 @@ The **Battle Analysis and Raid Assessment System** (BARAS) is the ultimate compa
 ### Windows
 
 1. Download the latest release from the [Releases page](https://github.com/baras-app/baras/releases)
-3. Run the `.exe`
+2. Run the `.exe`
 
 ### Linux
 
 1. Download the latest AppImage from the [Releases page](https://github.com/baras-app/baras/releases)
 2. Make executable: `chmod +x baras`
 3. Run the AppImage
+
+#### NVIDIA on Linux
+
+If you are running a NVIDIA graphics card you must run the application with the following environment flag:
+
+`WEBKIT_DISABLE_DMABUF_RENDERER=1`
 
 ## Features
 
@@ -35,13 +41,12 @@ The **Battle Analysis and Raid Assessment System** (BARAS) is the ultimate compa
 - **File Management** - Load in historical files, easily see the character and date. Set BARAS to automatically delete empty files and old logs.
 - **Parsely Integration** - Upload logs directly to parsely.io from the UI.
 
-
 ## Planned Features
 
-- [X] Complete data exploration tool
-- [X] Raid challenges and boss phase tracking
+- [x] Complete data exploration tool
+- [x] Raid challenges and boss phase tracking
 - [ ] Community curated set of default Timers and effects
-- [X] Timer/effect audio cues
+- [x] Timer/effect audio cues
 - [ ] PvP Support
 - [ ] Class and ability icons
 
@@ -51,8 +56,6 @@ The **Battle Analysis and Raid Assessment System** (BARAS) is the ultimate compa
 | ------------- | ------------------------------------------------------------------------ |
 | Windows 10/11 | Fully supported                                                          |
 | Linux         | Wayland DEs that support zwlr layershell (KDE, Sway, Hyprland, and more) |
-
-
 
 ## Quick Start
 
