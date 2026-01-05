@@ -1,5 +1,6 @@
 use crate::combat_log::{CombatEvent, EntityType};
 use crate::context::resolve;
+use crate::encounter::combat::ActiveBoss;
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::EncounterState;
 use crate::signal_processor::signal::GameSignal;
@@ -237,6 +238,20 @@ impl EventProcessor {
 
         self.update_area_from_event(event, cache);
 
+        // Also update the current encounter's area/difficulty
+        // (fixes timers with difficulty filters when AreaEntered fires mid-session)
+        if let Some(enc) = cache.current_encounter_mut() {
+            let difficulty_name = resolve(event.effect.difficulty_name);
+            enc.set_difficulty(crate::game_data::Difficulty::from_game_string(difficulty_name));
+            let area_id = if event.effect.effect_id != 0 {
+                Some(event.effect.effect_id)
+            } else {
+                None
+            };
+            let area_name = Some(resolve(event.effect.effect_name).to_string());
+            enc.set_area(area_id, area_name);
+        }
+
         vec![GameSignal::AreaEntered {
             area_id: event.effect.effect_id,
             area_name: resolve(event.effect.effect_name).to_string(),
@@ -313,6 +328,15 @@ impl EventProcessor {
                 let def_id = def.id.clone();
                 let boss_name = def.name.clone();
                 let initial_phase = def.initial_phase().cloned();
+
+                // Set active boss for timer context (HP will be updated later)
+                enc.set_boss(ActiveBoss {
+                    definition_id: def_id.clone(),
+                    name: boss_name.clone(),
+                    entity_id: entity.log_id,
+                    max_hp: 0,
+                    current_hp: 0,
+                });
 
                 // Start combat timer and challenge tracker
                 enc.start_combat(event.timestamp);

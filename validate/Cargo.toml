@@ -11,3 +11,14 @@ path = "src/main.rs"
 baras-core = { path = "../core" }
 clap = { version = "4", features = ["derive"] }
 chrono = "0.4"
+toml = "0.8"
+atty = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+
+[features]
+default = []
+visual = ["baras-overlay"]
+
+[dependencies.baras-overlay]
+path = "../overlay"
+optional = true
