@@ -444,12 +444,11 @@ fn test_boss_hp_and_phase_signals() {
     });
     assert!(bestia_seen, "Expected NpcFirstSeen for Dread Master Bestia");
 
-    // Check for PhaseChanged to burn phase (boss HP drops below 30%)
+    // Check for PhaseChanged to burn phase (boss HP drops below 32% - config threshold)
     let burn_phase = signals.iter().find(|s| {
         matches!(s, GameSignal::PhaseChanged { new_phase, .. } if new_phase == "burn")
     });
     assert!(burn_phase.is_some(), "Expected PhaseChanged to 'burn' phase");
-    eprintln!("PhaseChanged to 'burn' phase detected!");
 
     // Validate CounterChanged signals (counter increments from events)
     if signal_types.contains("CounterChanged") {

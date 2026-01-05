@@ -11,10 +11,21 @@ use chrono::NaiveDateTime;
 
 use crate::combat_log::EntityType;
 use crate::context::IStr;
+use crate::dsl::EntityDefinition;
 use crate::dsl::EntityFilterMatching;
+use crate::encounter::CombatEncounter;
 use crate::signal_processor::{GameSignal, SignalHandler};
 
 use super::{ActiveEffect, EffectDefinition, EffectTriggerMode};
+
+/// Get the entity roster from the current encounter, or empty slice if none.
+fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
+    static EMPTY: &[EntityDefinition] = &[];
+    encounter
+        .and_then(|e| e.active_boss_idx())
+        .map(|idx| encounter.unwrap().boss_definitions()[idx].entities.as_slice())
+        .unwrap_or(EMPTY)
+}
 
 /// Combined set of effect definitions
 #[derive(Debug, Clone, Default)]
@@ -470,10 +481,12 @@ impl EffectTracker {
 
         let is_from_local = local_player_id == Some(source_id);
 
+        let entities = get_entities(encounter);
         for def in matching_defs {
             // Check source filter from the trigger
             if let Some(source_filter) = def.ability_cast_source_filter() {
                 if !source_filter.matches(
+                    entities,
                     source_info.id,
                     source_info.entity_type,
                     source_info.name,
@@ -711,9 +724,10 @@ impl EffectTracker {
         let boss_ids: HashSet<i64> = encounter
             .map(|e| e.hp_by_entity.keys().copied().collect())
             .unwrap_or_default();
+        let entities = get_entities(encounter);
 
-        def.source.matches(source.id, source.entity_type, source.name, source.npc_id, local_player_id, &boss_ids)
-            && def.target.matches(target.id, target.entity_type, target.name, target.npc_id, local_player_id, &boss_ids)
+        def.source.matches(entities, source.id, source.entity_type, source.name, source.npc_id, local_player_id, &boss_ids)
+            && def.target.matches(entities, target.id, target.entity_type, target.name, target.npc_id, local_player_id, &boss_ids)
     }
 }
 

@@ -39,7 +39,11 @@ impl DataTab {
 
     /// Returns the value column to query (dmg_amount or heal_amount)
     pub fn value_column(&self) -> &'static str {
-        if self.is_healing() { "heal_amount" } else { "dmg_amount" }
+        if self.is_healing() {
+            "heal_amount"
+        } else {
+            "dmg_amount"
+        }
     }
 
     /// Returns the display label for the rate column (DPS, HPS, DTPS, HTPS)
@@ -68,7 +72,11 @@ pub struct BreakdownMode {
 
 impl BreakdownMode {
     pub fn ability_only() -> Self {
-        Self { by_ability: true, by_target_type: false, by_target_instance: false }
+        Self {
+            by_ability: true,
+            by_target_type: false,
+            by_target_instance: false,
+        }
     }
 }
 
@@ -251,7 +259,10 @@ impl TimeRange {
     }
 
     pub fn full(duration: f32) -> Self {
-        Self { start: 0.0, end: duration }
+        Self {
+            start: 0.0,
+            end: duration,
+        }
     }
 
     pub fn is_full(&self, duration: f32) -> bool {
@@ -308,9 +319,9 @@ impl EffectSelector {
     pub fn matches(&self, id: u64, name: Option<&str>) -> bool {
         match self {
             Self::Id(expected) => *expected == id,
-            Self::Name(expected) => {
-                name.map(|n| n.eq_ignore_ascii_case(expected)).unwrap_or(false)
-            }
+            Self::Name(expected) => name
+                .map(|n| n.eq_ignore_ascii_case(expected))
+                .unwrap_or(false),
         }
     }
 }
@@ -344,9 +355,9 @@ impl AbilitySelector {
     pub fn matches(&self, id: u64, name: Option<&str>) -> bool {
         match self {
             Self::Id(expected) => *expected == id,
-            Self::Name(expected) => {
-                name.map(|n| n.eq_ignore_ascii_case(expected)).unwrap_or(false)
-            }
+            Self::Name(expected) => name
+                .map(|n| n.eq_ignore_ascii_case(expected))
+                .unwrap_or(false),
         }
     }
 }
@@ -412,7 +423,6 @@ impl EntityMatcher {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Trigger {
     // ─── Combat State [TPC] ────────────────────────────────────────────────
-
     /// Combat starts. [TPC]
     CombatStart,
 
@@ -420,7 +430,6 @@ pub enum Trigger {
     CombatEnd,
 
     // ─── Abilities & Effects [TPC] ─────────────────────────────────────────
-
     /// Ability is cast. [TPC]
     AbilityCast {
         #[serde(default)]
@@ -460,7 +469,6 @@ pub enum Trigger {
     },
 
     // ─── HP Thresholds [TPC] ───────────────────────────────────────────────
-
     /// Boss HP drops below threshold. [TPC]
     BossHpBelow {
         hp_percent: f32,
@@ -476,7 +484,6 @@ pub enum Trigger {
     },
 
     // ─── Entity Lifecycle [TPC] ────────────────────────────────────────────
-
     /// NPC appears (first seen in combat). [TPC]
     NpcAppears {
         #[serde(default)]
@@ -498,7 +505,6 @@ pub enum Trigger {
     },
 
     // ─── Phase Events [TPC] ────────────────────────────────────────────────
-
     /// Phase is entered. [TC]
     PhaseEntered { phase_id: String },
 
@@ -509,12 +515,10 @@ pub enum Trigger {
     AnyPhaseChange,
 
     // ─── Counter Events [TP] ───────────────────────────────────────────────
-
     /// Counter reaches a specific value. [TP]
     CounterReaches { counter_id: String, value: u32 },
 
     // ─── Timer Events [T only] ─────────────────────────────────────────────
-
     /// Another timer expires (chaining). [T only]
     TimerExpires { timer_id: String },
 
@@ -522,12 +526,10 @@ pub enum Trigger {
     TimerStarted { timer_id: String },
 
     // ─── Time-based [TP] ───────────────────────────────────────────────────
-
     /// Time elapsed since combat start. [TP]
     TimeElapsed { secs: f32 },
 
     // ─── System-specific ───────────────────────────────────────────────────
-
     /// Manual/debug trigger. [T only]
     Manual,
 
@@ -535,7 +537,6 @@ pub enum Trigger {
     Never,
 
     // ─── Composition [TPC] ─────────────────────────────────────────────────
-
     /// Any condition suffices (OR logic). [TPC]
     AnyOf { conditions: Vec<Trigger> },
 }
@@ -611,13 +612,13 @@ pub mod overlay_colors {
     use super::Color;
 
     pub const WHITE: Color = [255, 255, 255, 255];
-    pub const DPS: Color = [180, 50, 50, 255];      // Red
-    pub const HPS: Color = [50, 180, 50, 255];      // Green
-    pub const TPS: Color = [50, 100, 180, 255];     // Blue
-    pub const DTPS: Color = [180, 80, 80, 255];     // Dark red
-    pub const ABS: Color = [100, 150, 200, 255];    // Light blue
+    pub const DPS: Color = [180, 50, 50, 255]; // Red
+    pub const HPS: Color = [50, 180, 50, 255]; // Green
+    pub const TPS: Color = [50, 100, 180, 255]; // Blue
+    pub const DTPS: Color = [180, 80, 80, 255]; // Dark red
+    pub const ABS: Color = [100, 150, 200, 255]; // Light blue
     pub const BOSS_BAR: Color = [200, 50, 50, 255]; // Boss health red
-    pub const FRAME_BG: Color = [40, 40, 40, 200];  // Raid frame background
+    pub const FRAME_BG: Color = [40, 40, 40, 200]; // Raid frame background
 
     /// Get the default bar color for an overlay type by its config key
     pub fn for_key(key: &str) -> Color {
@@ -636,8 +637,12 @@ pub mod overlay_colors {
 // Serde Default Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-fn default_true() -> bool { true }
-fn default_opacity() -> u8 { 180 }
+fn default_true() -> bool {
+    true
+}
+fn default_opacity() -> u8 {
+    180
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Overlay Appearance Config
@@ -668,9 +673,15 @@ pub struct OverlayAppearanceConfig {
     pub show_duration: bool,
 }
 
-fn default_font_color() -> Color { overlay_colors::WHITE }
-fn default_bar_color() -> Color { overlay_colors::DPS }
-fn default_max_entries() -> u8 { 16 }
+fn default_font_color() -> Color {
+    overlay_colors::WHITE
+}
+fn default_bar_color() -> Color {
+    overlay_colors::DPS
+}
+fn default_max_entries() -> u8 {
+    16
+}
 
 impl Default for OverlayAppearanceConfig {
     fn default() -> Self {
@@ -874,13 +885,27 @@ pub struct RaidOverlaySettings {
     pub effect_fill_opacity: u8,
 }
 
-fn default_grid_columns() -> u8 { 2 }
-fn default_grid_rows() -> u8 { 4 }
-fn default_max_effects() -> u8 { 4 }
-fn default_effect_size() -> f32 { 14.0 }
-fn default_effect_offset() -> f32 { 3.0 }
-fn default_frame_bg() -> Color { overlay_colors::FRAME_BG }
-fn default_effect_fill_opacity() -> u8 { 255 }
+fn default_grid_columns() -> u8 {
+    2
+}
+fn default_grid_rows() -> u8 {
+    4
+}
+fn default_max_effects() -> u8 {
+    4
+}
+fn default_effect_size() -> f32 {
+    14.0
+}
+fn default_effect_offset() -> f32 {
+    3.0
+}
+fn default_frame_bg() -> Color {
+    overlay_colors::FRAME_BG
+}
+fn default_effect_fill_opacity() -> u8 {
+    255
+}
 
 impl Default for RaidOverlaySettings {
     fn default() -> Self {
@@ -925,7 +950,9 @@ pub struct BossHealthConfig {
     pub show_percent: bool,
 }
 
-fn default_boss_bar_color() -> Color { overlay_colors::BOSS_BAR }
+fn default_boss_bar_color() -> Color {
+    overlay_colors::BOSS_BAR
+}
 
 impl Default for BossHealthConfig {
     fn default() -> Self {
@@ -958,8 +985,12 @@ pub struct TimerOverlayConfig {
     pub sort_by_remaining: bool,
 }
 
-fn default_timer_bar_color() -> Color { [100, 180, 220, 255] }
-fn default_max_timers() -> u8 { 10 }
+fn default_timer_bar_color() -> Color {
+    [100, 180, 220, 255]
+}
+fn default_max_timers() -> u8 {
+    10
+}
 
 impl Default for TimerOverlayConfig {
     fn default() -> Self {
@@ -1029,8 +1060,12 @@ pub struct ChallengeOverlayConfig {
     pub layout: ChallengeLayout,
 }
 
-fn default_challenge_bar_color() -> Color { overlay_colors::DPS }
-fn default_max_challenges() -> u8 { 4 }
+fn default_challenge_bar_color() -> Color {
+    overlay_colors::DPS
+}
+fn default_max_challenges() -> u8 {
+    4
+}
 
 impl Default for ChallengeOverlayConfig {
     fn default() -> Self {
@@ -1154,7 +1189,10 @@ impl Default for OverlaySettings {
 
 impl OverlaySettings {
     pub fn get_position(&self, overlay_type: &str) -> OverlayPositionConfig {
-        self.positions.get(overlay_type).cloned().unwrap_or_default()
+        self.positions
+            .get(overlay_type)
+            .cloned()
+            .unwrap_or_default()
     }
 
     pub fn set_position(&mut self, overlay_type: &str, config: OverlayPositionConfig) {
@@ -1162,7 +1200,10 @@ impl OverlaySettings {
     }
 
     pub fn get_appearance(&self, overlay_type: &str) -> OverlayAppearanceConfig {
-        self.appearances.get(overlay_type).cloned().unwrap_or_default()
+        self.appearances
+            .get(overlay_type)
+            .cloned()
+            .unwrap_or_default()
     }
 
     pub fn set_appearance(&mut self, overlay_type: &str, config: OverlayAppearanceConfig) {
@@ -1209,7 +1250,9 @@ pub struct AudioSettings {
     pub alerts_enabled: bool,
 }
 
-fn default_audio_volume() -> u8 { 80 }
+fn default_audio_volume() -> u8 {
+    80
+}
 
 impl Default for AudioSettings {
     fn default() -> Self {
@@ -1263,7 +1306,9 @@ pub struct AppConfig {
     pub audio: AudioSettings,
 }
 
-fn default_retention_days() -> u32 { 21 }
+fn default_retention_days() -> u32 {
+    21
+}
 
 impl AppConfig {
     /// Create a new AppConfig with the specified log directory.
@@ -1365,9 +1410,9 @@ impl EntityFilter {
     /// Check if this filter matches a specific NPC by class ID
     pub fn matches_npc_id(&self, npc_id: i64) -> bool {
         match self {
-            Self::Selector(selectors) => selectors.iter().any(|s| {
-                matches!(s, EntitySelector::Id(id) if *id == npc_id)
-            }),
+            Self::Selector(selectors) => selectors
+                .iter()
+                .any(|s| matches!(s, EntitySelector::Id(id) if *id == npc_id)),
             Self::AnyNpc | Self::Boss | Self::NpcExceptBoss | Self::Any => true,
             _ => false,
         }
@@ -1376,9 +1421,9 @@ impl EntityFilter {
     /// Check if this filter matches by name (case insensitive)
     pub fn matches_name(&self, name: &str) -> bool {
         match self {
-            Self::Selector(selectors) => selectors.iter().any(|s| {
-                matches!(s, EntitySelector::Name(n) if n.eq_ignore_ascii_case(name))
-            }),
+            Self::Selector(selectors) => selectors
+                .iter()
+                .any(|s| matches!(s, EntitySelector::Name(n) if n.eq_ignore_ascii_case(name))),
             Self::Any => true,
             _ => false,
         }

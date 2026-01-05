@@ -11,7 +11,7 @@ use chrono::{Local, NaiveDateTime};
 
 use crate::combat_log::EntityType;
 use crate::context::{IStr, resolve};
-use crate::dsl::BossEncounterDefinition;
+use crate::dsl::{BossEncounterDefinition, EntityDefinition};
 use crate::signal_processor::{GameSignal, SignalHandler};
 
 use super::matching::{is_definition_active, matches_source_target_filters};
@@ -566,6 +566,7 @@ impl TimerManager {
     pub(super) fn matches_source_target_filters(
         &self,
         trigger: &TimerTrigger,
+        entities: &[EntityDefinition],
         source_id: i64,
         source_type: EntityType,
         source_name: IStr,
@@ -577,6 +578,7 @@ impl TimerManager {
     ) -> bool {
         matches_source_target_filters(
             trigger,
+            entities,
             source_id,
             source_type,
             source_name,
