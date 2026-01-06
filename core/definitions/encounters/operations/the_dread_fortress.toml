@@ -40,6 +40,15 @@ reset_on = { type = "ability_cast", abilities = [
   3342167456088064,
 ] } # Reset on Nightmare Twin Attack
 
+[[boss.counters]]
+id = "nefra_rng_add_gate"
+name = "rng_add_gate"
+decrement_on = { type = "any_of", conditions = [
+  { type = "timer_started", timer_id = "nefra_dps_add" },
+  { type = "timer_started", timer_id = "nefra_tank_add" },
+] }
+increment_on = { type = "timer_expires", timer_id = "nefra_rng_add" }
+initial_value = 0
 # ─── Timers ─────────────────────────────────────────────────────────────────────
 
 # -- Voice of the Masters --
@@ -62,19 +71,85 @@ duration_secs = 30.0
 color = [29, 153, 20, 255]
 difficulties = ["veteran", "master"]
 
-# -- DPS Add --
-# Small add that DPS needs to kill. First at 30s, then every 30s on spawn.
+[[boss.timer]]
+id = "nefra_dps_add_1st"
+name = "DPS Add 1st"
+display_text = "DPS Add"
+trigger = { type = "combat_start" }
+duration_secs = 30.0
+color = [37, 219, 213, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "nefra_tank_add_1st"
+name = "TANK Add 1st"
+display_text = "Tank Add"
+trigger = { type = "combat_start" }
+duration_secs = 45.0
+color = [52, 28, 219, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "nefra_dps_add_vm"
+name = "DPS Add VM"
+display_text = "DPS Add"
+trigger = { type = "ability_cast", abilities = [3308460552749056] }
+duration_secs = 30.0
+color = [32, 211, 219, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "nefra_tank_add_vm"
+name = "TANK Add VM"
+display_text = "Tank Add"
+trigger = { type = "ability_cast", abilities = [3308164200005632] }
+duration_secs = 30.0
+color = [46, 32, 219, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "nefra_tank_add"
+name = "TANK Add NiM"
+display_text = "Tank Add"
+trigger = { type = "ability_cast", abilities = [3308460552749056] }
+duration_secs = 10.0
+color = [33, 29, 224, 255]
+difficulties = ["master"]
+counter_condition = { counter_id = "nefra_rng_add_gate", operator = "eq", value = 1 }
+
+[[boss.timer]]
+id = "nefra_dps_add"
+name = "DPS Add NiM"
+display_text = "Tank Add"
+trigger = { type = "ability_cast", abilities = [3308164200005632] }
+duration_secs = 10.0
+color = [32, 219, 213, 255]
+difficulties = ["master"]
+counter_condition = { counter_id = "nefra_rng_add_gate", operator = "eq", value = 1 }
+
+[[boss.timer]]
+id = "nefra_rng_add"
+name = "RNG Add"
+trigger = { type = "ability_cast", abilities = [3342034312101888] }
+duration_secs = 30.0
+color = [33, 149, 224, 255]
+difficulties = ["master"]
+counter_condition = { counter_id = "nefra_twin_attack_count", operator = "eq", value = 12 }
+
+[[boss.timer]]
+id = "nefra_raid_cleave"
+name = "Raid Cleave"
+trigger = { type = "ability_cast", abilities = [3342034312101888] }
+is_alert = true
+alert_text = "Raid Cleave"
+color = [219, 37, 41, 255]
+difficulties = ["master"]
+counter_condition = { counter_id = "nefra_twin_attack_count", operator = "eq", value = 15 }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Gate Commander Draxus
 # ═══════════════════════════════════════════════════════════════════════════════
-# Multi-phase fight with add waves. Boss escapes at HP thresholds, spawning adds.
-# Key mechanics:
-# - Escape: Boss runs away at 90%, 60%, 30% HP - each triggers add wave
-# - Subteroth Adds: Swarm of small adds that spawn after each escape
-# - Corrosive Grenade: DoT attack on random players
-# - Emergency Shielding: Final phase immunity shield that must be burned
 
 [[boss]]
 id = "draxus"
@@ -82,12 +157,65 @@ name = "Gate Commander Draxus"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Gate Commander Draxus"
+name = "Draxus"
 ids = [3273924720721920, 3303401081274368, 3303392491339776, 3303405376241664]
 is_boss = true
 is_kill_target = true
 
-# ─── Phases ─────────────────────────────────────────────────────────────────────
+[[boss.entities]]
+name = "Subteroth"
+ids = [3281320654405632]
+is_boss = false
+
+[[boss.entities]]
+name = "Dispatcher"
+ids = [3288141062471680]
+is_boss = false
+
+[[boss.entities]]
+name = "Corrupter"
+ids = [3288136767504384]
+is_boss = false
+
+[[boss.entities]]
+name = "Dismantler"
+ids = [3288029393321984, 3281329244340224]
+is_boss = false
+
+
+# ═════ Counters
+
+[[boss.counters]]
+id = "draxus_subteroth_count"
+name = "Subteroth Spawns"
+increment_on = { type = "npc_appears", selector = ["Subteroth"] }
+
+[[boss.counters]]
+id = "draxus_dispatcher_count"
+name = "Dispatcher Spawns"
+increment_on = { type = "npc_appears", selector = ["Dispatcher"] }
+
+[[boss.counters]]
+id = "draxus_corrupter_count"
+name = "Corrupter Spawns"
+increment_on = { type = "npc_appears", selector = ["Corrupter"] }
+
+[[boss.counters]]
+id = "draxus_dismantler_count"
+name = "Dismantler Spawns"
+increment_on = { type = "npc_appears", selector = ["Dismantler"] }
+
+[[boss.counters]]
+id = "draxus_bulwark_count"
+name = "Bulwark Spawns"
+increment_on = { type = "npc_appears", selector = [
+  3288145357438976,
+  "Bulwark",
+] }
+
+
+# Entity ID:
+# ═════ Timers
 # Draxus escapes at HP thresholds, spawning add waves
 [[boss.timer]]
 id = "draxus_grenade"
@@ -108,6 +236,108 @@ duration_secs = 15.0
 color = [219, 96, 28, 255]
 difficulties = ["veteran", "master"]
 
+[[boss.timer]]
+id = "draxus_escape"
+name = "Draxus Escape"
+alert_text = "Draxus Escape"
+color = [219, 27, 24, 255]
+difficulties = ["veteran", "master"]
+is_alert = true
+trigger = { type = "any_of", conditions = [
+  { type = "boss_hp_below", hp_percent = 90.0, selector = [
+    "Draxus",
+  ] },
+  { type = "boss_hp_below", hp_percent = 60.0, selector = [
+    "Draxus",
+  ] },
+  { type = "boss_hp_below", hp_percent = 30.0, selector = [
+    "Draxus",
+  ] },
+] }
+
+[[boss.timer]]
+id = "draxus_w1"
+name = "Wave 1"
+trigger = { type = "combat_start" }
+duration_secs = 50.0
+color = [33, 151, 18, 255]
+difficulties = ["master"]
+cancel_trigger = { type = "timer_started", timer_id = "draxus_w2" }
+
+[[boss.timer]]
+id = "draxus_w2"
+name = "Wave 2"
+trigger = { type = "counter_reaches", counter_id = "draxus_subteroth_count", value = 1 }
+duration_secs = 50.0
+color = [33, 151, 18, 255]
+difficulties = ["master"]
+cancel_trigger = { type = "timer_started", timer_id = "draxus_w3" }
+
+[[boss.timer]]
+id = "draxus_w3"
+name = "Wave 3"
+trigger = { type = "counter_reaches", counter_id = "draxus_dispatcher_count", value = 1 }
+duration_secs = 50.0
+color = [20, 136, 30, 255]
+difficulties = ["master"]
+cancel_trigger = { type = "timer_started", timer_id = "draxus_w4" }
+
+[[boss.timer]]
+id = "draxus_w4"
+name = "Wave 4"
+# Entity ID: 3288136767504384
+trigger = { type = "counter_reaches", counter_id = "draxus_corrupter_count", value = 1 }
+duration_secs = 50.0
+color = [20, 136, 22, 255]
+difficulties = ["master"]
+cancel_trigger = { type = "timer_started", timer_id = "draxus_w5" }
+
+[[boss.timer]]
+id = "draxus_w5"
+name = "Wave 5"
+trigger = { type = "counter_reaches", counter_id = "draxus_dismantler_count", value = 1 }
+duration_secs = 50.0
+color = [20, 136, 22, 255]
+difficulties = ["master"]
+cancel_trigger = { type = "timer_started", timer_id = "draxus_w6" }
+
+[[boss.timer]]
+id = "draxus_w6"
+name = "Wave 6"
+trigger = { type = "counter_reaches", counter_id = "draxus_bulwark_count", value = 1 }
+duration_secs = 50.0
+color = [20, 136, 26, 255]
+difficulties = ["master"]
+cancel_trigger = { type = "timer_started", timer_id = "draxus_w7" }
+
+[[boss.timer]]
+id = "draxus_w7"
+name = "Wave 7"
+trigger = { type = "counter_reaches", counter_id = "draxus_dismantler_count", value = 3 }
+duration_secs = 50.0
+color = [20, 136, 26, 255]
+difficulties = ["master"]
+cancel_trigger = { type = "timer_started", timer_id = "draxus_w8" }
+
+[[boss.timer]]
+id = "draxus_w8"
+name = "Wave 8"
+trigger = { type = "counter_reaches", counter_id = "draxus_subteroth_count", value = 13 }
+duration_secs = 50.0
+color = [20, 136, 26, 255]
+difficulties = ["master"]
+cancel_trigger = { type = "timer_started", timer_id = "draxus_w9" }
+
+[[boss.timer]]
+id = "draxus_w9"
+name = "Wave 9"
+trigger = { type = "counter_reaches", counter_id = "draxus_bulwark_count", value = 5 }
+duration_secs = 50.0
+color = [20, 136, 26, 255]
+difficulties = ["master"]
+cancel_trigger = { type = "counter_reaches", counter_id = "draxus_corrupter_count", value = 10 }
+
+
 # -- Emergency Shielding --
 # Final phase immunity - alert when applied and removed
 
@@ -116,13 +346,13 @@ id = "draxus_shield_on"
 name = "Emergency Shield"
 trigger = { type = "effect_applied", effects = [3321693346988296] }
 is_alert = true
-alert_text = "Shield Active - BURN!"
+alert_text = "Shield Active"
 color = [29, 224, 219, 255]
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "draxus_shield_off"
-name = "Shield Down"
+name = "Shield Down - BURN"
 trigger = { type = "effect_removed", effects = [3321693346988296] }
 is_alert = true
 alert_text = "Shield Down!"
