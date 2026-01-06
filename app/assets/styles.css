@@ -244,7 +244,11 @@ select optgroup {
 }
 
 .app-header .header-version.update-available {
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
+  background: linear-gradient(
+    135deg,
+    rgba(76, 175, 80, 0.2),
+    rgba(76, 175, 80, 0.1)
+  );
   border: 1px solid rgba(76, 175, 80, 0.5);
   color: #81c784;
   padding: 0.2em 0.6em;
@@ -258,7 +262,11 @@ select optgroup {
 }
 
 .app-header .header-version.update-available:hover {
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(76, 175, 80, 0.2));
+  background: linear-gradient(
+    135deg,
+    rgba(76, 175, 80, 0.3),
+    rgba(76, 175, 80, 0.2)
+  );
   border-color: rgba(76, 175, 80, 0.7);
   color: #a5d6a7;
 }
@@ -284,7 +292,9 @@ select optgroup {
   color: var(--text-disabled);
   font-size: 1.1rem;
   opacity: 0.6;
-  transition: opacity 0.2s, color 0.2s;
+  transition:
+    opacity 0.2s,
+    color 0.2s;
 }
 
 .app-header .header-help:hover {
@@ -1227,7 +1237,8 @@ button:active {
 .floating-panel-container {
   position: fixed;
   z-index: 1000;
-  pointer-events: none; /* Allow clicks to pass through to elements below */
+  pointer-events: none;
+  /* Allow clicks to pass through to elements below */
 }
 
 /* Settings panel (modal dialog) */
@@ -1251,7 +1262,8 @@ button:active {
 .settings-panel.floating {
   position: fixed;
   width: 650px;
-  pointer-events: auto; /* Re-enable clicks on the panel itself */
+  pointer-events: auto;
+  /* Re-enable clicks on the panel itself */
   border: 1px solid var(--blue-alpha-25);
 }
 
@@ -2414,12 +2426,15 @@ details[open] .collapsible-summary::before {
 .col-name {
   width: 45%;
 }
+
 .col-type {
   width: 20%;
 }
+
 .col-duration {
   width: 20%;
 }
+
 .col-result {
   width: 15%;
   text-align: center;
@@ -4198,9 +4213,30 @@ details[open] .collapsible-summary::before {
 .effect-edit-form {
   padding: 0.75em 1em 1em;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.effect-edit-grid {
+  display: grid;
+  grid-template-columns: 55% 45%;
+  gap: var(--space-md);
+}
+
+.effect-edit-left {
   display: flex;
   flex-direction: column;
   gap: 0.6em;
+}
+
+.effect-edit-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  border-left: 1px solid var(--border-light);
+  padding-left: var(--space-md);
+}
+
+.effect-edit-right .form-row-hz > label {
+  min-width: 80px;
 }
 
 .effect-id-row {
@@ -4263,8 +4299,17 @@ details[open] .collapsible-summary::before {
   box-shadow: 0 0 10px var(--blue-alpha-20);
 }
 
+.timer-edit-grid {
+  display: grid;
+  grid-template-columns: 55% 45%;
+  gap: var(--space-md);
+}
+
 /* New Effect Form */
 .new-effect-form {
+  display: grid;
+  grid-template-columns: 55% 45%;
+  gap: var(--space-md);
   background: rgba(45, 50, 60, 0.8);
   border: 1px solid var(--border-accent-strong);
   border-radius: var(--radius-lg);
@@ -4301,49 +4346,160 @@ details[open] .collapsible-summary::before {
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* ─── Flexbox Layout ─────────────────────────────────────────────────────────── */
-.flex { display: flex; }
-.flex-col { display: flex; flex-direction: column; }
-.flex-row { display: flex; flex-direction: row; }
-.flex-wrap { flex-wrap: wrap; }
-.flex-1 { flex: 1; }
-.items-center { align-items: center; }
-.items-start { align-items: flex-start; }
-.justify-between { justify-content: space-between; }
-.justify-end { justify-content: flex-end; }
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
 
 /* ─── Gap Utilities ──────────────────────────────────────────────────────────── */
-.gap-xs { gap: var(--space-xs); }
-.gap-sm { gap: var(--space-sm); }
-.gap-md { gap: var(--space-md); }
-.gap-lg { gap: var(--space-lg); }
+.gap-xs {
+  gap: var(--space-xs);
+}
+
+.gap-sm {
+  gap: var(--space-sm);
+}
+
+.gap-md {
+  gap: var(--space-md);
+}
+
+.gap-lg {
+  gap: var(--space-lg);
+}
 
 /* ─── Margin/Padding Utilities ───────────────────────────────────────────────── */
-.mb-xs { margin-bottom: var(--space-xs); }
-.mb-sm { margin-bottom: var(--space-sm); }
-.mb-md { margin-bottom: var(--space-md); }
-.mt-sm { margin-top: var(--space-sm); }
-.ml-auto { margin-left: auto; }
-.p-sm { padding: var(--space-sm); }
-.p-md { padding: var(--space-md); }
-.px-sm { padding-left: var(--space-sm); padding-right: var(--space-sm); }
-.py-xs { padding-top: var(--space-xs); padding-bottom: var(--space-xs); }
+.mb-xs {
+  margin-bottom: var(--space-xs);
+}
+
+.mb-sm {
+  margin-bottom: var(--space-sm);
+}
+
+.mb-md {
+  margin-bottom: var(--space-md);
+}
+
+.mt-sm {
+  margin-top: var(--space-sm);
+}
+
+.ml-auto {
+  margin-left: auto;
+}
+
+.p-sm {
+  padding: var(--space-sm);
+}
+
+.p-md {
+  padding: var(--space-md);
+}
+
+.px-sm {
+  padding-left: var(--space-sm);
+  padding-right: var(--space-sm);
+}
+
+.py-xs {
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
+}
 
 /* ─── Text Utilities ─────────────────────────────────────────────────────────── */
-.text-xs { font-size: 0.75em; }
-.text-sm { font-size: 0.85em; }
-.text-lg { font-size: 1.1em; }
-.text-muted { color: var(--text-muted); }
-.text-secondary { color: var(--text-secondary); }
-.text-primary { color: var(--text-primary); }
-.text-accent { color: var(--swtor-blue); }
-.text-success { color: var(--color-success); }
-.text-error { color: var(--color-error); }
-.text-mono { font-family: var(--font-mono); }
-.text-center { text-align: center; }
-.text-left { text-align: left; }
-.font-medium { font-weight: 500; }
-.font-bold { font-weight: 600; }
-.capitalize { text-transform: capitalize; }
+.text-xs {
+  font-size: 0.75em;
+}
+
+.text-sm {
+  font-size: 0.85em;
+}
+
+.text-lg {
+  font-size: 1.1em;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-accent {
+  color: var(--swtor-blue);
+}
+
+.text-success {
+  color: var(--color-success);
+}
+
+.text-error {
+  color: var(--color-error);
+}
+
+.text-mono {
+  font-family: var(--font-mono);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-bold {
+  font-weight: 600;
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
 
 /* ─── Conditions Section ─────────────────────────────────────────────────────── */
 .conditions-section {
@@ -4387,7 +4543,9 @@ details[open] .collapsible-summary::before {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   background: var(--bg-primary);
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .row-toggle:hover {
@@ -4396,12 +4554,22 @@ details[open] .collapsible-summary::before {
 }
 
 /* ─── Width Utilities ────────────────────────────────────────────────────────── */
-.w-full { width: 100%; }
-.w-auto { width: auto; }
+.w-full {
+  width: 100%;
+}
+
+.w-auto {
+  width: auto;
+}
 
 /* ─── Cursor ─────────────────────────────────────────────────────────────────── */
-.cursor-pointer { cursor: pointer; }
-.cursor-not-allowed { cursor: not-allowed; }
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    ENCOUNTER EDITOR
@@ -4885,8 +5053,13 @@ details[open] .collapsible-summary::before {
 }
 
 /* ─── Extra Spacing Utilities ────────────────────────────────────────────────── */
-.pl-lg { padding-left: var(--space-lg); }
-.pl-md { padding-left: var(--space-md); }
+.pl-lg {
+  padding-left: var(--space-lg);
+}
+
+.pl-md {
+  padding-left: var(--space-md);
+}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Data Explorer Panel (StarParse-style layout)
@@ -5134,7 +5307,9 @@ details[open] .collapsible-summary::before {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error-message {
@@ -5263,7 +5438,9 @@ details[open] .collapsible-summary::before {
 .ability-table th.sortable {
   cursor: pointer;
   user-select: none;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .ability-table th.sortable:hover {
@@ -5272,7 +5449,7 @@ details[open] .collapsible-summary::before {
 }
 
 .ability-table th.sortable::after {
-  content: '';
+  content: "";
   display: inline-block;
   width: 0;
   height: 0;
@@ -5342,7 +5519,7 @@ details[open] .collapsible-summary::before {
 }
 
 .ability-table .ability-row.indented .ability-name-cell::before {
-  content: '';
+  content: "";
   display: inline-block;
   width: 6px;
   height: 6px;
