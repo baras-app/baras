@@ -204,6 +204,8 @@ fn handle_in_combat(
             timestamp,
             encounter_id,
         });
+
+        cache.push_new_encounter();
     } else if effect_type_id == effect_type_id::AREAENTERED {
         let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
         if let Some(enc) = cache.current_encounter_mut() {
