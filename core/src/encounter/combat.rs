@@ -108,8 +108,6 @@ pub struct CombatEncounter {
     pub combat_time_secs: f32,
     /// Previous combat time (for TimeElapsed threshold detection)
     pub prev_combat_time_secs: f32,
-    /// NPC IDs of kill targets that have died
-    pub dead_kill_targets: HashSet<i64>,
 
     // ─── Combat State (from Encounter) ──────────────────────────────────────
     /// Current encounter state
@@ -171,7 +169,6 @@ impl CombatEncounter {
             hp_by_name: HashMap::new(),
             combat_time_secs: 0.0,
             prev_combat_time_secs: 0.0,
-            dead_kill_targets: HashSet::new(),
 
             // Combat state
             state: EncounterState::NotStarted,
@@ -426,21 +423,6 @@ impl CombatEncounter {
         }
 
         false
-    }
-
-    /// Record that a kill target NPC has died
-    pub fn mark_kill_target_dead(&mut self, npc_id: i64) {
-        self.dead_kill_targets.insert(npc_id);
-    }
-
-    /// Check if all required kill targets are dead
-    pub fn all_kill_targets_dead(&self, kill_target_npc_ids: &[i64]) -> bool {
-        if kill_target_npc_ids.is_empty() {
-            return false;
-        }
-        kill_target_npc_ids
-            .iter()
-            .all(|id| self.dead_kill_targets.contains(id))
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -967,6 +949,5 @@ impl CombatEncounter {
         self.hp_by_name.clear();
         self.combat_time_secs = 0.0;
         self.prev_combat_time_secs = 0.0;
-        self.dead_kill_targets.clear();
     }
 }

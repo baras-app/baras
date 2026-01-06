@@ -191,19 +191,6 @@ impl EventProcessor {
                 enc.check_all_players_dead();
             }
 
-            // Track kill target deaths for boss encounters
-            let npc_id = event.target_entity.class_id;
-            if event.target_entity.entity_type == EntityType::Npc
-                && npc_id != 0
-                && let Some(enc) = cache.current_encounter_mut()
-                && let Some(def) = enc.active_boss_definition()
-            {
-                // Check if this NPC is a kill target
-                if def.kill_targets().any(|e| e.ids.contains(&npc_id)) {
-                    enc.mark_kill_target_dead(npc_id);
-                }
-            }
-
             signals.push(GameSignal::EntityDeath {
                 entity_id: event.target_entity.log_id,
                 entity_type: event.target_entity.entity_type,

@@ -140,13 +140,32 @@ fn handle_in_combat(
         .unwrap_or(false);
 
     // Check if all kill targets are dead (boss encounter victory condition)
+    // We check all NPC INSTANCES that match kill target class_ids
     let all_kill_targets_dead = cache.current_encounter().map_or(false, |enc| {
         let Some(def_idx) = enc.active_boss_idx() else { return false };
-        let kill_target_ids: Vec<i64> = enc.boss_definitions()[def_idx]
+
+        // Collect all kill target class IDs from the boss definition
+        let kill_target_class_ids: std::collections::HashSet<i64> = enc.boss_definitions()[def_idx]
             .kill_targets()
             .flat_map(|e| e.ids.iter().copied())
             .collect();
-        enc.all_kill_targets_dead(&kill_target_ids)
+
+        if kill_target_class_ids.is_empty() {
+            return false;
+        }
+
+        // Find all NPC instances that are kill targets (by class_id)
+        let kill_target_instances: Vec<_> = enc.npcs.values()
+            .filter(|npc| kill_target_class_ids.contains(&npc.class_id))
+            .collect();
+
+        // Must have seen at least one kill target instance
+        if kill_target_instances.is_empty() {
+            return false;
+        }
+
+        // All seen kill target instances must be dead
+        kill_target_instances.iter().all(|npc| npc.is_dead)
     });
 
     if effect_id == effect_id::ENTERCOMBAT {
