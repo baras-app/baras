@@ -6,15 +6,13 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{
-    AudioConfig, BossWithPath, BossTimerDefinition, EncounterItem, Trigger,
-};
+use crate::types::{AudioConfig, BossTimerDefinition, BossWithPath, EncounterItem, Trigger};
 use crate::utils::parse_hex_color;
 
+use super::InlineNameCreator;
 use super::conditions::CounterConditionEditor;
 use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
-use super::InlineNameCreator;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Timers Tab
@@ -33,7 +31,11 @@ fn default_timer(name: String) -> BossTimerDefinition {
         color: [255, 128, 0, 255], // Orange
         phases: vec![],
         counter_condition: None,
-        difficulties: vec!["story".to_string(), "veteran".to_string(), "master".to_string()],
+        difficulties: vec![
+            "story".to_string(),
+            "veteran".to_string(),
+            "master".to_string(),
+        ],
         enabled: true,
         can_be_refreshed: false,
         repeats: 0,
@@ -145,7 +147,10 @@ fn TimerRow(
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
-    let color_hex = format!("#{:02x}{:02x}{:02x}", timer.color[0], timer.color[1], timer.color[2]);
+    let color_hex = format!(
+        "#{:02x}{:02x}{:02x}",
+        timer.color[0], timer.color[1], timer.color[2]
+    );
     let timer_for_enable = timer.clone();
     let timer_for_audio = timer.clone();
     let timers_for_enable = all_timers.clone();
@@ -265,7 +270,12 @@ fn TimerEditForm(
     let mut confirm_delete = use_signal(|| false);
 
     let has_changes = use_memo(move || draft() != timer_original);
-    let color_hex = format!("#{:02x}{:02x}{:02x}", draft().color[0], draft().color[1], draft().color[2]);
+    let color_hex = format!(
+        "#{:02x}{:02x}{:02x}",
+        draft().color[0],
+        draft().color[1],
+        draft().color[2]
+    );
 
     // Save handler
     let handle_save = {
@@ -303,7 +313,8 @@ fn TimerEditForm(
             spawn(async move {
                 match api::delete_encounter_item("timer", &t.id, &boss_id, &file_path).await {
                     Ok(_) => {
-                        let filtered: Vec<_> = timers_clone.into_iter()
+                        let filtered: Vec<_> = timers_clone
+                            .into_iter()
                             .filter(|timer| timer.id != t.id)
                             .collect();
                         on_change.call(filtered);
@@ -329,7 +340,9 @@ fn TimerEditForm(
             let boss_id = bwp.boss.id.clone();
             let file_path = bwp.file_path.clone();
             spawn(async move {
-                if let Some(new_timer) = api::duplicate_encounter_timer(&t.id, &boss_id, &file_path).await {
+                if let Some(new_timer) =
+                    api::duplicate_encounter_timer(&t.id, &boss_id, &file_path).await
+                {
                     let mut current = ts;
                     current.push(new_timer);
                     on_change.call(current);
@@ -342,7 +355,8 @@ fn TimerEditForm(
     };
 
     // Get other timer IDs for chains_to dropdown
-    let other_timer_ids: Vec<String> = all_timers.iter()
+    let other_timer_ids: Vec<String> = all_timers
+        .iter()
         .filter(|t| t.id != timer.id)
         .map(|t| t.id.clone())
         .collect();
@@ -423,7 +437,7 @@ fn TimerEditForm(
                         input {
                             class: "input-inline",
                             r#type: "number",
-                            step: "1",
+                            step: ".1",
                             min: "0",
                             style: "width: 70px;",
                             disabled: draft().is_alert,
@@ -863,7 +877,6 @@ fn TimerEditForm(
     }
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase Selector (multi-select dropdown)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -960,4 +973,3 @@ pub fn PhaseSelector(
         }
     }
 }
-

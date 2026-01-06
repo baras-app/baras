@@ -5,13 +5,18 @@
 //! - Inline expansion for editing
 //! - Full CRUD operations
 
-use std::collections::HashSet;
 use dioxus::prelude::*;
+use std::collections::HashSet;
 
+use super::encounter_editor::triggers::{
+    AbilitySelectorEditor, EffectSelectorEditor, EntityFilterDropdown,
+};
 use crate::api;
-use crate::types::{AbilitySelector, AudioConfig, EffectCategory, EffectListItem, EffectSelector, EffectTriggerMode, EntityFilter, Trigger};
+use crate::types::{
+    AbilitySelector, AudioConfig, EffectCategory, EffectListItem, EffectSelector,
+    EffectTriggerMode, EntityFilter, Trigger,
+};
 use crate::utils::parse_hex_color;
-use super::encounter_editor::triggers::{AbilitySelectorEditor, EffectSelectorEditor, EntityFilterDropdown};
 
 /// UI-level trigger type for effect tracking
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -102,7 +107,10 @@ pub fn EffectEditorPanel() -> Element {
 
         // Sort groups by category order (HoT, Shield, Buff, etc.)
         let cat_order = |c: &EffectCategory| -> usize {
-            EffectCategory::all().iter().position(|x| x == c).unwrap_or(99)
+            EffectCategory::all()
+                .iter()
+                .position(|x| x == c)
+                .unwrap_or(99)
         };
         groups.sort_by(|a, b| cat_order(&a.0).cmp(&cat_order(&b.0)));
         groups
@@ -131,10 +139,7 @@ pub fn EffectEditorPanel() -> Element {
         let effect_id = effect.id.clone();
 
         let current = effects();
-        let filtered: Vec<_> = current
-            .into_iter()
-            .filter(|e| e.id != effect_id)
-            .collect();
+        let filtered: Vec<_> = current.into_iter().filter(|e| e.id != effect_id).collect();
         effects.set(filtered);
         expanded_effect.set(None);
 
@@ -670,7 +675,7 @@ fn EffectEditForm(
                     r#type: "number",
                     class: "input-inline",
                     style: "width: 70px;",
-                    step: "1",
+                    step: ".1",
                     min: "0",
                     value: "{draft().duration_secs.unwrap_or(0.0) as u32}",
                     oninput: move |e| {
@@ -1041,10 +1046,7 @@ fn TriggerAbilitiesEditor(
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[component]
-fn NewEffectForm(
-    on_create: EventHandler<EffectListItem>,
-    on_cancel: EventHandler<()>,
-) -> Element {
+fn NewEffectForm(on_create: EventHandler<EffectListItem>, on_cancel: EventHandler<()>) -> Element {
     let mut name = use_signal(String::new);
     let mut category = use_signal(|| EffectCategory::Hot);
     let mut trigger_type = use_signal(|| EffectTriggerType::EffectBased);
@@ -1422,4 +1424,3 @@ fn NewEffectForm(
         }
     }
 }
-
