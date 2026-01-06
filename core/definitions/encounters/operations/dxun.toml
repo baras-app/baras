@@ -417,7 +417,234 @@ counter_condition = { counter_id = "shelleigh_appeared", operator = "eq", value 
 id = "shelleigh"
 name = "Shelleigh"
 start_trigger = { type = "npc_appears", selector = ["Shelleigh"] }
-# ═══════════════════════════════════════════════════════════════════════════════
+
+[[boss.timer]]
+id = "huntmaster_shotroll_cs_vm"
+name = "Shotroll CS"
+display_text = "Shotroll"
+trigger = { type = "combat_start" }
+duration_secs = 48.0
+color = [18, 116, 26, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "huntmaster_primal_fear_cs"
+name = "Primal Fear CS"
+display_text = "Primal Fear"
+trigger = { type = "combat_start" }
+duration_secs = 42.0
+color = [16, 174, 167, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "huntmaster_primal_fear_1st_vm"
+name = "Primal Fear CS VM"
+trigger = { type = "combat_start" }
+duration_secs = 36.0
+color = [16, 174, 167, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "huntmaster_shotroll_cs"
+name = "Shotroll CS"
+display_text = "Shotroll"
+trigger = { type = "combat_start" }
+duration_secs = 54.0
+color = [18, 116, 26, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "huntmaster_penetratign_shot_p3_vm"
+name = "Penetrating Shot P3 VM"
+trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
+duration_secs = 12.0
+color = [26, 34, 222, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "huntmaster_p3_jump"
+name = "P3 jump"
+trigger = { type = "ability_cast", abilities = [4277787426816000] }
+duration_secs = 43.0
+color = [100, 149, 237, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_firestorm_grenade_p3_vm"
+name = "Firestorm Grenade P3 VM"
+display_text = "Firestorm Grenade"
+trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
+duration_secs = 16.0
+color = [160, 70, 25, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "huntmaster_firestorm_grenade_p3"
+name = "Firestorm Grenade P3"
+display_text = "Firestorm Grenade"
+trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
+duration_secs = 12.0
+color = [160, 70, 25, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "huntmaster_firestorm_grenade_1st"
+name = "Firestorm Grenade 1st"
+display_text = "Firestorm Grenade"
+trigger = { type = "combat_start" }
+duration_secs = 16.0
+color = [157, 75, 20, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_firestorm_grenade"
+name = "Firestorm Grenade"
+trigger = { type = "ability_cast", abilities = [4271559724236800] }
+duration_secs = 32.0
+color = [164, 82, 25, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_fortress"
+name = "Fortress"
+trigger = { type = "combat_start" }
+duration_secs = 75.0
+color = [106, 62, 5, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_flying_fortress"
+name = "Flying Fortress"
+trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
+duration_secs = 75.0
+color = [106, 62, 5, 255]
+difficulties = ["veteran", "master"]
+chains_to = "acef420d-e4a2-4747-9879-3c744bd0a3f5"
+
+[[boss.timer]]
+id = "huntmaster_scat_pv_pen"
+name = "Scat/PV/Pen"
+trigger = { type = "ability_cast", abilities = [4387871733579776] }
+duration_secs = 25.0
+color = [222, 30, 33, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_powershot_volley_1st"
+name = "Powershot Volley 1st"
+trigger = { type = "combat_start" }
+duration_secs = 8.0
+color = [219, 31, 33, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_powershot_volley"
+name = "Powershot Volley"
+trigger = { type = "ability_cast", abilities = [4269773017841664] }
+duration_secs = 53.1
+color = [229, 21, 21, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_powershot_scatter_p3_vm"
+name = "Powershot/Scatter P3 VM"
+trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
+duration_secs = 48.0
+color = [222, 42, 34, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "huntmaster_egg_snipe_p3"
+name = "Egg Snipe P3"
+trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
+duration_secs = 28.0
+color = [182, 47, 188, 255]
+difficulties = ["master"]
+chains_to = "acef420d-e4a2-4747-9879-3c744bd0a3f5"
+
+[[boss.timer]]
+id = "huntmaster_penetratign_shot_p3"
+name = "Penetratign Shot P3"
+trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
+duration_secs = 6.0
+color = [26, 34, 222, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "huntmaster_primal_fear_p3"
+name = "Primal Fear P3"
+trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
+duration_secs = 34.0
+color = [30, 174, 169, 255]
+difficulties = ["veteran", "master"]
+chains_to = "acef420d-e4a2-4747-9879-3c744bd0a3f5"
+
+[[boss.timer]]
+id = "huntmaster_egg_snipe_1st"
+name = "Egg Snipe 1st"
+trigger = { type = "combat_start" }
+duration_secs = 36.0
+color = [188, 47, 179, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "huntmaster_scatterblast_1st"
+name = "Scatterblast 1st"
+trigger = { type = "combat_start" }
+duration_secs = 24.0
+color = [201, 197, 45, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_scatterblast"
+name = "Scatterblast"
+trigger = { type = "ability_cast", abilities = [4335125240217600] }
+duration_secs = 53.0
+color = [205, 200, 43, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_penetrating_shot_1st"
+name = "Penetrating Shot 1st"
+trigger = { type = "combat_start" }
+duration_secs = 20.0
+color = [36, 31, 219, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_penetrating_shot"
+name = "Penetrating Shot"
+trigger = { type = "ability_cast", abilities = [4269777312808960] }
+duration_secs = 37.0
+color = [36, 34, 222, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "huntmaster_primal_fear"
+name = "Primal Fear"
+trigger = { type = "ability_cast", abilities = [4335425887928320] }
+duration_secs = 31.0
+color = [26, 169, 160, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "huntmaster_primal_fear_vm"
+name = "Primal Fear VM"
+trigger = { type = "ability_cast", abilities = [4335425887928320] }
+duration_secs = 34.0
+color = [23, 169, 168, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "huntmaster_power_scater"
+name = "Power/Scatter"
+trigger = { type = "ability_cast", abilities = [4336065838055424] }
+duration_secs = 16.0
+color = [224, 29, 31, 255]
+difficulties = ["veteran", "master"]
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Apex Vanguard
 # ═══════════════════════════════════════════════════════════════════════════════
 
