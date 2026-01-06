@@ -23,7 +23,7 @@ use baras_core::context::resolve;
 use baras_core::encounter::combat::ActiveBoss;
 use baras_core::encounter::ChallengeTracker;
 use baras_core::game_data::{effect_id, effect_type_id};
-use baras_core::signal_processor::{EventProcessor, GameSignal, SignalHandler};
+use baras_core::signal_processor::{check_counter_timer_triggers, EventProcessor, GameSignal, SignalHandler};
 use baras_core::state::SessionCache;
 use baras_core::timers::TimerManager;
 
@@ -129,6 +129,7 @@ struct EntitySeen {
     name: String,
     first_seen: Option<NaiveDateTime>,
     last_seen: Option<NaiveDateTime>,
+    last_death: Option<NaiveDateTime>,
     death_count: u32,
     last_hp: Option<i64>,
     max_hp: Option<i64>,
@@ -398,9 +399,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        // Expired timers
+        // Cancelled timers (must check before expired since cancelled timers also leave prev_timer_ids)
+        let cancelled_timer_ids = timer_manager.cancelled_timer_ids();
+        for cancelled_id in &cancelled_timer_ids {
+            cli.timer_cancel(event.timestamp, cancelled_id, cancelled_id);
+        }
+
+        // Expired timers (exclude cancelled ones - they were handled above)
         for old_id in &prev_timer_ids {
-            if !current_timer_ids.contains(old_id) {
+            if !current_timer_ids.contains(old_id) && !cancelled_timer_ids.contains(old_id) {
                 cli.timer_expire(event.timestamp, old_id, old_id);
             }
         }
@@ -413,6 +420,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if let Some(ref mut v) = verifier {
                 v.record_alert(&alert.id);
+            }
+        }
+
+        // Process counter triggers from timer events (expires and starts)
+        let expired_timer_ids = timer_manager.expired_timer_ids();
+        let started_timer_ids = timer_manager.started_timer_ids();
+        let timer_counter_signals = check_counter_timer_triggers(
+            &expired_timer_ids,
+            &started_timer_ids,
+            &mut cache,
+            event.timestamp,
+        );
+        for signal in &timer_counter_signals {
+            if let GameSignal::CounterChanged { counter_id, old_value, new_value, timestamp } = signal {
+                cli.counter_change(*timestamp, counter_id, *old_value, *new_value);
             }
         }
 
@@ -465,6 +487,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     challenge_ctx.current_phase = Some(new_phase.clone());
                     challenge_tracker.set_phase(new_phase, *timestamp);
                 }
+                GameSignal::PhaseEndTriggered { phase_id, timestamp } => {
+                    cli.phase_end_triggered(*timestamp, phase_id);
+                }
                 GameSignal::CounterChanged {
                     counter_id,
                     old_value,
@@ -477,18 +502,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 GameSignal::EntityDeath { npc_id, entity_name, timestamp, .. } => {
                     // Check if this is a kill target
-                    if boss_def
+                    let is_kill_target = boss_def
                         .entities
                         .iter()
-                        .any(|e| e.is_kill_target && e.ids.contains(npc_id))
-                    {
+                        .any(|e| e.is_kill_target && e.ids.contains(npc_id));
+
+                    if is_kill_target {
                         kill_target_death_time = Some(*timestamp);
                     }
+
+                    // Output death event
+                    cli.entity_death(*timestamp, entity_name, *npc_id, is_kill_target);
 
                     // Update entity tracking
                     if let Some(entity) = state.entities.get_mut(npc_id) {
                         entity.death_count += 1;
                         entity.last_seen = Some(*timestamp);
+                        entity.last_death = Some(*timestamp);
                         entity.last_hp = Some(0);
                     } else {
                         state.entities.insert(
@@ -498,6 +528,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 name: entity_name.clone(),
                                 first_seen: None,
                                 last_seen: Some(*timestamp),
+                                last_death: Some(*timestamp),
                                 death_count: 1,
                                 last_hp: Some(0),
                                 max_hp: None,
@@ -697,6 +728,7 @@ fn track_event(state: &mut ValidationState, event: &CombatEvent, boss: &BossEnco
             name: name.clone(),
             first_seen: Some(event.timestamp),
             last_seen: Some(event.timestamp),
+            last_death: None,
             death_count: 0,
             last_hp: None,
             max_hp: None,
@@ -791,10 +823,10 @@ fn print_detailed_report(
     println!();
     println!("ENTITIES SEEN:");
     println!(
-        "  {:20} {:30} {:12} {:6}",
-        "NPC ID", "Name", "First Seen", "Deaths"
+        "  {:20} {:30} {:12} {:6} {:12}",
+        "NPC ID", "Name", "First Seen", "Deaths", "Last Death"
     );
-    println!("  {}", "─".repeat(72));
+    println!("  {}", "─".repeat(86));
 
     let mut entities: Vec<_> = state.entities.values().collect();
     entities.sort_by_key(|e| e.first_seen);
@@ -804,12 +836,17 @@ fn print_detailed_report(
             .first_seen
             .map(|ts| format_combat_time(state.combat_start, ts))
             .unwrap_or_else(|| "?".to_string());
+        let last_death = entity
+            .last_death
+            .map(|ts| format_combat_time(state.combat_start, ts))
+            .unwrap_or_else(|| "-".to_string());
         println!(
-            "  {:20} {:30} {:12} {:6}",
+            "  {:20} {:30} {:12} {:6} {:12}",
             entity.npc_id,
             truncate(&entity.name, 30),
             first_seen,
-            entity.death_count
+            entity.death_count,
+            last_death
         );
     }
 

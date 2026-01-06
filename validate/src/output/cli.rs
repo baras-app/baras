@@ -32,6 +32,8 @@ pub struct CliOutput {
     timers_started: u32,
     timers_expired: u32,
     alerts_fired: u32,
+    phase_changes: u32,
+    counter_changes: u32,
 }
 
 impl Default for CliOutput {
@@ -49,6 +51,8 @@ impl CliOutput {
             timers_started: 0,
             timers_expired: 0,
             alerts_fired: 0,
+            phase_changes: 0,
+            counter_changes: 0,
         }
     }
 
@@ -77,6 +81,14 @@ impl CliOutput {
     fn green(&self, text: &str) -> String {
         if self.use_colors {
             format!("\x1b[32m{}\x1b[0m", text)
+        } else {
+            text.to_string()
+        }
+    }
+
+    fn bright_green(&self, text: &str) -> String {
+        if self.use_colors {
+            format!("\x1b[92m{}\x1b[0m", text)
         } else {
             text.to_string()
         }
@@ -178,6 +190,24 @@ impl CliOutput {
         println!("[{}] {} {} \"{}\" {}", time_str, arrow, label, name, id);
     }
 
+    /// Log entity death (for kill targets)
+    pub fn entity_death(&mut self, time: NaiveDateTime, name: &str, npc_id: i64, is_kill_target: bool) {
+        if self.level < OutputLevel::Normal {
+            return;
+        }
+
+        let time_str = self.format_time(time);
+        if is_kill_target {
+            let marker = self.red("XXX");
+            let label = self.red("KILL TARGET DEAD:");
+            println!("[{}] {} {} \"{}\" [{}]", time_str, marker, label, name, npc_id);
+        } else if self.level >= OutputLevel::Verbose {
+            let marker = self.dim("xxx");
+            let label = self.dim("DEATH:");
+            println!("[{}] {} {} \"{}\" [{}]", time_str, marker, label, name, npc_id);
+        }
+    }
+
     /// Log alert fired
     pub fn alert(&mut self, time: NaiveDateTime, name: &str, text: &str) {
         self.alerts_fired += 1;
@@ -198,30 +228,46 @@ impl CliOutput {
 
     /// Log phase change
     pub fn phase_change(&mut self, time: NaiveDateTime, old_phase: Option<&str>, new_phase: &str) {
+        self.phase_changes += 1;
         if self.level < OutputLevel::Normal {
             return;
         }
 
         let time_str = self.format_time(time);
-        let label = self.magenta("PHASE:");
+        let marker = self.cyan("~~~");
+        let label = self.cyan("PHASE:");
 
         if let Some(old) = old_phase {
-            println!("[{}] {} {} → {}", time_str, label, old, self.bold(new_phase));
+            println!("[{}] {} {} {} → {}", time_str, marker, label, old, self.bold(new_phase));
         } else {
-            println!("[{}] {} → {} (initial)", time_str, label, self.bold(new_phase));
+            println!("[{}] {} {} → {} (initial)", time_str, marker, label, self.bold(new_phase));
         }
     }
 
-    /// Log counter change
-    pub fn counter_change(&mut self, time: NaiveDateTime, counter_id: &str, old: u32, new: u32) {
-        if self.level < OutputLevel::Verbose {
+    /// Log phase end trigger (end_trigger fired, emits PhaseEndTriggered signal)
+    pub fn phase_end_triggered(&mut self, time: NaiveDateTime, phase_id: &str) {
+        if self.level < OutputLevel::Normal {
             return;
         }
 
         let time_str = self.format_time(time);
-        let label = self.cyan("COUNTER:");
+        let marker = self.yellow("<<<");
+        let label = self.yellow("PHASE END TRIGGERED:");
+        println!("[{}] {} {} {}", time_str, marker, label, phase_id);
+    }
 
-        println!("[{}] {} {} = {} → {}", time_str, label, counter_id, old, new);
+    /// Log counter change
+    pub fn counter_change(&mut self, time: NaiveDateTime, counter_id: &str, old: u32, new: u32) {
+        self.counter_changes += 1;
+        if self.level < OutputLevel::Normal {
+            return;
+        }
+
+        let time_str = self.format_time(time);
+        let marker = self.bright_green("+++");
+        let label = self.bright_green("COUNTER:");
+
+        println!("[{}] {} {} {} = {} → {}", time_str, marker, label, counter_id, old, new);
     }
 
     /// Log boss detection
@@ -280,9 +326,25 @@ impl CliOutput {
         println!("{}", line);
         println!("  TIMER VALIDATION SUMMARY");
         println!("{}", line);
-        println!("Timers Started: {}", self.timers_started);
-        println!("Timers Expired: {}", self.timers_expired);
-        println!("Alerts Fired:   {}", self.alerts_fired);
+        println!("Timers Started:  {}", self.timers_started);
+        println!("Timers Expired:  {}", self.timers_expired);
+        println!("Alerts Fired:    {}", self.alerts_fired);
+        println!(
+            "Phase Changes:   {}",
+            if self.phase_changes > 0 {
+                self.cyan(&self.phase_changes.to_string())
+            } else {
+                "0".to_string()
+            }
+        );
+        println!(
+            "Counter Updates: {}",
+            if self.counter_changes > 0 {
+                self.bright_green(&self.counter_changes.to_string())
+            } else {
+                "0".to_string()
+            }
+        );
 
         if let Some((passed, total)) = checkpoints_passed {
             let status = if passed == total {
@@ -290,7 +352,7 @@ impl CliOutput {
             } else {
                 self.red(&format!("FAILED ({}/{})", passed, total))
             };
-            println!("Verification:   {}", status);
+            println!("Verification:    {}", status);
         }
         println!("{}", line);
     }
