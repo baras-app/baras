@@ -251,24 +251,20 @@ impl OverlayManager {
             return Ok(true);
         }
 
-        // Check if already running
-        {
-            let s = state.lock().map_err(|e| e.to_string())?;
+        // Check if already running, spawn, and insert - all under lock to prevent race conditions
+        // from rapid toggle clicks spawning duplicate overlays
+        let (tx, needs_monitor_save, current_move_mode) = {
+            let mut s = state.lock().map_err(|e| e.to_string())?;
             if s.is_running(kind) {
                 return Ok(true);
             }
-        }
-
-        // Spawn the overlay
-        let result = Self::spawn(kind, &config.overlay_settings)?;
-        let tx = result.handle.tx.clone();
-
-        // Get current move mode before inserting
-        let current_move_mode = {
-            let mut s = state.lock().map_err(|e| e.to_string())?;
+            // Spawn while holding lock (spawn is synchronous, so this is safe)
+            let result = Self::spawn(kind, &config.overlay_settings)?;
+            let tx = result.handle.tx.clone();
+            let needs_monitor_save = result.needs_monitor_save;
             let mode = s.move_mode;
             s.insert(result.handle);
-            mode
+            (tx, needs_monitor_save, mode)
         };
 
         // Sync move mode
@@ -281,7 +277,7 @@ impl OverlayManager {
         }
 
         // Save position if needed
-        if result.needs_monitor_save {
+        if needs_monitor_save {
             Self::save_positions_delayed(vec![(kind.config_key().to_string(), tx)], service).await;
         }
 
@@ -368,36 +364,31 @@ impl OverlayManager {
                 }
             };
 
-            // Skip if already running
-            {
-                let s = state.lock().map_err(|e| e.to_string())?;
+            // Check if running, spawn, and insert - all under lock to prevent race conditions
+            let spawn_result = {
+                let mut s = state.lock().map_err(|e| e.to_string())?;
                 if s.is_running(kind) {
                     if let OverlayType::Metric(mt) = kind {
                         shown_metric_types.push(mt);
                     }
                     continue;
                 }
-            }
-
-            // Spawn overlay
-            let Ok(result) = Self::spawn(kind, &config.overlay_settings) else {
-                continue;
+                // Spawn while holding lock (spawn is synchronous, so this is safe)
+                let Ok(result) = Self::spawn(kind, &config.overlay_settings) else {
+                    continue;
+                };
+                let tx = result.handle.tx.clone();
+                let save_monitor = result.needs_monitor_save;
+                s.insert(result.handle);
+                (tx, save_monitor)
             };
 
-            let tx = result.handle.tx.clone();
-
-            // Insert into state
-            {
-                let mut s = state.lock().map_err(|e| e.to_string())?;
-                s.insert(result.handle);
-            }
-
             // Send initial data
-            Self::send_initial_data(kind, &tx, combat_data.as_ref()).await;
+            Self::send_initial_data(kind, &spawn_result.0, combat_data.as_ref()).await;
 
             // Track for position saving
-            if result.needs_monitor_save {
-                needs_monitor_save.push((key.clone(), tx));
+            if spawn_result.1 {
+                needs_monitor_save.push((key.clone(), spawn_result.0));
             }
 
             // Update overlay status flag for effects loop optimization
