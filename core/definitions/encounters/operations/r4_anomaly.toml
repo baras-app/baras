@@ -22,6 +22,22 @@ ids = [4494653210492928, 4467247024177152]
 is_boss = true
 is_kill_target = true
 
+[[boss.phases]]
+id = "ip_main"
+name = "IP-CPT"
+start_trigger = { type = "any_of", conditions = [
+  { type = "combat_start" },
+  { type = "phase_ended", phase_id = "ip_bombs" },
+] }
+end_trigger = { type = "any_of", conditions = [
+  { type = "boss_hp_below", hp_percent = 75.1, selector = [
+    "IP-CPT",
+  ] },
+  { type = "boss_hp_below", hp_percent = 50.1, selector = [
+    "IP-CPT",
+  ] },
+] }
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Watchdog
 # ═══════════════════════════════════════════════════════════════════════════════
