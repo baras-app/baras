@@ -80,6 +80,9 @@ impl SessionCache {
         // Finalize the current encounter before creating a new one
         self.finalize_current_encounter();
 
+        // Clear NPC instance tracking for fresh detection in new encounter
+        self.seen_npc_instances.clear();
+
         let id = self.next_encounter_id;
 
         let mut encounter = if self.player_initialized {
