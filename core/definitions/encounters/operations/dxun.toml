@@ -1,7 +1,7 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # Dxun - The Nature of Progress
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4 main bosses: Red, Trandosians, Huntmaster, Apex Vanguard
+# 4 main bosses: Red, trandos, Huntmaster, Apex Vanguard
 
 [area]
 name = "Dxun"
@@ -118,45 +118,248 @@ duration_secs = 30.0
 color = [224, 25, 24, 255]
 difficulties = ["veteran", "master"]
 
+[[boss]]
+id = "holding_pens"
+name = "Lights Out"
+
+[[boss]]
+id = "breach"
+name = "The Breach"
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Trandosians (Pack Leader)
+# Boss 2: trandos (Pack Leader)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "trandosians"
-name = "Trandosians"
+id = "trandos"
+name = "Trandoshans"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Titax"
 ids = [4245970309087232]
 is_boss = true
-is_kill_target = true
 
 [[boss.entities]]
 name = "Greus"
 ids = [4245978899021824]
 is_boss = true
-is_kill_target = true
 
 [[boss.entities]]
 name = "Kronissus"
 ids = [4245983193989120]
 is_boss = true
-is_kill_target = true
 
 [[boss.entities]]
 name = "Hissyphus"
 ids = [4245987488956416]
 is_boss = true
-is_kill_target = true
 
 [[boss.entities]]
-name = "The Ultimate Hunter"
+name = "Ultimate Hunter"
 ids = [4381150109761536]
 is_boss = true
 is_kill_target = true
+
+[[boss.phases]]
+id = "trandos_first_four"
+name = "4 Trandos"
+start_trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "trandos_ultimate"
+name = "Ultimate Hunter"
+start_trigger = { type = "npc_appears", selector = ["Ultimate Hunter"] }
+
+[[boss.timer]]
+id = "trandos_crush_the_weak_cs"
+name = "Crush the Weak Start"
+display_text = "Crush The Weak"
+trigger = { type = "combat_start" }
+duration_secs = 30.0
+color = [219, 32, 182, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "trandos_inspiration_cs"
+name = "Inspiration Start"
+display_text = "Inspiration"
+trigger = { type = "combat_start" }
+duration_secs = 20.0
+color = [33, 221, 224, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "trandos_inspiration"
+name = "Inspiration"
+trigger = { type = "ability_cast", abilities = [4377748495663104] }
+duration_secs = 25.0
+color = [33, 221, 224, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "trandos_crush_the_weak"
+name = "Crush the Weak"
+trigger = { type = "ability_cast", abilities = [4256239575891968] }
+duration_secs = 40.0
+color = [219, 32, 182, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "trandos_crush_the_weak_1st_vm"
+name = "Crush the Weak 1st VM"
+trigger = { type = "npc_appears", selector = ["Titax"] }
+duration_secs = 30.0
+color = [219, 32, 182, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "trandos_titax_strike"
+name = "Titax Strike"
+trigger = { type = "ability_cast", abilities = [4256733497131008] }
+duration_secs = 20.0
+color = [108, 66, 42, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "trandos_titax_strike_1st"
+name = "Titax Strike NiM Start"
+trigger = { type = "combat_start" }
+duration_secs = 8.0
+color = [108, 66, 42, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "trandos_titax_strike_1st_vm"
+name = "Titax Strike 1st VM"
+trigger = { type = "npc_appears", selector = ["Titax"] }
+duration_secs = 8.0
+color = [108, 66, 42, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "trandos_titax_strike_vm"
+name = "Titax Strike VM"
+trigger = { type = "ability_cast", abilities = [4256733497131008] }
+duration_secs = 35.0
+color = [108, 66, 42, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "trandos_divebomb_1st"
+name = "Divebomb 1st"
+trigger = { type = "npc_appears", selector = ["Greus"] }
+duration_secs = 40.0
+color = [224, 107, 24, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "trandos_divebomb"
+name = "Divebomb"
+trigger = { type = "ability_cast", abilities = [4377413488214016] }
+duration_secs = 40.0
+color = [224, 107, 24, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "trandos_ayhis_eru"
+name = "Ayhis & Eru"
+trigger = { type = "ability_cast", abilities = [4255208783740928] }
+duration_secs = 7.0
+color = [244, 229, 74, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "trandos_fire_blast_1st"
+name = "Fire Blast 1st"
+trigger = { type = "npc_appears", selector = ["Greus"] }
+duration_secs = 20.0
+color = [219, 34, 32, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "trandos_fire_blast_1st_vm"
+name = "Fire Blast 1st VM"
+trigger = { type = "combat_start" }
+duration_secs = 20.0
+color = [219, 32, 34, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "trandos_fire_blast"
+name = "Fire Blast"
+trigger = { type = "ability_cast", abilities = [4250359765663744] }
+duration_secs = 16.0
+color = [224, 29, 30, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "trandos_endothermic"
+name = "Endothermic"
+trigger = { type = "ability_cast", abilities = [4250291046187008] }
+duration_secs = 12.0
+color = [28, 42, 219, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "trandos_train_arrive"
+name = "Train Arrive"
+trigger = { type = "ability_cast", abilities = [833455583657984] }
+duration_secs = 45.0
+color = [127, 32, 219, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "trandos_caustic_plume"
+name = "Caustic Plume"
+trigger = { type = "ability_cast", abilities = [4265293366951936] }
+duration_secs = 30.0
+color = [48, 219, 37, 255]
+difficulties = ["veteran", "master"]
+counter_condition = { counter_id = "trandos_damagecountera", operator = "eq", value = 1 }
+
+[[boss.timer]]
+id = "trandos_caustic_reset"
+name = "Caustic reset"
+trigger = { type = "timer_expires", timer_id = "trandos_caustic_plume" }
+is_alert = true
+alert_text = "Caustic reset"
+color = [48, 219, 37, 255]
+difficulties = ["veteran", "master"]
+chains_to = "194e5fb9-73a4-4c0e-a41a-6bd7bc363307"
+
+[[boss.timer]]
+id = "trandos_irradiated_fire_blast_1st"
+name = "Irradiated Fire Blast 1st"
+trigger = { type = "npc_appears", selector = ["Ultimate Hunter"] }
+duration_secs = 15.0
+color = [224, 29, 30, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "trandos_irradiated_fire_blast_db"
+name = "Irradiated Fire Blast DB"
+trigger = { type = "ability_cast", abilities = [4381059915448320] }
+duration_secs = 12.5
+color = [224, 29, 31, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "trandos_irradiated_fire_blast"
+name = "Irradiated Fire Blast"
+trigger = { type = "ability_cast", abilities = [4381072800350208] }
+duration_secs = 16.0
+color = [224, 25, 24, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "trandos_divebomb_u"
+name = "Divebomb U"
+trigger = { type = "ability_cast", abilities = [4381059915448320] }
+duration_secs = 24.5
+color = [224, 107, 24, 255]
+difficulties = ["master"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Huntmaster
@@ -178,6 +381,42 @@ name = "Shelleigh"
 ids = [4281661487316992, 4330237567434752]
 is_boss = true
 is_kill_target = true
+
+[[boss.counter]]
+id = "shelleigh_appeared"
+name = "Shelleigh Appears"
+increment_on = { type = "npc_appears", selector = ["Shelleigh"] }
+
+[[boss.phases]]
+id = "huntmaster"
+name = "Huntmaster"
+start_trigger = { type = "any_of", conditions = [
+  { type = "combat_start" },
+  { type = "phase_ended", phase_id = "huntmaster_holdout" },
+] }
+counter_condition = { counter_id = "shelleigh_appeared", operator = "eq", value = 0 }
+
+[[boss.phases]]
+id = "huntmaster_fortress"
+name = "Fortress"
+start_trigger = { type = "ability_cast", abilities = [
+  4271405105414144,
+  4387871733579776,
+] }
+end_trigger = { type = "ability_cast", abilities = [4277521138843648] }
+counter_condition = { counter_id = "shelleigh_appeared", operator = "eq", value = 0 }
+
+[[boss.phases]]
+id = "huntmaster_holdout"
+name = "Holdout"
+start_trigger = { type = "phase_ended", phase_id = "huntmaster_fortress" }
+end_trigger = { type = "effect_removed", effects = [4277787426816333] }
+counter_condition = { counter_id = "shelleigh_appeared", operator = "eq", value = 0 }
+
+[[boss.phases]]
+id = "shelleigh"
+name = "Shelleigh"
+start_trigger = { type = "npc_appears", selector = ["Shelleigh"] }
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Apex Vanguard
 # ═══════════════════════════════════════════════════════════════════════════════
