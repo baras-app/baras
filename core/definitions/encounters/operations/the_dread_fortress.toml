@@ -511,7 +511,87 @@ name = "D-15 Corruption Droid"
 ids = [3282639209365504]
 is_boss = false
 
+[[boss.timer]]
+id = "corruptor_zero_ranged_adds"
+name = "Ranged Adds"
+trigger = { type = "npc_appears", selector = ["D-13 Corruption Droid"] }
+duration_secs = 60.0
+color = [27, 158, 20, 255]
+difficulties = ["veteran", "master"]
 
+[[boss.timer]]
+id = "corruptor_zero_melee_adds"
+name = "Melee Adds"
+trigger = { type = "npc_appears", selector = ["D-15 Corruption Droid"] }
+duration_secs = 60.0
+color = [27, 158, 20, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "corruptor_zero_missile_barrage"
+name = "Missile Barrage"
+trigger = { type = "ability_cast", abilities = [3286483205095424] }
+duration_secs = 15.0
+color = [35, 28, 219, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "corruptor_zero_heavy_slash"
+name = "Heavy Slash"
+trigger = { type = "ability_cast", abilities = [3286530449735680] }
+duration_secs = 20.0
+color = [219, 30, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "corruptor_zero_chest_laser"
+name = "Chest Laser"
+trigger = { type = "ability_cast", abilities = [3285409463271424] }
+duration_secs = 15.0
+color = [224, 59, 212, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "corruptor_zero_beam_melee_mode"
+name = "Beam (Melee Mode)"
+trigger = { type = "effect_applied", effects = [3284760923209993] }
+duration_secs = 60.0
+color = [219, 96, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "corruptor_zero_gravity_ranged_mode"
+name = "Gravity (Ranged Mode)"
+trigger = { type = "effect_applied", effects = [3284760923209990] }
+duration_secs = 60.0
+color = [219, 96, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "corruptor_zero_concussion_mine"
+name = "Concussion Mine"
+trigger = { type = "any_of", conditions = [
+  { type = "ability_cast", abilities = [
+    3321882325549056,
+  ] },
+  { type = "ability_cast", abilities = [
+    3344271990063104,
+  ] },
+] }
+duration_secs = 21.5
+color = [24, 224, 221, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "corruptor_zero_gravity_field"
+name = "Gravity Field"
+trigger = { type = "ability_cast", abilities = [3285972103987200] }
+duration_secs = 33.0
+color = [204, 191, 30, 255]
+difficulties = ["veteran", "master"]
+
+#
+#
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 5: Dread Master Brontes
 # ═══════════════════════════════════════════════════════════════════════════════
