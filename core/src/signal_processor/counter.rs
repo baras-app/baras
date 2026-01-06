@@ -66,6 +66,24 @@ pub fn check_counter_increments(
                     timestamp: event.timestamp,
                 });
         }
+
+        // Check reset_on trigger (resets to initial_value)
+        if check_counter_trigger(&counter.reset_on, event, current_signals, &def) {
+            let enc = cache.current_encounter_mut().unwrap();
+            let old_value = enc.get_counter(&counter.id);
+            let new_value = counter.initial_value;
+
+            // Only emit signal if value actually changes
+            if old_value != new_value {
+                enc.set_counter(&counter.id, new_value);
+                signals.push(GameSignal::CounterChanged {
+                    counter_id: counter.id.clone(),
+                    old_value,
+                    new_value,
+                    timestamp: event.timestamp,
+                });
+            }
+        }
     }
 
     signals
