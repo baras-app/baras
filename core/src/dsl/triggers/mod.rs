@@ -317,7 +317,8 @@ impl Trigger {
     pub fn matches_ability(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
         match self {
             Self::AbilityCast { abilities, .. } => {
-                abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+                // Require explicit selectors - empty list matches nothing
+                !abilities.is_empty() && abilities.iter().any(|s| s.matches(ability_id, ability_name))
             }
             Self::AnyOf { conditions } => {
                 conditions.iter().any(|c| c.matches_ability(ability_id, ability_name))
@@ -330,7 +331,8 @@ impl Trigger {
     pub fn matches_effect_applied(&self, effect_id: u64, effect_name: Option<&str>) -> bool {
         match self {
             Self::EffectApplied { effects, .. } => {
-                effects.is_empty() || effects.iter().any(|s| s.matches(effect_id, effect_name))
+                // Require explicit selectors - empty list matches nothing
+                !effects.is_empty() && effects.iter().any(|s| s.matches(effect_id, effect_name))
             }
             Self::AnyOf { conditions } => {
                 conditions.iter().any(|c| c.matches_effect_applied(effect_id, effect_name))
@@ -343,7 +345,8 @@ impl Trigger {
     pub fn matches_effect_removed(&self, effect_id: u64, effect_name: Option<&str>) -> bool {
         match self {
             Self::EffectRemoved { effects, .. } => {
-                effects.is_empty() || effects.iter().any(|s| s.matches(effect_id, effect_name))
+                // Require explicit selectors - empty list matches nothing
+                !effects.is_empty() && effects.iter().any(|s| s.matches(effect_id, effect_name))
             }
             Self::AnyOf { conditions } => {
                 conditions.iter().any(|c| c.matches_effect_removed(effect_id, effect_name))
@@ -356,7 +359,8 @@ impl Trigger {
     pub fn matches_damage_taken(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
         match self {
             Self::DamageTaken { abilities, .. } => {
-                abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+                // Require explicit selectors - empty list matches nothing
+                !abilities.is_empty() && abilities.iter().any(|s| s.matches(ability_id, ability_name))
             }
             Self::AnyOf { conditions } => {
                 conditions.iter().any(|c| c.matches_damage_taken(ability_id, ability_name))
