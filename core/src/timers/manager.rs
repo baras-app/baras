@@ -58,6 +58,9 @@ pub struct TimerManager {
     /// Timers that expired this tick (for chaining)
     expired_this_tick: Vec<String>,
 
+    /// Timers that started this tick (for counter triggers)
+    started_this_tick: Vec<String>,
+
     /// Whether we're currently in combat
     pub(super) in_combat: bool,
 
@@ -94,6 +97,7 @@ impl TimerManager {
             active_timers: HashMap::new(),
             fired_alerts: Vec::new(),
             expired_this_tick: Vec::new(),
+            started_this_tick: Vec::new(),
             in_combat: false,
             last_timestamp: None,
             live_mode: true, // Default: apply recency threshold (skip old events)
@@ -351,6 +355,18 @@ impl TimerManager {
         &self.fired_alerts
     }
 
+    /// Get timer IDs that expired this tick (for counter triggers).
+    /// Unlike take_fired_alerts, this returns a clone since the IDs are
+    /// also used internally for timer chaining.
+    pub fn expired_timer_ids(&self) -> Vec<String> {
+        self.expired_this_tick.clone()
+    }
+
+    /// Get timer IDs that started this tick (for counter triggers).
+    pub fn started_timer_ids(&self) -> Vec<String> {
+        self.started_this_tick.clone()
+    }
+
     /// Check if a timer definition is active for current encounter context.
     /// Reads context directly from the encounter (single source of truth).
     /// Also checks preference override for enabled state.
@@ -432,6 +448,9 @@ impl TimerManager {
 
         self.active_timers.insert(key.clone(), timer);
 
+        // Track that this timer started (for counter triggers)
+        self.started_this_tick.push(def.id.clone());
+
         // Cancel any timers that have cancel_on_timer pointing to this timer
         self.cancel_timers_on_start(&def.id);
     }
@@ -490,6 +509,8 @@ impl TimerManager {
         encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
         self.expired_this_tick.clear();
+        // Note: started_this_tick is cleared at the START of handle_signal,
+        // not here, because timer starts happen BEFORE process_expirations.
 
         // Find expired timer keys
         let expired_keys: Vec<_> = self
@@ -627,6 +648,10 @@ impl SignalHandler for TimerManager {
             }
         }
         self.last_timestamp = Some(ts);
+
+        // Clear started_this_tick at the start of each signal processing.
+        // Timer starts accumulate during matching below, then we read them after handle_signal.
+        self.started_this_tick.clear();
 
         match signal {
             // Context signals already handled above

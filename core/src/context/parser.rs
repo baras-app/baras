@@ -174,7 +174,13 @@ impl ParsingSession {
             // Flush parquet on combat end
             let should_flush = signals.iter().any(|s| matches!(s, GameSignal::CombatEnded { .. }));
 
+            // Capture timestamp before dispatch (needed for counter triggers)
+            let event_timestamp = event.timestamp;
+
             self.dispatch_signals(&signals);
+
+            // Process counter triggers from any timers that expired during signal dispatch
+            self.process_timer_counter_triggers(event_timestamp);
 
             if should_flush {
                 self.flush_encounter_parquet();
@@ -252,6 +258,32 @@ impl ParsingSession {
             if let Ok(mut timer_mgr) = timer_mgr.lock() {
                 timer_mgr.handle_signals(signals, encounter);
             }
+        }
+    }
+
+    /// Process counter triggers from timer events (expires and starts).
+    /// Must be called after dispatch_signals when timer manager may have timer events.
+    fn process_timer_counter_triggers(&mut self, timestamp: chrono::NaiveDateTime) {
+        // Get timer IDs from timer manager
+        let (expired_ids, started_ids) = if let Some(timer_mgr) = &self.timer_manager {
+            if let Ok(timer_mgr) = timer_mgr.lock() {
+                (timer_mgr.expired_timer_ids(), timer_mgr.started_timer_ids())
+            } else {
+                return;
+            }
+        } else {
+            return;
+        };
+
+        if expired_ids.is_empty() && started_ids.is_empty() {
+            return;
+        }
+
+        // Update counters based on timer events
+        if let Some(cache) = &mut self.session_cache {
+            use crate::signal_processor::check_counter_timer_triggers;
+            let _counter_signals = check_counter_timer_triggers(&expired_ids, &started_ids, cache, timestamp);
+            // Counter state is updated in-place; signals are for logging/debugging
         }
     }
 

@@ -89,6 +89,102 @@ pub fn check_counter_increments(
     signals
 }
 
+/// Check for counter changes triggered by timer events (expires/starts).
+/// Called after TimerManager processes signals to handle timer→counter triggers.
+pub fn check_counter_timer_triggers(
+    expired_timer_ids: &[String],
+    started_timer_ids: &[String],
+    cache: &mut SessionCache,
+    timestamp: chrono::NaiveDateTime,
+) -> Vec<GameSignal> {
+    if expired_timer_ids.is_empty() && started_timer_ids.is_empty() {
+        return Vec::new();
+    }
+
+    let counters = {
+        let Some(enc) = cache.current_encounter() else {
+            return Vec::new();
+        };
+        let Some(def_idx) = enc.active_boss_idx() else {
+            return Vec::new();
+        };
+        enc.boss_definitions()[def_idx].counters.clone()
+    };
+
+    let mut signals = Vec::new();
+
+    for counter in &counters {
+        // Check increment_on for timer triggers
+        if matches_timer_trigger(&counter.increment_on, expired_timer_ids, started_timer_ids) {
+            let enc = cache.current_encounter_mut().unwrap();
+            let (old_value, new_value) = enc.modify_counter(
+                &counter.id,
+                counter.decrement,
+                counter.set_value,
+            );
+            signals.push(GameSignal::CounterChanged {
+                counter_id: counter.id.clone(),
+                old_value,
+                new_value,
+                timestamp,
+            });
+        }
+
+        // Check decrement_on for timer triggers
+        if let Some(ref trigger) = counter.decrement_on {
+            if matches_timer_trigger(trigger, expired_timer_ids, started_timer_ids) {
+                let enc = cache.current_encounter_mut().unwrap();
+                let (old_value, new_value) = enc.modify_counter(
+                    &counter.id,
+                    true, // Always decrement
+                    None,
+                );
+                signals.push(GameSignal::CounterChanged {
+                    counter_id: counter.id.clone(),
+                    old_value,
+                    new_value,
+                    timestamp,
+                });
+            }
+        }
+
+        // Check reset_on for timer triggers
+        if matches_timer_trigger(&counter.reset_on, expired_timer_ids, started_timer_ids) {
+            let enc = cache.current_encounter_mut().unwrap();
+            let old_value = enc.get_counter(&counter.id);
+            let new_value = counter.initial_value;
+            if old_value != new_value {
+                enc.set_counter(&counter.id, new_value);
+                signals.push(GameSignal::CounterChanged {
+                    counter_id: counter.id.clone(),
+                    old_value,
+                    new_value,
+                    timestamp,
+                });
+            }
+        }
+    }
+
+    signals
+}
+
+/// Check if a trigger matches any expired or started timer IDs.
+/// Handles TimerExpires, TimerStarted, and AnyOf wrappers.
+fn matches_timer_trigger(
+    trigger: &Trigger,
+    expired_timer_ids: &[String],
+    started_timer_ids: &[String],
+) -> bool {
+    match trigger {
+        Trigger::TimerExpires { timer_id } => expired_timer_ids.contains(timer_id),
+        Trigger::TimerStarted { timer_id } => started_timer_ids.contains(timer_id),
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| matches_timer_trigger(c, expired_timer_ids, started_timer_ids)),
+        _ => false,
+    }
+}
+
 /// Check if a counter trigger is satisfied by the current event/signals.
 pub fn check_counter_trigger(
     trigger: &Trigger,
