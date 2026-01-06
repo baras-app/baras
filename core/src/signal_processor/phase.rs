@@ -301,6 +301,7 @@ pub fn check_phase_end_triggers(
         return Vec::new();
     };
 
+    // Check ability/effect-based triggers
     if check_ability_trigger(end_trigger, event) {
         return vec![GameSignal::PhaseEndTriggered {
             phase_id: current_phase_id.clone(),
@@ -308,11 +309,32 @@ pub fn check_phase_end_triggers(
         }];
     }
 
+    // Check signal-based triggers (entity death, phase ended, counter reached)
     if check_signal_phase_trigger(end_trigger, &def.entities, current_signals) {
         return vec![GameSignal::PhaseEndTriggered {
             phase_id: current_phase_id.clone(),
             timestamp: event.timestamp,
         }];
+    }
+
+    // Check HP-based triggers from BossHpChanged signals
+    for signal in current_signals {
+        if let GameSignal::BossHpChanged {
+            npc_id,
+            entity_name,
+            old_hp_percent,
+            new_hp_percent,
+            timestamp,
+            ..
+        } = signal
+        {
+            if check_hp_trigger(end_trigger, &def.entities, *old_hp_percent, *new_hp_percent, *npc_id, entity_name) {
+                return vec![GameSignal::PhaseEndTriggered {
+                    phase_id: current_phase_id.clone(),
+                    timestamp: *timestamp,
+                }];
+            }
+        }
     }
 
     Vec::new()
