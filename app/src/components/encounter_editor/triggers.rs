@@ -373,6 +373,7 @@ pub fn SimpleTriggerEditor(
                 onchange: move |e| {
                     let new_trigger = match e.value().as_str() {
                         "combat_start" => TimerTrigger::CombatStart,
+                        "combat_end" => TimerTrigger::CombatEnd,
                         "ability_cast" => TimerTrigger::AbilityCast { abilities: vec![], source: EntityFilter::default() },
                         "effect_applied" => TimerTrigger::EffectApplied { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
@@ -381,6 +382,7 @@ pub fn SimpleTriggerEditor(
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
                         "phase_entered" => TimerTrigger::PhaseEntered { phase_id: String::new() },
                         "phase_ended" => TimerTrigger::PhaseEnded { phase_id: String::new() },
+                        "any_phase_change" => TimerTrigger::AnyPhaseChange,
                         "boss_hp_below" => TimerTrigger::BossHpBelow { hp_percent: 50.0, selector: vec![] },
                         "counter_reaches" => TimerTrigger::CounterReaches { counter_id: String::new(), value: 1 },
                         "npc_appears" => TimerTrigger::NpcAppears { selector: vec![] },
@@ -388,11 +390,13 @@ pub fn SimpleTriggerEditor(
                         "target_set" => TimerTrigger::TargetSet { selector: vec![], target: EntityFilter::default() },
                         "time_elapsed" => TimerTrigger::TimeElapsed { secs: 30.0 },
                         "manual" => TimerTrigger::Manual,
+                        "never" => TimerTrigger::Never,
                         _ => trigger.clone(),
                     };
                     on_change.call(new_trigger);
                 },
                 option { value: "combat_start", "Combat Start" }
+                option { value: "combat_end", "Combat End" }
                 option { value: "ability_cast", "Ability Cast" }
                 option { value: "effect_applied", "Effect Applied" }
                 option { value: "effect_removed", "Effect Removed" }
@@ -401,6 +405,7 @@ pub fn SimpleTriggerEditor(
                 option { value: "timer_started", "Timer Started" }
                 option { value: "phase_entered", "Phase Entered" }
                 option { value: "phase_ended", "Phase Ended" }
+                option { value: "any_phase_change", "Any Phase Change" }
                 option { value: "boss_hp_below", "Boss HP Below" }
                 option { value: "counter_reaches", "Counter Reaches" }
                 option { value: "npc_appears", "NPC Appears" }
@@ -408,13 +413,17 @@ pub fn SimpleTriggerEditor(
                 option { value: "target_set", "Target Set" }
                 option { value: "time_elapsed", "Time Elapsed" }
                 option { value: "manual", "Manual" }
+                option { value: "never", "Never" }
             }
 
             // Type-specific fields
             {
                 match trigger.clone() {
-                    TimerTrigger::CombatStart => rsx! {},
-                    TimerTrigger::Manual => rsx! {},
+                    TimerTrigger::CombatStart
+                    | TimerTrigger::CombatEnd
+                    | TimerTrigger::AnyPhaseChange
+                    | TimerTrigger::Never
+                    | TimerTrigger::Manual => rsx! {},
                     TimerTrigger::AbilityCast { abilities, source } => {
                         let source_for_abilities = source.clone();
                         let abilities_for_source = abilities.clone();

@@ -61,6 +61,9 @@ pub struct TimerManager {
     /// Timers that started this tick (for counter triggers)
     started_this_tick: Vec<String>,
 
+    /// Timers that were cancelled this tick (for validation output)
+    cancelled_this_tick: Vec<String>,
+
     /// Whether we're currently in combat
     pub(super) in_combat: bool,
 
@@ -98,6 +101,7 @@ impl TimerManager {
             fired_alerts: Vec::new(),
             expired_this_tick: Vec::new(),
             started_this_tick: Vec::new(),
+            cancelled_this_tick: Vec::new(),
             in_combat: false,
             last_timestamp: None,
             live_mode: true, // Default: apply recency threshold (skip old events)
@@ -367,6 +371,11 @@ impl TimerManager {
         self.started_this_tick.clone()
     }
 
+    /// Get timer IDs that were cancelled this tick (for validation output).
+    pub fn cancelled_timer_ids(&self) -> Vec<String> {
+        self.cancelled_this_tick.clone()
+    }
+
     /// Check if a timer definition is active for current encounter context.
     /// Reads context directly from the encounter (single source of truth).
     /// Also checks preference override for enabled state.
@@ -471,8 +480,9 @@ impl TimerManager {
             })
             .collect();
 
-        // Remove cancelled timers
+        // Remove cancelled timers and track cancellations
         for key in keys_to_cancel {
+            self.cancelled_this_tick.push(key.definition_id.clone());
             self.active_timers.remove(&key);
         }
     }
@@ -497,7 +507,9 @@ impl TimerManager {
             })
             .collect();
 
+        // Remove cancelled timers and track cancellations
         for key in keys_to_cancel {
+            self.cancelled_this_tick.push(key.definition_id.clone());
             self.active_timers.remove(&key);
         }
     }
@@ -649,9 +661,10 @@ impl SignalHandler for TimerManager {
         }
         self.last_timestamp = Some(ts);
 
-        // Clear started_this_tick at the start of each signal processing.
-        // Timer starts accumulate during matching below, then we read them after handle_signal.
+        // Clear tick-tracking vectors at the start of each signal processing.
+        // Timer starts/cancels accumulate during matching below, then we read them after handle_signal.
         self.started_this_tick.clear();
+        self.cancelled_this_tick.clear();
 
         match signal {
             // Context signals already handled above
