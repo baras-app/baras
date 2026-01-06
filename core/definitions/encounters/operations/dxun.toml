@@ -22,6 +22,103 @@ ids = [4330233272467456, 4246176467517440, 4382185196879872]
 is_boss = true
 is_kill_target = true
 
+[[boss.entities]]
+name = "Bull"
+ids = [4246356856143872]
+is_boss = false
+
+[[boss.counters]]
+id = "red_bulls_killed"
+name = "Bulls Killed"
+increment_on = { type = "entity_death", selector = ["Bull"] }
+
+[[boss.phases]]
+id = "red_red"
+name = "Red"
+start_trigger = { type = "any_of", conditions = [
+  { type = "combat_start" },
+  { type = "phase_ended", phase_id = "red_bull" },
+] }
+
+[[boss.phases]]
+id = "red_bull"
+name = "Bull"
+start_trigger = { type = "npc_appears", selector = ["Bull"] }
+end_trigger = { type = "entity_death", selector = ["Bull"] }
+
+[[boss.timer]]
+id = "red_bull_cs"
+name = "Bull Start"
+display_text = "Bull"
+trigger = { type = "combat_start" }
+color = [219, 93, 28, 255]
+duration_secs = 60.0
+difficulties = ["verteran", "master"]
+
+[[boss.timer]]
+id = "red_bull_gives_u_wings"
+name = "Bull"
+trigger = { type = "timer_expires", timer_id = "red_bull_cs" }
+color = [219, 93, 28, 255]
+duration_secs = 60.0
+difficulties = ["verteran", "master"]
+chains_to = "red_enrage_bull"
+repeats = 5
+
+[[boss.timer]]
+id = "red_enrage_bull"
+name = "Enrage + Bull"
+trigger = { type = "manual" }
+duration_secs = 60.0
+color = [219, 28, 180, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "red_phospholipase_corona"
+name = "Phospholipase Corona"
+trigger = { type = "effect_removed", effects = [
+  4250076297822510,
+], target = "local_player" }
+is_alert = true
+alert_text = "Phospholipase Corona"
+color = [25, 158, 229, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "red_hydrochloric_pool_cs"
+name = "Hydrochloric Pool Start"
+display_text = "Hydrochloric Pool"
+trigger = { type = "combat_start" }
+duration_secs = 15.0
+color = [23, 123, 8, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "red_hydrochloric_pool"
+name = "Hydrochloric Pool"
+trigger = { type = "ability_cast", abilities = [4250097772658688] }
+duration_secs = 47.0
+color = [23, 123, 8, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "red_acidic_jet_1st"
+name = "Acidic Jet Start"
+display_text = "Acidic Jet"
+trigger = { type = "combat_start" }
+duration_secs = 20.0
+color = [224, 25, 24, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "red_acidic_jet"
+name = "Acidic Jet"
+trigger = { type = "ability_cast", abilities = [4250089182724096] }
+duration_secs = 30.0
+color = [224, 25, 24, 255]
+difficulties = ["veteran", "master"]
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Trandosians (Pack Leader)
 # ═══════════════════════════════════════════════════════════════════════════════
