@@ -519,7 +519,6 @@ trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
 duration_secs = 75.0
 color = [106, 62, 5, 255]
 difficulties = ["veteran", "master"]
-chains_to = "acef420d-e4a2-4747-9879-3c744bd0a3f5"
 
 [[boss.timer]]
 id = "huntmaster_scat_pv_pen"
@@ -560,7 +559,6 @@ trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
 duration_secs = 28.0
 color = [182, 47, 188, 255]
 difficulties = ["master"]
-chains_to = "acef420d-e4a2-4747-9879-3c744bd0a3f5"
 
 [[boss.timer]]
 id = "huntmaster_penetratign_shot_p3"
@@ -577,7 +575,6 @@ trigger = { type = "timer_expires", timer_id = "huntmaster_p3_jump" }
 duration_secs = 34.0
 color = [30, 174, 169, 255]
 difficulties = ["veteran", "master"]
-chains_to = "acef420d-e4a2-4747-9879-3c744bd0a3f5"
 
 [[boss.timer]]
 id = "huntmaster_egg_snipe_1st"
