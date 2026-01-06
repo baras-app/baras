@@ -883,10 +883,12 @@ fn EffectEditForm(
 
                     // Audio settings (shown when audio enabled)
                     if draft().audio.enabled {
-                        div { class: "form-row-hz",
-                            label { "Sound" }
+                         div { class: "form-row-hz",
+                        label { "Alert Sound" }
+                        div { class: "flex items-center gap-xs",
                             select {
                                 class: "select-inline",
+                                style: "width: 140px;",
                                 value: "{draft().audio.file.clone().unwrap_or_default()}",
                                 onchange: move |e| {
                                     let mut d = draft();
@@ -894,15 +896,35 @@ fn EffectEditForm(
                                     draft.set(d);
                                 },
                                 option { value: "", "(none)" }
-                                option { value: "Alarm.mp3", "Alarm" }
-                                option { value: "Alert.mp3", "Alert" }
+                                option { value: "Alarm.mp3", "Alarm.mp3" }
+                                option { value: "Alert.mp3", "Alert.mp3" }
+                                // Show custom path if set and not a bundled sound
                                 if let Some(ref path) = draft().audio.file {
                                     if !path.is_empty() && path != "Alarm.mp3" && path != "Alert.mp3" {
-                                        option { value: "{path}", selected: true, "{path}" }
+                                        option { value: "{path}", selected: true, "{path} (custom)" }
                                     }
                                 }
                             }
+                            button {
+                                class: "btn btn-sm",
+                                r#type: "button",
+                                onclick: move |_| {
+                                    spawn(async move {
+                                        if let Some(path) = api::pick_audio_file().await {
+                                            // Validate extension
+                                            let lower = path.to_lowercase();
+                                            if lower.ends_with(".mp3") || lower.ends_with(".wav") {
+                                                let mut d = draft();
+                                                d.audio.file = Some(path);
+                                                draft.set(d);
+                                            }
+                                        }
+                                    });
+                                },
+                                "Browse"
+                            }
                         }
+}
                         div { class: "form-row-hz",
                             label { "Offset" }
                             select {

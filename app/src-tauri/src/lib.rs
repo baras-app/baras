@@ -164,6 +164,7 @@ pub fn run() {
             commands::open_historical_file,
             commands::resume_live_tailing,
             commands::is_live_tailing,
+            commands::pick_audio_file,
             // Profile commands
             commands::get_profile_names,
             commands::get_active_profile,
