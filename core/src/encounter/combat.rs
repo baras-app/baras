@@ -9,7 +9,7 @@
 //! - Centralizing all combat state in one place
 
 use chrono::NaiveDateTime;
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashMap;
 
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::IStr;

@@ -371,7 +371,7 @@ name = "Grob'thok"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Grob'thok, Who Feeds the Forge"
+name = "Grob'thok"
 ids = [3302567857618944, 3302559267684352, 3273929015689216, 3302563562651648]
 is_boss = true
 is_kill_target = true
@@ -388,7 +388,8 @@ is_boss = false
 
 [[boss.timer]]
 id = "grobthok_pipe_smash_cs"
-name = "Pipe Smash"
+name = "Pipe Smash Combat Start"
+display_text = "Pipe Smash"
 trigger = { type = "combat_start" }
 duration_secs = 60.0
 color = [204, 182, 30, 255]
@@ -410,7 +411,7 @@ difficulties = ["veteran", "master"]
 id = "grobthok_adds_hp"
 name = "Adds"
 trigger = { type = "boss_hp_below", hp_percent = 97.0, selector = [
-  "Grob'thok, Who Feeds the Forge",
+  "Grob'thok",
 ] }
 is_alert = true
 alert_text = "Adds Spawning"
@@ -425,7 +426,64 @@ duration_secs = 25.0
 color = [25, 148, 13, 255]
 difficulties = ["veteran", "master"]
 
+# -- Lava
 
+[[boss.timer]]
+id = "grobthok_lava_start"
+name = "First Mining Droid"
+trigger = { type = "boss_hp_below", hp_percent = 95.0, selector = [
+  "Grob'thok",
+] }
+is_alert = true
+alert_text = "Lava "
+color = [224, 108, 29, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "grobthok_lava_dot"
+name = "Mining Droid"
+trigger = { type = "ability_cast", abilities = [3294703772499968] }
+duration_secs = 30.0
+color = [224, 108, 29, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "grobthok_dot_debuff"
+name = "Mining Droid on Self"
+trigger = { type = "effect_applied", effects = [
+  3294703772500224,
+], target = "local_player" }
+is_alert = true
+alert_text = "MINING DROID DEBUFF"
+color = [224, 108, 29, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "grobthok_overhead_smash"
+name = "Overhead Smash"
+trigger = { type = "ability_cast", abilities = [3285993578823680] }
+duration_secs = 33.0
+color = [144, 24, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "grobthok_roar"
+name = "Roar"
+trigger = { type = "ability_cast", abilities = [3285997873790976] }
+duration_secs = 15.0
+color = [219, 28, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "grobthok_stunned"
+name = "Stunned"
+trigger = { type = "effect_applied", effects = [3286745198100740] }
+duration_secs = 10.0
+color = [33, 224, 221, 255]
+difficulties = ["veteran", "master"]
+
+
+#
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Corruptor Zero
 # ═══════════════════════════════════════════════════════════════════════════════
