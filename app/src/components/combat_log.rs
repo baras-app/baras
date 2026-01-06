@@ -100,12 +100,6 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let mut target_filter = use_signal(|| None::<String>);
     let mut search_text = use_signal(|| props.initial_search.clone().unwrap_or_default());
 
-    // Update search text when prop changes (e.g., clicking different deaths)
-    let expected_search = props.initial_search.clone().unwrap_or_default();
-    if *search_text.read() != expected_search {
-        search_text.set(expected_search);
-    }
-
     // Data state
     let mut rows = use_signal(Vec::<CombatLogRow>::new);
     let mut total_count = use_signal(|| 0u64);
