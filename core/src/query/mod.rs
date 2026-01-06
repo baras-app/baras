@@ -7,11 +7,11 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use arrow::array::{
+use datafusion::arrow::array::{
     Array, Float32Array, Float64Array, Int32Array, Int64Array, LargeStringArray, StringArray,
     StringViewArray, UInt64Array,
 };
-use arrow::record_batch::RecordBatch;
+use datafusion::arrow::record_batch::RecordBatch;
 use datafusion::datasource::MemTable;
 use datafusion::prelude::*;
 
@@ -44,7 +44,10 @@ fn col_strings(batch: &RecordBatch, idx: usize) -> Result<Vec<String>, String> {
     if let Some(a) = col.as_any().downcast_ref::<LargeStringArray>() {
         return Ok((0..a.len()).map(|i| a.value(i).to_string()).collect());
     }
-    Err(format!("col {idx}: expected string, got {:?}", col.data_type()))
+    Err(format!(
+        "col {idx}: expected string, got {:?}",
+        col.data_type()
+    ))
 }
 
 fn col_i64(batch: &RecordBatch, idx: usize) -> Result<Vec<i64>, String> {
@@ -58,7 +61,10 @@ fn col_i64(batch: &RecordBatch, idx: usize) -> Result<Vec<i64>, String> {
     if let Some(a) = col.as_any().downcast_ref::<UInt64Array>() {
         return Ok((0..a.len()).map(|i| a.value(i) as i64).collect());
     }
-    Err(format!("col {idx}: expected int, got {:?}", col.data_type()))
+    Err(format!(
+        "col {idx}: expected int, got {:?}",
+        col.data_type()
+    ))
 }
 
 fn col_f64(batch: &RecordBatch, idx: usize) -> Result<Vec<f64>, String> {
@@ -75,7 +81,10 @@ fn col_f64(batch: &RecordBatch, idx: usize) -> Result<Vec<f64>, String> {
     if let Some(a) = col.as_any().downcast_ref::<Int32Array>() {
         return Ok((0..a.len()).map(|i| a.value(i) as f64).collect());
     }
-    Err(format!("col {idx}: expected float, got {:?}", col.data_type()))
+    Err(format!(
+        "col {idx}: expected float, got {:?}",
+        col.data_type()
+    ))
 }
 
 fn col_f32(batch: &RecordBatch, idx: usize) -> Result<Vec<f32>, String> {
@@ -86,14 +95,22 @@ fn col_f32(batch: &RecordBatch, idx: usize) -> Result<Vec<f32>, String> {
     if let Some(a) = col.as_any().downcast_ref::<Float64Array>() {
         return Ok((0..a.len()).map(|i| a.value(i) as f32).collect());
     }
-    Err(format!("col {idx}: expected float, got {:?}", col.data_type()))
+    Err(format!(
+        "col {idx}: expected float, got {:?}",
+        col.data_type()
+    ))
 }
 
 fn scalar_f32(batches: &[RecordBatch]) -> f32 {
-    batches.first().and_then(|b| {
-        if b.num_rows() == 0 { return None; }
-        col_f32(b, 0).ok().and_then(|v| v.first().copied())
-    }).unwrap_or(0.0)
+    batches
+        .first()
+        .and_then(|b| {
+            if b.num_rows() == 0 {
+                return None;
+            }
+            col_f32(b, 0).ok().and_then(|v| v.first().copied())
+        })
+        .unwrap_or(0.0)
 }
 
 fn col_i32(batch: &RecordBatch, idx: usize) -> Result<Vec<i32>, String> {
@@ -104,7 +121,10 @@ fn col_i32(batch: &RecordBatch, idx: usize) -> Result<Vec<i32>, String> {
     if let Some(a) = col.as_any().downcast_ref::<Int64Array>() {
         return Ok((0..a.len()).map(|i| a.value(i) as i32).collect());
     }
-    Err(format!("col {idx}: expected i32, got {:?}", col.data_type()))
+    Err(format!(
+        "col {idx}: expected i32, got {:?}",
+        col.data_type()
+    ))
 }
 
 fn col_bool(batch: &RecordBatch, idx: usize) -> Result<Vec<bool>, String> {
@@ -112,7 +132,10 @@ fn col_bool(batch: &RecordBatch, idx: usize) -> Result<Vec<bool>, String> {
     if let Some(a) = col.as_any().downcast_ref::<arrow::array::BooleanArray>() {
         return Ok((0..a.len()).map(|i| a.value(i)).collect());
     }
-    Err(format!("col {idx}: expected bool, got {:?}", col.data_type()))
+    Err(format!(
+        "col {idx}: expected bool, got {:?}",
+        col.data_type()
+    ))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,7 +173,11 @@ impl QueryContext {
         let _ = self.ctx.deregister_table("events");
 
         self.ctx
-            .register_parquet("events", path.to_string_lossy().as_ref(), ParquetReadOptions::default())
+            .register_parquet(
+                "events",
+                path.to_string_lossy().as_ref(),
+                ParquetReadOptions::default(),
+            )
             .await
             .map_err(|e| e.to_string())
     }
@@ -164,7 +191,9 @@ impl QueryContext {
 
         let schema = batch.schema();
         let mem_table = MemTable::try_new(schema, vec![vec![batch]]).map_err(|e| e.to_string())?;
-        self.ctx.register_table("events", Arc::new(mem_table)).map_err(|e| e.to_string())?;
+        self.ctx
+            .register_table("events", Arc::new(mem_table))
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -217,16 +246,36 @@ impl EncounterQuery<'_> {
         breakdown_mode: Option<&BreakdownMode>,
         duration_secs: Option<f32>,
     ) -> Result<Vec<AbilityBreakdown>, String> {
-        let mode = breakdown_mode.copied().unwrap_or(BreakdownMode::ability_only());
+        let mode = breakdown_mode
+            .copied()
+            .unwrap_or(BreakdownMode::ability_only());
         let value_col = tab.value_column();
         let is_outgoing = tab.is_outgoing();
 
         // For outgoing (Damage/Healing): filter/group by source, breakdown by target
         // For incoming (DamageTaken/HealingTaken): filter/group by target, breakdown by source
-        let (entity_col, entity_type_col, breakdown_name_col, breakdown_class_col, breakdown_id_col) = if is_outgoing {
-            ("source_name", "source_entity_type", "target_name", "target_class_id", "target_id")
+        let (
+            entity_col,
+            entity_type_col,
+            breakdown_name_col,
+            breakdown_class_col,
+            breakdown_id_col,
+        ) = if is_outgoing {
+            (
+                "source_name",
+                "source_entity_type",
+                "target_name",
+                "target_class_id",
+                "target_id",
+            )
         } else {
-            ("target_name", "target_entity_type", "source_name", "source_class_id", "source_id")
+            (
+                "target_name",
+                "target_entity_type",
+                "source_name",
+                "source_class_id",
+                "source_id",
+            )
         };
 
         // Build WHERE conditions
@@ -238,7 +287,11 @@ impl EncounterQuery<'_> {
             conditions.push(tr.sql_filter());
         }
         if let Some(types) = entity_types {
-            let type_list = types.iter().map(|t| format!("'{}'", sql_escape(t))).collect::<Vec<_>>().join(", ");
+            let type_list = types
+                .iter()
+                .map(|t| format!("'{}'", sql_escape(t)))
+                .collect::<Vec<_>>()
+                .join(", ");
             conditions.push(format!("{} IN ({})", entity_type_col, type_list));
         }
         let filter = format!("WHERE {}", conditions.join(" AND "));
@@ -294,7 +347,9 @@ impl EncounterQuery<'_> {
         };
 
         // Query with window function for percent calculation
-        let batches = self.sql(&format!(r#"
+        let batches = self
+            .sql(&format!(
+                r#"
             SELECT {select_str},
                    SUM({value_col}) as total_value,
                    COUNT(*) as hit_count,
@@ -305,37 +360,60 @@ impl EncounterQuery<'_> {
             FROM events {filter}
             GROUP BY {group_str}
             ORDER BY total_value DESC
-        "#)).await?;
+        "#
+            ))
+            .await?;
 
         let duration = duration_secs.unwrap_or(1.0).max(0.001) as f64;
 
         let mut results = Vec::new();
         for batch in &batches {
             let mut col_idx = 0;
-            let names = col_strings(batch, col_idx)?; col_idx += 1;
-            let ids = col_i64(batch, col_idx)?; col_idx += 1;
+            let names = col_strings(batch, col_idx)?;
+            col_idx += 1;
+            let ids = col_i64(batch, col_idx)?;
+            col_idx += 1;
 
             // Extract target columns if present
             let target_names = if mode.by_target_type || mode.by_target_instance {
-                let v = col_strings(batch, col_idx)?; col_idx += 1; Some(v)
-            } else { None };
+                let v = col_strings(batch, col_idx)?;
+                col_idx += 1;
+                Some(v)
+            } else {
+                None
+            };
             let target_class_ids = if mode.by_target_type {
-                let v = col_i64(batch, col_idx)?; col_idx += 1; Some(v)
-            } else { None };
+                let v = col_i64(batch, col_idx)?;
+                col_idx += 1;
+                Some(v)
+            } else {
+                None
+            };
             let target_log_ids = if mode.by_target_instance {
-                let v = col_i64(batch, col_idx)?; col_idx += 1; Some(v)
-            } else { None };
+                let v = col_i64(batch, col_idx)?;
+                col_idx += 1;
+                Some(v)
+            } else {
+                None
+            };
 
-            let totals = col_f64(batch, col_idx)?; col_idx += 1;
-            let hits = col_i64(batch, col_idx)?; col_idx += 1;
-            let crits = col_i64(batch, col_idx)?; col_idx += 1;
-            let maxes = col_f64(batch, col_idx)?; col_idx += 1;
-            let percents = col_f64(batch, col_idx)?; col_idx += 1;
+            let totals = col_f64(batch, col_idx)?;
+            col_idx += 1;
+            let hits = col_i64(batch, col_idx)?;
+            col_idx += 1;
+            let crits = col_i64(batch, col_idx)?;
+            col_idx += 1;
+            let maxes = col_f64(batch, col_idx)?;
+            col_idx += 1;
+            let percents = col_f64(batch, col_idx)?;
+            col_idx += 1;
 
             // Extract first_hit_secs if grouping by target instance
             let first_hit_times = if mode.by_target_instance {
                 Some(col_f32(batch, col_idx)?)
-            } else { None };
+            } else {
+                None
+            };
 
             for i in 0..batch.num_rows() {
                 let h = hits[i] as f64;
@@ -349,7 +427,11 @@ impl EncounterQuery<'_> {
                     total_value: totals[i],
                     hit_count: hits[i],
                     crit_count: crits[i],
-                    crit_rate: if h > 0.0 { crits[i] as f64 / h * 100.0 } else { 0.0 },
+                    crit_rate: if h > 0.0 {
+                        crits[i] as f64 / h * 100.0
+                    } else {
+                        0.0
+                    },
                     max_hit: maxes[i],
                     avg_hit: if h > 0.0 { totals[i] / h } else { 0.0 },
                     dps: totals[i] / duration,
@@ -363,7 +445,11 @@ impl EncounterQuery<'_> {
     /// Query entity breakdown for any data tab.
     /// - For outgoing tabs (Damage/Healing): groups by source entity.
     /// - For incoming tabs (DamageTaken/HealingTaken): groups by target entity (who received).
-    pub async fn breakdown_by_entity(&self, tab: DataTab, time_range: Option<&TimeRange>) -> Result<Vec<EntityBreakdown>, String> {
+    pub async fn breakdown_by_entity(
+        &self,
+        tab: DataTab,
+        time_range: Option<&TimeRange>,
+    ) -> Result<Vec<EntityBreakdown>, String> {
         let value_col = tab.value_column();
         let is_outgoing = tab.is_outgoing();
 
@@ -381,14 +467,18 @@ impl EncounterQuery<'_> {
         }
         let filter = format!("WHERE {}", conditions.join(" AND "));
 
-        let batches = self.sql(&format!(r#"
+        let batches = self
+            .sql(&format!(
+                r#"
             SELECT {name_col}, {id_col}, MIN({type_col}) as entity_type,
                    SUM({value_col}) as total_value,
                    COUNT(DISTINCT ability_id) as abilities_used
             FROM events {filter}
             GROUP BY {name_col}, {id_col}
             ORDER BY total_value DESC
-        "#)).await?;
+        "#
+            ))
+            .await?;
 
         let mut results = Vec::new();
         for batch in &batches {
@@ -418,7 +508,9 @@ impl EncounterQuery<'_> {
         time_range: Option<&TimeRange>,
         duration_secs: Option<f32>,
     ) -> Result<Vec<RaidOverviewRow>, String> {
-        let time_filter = time_range.map(|tr| format!("AND {}", tr.sql_filter())).unwrap_or_default();
+        let time_filter = time_range
+            .map(|tr| format!("AND {}", tr.sql_filter()))
+            .unwrap_or_default();
         let duration = duration_secs.unwrap_or(1.0).max(0.001) as f64;
 
         // CTE-based query to aggregate multiple metrics per player
@@ -428,7 +520,9 @@ impl EncounterQuery<'_> {
         // damage_taken: sum of dmg_amount WHERE target = player
         // absorbed: sum of dmg_absorbed WHERE target = player
         // healing: sum of heal_amount WHERE source = player
-        let batches = self.sql(&format!(r#"
+        let batches = self
+            .sql(&format!(
+                r#"
             WITH participants AS (
                 SELECT DISTINCT source_name as name, source_entity_type as entity_type
                 FROM events
@@ -473,7 +567,9 @@ impl EncounterQuery<'_> {
             LEFT JOIN damage_taken t ON p.name = t.name
             LEFT JOIN healing_done h ON p.name = h.name
             ORDER BY damage_total DESC
-        "#)).await?;
+        "#
+            ))
+            .await?;
 
         let mut results = Vec::new();
         for batch in &batches {
@@ -509,30 +605,61 @@ impl EncounterQuery<'_> {
         Ok(results)
     }
 
-    pub async fn dps_over_time(&self, bucket_ms: i64, source_name: Option<&str>, time_range: Option<&TimeRange>) -> Result<Vec<TimeSeriesPoint>, String> {
+    pub async fn dps_over_time(
+        &self,
+        bucket_ms: i64,
+        source_name: Option<&str>,
+        time_range: Option<&TimeRange>,
+    ) -> Result<Vec<TimeSeriesPoint>, String> {
         let bucket_secs = (bucket_ms as f64 / 1000.0).max(1.0);
-        let mut conditions = vec!["dmg_amount > 0".to_string(), "combat_time_secs IS NOT NULL".to_string()];
-        if let Some(n) = source_name {
-            conditions.push(format!("source_name = '{}'", sql_escape(n)));
-        }
+        let mut conditions = vec!["combat_time_secs IS NOT NULL".to_string()];
         if let Some(tr) = time_range {
             conditions.push(tr.sql_filter());
+        }
+        let tr_filter = format!("WHERE {}", conditions.join(" AND "));
+
+        if let Some(n) = source_name {
+            conditions.push(format!("source_name = '{}'", sql_escape(n)));
         }
         let filter = format!("WHERE {}", conditions.join(" AND "));
 
         let batches = self.sql(&format!(r#"
-            SELECT CAST(FLOOR(combat_time_secs / {bucket_secs}) * {bucket_secs} * 1000 AS BIGINT) as bucket_start_ms,
-                   SUM(dmg_amount) as total_value
-            FROM events {filter}
-            GROUP BY bucket_start_ms ORDER BY bucket_start_ms
-        "#)).await?;
+  WITH bounds AS (
+      SELECT
+          CAST(MIN(FLOOR(combat_time_secs / {bucket_secs})) as BIGINT) as min_bucket,
+          CAST(MAX(FLOOR(combat_time_secs / {bucket_secs})) as BIGINT) as max_bucket
+      FROM events
+      {tr_filter}
+  ),
+  time_series AS (
+      SELECT
+        unnest(generate_series(bounds.min_bucket, bounds.max_bucket, 1)) * {bucket_secs} * 1000 AS bucket_start_ms
+      FROM bounds
+  ),
+  entity_ts AS (
+      SELECT CAST(FLOOR(combat_time_secs / {bucket_secs}) * {bucket_secs} * 1000 AS BIGINT) as bucket_start_ms,
+             SUM(dmg_amount) as total_value
+      FROM events
+      {filter}
+      GROUP BY bucket_start_ms
+  )
+  SELECT
+      time_series.bucket_start_ms,
+      COALESCE(entity_ts.total_value, 0) as total_value
+  FROM time_series
+  LEFT JOIN entity_ts ON time_series.bucket_start_ms = entity_ts.bucket_start_ms
+  ORDER BY time_series.bucket_start_ms
+          "#)).await?;
 
         let mut results = Vec::new();
         for batch in &batches {
             let buckets = col_i64(batch, 0)?;
             let values = col_f64(batch, 1)?;
             for i in 0..batch.num_rows() {
-                results.push(TimeSeriesPoint { bucket_start_ms: buckets[i], total_value: values[i] });
+                results.push(TimeSeriesPoint {
+                    bucket_start_ms: buckets[i],
+                    total_value: values[i],
+                });
             }
         }
         Ok(results)
@@ -546,28 +673,54 @@ impl EncounterQuery<'_> {
         time_range: Option<&TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
         let bucket_secs = (bucket_ms as f64 / 1000.0).max(1.0);
-        let mut conditions = vec!["heal_amount > 0".to_string(), "combat_time_secs IS NOT NULL".to_string()];
-        if let Some(n) = source_name {
-            conditions.push(format!("source_name = '{}'", sql_escape(n)));
-        }
+        let mut conditions = vec!["combat_time_secs IS NOT NULL".to_string()];
         if let Some(tr) = time_range {
             conditions.push(tr.sql_filter());
+        }
+        let tr_filter = format!("WHERE {}", conditions.join(" AND "));
+
+        if let Some(n) = source_name {
+            conditions.push(format!("source_name = '{}'", sql_escape(n)));
         }
         let filter = format!("WHERE {}", conditions.join(" AND "));
 
         let batches = self.sql(&format!(r#"
-            SELECT CAST(FLOOR(combat_time_secs / {bucket_secs}) * {bucket_secs} * 1000 AS BIGINT) as bucket_start_ms,
-                   SUM(heal_amount) as total_value
-            FROM events {filter}
-            GROUP BY bucket_start_ms ORDER BY bucket_start_ms
-        "#)).await?;
+  WITH bounds AS (
+      SELECT
+          CAST(MIN(FLOOR(combat_time_secs / {bucket_secs})) as BIGINT) as min_bucket,
+          CAST(MAX(FLOOR(combat_time_secs / {bucket_secs})) as BIGINT) as max_bucket
+      FROM events
+      {tr_filter}
+  ),
+  time_series AS (
+      SELECT
+        unnest(generate_series(bounds.min_bucket, bounds.max_bucket, 1)) * {bucket_secs} * 1000 AS bucket_start_ms
+      FROM bounds
+  ),
+  entity_ts AS (
+      SELECT CAST(FLOOR(combat_time_secs / {bucket_secs}) * {bucket_secs} * 1000 AS BIGINT) as bucket_start_ms,
+             SUM(heal_amount) as total_value
+      FROM events
+      {filter}
+      GROUP BY bucket_start_ms
+  )
+  SELECT
+      time_series.bucket_start_ms,
+      COALESCE(entity_ts.total_value, 0) as total_value
+  FROM time_series
+  LEFT JOIN entity_ts ON time_series.bucket_start_ms = entity_ts.bucket_start_ms
+  ORDER BY time_series.bucket_start_ms
+          "#)).await?;
 
         let mut results = Vec::new();
         for batch in &batches {
             let buckets = col_i64(batch, 0)?;
             let values = col_f64(batch, 1)?;
             for i in 0..batch.num_rows() {
-                results.push(TimeSeriesPoint { bucket_start_ms: buckets[i], total_value: values[i] });
+                results.push(TimeSeriesPoint {
+                    bucket_start_ms: buckets[i],
+                    total_value: values[i],
+                });
             }
         }
         Ok(results)
@@ -581,28 +734,56 @@ impl EncounterQuery<'_> {
         time_range: Option<&TimeRange>,
     ) -> Result<Vec<TimeSeriesPoint>, String> {
         let bucket_secs = (bucket_ms as f64 / 1000.0).max(1.0);
-        let mut conditions = vec!["dmg_amount > 0".to_string(), "combat_time_secs IS NOT NULL".to_string()];
-        if let Some(n) = target_name {
-            conditions.push(format!("target_name = '{}'", sql_escape(n)));
-        }
+        let mut conditions = vec!["combat_time_secs IS NOT NULL".to_string()];
+
         if let Some(tr) = time_range {
             conditions.push(tr.sql_filter());
+        }
+
+        let tr_filter = format!("WHERE {}", conditions.join(" AND "));
+
+        if let Some(n) = target_name {
+            conditions.push(format!("target_name = '{}'", sql_escape(n)));
         }
         let filter = format!("WHERE {}", conditions.join(" AND "));
 
         let batches = self.sql(&format!(r#"
-            SELECT CAST(FLOOR(combat_time_secs / {bucket_secs}) * {bucket_secs} * 1000 AS BIGINT) as bucket_start_ms,
-                   SUM(dmg_amount) as total_value
-            FROM events {filter}
-            GROUP BY bucket_start_ms ORDER BY bucket_start_ms
-        "#)).await?;
+  WITH bounds AS (
+      SELECT
+          CAST(MIN(FLOOR(combat_time_secs / {bucket_secs})) as BIGINT) as min_bucket,
+          CAST(MAX(FLOOR(combat_time_secs / {bucket_secs})) as BIGINT) as max_bucket
+      FROM events
+      {tr_filter}
+  ),
+  time_series AS (
+      SELECT
+        unnest(generate_series(bounds.min_bucket, bounds.max_bucket, 1)) * {bucket_secs} * 1000 AS bucket_start_ms
+      FROM bounds
+  ),
+  entity_ts AS (
+      SELECT CAST(FLOOR(combat_time_secs / {bucket_secs}) * {bucket_secs} * 1000 AS BIGINT) as bucket_start_ms,
+             SUM(dmg_amount) as total_value
+      FROM events
+      {filter}
+      GROUP BY bucket_start_ms
+  )
+  SELECT
+      time_series.bucket_start_ms,
+      COALESCE(entity_ts.total_value, 0) as total_value
+  FROM time_series
+  LEFT JOIN entity_ts ON time_series.bucket_start_ms = entity_ts.bucket_start_ms
+  ORDER BY time_series.bucket_start_ms
+          "#)).await?;
 
         let mut results = Vec::new();
         for batch in &batches {
             let buckets = col_i64(batch, 0)?;
             let values = col_f64(batch, 1)?;
             for i in 0..batch.num_rows() {
-                results.push(TimeSeriesPoint { bucket_start_ms: buckets[i], total_value: values[i] });
+                results.push(TimeSeriesPoint {
+                    bucket_start_ms: buckets[i],
+                    total_value: values[i],
+                });
             }
         }
         Ok(results)
@@ -617,7 +798,9 @@ impl EncounterQuery<'_> {
 
         // Window functions to detect phase transitions and number instances
         // Filter: phase_id must be non-null AND non-empty string
-        let batches = self.sql(r#"
+        let batches = self
+            .sql(
+                r#"
             WITH filtered AS (
                 SELECT combat_time_secs, phase_id, phase_name
                 FROM events
@@ -648,7 +831,9 @@ impl EncounterQuery<'_> {
                    start_secs, end_secs
             FROM valid_bounds
             ORDER BY start_secs
-        "#).await?;
+        "#,
+            )
+            .await?;
 
         let mut phases = Vec::new();
         for batch in &batches {
@@ -669,7 +854,10 @@ impl EncounterQuery<'_> {
             }
         }
 
-        Ok(EncounterTimeline { duration_secs, phases })
+        Ok(EncounterTimeline {
+            duration_secs,
+            phases,
+        })
     }
 
     /// Query effect uptime statistics for the charts panel.
@@ -815,7 +1003,9 @@ impl EncounterQuery<'_> {
             .unwrap_or_default();
         let duration = duration_secs.max(0.001);
 
-        let batches = self.sql(&format!(r#"
+        let batches = self
+            .sql(&format!(
+                r#"
             WITH applies AS (
                 SELECT combat_time_secs as apply_time, target_name,
                        ROW_NUMBER() OVER (PARTITION BY target_name ORDER BY combat_time_secs) as seq
@@ -840,7 +1030,9 @@ impl EncounterQuery<'_> {
             LEFT JOIN removes r ON a.target_name = r.target_name AND a.seq = r.seq
             WHERE COALESCE(r.remove_time, {duration}) > a.apply_time
             ORDER BY start_secs
-        "#)).await?;
+        "#
+            ))
+            .await?;
 
         let mut results = Vec::new();
         for batch in &batches {
@@ -889,7 +1081,9 @@ impl EncounterQuery<'_> {
 
         let where_clause = where_clauses.join(" AND ");
 
-        let batches = self.sql(&format!(r#"
+        let batches = self
+            .sql(&format!(
+                r#"
             SELECT
                 line_number,
                 combat_time_secs,
@@ -911,7 +1105,9 @@ impl EncounterQuery<'_> {
             WHERE {where_clause}
             ORDER BY combat_time_secs
             LIMIT {limit} OFFSET {offset}
-        "#)).await?;
+        "#
+            ))
+            .await?;
 
         let mut results = Vec::new();
         for batch in &batches {
@@ -985,11 +1181,12 @@ impl EncounterQuery<'_> {
 
         let where_clause = where_clauses.join(" AND ");
 
-        let batches = self.sql(&format!(
-            "SELECT COUNT(*) FROM events WHERE {where_clause}"
-        )).await?;
+        let batches = self
+            .sql(&format!("SELECT COUNT(*) FROM events WHERE {where_clause}"))
+            .await?;
 
-        let count = batches.first()
+        let count = batches
+            .first()
             .and_then(|b| col_i64(b, 0).ok())
             .and_then(|v| v.first().copied())
             .unwrap_or(0) as u64;
