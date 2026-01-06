@@ -639,3 +639,28 @@ ids = [3298281480257536]
 is_boss = false
 
 # ─── Phases ─────────────────────────────────────────────────────────────────────
+
+[[boss.phases]]
+id = "hands"
+name = "Hands"
+start_trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "reaches"
+name = "Reaches"
+start_trigger = { type = "npc_appears", selector = [3298277185290240] }
+
+[[boss.phases]]
+id = "clock"
+name = "Clock"
+start_trigger = { type = "ability_cast", abilities = [3300802626060288] }
+
+[[boss.phases]]
+id = "fingers"
+name = "Fingers"
+start_trigger = { type = "effect_removed", effects = [3300802626060575] }
+
+[[boss.phases]]
+id = "burn"
+name = "Burn"
+start_trigger = { type = "ability_cast", abilities = [3311840692011008] }

@@ -17,11 +17,6 @@ ids = [4824927605620736, 4847325860069376]
 is_boss = true
 is_kill_target = true
 
-[[boss.phase]]
-id = "p1"
-name = "Phase 1"
-trigger = { type = "combat_start" }
-
 [[boss.timer]]
 id = "propagator_lethal_strike"
 name = "Lethal Strike"
