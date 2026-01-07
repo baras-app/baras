@@ -108,7 +108,7 @@ fn signal_type_name(signal: &GameSignal) -> &'static str {
 
 #[test]
 fn test_bestia_pull_emits_expected_signals() {
-    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    let fixture_path = Path::new("../integration-tests/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
         eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
         return;
@@ -150,7 +150,7 @@ fn test_bestia_pull_emits_expected_signals() {
 
 #[test]
 fn test_effect_applied_has_source_info() {
-    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    let fixture_path = Path::new("../integration-tests/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
         eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
         return;
@@ -187,7 +187,7 @@ fn test_effect_applied_has_source_info() {
 
 #[test]
 fn test_target_changed_signals() {
-    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    let fixture_path = Path::new("../integration-tests/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
         eprintln!("Skipping test: fixture file not found");
         return;
@@ -229,7 +229,7 @@ fn test_target_changed_signals() {
 #[test]
 fn test_npc_first_seen_for_all_npcs() {
     // NpcFirstSeen should fire for ANY NPC, not just bosses
-    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    let fixture_path = Path::new("../integration-tests/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
         eprintln!("Skipping test: fixture file not found");
         return;
@@ -280,7 +280,7 @@ fn test_npc_first_seen_for_all_npcs() {
 #[test]
 fn test_entity_death_target_cleared_and_revive() {
     // Fixture with death, target cleared, and revive events
-    let fixture_path = Path::new("../test-log-files/fixtures/death_and_revive.txt");
+    let fixture_path = Path::new("../integration-tests/fixtures/death_and_revive.txt");
     if !fixture_path.exists() {
         eprintln!("Skipping test: fixture not found");
         return;
@@ -334,8 +334,8 @@ fn test_entity_death_target_cleared_and_revive() {
 
 #[test]
 fn test_boss_signals_with_definitions() {
-    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
-    let config_path = Path::new("../test-log-files/fixtures/config/dread_palace.toml");
+    let fixture_path = Path::new("../integration-tests/fixtures/bestia_pull.txt");
+    let config_path = Path::new("../integration-tests/fixtures/config/dread_palace.toml");
 
     if !fixture_path.exists() || !config_path.exists() {
         eprintln!("Skipping test: fixture files not found");
@@ -377,8 +377,8 @@ fn test_boss_hp_and_phase_signals() {
     // Use burn phase fixture which has active combat with HP changes
     // NOTE: This fixture is a mid-fight snippet without EnterCombat, so we manually
     // initialize the encounter to InCombat state and detect the boss
-    let fixture_path = Path::new("../test-log-files/fixtures/bestia_burn_phase.txt");
-    let config_path = Path::new("../test-log-files/fixtures/config/dread_palace.toml");
+    let fixture_path = Path::new("../integration-tests/fixtures/bestia_burn_phase.txt");
+    let config_path = Path::new("../integration-tests/fixtures/config/dread_palace.toml");
 
     if !fixture_path.exists() || !config_path.exists() {
         eprintln!("Skipping test: fixture files not found");
@@ -476,8 +476,8 @@ fn test_bestia_complete_encounter() {
     use crate::signal_processor::handler::SignalHandler;
     use crate::timers::{TimerDefinition, TimerManager};
 
-    let fixture_path = Path::new("../test-log-files/fixtures/bestia_complete_pull.txt");
-    let config_path = Path::new("../test-log-files/fixtures/config/dread_palace.toml");
+    let fixture_path = Path::new("../integration-tests/fixtures/bestia_complete_pull.txt");
+    let config_path = Path::new("../integration-tests/fixtures/config/dread_palace.toml");
 
     if !fixture_path.exists() {
         eprintln!("Skipping test: bestia_complete_pull.txt not found");

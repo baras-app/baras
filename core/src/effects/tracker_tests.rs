@@ -1148,7 +1148,7 @@ fn run_effect_integration(fixture_path: &Path, effect: EffectDefinition) -> (usi
 
 #[test]
 fn test_integration_effect_tracker_with_real_log() {
-    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    let fixture_path = Path::new("../integration-tests/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
         eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
         return;
@@ -1166,7 +1166,7 @@ fn test_integration_effect_tracker_with_real_log() {
 
 #[test]
 fn test_integration_combat_clears_effects() {
-    let fixture_path = Path::new("../test-log-files/fixtures/bestia_pull.txt");
+    let fixture_path = Path::new("../integration-tests/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
         eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
         return;
