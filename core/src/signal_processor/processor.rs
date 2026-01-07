@@ -433,7 +433,6 @@ impl EventProcessor {
             if let Some((old_hp, new_hp)) = enc.update_entity_hp(
                 entity.log_id,
                 entity.class_id,
-                resolve(entity.name),
                 current_hp,
                 max_hp,
                 event.timestamp,

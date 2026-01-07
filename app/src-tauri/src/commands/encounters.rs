@@ -69,28 +69,6 @@ impl EncounterItem {
             Self::Entity(e) => &e.name,
         }
     }
-
-    /// Get a display name for this item.
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Timer(t) => &t.name,
-            Self::Phase(p) => &p.name,
-            Self::Counter(c) => &c.name,
-            Self::Challenge(c) => &c.name,
-            Self::Entity(e) => &e.name,
-        }
-    }
-
-    /// Get the item type as a string (for logging/errors).
-    pub fn type_name(&self) -> &'static str {
-        match self {
-            Self::Timer(_) => "timer",
-            Self::Phase(_) => "phase",
-            Self::Counter(_) => "counter",
-            Self::Challenge(_) => "challenge",
-            Self::Entity(_) => "entity",
-        }
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
