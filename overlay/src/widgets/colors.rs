@@ -1,4 +1,3 @@
-
 use tiny_skia::Color;
 
 #[inline]

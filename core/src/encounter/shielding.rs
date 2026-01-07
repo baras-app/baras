@@ -33,8 +33,22 @@ impl CombatEncounter {
             return;
         }
 
+        eprintln!(
+            "SHIELD_DEBUG: dmg_absorbed={} target={}",
+            absorbed, event.target_entity.log_id
+        );
         let target_id = event.target_entity.log_id;
 
+        if let Some(effects) = self.effects.get(&target_id) {
+            let shields: Vec<_> = effects.iter().filter(|e| e.is_shield).collect();
+            eprintln!(
+                "SHIELD_DEBUG: target {} has {} shield effects",
+                target_id,
+                shields.len()
+            );
+        } else {
+            eprintln!("SHIELD_DEBUG: target {} has NO effects at all", target_id);
+        }
         // Collect shield info to avoid borrow conflicts
         let (active_shields, recently_closed) = {
             let Some(effects) = self.effects.get(&target_id) else {
@@ -65,6 +79,11 @@ impl CombatEncounter {
             (active, closed)
         };
 
+        eprintln!(
+            "SHIELD_DEBUG: active_shields={}, recently_closed={:?}",
+            active_shields.len(),
+            recently_closed
+        );
         match active_shields.len() {
             0 => {
                 // No active shields - try to find a recently closed one
