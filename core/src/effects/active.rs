@@ -150,9 +150,8 @@ impl ActiveEffect {
         let now = Instant::now();
         let applied_instant = now.checked_sub(lag_duration).unwrap_or(now);
 
-        let expires_at = duration.map(|d| {
-            event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64)
-        });
+        let expires_at = duration
+            .map(|d| event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64));
 
         Self {
             definition_id,
@@ -177,7 +176,10 @@ impl ActiveEffect {
             audio_played: false,
             countdown_announced: [false; 10],
             countdown_start: audio.countdown_start,
-            countdown_voice: audio.countdown_voice.clone().unwrap_or_else(|| "Amy".to_string()),
+            countdown_voice: audio
+                .countdown_voice
+                .clone()
+                .unwrap_or_else(|| "Amy".to_string()),
             audio_file: audio.file.clone(),
             audio_offset: audio.offset,
             audio_enabled: audio.enabled,
@@ -189,9 +191,8 @@ impl ActiveEffect {
         self.last_refreshed_at = event_timestamp;
 
         if let Some(d) = duration {
-            self.expires_at = Some(
-                event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64)
-            );
+            self.expires_at =
+                Some(event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64));
             self.duration = Some(d);
             // Update system time instant so overlay expiry calculation is correct
             self.applied_instant = Instant::now();
@@ -276,7 +277,11 @@ impl ActiveEffect {
     }
 
     /// Check if effect is near expiration (within threshold)
-    pub fn is_near_expiration(&self, current_game_time: NaiveDateTime, threshold_secs: f32) -> bool {
+    pub fn is_near_expiration(
+        &self,
+        current_game_time: NaiveDateTime,
+        threshold_secs: f32,
+    ) -> bool {
         self.remaining_secs(current_game_time)
             .map(|r| r <= threshold_secs && r > 0.0)
             .unwrap_or(false)
