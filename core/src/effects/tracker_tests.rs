@@ -38,6 +38,7 @@ fn make_effect(id: &str, name: &str, effect_ids: Vec<u64>) -> EffectDefinition {
         target: EntityFilter::Any,
         duration_secs: Some(10.0),
         can_be_refreshed: true,
+        is_refreshed_on_modify: false,
         category: EffectCategory::Hot,
         color: None,
         max_stacks: 0,

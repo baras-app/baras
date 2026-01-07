@@ -484,6 +484,7 @@ pub struct EffectListItem {
     // Duration
     pub duration_secs: Option<f32>,
     pub can_be_refreshed: bool,
+    pub is_refreshed_on_modify: bool,
     pub max_stacks: u8,
 
     // Display

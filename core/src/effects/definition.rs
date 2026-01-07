@@ -126,6 +126,10 @@ pub struct EffectDefinition {
     #[serde(default = "crate::serde_defaults::default_true")]
     pub can_be_refreshed: bool,
 
+    /// Whether or not the effect will refresh on ModifyCharges events
+    #[serde(default)]
+    pub is_refreshed_on_modify: bool,
+
     // ─── Display ────────────────────────────────────────────────────────────
     /// Effect category (determines default color)
     #[serde(default)]

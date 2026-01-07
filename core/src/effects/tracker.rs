@@ -318,7 +318,7 @@ impl EffectTracker {
         let effect_name_str = crate::context::resolve(effect_name);
 
         // Find matching definitions (only those that trigger on EffectApplied)
-        let all_matches = self.definitions.find_matching(effect_id as u64, Some(&effect_name_str));
+        let all_matches = self.definitions.find_matching(effect_id as u64, Some(effect_name_str));
 
         let matching_defs: Vec<_> = all_matches
             .into_iter()
@@ -343,7 +343,7 @@ impl EffectTracker {
                 let should_refresh = if def.refresh_abilities.is_empty() {
                     def.can_be_refreshed
                 } else {
-                    def.can_refresh_with(action_id as u64, Some(&action_name_str))
+                    def.can_refresh_with(action_id as u64, Some(action_name_str))
                 };
 
                 if should_refresh {
@@ -638,7 +638,7 @@ impl EffectTracker {
         let effect_name_str = crate::context::resolve(effect_name);
         let matching_defs: Vec<_> = self
             .definitions
-            .find_matching(effect_id as u64, Some(&effect_name_str))
+            .find_matching(effect_id as u64, Some(effect_name_str))
             .into_iter()
             .collect();
 
@@ -655,9 +655,10 @@ impl EffectTracker {
 
                 // Check if this action should refresh the effect
                 let should_refresh = if def.refresh_abilities.is_empty() {
-                    def.can_be_refreshed
+                    def.can_be_refreshed && def.is_refreshed_on_modify
                 } else {
-                    def.can_refresh_with(action_id as u64, Some(&action_name_str))
+                    def.can_refresh_with(action_id as u64, Some(action_name_str))
+                    && def.is_refreshed_on_modify
                 };
 
                 if should_refresh {

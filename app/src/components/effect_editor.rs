@@ -36,6 +36,7 @@ fn default_effect(name: String) -> EffectListItem {
         target: EntityFilter::GroupMembers,
         duration_secs: Some(15.0),
         can_be_refreshed: true,
+        is_refreshed_on_modify: false,
         max_stacks: 1,
         color: Some([80, 200, 80, 255]),
         show_on_raid_frames: true,
@@ -841,6 +842,19 @@ fn EffectEditForm(
                         }
                         "Can be refreshed"
                     }
+                   label { class: "flex items-center gap-xs text-sm",
+                        input {
+                            r#type: "checkbox",
+                            checked: draft().is_refreshed_on_modify,
+                            onchange: move |e| {
+                                let mut d = draft();
+                                d.is_refreshed_on_modify = e.checked();
+                                draft.set(d);
+                            }
+                        }
+                        "Refresh duration when charges are modified"
+                    }
+
 
                     label { class: "flex items-center gap-xs text-sm",
                         input {
