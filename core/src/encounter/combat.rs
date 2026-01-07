@@ -92,8 +92,6 @@ pub struct CombatEncounter {
     pub phase_started_at: Option<NaiveDateTime>,
     /// Counter values
     pub counters: HashMap<String, u32>,
-    /// Boss HP percentage (0.0-100.0) - legacy single-boss tracking
-    pub boss_hp_percent: f32,
     /// HP percentages by entity ID (for multi-boss encounters)
     pub hp_by_entity: HashMap<i64, f32>,
     /// HP percentages by NPC ID/class ID (most reliable for boss detection)
@@ -161,7 +159,6 @@ impl CombatEncounter {
             previous_phase: None,
             phase_started_at: None,
             counters: HashMap::new(),
-            boss_hp_percent: 100.0,
             hp_by_entity: HashMap::new(),
             hp_by_npc_id: HashMap::new(),
             hp_raw: HashMap::new(),
@@ -245,30 +242,12 @@ impl CombatEncounter {
 
     /// Set the active boss
     pub fn set_boss(&mut self, boss: ActiveBoss) {
-        self.boss_hp_percent = boss.hp_percent();
         self.active_boss = Some(boss);
     }
 
     /// Clear the active boss
     pub fn clear_boss(&mut self) {
         self.active_boss = None;
-        self.boss_hp_percent = 100.0;
-    }
-
-    /// Update boss HP and return true if HP changed
-    pub fn update_boss_hp(&mut self, current: i64, max: i64) -> bool {
-        let old_percent = self.boss_hp_percent;
-
-        if max > 0 {
-            self.boss_hp_percent = (current as f32 / max as f32) * 100.0;
-        }
-
-        if let Some(ref mut boss) = self.active_boss {
-            boss.current_hp = current;
-            boss.max_hp = max;
-        }
-
-        (old_percent - self.boss_hp_percent).abs() > 0.01
     }
 
     /// Update HP for a specific entity (multi-boss support)
@@ -305,19 +284,6 @@ impl CombatEncounter {
             self.first_seen.entry(npc_id).or_insert(timestamp);
         }
         self.hp_by_name.insert(name.to_string(), new_percent);
-
-        // Update legacy single-boss tracking if this is the active boss
-        if self
-            .active_boss
-            .as_ref()
-            .is_some_and(|b| b.entity_id == entity_id)
-        {
-            self.boss_hp_percent = new_percent;
-            if let Some(ref mut boss) = self.active_boss {
-                boss.current_hp = current;
-                boss.max_hp = max;
-            }
-        }
 
         if (old_percent - new_percent).abs() > 0.01 {
             Some((old_percent, new_percent))
@@ -396,10 +362,6 @@ impl CombatEncounter {
             return *hp <= threshold;
         }
 
-        if npc_id.is_none() && name.is_none() {
-            return self.boss_hp_percent <= threshold;
-        }
-
         false
     }
 
@@ -420,10 +382,6 @@ impl CombatEncounter {
             && let Some(hp) = self.hp_by_name.get(boss_name)
         {
             return *hp >= threshold;
-        }
-
-        if npc_id.is_none() && name.is_none() {
-            return self.boss_hp_percent >= threshold;
         }
 
         false
@@ -950,7 +908,6 @@ impl CombatEncounter {
         self.previous_phase = None;
         self.phase_started_at = None;
         self.counters.clear();
-        self.boss_hp_percent = 100.0;
         self.hp_by_entity.clear();
         self.hp_by_npc_id.clear();
         self.hp_raw.clear();

@@ -346,7 +346,7 @@ impl LogParser {
         };
 
         // match this pattern only shows up in lines containing "reflect"
-        let is_reflect = memchr::memmem::find(inner_bytes, b"}(").is_some();
+        let is_reflect = memmem::find(inner_bytes, b"}(").is_some();
 
         // Parse amount (first number)
         let amount_end = inner
