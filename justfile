@@ -1,4 +1,5 @@
 alias r:= run-debug
+
 alias p50:= parse-50mb
 
 run-debug:
@@ -9,6 +10,7 @@ parse-50mb:
 
 # Tauri app commands
 dev:
+  cargo build -p baras-parse-worker && \
   cd app && cargo tauri dev 2>&1 | tee /tmp/baras.log
 
 # Build parse-worker and copy to binaries dir with platform-specific name
