@@ -226,7 +226,7 @@ pub struct CombatLogRow {
     /// Damage type name
     pub damage_type: String,
     /// Avoid type (miss, dodge, parry, etc.)
-    pub avoid_type: String,
+    pub defense_type_id: i64,
 }
 
 /// A phase segment - one occurrence of a phase (phases can repeat).

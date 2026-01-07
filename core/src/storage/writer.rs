@@ -58,7 +58,7 @@ pub struct EventRow {
     pub dmg_type: String,
     pub is_crit: bool,
     pub is_reflect: bool,
-    pub avoid_type: String,
+    pub defense_type_id: i64,
 
     // ─── Healing Details ─────────────────────────────────────────────────────
     pub heal_amount: i32,
@@ -119,7 +119,7 @@ impl EventRow {
             dmg_type: resolve(event.details.dmg_type).to_string(),
             is_crit: event.details.is_crit,
             is_reflect: event.details.is_reflect,
-            avoid_type: resolve(event.details.avoid_type).to_string(),
+            defense_type_id: event.details.defense_type_id,
 
             // Healing details
             heal_amount: event.details.heal_amount,
@@ -298,7 +298,7 @@ impl EncounterWriter {
             Field::new("dmg_type", DataType::Utf8, false),
             Field::new("is_crit", DataType::Boolean, false),
             Field::new("is_reflect", DataType::Boolean, false),
-            Field::new("avoid_type", DataType::Utf8, false),
+            Field::new("dmg_type_id", DataType::Int64, false),
             // ─── Healing Details ─────────────────────────────────────────────
             Field::new("heal_amount", DataType::Int32, false),
             Field::new("heal_effective", DataType::Int32, false),
@@ -381,7 +381,7 @@ impl EncounterWriter {
         let mut dmg_type = StringBuilder::with_capacity(len, len * 15);
         let mut is_crit = BooleanBuilder::with_capacity(len);
         let mut is_reflect = BooleanBuilder::with_capacity(len);
-        let mut avoid_type = StringBuilder::with_capacity(len, len * 10);
+        let mut defense_type_id = Int64Builder::with_capacity(len);
 
         // ─── Healing Details ─────────────────────────────────────────────────
         let mut heal_amount = Int32Builder::with_capacity(len);
@@ -439,7 +439,7 @@ impl EncounterWriter {
             dmg_type.append_value(&row.dmg_type);
             is_crit.append_value(row.is_crit);
             is_reflect.append_value(row.is_reflect);
-            avoid_type.append_value(&row.avoid_type);
+            defense_type_id.append_value(row.defense_type_id);
 
             // Healing details
             heal_amount.append_value(row.heal_amount);
@@ -493,7 +493,7 @@ impl EncounterWriter {
             Arc::new(dmg_type.finish()),
             Arc::new(is_crit.finish()),
             Arc::new(is_reflect.finish()),
-            Arc::new(avoid_type.finish()),
+            Arc::new(defense_type_id.finish()),
             // Healing details
             Arc::new(heal_amount.finish()),
             Arc::new(heal_effective.finish()),

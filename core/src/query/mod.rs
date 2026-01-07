@@ -990,7 +990,7 @@ impl EncounterQuery<'_> {
                 COALESCE(threat, 0.0) as threat,
                 is_crit,
                 COALESCE(dmg_type, '') as damage_type,
-                COALESCE(avoid_type, '') as avoid_type
+                COALESCE(defense_type_id, 0) as defense_type_id
             FROM events
             WHERE {where_clause}
             ORDER BY combat_time_secs
@@ -1016,7 +1016,7 @@ impl EncounterQuery<'_> {
             let threats = col_f32(batch, 12)?;
             let is_crits = col_bool(batch, 13)?;
             let damage_types = col_strings(batch, 14)?;
-            let avoid_types = col_strings(batch, 15)?;
+            let defense_type_ids = col_i64(batch, 15)?;
 
             for i in 0..batch.num_rows() {
                 results.push(CombatLogRow {
@@ -1035,7 +1035,7 @@ impl EncounterQuery<'_> {
                     threat: threats[i],
                     is_crit: is_crits[i],
                     damage_type: damage_types[i].clone(),
-                    avoid_type: avoid_types[i].clone(),
+                    defense_type_id: defense_type_ids[i],
                 });
             }
         }

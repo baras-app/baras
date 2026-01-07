@@ -162,7 +162,7 @@ fn test_parse_details_damage_miss() {
     let details = result.unwrap();
     assert_eq!(details.dmg_amount, 0);
     assert_eq!(resolve(details.dmg_type), "");
-    assert_eq!(resolve(details.avoid_type), "miss");
+    assert_eq!(details.defense_type_id, defense_type::MISS);
 }
 
 #[test]
@@ -174,7 +174,7 @@ fn test_parse_dmage_shielded() {
     let details = result.unwrap();
     assert_eq!(resolve(details.dmg_type), "energy");
     assert_eq!(details.dmg_absorbed, 1150);
-    assert_eq!(resolve(details.avoid_type), "shield");
+    assert_eq!(details.defense_type_id, defense_type::SHIELD);
     assert_eq!(details.dmg_effective, 2583)
 }
 
@@ -186,7 +186,7 @@ fn test_parse_damage_after_death() {
     assert!(result.is_some());
 
     let details = result.unwrap();
-    assert_eq!(resolve(details.avoid_type), "");
+    assert_eq!(details.defense_type_id, 0);
     assert_eq!(details.dmg_effective, 0);
     assert_eq!(resolve(details.dmg_type), "energy");
 }

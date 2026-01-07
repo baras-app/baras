@@ -1,6 +1,6 @@
 use super::*;
 use crate::context::intern;
-use crate::game_data::{effect_id, effect_type_id};
+use crate::game_data::{defense_type, effect_id, effect_type_id};
 use chrono::{Days, NaiveDateTime};
 use memchr::memchr;
 use memchr::memchr_iter;
@@ -319,7 +319,7 @@ impl LogParser {
         if inner.trim() == "0 -" {
             return Some(Details {
                 dmg_amount: 0,
-                avoid_type: intern("reflected"),
+                defense_type_id: defense_type::REFLECTED,
                 is_reflect: true,
                 threat,
                 ..Default::default()
@@ -330,27 +330,23 @@ impl LogParser {
         let is_crit = memchr(b'*', inner_bytes).is_some();
 
         // Check for reflected marker
-        let is_reflect = inner.contains("reflected");
 
         // Check for avoidance (-miss, -dodge, -parry, -immune, -resist, -deflect, -shield, -)
         let dash = memchr(b'-', inner_bytes);
-        let avoid_type = if dash.is_some() {
-            dash.map(|pos| {
-                let start = pos + 1;
-                let end = inner[start..]
-                    .find(|c: char| c.is_whitespace())
-                    .map(|e| start + e)
-                    .unwrap_or_default();
-                if end != 0 {
-                    intern(inner[start..end].trim())
-                } else {
-                    intern("")
-                }
-            })
-            .unwrap_or_default()
+        let defense_type_id = if let Some(dash_pos) = dash {
+            let after_dash = &inner[dash_pos + 1..];
+            let after_bytes = after_dash.as_bytes();
+            if let (Some(b), Some(be)) = (memchr(b'{', after_bytes), memchr(b'}', after_bytes)) {
+                parse_i64!(&after_dash[b + 1..be])
+            } else {
+                0
+            }
         } else {
-            intern("")
+            0
         };
+
+        // match this pattern only shows up in lines containing "reflect"
+        let is_reflect = memchr::memmem::find(inner_bytes, b"}(").is_some();
 
         // Parse amount (first number)
         let amount_end = inner
@@ -393,19 +389,23 @@ impl LogParser {
         };
 
         // Parse absorbed amount from nested (X absorbed {id})
-        let dmg_absorbed = if let Some(absorbed_pos) = inner.find("absorbed") {
-            let before_absorbed = &inner[..absorbed_pos];
-            if let Some(nested_paren) = before_absorbed.rfind('(') {
-                let absorbed_str = &inner[nested_paren + 1..absorbed_pos].trim();
-                Some(parse_i32!(absorbed_str))
+        let dmg_absorbed =
+            if let Some(absorbed_pos) = memchr::memmem::find(inner_bytes, b"{836045448945511}") {
+                let before_absorbed = &inner[..absorbed_pos];
+                if let Some(nested_paren) = before_absorbed.rfind('(') {
+                    let num_section = &before_absorbed[nested_paren + 1..].trim_start();
+                    // Extract only the leading digits
+                    let num_end = num_section
+                        .find(|c: char| !c.is_ascii_digit())
+                        .unwrap_or(num_section.len());
+                    Some(parse_i32!(&num_section[..num_end]))
+                } else {
+                    Some(0)
+                }
             } else {
-                Some(0)
+                None
             }
-        } else {
-            None
-        }
-        .unwrap_or(0);
-
+            .unwrap_or(0);
         Some(Details {
             dmg_amount,
             is_crit,
@@ -413,7 +413,7 @@ impl LogParser {
             dmg_effective,
             dmg_type,
             dmg_type_id,
-            avoid_type,
+            defense_type_id,
             dmg_absorbed,
             threat,
             ..Default::default()

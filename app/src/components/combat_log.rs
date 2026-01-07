@@ -78,7 +78,7 @@ fn row_class(row: &CombatLogRow) -> String {
     }
 
     // Miss/dodge/etc
-    if !row.avoid_type.is_empty() {
+    if !row.defense_type_id.is_positive() {
         classes.push("log-avoid");
     }
 

@@ -43,3 +43,16 @@ pub fn correct_apply_charges(effect_id: i64, charges: u8) -> u8 {
         charges
     }
 }
+
+pub mod defense_type {
+    pub const REFLECTED: i64 = 836045448953649;
+    pub const ABSORBED: i64 = 836045448945511;
+    pub const COVER: i64 = 836045448945510;
+    pub const DEFLECT: i64 = 836045448945508;
+    pub const DODGE: i64 = 836045448945505;
+    pub const IMMUNE: i64 = 836045448945506;
+    pub const MISS: i64 = 836045448945502;
+    pub const PARRY: i64 = 836045448945503;
+    pub const RESIST: i64 = 836045448945507;
+    pub const SHIELD: i64 = 836045448945509;
+}

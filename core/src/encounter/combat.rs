@@ -14,7 +14,7 @@ use hashbrown::HashMap;
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::IStr;
 use crate::dsl::{BossEncounterDefinition, CounterCondition, CounterDefinition};
-use crate::game_data::{Difficulty, SHIELD_EFFECT_IDS, effect_id};
+use crate::game_data::{Difficulty, SHIELD_EFFECT_IDS, defense_type, effect_id};
 
 use super::challenge::ChallengeTracker;
 use super::effect_instance::EffectInstance;
@@ -766,13 +766,18 @@ impl CombatEncounter {
     // ═══════════════════════════════════════════════════════════════════════
 
     pub fn accumulate_data(&mut self, event: &CombatEvent) {
-        use crate::context::resolve;
         use crate::is_boss;
 
-        let avoid = resolve(event.details.avoid_type);
-        let is_defense = matches!(avoid, "dodge" | "parry" | "resist" | "deflect");
-        let is_natural_shield =
-            avoid == "shield" && event.details.dmg_effective == event.details.dmg_amount;
+        let defense_type = event.details.defense_type_id;
+        let is_defense = matches!(
+            defense_type,
+            defense_type::DODGE
+                | defense_type::PARRY
+                | defense_type::RESIST
+                | defense_type::DEFLECT
+        );
+        let is_natural_shield = defense_type == defense_type::SHIELD
+            && event.details.dmg_effective == event.details.dmg_amount;
 
         // Source accumulation
         {
