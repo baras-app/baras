@@ -250,10 +250,20 @@ fn build_time_series_option(
         &JsValue::from_str(color),
     )
     .unwrap();
-    js_sys::Reflect::set(&y_axis_right, &JsValue::from_str("axisLabel"), &y_label_right).unwrap();
+    js_sys::Reflect::set(
+        &y_axis_right,
+        &JsValue::from_str("axisLabel"),
+        &y_label_right,
+    )
+    .unwrap();
     let y_split_right = js_sys::Object::new();
     js_sys::Reflect::set(&y_split_right, &JsValue::from_str("show"), &JsValue::FALSE).unwrap();
-    js_sys::Reflect::set(&y_axis_right, &JsValue::from_str("splitLine"), &y_split_right).unwrap();
+    js_sys::Reflect::set(
+        &y_axis_right,
+        &JsValue::from_str("splitLine"),
+        &y_split_right,
+    )
+    .unwrap();
     y_axis_arr.push(&y_axis_right);
 
     js_sys::Reflect::set(&obj, &JsValue::from_str("yAxis"), &y_axis_arr).unwrap();
@@ -760,10 +770,8 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
         }) as Box<dyn Fn()>);
 
         if let Some(window) = web_sys::window() {
-            let _ = window.add_event_listener_with_callback(
-                "resize",
-                closure.as_ref().unchecked_ref(),
-            );
+            let _ =
+                window.add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
         }
 
         // Keep closure alive and remove listener on cleanup

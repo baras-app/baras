@@ -2,8 +2,8 @@
 //!
 //! Contains entity filter matching and definition context checking.
 
-use std::collections::HashSet;
 use hashbrown::HashMap;
+use std::collections::HashSet;
 
 use crate::combat_log::EntityType;
 use crate::context::IStr;
@@ -31,14 +31,30 @@ pub(super) fn matches_source_target_filters(
 ) -> bool {
     // Check source filter if present (None = any, passes)
     if let Some(source_filter) = trigger.source_filter() {
-        if !source_filter.matches(entities, source_id, source_type, source_name, source_npc_id, local_player_id, boss_entity_ids) {
+        if !source_filter.matches(
+            entities,
+            source_id,
+            source_type,
+            source_name,
+            source_npc_id,
+            local_player_id,
+            boss_entity_ids,
+        ) {
             return false;
         }
     }
 
     // Check target filter if present (None = any, passes)
     if let Some(target_filter) = trigger.target_filter() {
-        if !target_filter.matches(entities, target_id, target_type, target_name, target_npc_id, local_player_id, boss_entity_ids) {
+        if !target_filter.matches(
+            entities,
+            target_id,
+            target_type,
+            target_name,
+            target_npc_id,
+            local_player_id,
+            boss_entity_ids,
+        ) {
             return false;
         }
     }
@@ -66,12 +82,7 @@ pub(super) fn is_definition_active(
     };
 
     // First check basic context (area, boss, difficulty)
-    if !def.enabled || !def.is_active_for_context(
-        area_id,
-        area_name,
-        boss_name,
-        difficulty,
-    ) {
+    if !def.enabled || !def.is_active_for_context(area_id, area_name, boss_name, difficulty) {
         return false;
     }
 
@@ -98,4 +109,5 @@ pub(super) fn is_definition_active(
 }
 
 /// Empty counters for when no encounter is available
-static EMPTY_COUNTERS: std::sync::LazyLock<HashMap<String, u32>> = std::sync::LazyLock::new(HashMap::new);
+static EMPTY_COUNTERS: std::sync::LazyLock<HashMap<String, u32>> =
+    std::sync::LazyLock::new(HashMap::new);

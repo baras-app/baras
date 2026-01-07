@@ -112,7 +112,13 @@ pub fn NewBossForm(
 ) -> Element {
     let mut id = use_signal(String::new);
     let mut name = use_signal(String::new);
-    let mut difficulties = use_signal(|| vec!["story".to_string(), "veteran".to_string(), "master".to_string()]);
+    let mut difficulties = use_signal(|| {
+        vec![
+            "story".to_string(),
+            "veteran".to_string(),
+            "master".to_string(),
+        ]
+    });
 
     let can_create = !id().is_empty() && !name().is_empty();
 

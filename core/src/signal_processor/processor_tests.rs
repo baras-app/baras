@@ -7,8 +7,8 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use crate::dsl::BossConfig;
 use crate::combat_log::LogParser;
+use crate::dsl::BossConfig;
 use crate::state::SessionCache;
 
 use super::{EventProcessor, GameSignal};
@@ -52,8 +52,9 @@ fn collect_signals_from_fixture_ext(
 
     // Load boss definitions if provided
     if let Some(config_path) = boss_config_path
-        && let Some(config) = load_boss_config(config_path) {
-            cache.load_boss_definitions(config.bosses);
+        && let Some(config) = load_boss_config(config_path)
+    {
+        cache.load_boss_definitions(config.bosses);
     }
 
     let mut all_signals = Vec::new();
@@ -65,7 +66,10 @@ fn collect_signals_from_fixture_ext(
                 eprintln!("Line {}: EnterCombat event parsed", line_num);
                 eprintln!("  effect_id: {}", event.effect.effect_id);
                 eprintln!("  type_id: {}", event.effect.type_id);
-                eprintln!("  source: {:?}", crate::context::resolve(event.source_entity.name));
+                eprintln!(
+                    "  source: {:?}",
+                    crate::context::resolve(event.source_entity.name)
+                );
             }
             let (signals, _event) = processor.process_event(event, &mut cache);
             if debug && !signals.is_empty() {
@@ -110,7 +114,10 @@ fn signal_type_name(signal: &GameSignal) -> &'static str {
 fn test_bestia_pull_emits_expected_signals() {
     let fixture_path = Path::new("../integration-tests/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
-        eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
+        eprintln!(
+            "Skipping test: fixture file not found at {:?}",
+            fixture_path
+        );
         return;
     }
 
@@ -120,26 +127,55 @@ fn test_bestia_pull_emits_expected_signals() {
     let signal_types: HashSet<&str> = signals.iter().map(signal_type_name).collect();
 
     // Print what we got for debugging
-    eprintln!("Collected {} signals of {} unique types:", signals.len(), signal_types.len());
+    eprintln!(
+        "Collected {} signals of {} unique types:",
+        signals.len(),
+        signal_types.len()
+    );
     for signal_type in &signal_types {
-        let count = signals.iter().filter(|s| signal_type_name(s) == *signal_type).count();
+        let count = signals
+            .iter()
+            .filter(|s| signal_type_name(s) == *signal_type)
+            .count();
         eprintln!("  - {}: {}", signal_type, count);
     }
 
     // Assert expected signals are present
-    assert!(signal_types.contains("CombatStarted"), "Missing CombatStarted signal");
-    assert!(signal_types.contains("DisciplineChanged"), "Missing DisciplineChanged signal");
-    assert!(signal_types.contains("EffectApplied"), "Missing EffectApplied signal");
-    assert!(signal_types.contains("EffectRemoved"), "Missing EffectRemoved signal");
-    assert!(signal_types.contains("AbilityActivated"), "Missing AbilityActivated signal");
-    assert!(signal_types.contains("TargetChanged"), "Missing TargetChanged signal");
+    assert!(
+        signal_types.contains("CombatStarted"),
+        "Missing CombatStarted signal"
+    );
+    assert!(
+        signal_types.contains("DisciplineChanged"),
+        "Missing DisciplineChanged signal"
+    );
+    assert!(
+        signal_types.contains("EffectApplied"),
+        "Missing EffectApplied signal"
+    );
+    assert!(
+        signal_types.contains("EffectRemoved"),
+        "Missing EffectRemoved signal"
+    );
+    assert!(
+        signal_types.contains("AbilityActivated"),
+        "Missing AbilityActivated signal"
+    );
+    assert!(
+        signal_types.contains("TargetChanged"),
+        "Missing TargetChanged signal"
+    );
 
     // Count specific signal types
     let discipline_count = signals
         .iter()
         .filter(|s| matches!(s, GameSignal::DisciplineChanged { .. }))
         .count();
-    assert!(discipline_count >= 8, "Expected at least 8 DisciplineChanged signals (one per player), got {}", discipline_count);
+    assert!(
+        discipline_count >= 8,
+        "Expected at least 8 DisciplineChanged signals (one per player), got {}",
+        discipline_count
+    );
 
     // Verify combat started
     let combat_started = signals
@@ -152,14 +188,19 @@ fn test_bestia_pull_emits_expected_signals() {
 fn test_effect_applied_has_source_info() {
     let fixture_path = Path::new("../integration-tests/fixtures/bestia_pull.txt");
     if !fixture_path.exists() {
-        eprintln!("Skipping test: fixture file not found at {:?}", fixture_path);
+        eprintln!(
+            "Skipping test: fixture file not found at {:?}",
+            fixture_path
+        );
         return;
     }
 
     let signals = collect_signals_from_fixture(fixture_path);
 
     // Find any EffectApplied and verify it has source info
-    let effect_applied = signals.iter().find(|s| matches!(s, GameSignal::EffectApplied { .. }));
+    let effect_applied = signals
+        .iter()
+        .find(|s| matches!(s, GameSignal::EffectApplied { .. }));
 
     if let Some(GameSignal::EffectApplied {
         source_id,
@@ -172,7 +213,10 @@ fn test_effect_applied_has_source_info() {
     {
         // Source should have valid data
         assert!(*source_id != 0, "source_id should not be 0");
-        assert!(!crate::context::resolve(*source_name).is_empty(), "source_name should not be empty");
+        assert!(
+            !crate::context::resolve(*source_name).is_empty(),
+            "source_name should not be empty"
+        );
         eprintln!(
             "EffectApplied: source={} ({:?}), target={} ({:?})",
             crate::context::resolve(*source_name),
@@ -214,7 +258,10 @@ fn test_target_changed_signals() {
         })
         .collect();
 
-    assert!(!target_signals.is_empty(), "Expected at least one TargetChanged signal");
+    assert!(
+        !target_signals.is_empty(),
+        "Expected at least one TargetChanged signal"
+    );
     eprintln!("Found {} TargetChanged signals", target_signals.len());
 
     // Verify NPC targets exist (players targeting boss/adds)
@@ -222,7 +269,10 @@ fn test_target_changed_signals() {
         .iter()
         .filter(|(_, _, _, entity_type)| matches!(entity_type, crate::combat_log::EntityType::Npc))
         .collect();
-    assert!(!npc_targets.is_empty(), "Expected at least one target to be an NPC");
+    assert!(
+        !npc_targets.is_empty(),
+        "Expected at least one target to be an NPC"
+    );
     eprintln!("  - {} targets are NPCs", npc_targets.len());
 }
 
@@ -241,7 +291,12 @@ fn test_npc_first_seen_for_all_npcs() {
     let npc_signals: Vec<_> = signals
         .iter()
         .filter_map(|s| {
-            if let GameSignal::NpcFirstSeen { npc_id, entity_name, .. } = s {
+            if let GameSignal::NpcFirstSeen {
+                npc_id,
+                entity_name,
+                ..
+            } = s
+            {
                 Some((*npc_id, entity_name.clone()))
             } else {
                 None
@@ -249,7 +304,10 @@ fn test_npc_first_seen_for_all_npcs() {
         })
         .collect();
 
-    assert!(!npc_signals.is_empty(), "Expected NpcFirstSeen signals for NPCs");
+    assert!(
+        !npc_signals.is_empty(),
+        "Expected NpcFirstSeen signals for NPCs"
+    );
     eprintln!("Found {} NpcFirstSeen signals:", npc_signals.len());
     for (npc_id, name) in &npc_signals {
         eprintln!("  - {} (npc_id={})", name, npc_id);
@@ -291,16 +349,28 @@ fn test_entity_death_target_cleared_and_revive() {
     let signal_types: HashSet<&str> = signals.iter().map(signal_type_name).collect();
     eprintln!("Death/revive fixture signals:");
     for signal_type in &signal_types {
-        let count = signals.iter().filter(|s| signal_type_name(s) == *signal_type).count();
+        let count = signals
+            .iter()
+            .filter(|s| signal_type_name(s) == *signal_type)
+            .count();
         eprintln!("  - {}: {}", signal_type, count);
     }
 
     // EntityDeath should fire when NPCs die
-    assert!(signal_types.contains("EntityDeath"), "Expected EntityDeath signals");
+    assert!(
+        signal_types.contains("EntityDeath"),
+        "Expected EntityDeath signals"
+    );
     let death_signals: Vec<_> = signals
         .iter()
         .filter_map(|s| {
-            if let GameSignal::EntityDeath { entity_name, entity_type, npc_id, .. } = s {
+            if let GameSignal::EntityDeath {
+                entity_name,
+                entity_type,
+                npc_id,
+                ..
+            } = s
+            {
                 Some((entity_name.clone(), *entity_type, *npc_id))
             } else {
                 None
@@ -314,7 +384,10 @@ fn test_entity_death_target_cleared_and_revive() {
     assert!(death_signals.len() >= 3, "Expected at least 3 deaths");
 
     // TargetCleared should fire when entities clear their target
-    assert!(signal_types.contains("TargetCleared"), "Expected TargetCleared signals");
+    assert!(
+        signal_types.contains("TargetCleared"),
+        "Expected TargetCleared signals"
+    );
     let cleared_count = signals
         .iter()
         .filter(|s| matches!(s, GameSignal::TargetCleared { .. }))
@@ -323,7 +396,10 @@ fn test_entity_death_target_cleared_and_revive() {
     assert!(cleared_count >= 4, "Expected at least 4 TargetCleared");
 
     // EntityRevived should fire when players revive
-    assert!(signal_types.contains("EntityRevived"), "Expected EntityRevived signals");
+    assert!(
+        signal_types.contains("EntityRevived"),
+        "Expected EntityRevived signals"
+    );
     let revive_count = signals
         .iter()
         .filter(|s| matches!(s, GameSignal::EntityRevived { .. }))
@@ -348,7 +424,10 @@ fn test_boss_signals_with_definitions() {
 
     eprintln!("With boss definitions loaded:");
     for signal_type in &signal_types {
-        let count = signals.iter().filter(|s| signal_type_name(s) == *signal_type).count();
+        let count = signals
+            .iter()
+            .filter(|s| signal_type_name(s) == *signal_type)
+            .count();
         eprintln!("  - {}: {}", signal_type, count);
     }
 
@@ -367,7 +446,9 @@ fn test_boss_signals_with_definitions() {
     // Note: BossHpChanged/NpcFirstSeen only fire when HP actually changes.
     // In bestia_pull.txt, early attacks are immune (0 damage), so HP doesn't change.
     // These signals are tested in test_phase_changed_signal with burn_phase fixture.
-    eprintln!("Note: BossHpChanged requires HP change - not expected in pull fixture with immune damage");
+    eprintln!(
+        "Note: BossHpChanged requires HP change - not expected in pull fixture with immune damage"
+    );
 }
 
 #[test]
@@ -417,12 +498,18 @@ fn test_boss_hp_and_phase_signals() {
     let signal_types: HashSet<&str> = signals.iter().map(signal_type_name).collect();
     eprintln!("Burn phase fixture signals:");
     for signal_type in &signal_types {
-        let count = signals.iter().filter(|s| signal_type_name(s) == *signal_type).count();
+        let count = signals
+            .iter()
+            .filter(|s| signal_type_name(s) == *signal_type)
+            .count();
         eprintln!("  - {}: {}", signal_type, count);
     }
 
     // Validate BossHpChanged signals
-    assert!(signal_types.contains("BossHpChanged"), "Expected BossHpChanged signals");
+    assert!(
+        signal_types.contains("BossHpChanged"),
+        "Expected BossHpChanged signals"
+    );
     let hp_signals: Vec<_> = signals
         .iter()
         .filter(|s| matches!(s, GameSignal::BossHpChanged { .. }))
@@ -430,32 +517,52 @@ fn test_boss_hp_and_phase_signals() {
     eprintln!("Found {} BossHpChanged signals", hp_signals.len());
 
     // Verify HP data is valid
-    if let Some(GameSignal::BossHpChanged { current_hp, max_hp, entity_name, .. }) = hp_signals.first() {
+    if let Some(GameSignal::BossHpChanged {
+        current_hp,
+        max_hp,
+        entity_name,
+        ..
+    }) = hp_signals.first()
+    {
         assert!(*max_hp > 0, "Boss max_hp should be > 0");
         assert!(*current_hp >= 0, "current_hp should be >= 0");
-        eprintln!("Boss HP sample: {}/{} for {}", current_hp, max_hp, entity_name);
+        eprintln!(
+            "Boss HP sample: {}/{} for {}",
+            current_hp, max_hp, entity_name
+        );
     }
 
     // Validate NpcFirstSeen for boss
-    assert!(signal_types.contains("NpcFirstSeen"), "Expected NpcFirstSeen signal");
+    assert!(
+        signal_types.contains("NpcFirstSeen"),
+        "Expected NpcFirstSeen signal"
+    );
     let bestia_npc_id: i64 = 3273941900591104;
-    let bestia_seen = signals.iter().any(|s| {
-        matches!(s, GameSignal::NpcFirstSeen { npc_id, .. } if *npc_id == bestia_npc_id)
-    });
+    let bestia_seen = signals
+        .iter()
+        .any(|s| matches!(s, GameSignal::NpcFirstSeen { npc_id, .. } if *npc_id == bestia_npc_id));
     assert!(bestia_seen, "Expected NpcFirstSeen for Dread Master Bestia");
 
     // Check for PhaseChanged to burn phase (boss HP drops below 32% - config threshold)
-    let burn_phase = signals.iter().find(|s| {
-        matches!(s, GameSignal::PhaseChanged { new_phase, .. } if new_phase == "burn")
-    });
-    assert!(burn_phase.is_some(), "Expected PhaseChanged to 'burn' phase");
+    let burn_phase = signals
+        .iter()
+        .find(|s| matches!(s, GameSignal::PhaseChanged { new_phase, .. } if new_phase == "burn"));
+    assert!(
+        burn_phase.is_some(),
+        "Expected PhaseChanged to 'burn' phase"
+    );
 
     // Validate CounterChanged signals (counter increments from events)
     if signal_types.contains("CounterChanged") {
         let counter_signals: Vec<_> = signals
             .iter()
             .filter_map(|s| {
-                if let GameSignal::CounterChanged { counter_id, new_value, .. } = s {
+                if let GameSignal::CounterChanged {
+                    counter_id,
+                    new_value,
+                    ..
+                } = s
+                {
                     Some((counter_id, new_value))
                 } else {
                     None
@@ -560,7 +667,11 @@ fn test_bestia_complete_encounter() {
                         boss_detected = true;
                         eprintln!("Boss detected: {}", definition_id);
                     }
-                    GameSignal::PhaseChanged { old_phase, new_phase, .. } => {
+                    GameSignal::PhaseChanged {
+                        old_phase,
+                        new_phase,
+                        ..
+                    } => {
                         let old = old_phase.clone().unwrap_or_else(|| "none".to_string());
                         eprintln!("Phase: {} -> {}", old, new_phase);
                         phase_changes.push((old, new_phase.clone()));
@@ -612,10 +723,16 @@ fn test_bestia_complete_encounter() {
     eprintln!("✓ Boss detected: Dread Master Bestia");
 
     // Phase transitions
-    assert!(!phase_changes.is_empty(), "Expected at least one phase change");
+    assert!(
+        !phase_changes.is_empty(),
+        "Expected at least one phase change"
+    );
     let has_monsters = phase_changes.iter().any(|(_, new)| new == "monsters");
     let has_burn = phase_changes.iter().any(|(_, new)| new == "burn");
-    assert!(has_monsters, "Expected phase change to 'monsters' (combat start)");
+    assert!(
+        has_monsters,
+        "Expected phase change to 'monsters' (combat start)"
+    );
     assert!(has_burn, "Expected phase change to 'burn' (boss HP < 50%)");
     eprintln!("✓ Phase transitions: monsters -> burn");
 
@@ -634,7 +751,8 @@ fn test_bestia_complete_encounter() {
     // Note: Timer chains depend on timing - the 15s timers should chain
     // during the 6+ minute fight
     assert!(
-        timers_activated.contains("A2: Monster") || timer_chains_triggered.contains(&"A2: Monster".to_string()),
+        timers_activated.contains("A2: Monster")
+            || timer_chains_triggered.contains(&"A2: Monster".to_string()),
         "Expected A2: Monster timer to chain from A1. Activated timers: {:?}",
         timers_activated
     );
@@ -645,7 +763,10 @@ fn test_bestia_complete_encounter() {
         ability_timer_triggers > 0,
         "Expected ability timer triggers (Swelling Despair, Dread Strike, or Combusting Seed)"
     );
-    eprintln!("✓ Ability timer triggers: {} events", ability_timer_triggers);
+    eprintln!(
+        "✓ Ability timer triggers: {} events",
+        ability_timer_triggers
+    );
 
     // Check if ability timers activated
     let ability_timers_activated = timers_activated.contains("Swelling Despair")
@@ -661,7 +782,9 @@ fn test_bestia_complete_encounter() {
     eprintln!("\n=== Challenge Metrics ===");
 
     // Access the encounter's challenge tracker
-    let encounter = cache.current_encounter().expect("Expected active encounter");
+    let encounter = cache
+        .current_encounter()
+        .expect("Expected active encounter");
     let tracker = &encounter.challenge_tracker;
 
     // Boss damage challenge

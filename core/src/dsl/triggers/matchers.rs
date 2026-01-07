@@ -48,7 +48,9 @@ impl EntitySelectorExt for EntitySelector {
             Self::Id(expected_id) => *expected_id == npc_id,
             Self::Name(name) => {
                 // Priority 1: Try roster alias lookup
-                if let Some(entity_def) = entities.iter().find(|e| e.name.eq_ignore_ascii_case(name)) {
+                if let Some(entity_def) =
+                    entities.iter().find(|e| e.name.eq_ignore_ascii_case(name))
+                {
                     return entity_def.ids.contains(&npc_id);
                 }
                 // Priority 2: Fall back to name matching
@@ -90,7 +92,8 @@ impl EntitySelectorExt for [EntitySelector] {
         npc_id: i64,
         entity_name: Option<&str>,
     ) -> bool {
-        self.iter().any(|s| s.matches_with_roster(entities, npc_id, entity_name))
+        self.iter()
+            .any(|s| s.matches_with_roster(entities, npc_id, entity_name))
     }
 
     fn matches_npc_id(&self, npc_id: i64) -> bool {
@@ -139,16 +142,14 @@ mod tests {
 
     #[test]
     fn entity_selector_resolves_roster_before_name() {
-        let entities = vec![
-            EntityDefinition {
-                name: "Boss".to_string(),
-                ids: vec![1001, 1002],
-                is_boss: true,
-                triggers_encounter: None,
-                is_kill_target: true,
-                show_on_hp_overlay: None,
-            },
-        ];
+        let entities = vec![EntityDefinition {
+            name: "Boss".to_string(),
+            ids: vec![1001, 1002],
+            is_boss: true,
+            triggers_encounter: None,
+            is_kill_target: true,
+            show_on_hp_overlay: None,
+        }];
 
         // "Boss" should match via roster (ID 1001)
         let selector = EntitySelector::Name("Boss".to_string());
@@ -183,13 +184,22 @@ mod tests {
 
     #[test]
     fn effect_selector_from_input() {
-        assert_eq!(EffectSelector::from_input("12345"), EffectSelector::Id(12345));
-        assert_eq!(EffectSelector::from_input("Burn"), EffectSelector::Name("Burn".to_string()));
+        assert_eq!(
+            EffectSelector::from_input("12345"),
+            EffectSelector::Id(12345)
+        );
+        assert_eq!(
+            EffectSelector::from_input("Burn"),
+            EffectSelector::Name("Burn".to_string())
+        );
     }
 
     #[test]
     fn ability_selector_from_input() {
-        assert_eq!(AbilitySelector::from_input("12345"), AbilitySelector::Id(12345));
+        assert_eq!(
+            AbilitySelector::from_input("12345"),
+            AbilitySelector::Id(12345)
+        );
         assert_eq!(
             AbilitySelector::from_input("Force Lightning"),
             AbilitySelector::Name("Force Lightning".to_string())

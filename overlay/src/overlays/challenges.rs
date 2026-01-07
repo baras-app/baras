@@ -13,7 +13,7 @@ use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, format_duration_short, format_number, truncate_name};
-use crate::widgets::{colors, Footer, ProgressBar};
+use crate::widgets::{Footer, ProgressBar, colors};
 
 /// Data for the challenges overlay
 #[derive(Debug, Clone, Default)]
@@ -167,7 +167,9 @@ impl ChallengeOverlay {
         self.frame.begin_frame();
 
         // Filter to enabled challenges only - clone to avoid borrow issues
-        let enabled_challenges: Vec<ChallengeEntry> = self.data.entries
+        let enabled_challenges: Vec<ChallengeEntry> = self
+            .data
+            .entries
             .iter()
             .filter(|c| c.enabled)
             .take(max_display)
@@ -382,7 +384,8 @@ impl ChallengeOverlay {
     ) -> f32 {
         // Draw challenge name
         let title_y = y + header_font_size;
-        self.frame.draw_text(&challenge.name, x, title_y, header_font_size, font_color);
+        self.frame
+            .draw_text(&challenge.name, x, title_y, header_font_size, font_color);
 
         // Draw duration in smaller font on the right if enabled
         if show_duration {
@@ -391,13 +394,20 @@ impl ChallengeOverlay {
             let duration_x = x + width - duration_width;
             // Align baseline with header text (adjust for smaller font)
             let duration_y = title_y - (header_font_size - duration_font_size) * 0.3;
-            self.frame.draw_text(&duration_str, duration_x, duration_y, duration_font_size, font_color);
+            self.frame.draw_text(
+                &duration_str,
+                duration_x,
+                duration_y,
+                duration_font_size,
+                font_color,
+            );
         }
 
         // Draw separator line
         let sep_y = title_y + spacing + 2.0;
         let line_height = 0.2 * self.frame.scale_factor();
-        self.frame.fill_rect(x, sep_y, width, line_height, font_color);
+        self.frame
+            .fill_rect(x, sep_y, width, line_height, font_color);
 
         sep_y + spacing + 4.0 * self.frame.scale_factor()
     }
@@ -470,7 +480,15 @@ impl ChallengeOverlay {
                 }
             }
 
-            bar.render(&mut self.frame, x, y, width, bar_height, font_size - 2.0, bar_radius);
+            bar.render(
+                &mut self.frame,
+                x,
+                y,
+                width,
+                bar_height,
+                font_size - 2.0,
+                bar_radius,
+            );
             y += bar_height + bar_spacing;
         }
 
@@ -490,7 +508,9 @@ impl ChallengeOverlay {
         font_color: Color,
     ) -> f32 {
         let total_sum: i64 = challenge.by_player.iter().map(|p| p.value).sum();
-        let total_per_sec: f32 = challenge.by_player.iter()
+        let total_per_sec: f32 = challenge
+            .by_player
+            .iter()
             .filter_map(|p| p.per_second)
             .sum();
 
@@ -516,18 +536,15 @@ impl ChallengeOverlay {
             }
             ChallengeColumns::TotalOnly => {
                 // Single column: just total
-                Footer::new(format_number(total_sum))
-                    .with_color(font_color)
+                Footer::new(format_number(total_sum)).with_color(font_color)
             }
             ChallengeColumns::PerSecondOnly => {
                 // Single column: just per_second
-                Footer::new(format_number(total_per_sec as i64))
-                    .with_color(font_color)
+                Footer::new(format_number(total_per_sec as i64)).with_color(font_color)
             }
             ChallengeColumns::PercentOnly => {
                 // Single column: 100%
-                Footer::new("100%".to_string())
-                    .with_color(font_color)
+                Footer::new("100%".to_string()).with_color(font_color)
             }
         };
 

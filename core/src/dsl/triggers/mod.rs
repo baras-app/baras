@@ -55,7 +55,6 @@ impl TriggerScope {
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Trigger {
     // ─── Combat State [TPC] ────────────────────────────────────────────────
-
     /// Combat starts. [TPC]
     CombatStart,
 
@@ -64,7 +63,6 @@ pub enum Trigger {
     CombatEnd,
 
     // ─── Abilities & Effects [TPC] ─────────────────────────────────────────
-
     /// Ability is cast. [TPC]
     AbilityCast {
         /// Ability selectors (ID or name).
@@ -116,7 +114,6 @@ pub enum Trigger {
     },
 
     // ─── HP Thresholds [TPC / P only] ──────────────────────────────────────
-
     /// Boss HP drops below threshold. [TPC]
     BossHpBelow {
         hp_percent: f32,
@@ -135,7 +132,6 @@ pub enum Trigger {
     },
 
     // ─── Entity Lifecycle [TPC] ────────────────────────────────────────────
-
     /// NPC appears (first seen in combat log). [TPC]
     NpcAppears {
         /// NPCs to match (by ID or name)
@@ -161,7 +157,6 @@ pub enum Trigger {
     },
 
     // ─── Phase Events [TPC / C only] ───────────────────────────────────────
-
     /// Phase is entered. [TC]
     PhaseEntered { phase_id: String },
 
@@ -172,12 +167,10 @@ pub enum Trigger {
     AnyPhaseChange,
 
     // ─── Counter Events [TP] ───────────────────────────────────────────────
-
     /// Counter reaches a specific value. [TP]
     CounterReaches { counter_id: String, value: u32 },
 
     // ─── Timer Events [T only] ─────────────────────────────────────────────
-
     /// Another timer expires (chaining). [T only]
     TimerExpires { timer_id: String },
 
@@ -185,12 +178,10 @@ pub enum Trigger {
     TimerStarted { timer_id: String },
 
     // ─── Time-based [TP] ───────────────────────────────────────────────────
-
     /// Time elapsed since combat start. [TP]
     TimeElapsed { secs: f32 },
 
     // ─── System-specific ───────────────────────────────────────────────────
-
     /// Manual/debug trigger. [T only]
     Manual,
 
@@ -199,7 +190,6 @@ pub enum Trigger {
     Never,
 
     // ─── Composition [TPC] ─────────────────────────────────────────────────
-
     /// Any condition suffices (OR logic). [TPC]
     AnyOf { conditions: Vec<Trigger> },
 }
@@ -224,7 +214,9 @@ impl Trigger {
             Self::TimeElapsed { .. } | Self::CounterReaches { .. } => TriggerScope::TIMER_PHASE,
 
             // Timer + Counter
-            Self::PhaseEntered { .. } => TriggerScope(TriggerScope::TIMER.0 | TriggerScope::COUNTER.0),
+            Self::PhaseEntered { .. } => {
+                TriggerScope(TriggerScope::TIMER.0 | TriggerScope::COUNTER.0)
+            }
 
             // Timer only
             Self::TimerExpires { .. }
@@ -301,9 +293,21 @@ impl Trigger {
     pub fn with_source_target(self, source: EntityFilter, target: EntityFilter) -> Self {
         match self {
             Self::AbilityCast { abilities, .. } => Self::AbilityCast { abilities, source },
-            Self::EffectApplied { effects, .. } => Self::EffectApplied { effects, source, target },
-            Self::EffectRemoved { effects, .. } => Self::EffectRemoved { effects, source, target },
-            Self::DamageTaken { abilities, .. } => Self::DamageTaken { abilities, source, target },
+            Self::EffectApplied { effects, .. } => Self::EffectApplied {
+                effects,
+                source,
+                target,
+            },
+            Self::EffectRemoved { effects, .. } => Self::EffectRemoved {
+                effects,
+                source,
+                target,
+            },
+            Self::DamageTaken { abilities, .. } => Self::DamageTaken {
+                abilities,
+                source,
+                target,
+            },
             Self::TargetSet { selector, .. } => Self::TargetSet { selector, target },
             other => other, // Leave unchanged for triggers without source/target
         }
@@ -318,11 +322,14 @@ impl Trigger {
         match self {
             Self::AbilityCast { abilities, .. } => {
                 // Require explicit selectors - empty list matches nothing
-                !abilities.is_empty() && abilities.iter().any(|s| s.matches(ability_id, ability_name))
+                !abilities.is_empty()
+                    && abilities
+                        .iter()
+                        .any(|s| s.matches(ability_id, ability_name))
             }
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_ability(ability_id, ability_name))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_ability(ability_id, ability_name)),
             _ => false,
         }
     }
@@ -334,9 +341,9 @@ impl Trigger {
                 // Require explicit selectors - empty list matches nothing
                 !effects.is_empty() && effects.iter().any(|s| s.matches(effect_id, effect_name))
             }
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_effect_applied(effect_id, effect_name))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_effect_applied(effect_id, effect_name)),
             _ => false,
         }
     }
@@ -348,9 +355,9 @@ impl Trigger {
                 // Require explicit selectors - empty list matches nothing
                 !effects.is_empty() && effects.iter().any(|s| s.matches(effect_id, effect_name))
             }
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_effect_removed(effect_id, effect_name))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_effect_removed(effect_id, effect_name)),
             _ => false,
         }
     }
@@ -360,11 +367,14 @@ impl Trigger {
         match self {
             Self::DamageTaken { abilities, .. } => {
                 // Require explicit selectors - empty list matches nothing
-                !abilities.is_empty() && abilities.iter().any(|s| s.matches(ability_id, ability_name))
+                !abilities.is_empty()
+                    && abilities
+                        .iter()
+                        .any(|s| s.matches(ability_id, ability_name))
             }
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_damage_taken(ability_id, ability_name))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_damage_taken(ability_id, ability_name)),
             _ => false,
         }
     }
@@ -380,7 +390,10 @@ impl Trigger {
         new_hp: f32,
     ) -> bool {
         match self {
-            Self::BossHpBelow { hp_percent, selector } => {
+            Self::BossHpBelow {
+                hp_percent,
+                selector,
+            } => {
                 // Check HP threshold crossing
                 let crossed = old_hp > *hp_percent && new_hp <= *hp_percent;
                 if !crossed {
@@ -395,9 +408,9 @@ impl Trigger {
                 // Match via roster alias → NPC ID → name
                 selector.matches_with_roster(entities, npc_id, Some(entity_name))
             }
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_boss_hp_below(entities, npc_id, entity_name, old_hp, new_hp))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_boss_hp_below(entities, npc_id, entity_name, old_hp, new_hp)),
             _ => false,
         }
     }
@@ -413,7 +426,10 @@ impl Trigger {
         new_hp: f32,
     ) -> bool {
         match self {
-            Self::BossHpAbove { hp_percent, selector } => {
+            Self::BossHpAbove {
+                hp_percent,
+                selector,
+            } => {
                 // Check HP threshold crossing
                 let crossed = old_hp < *hp_percent && new_hp >= *hp_percent;
                 if !crossed {
@@ -428,15 +444,20 @@ impl Trigger {
                 // Match via roster alias → NPC ID → name
                 selector.matches_with_roster(entities, npc_id, Some(entity_name))
             }
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_boss_hp_above(entities, npc_id, entity_name, old_hp, new_hp))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_boss_hp_above(entities, npc_id, entity_name, old_hp, new_hp)),
             _ => false,
         }
     }
 
     /// Check if trigger matches NPC first appearing.
-    pub fn matches_npc_appears(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: &str) -> bool {
+    pub fn matches_npc_appears(
+        &self,
+        entities: &[EntityDefinition],
+        npc_id: i64,
+        entity_name: &str,
+    ) -> bool {
         match self {
             Self::NpcAppears { selector } => {
                 // Require explicit filter for NPC appears
@@ -446,15 +467,20 @@ impl Trigger {
                 // Match via roster alias → NPC ID → name
                 selector.matches_with_roster(entities, npc_id, Some(entity_name))
             }
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_npc_appears(entities, npc_id, entity_name))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_npc_appears(entities, npc_id, entity_name)),
             _ => false,
         }
     }
 
     /// Check if trigger matches entity death.
-    pub fn matches_entity_death(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: &str) -> bool {
+    pub fn matches_entity_death(
+        &self,
+        entities: &[EntityDefinition],
+        npc_id: i64,
+        entity_name: &str,
+    ) -> bool {
         match self {
             Self::EntityDeath { selector } => {
                 // Empty selector = any death
@@ -464,9 +490,9 @@ impl Trigger {
                 // Match via roster alias → NPC ID → name
                 selector.matches_with_roster(entities, npc_id, Some(entity_name))
             }
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_entity_death(entities, npc_id, entity_name))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_entity_death(entities, npc_id, entity_name)),
             _ => false,
         }
     }
@@ -474,7 +500,9 @@ impl Trigger {
     /// Check if trigger matches a phase being entered.
     pub fn matches_phase_entered(&self, phase_id: &str) -> bool {
         match self {
-            Self::PhaseEntered { phase_id: trigger_phase } => trigger_phase == phase_id,
+            Self::PhaseEntered {
+                phase_id: trigger_phase,
+            } => trigger_phase == phase_id,
             Self::AnyOf { conditions } => {
                 conditions.iter().any(|c| c.matches_phase_entered(phase_id))
             }
@@ -485,7 +513,9 @@ impl Trigger {
     /// Check if trigger matches a phase ending.
     pub fn matches_phase_ended(&self, phase_id: &str) -> bool {
         match self {
-            Self::PhaseEnded { phase_id: trigger_phase } => trigger_phase == phase_id,
+            Self::PhaseEnded {
+                phase_id: trigger_phase,
+            } => trigger_phase == phase_id,
             Self::AnyOf { conditions } => {
                 conditions.iter().any(|c| c.matches_phase_ended(phase_id))
             }
@@ -494,14 +524,20 @@ impl Trigger {
     }
 
     /// Check if trigger matches a counter reaching a value.
-    pub fn matches_counter_reaches(&self, counter_id: &str, old_value: u32, new_value: u32) -> bool {
+    pub fn matches_counter_reaches(
+        &self,
+        counter_id: &str,
+        old_value: u32,
+        new_value: u32,
+    ) -> bool {
         match self {
-            Self::CounterReaches { counter_id: trigger_counter, value } => {
-                trigger_counter == counter_id && old_value < *value && new_value >= *value
-            }
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_counter_reaches(counter_id, old_value, new_value))
-            }
+            Self::CounterReaches {
+                counter_id: trigger_counter,
+                value,
+            } => trigger_counter == counter_id && old_value < *value && new_value >= *value,
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_counter_reaches(counter_id, old_value, new_value)),
             _ => false,
         }
     }
@@ -510,9 +546,9 @@ impl Trigger {
     pub fn matches_time_elapsed(&self, old_secs: f32, new_secs: f32) -> bool {
         match self {
             Self::TimeElapsed { secs } => old_secs < *secs && new_secs >= *secs,
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_time_elapsed(old_secs, new_secs))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_time_elapsed(old_secs, new_secs)),
             _ => false,
         }
     }
@@ -520,7 +556,9 @@ impl Trigger {
     /// Check if trigger matches a timer expiring.
     pub fn matches_timer_expires(&self, timer_id: &str) -> bool {
         match self {
-            Self::TimerExpires { timer_id: trigger_id } => trigger_id == timer_id,
+            Self::TimerExpires {
+                timer_id: trigger_id,
+            } => trigger_id == timer_id,
             Self::AnyOf { conditions } => {
                 conditions.iter().any(|c| c.matches_timer_expires(timer_id))
             }
@@ -538,9 +576,9 @@ impl Trigger {
                 }
                 selector.matches_npc_id(source_npc_id) || selector.matches_name_only(source_name)
             }
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_target_set(source_npc_id, source_name))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_target_set(source_npc_id, source_name)),
             _ => false,
         }
     }
@@ -560,7 +598,9 @@ mod tests {
 
     #[test]
     fn trigger_scope_timer_only() {
-        let trigger = Trigger::TimerExpires { timer_id: "test".into() };
+        let trigger = Trigger::TimerExpires {
+            timer_id: "test".into(),
+        };
         assert!(trigger.valid_for_timer());
         assert!(!trigger.valid_for_phase());
         assert!(!trigger.valid_for_counter());
@@ -589,7 +629,10 @@ mod tests {
     fn contains_combat_start_nested() {
         let trigger = Trigger::AnyOf {
             conditions: vec![
-                Trigger::AbilityCast { abilities: vec![AbilitySelector::Id(123)], source: EntityFilter::Any },
+                Trigger::AbilityCast {
+                    abilities: vec![AbilitySelector::Id(123)],
+                    source: EntityFilter::Any,
+                },
                 Trigger::CombatStart,
             ],
         };

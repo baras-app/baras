@@ -356,7 +356,10 @@ pub async fn update_effect_definition(
 ) -> Result<(), String> {
     // Validate effect has at least one way to match
     // (start_trigger like AbilityCast can also trigger effects)
-    if effect.effects.is_empty() && effect.refresh_abilities.is_empty() && effect.start_trigger.is_none() {
+    if effect.effects.is_empty()
+        && effect.refresh_abilities.is_empty()
+        && effect.start_trigger.is_none()
+    {
         return Err(
             "Effect must have at least one effect ID, refresh ability, or start_trigger to match against. \
             Without these, the effect will never trigger."
@@ -413,7 +416,10 @@ pub async fn create_effect_definition(
 ) -> Result<EffectListItem, String> {
     // Validate effect has at least one way to match
     // (start_trigger like AbilityCast can also trigger effects)
-    if effect.effects.is_empty() && effect.refresh_abilities.is_empty() && effect.start_trigger.is_none() {
+    if effect.effects.is_empty()
+        && effect.refresh_abilities.is_empty()
+        && effect.start_trigger.is_none()
+    {
         return Err(
             "Effect must have at least one effect ID, refresh ability, or start_trigger to match against. \
             Without these, the effect will never trigger."

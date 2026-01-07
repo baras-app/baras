@@ -5,10 +5,10 @@
 
 // Re-export all shared types
 pub use baras_types::{
-    AppConfig, BossHealthConfig, ChallengeColumns, ChallengeLayout, ChallengeOverlayConfig,
-    Color, HotkeySettings, OverlayAppearanceConfig, OverlayPositionConfig, OverlayProfile,
-    OverlaySettings, PersonalOverlayConfig, PersonalStat, RaidOverlaySettings,
-    TimerOverlayConfig, MAX_PROFILES, overlay_colors,
+    AppConfig, BossHealthConfig, ChallengeColumns, ChallengeLayout, ChallengeOverlayConfig, Color,
+    HotkeySettings, MAX_PROFILES, OverlayAppearanceConfig, OverlayPositionConfig, OverlayProfile,
+    OverlaySettings, PersonalOverlayConfig, PersonalStat, RaidOverlaySettings, TimerOverlayConfig,
+    overlay_colors,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,13 +82,19 @@ impl AppConfigExt for AppConfig {
             return Err("Maximum number of profiles reached (12)");
         }
 
-        self.profiles.push(OverlayProfile::new(name.clone(), self.overlay_settings.clone()));
+        self.profiles.push(OverlayProfile::new(
+            name.clone(),
+            self.overlay_settings.clone(),
+        ));
         self.active_profile_name = Some(name);
         Ok(())
     }
 
     fn load_profile(&mut self, name: &str) -> Result<(), &'static str> {
-        let profile = self.profiles.iter().find(|p| p.name == name)
+        let profile = self
+            .profiles
+            .iter()
+            .find(|p| p.name == name)
             .ok_or("Profile not found")?;
         self.overlay_settings = profile.settings.clone();
         self.active_profile_name = Some(name.to_string());
@@ -112,7 +118,10 @@ impl AppConfigExt for AppConfig {
             return Err("A profile with that name already exists");
         }
 
-        let profile = self.profiles.iter_mut().find(|p| p.name == old_name)
+        let profile = self
+            .profiles
+            .iter_mut()
+            .find(|p| p.name == old_name)
             .ok_or("Profile not found")?;
         profile.name = new_name.clone();
 

@@ -8,10 +8,10 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::types::{BossWithPath, EncounterItem, PhaseDefinition, Trigger};
 
+use super::InlineNameCreator;
 use super::conditions::CounterConditionEditor;
 use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
-use super::InlineNameCreator;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Phases Tab

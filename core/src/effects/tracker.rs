@@ -23,7 +23,11 @@ fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
     static EMPTY: &[EntityDefinition] = &[];
     encounter
         .and_then(|e| e.active_boss_idx())
-        .map(|idx| encounter.unwrap().boss_definitions()[idx].entities.as_slice())
+        .map(|idx| {
+            encounter.unwrap().boss_definitions()[idx]
+                .entities
+                .as_slice()
+        })
         .unwrap_or(EMPTY)
 }
 
@@ -41,12 +45,19 @@ impl DefinitionSet {
 
     /// Add definitions. If `overwrite` is true, replaces existing definitions with same ID.
     /// Returns IDs of duplicates that were encountered (skipped if !overwrite, replaced if overwrite).
-    pub fn add_definitions(&mut self, definitions: Vec<EffectDefinition>, overwrite: bool) -> Vec<String> {
+    pub fn add_definitions(
+        &mut self,
+        definitions: Vec<EffectDefinition>,
+        overwrite: bool,
+    ) -> Vec<String> {
         let mut duplicates = Vec::new();
         for def in definitions {
             // Warn about effects that will never match anything
             // (unless they have an explicit start_trigger like AbilityCast)
-            if def.effects.is_empty() && def.refresh_abilities.is_empty() && def.start_trigger.is_none() {
+            if def.effects.is_empty()
+                && def.refresh_abilities.is_empty()
+                && def.start_trigger.is_none()
+            {
                 eprintln!(
                     "[EFFECT WARNING] Effect '{}' has no effects, refresh_abilities, or start_trigger - it will never match anything!",
                     def.id
@@ -71,7 +82,11 @@ impl DefinitionSet {
     }
 
     /// Find effect definitions that match a game effect ID/name
-    pub fn find_matching(&self, effect_id: u64, effect_name: Option<&str>) -> Vec<&EffectDefinition> {
+    pub fn find_matching(
+        &self,
+        effect_id: u64,
+        effect_name: Option<&str>,
+    ) -> Vec<&EffectDefinition> {
         self.effects
             .values()
             .filter(|def| def.enabled && def.matches_effect(effect_id, effect_name))
@@ -79,7 +94,11 @@ impl DefinitionSet {
     }
 
     /// Find effect definitions that match an ability cast trigger
-    pub fn find_ability_cast_matching(&self, ability_id: u64, ability_name: Option<&str>) -> Vec<&EffectDefinition> {
+    pub fn find_ability_cast_matching(
+        &self,
+        ability_id: u64,
+        ability_name: Option<&str>,
+    ) -> Vec<&EffectDefinition> {
         self.effects
             .values()
             .filter(|def| def.enabled && def.matches_ability_cast(ability_id, ability_name))
@@ -266,7 +285,8 @@ impl EffectTracker {
         }
 
         // Remove effects that have finished fading
-        self.active_effects.retain(|_, effect| !effect.should_remove());
+        self.active_effects
+            .retain(|_, effect| !effect.should_remove());
     }
 
     /// Handle effect application signal
@@ -291,7 +311,8 @@ impl EffectTracker {
         self.current_game_time = Some(timestamp);
 
         // Garbage collect dead effects before processing new ones.
-        self.active_effects.retain(|_, effect| effect.is_active(timestamp));
+        self.active_effects
+            .retain(|_, effect| effect.is_active(timestamp));
 
         // Skip effect tracking when processing historical data (initial file load)
         if !self.live_mode {
@@ -318,7 +339,9 @@ impl EffectTracker {
         let effect_name_str = crate::context::resolve(effect_name);
 
         // Find matching definitions (only those that trigger on EffectApplied)
-        let all_matches = self.definitions.find_matching(effect_id as u64, Some(effect_name_str));
+        let all_matches = self
+            .definitions
+            .find_matching(effect_id as u64, Some(effect_name_str));
 
         let matching_defs: Vec<_> = all_matches
             .into_iter()
@@ -384,7 +407,13 @@ impl EffectTracker {
         }
 
         // Queue target for raid frame registration only when effect was created or refreshed.
-        if should_register && is_from_local && matches!(target_entity_type, EntityType::Player | EntityType::Companion) {
+        if should_register
+            && is_from_local
+            && matches!(
+                target_entity_type,
+                EntityType::Player | EntityType::Companion
+            )
+        {
             self.new_targets.push(NewTargetInfo {
                 entity_id: target_id,
                 name: target_name,
@@ -404,10 +433,16 @@ impl EffectTracker {
     ) {
         // Find all definitions that have this action in their refresh_abilities
         let action_name_str = crate::context::resolve(action_name);
-        let refreshable_defs: Vec<_> = self.definitions
+        let refreshable_defs: Vec<_> = self
+            .definitions
             .enabled()
             .filter(|def| def.can_refresh_with(action_id as u64, Some(&action_name_str)))
-            .map(|def| (def.id.clone(), def.duration_secs.map(Duration::from_secs_f32)))
+            .map(|def| {
+                (
+                    def.id.clone(),
+                    def.duration_secs.map(Duration::from_secs_f32),
+                )
+            })
             .collect();
 
         let mut did_refresh = false;
@@ -424,7 +459,12 @@ impl EffectTracker {
         }
 
         // Push to new_targets if we actually refreshed an effect
-        if did_refresh && matches!(target_entity_type, EntityType::Player | EntityType::Companion) {
+        if did_refresh
+            && matches!(
+                target_entity_type,
+                EntityType::Player | EntityType::Companion
+            )
+        {
             self.new_targets.push(NewTargetInfo {
                 entity_id: target_id,
                 name: target_name,
@@ -658,7 +698,7 @@ impl EffectTracker {
                     def.can_be_refreshed && def.is_refreshed_on_modify
                 } else {
                     def.can_refresh_with(action_id as u64, Some(action_name_str))
-                    && def.is_refreshed_on_modify
+                        && def.is_refreshed_on_modify
                 };
 
                 if should_refresh {
@@ -681,7 +721,9 @@ impl EffectTracker {
 
         // Mark non-persisting effects on dead entity as removed
         for (key, effect) in self.active_effects.iter_mut() {
-            if effect.target_entity_id == entity_id && !persist_ids.contains(key.definition_id.as_str()) {
+            if effect.target_entity_id == entity_id
+                && !persist_ids.contains(key.definition_id.as_str())
+            {
                 effect.mark_removed();
             }
         }
@@ -727,13 +769,32 @@ impl EffectTracker {
             .unwrap_or_default();
         let entities = get_entities(encounter);
 
-        def.source.matches(entities, source.id, source.entity_type, source.name, source.npc_id, local_player_id, &boss_ids)
-            && def.target.matches(entities, target.id, target.entity_type, target.name, target.npc_id, local_player_id, &boss_ids)
+        def.source.matches(
+            entities,
+            source.id,
+            source.entity_type,
+            source.name,
+            source.npc_id,
+            local_player_id,
+            &boss_ids,
+        ) && def.target.matches(
+            entities,
+            target.id,
+            target.entity_type,
+            target.name,
+            target.npc_id,
+            local_player_id,
+            &boss_ids,
+        )
     }
 }
 
 impl SignalHandler for EffectTracker {
-    fn handle_signal(&mut self, signal: &GameSignal, encounter: Option<&crate::encounter::CombatEncounter>) {
+    fn handle_signal(
+        &mut self,
+        signal: &GameSignal,
+        encounter: Option<&crate::encounter::CombatEncounter>,
+    ) {
         match signal {
             GameSignal::EffectApplied {
                 effect_id,
@@ -778,7 +839,15 @@ impl SignalHandler for EffectTracker {
                 timestamp,
                 ..
             } => {
-                self.handle_effect_removed(*effect_id, *effect_name, *source_id, *target_id, *target_name, *timestamp, encounter);
+                self.handle_effect_removed(
+                    *effect_id,
+                    *effect_name,
+                    *source_id,
+                    *target_id,
+                    *target_name,
+                    *timestamp,
+                    encounter,
+                );
             }
             GameSignal::EffectChargesChanged {
                 effect_id,
@@ -789,7 +858,15 @@ impl SignalHandler for EffectTracker {
                 timestamp,
                 charges,
             } => {
-                self.handle_charges_changed(*effect_id, *effect_name, *action_id, *action_name, *target_id, *timestamp, *charges);
+                self.handle_charges_changed(
+                    *effect_id,
+                    *effect_name,
+                    *action_id,
+                    *action_name,
+                    *target_id,
+                    *timestamp,
+                    *charges,
+                );
             }
             GameSignal::EntityDeath { entity_id, .. } => {
                 self.handle_entity_death(*entity_id);
@@ -866,11 +943,14 @@ impl SignalHandler for EffectTracker {
                 target_entity_type,
                 ..
             } => {
-                self.current_targets.insert(*source_id, TrackedTarget {
-                    entity_id: *target_id,
-                    name: *target_name,
-                    entity_type: *target_entity_type,
-                });
+                self.current_targets.insert(
+                    *source_id,
+                    TrackedTarget {
+                        entity_id: *target_id,
+                        name: *target_name,
+                        entity_type: *target_entity_type,
+                    },
+                );
             }
             GameSignal::TargetCleared { source_id, .. } => {
                 self.current_targets.remove(source_id);

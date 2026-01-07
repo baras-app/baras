@@ -70,10 +70,7 @@ struct ParseWorkerOutput {
 }
 
 /// Fallback to streaming parse if subprocess fails.
-async fn fallback_streaming_parse(
-    reader: &Reader,
-    session: &Arc<RwLock<ParsingSession>>,
-) {
+async fn fallback_streaming_parse(reader: &Reader, session: &Arc<RwLock<ParsingSession>>) {
     let timer = std::time::Instant::now();
     let mut session_guard = session.write().await;
     let session_date = session_guard.game_session_date.unwrap_or_default();
@@ -191,7 +188,11 @@ impl CombatSignalHandler {
 }
 
 impl SignalHandler for CombatSignalHandler {
-    fn handle_signal(&mut self, signal: &GameSignal, _encounter: Option<&baras_core::encounter::CombatEncounter>) {
+    fn handle_signal(
+        &mut self,
+        signal: &GameSignal,
+        _encounter: Option<&baras_core::encounter::CombatEncounter>,
+    ) {
         match signal {
             GameSignal::CombatStarted { .. } => {
                 self.shared.in_combat.store(true, Ordering::SeqCst);
@@ -346,7 +347,8 @@ impl CombatService {
             .ok();
 
         // Custom definitions: user's config directory
-        let custom_dir = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+        let custom_dir =
+            dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
 
         let mut index = baras_core::boss::AreaIndex::new();
 
@@ -399,7 +401,8 @@ impl CombatService {
             .ok();
 
         // User config directories
-        let effects_dir = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("effects"));
+        let effects_dir =
+            dirs::config_dir().map(|p| p.join("baras").join("definitions").join("effects"));
         let defaults_dir = effects_dir.as_ref().map(|p| p.join("defaults"));
 
         // Load definitions from TOML files
@@ -460,9 +463,10 @@ impl CombatService {
 
         for path in files {
             if let Ok(contents) = std::fs::read_to_string(&path)
-                && let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
-                    set.add_definitions(config.effects, overwrite);
-                }
+                && let Ok(config) = toml::from_str::<DefinitionConfig>(&contents)
+            {
+                set.add_definitions(config.effects, overwrite);
+            }
         }
     }
 
@@ -532,7 +536,9 @@ impl CombatService {
                 ServiceCommand::RefreshRaidFrames => {
                     // Immediately send updated raid frame data to overlay
                     if let Some(data) = build_raid_frame_data(&self.shared).await {
-                        let _ = self.overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data));
+                        let _ = self
+                            .overlay_tx
+                            .try_send(OverlayUpdate::EffectsUpdated(data));
                     }
                 }
             }
@@ -719,16 +725,17 @@ impl CombatService {
         if let Some(prefs_path) = Self::timer_preferences_path() {
             if let Some(timer_mgr) = session.timer_manager() {
                 if let Ok(mut mgr) = timer_mgr.lock()
-                    && let Err(e) = mgr.load_preferences(&prefs_path) {
-                        eprintln!("Warning: Failed to load timer preferences: {}", e);
-                    }
+                    && let Err(e) = mgr.load_preferences(&prefs_path)
+                {
+                    eprintln!("Warning: Failed to load timer preferences: {}", e);
+                }
             }
         }
 
         // Set up sync definition loader for AreaEntered events (fixes race condition)
         let area_index = self.area_index.clone();
-        let user_encounters_dir = dirs::config_dir()
-            .map(|p| p.join("baras").join("definitions").join("encounters"));
+        let user_encounters_dir =
+            dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
         let loader: baras_core::context::DefinitionLoader = Box::new(move |area_id: i64| {
             use baras_core::boss::load_bosses_with_custom;
             area_index.get(&area_id).and_then(|entry| {
@@ -800,7 +807,10 @@ impl CombatService {
         let definitions_dir = self
             .app_handle
             .path()
-            .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
+            .resolve(
+                "definitions/encounters",
+                tauri::path::BaseDirectory::Resource,
+            )
             .ok();
 
         // Spawn parse worker subprocess
@@ -811,7 +821,10 @@ impl CombatService {
                 let dir = exe.parent()?;
                 // Try sidecar name with target triple first (Tauri bundle format), then plain name
                 let candidates = [
-                    dir.join(format!("baras-parse-worker-{}-unknown-linux-gnu", std::env::consts::ARCH)),
+                    dir.join(format!(
+                        "baras-parse-worker-{}-unknown-linux-gnu",
+                        std::env::consts::ARCH
+                    )),
                     dir.join("baras-parse-worker"),
                 ];
                 candidates.into_iter().find(|p| p.exists())
@@ -837,8 +850,13 @@ impl CombatService {
                 let json_result = String::from_utf8(output.stdout)
                     .map_err(|e| format!("Invalid UTF-8: {}", e))
                     .and_then(|result| {
-                        serde_json::from_str::<ParseWorkerOutput>(&result)
-                            .map_err(|e| format!("JSON parse error: {} (input: {})", e, &result[..result.len().min(500)]))
+                        serde_json::from_str::<ParseWorkerOutput>(&result).map_err(|e| {
+                            format!(
+                                "JSON parse error: {} (input: {})",
+                                e,
+                                &result[..result.len().min(500)]
+                            )
+                        })
                     });
 
                 match json_result {
@@ -853,16 +871,19 @@ impl CombatService {
                             }
 
                             // Import player info
-                            cache.player.name = baras_core::context::intern(&parse_result.player.name);
+                            cache.player.name =
+                                baras_core::context::intern(&parse_result.player.name);
                             cache.player.id = parse_result.player.entity_id;
                             cache.player.class_name = parse_result.player.class_name.clone();
-                            cache.player.discipline_name = parse_result.player.discipline_name.clone();
+                            cache.player.discipline_name =
+                                parse_result.player.discipline_name.clone();
                             cache.player_initialized = true;
 
                             // Import area info
                             cache.current_area.area_name = parse_result.area.area_name.clone();
                             cache.current_area.area_id = parse_result.area.area_id;
-                            cache.current_area.difficulty_name = parse_result.area.difficulty_name.clone();
+                            cache.current_area.difficulty_name =
+                                parse_result.area.difficulty_name.clone();
                         }
 
                         // Enable live parquet writing (continues from where subprocess left off)
@@ -934,15 +955,14 @@ impl CombatService {
         let metrics_handle = tokio::spawn(async move {
             loop {
                 // Check for triggers with timeout to allow task cancellation
-                let trigger = tokio::time::timeout(
-                    std::time::Duration::from_millis(100),
-                    trigger_rx.recv()
-                ).await;
+                let trigger =
+                    tokio::time::timeout(std::time::Duration::from_millis(100), trigger_rx.recv())
+                        .await;
 
                 let trigger = match trigger {
                     Ok(Some(t)) => t,
-                    Ok(None) => break,        // Channel closed
-                    Err(_) => continue,       // Timeout - check again
+                    Ok(None) => break,  // Channel closed
+                    Err(_) => continue, // Timeout - check again
                 };
 
                 // Calculate and send unified combat data
@@ -1031,7 +1051,7 @@ impl CombatService {
                     } else if last_effects_count > 0 {
                         // No effects, but we had some before - send clear
                         let _ = overlay_tx.try_send(OverlayUpdate::EffectsOverlayUpdated(
-                            baras_overlay::EffectsData { entries: vec![] }
+                            baras_overlay::EffectsData { entries: vec![] },
                         ));
                         last_effects_count = 0;
                     }
@@ -1104,7 +1124,8 @@ impl CombatService {
         let shared = self.shared.clone();
         let area_index = self.area_index.clone();
         let is_live = self.shared.is_live_tailing.load(Ordering::SeqCst);
-        let user_encounters_dir = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+        let user_encounters_dir =
+            dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
         let area_loader_handle = if is_live {
             Some(tokio::spawn(async move {
                 let mut loaded_area_id: i64 = 0;
@@ -1253,9 +1274,12 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 
     // Build challenge data from encounter's tracker (persists with encounter, not boss state)
     let challenges = if encounter.challenge_tracker.is_active() {
-        let boss_name = encounter
-            .active_boss_idx()
-            .and_then(|idx| encounter.boss_definitions().get(idx).map(|def| def.name.clone()));
+        let boss_name = encounter.active_boss_idx().and_then(|idx| {
+            encounter
+                .boss_definitions()
+                .get(idx)
+                .map(|def| def.name.clone())
+        });
         let overall_duration = encounter.combat_time_secs.max(1.0);
         let current_time = chrono::Local::now().naive_local();
 
@@ -1635,13 +1659,14 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
         // Check for countdown (uses realtime internally, matches timer logic)
         // Only for non-removed effects
         if effect.removed_at.is_none()
-            && let Some(seconds) = effect.check_countdown() {
-                countdowns.push((
-                    effect.display_text.clone(),
-                    seconds,
-                    effect.countdown_voice.clone(),
-                ));
-            }
+            && let Some(seconds) = effect.check_countdown()
+        {
+            countdowns.push((
+                effect.display_text.clone(),
+                seconds,
+                effect.countdown_voice.clone(),
+            ));
+        }
 
         // Check for audio offset trigger (early warning sound, offset > 0)
         if effect.check_audio_offset() {

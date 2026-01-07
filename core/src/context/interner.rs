@@ -31,4 +31,3 @@ pub fn empty_istr() -> IStr {
 pub fn resolve(key: IStr) -> &'static str {
     interner().resolve(&key)
 }
-

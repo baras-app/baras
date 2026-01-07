@@ -44,20 +44,19 @@ impl LabeledValue {
     /// * `y` - Baseline y position for text
     /// * `width` - Total width available
     /// * `font_size` - Font size for both label and value
-    pub fn render(
-        &self,
-        frame: &mut OverlayFrame,
-        x: f32,
-        y: f32,
-        width: f32,
-        font_size: f32,
-    ) {
+    pub fn render(&self, frame: &mut OverlayFrame, x: f32, y: f32, width: f32, font_size: f32) {
         // Draw label on left
         frame.draw_text(&self.label, x, y, font_size, self.label_color);
 
         // Draw value on right (right-aligned)
         let (text_width, _) = frame.measure_text(&self.value, font_size);
-        frame.draw_text(&self.value, x + width - text_width, y, font_size, self.value_color);
+        frame.draw_text(
+            &self.value,
+            x + width - text_width,
+            y,
+            font_size,
+            self.value_color,
+        );
     }
 
     /// Calculate the height this widget needs (just the line height)

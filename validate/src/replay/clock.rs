@@ -5,8 +5,8 @@
 //! - Accelerated: Fast replay with virtual time tracking
 //! - Custom speed: Any multiplier (0.5x slow-mo, 10x fast-forward, etc.)
 
-use std::time::{Duration, Instant};
 use chrono::NaiveDateTime;
+use std::time::{Duration, Instant};
 
 /// Virtual clock that maps game timestamps to system time
 #[derive(Debug)]

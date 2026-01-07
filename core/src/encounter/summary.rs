@@ -82,10 +82,7 @@ impl EncounterHistory {
         match (encounter_type, boss_name) {
             // Boss encounter: "Brontes - 7"
             (_, Some(name)) => {
-                let count = self
-                    .boss_pull_counts
-                    .entry(name.to_string())
-                    .or_insert(0);
+                let count = self.boss_pull_counts.entry(name.to_string()).or_insert(0);
                 *count += 1;
                 format!("{} - {}", name, count)
             }
@@ -124,11 +121,15 @@ pub fn classify_encounter(
         let phase = match def.area_type {
             crate::dsl::AreaType::Operation => PhaseType::Raid,
             crate::dsl::AreaType::Flashpoint => PhaseType::Flashpoint,
-            crate::dsl::AreaType::LairBoss | crate::dsl::AreaType::OpenWorld => PhaseType::OpenWorld,
+            crate::dsl::AreaType::LairBoss | crate::dsl::AreaType::OpenWorld => {
+                PhaseType::OpenWorld
+            }
             crate::dsl::AreaType::TrainingDummy => PhaseType::DummyParse,
         };
         // Try to find matching static BossInfo for backwards compatibility
-        let boss_info = encounter.npcs.values()
+        let boss_info = encounter
+            .npcs
+            .values()
             .find_map(|npc| lookup_boss(npc.class_id));
         return (phase, boss_info);
     }
@@ -302,12 +303,15 @@ mod tests {
 
     /// Helper to add an NPC to the encounter and detect the boss
     fn add_npc_and_detect_boss(encounter: &mut CombatEncounter, npc_id: i64, name: &str) {
-        encounter.npcs.insert(npc_id, NpcInfo {
-            name: intern(name),
-            entity_type: EntityType::Npc,
-            class_id: npc_id,
-            ..Default::default()
-        });
+        encounter.npcs.insert(
+            npc_id,
+            NpcInfo {
+                name: intern(name),
+                entity_type: EntityType::Npc,
+                class_id: npc_id,
+                ..Default::default()
+            },
+        );
 
         // Simulate boss detection - find the matching definition and set active index
         for (idx, def) in encounter.boss_definitions().iter().enumerate() {

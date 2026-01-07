@@ -1,14 +1,18 @@
 #![allow(non_snake_case)]
 
-use std::collections::HashMap;
 use dioxus::prelude::*;
+use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::console;
 
 use crate::api;
-use crate::components::{DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel, HistoryPanel, SettingsPanel};
-use crate::types::{LogFileInfo, MetricType, OverlaySettings, OverlayStatus, OverlayType, SessionInfo, UpdateInfo};
+use crate::components::{
+    DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel, HistoryPanel, SettingsPanel,
+};
+use crate::types::{
+    LogFileInfo, MetricType, OverlaySettings, OverlayStatus, OverlayType, SessionInfo, UpdateInfo,
+};
 
 static CSS: Asset = asset!("/assets/styles.css");
 static DATA_EXPLORER_CSS: Asset = asset!("/assets/data-explorer.css");
@@ -22,7 +26,10 @@ static FONT: Asset = asset!("/assets/StarJedi.ttf");
 pub fn App() -> Element {
     // Overlay state
     let mut metric_overlays_enabled = use_signal(|| {
-        MetricType::all().iter().map(|ot| (*ot, false)).collect::<HashMap<_, _>>()
+        MetricType::all()
+            .iter()
+            .map(|ot| (*ot, false))
+            .collect::<HashMap<_, _>>()
     });
     let mut personal_enabled = use_signal(|| false);
     let mut raid_enabled = use_signal(|| false);
@@ -100,9 +107,15 @@ pub fn App() -> Element {
         if let Some(config) = api::get_config().await {
             log_directory.set(config.log_directory.clone());
             overlay_settings.set(config.overlay_settings);
-            if let Some(v) = config.hotkeys.toggle_visibility { hotkey_visibility.set(v); }
-            if let Some(v) = config.hotkeys.toggle_move_mode { hotkey_move_mode.set(v); }
-            if let Some(v) = config.hotkeys.toggle_rearrange_mode { hotkey_rearrange.set(v); }
+            if let Some(v) = config.hotkeys.toggle_visibility {
+                hotkey_visibility.set(v);
+            }
+            if let Some(v) = config.hotkeys.toggle_move_mode {
+                hotkey_move_mode.set(v);
+            }
+            if let Some(v) = config.hotkeys.toggle_rearrange_mode {
+                hotkey_rearrange.set(v);
+            }
             profile_names.set(config.profiles.iter().map(|p| p.name.clone()).collect());
             active_profile.set(config.active_profile_name);
             auto_delete_empty.set(config.auto_delete_empty_files);
@@ -135,10 +148,19 @@ pub fn App() -> Element {
         }
 
         if let Some(status) = api::get_overlay_status().await {
-            apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
-                &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                &mut effects_enabled, &mut challenges_enabled,
-                &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
+            apply_status(
+                &status,
+                &mut metric_overlays_enabled,
+                &mut personal_enabled,
+                &mut raid_enabled,
+                &mut boss_health_enabled,
+                &mut timers_enabled,
+                &mut effects_enabled,
+                &mut challenges_enabled,
+                &mut overlays_visible,
+                &mut move_mode,
+                &mut rearrange_mode,
+            );
         }
 
         session_info.set(api::get_session_info().await);
@@ -235,7 +257,13 @@ pub fn App() -> Element {
     let timers_on = timers_enabled();
     let effects_on = effects_enabled();
     let challenges_on = challenges_enabled();
-    let any_enabled = enabled_map.values().any(|&v| v) || personal_on || raid_on || boss_health_on || timers_on || effects_on || challenges_on;
+    let any_enabled = enabled_map.values().any(|&v| v)
+        || personal_on
+        || raid_on
+        || boss_health_on
+        || timers_on
+        || effects_on
+        || challenges_on;
     let is_visible = overlays_visible();
     let is_move_mode = move_mode();
     let is_rearrange = rearrange_mode();

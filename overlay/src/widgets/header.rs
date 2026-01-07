@@ -126,15 +126,7 @@ impl Footer {
     /// * `width` - Total width available
     /// * `font_size` - Font size for value
     /// * `spacing` - Spacing between separator and value
-    pub fn render(
-        &self,
-        frame: &mut OverlayFrame,
-        x: f32,
-        y: f32,
-        width: f32,
-        font_size: f32,
-    ) {
-
+    pub fn render(&self, frame: &mut OverlayFrame, x: f32, y: f32, width: f32, font_size: f32) {
         let text_padding = 4.0 * frame.scale_factor();
         let text_y = y + font_size;
         let is_two_col = self.is_two_column();
@@ -162,7 +154,13 @@ impl Footer {
             let right_start = x + width * 0.71; // Match progress bar column layout
             let (secondary_width, _) = frame.measure_text(secondary, effective_font_size);
             let secondary_x = right_start - secondary_width - text_padding;
-            frame.draw_text(secondary, secondary_x, text_y, effective_font_size, self.color);
+            frame.draw_text(
+                secondary,
+                secondary_x,
+                text_y,
+                effective_font_size,
+                self.color,
+            );
         }
     }
 }

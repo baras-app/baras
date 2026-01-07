@@ -226,5 +226,3 @@ pub fn get_boss_ids(operation: &str, boss: &str) -> Vec<i64> {
 pub fn lookup_area_content_type(area_name: &str) -> Option<ContentType> {
     AREA_CONTENT_LOOKUP.get(area_name).copied()
 }
-
-

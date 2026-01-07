@@ -6,13 +6,13 @@ use tokio::sync::RwLock;
 
 use crate::combat_log::{CombatEvent, Reader};
 use crate::context::{AppConfig, parse_log_filename};
+use crate::dsl::BossEncounterDefinition;
 use crate::effects::{DefinitionSet, EffectTracker};
 use crate::game_data::effect_type_id;
 use crate::signal_processor::{EventProcessor, GameSignal, SignalHandler};
 use crate::state::SessionCache;
-use crate::dsl::BossEncounterDefinition;
+use crate::storage::{EncounterWriter, EventMetadata, encounter_filename};
 use crate::timers::{TimerDefinition, TimerManager};
-use crate::storage::{encounter_filename, EncounterWriter, EventMetadata};
 
 /// Callback type for loading boss definitions when entering a new area.
 /// Takes area_id, returns definitions if found.
@@ -152,7 +152,10 @@ impl ParsingSession {
                 if let Some(loader) = &self.definition_loader {
                     if let Some(bosses) = loader(area_id) {
                         self.load_boss_definitions(bosses);
-                        eprintln!("[PARSER] Sync loaded boss definitions for area_id={}", area_id);
+                        eprintln!(
+                            "[PARSER] Sync loaded boss definitions for area_id={}",
+                            area_id
+                        );
                     }
                     self.loaded_area_id = area_id;
                 }
@@ -167,12 +170,15 @@ impl ParsingSession {
             // Write event to parquet buffer AFTER processing
             // (so metadata captures the updated phase state)
             if let Some(writer) = &mut self.encounter_writer {
-                let metadata = EventMetadata::from_cache(cache, self.encounter_idx, event.timestamp);
+                let metadata =
+                    EventMetadata::from_cache(cache, self.encounter_idx, event.timestamp);
                 writer.push_event(&event, &metadata);
             }
 
             // Flush parquet on combat end
-            let should_flush = signals.iter().any(|s| matches!(s, GameSignal::CombatEnded { .. }));
+            let should_flush = signals
+                .iter()
+                .any(|s| matches!(s, GameSignal::CombatEnded { .. }));
 
             // Capture timestamp before dispatch (needed for counter triggers)
             let event_timestamp = event.timestamp;
@@ -190,18 +196,31 @@ impl ParsingSession {
 
     /// Flush current encounter buffer to parquet file
     fn flush_encounter_parquet(&mut self) {
-        let Some(writer) = &mut self.encounter_writer else { return };
-        if writer.is_empty() { return; }
+        let Some(writer) = &mut self.encounter_writer else {
+            return;
+        };
+        if writer.is_empty() {
+            return;
+        }
 
-        let Some(dir) = &self.encounters_dir else { return };
+        let Some(dir) = &self.encounters_dir else {
+            return;
+        };
 
         let filename = encounter_filename(self.encounter_idx);
         let path = dir.join(&filename);
 
         if let Err(e) = writer.write_to_file(&path) {
-            eprintln!("[PARQUET] Failed to write encounter {}: {}", self.encounter_idx, e);
+            eprintln!(
+                "[PARQUET] Failed to write encounter {}: {}",
+                self.encounter_idx, e
+            );
         } else {
-            eprintln!("[PARQUET] Wrote encounter {} ({} events)", self.encounter_idx, writer.len());
+            eprintln!(
+                "[PARQUET] Wrote encounter {} ({} events)",
+                self.encounter_idx,
+                writer.len()
+            );
         }
 
         writer.clear();
@@ -231,7 +250,9 @@ impl ParsingSession {
     }
 
     fn dispatch_signals(&mut self, signals: &[GameSignal]) {
-        let Some(cache) = &self.session_cache else { return };
+        let Some(cache) = &self.session_cache else {
+            return;
+        };
 
         // Get current encounter and ensure it has local_player_id from cache
         let encounter = cache.current_encounter();
@@ -282,7 +303,8 @@ impl ParsingSession {
         // Update counters based on timer events
         if let Some(cache) = &mut self.session_cache {
             use crate::signal_processor::check_counter_timer_triggers;
-            let _counter_signals = check_counter_timer_triggers(&expired_ids, &started_ids, cache, timestamp);
+            let _counter_signals =
+                check_counter_timer_triggers(&expired_ids, &started_ids, cache, timestamp);
             // Counter state is updated in-place; signals are for logging/debugging
         }
     }

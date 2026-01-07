@@ -938,7 +938,10 @@ impl SignalHandler for TimerManager {
                 );
             }
 
-            GameSignal::PhaseEndTriggered { phase_id, timestamp } => {
+            GameSignal::PhaseEndTriggered {
+                phase_id,
+                timestamp,
+            } => {
                 // Phase's end_trigger fired (may be before actual phase transition)
                 signal_handlers::handle_phase_ended(self, encounter, phase_id, *timestamp);
             }

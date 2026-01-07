@@ -4,9 +4,9 @@
 //! This module processes combat events through the challenge tracker to accumulate
 //! metrics that are later evaluated to determine success/failure.
 
-use crate::dsl::EntityInfo;
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::resolve;
+use crate::dsl::EntityInfo;
 use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
 
@@ -22,7 +22,10 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
     };
 
     // Build context from current encounter state (phase, counters, HP)
-    let ctx = cache.current_encounter().unwrap().challenge_context(&boss_npc_ids);
+    let ctx = cache
+        .current_encounter()
+        .unwrap()
+        .challenge_context(&boss_npc_ids);
 
     // Get local player ID for local_player matching
     let local_player_id = cache.player.id;
@@ -32,7 +35,9 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
     let target = entity_to_info(&event.target_entity, local_player_id);
 
     // Get mutable access to the encounter's tracker
-    let Some(enc) = cache.current_encounter_mut() else { return };
+    let Some(enc) = cache.current_encounter_mut() else {
+        return;
+    };
     let tracker = &mut enc.challenge_tracker;
 
     // Process based on event type - just accumulate, no signals needed

@@ -2,15 +2,15 @@
 //!
 //! Displays real-time health bars for boss NPCs in the current encounter.
 
-use baras_core::context::BossHealthConfig;
 use baras_core::BossHealthEntry;
+use baras_core::context::BossHealthConfig;
 
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::widgets::colors;
 use crate::utils::{color_from_rgba, format_number};
 use crate::widgets::ProgressBar;
+use crate::widgets::colors;
 
 /// Data sent from service to boss health overlay
 #[derive(Debug, Clone, Default)]
@@ -104,7 +104,10 @@ impl BossHealthOverlay {
         self.frame.begin_frame();
 
         // Filter out dead bosses (0% health) and collect living ones
-        let entries: Vec<_> = self.data.entries.iter()
+        let entries: Vec<_> = self
+            .data
+            .entries
+            .iter()
             .filter(|e| e.percent() > 0.0)
             .cloned()
             .collect();
@@ -124,7 +127,8 @@ impl BossHealthOverlay {
             let progress = entry.percent() / 100.0;
 
             // Scale font to fit boss name if too wide
-            let actual_font_size = self.scaled_font_for_text(&entry.name, content_width, label_font_size);
+            let actual_font_size =
+                self.scaled_font_for_text(&entry.name, content_width, label_font_size);
 
             // Draw boss name above bar (y is baseline, so offset by font size)
             self.frame.draw_text(

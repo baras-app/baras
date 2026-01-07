@@ -6,7 +6,8 @@
 use std::collections::HashMap;
 
 use cosmic_text::{
-    Attrs, Buffer, Color as CosmicColor, Family, FontSystem, LayoutGlyph, Metrics, Shaping, SwashCache,
+    Attrs, Buffer, Color as CosmicColor, Family, FontSystem, LayoutGlyph, Metrics, Shaping,
+    SwashCache,
 };
 use tiny_skia::{
     Color, FillRule, LineCap, LineJoin, Paint, PathBuilder, PixmapMut, Rect, Stroke, StrokeDash,
@@ -28,7 +29,6 @@ struct CachedText {
 
 /// Key for text cache: (text content, font size rounded to tenths)
 type TextCacheKey = (String, u32);
-
 
 /// A software renderer for overlay content
 pub struct Renderer {
@@ -59,13 +59,18 @@ impl Renderer {
 
         // Find the oldest entries to remove (remove ~25% of cache)
         let target_size = TEXT_CACHE_MAX_ENTRIES * 3 / 4;
-        let mut entries: Vec<_> = self.text_cache.iter()
+        let mut entries: Vec<_> = self
+            .text_cache
+            .iter()
             .map(|(k, v)| (k.clone(), v.last_used))
             .collect();
         entries.sort_by_key(|(_, last_used)| *last_used);
 
         // Remove oldest entries
-        for (key, _) in entries.into_iter().take(self.text_cache.len() - target_size) {
+        for (key, _) in entries
+            .into_iter()
+            .take(self.text_cache.len() - target_size)
+        {
             self.text_cache.remove(&key);
         }
     }
@@ -74,7 +79,8 @@ impl Renderer {
     fn find_cached(&mut self, text: &str, font_size_key: u32) -> Option<&mut CachedText> {
         // Linear search through cache - faster than allocation for small cache hits
         // Most overlays have <20 unique text strings, so this is efficient
-        self.text_cache.iter_mut()
+        self.text_cache
+            .iter_mut()
             .find(|(k, _)| k.0 == text && k.1 == font_size_key)
             .map(|(_, v)| v)
     }
@@ -432,4 +438,3 @@ fn draw_glyph_to_pixmap(
         }
     }
 }
-

@@ -6,8 +6,10 @@
 use hashbrown::HashSet;
 use serde::{Deserialize, Serialize};
 
+use super::{
+    ChallengeDefinition, CounterCondition, CounterDefinition, CounterTrigger, PhaseDefinition,
+};
 use crate::dsl::audio::AudioConfig;
-use super::{ChallengeDefinition, CounterCondition, CounterDefinition, CounterTrigger, PhaseDefinition};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Root Config Structure
@@ -183,7 +185,6 @@ pub struct BossEncounterDefinition {
     pub entities: Vec<EntityDefinition>,
 
     // ─── Mechanics ───────────────────────────────────────────────────────────
-
     /// Phase definitions
     #[serde(default, alias = "phase", skip_serializing_if = "Vec::is_empty")]
     pub phases: Vec<PhaseDefinition>,
@@ -295,7 +296,6 @@ pub struct BossTimerDefinition {
     pub show_at_secs: f32,
 
     // ─── Audio ───────────────────────────────────────────────────────────────
-
     /// Audio configuration (alerts, countdown, custom sounds)
     #[serde(default)]
     pub audio: AudioConfig,
@@ -306,7 +306,12 @@ impl BossTimerDefinition {
     ///
     /// Fills in the `area_ids` and `boss` fields from the parent encounter.
     /// Uses area_id for reliable matching (area_name kept for logging/fallback).
-    pub fn to_timer_definition(&self, area_id: i64, area_name: &str, boss_name: &str) -> crate::timers::TimerDefinition {
+    pub fn to_timer_definition(
+        &self,
+        area_id: i64,
+        area_name: &str,
+        boss_name: &str,
+    ) -> crate::timers::TimerDefinition {
         crate::timers::TimerDefinition {
             id: self.id.clone(),
             name: self.name.clone(),
@@ -396,7 +401,7 @@ impl BossEncounterDefinition {
         self.entities.iter().filter(|e| e.is_kill_target)
     }
 
-       // ─── Phase/Counter Methods ───────────────────────────────────────────────
+    // ─── Phase/Counter Methods ───────────────────────────────────────────────
 
     /// Get the initial phase (triggered by CombatStart)
     pub fn initial_phase(&self) -> Option<&PhaseDefinition> {
@@ -438,7 +443,11 @@ impl BossEncounterDefinition {
     }
 
     pub fn build_indexes(&mut self) {
-        self.all_npc_ids = self.entities.iter().flat_map(|e| e.ids.iter().copied()).collect();
+        self.all_npc_ids = self
+            .entities
+            .iter()
+            .flat_map(|e| e.ids.iter().copied())
+            .collect();
     }
 
     /// Check if any entity in this encounter has the given NPC class ID
@@ -446,4 +455,3 @@ impl BossEncounterDefinition {
         self.all_npc_ids.contains(&npc_id)
     }
 }
-

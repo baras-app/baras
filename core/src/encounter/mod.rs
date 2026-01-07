@@ -1,25 +1,26 @@
 pub mod challenge;
 pub mod combat;
-pub mod metrics;
 pub mod effect_instance;
-pub mod shielding;
 pub mod entity_info;
+pub mod metrics;
+pub mod shielding;
 pub mod summary;
 
 pub use challenge::{ChallengeTracker, ChallengeValue};
-pub use combat::{CombatEncounter, ProcessingMode, ActiveBoss};
+pub use combat::{ActiveBoss, CombatEncounter, ProcessingMode};
 pub use effect_instance::EffectInstance;
 pub use shielding::PendingAbsorption;
 
 use chrono::NaiveDateTime;
-
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum EncounterState {
     #[default]
     NotStarted,
     InCombat,
-    PostCombat { exit_time: NaiveDateTime },
+    PostCombat {
+        exit_time: NaiveDateTime,
+    },
 }
 
 /// Classification of the phase/content type where an encounter occurred

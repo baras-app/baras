@@ -116,7 +116,7 @@ impl EntityFilterMatching for EntityFilter {
         npc_id: Option<i64>,
         boss_npc_ids: &[i64],
     ) -> bool {
-         let is_npc = !is_player;
+        let is_npc = !is_player;
 
         match self {
             // Player filters

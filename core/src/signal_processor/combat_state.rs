@@ -38,15 +38,18 @@ pub fn advance_combat_state(
         .unwrap_or_default();
 
     match current_state {
-        EncounterState::NotStarted => {
-            handle_not_started(event, cache, effect_id, timestamp)
-        }
+        EncounterState::NotStarted => handle_not_started(event, cache, effect_id, timestamp),
         EncounterState::InCombat => {
             handle_in_combat(event, cache, effect_id, effect_type_id, timestamp)
         }
-        EncounterState::PostCombat { exit_time } => {
-            handle_post_combat(event, cache, effect_id, timestamp, exit_time, post_combat_threshold_ms)
-        }
+        EncounterState::PostCombat { exit_time } => handle_post_combat(
+            event,
+            cache,
+            effect_id,
+            timestamp,
+            exit_time,
+            post_combat_threshold_ms,
+        ),
     }
 }
 
@@ -54,7 +57,9 @@ pub fn advance_combat_state(
 fn track_encounter_effects(event: &CombatEvent, cache: &mut SessionCache) {
     use crate::combat_log::EntityType;
 
-    let Some(enc) = cache.current_encounter_mut() else { return };
+    let Some(enc) = cache.current_encounter_mut() else {
+        return;
+    };
 
     match event.effect.type_id {
         effect_type_id::APPLYEFFECT if event.target_entity.entity_type != EntityType::Empty => {
@@ -107,31 +112,33 @@ fn handle_in_combat(
     let mut signals = Vec::new();
 
     // Check for combat timeout
-    if let Some(enc) = cache.current_encounter() && let Some(last_activity) = enc.last_combat_activity_time {
-            let elapsed = timestamp.signed_duration_since(last_activity).num_seconds();
-            if elapsed >= COMBAT_TIMEOUT_SECONDS {
-                let encounter_id = enc.id;
-                // End combat at last_activity_time
-                if let Some(enc) = cache.current_encounter_mut() {
-                    enc.flush_pending_absorptions();
-                    enc.exit_combat_time = Some(last_activity);
-                    enc.state = EncounterState::PostCombat {
-                        exit_time: last_activity,
-                    };
-                    let duration = enc.duration_seconds().unwrap_or(0) as f32;
-                    enc.challenge_tracker.finalize(last_activity, duration);
-                }
-
-                signals.push(GameSignal::CombatEnded {
-                    timestamp: last_activity,
-                    encounter_id,
-                });
-
-                cache.push_new_encounter();
-                // Re-process this event in the new encounter's state machine
-                signals.extend(advance_combat_state(event, cache, 0));
-                return signals;
+    if let Some(enc) = cache.current_encounter()
+        && let Some(last_activity) = enc.last_combat_activity_time
+    {
+        let elapsed = timestamp.signed_duration_since(last_activity).num_seconds();
+        if elapsed >= COMBAT_TIMEOUT_SECONDS {
+            let encounter_id = enc.id;
+            // End combat at last_activity_time
+            if let Some(enc) = cache.current_encounter_mut() {
+                enc.flush_pending_absorptions();
+                enc.exit_combat_time = Some(last_activity);
+                enc.state = EncounterState::PostCombat {
+                    exit_time: last_activity,
+                };
+                let duration = enc.duration_seconds().unwrap_or(0) as f32;
+                enc.challenge_tracker.finalize(last_activity, duration);
             }
+
+            signals.push(GameSignal::CombatEnded {
+                timestamp: last_activity,
+                encounter_id,
+            });
+
+            cache.push_new_encounter();
+            // Re-process this event in the new encounter's state machine
+            signals.extend(advance_combat_state(event, cache, 0));
+            return signals;
+        }
     }
 
     let all_players_dead = cache
@@ -142,7 +149,9 @@ fn handle_in_combat(
     // Check if all kill targets are dead (boss encounter victory condition)
     // We check all NPC INSTANCES that match kill target class_ids
     let all_kill_targets_dead = cache.current_encounter().map_or(false, |enc| {
-        let Some(def_idx) = enc.active_boss_idx() else { return false };
+        let Some(def_idx) = enc.active_boss_idx() else {
+            return false;
+        };
 
         // Collect all kill target class IDs from the boss definition
         let kill_target_class_ids: std::collections::HashSet<i64> = enc.boss_definitions()[def_idx]
@@ -155,7 +164,9 @@ fn handle_in_combat(
         }
 
         // Find all NPC instances that are kill targets (by class_id)
-        let kill_target_instances: Vec<_> = enc.npcs.values()
+        let kill_target_instances: Vec<_> = enc
+            .npcs
+            .values()
             .filter(|npc| kill_target_class_ids.contains(&npc.class_id))
             .collect();
 

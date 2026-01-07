@@ -8,7 +8,6 @@ pub const MAX_OVERLAY_WIDTH: u32 = 1280;
 pub const MAX_OVERLAY_HEIGHT: u32 = 1024;
 pub const RESIZE_CORNER_SIZE: i32 = 20;
 
-
 #[cfg(all(unix, not(target_os = "macos")))]
 pub mod wayland;
 
@@ -96,7 +95,12 @@ impl VirtualScreenBounds {
             max_y = max_y.max(m.y + m.height as i32);
         }
 
-        Some(Self { min_x, min_y, max_x, max_y })
+        Some(Self {
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+        })
     }
 
     /// Clamp a window position to stay within the virtual screen bounds
@@ -365,7 +369,10 @@ pub fn get_all_monitors() -> Vec<MonitorInfo> {
 }
 
 /// Find a monitor by ID, or fall back to the primary monitor
-pub fn find_monitor_by_id<'a>(monitors: &'a [MonitorInfo], id: Option<&str>) -> Option<&'a MonitorInfo> {
+pub fn find_monitor_by_id<'a>(
+    monitors: &'a [MonitorInfo],
+    id: Option<&str>,
+) -> Option<&'a MonitorInfo> {
     if let Some(id) = id {
         // Try to find exact match
         if let Some(monitor) = monitors.iter().find(|m| m.id == id) {

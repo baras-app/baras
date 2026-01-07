@@ -68,7 +68,11 @@ pub fn EntityFilterDropdown(
     on_change: EventHandler<EntityFilter>,
 ) -> Element {
     let is_selector = matches!(value, EntityFilter::Selector(_));
-    let selectors = if let EntityFilter::Selector(s) = &value { s.clone() } else { vec![] };
+    let selectors = if let EntityFilter::Selector(s) = &value {
+        s.clone()
+    } else {
+        vec![]
+    };
 
     rsx! {
         div { class: "flex-col gap-xs",

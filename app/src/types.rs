@@ -10,12 +10,24 @@ use serde::{Deserialize, Serialize};
 // ─────────────────────────────────────────────────────────────────────────────
 
 pub use baras_types::{
-    // Config types
-    AppConfig, BossHealthConfig, ChallengeColumns, ChallengeLayout, Color, EntityFilter,
-    OverlayAppearanceConfig, OverlaySettings, PersonalOverlayConfig, PersonalStat,
-    RaidOverlaySettings, TimerOverlayConfig, MAX_PROFILES,
     // Selectors (unified ID-or-Name matching)
-    AbilitySelector, EffectSelector, EntitySelector,
+    AbilitySelector,
+    // Config types
+    AppConfig,
+    BossHealthConfig,
+    ChallengeColumns,
+    ChallengeLayout,
+    Color,
+    EffectSelector,
+    EntityFilter,
+    EntitySelector,
+    MAX_PROFILES,
+    OverlayAppearanceConfig,
+    OverlaySettings,
+    PersonalOverlayConfig,
+    PersonalStat,
+    RaidOverlaySettings,
+    TimerOverlayConfig,
     // Trigger type (shared across timers, phases, counters)
     Trigger,
 };
@@ -227,7 +239,9 @@ pub struct BossEncounterDefinition {
     pub challenges: Vec<ChallengeDefinition>,
 }
 
-fn default_enabled() -> bool { true }
+fn default_enabled() -> bool {
+    true
+}
 
 /// Timer definition (mirrors baras_core::dsl::BossTimerDefinition)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -271,7 +285,9 @@ pub struct BossTimerDefinition {
     pub audio: AudioConfig,
 }
 
-fn default_timer_color() -> [u8; 4] { [255, 128, 0, 255] }
+fn default_timer_color() -> [u8; 4] {
+    [255, 128, 0, 255]
+}
 
 /// Phase definition (mirrors baras_core::dsl::PhaseDefinition)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -312,7 +328,9 @@ pub struct CounterDefinition {
     pub set_value: Option<u32>,
 }
 
-fn default_reset_trigger() -> Trigger { Trigger::CombatEnd }
+fn default_reset_trigger() -> Trigger {
+    Trigger::CombatEnd
+}
 
 /// Challenge definition (mirrors baras_core::dsl::ChallengeDefinition)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

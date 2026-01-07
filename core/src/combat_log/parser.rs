@@ -270,13 +270,13 @@ impl LogParser {
             effect_id::HEAL => LogParser::parse_heal_details(segment),
             effect_id::TAUNT => {
                 let bytes = segment.as_bytes();
-        let angle = memchr(b'<', bytes);
-        let angle_end = memchr(b'>', bytes);
-        // Parse threat from <value> - only present if effective heal occurred
-        let threat = angle
-            .zip(angle_end)
-            .and_then(|(s, e)| segment[s + 1..e].parse::<f32>().ok())
-            .unwrap_or_default();
+                let angle = memchr(b'<', bytes);
+                let angle_end = memchr(b'>', bytes);
+                // Parse threat from <value> - only present if effective heal occurred
+                let threat = angle
+                    .zip(angle_end)
+                    .and_then(|(s, e)| segment[s + 1..e].parse::<f32>().ok())
+                    .unwrap_or_default();
                 Some(Details {
                     threat,
                     ..Default::default()

@@ -96,8 +96,13 @@ impl PersonalOverlay {
                 let diff = self.stats.difficulty.as_deref().unwrap_or("Open World");
                 ("", diff.to_string())
             }
-            PersonalStat::EncounterTime => ("Combat Time", format_time(self.stats.encounter_time_secs)),
-            PersonalStat::EncounterCount => ("Session Encounters", format!("{}", self.stats.encounter_count)),
+            PersonalStat::EncounterTime => {
+                ("Combat Time", format_time(self.stats.encounter_time_secs))
+            }
+            PersonalStat::EncounterCount => (
+                "Session Encounters",
+                format!("{}", self.stats.encounter_count),
+            ),
             PersonalStat::Apm => ("APM", format!("{:.1}", self.stats.apm)),
             PersonalStat::Dps => ("DPS", format_number(self.stats.dps as i64)),
             PersonalStat::EDps => ("eDPS", format_number(self.stats.edps as i64)),
@@ -110,7 +115,9 @@ impl PersonalOverlay {
             PersonalStat::Dtps => ("eDTPS", format_number(self.stats.edtps as i64)),
             PersonalStat::Tps => ("TPS", format_number(self.stats.tps as i64)),
             PersonalStat::TotalThreat => ("Threat", format_number(self.stats.total_threat)),
-            PersonalStat::DamageCritPct => ("Dmg Crit", format!("{:.1}%", self.stats.damage_crit_pct)),
+            PersonalStat::DamageCritPct => {
+                ("Dmg Crit", format!("{:.1}%", self.stats.damage_crit_pct))
+            }
             PersonalStat::HealCritPct => ("Heal Crit", format!("{:.1}%", self.stats.heal_crit_pct)),
             PersonalStat::EffectiveHealPct => {
                 ("Eff Heal", format!("{:.1}%", self.stats.effective_heal_pct))

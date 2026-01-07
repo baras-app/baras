@@ -72,8 +72,7 @@ impl TimerPreferences {
         let content = std::fs::read_to_string(path)
             .map_err(|e| PreferencesError::Io(path.to_path_buf(), e))?;
 
-        toml::from_str(&content)
-            .map_err(|e| PreferencesError::Parse(path.to_path_buf(), e))
+        toml::from_str(&content).map_err(|e| PreferencesError::Parse(path.to_path_buf(), e))
     }
 
     /// Save preferences to a TOML file
@@ -87,11 +86,10 @@ impl TimerPreferences {
                 .map_err(|e| PreferencesError::Io(path.to_path_buf(), e))?;
         }
 
-        let content = toml::to_string_pretty(&cleaned)
-            .map_err(|e| PreferencesError::Serialize(e))?;
+        let content =
+            toml::to_string_pretty(&cleaned).map_err(|e| PreferencesError::Serialize(e))?;
 
-        std::fs::write(path, content)
-            .map_err(|e| PreferencesError::Io(path.to_path_buf(), e))
+        std::fs::write(path, content).map_err(|e| PreferencesError::Io(path.to_path_buf(), e))
     }
 
     /// Get preference for a timer by key
@@ -140,7 +138,8 @@ impl TimerPreferences {
     /// Return a copy with empty preferences removed
     fn without_empty(&self) -> Self {
         Self {
-            timers: self.timers
+            timers: self
+                .timers
                 .iter()
                 .filter(|(_, v)| !v.is_empty())
                 .map(|(k, v)| (k.clone(), v.clone()))
@@ -180,7 +179,9 @@ impl TimerPreferences {
     pub fn key_for_definition(def: &TimerDefinition) -> String {
         if let Some(ref boss_name) = def.boss {
             // Boss timer: use first encounter name (area_name) + boss + timer_id
-            let area_name = def.encounters.first()
+            let area_name = def
+                .encounters
+                .first()
                 .map(|s| s.as_str())
                 .unwrap_or("unknown");
             boss_timer_key(area_name, boss_name, &def.id)
@@ -193,7 +194,8 @@ impl TimerPreferences {
     /// Get effective enabled state for a timer (preference overrides definition)
     pub fn is_enabled(&self, def: &TimerDefinition) -> bool {
         let key = Self::key_for_definition(def);
-        self.timers.get(&key)
+        self.timers
+            .get(&key)
             .and_then(|p| p.enabled)
             .unwrap_or(def.enabled)
     }
@@ -201,7 +203,8 @@ impl TimerPreferences {
     /// Get effective color for a timer (preference overrides definition)
     pub fn get_color(&self, def: &TimerDefinition) -> [u8; 4] {
         let key = Self::key_for_definition(def);
-        self.timers.get(&key)
+        self.timers
+            .get(&key)
             .and_then(|p| p.color)
             .unwrap_or(def.color)
     }
@@ -209,7 +212,8 @@ impl TimerPreferences {
     /// Get effective audio enabled state (preference overrides definition)
     pub fn is_audio_enabled(&self, def: &TimerDefinition) -> bool {
         let key = Self::key_for_definition(def);
-        self.timers.get(&key)
+        self.timers
+            .get(&key)
             .and_then(|p| p.audio_enabled)
             .unwrap_or(def.audio.enabled)
     }
@@ -217,7 +221,8 @@ impl TimerPreferences {
     /// Get effective audio file (preference overrides definition)
     pub fn get_audio_file(&self, def: &TimerDefinition) -> Option<String> {
         let key = Self::key_for_definition(def);
-        self.timers.get(&key)
+        self.timers
+            .get(&key)
             .and_then(|p| p.audio_file.clone())
             .or_else(|| def.audio.file.clone())
     }
@@ -288,7 +293,10 @@ mod tests {
         assert_eq!(prefs.get("test.timer").unwrap().enabled, Some(false));
 
         prefs.update_color("test.timer", [255, 0, 0, 255]);
-        assert_eq!(prefs.get("test.timer").unwrap().color, Some([255, 0, 0, 255]));
+        assert_eq!(
+            prefs.get("test.timer").unwrap().color,
+            Some([255, 0, 0, 255])
+        );
     }
 
     #[test]

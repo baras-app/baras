@@ -3,9 +3,9 @@
 //! Full CRUD for the BossEncounter DSL: timers, phases, counters, challenges, entities.
 //! Uses unified BossWithPath type and EncounterItem enum for streamlined data handling.
 
+mod challenges;
 mod conditions;
 mod counters;
-mod challenges;
 mod entities;
 mod new_forms;
 mod phases;
@@ -89,10 +89,7 @@ pub fn InlineNameCreator(
 
 /// Chip editor for NPC IDs with +Add button
 #[component]
-pub fn NpcIdChipEditor(
-    ids: Vec<i64>,
-    on_change: EventHandler<Vec<i64>>,
-) -> Element {
+pub fn NpcIdChipEditor(ids: Vec<i64>, on_change: EventHandler<Vec<i64>>) -> Element {
     let mut new_input = use_signal(String::new);
     let ids_for_keydown = ids.clone();
     let ids_for_click = ids.clone();
@@ -225,7 +222,9 @@ pub fn EncounterEditorPanel() -> Element {
                     bosses.set(b);
                 }
                 None => {
-                    web_sys::console::error_1(&"[UI] fetch_area_bosses returned None - deserialization failed!".into());
+                    web_sys::console::error_1(
+                        &"[UI] fetch_area_bosses returned None - deserialization failed!".into(),
+                    );
                 }
             }
             loading_bosses.set(false);

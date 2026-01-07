@@ -100,18 +100,18 @@ pub async fn resume_live_tailing(handle: State<'_, ServiceHandle>) -> Result<(),
 pub fn is_live_tailing(handle: State<'_, ServiceHandle>) -> Result<bool, String> {
     Ok(handle.is_live_tailing())
 }
-      #[tauri::command]
-      pub async fn pick_audio_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-          use tauri_plugin_dialog::DialogExt;
+#[tauri::command]
+pub async fn pick_audio_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
 
-          let file = app
-              .dialog()
-              .file()
-              .add_filter("Audio Files", &["mp3", "wav"])
-              .blocking_pick_file();
+    let file = app
+        .dialog()
+        .file()
+        .add_filter("Audio Files", &["mp3", "wav"])
+        .blocking_pick_file();
 
-          Ok(file.map(|f| f.to_string()))
-      }
+    Ok(file.map(|f| f.to_string()))
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config Commands

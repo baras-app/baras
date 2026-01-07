@@ -72,7 +72,12 @@ impl ProgressBar {
 
     /// Truncate label to fit within max_width, adding "..." if truncated
     /// Uses estimation + single verification instead of binary search to reduce measure_text calls
-    fn truncate_label_to_width(&self, frame: &mut OverlayFrame, max_width: f32, font_size: f32) -> String {
+    fn truncate_label_to_width(
+        &self,
+        frame: &mut OverlayFrame,
+        max_width: f32,
+        font_size: f32,
+    ) -> String {
         let (label_width, _) = frame.measure_text(&self.label, font_size);
         if label_width <= max_width {
             return self.label.clone();
@@ -157,8 +162,18 @@ impl ProgressBar {
         };
 
         // Draw label on the left (truncated to fit)
-        let display_label = self.truncate_label_to_width(frame, name_width - text_padding * 2.0, effective_font_size);
-        frame.draw_text(&display_label, x + text_padding, text_y, effective_font_size, self.text_color);
+        let display_label = self.truncate_label_to_width(
+            frame,
+            name_width - text_padding * 2.0,
+            effective_font_size,
+        );
+        frame.draw_text(
+            &display_label,
+            x + text_padding,
+            text_y,
+            effective_font_size,
+            self.text_color,
+        );
 
         // Draw right text (rightmost position)
         if let Some(ref right) = self.right_text {
@@ -178,7 +193,13 @@ impl ProgressBar {
                 // In 3-column mode, position center text right-aligned within its column
                 let (center_width, _) = frame.measure_text(center, effective_font_size);
                 let center_x = right_start - center_width - text_padding;
-                frame.draw_text(center, center_x, text_y, effective_font_size, self.text_color);
+                frame.draw_text(
+                    center,
+                    center_x,
+                    text_y,
+                    effective_font_size,
+                    self.text_color,
+                );
             } else {
                 // In 2-column mode (center only), right-align it
                 let (center_width, _) = frame.measure_text(center, effective_font_size);

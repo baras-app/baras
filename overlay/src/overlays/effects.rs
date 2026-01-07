@@ -9,7 +9,7 @@ use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::color_from_rgba;
-use crate::widgets::{colors, ProgressBar};
+use crate::widgets::{ProgressBar, colors};
 
 /// A single effect entry for display
 #[derive(Debug, Clone)]
@@ -136,7 +136,9 @@ impl EffectsOverlay {
 
         // Sort entries in place if needed
         if self.config.sort_by_remaining {
-            self.data.entries.sort_by(|a, b| a.remaining_secs.partial_cmp(&b.remaining_secs).unwrap());
+            self.data
+                .entries
+                .sort_by(|a, b| a.remaining_secs.partial_cmp(&b.remaining_secs).unwrap());
         }
 
         // Nothing to render if no effects

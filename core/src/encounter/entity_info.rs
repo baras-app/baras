@@ -55,5 +55,3 @@ impl Default for NpcInfo {
         }
     }
 }
-
-

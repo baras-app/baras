@@ -87,7 +87,10 @@ fn main() {
     if let Some(ref dir) = definitions_dir {
         match load_bosses_from_dir(dir) {
             Ok(bosses) => {
-                eprintln!("[PARSE-WORKER] Loaded {} bundled boss definitions", bosses.len());
+                eprintln!(
+                    "[PARSE-WORKER] Loaded {} bundled boss definitions",
+                    bosses.len()
+                );
                 boss_definitions = bosses;
             }
             Err(e) => {
@@ -97,15 +100,22 @@ fn main() {
     }
 
     // 2. Load from user config directory (standalone + overlay user encounters)
-    if let Some(user_dir) = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters")) {
+    if let Some(user_dir) =
+        dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"))
+    {
         if user_dir.exists() {
             match load_bosses_from_dir(&user_dir) {
                 Ok(user_bosses) => {
                     if !user_bosses.is_empty() {
-                        eprintln!("[PARSE-WORKER] Loaded {} user boss definitions", user_bosses.len());
+                        eprintln!(
+                            "[PARSE-WORKER] Loaded {} user boss definitions",
+                            user_bosses.len()
+                        );
                         // Merge: field-level merge for existing bosses, append new ones
                         for user_boss in user_bosses {
-                            if let Some(existing) = boss_definitions.iter_mut().find(|b| b.id == user_boss.id) {
+                            if let Some(existing) =
+                                boss_definitions.iter_mut().find(|b| b.id == user_boss.id)
+                            {
                                 // Field-level merge: timers, phases, entities, etc. by ID
                                 merge_boss_definition(existing, user_boss);
                             } else {

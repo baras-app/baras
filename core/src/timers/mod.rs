@@ -28,8 +28,7 @@ pub use active::{ActiveTimer, TimerKey};
 pub use definition::{TimerConfig, TimerDefinition, TimerTrigger};
 pub use manager::{FiredAlert, TimerManager};
 pub use preferences::{
-    boss_timer_key, standalone_timer_key,
-    TimerPreference, TimerPreferences, PreferencesError,
+    PreferencesError, TimerPreference, TimerPreferences, boss_timer_key, standalone_timer_key,
 };
 
 use std::path::Path;

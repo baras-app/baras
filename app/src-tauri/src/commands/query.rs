@@ -2,7 +2,10 @@
 //!
 //! Provides SQL-based queries over encounter data using DataFusion.
 
-use baras_core::query::{AbilityBreakdown, BreakdownMode, CombatLogRow, DataTab, EffectChartData, EffectWindow, EncounterTimeline, EntityBreakdown, PlayerDeath, RaidOverviewRow, TimeRange, TimeSeriesPoint};
+use baras_core::query::{
+    AbilityBreakdown, BreakdownMode, CombatLogRow, DataTab, EffectChartData, EffectWindow,
+    EncounterTimeline, EntityBreakdown, PlayerDeath, RaidOverviewRow, TimeRange, TimeSeriesPoint,
+};
 use tauri::State;
 
 use crate::service::ServiceHandle;
@@ -20,7 +23,17 @@ pub async fn query_breakdown(
     breakdown_mode: Option<BreakdownMode>,
     duration_secs: Option<f32>,
 ) -> Result<Vec<AbilityBreakdown>, String> {
-    handle.query_breakdown(tab, encounter_idx, entity_name, time_range, entity_types, breakdown_mode, duration_secs).await
+    handle
+        .query_breakdown(
+            tab,
+            encounter_idx,
+            entity_name,
+            time_range,
+            entity_types,
+            breakdown_mode,
+            duration_secs,
+        )
+        .await
 }
 
 /// Query damage/healing breakdown by entity for a data tab.
@@ -31,7 +44,9 @@ pub async fn query_entity_breakdown(
     encounter_idx: Option<u32>,
     time_range: Option<TimeRange>,
 ) -> Result<Vec<EntityBreakdown>, String> {
-    handle.query_entity_breakdown(tab, encounter_idx, time_range).await
+    handle
+        .query_entity_breakdown(tab, encounter_idx, time_range)
+        .await
 }
 
 /// Query raid overview - aggregated stats per player.
@@ -42,7 +57,9 @@ pub async fn query_raid_overview(
     time_range: Option<TimeRange>,
     duration_secs: Option<f32>,
 ) -> Result<Vec<RaidOverviewRow>, String> {
-    handle.query_raid_overview(encounter_idx, time_range, duration_secs).await
+    handle
+        .query_raid_overview(encounter_idx, time_range, duration_secs)
+        .await
 }
 
 /// Query DPS over time with specified bucket size.
@@ -54,14 +71,14 @@ pub async fn query_dps_over_time(
     source_name: Option<String>,
     time_range: Option<TimeRange>,
 ) -> Result<Vec<TimeSeriesPoint>, String> {
-    handle.query_dps_over_time(encounter_idx, bucket_ms, source_name, time_range).await
+    handle
+        .query_dps_over_time(encounter_idx, bucket_ms, source_name, time_range)
+        .await
 }
 
 /// List available encounter parquet files.
 #[tauri::command]
-pub async fn list_encounter_files(
-    handle: State<'_, ServiceHandle>,
-) -> Result<Vec<u32>, String> {
+pub async fn list_encounter_files(handle: State<'_, ServiceHandle>) -> Result<Vec<u32>, String> {
     handle.list_encounter_files().await
 }
 
@@ -83,7 +100,9 @@ pub async fn query_hps_over_time(
     source_name: Option<String>,
     time_range: Option<TimeRange>,
 ) -> Result<Vec<TimeSeriesPoint>, String> {
-    handle.query_hps_over_time(encounter_idx, bucket_ms, source_name, time_range).await
+    handle
+        .query_hps_over_time(encounter_idx, bucket_ms, source_name, time_range)
+        .await
 }
 
 /// Query DTPS over time with specified bucket size.
@@ -95,7 +114,9 @@ pub async fn query_dtps_over_time(
     target_name: Option<String>,
     time_range: Option<TimeRange>,
 ) -> Result<Vec<TimeSeriesPoint>, String> {
-    handle.query_dtps_over_time(encounter_idx, bucket_ms, target_name, time_range).await
+    handle
+        .query_dtps_over_time(encounter_idx, bucket_ms, target_name, time_range)
+        .await
 }
 
 /// Query effect uptime statistics for charts panel.
@@ -107,7 +128,9 @@ pub async fn query_effect_uptime(
     time_range: Option<TimeRange>,
     duration_secs: f32,
 ) -> Result<Vec<EffectChartData>, String> {
-    handle.query_effect_uptime(encounter_idx, target_name, time_range, duration_secs).await
+    handle
+        .query_effect_uptime(encounter_idx, target_name, time_range, duration_secs)
+        .await
 }
 
 /// Query individual time windows for a specific effect.
@@ -120,7 +143,15 @@ pub async fn query_effect_windows(
     time_range: Option<TimeRange>,
     duration_secs: f32,
 ) -> Result<Vec<EffectWindow>, String> {
-    handle.query_effect_windows(encounter_idx, effect_id, target_name, time_range, duration_secs).await
+    handle
+        .query_effect_windows(
+            encounter_idx,
+            effect_id,
+            target_name,
+            time_range,
+            duration_secs,
+        )
+        .await
 }
 
 /// Query combat log rows with pagination for virtual scrolling.
@@ -135,7 +166,17 @@ pub async fn query_combat_log(
     search_filter: Option<String>,
     time_range: Option<TimeRange>,
 ) -> Result<Vec<CombatLogRow>, String> {
-    handle.query_combat_log(encounter_idx, offset, limit, source_filter, target_filter, search_filter, time_range).await
+    handle
+        .query_combat_log(
+            encounter_idx,
+            offset,
+            limit,
+            source_filter,
+            target_filter,
+            search_filter,
+            time_range,
+        )
+        .await
 }
 
 /// Get total count of combat log rows for pagination.
@@ -148,7 +189,15 @@ pub async fn query_combat_log_count(
     search_filter: Option<String>,
     time_range: Option<TimeRange>,
 ) -> Result<u64, String> {
-    handle.query_combat_log_count(encounter_idx, source_filter, target_filter, search_filter, time_range).await
+    handle
+        .query_combat_log_count(
+            encounter_idx,
+            source_filter,
+            target_filter,
+            search_filter,
+            time_range,
+        )
+        .await
 }
 
 /// Get distinct source names for combat log filter dropdown.

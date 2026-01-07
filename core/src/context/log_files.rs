@@ -191,11 +191,7 @@ impl DirectoryIndex {
     }
 
     /// Clean up log files based on settings. Returns (empty_deleted, old_deleted).
-    pub fn cleanup(
-        &mut self,
-        delete_empty: bool,
-        retention_days: Option<u32>,
-    ) -> (u32, u32) {
+    pub fn cleanup(&mut self, delete_empty: bool, retention_days: Option<u32>) -> (u32, u32) {
         let mut empty_deleted = 0u32;
         let mut old_deleted = 0u32;
 

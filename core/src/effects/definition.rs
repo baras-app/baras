@@ -185,7 +185,6 @@ pub struct EffectDefinition {
     pub alert_threshold_secs: f32,
 
     // ─── Audio ─────────────────────────────────────────────────────────────────
-
     /// Audio configuration (alerts, custom sounds)
     #[serde(default)]
     pub audio: AudioConfig,
@@ -199,12 +198,16 @@ impl EffectDefinition {
 
     /// Check if an effect ID/name matches this definition
     pub fn matches_effect(&self, effect_id: u64, effect_name: Option<&str>) -> bool {
-        self.effects.iter().any(|s| s.matches(effect_id, effect_name))
+        self.effects
+            .iter()
+            .any(|s| s.matches(effect_id, effect_name))
     }
 
     /// Check if an ability can refresh this effect
     pub fn can_refresh_with(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
-        self.refresh_abilities.iter().any(|s| s.matches(ability_id, ability_name))
+        self.refresh_abilities
+            .iter()
+            .any(|s| s.matches(ability_id, ability_name))
     }
 
     /// Check if this definition uses an AbilityCast start trigger
@@ -215,7 +218,10 @@ impl EffectDefinition {
     /// Check if an ability cast matches this definition's start_trigger
     pub fn matches_ability_cast(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
         if let Some(Trigger::AbilityCast { ref abilities, .. }) = self.start_trigger {
-            abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+            abilities.is_empty()
+                || abilities
+                    .iter()
+                    .any(|s| s.matches(ability_id, ability_name))
         } else {
             false
         }

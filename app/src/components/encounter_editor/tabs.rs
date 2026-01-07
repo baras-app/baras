@@ -6,8 +6,8 @@
 use dioxus::prelude::*;
 
 use crate::types::{
-    BossWithPath, BossTimerDefinition, PhaseDefinition, CounterDefinition,
-    ChallengeDefinition, EntityDefinition,
+    BossTimerDefinition, BossWithPath, ChallengeDefinition, CounterDefinition, EntityDefinition,
+    PhaseDefinition,
 };
 
 use super::challenges::ChallengesTab;

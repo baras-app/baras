@@ -8,8 +8,8 @@ use tiny_skia::Color;
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::widgets::colors;
 use crate::utils::{color_from_rgba, format_number, truncate_name};
+use crate::widgets::colors;
 use crate::widgets::{Footer, Header, ProgressBar};
 
 /// Entry in a DPS/HPS metric
@@ -169,7 +169,8 @@ impl MetricOverlay {
                 // Compress both bars and spacing proportionally
                 let compression_ratio = available_for_bars / ideal_total;
                 let compressed_bar = (ideal_bar_height * compression_ratio).max(min_bar_height);
-                let compressed_spacing = (bar_spacing * compression_ratio).max(MIN_BAR_SPACING_ABSOLUTE);
+                let compressed_spacing =
+                    (bar_spacing * compression_ratio).max(MIN_BAR_SPACING_ABSOLUTE);
                 (compressed_bar, compressed_spacing)
             } else {
                 (ideal_bar_height, bar_spacing)
@@ -187,9 +188,14 @@ impl MetricOverlay {
 
         // Draw header using Header widget
         if self.appearance.show_header {
-            y = Header::new(&self.title)
-                .with_color(font_color)
-                .render(&mut self.frame, padding, y, content_width, font_size, bar_spacing);
+            y = Header::new(&self.title).with_color(font_color).render(
+                &mut self.frame,
+                padding,
+                y,
+                content_width,
+                font_size,
+                bar_spacing,
+            );
         }
 
         // Find max value for scaling (use actual rate values, not max_value field)
@@ -246,7 +252,15 @@ impl MetricOverlay {
             }
             // If neither, just show name (no values)
 
-            bar.render(&mut self.frame, padding, y, content_width, bar_height, text_font_size, bar_radius);
+            bar.render(
+                &mut self.frame,
+                padding,
+                y,
+                content_width,
+                bar_height,
+                text_font_size,
+                bar_radius,
+            );
 
             y += bar_height + effective_spacing;
         }
@@ -264,16 +278,13 @@ impl MetricOverlay {
                     .with_color(font_color)
             } else if show_per_second {
                 // Rate only: show rate sum on right
-                Footer::new(format_number(rate_sum))
-                    .with_color(font_color)
+                Footer::new(format_number(rate_sum)).with_color(font_color)
             } else if show_total {
                 // Total only: show total sum on right
-                Footer::new(format_number(total_sum))
-                    .with_color(font_color)
+                Footer::new(format_number(total_sum)).with_color(font_color)
             } else {
                 // Neither: empty footer (just separator)
-                Footer::new("")
-                    .with_color(font_color)
+                Footer::new("").with_color(font_color)
             };
 
             footer.render(&mut self.frame, padding, y, content_width, font_size - 2.0);

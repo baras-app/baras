@@ -34,8 +34,8 @@ use wayland_protocols_wlr::layer_shell::v1::client::{
     zwlr_layer_surface_v1::{self, Anchor, KeyboardInteractivity, ZwlrLayerSurfaceV1},
 };
 
+use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
 use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
-use super::{ MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
 // ─────────────────────────────────────────────────────────────────────────────
 // Standalone Monitor Enumeration
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,14 +56,22 @@ impl Dispatch<wl_registry::WlRegistry, ()> for MonitorEnumState {
         _conn: &Connection,
         qh: &QueueHandle<Self>,
     ) {
-        if let wl_registry::Event::Global { name, interface, version } = event {
+        if let wl_registry::Event::Global {
+            name,
+            interface,
+            version,
+        } = event
+        {
             match interface.as_str() {
                 "wl_output" => {
                     let output: WlOutput = registry.bind(name, version.min(4), qh, name);
-                    state.outputs.push((output, OutputInfo {
-                        name,
-                        ..Default::default()
-                    }));
+                    state.outputs.push((
+                        output,
+                        OutputInfo {
+                            name,
+                            ..Default::default()
+                        },
+                    ));
                 }
                 "zxdg_output_manager_v1" => {
                     let manager: ZxdgOutputManagerV1 = registry.bind(name, version.min(3), qh, ());
@@ -99,13 +107,19 @@ impl Dispatch<WlOutput, u32> for MonitorEnumState {
                 }
                 info.model = model;
             }
-            wl_output::Event::Mode { flags, width, height, .. } => {
+            wl_output::Event::Mode {
+                flags,
+                width,
+                height,
+                ..
+            } => {
                 // Only use the current mode (physical pixels)
                 if let wayland_client::WEnum::Value(mode_flags) = flags
-                    && mode_flags.contains(wl_output::Mode::Current) {
-                        info.physical_width = width;
-                        info.physical_height = height;
-                    }
+                    && mode_flags.contains(wl_output::Mode::Current)
+                {
+                    info.physical_width = width;
+                    info.physical_height = height;
+                }
             }
             wl_output::Event::Scale { factor } => {
                 info.scale = factor;
@@ -232,9 +246,12 @@ pub fn get_all_monitors() -> Vec<MonitorInfo> {
     let _ = event_queue.roundtrip(&mut state);
 
     // Convert to MonitorInfo (using logical dimensions from xdg-output if available)
-    state.outputs
+    state
+        .outputs
         .into_iter()
-        .filter(|(_, info)| info.is_ready() && info.logical_width() > 0 && info.logical_height() > 0)
+        .filter(|(_, info)| {
+            info.is_ready() && info.logical_width() > 0 && info.logical_height() > 0
+        })
         .enumerate()
         .map(|(idx, (_, info))| {
             let id = info.id();
@@ -385,7 +402,7 @@ struct WaylandState {
     // Drag tracking - uses relative pointer motion for smooth movement
     drag_start_window_x: i32,
     drag_start_window_y: i32,
-    drag_accum_x: f64,  // Accumulated relative motion since drag start
+    drag_accum_x: f64, // Accumulated relative motion since drag start
     drag_accum_y: f64,
     // Track pending dimensions during resize (separate from actual state.width/height)
     pending_width: u32,
@@ -406,10 +423,10 @@ struct WaylandState {
 struct ResizeCorner;
 
 impl ResizeCorner {
-
     /// Check if position is in the bottom-right resize corner
     fn is_in_corner(x: f64, y: f64, width: u32, height: u32) -> bool {
-        x > (width as f64 - RESIZE_CORNER_SIZE as f64) && y > (height as f64 - RESIZE_CORNER_SIZE as f64)
+        x > (width as f64 - RESIZE_CORNER_SIZE as f64)
+            && y > (height as f64 - RESIZE_CORNER_SIZE as f64)
     }
 }
 
@@ -620,7 +637,10 @@ impl WaylandOverlay {
     /// Rebind the layer surface to a different output (for cross-monitor dragging)
     fn rebind_to_output(&mut self, output_name: u32) {
         // Find the new output
-        let new_output_info = self.state.outputs.iter()
+        let new_output_info = self
+            .state
+            .outputs
+            .iter()
             .find(|(_, info)| info.name == output_name)
             .map(|(output, info)| (output.clone(), info.clone()));
 
@@ -629,8 +649,14 @@ impl WaylandOverlay {
             return;
         };
 
-        eprintln!("Rebinding to output {} at ({}, {}) size {}x{}",
-            new_info.id(), new_info.x, new_info.y, new_info.logical_width(), new_info.logical_height());
+        eprintln!(
+            "Rebinding to output {} at ({}, {}) size {}x{}",
+            new_info.id(),
+            new_info.x,
+            new_info.y,
+            new_info.logical_width(),
+            new_info.logical_height()
+        );
 
         // Calculate absolute position before destroying old surface
         let (abs_x, abs_y) = self.state.absolute_position();
@@ -645,8 +671,10 @@ impl WaylandOverlay {
         let clamped_x = new_rel_x.clamp(0, max_x);
         let clamped_y = new_rel_y.clamp(0, max_y);
 
-        eprintln!("  Absolute ({}, {}) -> relative ({}, {}) -> clamped ({}, {})",
-            abs_x, abs_y, new_rel_x, new_rel_y, clamped_x, clamped_y);
+        eprintln!(
+            "  Absolute ({}, {}) -> relative ({}, {}) -> clamped ({}, {})",
+            abs_x, abs_y, new_rel_x, new_rel_y, clamped_x, clamped_y
+        );
 
         // Destroy old surface and layer surface
         if let Some(old_layer) = self.state.layer_surface.take() {
@@ -726,7 +754,10 @@ impl WaylandOverlay {
         }
         let _ = self.connection.flush();
 
-        eprintln!("Rebind complete, new bounds: {:?}", self.state.bound_output_bounds);
+        eprintln!(
+            "Rebind complete, new bounds: {:?}",
+            self.state.bound_output_bounds
+        );
     }
 }
 
@@ -740,7 +771,13 @@ impl OverlayPlatform for WaylandOverlay {
                 .map_err(|e| PlatformError::ConnectionFailed(e.to_string()))?;
 
         let qh = event_queue.handle();
-        let mut state = WaylandState::new(config.width, config.height, config.x, config.y, config.click_through);
+        let mut state = WaylandState::new(
+            config.width,
+            config.height,
+            config.x,
+            config.y,
+            config.click_through,
+        );
 
         // Bind globals
         let _registry = connection.display().get_registry(&qh, ());
@@ -779,9 +816,10 @@ impl OverlayPlatform for WaylandOverlay {
         // We store the global name as the output ID
         for global in globals.contents().clone_list() {
             if global.interface == "wl_output" {
-                let output: WlOutput = globals
-                    .registry()
-                    .bind(global.name, global.version.min(4), &qh, global.name);
+                let output: WlOutput =
+                    globals
+                        .registry()
+                        .bind(global.name, global.version.min(4), &qh, global.name);
                 let info = OutputInfo {
                     name: global.name,
                     ..Default::default()
@@ -812,38 +850,62 @@ impl OverlayPlatform for WaylandOverlay {
         let _ = event_queue.roundtrip(&mut state);
 
         // Debug: print all outputs and their state
-        eprintln!("Looking for target_monitor_id: {:?}", config.target_monitor_id);
+        eprintln!(
+            "Looking for target_monitor_id: {:?}",
+            config.target_monitor_id
+        );
         for (_, info) in &state.outputs {
             eprintln!(
                 "  Available: {} at ({}, {}) size {}x{} wl_done={} xdg_done={}",
-                info.id(), info.x, info.y, info.logical_width(), info.logical_height(),
-                info.wl_done, info.xdg_done
+                info.id(),
+                info.x,
+                info.y,
+                info.logical_width(),
+                info.logical_height(),
+                info.wl_done,
+                info.xdg_done
             );
         }
 
         // Output selection strategy:
         // 1. If monitor_id is set, bind to that specific output
         // 2. If monitor_id is None, let the compositor choose (active/focused output)
-        let (target_output, margin_x, margin_y, bound_output_bounds) = if let Some(ref target_id) = config.target_monitor_id {
+        let (target_output, margin_x, margin_y, bound_output_bounds) = if let Some(ref target_id) =
+            config.target_monitor_id
+        {
             // Find the specific output by ID
-            if let Some((output, info)) = state.outputs.iter()
+            if let Some((output, info)) = state
+                .outputs
+                .iter()
                 .find(|(_, info)| info.is_ready() && info.id() == *target_id)
             {
-                eprintln!("Binding to saved output {} at ({}, {}) size {}x{}",
-                    info.id(), info.x, info.y, info.logical_width(), info.logical_height());
+                eprintln!(
+                    "Binding to saved output {} at ({}, {}) size {}x{}",
+                    info.id(),
+                    info.x,
+                    info.y,
+                    info.logical_width(),
+                    info.logical_height()
+                );
 
                 // Position is already relative to this monitor, just clamp it
                 let max_x = (info.logical_width() - config.width as i32).max(0);
                 let max_y = (info.logical_height() - config.height as i32).max(0);
                 let clamped_x = config.x.clamp(0, max_x);
                 let clamped_y = config.y.clamp(0, max_y);
-                eprintln!("  Position ({}, {}) -> clamped ({}, {})", config.x, config.y, clamped_x, clamped_y);
+                eprintln!(
+                    "  Position ({}, {}) -> clamped ({}, {})",
+                    config.x, config.y, clamped_x, clamped_y
+                );
 
                 let bounds = Some((info.x, info.y, info.logical_width(), info.logical_height()));
                 (Some(output.clone()), clamped_x, clamped_y, bounds)
             } else {
                 // Saved monitor not found, let compositor decide
-                eprintln!("Saved monitor {} not found, letting compositor choose", target_id);
+                eprintln!(
+                    "Saved monitor {} not found, letting compositor choose",
+                    target_id
+                );
                 (None, config.x.max(0), config.y.max(0), None)
             }
         } else {
@@ -861,14 +923,15 @@ impl OverlayPlatform for WaylandOverlay {
         // Only create pointer if interactive (not click-through)
         // This saves memory/CPU when overlay is locked
         if !config.click_through
-            && let Some(seat) = &state.seat {
-                let pointer = seat.get_pointer(&qh, ());
-                // Create relative pointer if manager is available
-                if let Some(rpm) = &state.relative_pointer_manager {
-                    let rel_pointer = rpm.get_relative_pointer(&pointer, &qh, ());
-                    state.relative_pointer = Some(rel_pointer);
-                }
-                state.pointer = Some(pointer);
+            && let Some(seat) = &state.seat
+        {
+            let pointer = seat.get_pointer(&qh, ());
+            // Create relative pointer if manager is available
+            if let Some(rpm) = &state.relative_pointer_manager {
+                let rel_pointer = rpm.get_relative_pointer(&pointer, &qh, ());
+                state.relative_pointer = Some(rel_pointer);
+            }
+            state.pointer = Some(pointer);
         }
 
         // Create surface on the target output (or let compositor choose if None)
@@ -894,7 +957,10 @@ impl OverlayPlatform for WaylandOverlay {
         layer_surface.set_keyboard_interactivity(KeyboardInteractivity::None);
         layer_surface.set_size(config.width, config.height);
         surface.commit();
-        eprintln!("Layer surface configured: margin=({}, {}), size={}x{}", margin_x, margin_y, config.width, config.height);
+        eprintln!(
+            "Layer surface configured: margin=({}, {}), size={}x{}",
+            margin_x, margin_y, config.width, config.height
+        );
 
         // window_x/window_y are stored as output-relative for internal use
         // The x()/y() trait methods will convert back to global for position saving
@@ -920,7 +986,9 @@ impl OverlayPlatform for WaylandOverlay {
         // Wait for the initial configure event before returning
         // This is required by the layer-shell protocol
         while !overlay.state.configured {
-            overlay.event_queue.blocking_dispatch(&mut overlay.state)
+            overlay
+                .event_queue
+                .blocking_dispatch(&mut overlay.state)
                 .map_err(|e| PlatformError::ConnectionFailed(e.to_string()))?;
         }
 
@@ -997,10 +1065,11 @@ impl OverlayPlatform for WaylandOverlay {
 
         // Update input region if click-through is disabled (interactive mode)
         if !self.config.click_through
-            && let (Some(compositor), Some(surface)) = (&self.state.compositor, &self.state.surface) {
-                let region = compositor.create_region(&self.qh, ());
-                region.add(0, 0, width as i32, height as i32);
-                surface.set_input_region(Some(&region));
+            && let (Some(compositor), Some(surface)) = (&self.state.compositor, &self.state.surface)
+        {
+            let region = compositor.create_region(&self.qh, ());
+            region.add(0, 0, width as i32, height as i32);
+            surface.set_input_region(Some(&region));
         }
 
         if let Some(surface) = &self.state.surface {
@@ -1038,15 +1107,16 @@ impl OverlayPlatform for WaylandOverlay {
         } else {
             // Interactive mode: acquire pointer if we don't have one
             if self.state.pointer.is_none()
-                && let Some(seat) = &self.state.seat {
-                    let pointer = seat.get_pointer(&self.qh, ());
-                    // Create relative pointer if manager is available
-                    if let Some(rpm) = &self.state.relative_pointer_manager {
-                        let rel_pointer = rpm.get_relative_pointer(&pointer, &self.qh, ());
-                        self.state.relative_pointer = Some(rel_pointer);
-                    }
-                    self.state.pointer = Some(pointer);
+                && let Some(seat) = &self.state.seat
+            {
+                let pointer = seat.get_pointer(&self.qh, ());
+                // Create relative pointer if manager is available
+                if let Some(rpm) = &self.state.relative_pointer_manager {
+                    let rel_pointer = rpm.get_relative_pointer(&pointer, &self.qh, ());
+                    self.state.relative_pointer = Some(rel_pointer);
                 }
+                self.state.pointer = Some(pointer);
+            }
         }
     }
 
@@ -1106,8 +1176,8 @@ impl OverlayPlatform for WaylandOverlay {
             // Try to read events from the socket
             if let Some(guard) = self.event_queue.prepare_read() {
                 match guard.read() {
-                    Ok(0) => break, // No events available
-                    Ok(_) => {}     // Events read, continue
+                    Ok(0) => break,  // No events available
+                    Ok(_) => {}      // Events read, continue
                     Err(_) => break, // Error or would block
                 }
             } else {
@@ -1148,7 +1218,9 @@ impl OverlayPlatform for WaylandOverlay {
         self.state
             .outputs
             .iter()
-            .filter(|(_, info)| info.is_ready() && info.logical_width() > 0 && info.logical_height() > 0)
+            .filter(|(_, info)| {
+                info.is_ready() && info.logical_width() > 0 && info.logical_height() > 0
+            })
             .enumerate()
             .map(|(idx, (_, info))| {
                 let id = info.id();
@@ -1175,7 +1247,8 @@ impl OverlayPlatform for WaylandOverlay {
     fn current_monitor(&self) -> Option<MonitorInfo> {
         if let Some((out_x, out_y, out_width, out_height)) = self.state.bound_output_bounds {
             // Find the output matching these bounds
-            self.state.outputs
+            self.state
+                .outputs
                 .iter()
                 .filter(|(_, info)| info.is_ready())
                 .enumerate()
@@ -1219,9 +1292,14 @@ macro_rules! impl_empty_dispatch {
     ($proxy:ty, $data:ty, $state:ty) => {
         impl Dispatch<$proxy, $data> for $state {
             fn event(
-                _: &mut Self, _: &$proxy, _: <$proxy as wayland_client::Proxy>::Event,
-                _: &$data, _: &Connection, _: &QueueHandle<Self>,
-            ) {}
+                _: &mut Self,
+                _: &$proxy,
+                _: <$proxy as wayland_client::Proxy>::Event,
+                _: &$data,
+                _: &Connection,
+                _: &QueueHandle<Self>,
+            ) {
+            }
         }
     };
 }
@@ -1243,16 +1321,21 @@ impl Dispatch<WlSurface, ()> for WaylandState {
         if let wl_surface::Event::Enter { output } = event {
             // Surface entered an output - update our bound_output_bounds
             if let Some((_, info)) = state.outputs.iter().find(|(o, _)| *o == output)
-                && info.is_ready() && info.logical_width() > 0 && info.logical_height() > 0 {
-                    eprintln!("Surface entered output: {} at ({}, {}) size {}x{}",
-                        info.id(), info.x, info.y, info.logical_width(), info.logical_height());
-                    state.bound_output_bounds = Some((
-                        info.x,
-                        info.y,
-                        info.logical_width(),
-                        info.logical_height(),
-                    ));
-                }
+                && info.is_ready()
+                && info.logical_width() > 0
+                && info.logical_height() > 0
+            {
+                eprintln!(
+                    "Surface entered output: {} at ({}, {}) size {}x{}",
+                    info.id(),
+                    info.x,
+                    info.y,
+                    info.logical_width(),
+                    info.logical_height()
+                );
+                state.bound_output_bounds =
+                    Some((info.x, info.y, info.logical_width(), info.logical_height()));
+            }
         }
     }
 }
@@ -1269,7 +1352,12 @@ impl Dispatch<WlOutput, u32> for WaylandState {
         _qh: &QueueHandle<Self>,
     ) {
         // Find the output info for this output by matching the proxy
-        let Some(info) = state.outputs.iter_mut().find(|(o, _)| o == proxy).map(|(_, i)| i) else {
+        let Some(info) = state
+            .outputs
+            .iter_mut()
+            .find(|(o, _)| o == proxy)
+            .map(|(_, i)| i)
+        else {
             return;
         };
 
@@ -1282,13 +1370,19 @@ impl Dispatch<WlOutput, u32> for WaylandState {
                 }
                 info.model = model;
             }
-            wl_output::Event::Mode { flags, width, height, .. } => {
+            wl_output::Event::Mode {
+                flags,
+                width,
+                height,
+                ..
+            } => {
                 // Only use the current mode (physical pixels)
                 if let wayland_client::WEnum::Value(mode_flags) = flags
-                    && mode_flags.contains(wl_output::Mode::Current) {
-                        info.physical_width = width;
-                        info.physical_height = height;
-                    }
+                    && mode_flags.contains(wl_output::Mode::Current)
+                {
+                    info.physical_width = width;
+                    info.physical_height = height;
+                }
             }
             wl_output::Event::Scale { factor } => {
                 info.scale = factor;
@@ -1309,9 +1403,15 @@ impl Dispatch<WlOutput, u32> for WaylandState {
                 }
                 eprintln!(
                     "Output {}: {} at ({}, {}) size {}x{} (physical {}x{}, scale {})",
-                    data, info.id(), info.x, info.y,
-                    info.logical_width(), info.logical_height(),
-                    info.physical_width, info.physical_height, info.scale
+                    data,
+                    info.id(),
+                    info.x,
+                    info.y,
+                    info.logical_width(),
+                    info.logical_height(),
+                    info.physical_width,
+                    info.physical_height,
+                    info.scale
                 );
             }
             _ => {}
@@ -1368,21 +1468,27 @@ impl Dispatch<WlPointer, ()> for WaylandState {
         _qh: &QueueHandle<Self>,
     ) {
         match event {
-            wl_pointer::Event::Enter { surface_x, surface_y, .. } => {
+            wl_pointer::Event::Enter {
+                surface_x,
+                surface_y,
+                ..
+            } => {
                 state.pointer_x = surface_x;
                 state.pointer_y = surface_y;
                 // Check if in resize corner for visual feedback
-                state.in_resize_corner = ResizeCorner::is_in_corner(
-                    surface_x, surface_y, state.width, state.height
-                );
+                state.in_resize_corner =
+                    ResizeCorner::is_in_corner(surface_x, surface_y, state.width, state.height);
             }
-            wl_pointer::Event::Motion { surface_x, surface_y, .. } => {
+            wl_pointer::Event::Motion {
+                surface_x,
+                surface_y,
+                ..
+            } => {
                 // Only update resize corner state when not actively resizing
                 // (during resize, keep it true so grip stays visible)
                 if !state.is_resizing {
-                    state.in_resize_corner = ResizeCorner::is_in_corner(
-                        surface_x, surface_y, state.width, state.height
-                    );
+                    state.in_resize_corner =
+                        ResizeCorner::is_in_corner(surface_x, surface_y, state.width, state.height);
                 }
 
                 if state.is_resizing {
@@ -1394,8 +1500,10 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                     let new_height = state.pending_height as i32 + delta_y as i32;
 
                     // Clamp to min/max size constraints
-                    let clamped_width = (new_width as u32).clamp(MIN_OVERLAY_SIZE, MAX_OVERLAY_WIDTH);
-                    let clamped_height = (new_height as u32).clamp(MIN_OVERLAY_SIZE,MAX_OVERLAY_HEIGHT);
+                    let clamped_width =
+                        (new_width as u32).clamp(MIN_OVERLAY_SIZE, MAX_OVERLAY_WIDTH);
+                    let clamped_height =
+                        (new_height as u32).clamp(MIN_OVERLAY_SIZE, MAX_OVERLAY_HEIGHT);
 
                     if new_width > 0 && new_height > 0 {
                         state.pending_width = clamped_width;
@@ -1413,7 +1521,11 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                     state.pointer_y = surface_y;
                 }
             }
-            wl_pointer::Event::Button { button, state: button_state, .. } => {
+            wl_pointer::Event::Button {
+                button,
+                state: button_state,
+                ..
+            } => {
                 use wayland_client::WEnum;
                 // Button 272 is left mouse button (BTN_LEFT)
                 if button == 272 {
@@ -1423,8 +1535,10 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                             // When drag_enabled=false (rearrange mode), all clicks go to the overlay
                             if state.drag_enabled {
                                 if ResizeCorner::is_in_corner(
-                                    state.pointer_x, state.pointer_y,
-                                    state.width, state.height
+                                    state.pointer_x,
+                                    state.pointer_y,
+                                    state.width,
+                                    state.height,
                                 ) {
                                     state.is_resizing = true;
                                     state.pending_width = state.width;
@@ -1439,7 +1553,8 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                                 }
                             } else {
                                 // Drag disabled (rearrange mode) - report click to overlay
-                                state.pending_click = Some((state.pointer_x as f32, state.pointer_y as f32));
+                                state.pending_click =
+                                    Some((state.pointer_x as f32, state.pointer_y as f32));
                             }
                         }
                         WEnum::Value(wl_pointer::ButtonState::Released) => {
@@ -1448,8 +1563,10 @@ impl Dispatch<WlPointer, ()> for WaylandState {
                             // Recalculate corner state based on current pointer position
                             // and the potentially new window dimensions
                             state.in_resize_corner = ResizeCorner::is_in_corner(
-                                state.pointer_x, state.pointer_y,
-                                state.pending_width, state.pending_height
+                                state.pointer_x,
+                                state.pointer_y,
+                                state.pending_width,
+                                state.pending_height,
                             );
                         }
                         _ => {}
@@ -1480,30 +1597,30 @@ impl Dispatch<ZwpRelativePointerV1, ()> for WaylandState {
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
     ) {
-            if let zwp_relative_pointer_v1::Event::RelativeMotion { dx, dy, .. } = event {
-                // dx, dy are in surface-local coordinates but represent actual cursor movement
-                // This is the key: these deltas don't change when the window moves!
-                if state.is_dragging {
-                    // Accumulate relative motion
-                    state.drag_accum_x += dx;
-                    state.drag_accum_y += dy;
+        if let zwp_relative_pointer_v1::Event::RelativeMotion { dx, dy, .. } = event {
+            // dx, dy are in surface-local coordinates but represent actual cursor movement
+            // This is the key: these deltas don't change when the window moves!
+            if state.is_dragging {
+                // Accumulate relative motion
+                state.drag_accum_x += dx;
+                state.drag_accum_y += dy;
 
-                    // Calculate new window position (relative to current output)
-                    let new_x = state.drag_start_window_x + state.drag_accum_x as i32;
-                    let new_y = state.drag_start_window_y + state.drag_accum_y as i32;
+                // Calculate new window position (relative to current output)
+                let new_x = state.drag_start_window_x + state.drag_accum_x as i32;
+                let new_y = state.drag_start_window_y + state.drag_accum_y as i32;
 
-                    // Check if this position would cross into a different monitor
-                    if let Some((out_x, out_y, _, _)) = state.bound_output_bounds {
-                        let abs_x = out_x + new_x;
-                        let abs_y = out_y + new_y;
-                        if let Some(new_output_name) = state.check_cross_monitor(abs_x, abs_y) {
-                            // Schedule rebind to new output (will be handled in poll_events)
-                            state.pending_output_rebind = Some(new_output_name);
-                        }
+                // Check if this position would cross into a different monitor
+                if let Some((out_x, out_y, _, _)) = state.bound_output_bounds {
+                    let abs_x = out_x + new_x;
+                    let abs_y = out_y + new_y;
+                    if let Some(new_output_name) = state.check_cross_monitor(abs_x, abs_y) {
+                        // Schedule rebind to new output (will be handled in poll_events)
+                        state.pending_output_rebind = Some(new_output_name);
                     }
-
-                    state.update_position(new_x, new_y);
                 }
+
+                state.update_position(new_x, new_y);
+            }
         }
     }
 }
@@ -1521,9 +1638,12 @@ impl Dispatch<ZxdgOutputV1, u32> for WaylandState {
         _qh: &QueueHandle<Self>,
     ) {
         // Find the output info by global name
-        let Some(info) = state.outputs.iter_mut()
+        let Some(info) = state
+            .outputs
+            .iter_mut()
             .find(|(_, o)| o.name == *name)
-            .map(|(_, i)| i) else {
+            .map(|(_, i)| i)
+        else {
             return;
         };
 

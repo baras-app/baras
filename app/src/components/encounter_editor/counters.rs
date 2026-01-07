@@ -8,9 +8,9 @@ use dioxus::prelude::*;
 use crate::api;
 use crate::types::{BossWithPath, CounterDefinition, EncounterItem, EntityFilter, Trigger};
 
+use super::InlineNameCreator;
 use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
-use super::InlineNameCreator;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Counters Tab
@@ -423,4 +423,3 @@ fn CounterEditForm(
         }
     }
 }
-

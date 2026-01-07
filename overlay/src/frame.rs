@@ -11,8 +11,8 @@
 #![allow(clippy::too_many_arguments)]
 use crate::manager::OverlayWindow;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::widgets::colors;
 use crate::utils::color_from_rgba;
+use crate::widgets::colors;
 use tiny_skia::Color;
 
 /// A frame wrapper around an overlay window that handles common rendering
@@ -201,7 +201,8 @@ impl OverlayFrame {
 
     /// Draw text with color from RGBA array
     pub fn draw_text_rgba(&mut self, text: &str, x: f32, y: f32, font_size: f32, rgba: [u8; 4]) {
-        self.window.draw_text(text, x, y, font_size, color_from_rgba(rgba));
+        self.window
+            .draw_text(text, x, y, font_size, color_from_rgba(rgba));
     }
 
     /// Measure text dimensions
@@ -247,8 +248,17 @@ impl OverlayFrame {
         dash_length: f32,
         gap_length: f32,
     ) {
-        self.window
-            .stroke_rounded_rect_dashed(x, y, w, h, radius, stroke_width, color, dash_length, gap_length);
+        self.window.stroke_rounded_rect_dashed(
+            x,
+            y,
+            w,
+            h,
+            radius,
+            stroke_width,
+            color,
+            dash_length,
+            gap_length,
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────

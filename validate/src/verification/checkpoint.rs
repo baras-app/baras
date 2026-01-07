@@ -129,7 +129,8 @@ impl CheckpointVerifier {
 
     /// Record that a timer started
     pub fn record_timer_start(&mut self, timer_id: &str, combat_time_secs: f32) {
-        self.timers_started.push((timer_id.to_string(), combat_time_secs));
+        self.timers_started
+            .push((timer_id.to_string(), combat_time_secs));
     }
 
     /// Record that an alert fired
@@ -139,7 +140,11 @@ impl CheckpointVerifier {
 
     /// Check if there's a checkpoint at or before the given combat time
     /// Returns checkpoints that should be verified
-    pub fn check_time(&mut self, combat_time_secs: f32, active_timers: &[(String, f32)]) -> Option<CheckpointResult> {
+    pub fn check_time(
+        &mut self,
+        combat_time_secs: f32,
+        active_timers: &[(String, f32)],
+    ) -> Option<CheckpointResult> {
         if self.current_checkpoint_idx >= self.expectations.checkpoints.len() {
             return None;
         }
@@ -235,18 +240,16 @@ mod tests {
                 description: None,
                 tolerance_secs: 0.5,
             },
-            checkpoints: vec![
-                Checkpoint {
-                    at_secs: 15.0,
-                    active_timers: vec![ExpectedTimer {
-                        id: "test_timer".to_string(),
-                        remaining_secs: Some((10.0, 12.0)),
-                    }],
-                    timers_fired: vec!["test_timer".to_string()],
-                    alerts_fired: vec![],
-                    description: Some("First checkpoint".to_string()),
-                },
-            ],
+            checkpoints: vec![Checkpoint {
+                at_secs: 15.0,
+                active_timers: vec![ExpectedTimer {
+                    id: "test_timer".to_string(),
+                    remaining_secs: Some((10.0, 12.0)),
+                }],
+                timers_fired: vec!["test_timer".to_string()],
+                alerts_fired: vec![],
+                description: Some("First checkpoint".to_string()),
+            }],
         }
     }
 
@@ -297,6 +300,10 @@ mod tests {
         assert!(result.is_some());
         let r = result.unwrap();
         assert!(!r.passed);
-        assert!(r.failures.iter().any(|f| f.contains("not in expected range")));
+        assert!(
+            r.failures
+                .iter()
+                .any(|f| f.contains("not in expected range"))
+        );
     }
 }

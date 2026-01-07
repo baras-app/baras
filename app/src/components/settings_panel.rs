@@ -3,14 +3,13 @@
 //! Floating, draggable panel for customizing overlay appearances,
 //! personal stats, and raid frame settings.
 
-use std::collections::HashMap;
 use dioxus::prelude::*;
+use std::collections::HashMap;
 
 use crate::api;
 use crate::types::{
-    BossHealthConfig, ChallengeLayout, MetricType, OverlayAppearanceConfig, OverlaySettings,
-    PersonalOverlayConfig, PersonalStat, RaidOverlaySettings, TimerOverlayConfig,
-    MAX_PROFILES,
+    BossHealthConfig, ChallengeLayout, MAX_PROFILES, MetricType, OverlayAppearanceConfig,
+    OverlaySettings, PersonalOverlayConfig, PersonalStat, RaidOverlaySettings, TimerOverlayConfig,
 };
 use crate::utils::{color_to_hex, parse_hex_color};
 
@@ -42,7 +41,10 @@ pub fn SettingsPanel(
 
     // Get appearance for current tab
     let get_appearance = |key: &str| -> OverlayAppearanceConfig {
-        current_settings.appearances.get(key).cloned()
+        current_settings
+            .appearances
+            .get(key)
+            .cloned()
             .or_else(|| current_settings.default_appearances.get(key).cloned())
             .unwrap_or_default()
     };
@@ -53,7 +55,8 @@ pub fn SettingsPanel(
     let bar_color_hex = color_to_hex(&current_appearance.bar_color);
     let font_color_hex = color_to_hex(&current_appearance.font_color);
     let personal_font_color_hex = color_to_hex(&current_settings.personal_overlay.font_color);
-    let personal_label_font_color_hex = color_to_hex(&current_settings.personal_overlay.label_color);
+    let personal_label_font_color_hex =
+        color_to_hex(&current_settings.personal_overlay.label_color);
     let boss_bar_hex = color_to_hex(&current_settings.boss_health.bar_color);
 
     // Save settings to backend
@@ -100,7 +103,6 @@ pub fn SettingsPanel(
         has_changes.set(true);
         save_status.set(String::new());
     };
-
 
     rsx! {
         section { class: "settings-panel",
@@ -1089,11 +1091,7 @@ fn TabButton(label: &'static str, tab_key: &'static str, selected_tab: Signal<St
 }
 
 #[component]
-fn OpacitySlider(
-    label: &'static str,
-    value: u8,
-    on_change: EventHandler<u8>,
-) -> Element {
+fn OpacitySlider(label: &'static str, value: u8, on_change: EventHandler<u8>) -> Element {
     rsx! {
         div { class: "setting-row",
             label { "{label}" }

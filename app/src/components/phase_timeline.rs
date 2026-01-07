@@ -123,12 +123,18 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
         let on_mousemove =
             Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
                 // Use try_read to handle signal being dropped when component unmounts
-                let Ok(drag_guard) = drag_start_clone.try_read() else { return };
-                let Some(start_time) = *drag_guard else { return };
+                let Ok(drag_guard) = drag_start_clone.try_read() else {
+                    return;
+                };
+                let Some(start_time) = *drag_guard else {
+                    return;
+                };
                 let Some(el) = web_sys::window()
                     .and_then(|w| w.document())
                     .and_then(|d| d.get_element_by_id("phase-timeline-track"))
-                else { return };
+                else {
+                    return;
+                };
 
                 let rect = el.get_bounding_client_rect();
                 let x = e.client_x() as f64 - rect.left();
@@ -141,7 +147,9 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                     } else {
                         (start_time, current_time)
                     };
-                    let _ = committed_range_clone.try_write().map(|mut w| *w = Some(TimeRange::new(start, end)));
+                    let _ = committed_range_clone
+                        .try_write()
+                        .map(|mut w| *w = Some(TimeRange::new(start, end)));
                 }
             });
 
@@ -152,7 +160,9 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
         let on_mouseup =
             Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
                 // Use try_read to handle signal being dropped when component unmounts
-                let Ok(drag_guard) = drag_start_clone2.try_read() else { return };
+                let Ok(drag_guard) = drag_start_clone2.try_read() else {
+                    return;
+                };
                 let Some(start_time) = *drag_guard else {
                     // Not dragging, just return
                     return;
@@ -163,7 +173,9 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                     .and_then(|w| w.document())
                     .and_then(|d| d.get_element_by_id("phase-timeline-track"))
                 else {
-                    let _ = drag_start_clone2.try_write().map(|mut w| { *w = None; });
+                    let _ = drag_start_clone2.try_write().map(|mut w| {
+                        *w = None;
+                    });
                     return;
                 };
 
@@ -187,10 +199,14 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                         TimeRange::new(start, end)
                     };
 
-                    let _ = committed_range_clone2.try_write().map(|mut w| *w = Some(final_range));
+                    let _ = committed_range_clone2
+                        .try_write()
+                        .map(|mut w| *w = Some(final_range));
                     on_range_change.call(final_range);
                 }
-                let _ = drag_start_clone2.try_write().map(|mut w| { *w = None; });
+                let _ = drag_start_clone2.try_write().map(|mut w| {
+                    *w = None;
+                });
             });
 
         // Add listeners

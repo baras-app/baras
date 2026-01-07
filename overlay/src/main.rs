@@ -17,12 +17,15 @@ use std::time::{Duration, Instant};
 
 mod examples {
     use super::*;
-    use baras_core::context::{ChallengeColumns, ChallengeLayout, ChallengeOverlayConfig, OverlayAppearanceConfig, TimerOverlayConfig};
+    use baras_core::context::{
+        ChallengeColumns, ChallengeLayout, ChallengeOverlayConfig, OverlayAppearanceConfig,
+        TimerOverlayConfig,
+    };
     use baras_overlay::{
-        colors, ChallengeData, ChallengeEntry, ChallengeOverlay, Color, InteractionMode,
-        MetricEntry, MetricOverlay, Overlay, OverlayConfig, PlayerContribution, PlayerRole,
-        RaidEffect, RaidFrame, RaidGridLayout, RaidOverlay, RaidOverlayConfig, TimerData,
-        TimerEntry, TimerOverlay,
+        ChallengeData, ChallengeEntry, ChallengeOverlay, Color, InteractionMode, MetricEntry,
+        MetricOverlay, Overlay, OverlayConfig, PlayerContribution, PlayerRole, RaidEffect,
+        RaidFrame, RaidGridLayout, RaidOverlay, RaidOverlayConfig, TimerData, TimerEntry,
+        TimerOverlay, colors,
     };
 
     pub fn run_metric_overlay() {
@@ -115,9 +118,13 @@ mod examples {
             target_monitor_id: None,
         };
 
-        let appearance = OverlayAppearanceConfig { max_entries: 8, ..Default::default()};
+        let appearance = OverlayAppearanceConfig {
+            max_entries: 8,
+            ..Default::default()
+        };
 
-        let mut metric = match MetricOverlay::new(config, "DPS Meter (8 Players)", appearance, 180) {
+        let mut metric = match MetricOverlay::new(config, "DPS Meter (8 Players)", appearance, 180)
+        {
             Ok(m) => m,
             Err(e) => {
                 eprintln!("Failed to create overlay: {}", e);
@@ -198,9 +205,13 @@ mod examples {
             target_monitor_id: None,
         };
 
-        let appearance = OverlayAppearanceConfig { max_entries: 16, ..Default::default()};
+        let appearance = OverlayAppearanceConfig {
+            max_entries: 16,
+            ..Default::default()
+        };
 
-        let mut metric = match MetricOverlay::new(config, "DPS Meter (16 Players)", appearance, 180) {
+        let mut metric = match MetricOverlay::new(config, "DPS Meter (16 Players)", appearance, 180)
+        {
             Ok(m) => m,
             Err(e) => {
                 eprintln!("Failed to create overlay: {}", e);
@@ -281,7 +292,10 @@ mod examples {
 
     /// Run three raid overlays side-by-side demonstrating each interaction mode
     pub fn run_raid_overlay() {
-        let layout = RaidGridLayout { columns: 2, rows: 4 };
+        let layout = RaidGridLayout {
+            columns: 2,
+            rows: 4,
+        };
         let raid_config = RaidOverlayConfig::default();
         let test_frames = create_test_frames();
 
@@ -388,7 +402,8 @@ mod examples {
 
             // Adaptive sleep: faster polling when any overlay is interactive
             // In production, you'd also check for data changes (dirty flag)
-            let any_interactive = overlay_move.is_interactive() || overlay_rearrange.is_interactive();
+            let any_interactive =
+                overlay_move.is_interactive() || overlay_rearrange.is_interactive();
             let sleep_ms = if any_interactive { 4 } else { 16 };
             std::thread::sleep(Duration::from_millis(sleep_ms));
         }
@@ -403,8 +418,10 @@ mod examples {
                 name: "Tanky McTank".to_string(),
                 hp_percent: 0.0,
                 role: PlayerRole::Tank,
-                effects: vec![RaidEffect::new(100, "Guard")
-                    .with_color(tiny_skia::Color::from_rgba8(100, 150, 220, 255))],
+                effects: vec![
+                    RaidEffect::new(100, "Guard")
+                        .with_color(tiny_skia::Color::from_rgba8(100, 150, 220, 255)),
+                ],
                 is_self: true,
             },
             // Slot 1: Healer
@@ -414,9 +431,11 @@ mod examples {
                 name: "Healz4Days".to_string(),
                 hp_percent: 0.0,
                 role: PlayerRole::Healer,
-                effects: vec![RaidEffect::new(200, "Resurgence")
-                    .with_color(tiny_skia::Color::from_rgba8(100, 220, 100, 255))
-                    .with_charges(2)],
+                effects: vec![
+                    RaidEffect::new(200, "Resurgence")
+                        .with_color(tiny_skia::Color::from_rgba8(100, 220, 100, 255))
+                        .with_charges(2),
+                ],
                 is_self: false,
             },
             // Slot 2: DPS
@@ -451,8 +470,10 @@ mod examples {
                 name: "OffTankOT".to_string(),
                 hp_percent: 0.0,
                 role: PlayerRole::Tank,
-                effects: vec![RaidEffect::new(400, "Saber Ward")
-                    .with_color(tiny_skia::Color::from_rgba8(255, 200, 100, 255))],
+                effects: vec![
+                    RaidEffect::new(400, "Saber Ward")
+                        .with_color(tiny_skia::Color::from_rgba8(255, 200, 100, 255)),
+                ],
                 is_self: false,
             },
             // Slot 5: Healer (no effects)
@@ -472,9 +493,11 @@ mod examples {
                 name: "StandInFire".to_string(),
                 hp_percent: 0.0,
                 role: PlayerRole::Dps,
-                effects: vec![RaidEffect::new(500, "Burning")
-                    .with_color(tiny_skia::Color::from_rgba8(255, 100, 50, 255))
-                    .with_is_buff(false)],
+                effects: vec![
+                    RaidEffect::new(500, "Burning")
+                        .with_color(tiny_skia::Color::from_rgba8(255, 100, 50, 255))
+                        .with_is_buff(false),
+                ],
                 is_self: false,
             },
             // Slot 7: Empty slot
@@ -492,17 +515,20 @@ mod examples {
     /// - Row 3: Opaque, with text
     pub fn run_raid_timer_stress_test() {
         // 4x4 grid = 16 frames
-        let layout = RaidGridLayout { columns: 4, rows: 4 };
+        let layout = RaidGridLayout {
+            columns: 4,
+            rows: 4,
+        };
         let raid_config = RaidOverlayConfig {
             max_effects_per_frame: 4,
-            effect_size: 20.0,  // 1.4x scale (default 14 * 1.4 ≈ 20)
+            effect_size: 20.0, // 1.4x scale (default 14 * 1.4 ≈ 20)
             ..Default::default()
         };
 
         let config = OverlayConfig {
             x: 100,
             y: 100,
-            width: 500,  // Wider to accommodate larger effects
+            width: 500, // Wider to accommodate larger effects
             height: 450,
             namespace: "baras-raid-timer-test".to_string(),
             click_through: true,
@@ -560,20 +586,44 @@ mod examples {
     fn create_timer_stress_frames() -> Vec<RaidFrame> {
         let player_names = [
             // Row 0: Non-opaque, no text
-            "TankOne", "TankTwo", "HealerA", "HealerB",
+            "TankOne",
+            "TankTwo",
+            "HealerA",
+            "HealerB",
             // Row 1: Opaque, no text
-            "DpsAlpha", "DpsBeta", "DpsGamma", "DpsDelta",
+            "DpsAlpha",
+            "DpsBeta",
+            "DpsGamma",
+            "DpsDelta",
             // Row 2: Non-opaque, with text
-            "RangedOne", "RangedTwo", "MeleeOne", "MeleeTwo",
+            "RangedOne",
+            "RangedTwo",
+            "MeleeOne",
+            "MeleeTwo",
             // Row 3: Opaque, with text
-            "SupportA", "SupportB", "OffTank", "FlexDps",
+            "SupportA",
+            "SupportB",
+            "OffTank",
+            "FlexDps",
         ];
 
         let roles = [
-            PlayerRole::Tank, PlayerRole::Tank, PlayerRole::Healer, PlayerRole::Healer,
-            PlayerRole::Dps, PlayerRole::Dps, PlayerRole::Dps, PlayerRole::Dps,
-            PlayerRole::Dps, PlayerRole::Dps, PlayerRole::Dps, PlayerRole::Dps,
-            PlayerRole::Healer, PlayerRole::Healer, PlayerRole::Tank, PlayerRole::Dps,
+            PlayerRole::Tank,
+            PlayerRole::Tank,
+            PlayerRole::Healer,
+            PlayerRole::Healer,
+            PlayerRole::Dps,
+            PlayerRole::Dps,
+            PlayerRole::Dps,
+            PlayerRole::Dps,
+            PlayerRole::Dps,
+            PlayerRole::Dps,
+            PlayerRole::Dps,
+            PlayerRole::Dps,
+            PlayerRole::Healer,
+            PlayerRole::Healer,
+            PlayerRole::Tank,
+            PlayerRole::Dps,
         ];
 
         // Base colors (will be modified with alpha for opacity variations)
@@ -584,63 +634,70 @@ mod examples {
             (180, 100, 220), // Purple (Debuff)
         ];
 
-        (0..16).map(|slot| {
-            let row = slot / 4;  // 0, 1, 2, or 3
+        (0..16)
+            .map(|slot| {
+                let row = slot / 4; // 0, 1, 2, or 3
 
-            // Determine opacity based on row (0,2 = non-opaque, 1,3 = opaque)
-            // Non-opaque at 100 alpha allows icons to show through clearly
-            let is_opaque = row == 1 || row == 3;
-            let alpha: u8 = if is_opaque { 255 } else { 100 };
+                // Determine opacity based on row (0,2 = non-opaque, 1,3 = opaque)
+                // Non-opaque at 100 alpha allows icons to show through clearly
+                let is_opaque = row == 1 || row == 3;
+                let alpha: u8 = if is_opaque { 255 } else { 100 };
 
-            // Determine if text should show (row 2,3 = with text via charges)
-            // Vary digit counts: 1-digit, 2-digit, and 3-digit examples
-            let has_text = row >= 2;
-            let charges: u8 = if has_text {
-                match slot % 4 {
-                    0 => 3,    // 1 digit
-                    1 => 42,   // 2 digits
-                    2 => 127,  // 3 digits
-                    _ => 8,    // 1 digit
+                // Determine if text should show (row 2,3 = with text via charges)
+                // Vary digit counts: 1-digit, 2-digit, and 3-digit examples
+                let has_text = row >= 2;
+                let charges: u8 = if has_text {
+                    match slot % 4 {
+                        0 => 3,   // 1 digit
+                        1 => 42,  // 2 digits
+                        2 => 127, // 3 digits
+                        _ => 8,   // 1 digit
+                    }
+                } else {
+                    0
+                };
+
+                // Stagger durations so effects expire at different times
+                let base_duration_1 = Duration::from_secs(15 + (slot as u64 * 2));
+                let base_duration_2 = Duration::from_secs(20 + (slot as u64 * 2));
+
+                let (r1, g1, b1) = base_colors[slot % 4];
+                let (r2, g2, b2) = base_colors[(slot + 1) % 4];
+
+                let effect1 = RaidEffect::new(slot as u64 * 10, format!("Effect{}", slot * 2))
+                    .with_duration_from_now(base_duration_1)
+                    .with_color(tiny_skia::Color::from_rgba8(r1, g1, b1, alpha))
+                    .with_charges(charges);
+
+                // Second effect gets different digit count
+                let charges2: u8 = if has_text {
+                    match slot % 4 {
+                        0 => 15,  // 2 digits
+                        1 => 99,  // 2 digits
+                        2 => 5,   // 1 digit
+                        _ => 255, // 3 digits (max u8)
+                    }
+                } else {
+                    0
+                };
+
+                let effect2 =
+                    RaidEffect::new(slot as u64 * 10 + 1, format!("Effect{}", slot * 2 + 1))
+                        .with_duration_from_now(base_duration_2)
+                        .with_color(tiny_skia::Color::from_rgba8(r2, g2, b2, alpha))
+                        .with_charges(charges2);
+
+                RaidFrame {
+                    slot: slot as u8,
+                    player_id: Some(2000 + slot as i64),
+                    name: player_names[slot].to_string(),
+                    hp_percent: 1.0,
+                    role: roles[slot],
+                    effects: vec![effect1, effect2],
+                    is_self: slot == 0,
                 }
-            } else { 0 };
-
-            // Stagger durations so effects expire at different times
-            let base_duration_1 = Duration::from_secs(15 + (slot as u64 * 2));
-            let base_duration_2 = Duration::from_secs(20 + (slot as u64 * 2));
-
-            let (r1, g1, b1) = base_colors[slot % 4];
-            let (r2, g2, b2) = base_colors[(slot + 1) % 4];
-
-            let effect1 = RaidEffect::new(slot as u64 * 10, format!("Effect{}", slot * 2))
-                .with_duration_from_now(base_duration_1)
-                .with_color(tiny_skia::Color::from_rgba8(r1, g1, b1, alpha))
-                .with_charges(charges);
-
-            // Second effect gets different digit count
-            let charges2: u8 = if has_text {
-                match slot % 4 {
-                    0 => 15,   // 2 digits
-                    1 => 99,   // 2 digits
-                    2 => 5,    // 1 digit
-                    _ => 255,  // 3 digits (max u8)
-                }
-            } else { 0 };
-
-            let effect2 = RaidEffect::new(slot as u64 * 10 + 1, format!("Effect{}", slot * 2 + 1))
-                .with_duration_from_now(base_duration_2)
-                .with_color(tiny_skia::Color::from_rgba8(r2, g2, b2, alpha))
-                .with_charges(charges2);
-
-            RaidFrame {
-                slot: slot as u8,
-                player_id: Some(2000 + slot as i64),
-                name: player_names[slot].to_string(),
-                hp_percent: 1.0,
-                role: roles[slot],
-                effects: vec![effect1, effect2],
-                is_self: slot == 0,
-            }
-        }).collect()
+            })
+            .collect()
     }
 
     /// Run the timer overlay with sample boss mechanic timers
@@ -708,11 +765,11 @@ mod examples {
     fn create_sample_timers(elapsed: f32) -> Vec<TimerEntry> {
         // Define sample boss mechanics with their cycle times
         let mechanics = [
-            ("Doom", 30.0, [200, 50, 50, 255]),      // Red - big mechanic
-            ("Lightning Storm", 20.0, [100, 150, 255, 255]),  // Blue
-            ("Adds Spawn", 45.0, [180, 100, 220, 255]),       // Purple
-            ("Enrage Check", 60.0, [255, 180, 50, 255]),      // Orange
-            ("Tank Swap", 15.0, [100, 220, 100, 255]),        // Green
+            ("Doom", 30.0, [200, 50, 50, 255]), // Red - big mechanic
+            ("Lightning Storm", 20.0, [100, 150, 255, 255]), // Blue
+            ("Adds Spawn", 45.0, [180, 100, 220, 255]), // Purple
+            ("Enrage Check", 60.0, [255, 180, 50, 255]), // Orange
+            ("Tank Swap", 15.0, [100, 220, 100, 255]), // Green
         ];
 
         mechanics
@@ -819,7 +876,11 @@ mod examples {
                 last_frame = now;
             }
 
-            let sleep_ms = if overlay.frame().is_interactive() { 4 } else { 50 };
+            let sleep_ms = if overlay.frame().is_interactive() {
+                4
+            } else {
+                50
+            };
             std::thread::sleep(Duration::from_millis(sleep_ms));
         }
     }
@@ -838,7 +899,7 @@ mod examples {
             duration_secs: 60.0,
             enabled: true,
             color: Some(Color::from_rgba8(80, 200, 120, 255)), // Green for cleanse
-            columns: ChallengeColumns::TotalPercent, // Show total and percent
+            columns: ChallengeColumns::TotalPercent,           // Show total and percent
             by_player: vec![
                 PlayerContribution {
                     entity_id: 1003,
@@ -908,7 +969,7 @@ mod examples {
             duration_secs: 60.0,
             enabled: true,
             color: Some(Color::from_rgba8(100, 150, 220, 255)), // Blue for orbs
-            columns: ChallengeColumns::TotalPercent, // Show total and percent
+            columns: ChallengeColumns::TotalPercent,            // Show total and percent
             by_player: vec![
                 PlayerContribution {
                     entity_id: 1007,
@@ -978,7 +1039,7 @@ mod examples {
             duration_secs: 60.0,
             enabled: true,
             color: Some(Color::from_rgba8(220, 100, 80, 255)), // Red/Orange for damage
-            columns: ChallengeColumns::TotalPerSecond, // Show total and DPS
+            columns: ChallengeColumns::TotalPerSecond,         // Show total and DPS
             by_player: vec![
                 PlayerContribution {
                     entity_id: 1005,
@@ -1126,7 +1187,11 @@ mod examples {
                 last_frame = now;
             }
 
-            let sleep_ms = if overlay.frame().is_interactive() { 4 } else { 50 };
+            let sleep_ms = if overlay.frame().is_interactive() {
+                4
+            } else {
+                50
+            };
             std::thread::sleep(Duration::from_millis(sleep_ms));
         }
     }
@@ -1157,7 +1222,9 @@ fn main() {
             println!("  --raid-timers  16-frame stress test with ticking timers");
             println!("  --timers       Boss timer overlay with countdown bars");
             println!("  --challenges   Challenge overlay (vertical, 2-col: value + percent)");
-            println!("  --challenges-h Challenge overlay (horizontal, 3-col: value + /s + percent)");
+            println!(
+                "  --challenges-h Challenge overlay (horizontal, 3-col: value + /s + percent)"
+            );
         }
     }
 }

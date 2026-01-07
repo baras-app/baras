@@ -31,8 +31,8 @@ pub struct LagSimulator {
 impl Default for LagSimulator {
     fn default() -> Self {
         Self {
-            base_lag_ms: 30,        // 30ms typical file I/O
-            jitter_ms: 20,          // ±20ms variation
+            base_lag_ms: 30,         // 30ms typical file I/O
+            jitter_ms: 20,           // ±20ms variation
             spike_probability: 0.01, // 1% chance of spike
             spike_lag_ms: 200,       // 200ms spike duration
             enabled: true,
@@ -56,7 +56,12 @@ impl LagSimulator {
     }
 
     /// Create a lag simulator with custom parameters
-    pub fn custom(base_lag_ms: u64, jitter_ms: u64, spike_probability: f32, spike_lag_ms: u64) -> Self {
+    pub fn custom(
+        base_lag_ms: u64,
+        jitter_ms: u64,
+        spike_probability: f32,
+        spike_lag_ms: u64,
+    ) -> Self {
         Self {
             base_lag_ms,
             jitter_ms,
@@ -103,7 +108,10 @@ impl LagSimulator {
     /// Simple LCG PRNG for deterministic jitter
     fn next_random(&mut self) -> u64 {
         // LCG parameters from Numerical Recipes
-        self.rng_state = self.rng_state.wrapping_mul(6364136223846793005).wrapping_add(1);
+        self.rng_state = self
+            .rng_state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1);
         self.rng_state >> 33
     }
 

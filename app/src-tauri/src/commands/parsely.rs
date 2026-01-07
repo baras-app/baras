@@ -37,8 +37,7 @@ pub async fn upload_to_parsely(
         });
     }
 
-    let compressed =
-        gzip_compress_file(&path).map_err(|e| format!("Failed to compress: {}", e))?;
+    let compressed = gzip_compress_file(&path).map_err(|e| format!("Failed to compress: {}", e))?;
 
     // Build Handle
     let filename = path

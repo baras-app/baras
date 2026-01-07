@@ -1,5 +1,5 @@
-use crate::context::IStr;
 use crate::combat_log::EntityType;
+use crate::context::IStr;
 use chrono::NaiveDateTime;
 
 /// Signals emitted by the EventProcessor for cross-cutting concerns.

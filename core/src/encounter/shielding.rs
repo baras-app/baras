@@ -1,7 +1,7 @@
+use super::CombatEncounter;
+use super::EffectInstance;
 use crate::combat_log::CombatEvent;
 use chrono::NaiveDateTime;
-use super::EffectInstance;
-use super::CombatEncounter;
 
 /// Grace period when another shield is still active (tighter window)
 const ABSORPTION_INSIDE_DELAY_MS: i64 = 500;
@@ -57,8 +57,7 @@ impl CombatEncounter {
                 .collect();
 
             let closed = if active.is_empty() {
-                find_recently_closed_shield(effects, event.timestamp)
-                    .map(|e| e.source_id)
+                find_recently_closed_shield(effects, event.timestamp).map(|e| e.source_id)
             } else {
                 None
             };
@@ -80,12 +79,14 @@ impl CombatEncounter {
 
                 // Mark as consumed if the shield was removed (depleted) and damage got through
                 // This prevents double-counting via find_recently_closed_shield later
-                if shield.is_removed && event.details.dmg_effective > 0
+                if shield.is_removed
+                    && event.details.dmg_effective > 0
                     && let Some(effects) = self.effects.get_mut(&target_id)
-                        && let Some(effect) = effects.iter_mut().find(|e| {
-                            e.is_shield && e.effect_id == shield.effect_id
-                        }) {
-                            effect.has_absorbed = true;
+                    && let Some(effect) = effects
+                        .iter_mut()
+                        .find(|e| e.is_shield && e.effect_id == shield.effect_id)
+                {
+                    effect.has_absorbed = true;
                 }
 
                 let acc = self.accumulated_data.entry(shield.source_id).or_default();
@@ -116,7 +117,9 @@ impl CombatEncounter {
             return;
         }
 
-        let removal_time = removed_shield.removed_at.unwrap_or(removed_shield.applied_at);
+        let removal_time = removed_shield
+            .removed_at
+            .unwrap_or(removed_shield.applied_at);
 
         // Check if other shields are still active (affects grace period)
         let other_shields_active = self
@@ -157,7 +160,10 @@ impl CombatEncounter {
         });
 
         if total_absorbed > 0 {
-            let acc = self.accumulated_data.entry(removed_shield.source_id).or_default();
+            let acc = self
+                .accumulated_data
+                .entry(removed_shield.source_id)
+                .or_default();
             acc.shielding_given += total_absorbed;
         }
 
@@ -178,15 +184,12 @@ impl CombatEncounter {
             };
 
             // Find the most recently removed shield for this target
-            let last_shield = self
-                .effects
-                .get(&target_id)
-                .and_then(|effects| {
-                    effects
-                        .iter()
-                        .filter(|e| e.is_shield && e.removed_at.is_some())
-                        .max_by_key(|e| e.removed_at)
-                });
+            let last_shield = self.effects.get(&target_id).and_then(|effects| {
+                effects
+                    .iter()
+                    .filter(|e| e.is_shield && e.removed_at.is_some())
+                    .max_by_key(|e| e.removed_at)
+            });
 
             if let Some(shield) = last_shield {
                 let total: i64 = pending.iter().map(|p| p.absorbed).sum();
@@ -200,7 +203,11 @@ impl CombatEncounter {
 }
 
 /// Checks if a shield is active at the given timestamp.
-fn is_shield_active_at(effect: &EffectInstance, timestamp: NaiveDateTime, use_outside_window: bool) -> bool {
+fn is_shield_active_at(
+    effect: &EffectInstance,
+    timestamp: NaiveDateTime,
+    use_outside_window: bool,
+) -> bool {
     match effect.removed_at {
         None => true,
         Some(removed) => {
@@ -213,21 +220,23 @@ fn is_shield_active_at(effect: &EffectInstance, timestamp: NaiveDateTime, use_ou
             } else {
                 ABSORPTION_INSIDE_DELAY_MS
             };
-            let delta = removed.signed_duration_since(timestamp).num_milliseconds().abs();
+            let delta = removed
+                .signed_duration_since(timestamp)
+                .num_milliseconds()
+                .abs();
             delta <= grace_ms
         }
     }
 }
 
 /// Find a shield that was recently closed (within outside delay window)
-fn find_recently_closed_shield(effects: &[EffectInstance], timestamp: NaiveDateTime) -> Option<&EffectInstance> {
+fn find_recently_closed_shield(
+    effects: &[EffectInstance],
+    timestamp: NaiveDateTime,
+) -> Option<&EffectInstance> {
     effects
         .iter()
-        .filter(|e| {
-            e.is_shield
-                && !e.has_absorbed
-                && e.removed_at.is_some()
-        })
+        .filter(|e| e.is_shield && !e.has_absorbed && e.removed_at.is_some())
         .filter(|e| {
             let removed = e.removed_at.unwrap();
             let delta = timestamp.signed_duration_since(removed).num_milliseconds();

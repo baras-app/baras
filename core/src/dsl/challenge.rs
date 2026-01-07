@@ -57,7 +57,9 @@ pub struct ChallengeDefinition {
     pub columns: ChallengeColumns,
 }
 
-fn default_enabled() -> bool { true }
+fn default_enabled() -> bool {
+    true
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Metrics
@@ -122,14 +124,10 @@ pub enum ChallengeCondition {
     },
 
     /// Specific ability ID(s)
-    Ability {
-        ability_ids: Vec<u64>,
-    },
+    Ability { ability_ids: Vec<u64> },
 
     /// Specific effect ID(s)
-    Effect {
-        effect_ids: Vec<u64>,
-    },
+    Effect { effect_ids: Vec<u64> },
 
     /// Counter must meet threshold
     Counter {
@@ -152,7 +150,6 @@ pub enum ChallengeCondition {
     },
 }
 
-
 // ═══════════════════════════════════════════════════════════════════════════
 // Impl Blocks
 // ═══════════════════════════════════════════════════════════════════════════
@@ -173,7 +170,6 @@ impl ChallengeDefinition {
         })
     }
 }
-
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Matching Context
@@ -257,11 +253,10 @@ impl ChallengeCondition {
         effect_id: Option<u64>,
     ) -> bool {
         match self {
-            ChallengeCondition::Phase { phase_ids } => {
-                ctx.current_phase
-                    .as_ref()
-                    .is_some_and(|p| phase_ids.iter().any(|id| id == p))
-            }
+            ChallengeCondition::Phase { phase_ids } => ctx
+                .current_phase
+                .as_ref()
+                .is_some_and(|p| phase_ids.iter().any(|id| id == p)),
 
             ChallengeCondition::Source { matcher } => source.is_some_and(|s| {
                 matcher.matches_challenge(
@@ -417,9 +412,21 @@ mod tests {
         let add = EntityInfo::npc(2, "Add", 9999);
         let player = EntityInfo::player(3, "Player", false);
 
-        assert!(!filter_matches(&EntityFilter::NpcExceptBoss, &boss, &boss_ids));
-        assert!(filter_matches(&EntityFilter::NpcExceptBoss, &add, &boss_ids));
-        assert!(!filter_matches(&EntityFilter::NpcExceptBoss, &player, &boss_ids));
+        assert!(!filter_matches(
+            &EntityFilter::NpcExceptBoss,
+            &boss,
+            &boss_ids
+        ));
+        assert!(filter_matches(
+            &EntityFilter::NpcExceptBoss,
+            &add,
+            &boss_ids
+        ));
+        assert!(!filter_matches(
+            &EntityFilter::NpcExceptBoss,
+            &player,
+            &boss_ids
+        ));
     }
 
     #[test]
@@ -429,8 +436,16 @@ mod tests {
         let other = EntityInfo::player(2, "Them", false);
         let npc = EntityInfo::npc(3, "NPC", 123);
 
-        assert!(filter_matches(&EntityFilter::LocalPlayer, &local, &boss_ids));
-        assert!(!filter_matches(&EntityFilter::LocalPlayer, &other, &boss_ids));
+        assert!(filter_matches(
+            &EntityFilter::LocalPlayer,
+            &local,
+            &boss_ids
+        ));
+        assert!(!filter_matches(
+            &EntityFilter::LocalPlayer,
+            &other,
+            &boss_ids
+        ));
         assert!(!filter_matches(&EntityFilter::LocalPlayer, &npc, &boss_ids));
     }
 
@@ -577,7 +592,11 @@ mod tests {
         let bytes = match fs::read(fixture_path) {
             Ok(b) => b,
             Err(e) => {
-                eprintln!("Fixture file error: {} (cwd: {:?})", e, std::env::current_dir());
+                eprintln!(
+                    "Fixture file error: {} (cwd: {:?})",
+                    e,
+                    std::env::current_dir()
+                );
                 eprintln!("Skipping test - fixture not found at: {}", fixture_path);
                 return;
             }
@@ -681,21 +700,26 @@ mod tests {
             }
 
             // Check add damage challenge (skip 0-damage)
-            if damage > 0 && add_damage_challenge.matches(
-                &ctx,
-                &[],
-                Some(&source_info),
-                Some(&target_info),
-                Some(event.action.action_id as u64),
-                None,
-            ) {
+            if damage > 0
+                && add_damage_challenge.matches(
+                    &ctx,
+                    &[],
+                    Some(&source_info),
+                    Some(&target_info),
+                    Some(event.action.action_id as u64),
+                    None,
+                )
+            {
                 add_damage_total += damage;
                 add_damage_events += 1;
             }
         }
 
         eprintln!("=== Challenge Integration Test Results ===");
-        eprintln!("Total lines: {}, Parsed: {}, Damage events: {}", total_lines, parsed_lines, damage_events);
+        eprintln!(
+            "Total lines: {}, Parsed: {}, Damage events: {}",
+            total_lines, parsed_lines, damage_events
+        );
         eprintln!(
             "Boss damage: {} across {} events ({} immune hits)",
             boss_damage_total, boss_damage_events, boss_immune_events
@@ -800,11 +824,12 @@ mod tests {
             };
 
             // Track boss HP from any event involving Bestia
-            let target_npc_id = if event.target_entity.entity_type == crate::combat_log::EntityType::Npc {
-                Some(event.target_entity.class_id)
-            } else {
-                None
-            };
+            let target_npc_id =
+                if event.target_entity.entity_type == crate::combat_log::EntityType::Npc {
+                    Some(event.target_entity.class_id)
+                } else {
+                    None
+                };
 
             if target_npc_id == Some(BESTIA_NPC_ID) && event.target_entity.health.1 > 0 {
                 let current_hp = event.target_entity.health.0 as i64;
@@ -813,7 +838,9 @@ mod tests {
                 ctx.hp_by_npc_id.insert(BESTIA_NPC_ID, boss_hp_percent);
 
                 // Check for phase transition
-                if ctx.current_phase.as_deref() == Some("p1") && boss_hp_percent < BURN_PHASE_THRESHOLD {
+                if ctx.current_phase.as_deref() == Some("p1")
+                    && boss_hp_percent < BURN_PHASE_THRESHOLD
+                {
                     ctx.current_phase = Some("burn".to_string());
                     phase_transition_line = Some(line_num);
                     eprintln!(
@@ -869,10 +896,7 @@ mod tests {
         eprintln!("=== Phase & Counter Test Results ===");
         eprintln!("Total lines: {}", total_lines);
         eprintln!("Dread Scream count: {}", dread_scream_count);
-        eprintln!(
-            "Phase transition at line: {:?}",
-            phase_transition_line
-        );
+        eprintln!("Phase transition at line: {:?}", phase_transition_line);
         eprintln!("Final boss HP: {:.1}%", boss_hp_percent);
         eprintln!(
             "Damage before burn: {}, during burn: {}",
@@ -885,7 +909,10 @@ mod tests {
             phase_transition_line.is_some(),
             "Should detect burn phase transition"
         );
-        assert!(dread_scream_count >= 2, "Should count at least 2 Dread Screams");
+        assert!(
+            dread_scream_count >= 2,
+            "Should count at least 2 Dread Screams"
+        );
         assert!(
             damage_before_burn > 0,
             "Should have damage before burn phase"
@@ -894,10 +921,7 @@ mod tests {
             damage_during_burn > 0,
             "Should have damage during burn phase"
         );
-        assert!(
-            boss_hp_percent < 30.0,
-            "Final HP should be below 30%"
-        );
+        assert!(boss_hp_percent < 30.0, "Final HP should be below 30%");
 
         eprintln!("=== Test passed: Phase transitions and counters work correctly ===");
     }

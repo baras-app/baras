@@ -3,11 +3,11 @@
 //! Counters track occurrences during boss encounters (e.g., add spawns, ability casts).
 //! This module handles detecting when counters should increment based on game events.
 
-use crate::dsl::BossEncounterDefinition;
 use crate::combat_log::{CombatEvent, EntityType};
+use crate::dsl::BossEncounterDefinition;
+use crate::dsl::{EntitySelectorExt, Trigger};
 use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
-use crate::dsl::{EntitySelectorExt, Trigger};
 
 use super::GameSignal;
 
@@ -51,20 +51,21 @@ pub fn check_counter_increments(
 
         // Check decrement_on trigger (always decrements)
         if let Some(ref decrement_trigger) = counter.decrement_on
-            && check_counter_trigger(decrement_trigger, event, current_signals, &def) {
-                let enc = cache.current_encounter_mut().unwrap();
-                let (old_value, new_value) = enc.modify_counter(
-                    &counter.id,
-                    true, // Always decrement
-                    None, // Never set_value for decrement_on
-                );
+            && check_counter_trigger(decrement_trigger, event, current_signals, &def)
+        {
+            let enc = cache.current_encounter_mut().unwrap();
+            let (old_value, new_value) = enc.modify_counter(
+                &counter.id,
+                true, // Always decrement
+                None, // Never set_value for decrement_on
+            );
 
-                signals.push(GameSignal::CounterChanged {
-                    counter_id: counter.id.clone(),
-                    old_value,
-                    new_value,
-                    timestamp: event.timestamp,
-                });
+            signals.push(GameSignal::CounterChanged {
+                counter_id: counter.id.clone(),
+                old_value,
+                new_value,
+                timestamp: event.timestamp,
+            });
         }
 
         // Check reset_on trigger (resets to initial_value)
@@ -117,11 +118,8 @@ pub fn check_counter_timer_triggers(
         // Check increment_on for timer triggers
         if matches_timer_trigger(&counter.increment_on, expired_timer_ids, started_timer_ids) {
             let enc = cache.current_encounter_mut().unwrap();
-            let (old_value, new_value) = enc.modify_counter(
-                &counter.id,
-                counter.decrement,
-                counter.set_value,
-            );
+            let (old_value, new_value) =
+                enc.modify_counter(&counter.id, counter.decrement, counter.set_value);
             signals.push(GameSignal::CounterChanged {
                 counter_id: counter.id.clone(),
                 old_value,
@@ -193,12 +191,12 @@ pub fn check_counter_trigger(
     boss_def: &BossEncounterDefinition,
 ) -> bool {
     match trigger {
-        Trigger::CombatStart => {
-            current_signals.iter().any(|s| matches!(s, GameSignal::CombatStarted { .. }))
-        }
-        Trigger::CombatEnd => {
-            current_signals.iter().any(|s| matches!(s, GameSignal::CombatEnded { .. }))
-        }
+        Trigger::CombatStart => current_signals
+            .iter()
+            .any(|s| matches!(s, GameSignal::CombatStarted { .. })),
+        Trigger::CombatEnd => current_signals
+            .iter()
+            .any(|s| matches!(s, GameSignal::CombatEnded { .. })),
         Trigger::AbilityCast { abilities, source } => {
             if event.effect.effect_id != effect_id::ABILITYACTIVATE {
                 return false;
@@ -206,7 +204,9 @@ pub fn check_counter_trigger(
             let ability_id = event.action.action_id as u64;
             let ability_name = crate::context::resolve(event.action.name);
             if !abilities.is_empty()
-                && !abilities.iter().any(|s| s.matches(ability_id, Some(ability_name)))
+                && !abilities
+                    .iter()
+                    .any(|s| s.matches(ability_id, Some(ability_name)))
             {
                 return false;
             }
@@ -221,7 +221,9 @@ pub fn check_counter_trigger(
             }
             true
         }
-        Trigger::EffectApplied { effects, target, .. } => {
+        Trigger::EffectApplied {
+            effects, target, ..
+        } => {
             if event.effect.type_id != effect_type_id::APPLYEFFECT {
                 return false;
             }
@@ -248,7 +250,9 @@ pub fn check_counter_trigger(
             }
             true
         }
-        Trigger::EffectRemoved { effects, target, .. } => {
+        Trigger::EffectRemoved {
+            effects, target, ..
+        } => {
             if event.effect.type_id != effect_type_id::REMOVEEFFECT {
                 return false;
             }
@@ -274,23 +278,24 @@ pub fn check_counter_trigger(
             }
             true
         }
-        Trigger::PhaseEntered { phase_id } => {
-            current_signals.iter().any(|s| {
-                matches!(s, GameSignal::PhaseChanged { new_phase, .. } if new_phase == phase_id)
-            })
-        }
-        Trigger::PhaseEnded { phase_id } => {
-            current_signals.iter().any(|s| {
-                matches!(s, GameSignal::PhaseChanged { old_phase: Some(old), .. } if old == phase_id)
-                    || matches!(s, GameSignal::PhaseEndTriggered { phase_id: p, .. } if p == phase_id)
-            })
-        }
-        Trigger::AnyPhaseChange => {
-            current_signals.iter().any(|s| matches!(s, GameSignal::PhaseChanged { .. }))
-        }
+        Trigger::PhaseEntered { phase_id } => current_signals.iter().any(
+            |s| matches!(s, GameSignal::PhaseChanged { new_phase, .. } if new_phase == phase_id),
+        ),
+        Trigger::PhaseEnded { phase_id } => current_signals.iter().any(|s| {
+            matches!(s, GameSignal::PhaseChanged { old_phase: Some(old), .. } if old == phase_id)
+                || matches!(s, GameSignal::PhaseEndTriggered { phase_id: p, .. } if p == phase_id)
+        }),
+        Trigger::AnyPhaseChange => current_signals
+            .iter()
+            .any(|s| matches!(s, GameSignal::PhaseChanged { .. })),
         Trigger::NpcAppears { selector } => {
             current_signals.iter().any(|s| {
-                if let GameSignal::NpcFirstSeen { npc_id, entity_name, .. } = s {
+                if let GameSignal::NpcFirstSeen {
+                    npc_id,
+                    entity_name,
+                    ..
+                } = s
+                {
                     // Use unified matching: roster alias → NPC ID → name
                     selector.matches_with_roster(&boss_def.entities, *npc_id, Some(entity_name))
                 } else {
@@ -300,7 +305,12 @@ pub fn check_counter_trigger(
         }
         Trigger::EntityDeath { selector } => {
             current_signals.iter().any(|s| {
-                if let GameSignal::EntityDeath { npc_id, entity_name, .. } = s {
+                if let GameSignal::EntityDeath {
+                    npc_id,
+                    entity_name,
+                    ..
+                } = s
+                {
                     // If entity filter is empty, match any death
                     if selector.is_empty() {
                         return true;
@@ -312,22 +322,27 @@ pub fn check_counter_trigger(
                 }
             })
         }
-        Trigger::CounterReaches { counter_id, value } => {
-            current_signals.iter().any(|s| {
-                matches!(s, GameSignal::CounterChanged { counter_id: cid, new_value, .. }
+        Trigger::CounterReaches { counter_id, value } => current_signals.iter().any(|s| {
+            matches!(s, GameSignal::CounterChanged { counter_id: cid, new_value, .. }
                     if cid == counter_id && *new_value == *value)
-            })
-        }
-        Trigger::BossHpBelow { hp_percent, selector } => {
+        }),
+        Trigger::BossHpBelow {
+            hp_percent,
+            selector,
+        } => {
             current_signals.iter().any(|s| {
-                if let GameSignal::BossHpChanged { new_hp_percent, entity_name, .. } = s {
+                if let GameSignal::BossHpChanged {
+                    new_hp_percent,
+                    entity_name,
+                    ..
+                } = s
+                {
                     if *new_hp_percent > *hp_percent {
                         return false;
                     }
                     // Check entity filter if specified
-                    if !selector.is_empty()
-                        && !selector.matches_name_only(entity_name) {
-                            return false;
+                    if !selector.is_empty() && !selector.matches_name_only(entity_name) {
+                        return false;
                     }
                     true
                 } else {
@@ -340,7 +355,11 @@ pub fn check_counter_trigger(
         // Timer triggers not supported for counters
         Trigger::TimerExpires { .. } | Trigger::TimerStarted { .. } => false,
 
-        Trigger::DamageTaken { abilities, source, target } => {
+        Trigger::DamageTaken {
+            abilities,
+            source,
+            target,
+        } => {
             // Check for DamageTaken signal in current signals
             current_signals.iter().any(|sig| {
                 if let GameSignal::DamageTaken {
@@ -354,7 +373,9 @@ pub fn check_counter_trigger(
                 {
                     let ability_name_str = crate::context::resolve(*ability_name);
                     if !abilities.is_empty()
-                        && !abilities.iter().any(|s| s.matches(*ability_id as u64, Some(ability_name_str)))
+                        && !abilities
+                            .iter()
+                            .any(|s| s.matches(*ability_id as u64, Some(ability_name_str)))
                     {
                         return false;
                     }
@@ -386,8 +407,8 @@ pub fn check_counter_trigger(
         | Trigger::TargetSet { .. }
         | Trigger::Manual => false,
 
-        Trigger::AnyOf { conditions } => {
-            conditions.iter().any(|c| check_counter_trigger(c, event, current_signals, boss_def))
-        }
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| check_counter_trigger(c, event, current_signals, boss_def)),
     }
 }

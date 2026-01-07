@@ -180,7 +180,7 @@ pub fn run() {
             commands::create_encounter_item,
             commands::update_encounter_item,
             commands::delete_encounter_item,
-           // Effect editor commands
+            // Effect editor commands
             commands::get_effect_definitions,
             commands::update_effect_definition,
             commands::create_effect_definition,
@@ -189,7 +189,7 @@ pub fn run() {
             commands::get_effect_files,
             // Parsely upload
             commands::upload_to_parsely,
-           // Query commands
+            // Query commands
             commands::query_breakdown,
             commands::query_entity_breakdown,
             commands::query_raid_overview,

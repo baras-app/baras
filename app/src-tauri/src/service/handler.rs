@@ -10,7 +10,10 @@ use tokio::sync::mpsc;
 use baras_core::EncounterSummary;
 use baras_core::context::{AppConfig, AppConfigExt, resolve};
 use baras_core::encounter::EncounterState;
-use baras_core::query::{AbilityBreakdown, BreakdownMode, CombatLogRow, DataTab, EffectChartData, EffectWindow, EncounterTimeline, EntityBreakdown, PlayerDeath, RaidOverviewRow, TimeRange, TimeSeriesPoint};
+use baras_core::query::{
+    AbilityBreakdown, BreakdownMode, CombatLogRow, DataTab, EffectChartData, EffectWindow,
+    EncounterTimeline, EntityBreakdown, PlayerDeath, RaidOverviewRow, TimeRange, TimeSeriesPoint,
+};
 
 use super::{CombatData, LogFileInfo, ServiceCommand, SessionInfo};
 use crate::state::SharedState;
@@ -341,20 +344,28 @@ impl ServiceHandle {
             self.shared.query_context.register_parquet(&path).await?;
         } else {
             // Query live buffer
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        let types_ref: Option<Vec<&str>> = entity_types.as_ref().map(|v| v.iter().map(|s| s.as_str()).collect());
-        self.shared.query_context.query().query_breakdown(
-            tab,
-            entity_name.as_deref(),
-            time_range.as_ref(),
-            types_ref.as_deref(),
-            breakdown_mode.as_ref(),
-            duration_secs,
-        ).await
+        let types_ref: Option<Vec<&str>> = entity_types
+            .as_ref()
+            .map(|v| v.iter().map(|s| s.as_str()).collect());
+        self.shared
+            .query_context
+            .query()
+            .query_breakdown(
+                tab,
+                entity_name.as_deref(),
+                time_range.as_ref(),
+                types_ref.as_deref(),
+                breakdown_mode.as_ref(),
+                duration_secs,
+            )
+            .await
     }
 
     /// Query breakdown by entity for a specific encounter and data tab.
@@ -376,12 +387,18 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().breakdown_by_entity(tab, time_range.as_ref()).await
+        self.shared
+            .query_context
+            .query()
+            .breakdown_by_entity(tab, time_range.as_ref())
+            .await
     }
 
     /// Query raid overview - aggregated stats per player.
@@ -403,12 +420,18 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().query_raid_overview(time_range.as_ref(), duration_secs).await
+        self.shared
+            .query_context
+            .query()
+            .query_raid_overview(time_range.as_ref(), duration_secs)
+            .await
     }
 
     /// Query DPS over time for a specific encounter.
@@ -431,12 +454,18 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().dps_over_time(bucket_ms, source_name.as_deref(), time_range.as_ref()).await
+        self.shared
+            .query_context
+            .query()
+            .dps_over_time(bucket_ms, source_name.as_deref(), time_range.as_ref())
+            .await
     }
 
     /// Get list of available encounter parquet files.
@@ -480,7 +509,9 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
@@ -508,12 +539,18 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().hps_over_time(bucket_ms, source_name.as_deref(), time_range.as_ref()).await
+        self.shared
+            .query_context
+            .query()
+            .hps_over_time(bucket_ms, source_name.as_deref(), time_range.as_ref())
+            .await
     }
 
     /// Query DTPS over time for a specific encounter.
@@ -536,12 +573,18 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().dtps_over_time(bucket_ms, target_name.as_deref(), time_range.as_ref()).await
+        self.shared
+            .query_context
+            .query()
+            .dtps_over_time(bucket_ms, target_name.as_deref(), time_range.as_ref())
+            .await
     }
 
     /// Query effect uptime statistics for the charts panel.
@@ -564,12 +607,18 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().query_effect_uptime(target_name.as_deref(), time_range.as_ref(), duration_secs).await
+        self.shared
+            .query_context
+            .query()
+            .query_effect_uptime(target_name.as_deref(), time_range.as_ref(), duration_secs)
+            .await
     }
 
     /// Query individual time windows for a specific effect.
@@ -593,12 +642,23 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().query_effect_windows(effect_id, target_name.as_deref(), time_range.as_ref(), duration_secs).await
+        self.shared
+            .query_context
+            .query()
+            .query_effect_windows(
+                effect_id,
+                target_name.as_deref(),
+                time_range.as_ref(),
+                duration_secs,
+            )
+            .await
     }
 
     /// Query combat log rows with pagination for virtual scrolling.
@@ -624,19 +684,25 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().query_combat_log(
-            offset,
-            limit,
-            source_filter.as_deref(),
-            target_filter.as_deref(),
-            search_filter.as_deref(),
-            time_range.as_ref(),
-        ).await
+        self.shared
+            .query_context
+            .query()
+            .query_combat_log(
+                offset,
+                limit,
+                source_filter.as_deref(),
+                target_filter.as_deref(),
+                search_filter.as_deref(),
+                time_range.as_ref(),
+            )
+            .await
     }
 
     /// Get total count of combat log rows for pagination.
@@ -660,17 +726,23 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().query_combat_log_count(
-            source_filter.as_deref(),
-            target_filter.as_deref(),
-            search_filter.as_deref(),
-            time_range.as_ref(),
-        ).await
+        self.shared
+            .query_context
+            .query()
+            .query_combat_log_count(
+                source_filter.as_deref(),
+                target_filter.as_deref(),
+                search_filter.as_deref(),
+                time_range.as_ref(),
+            )
+            .await
     }
 
     /// Get distinct source names for combat log filter dropdown.
@@ -690,7 +762,9 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
@@ -715,7 +789,9 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
@@ -740,12 +816,18 @@ impl ServiceHandle {
             }
             self.shared.query_context.register_parquet(&path).await?;
         } else {
-            let writer = session.encounter_writer().ok_or("No live encounter buffer")?;
+            let writer = session
+                .encounter_writer()
+                .ok_or("No live encounter buffer")?;
             let batch = writer.to_record_batch().ok_or("Live buffer is empty")?;
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().query_player_deaths().await
+        self.shared
+            .query_context
+            .query()
+            .query_player_deaths()
+            .await
     }
 
     // ─────────────────────────────────────────────────────────────────────────

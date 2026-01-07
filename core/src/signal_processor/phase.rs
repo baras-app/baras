@@ -7,9 +7,9 @@ use chrono::NaiveDateTime;
 
 use crate::combat_log::CombatEvent;
 use crate::dsl::EntityDefinition;
+use crate::dsl::Trigger;
 use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
-use crate::dsl::Trigger;
 
 use super::GameSignal;
 
@@ -56,7 +56,14 @@ pub fn check_hp_phase_transitions(
             }
         }
 
-        if check_hp_trigger(&phase.start_trigger, &def.entities, old_hp, new_hp, npc_id, entity_name) {
+        if check_hp_trigger(
+            &phase.start_trigger,
+            &def.entities,
+            old_hp,
+            new_hp,
+            npc_id,
+            entity_name,
+        ) {
             let old_phase = enc.current_phase.clone();
             let new_phase_id = phase.id.clone();
             let boss_id = def.id.clone();
@@ -127,7 +134,8 @@ pub fn check_ability_phase_transitions(
             let enc = cache.current_encounter_mut().unwrap();
             enc.set_phase(&new_phase_id, event.timestamp);
             enc.reset_counters_to_initial(&resets, &counter_defs);
-            enc.challenge_tracker.set_phase(&new_phase_id, event.timestamp);
+            enc.challenge_tracker
+                .set_phase(&new_phase_id, event.timestamp);
 
             return vec![GameSignal::PhaseChanged {
                 boss_id,
@@ -328,7 +336,14 @@ pub fn check_phase_end_triggers(
             ..
         } = signal
         {
-            if check_hp_trigger(end_trigger, &def.entities, *old_hp_percent, *new_hp_percent, *npc_id, entity_name) {
+            if check_hp_trigger(
+                end_trigger,
+                &def.entities,
+                *old_hp_percent,
+                *new_hp_percent,
+                *npc_id,
+                entity_name,
+            ) {
                 return vec![GameSignal::PhaseEndTriggered {
                     phase_id: current_phase_id.clone(),
                     timestamp: *timestamp,
@@ -393,15 +408,27 @@ pub fn check_ability_trigger(trigger: &Trigger, event: &CombatEvent) -> bool {
 
 /// Check if a signal-based phase trigger is satisfied (NpcAppears, EntityDeath, etc.).
 /// Iterates through signals and delegates matching to unified Trigger methods.
-pub fn check_signal_phase_trigger(trigger: &Trigger, entities: &[EntityDefinition], signals: &[GameSignal]) -> bool {
+pub fn check_signal_phase_trigger(
+    trigger: &Trigger,
+    entities: &[EntityDefinition],
+    signals: &[GameSignal],
+) -> bool {
     for signal in signals {
         match signal {
-            GameSignal::NpcFirstSeen { npc_id, entity_name, .. } => {
+            GameSignal::NpcFirstSeen {
+                npc_id,
+                entity_name,
+                ..
+            } => {
                 if trigger.matches_npc_appears(entities, *npc_id, entity_name) {
                     return true;
                 }
             }
-            GameSignal::EntityDeath { npc_id, entity_name, .. } => {
+            GameSignal::EntityDeath {
+                npc_id,
+                entity_name,
+                ..
+            } => {
                 if trigger.matches_entity_death(entities, *npc_id, entity_name) {
                     return true;
                 }
@@ -411,7 +438,12 @@ pub fn check_signal_phase_trigger(trigger: &Trigger, entities: &[EntityDefinitio
                     return true;
                 }
             }
-            GameSignal::CounterChanged { counter_id, old_value, new_value, .. } => {
+            GameSignal::CounterChanged {
+                counter_id,
+                old_value,
+                new_value,
+                ..
+            } => {
                 if trigger.matches_counter_reaches(counter_id, *old_value, *new_value) {
                     return true;
                 }

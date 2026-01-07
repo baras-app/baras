@@ -12,10 +12,10 @@ use crate::types::{
 };
 use crate::utils::parse_hex_color;
 
+use super::InlineNameCreator;
 use super::tabs::EncounterData;
 use super::timers::PhaseSelector;
 use super::triggers::EntityFilterDropdown;
-use super::InlineNameCreator;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Challenges Tab
@@ -719,7 +719,11 @@ fn IdListInput(
     placeholder: &'static str,
     on_change: EventHandler<Vec<u64>>,
 ) -> Element {
-    let ids_str = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+    let ids_str = ids
+        .iter()
+        .map(|id| id.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
     rsx! {
         input {
             class: "input-inline text-mono",

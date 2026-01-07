@@ -1,13 +1,13 @@
 use crate::combat_log::{CombatEvent, EntityType};
 use crate::context::resolve;
+use crate::encounter::EncounterState;
 use crate::encounter::combat::ActiveBoss;
 use crate::encounter::entity_info::PlayerInfo;
-use crate::encounter::EncounterState;
+use crate::game_data::{correct_apply_charges, effect_id, effect_type_id};
 use crate::signal_processor::signal::GameSignal;
-use crate::game_data::{effect_id, effect_type_id, correct_apply_charges};
 use crate::state::cache::SessionCache;
 
-use super::{counter, phase, combat_state, challenge};
+use super::{challenge, combat_state, counter, phase};
 
 const POST_COMBAT_THRESHOLD_MS: i64 = 5000;
 
@@ -80,10 +80,16 @@ impl EventProcessor {
         signals.extend(counter::check_counter_increments(&event, cache, &signals));
 
         // Check for ability/effect-based phase transitions (can now match PhaseEnded)
-        signals.extend(phase::check_ability_phase_transitions(&event, cache, &signals));
+        signals.extend(phase::check_ability_phase_transitions(
+            &event, cache, &signals,
+        ));
 
         // Check for entity-based phase transitions (EntityFirstSeen, EntityDeath, PhaseEnded)
-        signals.extend(phase::check_entity_phase_transitions(cache, &signals, event.timestamp));
+        signals.extend(phase::check_entity_phase_transitions(
+            cache,
+            &signals,
+            event.timestamp,
+        ));
 
         // Update combat time and check for TimeElapsed phase transitions
         signals.extend(phase::check_time_phase_transitions(cache, event.timestamp));
@@ -95,7 +101,11 @@ impl EventProcessor {
         // PHASE 3: Combat State Machine
         // ═══════════════════════════════════════════════════════════════════════
 
-        signals.extend(combat_state::advance_combat_state(&event, cache, self.post_combat_threshold_ms));
+        signals.extend(combat_state::advance_combat_state(
+            &event,
+            cache,
+            self.post_combat_threshold_ms,
+        ));
 
         (signals, event)
     }
@@ -144,7 +154,11 @@ impl EventProcessor {
     // ═══════════════════════════════════════════════════════════════════════════
 
     /// Handle DisciplineChanged events for player initialization and role detection.
-    fn handle_discipline_event(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+    fn handle_discipline_event(
+        &self,
+        event: &CombatEvent,
+        cache: &mut SessionCache,
+    ) -> Vec<GameSignal> {
         if event.effect.type_id != effect_type_id::DISCIPLINECHANGED {
             return Vec::new();
         }
@@ -178,7 +192,11 @@ impl EventProcessor {
     }
 
     /// Handle Death and Revive events.
-    fn handle_entity_lifecycle(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+    fn handle_entity_lifecycle(
+        &self,
+        event: &CombatEvent,
+        cache: &mut SessionCache,
+    ) -> Vec<GameSignal> {
         let mut signals = Vec::new();
 
         if event.effect.effect_id == effect_id::DEATH {
@@ -200,10 +218,7 @@ impl EventProcessor {
             });
         } else if event.effect.effect_id == effect_id::REVIVED {
             if let Some(enc) = cache.current_encounter_mut() {
-                enc.set_entity_alive(
-                    event.source_entity.log_id,
-                    &event.source_entity.entity_type,
-                );
+                enc.set_entity_alive(event.source_entity.log_id, &event.source_entity.entity_type);
                 enc.check_all_players_dead();
             }
             signals.push(GameSignal::EntityRevived {
@@ -218,7 +233,11 @@ impl EventProcessor {
     }
 
     /// Handle AreaEntered events.
-    fn handle_area_transition(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+    fn handle_area_transition(
+        &self,
+        event: &CombatEvent,
+        cache: &mut SessionCache,
+    ) -> Vec<GameSignal> {
         if event.effect.type_id != effect_type_id::AREAENTERED {
             return Vec::new();
         }
@@ -229,7 +248,9 @@ impl EventProcessor {
         // (fixes timers with difficulty filters when AreaEntered fires mid-session)
         if let Some(enc) = cache.current_encounter_mut() {
             let difficulty_name = resolve(event.effect.difficulty_name);
-            enc.set_difficulty(crate::game_data::Difficulty::from_game_string(difficulty_name));
+            enc.set_difficulty(crate::game_data::Difficulty::from_game_string(
+                difficulty_name,
+            ));
             let area_id = if event.effect.effect_id != 0 {
                 Some(event.effect.effect_id)
             } else {
@@ -251,7 +272,11 @@ impl EventProcessor {
     /// Emit NpcFirstSeen for any NPC instance encountered for the first time.
     /// Tracks by log_id (instance), so each spawn of the same NPC type fires the signal.
     /// The signal includes npc_id (class_id) so timers can match on NPC type.
-    fn handle_npc_first_seen(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+    fn handle_npc_first_seen(
+        &self,
+        event: &CombatEvent,
+        cache: &mut SessionCache,
+    ) -> Vec<GameSignal> {
         let mut signals = Vec::new();
 
         for entity in [&event.source_entity, &event.target_entity] {
@@ -264,8 +289,8 @@ impl EventProcessor {
             // Signal includes npc_id (class_id) for timer matching
             if cache.seen_npc_instances.insert(entity.log_id) {
                 signals.push(GameSignal::NpcFirstSeen {
-                    entity_id: entity.log_id,      // Unique instance
-                    npc_id: entity.class_id,       // NPC type for timer matching
+                    entity_id: entity.log_id, // Unique instance
+                    npc_id: entity.class_id,  // NPC type for timer matching
                     entity_name: resolve(entity.name).to_string(),
                     timestamp: event.timestamp,
                 });
@@ -277,7 +302,11 @@ impl EventProcessor {
 
     /// Detect boss encounters based on NPC class IDs.
     /// When a known boss NPC is first seen in combat, activates the encounter.
-    fn handle_boss_detection(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+    fn handle_boss_detection(
+        &self,
+        event: &CombatEvent,
+        cache: &mut SessionCache,
+    ) -> Vec<GameSignal> {
         // Already tracking a boss encounter
         let Some(enc) = cache.current_encounter() else {
             return Vec::new();
@@ -328,9 +357,11 @@ impl EventProcessor {
 
                 // Start combat timer and challenge tracker
                 enc.start_combat(event.timestamp);
-                enc.challenge_tracker.start(challenges, entities, npc_ids.clone(), event.timestamp);
+                enc.challenge_tracker
+                    .start(challenges, entities, npc_ids.clone(), event.timestamp);
                 if let Some(ref initial) = initial_phase {
-                    enc.challenge_tracker.set_phase(&initial.id, event.timestamp);
+                    enc.challenge_tracker
+                        .set_phase(&initial.id, event.timestamp);
                 }
 
                 let mut signals = vec![GameSignal::BossEncounterDetected {
@@ -364,7 +395,11 @@ impl EventProcessor {
     }
 
     /// Track boss HP changes and evaluate phase transitions.
-    fn handle_boss_hp_and_phases(&self, event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
+    fn handle_boss_hp_and_phases(
+        &self,
+        event: &CombatEvent,
+        cache: &mut SessionCache,
+    ) -> Vec<GameSignal> {
         // No active boss encounter
         let Some(enc) = cache.current_encounter() else {
             return Vec::new();
@@ -415,7 +450,14 @@ impl EventProcessor {
                 });
 
                 // Check for HP-based phase transitions
-                signals.extend(phase::check_hp_phase_transitions(cache, old_hp, new_hp, entity.class_id, resolve(entity.name), event.timestamp));
+                signals.extend(phase::check_hp_phase_transitions(
+                    cache,
+                    old_hp,
+                    new_hp,
+                    entity.class_id,
+                    resolve(entity.name),
+                    event.timestamp,
+                ));
             }
         }
 
@@ -435,7 +477,10 @@ impl EventProcessor {
                     return Vec::new();
                 }
                 let charges = if event.details.charges > 0 {
-                    Some(correct_apply_charges(event.effect.effect_id, event.details.charges as u8))
+                    Some(correct_apply_charges(
+                        event.effect.effect_id,
+                        event.details.charges as u8,
+                    ))
                 } else {
                     None
                 };

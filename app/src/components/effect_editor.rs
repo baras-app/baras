@@ -8,10 +8,10 @@
 use dioxus::prelude::*;
 use std::collections::HashSet;
 
+use super::encounter_editor::InlineNameCreator;
 use super::encounter_editor::triggers::{
     AbilitySelectorEditor, EffectSelectorEditor, EntityFilterDropdown,
 };
-use super::encounter_editor::InlineNameCreator;
 use crate::api;
 use crate::types::{
     AbilitySelector, AudioConfig, EffectCategory, EffectListItem, EffectTriggerMode, EntityFilter,
@@ -500,544 +500,544 @@ fn EffectEditForm(
     let color_hex = format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]);
 
     rsx! {
-        div { class: "effect-edit-form",
-            div { class: "effect-edit-grid",
-                // ═══ LEFT COLUMN: Main Effect Settings ═══════════════════════════
-                div { class: "effect-edit-left",
-                    // Effect ID (read-only)
-                    div { class: "form-row-hz",
-                        label { "Effect ID" }
-                        code { class: "effect-id-display", "{effect.id}" }
-                    }
-
-                    // Name
-                    div { class: "form-row-hz",
-                        label { "Name" }
-                        input {
-                            r#type: "text",
-                            class: "input-inline",
-                            style: "width: 200px;",
-                            value: "{draft().name}",
-                            oninput: move |e| {
-                                let mut d = draft();
-                                d.name = e.value();
-                                draft.set(d);
-                            }
+            div { class: "effect-edit-form",
+                div { class: "effect-edit-grid",
+                    // ═══ LEFT COLUMN: Main Effect Settings ═══════════════════════════
+                    div { class: "effect-edit-left",
+                        // Effect ID (read-only)
+                        div { class: "form-row-hz",
+                            label { "Effect ID" }
+                            code { class: "effect-id-display", "{effect.id}" }
                         }
-                    }
 
-                    // Display Text
-                    div { class: "form-row-hz",
-                        label { "Display Text" }
-                        input {
-                            r#type: "text",
-                            class: "input-inline",
-                            style: "width: 200px;",
-                            placeholder: "{draft().name}",
-                            value: "{draft().display_text.clone().unwrap_or_default()}",
-                            oninput: move |e| {
-                                let mut d = draft();
-                                d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
-                                draft.set(d);
-                            }
-                        }
-                    }
-
-                    // Category
-                    div { class: "form-row-hz",
-                        label { "Category" }
-                        select {
-                            class: "select-inline",
-                            value: "{draft().category.label()}",
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.category = match e.value().as_str() {
-                                    "HoT" => EffectCategory::Hot,
-                                    "Shield" => EffectCategory::Shield,
-                                    "Buff" => EffectCategory::Buff,
-                                    "Debuff" => EffectCategory::Debuff,
-                                    "Cleansable" => EffectCategory::Cleansable,
-                                    "Proc" => EffectCategory::Proc,
-                                    "Mechanic" => EffectCategory::Mechanic,
-                                    _ => d.category,
-                                };
-                                draft.set(d);
-                            },
-                            for cat in EffectCategory::all() {
-                                option { value: "{cat.label()}", "{cat.label()}" }
-                            }
-                        }
-                    }
-
-                    // Trigger Type and When
-                    div { class: "form-row-hz",
-                        label { "Trigger" }
-                        select {
-                            class: "select-inline",
-                            value: "{trigger_type().label()}",
-                            onchange: move |e| {
-                                let new_type = match e.value().as_str() {
-                                    "Effect Based" => EffectTriggerType::EffectBased,
-                                    "Ability Cast" => EffectTriggerType::AbilityCast,
-                                    _ => trigger_type(),
-                                };
-                                trigger_type.set(new_type);
-                                let mut d = draft();
-                                match new_type {
-                                    EffectTriggerType::EffectBased => {
-                                        d.start_trigger = None;
-                                    }
-                                    EffectTriggerType::AbilityCast => {
-                                        d.effects = vec![];
-                                        if d.start_trigger.is_none() {
-                                            d.start_trigger = Some(Trigger::AbilityCast {
-                                                abilities: vec![],
-                                                source: EntityFilter::LocalPlayer,
-                                            });
-                                        }
-                                    }
+                        // Name
+                        div { class: "form-row-hz",
+                            label { "Name" }
+                            input {
+                                r#type: "text",
+                                class: "input-inline",
+                                style: "width: 200px;",
+                                value: "{draft().name}",
+                                oninput: move |e| {
+                                    let mut d = draft();
+                                    d.name = e.value();
+                                    draft.set(d);
                                 }
-                                draft.set(d);
-                            },
-                            for tt in EffectTriggerType::all() {
-                                option { value: "{tt.label()}", "{tt.label()}" }
                             }
                         }
-                        if trigger_type() == EffectTriggerType::EffectBased {
-                            label { "When" }
+
+                        // Display Text
+                        div { class: "form-row-hz",
+                            label { "Display Text" }
+                            input {
+                                r#type: "text",
+                                class: "input-inline",
+                                style: "width: 200px;",
+                                placeholder: "{draft().name}",
+                                value: "{draft().display_text.clone().unwrap_or_default()}",
+                                oninput: move |e| {
+                                    let mut d = draft();
+                                    d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
+                                    draft.set(d);
+                                }
+                            }
+                        }
+
+                        // Category
+                        div { class: "form-row-hz",
+                            label { "Category" }
                             select {
                                 class: "select-inline",
-                                value: "{draft().trigger.label()}",
+                                value: "{draft().category.label()}",
                                 onchange: move |e| {
                                     let mut d = draft();
-                                    d.trigger = match e.value().as_str() {
-                                        "Effect Applied" => EffectTriggerMode::EffectApplied,
-                                        "Effect Removed" => EffectTriggerMode::EffectRemoved,
-                                        _ => d.trigger,
+                                    d.category = match e.value().as_str() {
+                                        "HoT" => EffectCategory::Hot,
+                                        "Shield" => EffectCategory::Shield,
+                                        "Buff" => EffectCategory::Buff,
+                                        "Debuff" => EffectCategory::Debuff,
+                                        "Cleansable" => EffectCategory::Cleansable,
+                                        "Proc" => EffectCategory::Proc,
+                                        "Mechanic" => EffectCategory::Mechanic,
+                                        _ => d.category,
                                     };
                                     draft.set(d);
                                 },
-                                for trigger in EffectTriggerMode::all() {
-                                    option { value: "{trigger.label()}", "{trigger.label()}" }
+                                for cat in EffectCategory::all() {
+                                    option { value: "{cat.label()}", "{cat.label()}" }
                                 }
                             }
                         }
-                    }
 
-                    // Source and Target filters
-                    div { class: "form-row-hz",
-                        label { "Source" }
-                        EntityFilterDropdown {
-                            label: "",
-                            value: draft().source.clone(),
-                            options: EntityFilter::source_options(),
-                            on_change: move |f| {
-                                let mut d = draft();
-                                d.source = f;
-                                draft.set(d);
-                            }
-                        }
-                        label { "Target" }
-                        EntityFilterDropdown {
-                            label: "",
-                            value: draft().target.clone(),
-                            options: EntityFilter::target_options(),
-                            on_change: move |f| {
-                                let mut d = draft();
-                                d.target = f;
-                                draft.set(d);
-                            }
-                        }
-                    }
-
-                    // Duration, Max Stacks
-                    div { class: "form-row-hz",
-                        label { "Duration" }
-                        input {
-                            r#type: "number",
-                            class: "input-inline",
-                            style: "width: 70px;",
-                            step: ".1",
-                            min: "0",
-                            value: "{draft().duration_secs.unwrap_or(0.0) as u32}",
-                            oninput: move |e| {
-                                let mut d = draft();
-                                d.duration_secs = e.value().parse::<f32>().ok().filter(|&v| v > 0.0);
-                                draft.set(d);
-                            }
-                        }
-                        span { class: "text-muted", "sec" }
-                        label { "Max Stacks" }
-                        input {
-                            r#type: "number",
-                            class: "input-inline",
-                            style: "width: 50px;",
-                            min: "0",
-                            max: "255",
-                            value: "{draft().max_stacks}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<u8>() {
-                                    let mut d = draft();
-                                    d.max_stacks = val;
-                                    draft.set(d);
-                                }
-                            }
-                        }
-                        label { "Show at" }
-                        input {
-                            r#type: "number",
-                            class: "input-inline",
-                            style: "width: 50px;",
-                            min: "0",
-                            max: "{draft().duration_secs.unwrap_or(999.0) as u32}",
-                            value: "{draft().show_at_secs as u32}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<f32>() {
-                                    let mut d = draft();
-                                    let max_val = d.duration_secs.unwrap_or(f32::MAX);
-                                    d.show_at_secs = val.min(max_val).max(0.0);
-                                    draft.set(d);
-                                }
-                            }
-                        }
-                        span { class: "text-sm text-secondary", "sec remaining" }
-
-
-                    }
-
-                    // Effects or Trigger Abilities (based on trigger type)
-                    div { class: "form-row-hz", style: "align-items: flex-start;",
-                        if trigger_type() == EffectTriggerType::EffectBased {
-                            EffectSelectorEditor {
-                                label: "Effects",
-                                selectors: draft().effects.clone(),
-                                on_change: move |selectors| {
-                                    let mut d = draft();
-                                    d.effects = selectors;
-                                    draft.set(d);
-                                }
-                            }
-                        } else {
-                            TriggerAbilitiesEditor {
-                                abilities: draft().start_trigger.as_ref()
-                                    .and_then(|t| match t {
-                                        Trigger::AbilityCast { abilities, .. } => Some(abilities.clone()),
-                                        _ => None,
-                                    })
-                                    .unwrap_or_default(),
-                                on_change: move |abilities| {
-                                    let mut d = draft();
-                                    if let Some(Trigger::AbilityCast { source, .. }) = &d.start_trigger {
-                                        d.start_trigger = Some(Trigger::AbilityCast {
-                                            abilities,
-                                            source: source.clone(),
-                                        });
-                                    } else {
-                                        d.start_trigger = Some(Trigger::AbilityCast {
-                                            abilities,
-                                            source: EntityFilter::LocalPlayer,
-                                        });
-                                    }
-                                    draft.set(d);
-                                }
-                            }
-                        }
-                    }
-
-                    // Refresh Abilities
-                    div { class: "form-row-hz", style: "align-items: flex-start;",
-                        AbilitySelectorEditor {
-                            label: "Refresh Abilities",
-                            selectors: draft().refresh_abilities.clone(),
-                            on_change: move |ids| {
-                                let mut d = draft();
-                                d.refresh_abilities = ids;
-                                draft.set(d);
-                            }
-                        }
-                    }
-
-                }
-
-                // ═══ RIGHT COLUMN: Checkboxes ════════════════════════════════════
-                div { class: "effect-edit-right",
-                    div { class: "flex items-center gap-xs mb-sm",
-                        label { class: "text-sm text-secondary", "Color" }
-                        input {
-                            r#type: "color",
-                            value: "{color_hex}",
-                            class: "color-picker",
-                            oninput: move |e| {
-                                if let Some(c) = parse_hex_color(&e.value()) {
-                                    let mut d = draft();
-                                    d.color = Some(c);
-                                    draft.set(d);
-                                }
-                            }
-                        }
-                    }
-
-                    label { class: "flex items-center gap-xs text-sm",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().enabled,
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.enabled = e.checked();
-                                draft.set(d);
-                            }
-                        }
-                        "Enabled"
-                    }
-
-                    label { class: "flex items-center gap-xs text-sm",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().show_on_raid_frames,
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.show_on_raid_frames = e.checked();
-                                draft.set(d);
-                            }
-                        }
-                        "Show on Raid Frames"
-                    }
-
-                    label { class: "flex items-center gap-xs text-sm",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().show_on_effects_overlay,
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.show_on_effects_overlay = e.checked();
-                                draft.set(d);
-                            }
-                        }
-                        "Show on Effects Overlay"
-                    }
-
-                    label { class: "flex items-center gap-xs text-sm",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().fixed_duration,
-                            title: "Ignore game EffectRemoved - only expire via duration timer",
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.fixed_duration = e.checked();
-                                draft.set(d);
-                            }
-                        }
-                        "Fixed Duration (for cooldowns)"
-                    }
-
-                    label { class: "flex items-center gap-xs text-sm",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().can_be_refreshed,
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.can_be_refreshed = e.checked();
-                                draft.set(d);
-                            }
-                        }
-                        "Can be refreshed"
-                    }
-                   label { class: "flex items-center gap-xs text-sm",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().is_refreshed_on_modify,
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.is_refreshed_on_modify = e.checked();
-                                draft.set(d);
-                            }
-                        }
-                        "Refresh duration when charges are modified"
-                    }
-
-
-                    label { class: "flex items-center gap-xs text-sm",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().persist_past_death,
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.persist_past_death = e.checked();
-                                draft.set(d);
-                            }
-                        }
-                        "Persist Past Death"
-                    }
-
-                    label { class: "flex items-center gap-xs text-sm",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().track_outside_combat,
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.track_outside_combat = e.checked();
-                                draft.set(d);
-                            }
-                        }
-                        "Track Outside Combat"
-                    }
-
-                    label { class: "flex items-center gap-xs text-sm",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().audio.enabled,
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.audio.enabled = e.checked();
-                                draft.set(d);
-                            }
-                        }
-                        "Enable Audio"
-                    }
-
-                    // Audio settings (shown when audio enabled)
-                    if draft().audio.enabled {
-                         div { class: "form-row-hz",
-                        label { "Alert Sound" }
-                        div { class: "flex items-center gap-xs",
+                        // Trigger Type and When
+                        div { class: "form-row-hz",
+                            label { "Trigger" }
                             select {
                                 class: "select-inline",
-                                style: "width: 140px;",
-                                value: "{draft().audio.file.clone().unwrap_or_default()}",
+                                value: "{trigger_type().label()}",
                                 onchange: move |e| {
+                                    let new_type = match e.value().as_str() {
+                                        "Effect Based" => EffectTriggerType::EffectBased,
+                                        "Ability Cast" => EffectTriggerType::AbilityCast,
+                                        _ => trigger_type(),
+                                    };
+                                    trigger_type.set(new_type);
                                     let mut d = draft();
-                                    d.audio.file = if e.value().is_empty() { None } else { Some(e.value()) };
-                                    draft.set(d);
-                                },
-                                option { value: "", "(none)" }
-                                option { value: "Alarm.mp3", "Alarm.mp3" }
-                                option { value: "Alert.mp3", "Alert.mp3" }
-                                // Show custom path if set and not a bundled sound
-                                if let Some(ref path) = draft().audio.file {
-                                    if !path.is_empty() && path != "Alarm.mp3" && path != "Alert.mp3" {
-                                        option { value: "{path}", selected: true, "{path} (custom)" }
-                                    }
-                                }
-                            }
-                            button {
-                                class: "btn btn-sm",
-                                r#type: "button",
-                                onclick: move |_| {
-                                    spawn(async move {
-                                        if let Some(path) = api::pick_audio_file().await {
-                                            // Validate extension
-                                            let lower = path.to_lowercase();
-                                            if lower.ends_with(".mp3") || lower.ends_with(".wav") {
-                                                let mut d = draft();
-                                                d.audio.file = Some(path);
-                                                draft.set(d);
+                                    match new_type {
+                                        EffectTriggerType::EffectBased => {
+                                            d.start_trigger = None;
+                                        }
+                                        EffectTriggerType::AbilityCast => {
+                                            d.effects = vec![];
+                                            if d.start_trigger.is_none() {
+                                                d.start_trigger = Some(Trigger::AbilityCast {
+                                                    abilities: vec![],
+                                                    source: EntityFilter::LocalPlayer,
+                                                });
                                             }
                                         }
-                                    });
-                                },
-                                "Browse"
-                            }
-                        }
-}
-                        div { class: "form-row-hz",
-                            label { "Offset" }
-                            select {
-                                class: "select-inline",
-                                value: "{draft().audio.offset}",
-                                onchange: move |e| {
-                                    if let Ok(val) = e.value().parse::<u8>() {
-                                        let mut d = draft();
-                                        d.audio.offset = val;
-                                        draft.set(d);
                                     }
-                                },
-                                option { value: "0", "On expire" }
-                                option { value: "1", "1s before" }
-                                option { value: "2", "2s before" }
-                                option { value: "3", "3s before" }
-                                option { value: "5", "5s before" }
-                            }
-                        }
-                        div { class: "form-row-hz",
-                            label { "Countdown" }
-                            select {
-                                class: "select-inline",
-                                value: "{draft().audio.countdown_start}",
-                                onchange: move |e| {
-                                    if let Ok(val) = e.value().parse::<u8>() {
-                                        let mut d = draft();
-                                        d.audio.countdown_start = val;
-                                        draft.set(d);
-                                    }
-                                },
-                                option { value: "0", "Off" }
-                                option { value: "3", "3s" }
-                                option { value: "5", "5s" }
-                            }
-                        }
-                        div { class: "form-row-hz",
-                            label { "Voice" }
-                            select {
-                                class: "select-inline",
-                                value: "{draft().audio.countdown_voice.clone().unwrap_or_else(|| \"Amy\".to_string())}",
-                                onchange: move |e| {
-                                    let mut d = draft();
-                                    d.audio.countdown_voice = if e.value() == "Amy" { None } else { Some(e.value()) };
                                     draft.set(d);
                                 },
-                                option { value: "Amy", "Amy" }
-                                option { value: "Jim", "Jim" }
-                                option { value: "Yolo", "Yolo" }
-                                option { value: "Nerevar", "Nerevar" }
+                                for tt in EffectTriggerType::all() {
+                                    option { value: "{tt.label()}", "{tt.label()}" }
+                                }
+                            }
+                            if trigger_type() == EffectTriggerType::EffectBased {
+                                label { "When" }
+                                select {
+                                    class: "select-inline",
+                                    value: "{draft().trigger.label()}",
+                                    onchange: move |e| {
+                                        let mut d = draft();
+                                        d.trigger = match e.value().as_str() {
+                                            "Effect Applied" => EffectTriggerMode::EffectApplied,
+                                            "Effect Removed" => EffectTriggerMode::EffectRemoved,
+                                            _ => d.trigger,
+                                        };
+                                        draft.set(d);
+                                    },
+                                    for trigger in EffectTriggerMode::all() {
+                                        option { value: "{trigger.label()}", "{trigger.label()}" }
+                                    }
+                                }
                             }
                         }
-                    }
 
-                    // Show At
-
-                }
-            }
-
-            // Actions (outside grid, full width)
-            div { class: "form-actions",
-                button {
-                    class: "btn-save",
-                    disabled: !has_changes(),
-                    onclick: move |_| on_save.call(draft()),
-                    "Save"
-                }
-
-                button {
-                    class: "btn-duplicate",
-                    onclick: move |_| on_duplicate.call(()),
-                    "Duplicate"
-                }
-
-                if confirm_delete() {
-                    span { class: "delete-confirm",
-                        "Delete? "
-                        button {
-                            class: "btn-delete-yes",
-                            onclick: move |_| on_delete.call(()),
-                            "Yes"
+                        // Source and Target filters
+                        div { class: "form-row-hz",
+                            label { "Source" }
+                            EntityFilterDropdown {
+                                label: "",
+                                value: draft().source.clone(),
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| {
+                                    let mut d = draft();
+                                    d.source = f;
+                                    draft.set(d);
+                                }
+                            }
+                            label { "Target" }
+                            EntityFilterDropdown {
+                                label: "",
+                                value: draft().target.clone(),
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| {
+                                    let mut d = draft();
+                                    d.target = f;
+                                    draft.set(d);
+                                }
+                            }
                         }
-                        button {
-                            class: "btn-delete-no",
-                            onclick: move |_| confirm_delete.set(false),
-                            "No"
-                        }
-                    }
-                } else {
-                    button {
-                        class: "btn-delete",
-                        onclick: move |_| confirm_delete.set(true),
-                        "Delete"
-                    }
-                }
-            }
 
-        }
+                        // Duration, Max Stacks
+                        div { class: "form-row-hz",
+                            label { "Duration" }
+                            input {
+                                r#type: "number",
+                                class: "input-inline",
+                                style: "width: 70px;",
+                                step: ".1",
+                                min: "0",
+                                value: "{draft().duration_secs.unwrap_or(0.0) as u32}",
+                                oninput: move |e| {
+                                    let mut d = draft();
+                                    d.duration_secs = e.value().parse::<f32>().ok().filter(|&v| v > 0.0);
+                                    draft.set(d);
+                                }
+                            }
+                            span { class: "text-muted", "sec" }
+                            label { "Max Stacks" }
+                            input {
+                                r#type: "number",
+                                class: "input-inline",
+                                style: "width: 50px;",
+                                min: "0",
+                                max: "255",
+                                value: "{draft().max_stacks}",
+                                oninput: move |e| {
+                                    if let Ok(val) = e.value().parse::<u8>() {
+                                        let mut d = draft();
+                                        d.max_stacks = val;
+                                        draft.set(d);
+                                    }
+                                }
+                            }
+                            label { "Show at" }
+                            input {
+                                r#type: "number",
+                                class: "input-inline",
+                                style: "width: 50px;",
+                                min: "0",
+                                max: "{draft().duration_secs.unwrap_or(999.0) as u32}",
+                                value: "{draft().show_at_secs as u32}",
+                                oninput: move |e| {
+                                    if let Ok(val) = e.value().parse::<f32>() {
+                                        let mut d = draft();
+                                        let max_val = d.duration_secs.unwrap_or(f32::MAX);
+                                        d.show_at_secs = val.min(max_val).max(0.0);
+                                        draft.set(d);
+                                    }
+                                }
+                            }
+                            span { class: "text-sm text-secondary", "sec remaining" }
+
+
+                        }
+
+                        // Effects or Trigger Abilities (based on trigger type)
+                        div { class: "form-row-hz", style: "align-items: flex-start;",
+                            if trigger_type() == EffectTriggerType::EffectBased {
+                                EffectSelectorEditor {
+                                    label: "Effects",
+                                    selectors: draft().effects.clone(),
+                                    on_change: move |selectors| {
+                                        let mut d = draft();
+                                        d.effects = selectors;
+                                        draft.set(d);
+                                    }
+                                }
+                            } else {
+                                TriggerAbilitiesEditor {
+                                    abilities: draft().start_trigger.as_ref()
+                                        .and_then(|t| match t {
+                                            Trigger::AbilityCast { abilities, .. } => Some(abilities.clone()),
+                                            _ => None,
+                                        })
+                                        .unwrap_or_default(),
+                                    on_change: move |abilities| {
+                                        let mut d = draft();
+                                        if let Some(Trigger::AbilityCast { source, .. }) = &d.start_trigger {
+                                            d.start_trigger = Some(Trigger::AbilityCast {
+                                                abilities,
+                                                source: source.clone(),
+                                            });
+                                        } else {
+                                            d.start_trigger = Some(Trigger::AbilityCast {
+                                                abilities,
+                                                source: EntityFilter::LocalPlayer,
+                                            });
+                                        }
+                                        draft.set(d);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Refresh Abilities
+                        div { class: "form-row-hz", style: "align-items: flex-start;",
+                            AbilitySelectorEditor {
+                                label: "Refresh Abilities",
+                                selectors: draft().refresh_abilities.clone(),
+                                on_change: move |ids| {
+                                    let mut d = draft();
+                                    d.refresh_abilities = ids;
+                                    draft.set(d);
+                                }
+                            }
+                        }
+
+                    }
+
+                    // ═══ RIGHT COLUMN: Checkboxes ════════════════════════════════════
+                    div { class: "effect-edit-right",
+                        div { class: "flex items-center gap-xs mb-sm",
+                            label { class: "text-sm text-secondary", "Color" }
+                            input {
+                                r#type: "color",
+                                value: "{color_hex}",
+                                class: "color-picker",
+                                oninput: move |e| {
+                                    if let Some(c) = parse_hex_color(&e.value()) {
+                                        let mut d = draft();
+                                        d.color = Some(c);
+                                        draft.set(d);
+                                    }
+                                }
+                            }
+                        }
+
+                        label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().enabled,
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.enabled = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                            "Enabled"
+                        }
+
+                        label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().show_on_raid_frames,
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.show_on_raid_frames = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                            "Show on Raid Frames"
+                        }
+
+                        label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().show_on_effects_overlay,
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.show_on_effects_overlay = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                            "Show on Effects Overlay"
+                        }
+
+                        label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().fixed_duration,
+                                title: "Ignore game EffectRemoved - only expire via duration timer",
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.fixed_duration = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                            "Fixed Duration (for cooldowns)"
+                        }
+
+                        label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().can_be_refreshed,
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.can_be_refreshed = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                            "Can be refreshed"
+                        }
+                       label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().is_refreshed_on_modify,
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.is_refreshed_on_modify = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                            "Refresh duration when charges are modified"
+                        }
+
+
+                        label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().persist_past_death,
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.persist_past_death = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                            "Persist Past Death"
+                        }
+
+                        label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().track_outside_combat,
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.track_outside_combat = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                            "Track Outside Combat"
+                        }
+
+                        label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().audio.enabled,
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.audio.enabled = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                            "Enable Audio"
+                        }
+
+                        // Audio settings (shown when audio enabled)
+                        if draft().audio.enabled {
+                             div { class: "form-row-hz",
+                            label { "Alert Sound" }
+                            div { class: "flex items-center gap-xs",
+                                select {
+                                    class: "select-inline",
+                                    style: "width: 140px;",
+                                    value: "{draft().audio.file.clone().unwrap_or_default()}",
+                                    onchange: move |e| {
+                                        let mut d = draft();
+                                        d.audio.file = if e.value().is_empty() { None } else { Some(e.value()) };
+                                        draft.set(d);
+                                    },
+                                    option { value: "", "(none)" }
+                                    option { value: "Alarm.mp3", "Alarm.mp3" }
+                                    option { value: "Alert.mp3", "Alert.mp3" }
+                                    // Show custom path if set and not a bundled sound
+                                    if let Some(ref path) = draft().audio.file {
+                                        if !path.is_empty() && path != "Alarm.mp3" && path != "Alert.mp3" {
+                                            option { value: "{path}", selected: true, "{path} (custom)" }
+                                        }
+                                    }
+                                }
+                                button {
+                                    class: "btn btn-sm",
+                                    r#type: "button",
+                                    onclick: move |_| {
+                                        spawn(async move {
+                                            if let Some(path) = api::pick_audio_file().await {
+                                                // Validate extension
+                                                let lower = path.to_lowercase();
+                                                if lower.ends_with(".mp3") || lower.ends_with(".wav") {
+                                                    let mut d = draft();
+                                                    d.audio.file = Some(path);
+                                                    draft.set(d);
+                                                }
+                                            }
+                                        });
+                                    },
+                                    "Browse"
+                                }
+                            }
     }
+                            div { class: "form-row-hz",
+                                label { "Offset" }
+                                select {
+                                    class: "select-inline",
+                                    value: "{draft().audio.offset}",
+                                    onchange: move |e| {
+                                        if let Ok(val) = e.value().parse::<u8>() {
+                                            let mut d = draft();
+                                            d.audio.offset = val;
+                                            draft.set(d);
+                                        }
+                                    },
+                                    option { value: "0", "On expire" }
+                                    option { value: "1", "1s before" }
+                                    option { value: "2", "2s before" }
+                                    option { value: "3", "3s before" }
+                                    option { value: "5", "5s before" }
+                                }
+                            }
+                            div { class: "form-row-hz",
+                                label { "Countdown" }
+                                select {
+                                    class: "select-inline",
+                                    value: "{draft().audio.countdown_start}",
+                                    onchange: move |e| {
+                                        if let Ok(val) = e.value().parse::<u8>() {
+                                            let mut d = draft();
+                                            d.audio.countdown_start = val;
+                                            draft.set(d);
+                                        }
+                                    },
+                                    option { value: "0", "Off" }
+                                    option { value: "3", "3s" }
+                                    option { value: "5", "5s" }
+                                }
+                            }
+                            div { class: "form-row-hz",
+                                label { "Voice" }
+                                select {
+                                    class: "select-inline",
+                                    value: "{draft().audio.countdown_voice.clone().unwrap_or_else(|| \"Amy\".to_string())}",
+                                    onchange: move |e| {
+                                        let mut d = draft();
+                                        d.audio.countdown_voice = if e.value() == "Amy" { None } else { Some(e.value()) };
+                                        draft.set(d);
+                                    },
+                                    option { value: "Amy", "Amy" }
+                                    option { value: "Jim", "Jim" }
+                                    option { value: "Yolo", "Yolo" }
+                                    option { value: "Nerevar", "Nerevar" }
+                                }
+                            }
+                        }
+
+                        // Show At
+
+                    }
+                }
+
+                // Actions (outside grid, full width)
+                div { class: "form-actions",
+                    button {
+                        class: "btn-save",
+                        disabled: !has_changes(),
+                        onclick: move |_| on_save.call(draft()),
+                        "Save"
+                    }
+
+                    button {
+                        class: "btn-duplicate",
+                        onclick: move |_| on_duplicate.call(()),
+                        "Duplicate"
+                    }
+
+                    if confirm_delete() {
+                        span { class: "delete-confirm",
+                            "Delete? "
+                            button {
+                                class: "btn-delete-yes",
+                                onclick: move |_| on_delete.call(()),
+                                "Yes"
+                            }
+                            button {
+                                class: "btn-delete-no",
+                                onclick: move |_| confirm_delete.set(false),
+                                "No"
+                            }
+                        }
+                    } else {
+                        button {
+                            class: "btn-delete",
+                            onclick: move |_| confirm_delete.set(true),
+                            "Delete"
+                        }
+                    }
+                }
+
+            }
+        }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1122,4 +1122,3 @@ fn TriggerAbilitiesEditor(
         }
     }
 }
-

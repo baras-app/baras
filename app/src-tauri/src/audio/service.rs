@@ -86,10 +86,10 @@ impl AudioService {
                     seconds,
                     voice_pack,
                 } => {
-                    if countdown_enabled
-                        && !self.play_countdown_voice(voice_pack, *seconds, volume) {
-                            self.speak(&format!("{}", seconds));
-                        }
+                    if countdown_enabled && !self.play_countdown_voice(voice_pack, *seconds, volume)
+                    {
+                        self.speak(&format!("{}", seconds));
+                    }
                 }
 
                 AudioEvent::Alert { text, custom_sound } => {

@@ -17,13 +17,17 @@ use std::path::PathBuf;
 use chrono::NaiveDateTime;
 use clap::{Parser, ValueEnum};
 
-use baras_core::boss::{load_bosses_with_paths, BossEncounterDefinition, ChallengeContext, EntityInfo};
+use baras_core::boss::{
+    BossEncounterDefinition, ChallengeContext, EntityInfo, load_bosses_with_paths,
+};
 use baras_core::combat_log::{CombatEvent, EntityType, LogParser};
 use baras_core::context::resolve;
-use baras_core::encounter::combat::ActiveBoss;
 use baras_core::encounter::ChallengeTracker;
+use baras_core::encounter::combat::ActiveBoss;
 use baras_core::game_data::{effect_id, effect_type_id};
-use baras_core::signal_processor::{check_counter_timer_triggers, EventProcessor, GameSignal, SignalHandler};
+use baras_core::signal_processor::{
+    EventProcessor, GameSignal, SignalHandler, check_counter_timer_triggers,
+};
 use baras_core::state::SessionCache;
 use baras_core::timers::TimerManager;
 
@@ -69,7 +73,6 @@ struct Args {
     // ─────────────────────────────────────────────────────────────────────────
     // Replay Mode
     // ─────────────────────────────────────────────────────────────────────────
-
     /// Replay mode
     #[arg(long, value_enum, default_value_t = ReplayMode::Accelerated)]
     mode: ReplayMode,
@@ -85,7 +88,6 @@ struct Args {
     // ─────────────────────────────────────────────────────────────────────────
     // Output Mode
     // ─────────────────────────────────────────────────────────────────────────
-
     /// Quiet mode: summary only
     #[arg(short, long)]
     quiet: bool,
@@ -101,7 +103,6 @@ struct Args {
     // ─────────────────────────────────────────────────────────────────────────
     // Verification
     // ─────────────────────────────────────────────────────────────────────────
-
     /// Path to expectations TOML file for checkpoint verification
     #[arg(long)]
     expect: Option<PathBuf>,
@@ -109,7 +110,6 @@ struct Args {
     // ─────────────────────────────────────────────────────────────────────────
     // Debug
     // ─────────────────────────────────────────────────────────────────────────
-
     /// Start at specific combat time (MM:SS or seconds)
     #[arg(long)]
     start_at: Option<String>,
@@ -186,8 +186,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // Parse time bounds
-    let start_at_secs = args.start_at.as_ref().map(|s| parse_time_arg(s)).transpose()?;
-    let stop_at_secs = args.stop_at.as_ref().map(|s| parse_time_arg(s)).transpose()?;
+    let start_at_secs = args
+        .start_at
+        .as_ref()
+        .map(|s| parse_time_arg(s))
+        .transpose()?;
+    let stop_at_secs = args
+        .stop_at
+        .as_ref()
+        .map(|s| parse_time_arg(s))
+        .transpose()?;
 
     // Load boss definitions
     let def_path = args.definitions.clone().unwrap_or_else(|| {
@@ -219,8 +227,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("Validating: {} ({})", boss_def.name, boss_def.area_name);
     eprintln!(
         "Mode: {} (speed: {}x)",
-        if speed == 0.0 { "accelerated" } else { "realtime" },
-        if speed == 0.0 { "instant".to_string() } else { format!("{:.1}", speed) }
+        if speed == 0.0 {
+            "accelerated"
+        } else {
+            "realtime"
+        },
+        if speed == 0.0 {
+            "instant".to_string()
+        } else {
+            format!("{:.1}", speed)
+        }
     );
 
     // Load expectations for verification (if provided)
@@ -273,7 +289,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|e| e.is_boss)
         .flat_map(|e| e.ids.iter().copied())
         .collect();
-    challenge_tracker.start(boss_def.challenges.clone(), boss_def.entities.clone(), boss_npc_ids.clone(), session_date);
+    challenge_tracker.start(
+        boss_def.challenges.clone(),
+        boss_def.entities.clone(),
+        boss_npc_ids.clone(),
+        session_date,
+    );
 
     let mut challenge_ctx = ChallengeContext::default();
     challenge_ctx.boss_npc_ids = boss_npc_ids;
@@ -433,7 +454,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             event.timestamp,
         );
         for signal in &timer_counter_signals {
-            if let GameSignal::CounterChanged { counter_id, old_value, new_value, timestamp } = signal {
+            if let GameSignal::CounterChanged {
+                counter_id,
+                old_value,
+                new_value,
+                timestamp,
+            } = signal
+            {
                 cli.counter_change(*timestamp, counter_id, *old_value, *new_value);
             }
         }
@@ -487,7 +514,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     challenge_ctx.current_phase = Some(new_phase.clone());
                     challenge_tracker.set_phase(new_phase, *timestamp);
                 }
-                GameSignal::PhaseEndTriggered { phase_id, timestamp } => {
+                GameSignal::PhaseEndTriggered {
+                    phase_id,
+                    timestamp,
+                } => {
                     cli.phase_end_triggered(*timestamp, phase_id);
                 }
                 GameSignal::CounterChanged {
@@ -498,9 +528,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ..
                 } => {
                     cli.counter_change(*timestamp, counter_id, *old_value, *new_value);
-                    challenge_ctx.counters.insert(counter_id.clone(), *new_value);
+                    challenge_ctx
+                        .counters
+                        .insert(counter_id.clone(), *new_value);
                 }
-                GameSignal::EntityDeath { npc_id, entity_name, timestamp, .. } => {
+                GameSignal::EntityDeath {
+                    npc_id,
+                    entity_name,
+                    timestamp,
+                    ..
+                } => {
                     // Check if this is a kill target
                     let is_kill_target = boss_def
                         .entities
@@ -554,8 +591,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let damage = event.details.dmg_effective as i64;
 
             if target.npc_id.is_some() && event.target_entity.health.1 > 0 {
-                let hp_pct =
-                    (event.target_entity.health.0 as f32 / event.target_entity.health.1 as f32) * 100.0;
+                let hp_pct = (event.target_entity.health.0 as f32
+                    / event.target_entity.health.1 as f32)
+                    * 100.0;
                 challenge_ctx
                     .hp_by_npc_id
                     .insert(target.npc_id.unwrap(), hp_pct);
@@ -618,7 +656,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Print detailed report (unless quiet)
     if !args.quiet {
-        print_detailed_report(&args, &state, boss_def, event_count, &challenge_tracker, &player_names);
+        print_detailed_report(
+            &args,
+            &state,
+            boss_def,
+            event_count,
+            &challenge_tracker,
+            &player_names,
+        );
     }
 
     // Exit with error code if verification failed
@@ -749,7 +794,9 @@ fn track_event(state: &mut ValidationState, event: &CombatEvent, boss: &BossEnco
         .entities
         .iter()
         .any(|e| e.is_boss && e.name.eq_ignore_ascii_case(&source_name))
-        || state.boss_entity_ids.contains(&event.source_entity.class_id);
+        || state
+            .boss_entity_ids
+            .contains(&event.source_entity.class_id);
 
     if is_boss_source && event.action.action_id != 0 {
         let ability_id = event.action.action_id;
@@ -952,7 +999,10 @@ fn print_detailed_report(
                 players.sort_by(|a, b| b.1.cmp(a.1));
 
                 for (entity_id, value) in players {
-                    let name = player_names.get(entity_id).map(|s| s.as_str()).unwrap_or("Unknown");
+                    let name = player_names
+                        .get(entity_id)
+                        .map(|s| s.as_str())
+                        .unwrap_or("Unknown");
                     let player_dps = if duration > 0.0 {
                         *value as f32 / duration
                     } else {
@@ -971,43 +1021,37 @@ fn print_detailed_report(
 
     // Untracked abilities (only show with --all-abilities flag)
     if args.all_abilities {
-        let untracked_abilities: Vec<_> = state
-            .abilities_from_bosses
-            .values()
-            .collect();
+        let untracked_abilities: Vec<_> = state.abilities_from_bosses.values().collect();
 
         if !untracked_abilities.is_empty() {
             println!();
             println!("ALL ABILITIES FROM BOSS ENTITIES:");
-        println!(
-            "  {:20} {:30} {:6} {:20}",
-            "ID", "Name", "Count", "Source"
-        );
-        println!("  {}", "─".repeat(80));
+            println!("  {:20} {:30} {:6} {:20}", "ID", "Name", "Count", "Source");
+            println!("  {}", "─".repeat(80));
 
-        let mut abilities: Vec<_> = untracked_abilities;
-        abilities.sort_by(|a, b| b.count.cmp(&a.count));
+            let mut abilities: Vec<_> = untracked_abilities;
+            abilities.sort_by(|a, b| b.count.cmp(&a.count));
 
-        for ability in abilities {
-            let sources: Vec<_> = ability.sources.iter().take(2).cloned().collect();
-            let sources_str = sources.join(", ");
-            let tracked = if state
-                .tracked_ability_ids
-                .contains(&(ability.ability_id as u64))
-            {
-                " ✓"
-            } else {
-                ""
-            };
-            println!(
-                "  {:20} {:30} {:6} {:20}{}",
-                ability.ability_id,
-                truncate(&ability.name, 30),
-                ability.count,
-                truncate(&sources_str, 20),
-                tracked
-            );
-        }
+            for ability in abilities {
+                let sources: Vec<_> = ability.sources.iter().take(2).cloned().collect();
+                let sources_str = sources.join(", ");
+                let tracked = if state
+                    .tracked_ability_ids
+                    .contains(&(ability.ability_id as u64))
+                {
+                    " ✓"
+                } else {
+                    ""
+                };
+                println!(
+                    "  {:20} {:30} {:6} {:20}{}",
+                    ability.ability_id,
+                    truncate(&ability.name, 30),
+                    ability.count,
+                    truncate(&sources_str, 20),
+                    tracked
+                );
+            }
         }
     }
 

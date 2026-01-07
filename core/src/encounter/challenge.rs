@@ -5,8 +5,10 @@
 
 use std::collections::HashMap;
 
+use crate::dsl::{
+    ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityDefinition, EntityInfo,
+};
 use baras_types::ChallengeColumns;
-use crate::dsl::{ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityDefinition, EntityInfo};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Challenge Value
@@ -43,7 +45,6 @@ pub struct ChallengeValue {
     // ─────────────────────────────────────────────────────────────────────────
     // Display Settings (copied from ChallengeDefinition)
     // ─────────────────────────────────────────────────────────────────────────
-
     /// Whether this challenge is enabled for overlay display
     pub enabled: bool,
 
@@ -313,8 +314,14 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(ctx, &self.entities, Some(source), Some(target), Some(ability_id), None)
-                && let Some(val) = self.values.get_mut(&def.id)
+            if def.matches(
+                ctx,
+                &self.entities,
+                Some(source),
+                Some(target),
+                Some(ability_id),
+                None,
+            ) && let Some(val) = self.values.get_mut(&def.id)
             {
                 let entity = if track_source { source } else { target };
                 // Only count player contributions (not companions/NPCs)
@@ -363,8 +370,14 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(ctx, &self.entities, Some(source), Some(target), Some(ability_id), None)
-                && let Some(val) = self.values.get_mut(&def.id)
+            if def.matches(
+                ctx,
+                &self.entities,
+                Some(source),
+                Some(target),
+                Some(ability_id),
+                None,
+            ) && let Some(val) = self.values.get_mut(&def.id)
             {
                 let entity = if track_source { source } else { target };
                 // Only count player contributions (not companions/NPCs)
@@ -403,8 +416,14 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(ctx, &self.entities, Some(source), Some(target), Some(ability_id), None)
-                && let Some(val) = self.values.get_mut(&def.id)
+            if def.matches(
+                ctx,
+                &self.entities,
+                Some(source),
+                Some(target),
+                Some(ability_id),
+                None,
+            ) && let Some(val) = self.values.get_mut(&def.id)
                 && source.is_player
             {
                 if val.first_event_time.is_none() {
@@ -440,8 +459,14 @@ impl ChallengeTracker {
                 continue;
             }
 
-            if def.matches(ctx, &self.entities, Some(source), Some(target), None, Some(effect_id))
-                && let Some(val) = self.values.get_mut(&def.id)
+            if def.matches(
+                ctx,
+                &self.entities,
+                Some(source),
+                Some(target),
+                None,
+                Some(effect_id),
+            ) && let Some(val) = self.values.get_mut(&def.id)
                 && source.is_player
             {
                 if val.first_event_time.is_none() {

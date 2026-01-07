@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use crate::dsl::AudioConfig;
 use crate::dsl::CounterCondition;
 use crate::dsl::EntityDefinition;
-use crate::game_data::Difficulty;
 use crate::dsl::Trigger;
+use crate::game_data::Difficulty;
 
 // Re-export Trigger as TimerTrigger for backward compatibility during migration
 pub use crate::dsl::Trigger as TimerTrigger;
@@ -161,7 +161,13 @@ impl TimerDefinition {
         current_hp: f32,
     ) -> bool {
         // Provide empty string if no name (trigger will match on ID if selector is empty)
-        self.trigger.matches_boss_hp_below(entities, npc_id, npc_name.unwrap_or(""), previous_hp, current_hp)
+        self.trigger.matches_boss_hp_below(
+            entities,
+            npc_id,
+            npc_name.unwrap_or(""),
+            previous_hp,
+            current_hp,
+        )
     }
 
     /// Check if this timer triggers on a specific phase being entered.
@@ -184,31 +190,46 @@ impl TimerDefinition {
         old_value: u32,
         new_value: u32,
     ) -> bool {
-        self.trigger.matches_counter_reaches(counter_id, old_value, new_value)
+        self.trigger
+            .matches_counter_reaches(counter_id, old_value, new_value)
     }
 
     /// Check if this timer triggers when an NPC first appears.
     /// Delegates to unified `Trigger::matches_npc_appears`.
-    pub fn matches_npc_appears(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: Option<&str>) -> bool {
-        self.trigger.matches_npc_appears(entities, npc_id, entity_name.unwrap_or(""))
+    pub fn matches_npc_appears(
+        &self,
+        entities: &[EntityDefinition],
+        npc_id: i64,
+        entity_name: Option<&str>,
+    ) -> bool {
+        self.trigger
+            .matches_npc_appears(entities, npc_id, entity_name.unwrap_or(""))
     }
 
     /// Check if this timer triggers on entity death.
     /// Delegates to unified `Trigger::matches_entity_death`.
-    pub fn matches_entity_death(&self, entities: &[EntityDefinition], npc_id: i64, entity_name: Option<&str>) -> bool {
-        self.trigger.matches_entity_death(entities, npc_id, entity_name.unwrap_or(""))
+    pub fn matches_entity_death(
+        &self,
+        entities: &[EntityDefinition],
+        npc_id: i64,
+        entity_name: Option<&str>,
+    ) -> bool {
+        self.trigger
+            .matches_entity_death(entities, npc_id, entity_name.unwrap_or(""))
     }
 
     /// Check if this timer triggers at a specific combat time.
     /// Delegates to unified `Trigger::matches_time_elapsed`.
     pub fn matches_time_elapsed(&self, old_combat_secs: f32, new_combat_secs: f32) -> bool {
-        self.trigger.matches_time_elapsed(old_combat_secs, new_combat_secs)
+        self.trigger
+            .matches_time_elapsed(old_combat_secs, new_combat_secs)
     }
 
     /// Check if this timer triggers when an NPC sets its target.
     /// Delegates to unified `Trigger::matches_target_set`.
     pub fn matches_target_set(&self, source_npc_id: i64, source_name: Option<&str>) -> bool {
-        self.trigger.matches_target_set(source_npc_id, source_name.unwrap_or(""))
+        self.trigger
+            .matches_target_set(source_npc_id, source_name.unwrap_or(""))
     }
 
     /// Check if this timer triggers when damage is taken from an ability.

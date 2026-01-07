@@ -101,11 +101,14 @@ fn build_area_index_recursive(dir: &Path, index: &mut AreaIndex) -> Result<(), S
             && let Ok(Some(area)) = load_area_config(&path)
             && area.area_id != 0
         {
-            index.insert(area.area_id, AreaIndexEntry {
-                name: area.name,
-                area_id: area.area_id,
-                file_path: path,
-            });
+            index.insert(
+                area.area_id,
+                AreaIndexEntry {
+                    name: area.name,
+                    area_id: area.area_id,
+                    file_path: path,
+                },
+            );
         }
     }
 
@@ -176,7 +179,10 @@ fn load_bosses_with_paths_recursive(
     Ok(())
 }
 
-fn load_bosses_recursive(dir: &Path, bosses: &mut Vec<BossEncounterDefinition>) -> Result<(), String> {
+fn load_bosses_recursive(
+    dir: &Path,
+    bosses: &mut Vec<BossEncounterDefinition>,
+) -> Result<(), String> {
     let entries = fs::read_dir(dir)
         .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
 
@@ -189,10 +195,7 @@ fn load_bosses_recursive(dir: &Path, bosses: &mut Vec<BossEncounterDefinition>) 
             match load_bosses_from_file(&path) {
                 Ok(file_bosses) => {
                     for boss in &file_bosses {
-                        eprintln!(
-                            "Loaded boss: {} (area: {})",
-                            boss.name, boss.area_name
-                        );
+                        eprintln!("Loaded boss: {} (area: {})", boss.name, boss.area_name);
                     }
                     bosses.extend(file_bosses);
                 }
@@ -242,8 +245,7 @@ pub fn save_bosses_to_file(bosses: &[BossEncounterDefinition], path: &Path) -> R
             .map_err(|e| format!("Failed to create directory {}: {}", parent.display(), e))?;
     }
 
-    fs::write(path, content)
-        .map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
+    fs::write(path, content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
 
     Ok(())
 }
@@ -288,7 +290,9 @@ pub fn load_bosses_with_custom(
     // Only look for custom overlay if this file is NOT already in the user directory
     // (user-created standalone encounters don't need overlays)
     let is_user_file = user_dir.is_some_and(|ud| {
-        file_path.canonicalize().ok()
+        file_path
+            .canonicalize()
+            .ok()
             .zip(ud.canonicalize().ok())
             .is_some_and(|(fp, ud)| fp.starts_with(ud))
     });
@@ -312,7 +316,11 @@ pub fn load_bosses_with_custom(
                 }
             }
             Err(e) => {
-                eprintln!("Warning: Failed to load custom file {}: {}", custom_path.display(), e);
+                eprintln!(
+                    "Warning: Failed to load custom file {}: {}",
+                    custom_path.display(),
+                    e
+                );
             }
         }
     }
@@ -377,7 +385,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dsl::{ChallengeMetric, ChallengeCondition, EntityFilter};
+    use crate::dsl::{ChallengeCondition, ChallengeMetric, EntityFilter};
 
     #[test]
     fn test_parse_boss_config() {
@@ -424,7 +432,10 @@ phases = ["p1"]
         assert_eq!(boss.timers.len(), 1);
 
         // Check phase trigger parsing
-        assert!(matches!(boss.phases[0].start_trigger, super::super::PhaseTrigger::CombatStart));
+        assert!(matches!(
+            boss.phases[0].start_trigger,
+            super::super::PhaseTrigger::CombatStart
+        ));
         assert!(matches!(
             boss.phases[1].start_trigger,
             super::super::PhaseTrigger::BossHpBelow { hp_percent, .. } if (hp_percent - 50.0).abs() < 0.01
@@ -521,7 +532,9 @@ conditions = [
         assert_eq!(boss_damage.conditions.len(), 1);
         assert!(matches!(
             &boss_damage.conditions[0],
-            ChallengeCondition::Target { matcher: EntityFilter::Boss }
+            ChallengeCondition::Target {
+                matcher: EntityFilter::Boss
+            }
         ));
 
         let add_damage = &boss.challenges[1];
@@ -542,7 +555,9 @@ conditions = [
         let local_player = &boss.challenges[3];
         assert!(matches!(
             &local_player.conditions[0],
-            ChallengeCondition::Source { matcher: EntityFilter::LocalPlayer }
+            ChallengeCondition::Source {
+                matcher: EntityFilter::LocalPlayer
+            }
         ));
     }
 
@@ -614,6 +629,9 @@ conditions = [
                 if abilities.len() == 1 && matches!(&abilities[0], crate::dsl::AbilitySelector::Id(3294098182111232))
         ));
 
-        eprintln!("Successfully loaded Bestia fixture with {} timers", bestia.timers.len());
+        eprintln!(
+            "Successfully loaded Bestia fixture with {} timers",
+            bestia.timers.len()
+        );
     }
 }
