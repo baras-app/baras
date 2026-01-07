@@ -423,20 +423,15 @@ impl EventProcessor {
                 continue;
             }
 
-            let (current_hp, max_hp) = (entity.health.0 as i64, entity.health.1 as i64);
+            let (current_hp, max_hp) = (entity.health.0, entity.health.1);
             if max_hp <= 0 {
                 continue;
             }
 
             // Update boss state and check if HP changed
             let enc = cache.current_encounter_mut().unwrap();
-            if let Some((old_hp, new_hp)) = enc.update_entity_hp(
-                entity.log_id,
-                entity.class_id,
-                current_hp,
-                max_hp,
-                event.timestamp,
-            ) {
+            if let Some((old_hp, new_hp)) = enc.update_entity_hp(entity.log_id, current_hp, max_hp)
+            {
                 signals.push(GameSignal::BossHpChanged {
                     entity_id: entity.log_id,
                     npc_id: entity.class_id,

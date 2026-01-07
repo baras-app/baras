@@ -32,7 +32,7 @@ pub use effects::{
 };
 pub use encounter::metrics::PlayerMetrics;
 pub use encounter::summary::{EncounterHistory, EncounterSummary};
-pub use encounter::{ActiveBoss, BossHealthEntry, CombatEncounter, PhaseType, ProcessingMode};
+pub use encounter::{ActiveBoss, OverlayHealthEntry, CombatEncounter, PhaseType, ProcessingMode};
 pub use game_data::*;
 pub use query::{AbilityBreakdown, EncounterQuery, EntityBreakdown, TimeSeriesPoint};
 pub use signal_processor::{EventProcessor, GameSignal, SignalHandler};

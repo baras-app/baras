@@ -516,7 +516,12 @@ impl EffectTracker {
 
         // Get boss IDs for filter matching
         let boss_ids: HashSet<i64> = encounter
-            .map(|e| e.hp_by_entity.keys().copied().collect())
+            .map(|e| {
+                e.npcs
+                    .values()
+                    .filter_map(|npc| npc.is_boss.then_some(npc.log_id))
+                    .collect()
+            })
             .unwrap_or_default();
 
         let is_from_local = local_player_id == Some(source_id);
@@ -765,8 +770,14 @@ impl EffectTracker {
         // Get local player ID from self, boss entity IDs from encounter
         let local_player_id = self.local_player_id;
         let boss_ids: HashSet<i64> = encounter
-            .map(|e| e.hp_by_entity.keys().copied().collect())
+            .map(|e| {
+                e.npcs
+                    .values()
+                    .filter_map(|npc| npc.is_boss.then_some(npc.log_id))
+                    .collect()
+            })
             .unwrap_or_default();
+
         let entities = get_entities(encounter);
 
         def.source.matches(
