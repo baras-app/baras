@@ -9,7 +9,7 @@
 //! - Centralizing all combat state in one place
 
 use chrono::NaiveDateTime;
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::IStr;
@@ -255,27 +255,25 @@ impl CombatEncounter {
             return Vec::new();
         };
 
-        let mut entries: Vec<OverlayHealthEntry> = def
+        let entity_class_ids: HashSet<i64> = def
             .entities
             .iter()
             .filter(|e| e.shows_on_hp_overlay())
-            .filter_map(|entity| {
-                // Try each ID in the entity's ids list
-                for &npc_id in &entity.ids {
-                    if let Some(npc) = self.npcs.get(&npc_id) {
-                        return Some(OverlayHealthEntry {
-                            name: crate::context::resolve(npc.name).to_string(),
-                            current: npc.current_hp,
-                            max: npc.max_hp,
-                            first_seen_at: npc.first_seen_at,
-                        });
-                    }
-                }
-                None
+            .flat_map(|e| e.ids.iter().copied())
+            .collect();
+
+        let mut entries: Vec<OverlayHealthEntry> = self
+            .npcs
+            .values()
+            .filter(|npc| entity_class_ids.contains(&npc.class_id))
+            .map(|npc| OverlayHealthEntry {
+                name: crate::context::resolve(npc.name).to_string(),
+                current: npc.current_hp,
+                max: npc.max_hp,
+                first_seen_at: npc.first_seen_at,
             })
             .collect();
 
-        // Sort by first_seen time (encounter order)
         entries.sort_by(|a, b| a.first_seen_at.cmp(&b.first_seen_at));
         entries
     }
