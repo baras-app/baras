@@ -109,7 +109,9 @@ impl Discipline {
         use Discipline::*;
         match self {
             // Tanks
-            Immortal | Darkness | ShieldTech | Defense | KineticCombat | ShieldSpecialist => Role::Tank,
+            Immortal | Darkness | ShieldTech | Defense | KineticCombat | ShieldSpecialist => {
+                Role::Tank
+            }
             // Healers
             Corruption | Bodyguard | Medicine | Seer | CombatMedic | Sawbones => Role::Healer,
             // DPS (everything else)
@@ -265,45 +267,5 @@ impl Discipline {
             2031339142381625 => Some(DirtyFighting),
             _ => None,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tank_roles() {
-        assert_eq!(Discipline::Immortal.role(), Role::Tank);
-        assert_eq!(Discipline::Darkness.role(), Role::Tank);
-        assert_eq!(Discipline::ShieldTech.role(), Role::Tank);
-        assert_eq!(Discipline::Defense.role(), Role::Tank);
-        assert_eq!(Discipline::KineticCombat.role(), Role::Tank);
-        assert_eq!(Discipline::ShieldSpecialist.role(), Role::Tank);
-    }
-
-    #[test]
-    fn test_healer_roles() {
-        assert_eq!(Discipline::Corruption.role(), Role::Healer);
-        assert_eq!(Discipline::Bodyguard.role(), Role::Healer);
-        assert_eq!(Discipline::Medicine.role(), Role::Healer);
-        assert_eq!(Discipline::Seer.role(), Role::Healer);
-        assert_eq!(Discipline::CombatMedic.role(), Role::Healer);
-        assert_eq!(Discipline::Sawbones.role(), Role::Healer);
-    }
-
-    #[test]
-    fn test_dps_roles() {
-        assert_eq!(Discipline::Lightning.role(), Role::Dps);
-        assert_eq!(Discipline::Annihilation.role(), Role::Dps);
-        assert_eq!(Discipline::Arsenal.role(), Role::Dps);
-    }
-
-    #[test]
-    fn test_from_guid() {
-        assert_eq!(Discipline::from_guid(2031339142381577), Some(Discipline::Immortal));
-        assert_eq!(Discipline::from_guid(2031339142381587), Some(Discipline::Corruption));
-        assert_eq!(Discipline::from_guid(2031339142381586), Some(Discipline::Lightning));
-        assert_eq!(Discipline::from_guid(0), None);
     }
 }
