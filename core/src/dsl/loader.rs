@@ -549,7 +549,7 @@ conditions = [
     #[test]
     fn test_load_bestia_fixture() {
         // Load the actual Dread Palace fixture file
-        let path = std::path::Path::new("../test-log-files/fixtures/config/dread_palace.toml");
+        let path = std::path::Path::new("../integration-tests/fixtures/config/dread_palace.toml");
         if !path.exists() {
             eprintln!("Fixture file not found, skipping test");
             return;

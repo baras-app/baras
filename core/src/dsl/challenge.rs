@@ -573,7 +573,7 @@ mod tests {
 
         // Load the fixture file (path relative to core/ crate root)
         // Use lossy conversion for non-UTF8 characters in player names
-        let fixture_path = "../test-log-files/fixtures/bestia_pull.txt";
+        let fixture_path = "../integration-tests/fixtures/bestia_pull.txt";
         let bytes = match fs::read(fixture_path) {
             Ok(b) => b,
             Err(e) => {
@@ -739,7 +739,7 @@ mod tests {
         use std::fs;
 
         // Load the phase transition fixture
-        let fixture_path = "../test-log-files/fixtures/bestia_phase_transition.txt";
+        let fixture_path = "../integration-tests/fixtures/bestia_phase_transition.txt";
         let bytes = match fs::read(fixture_path) {
             Ok(b) => b,
             Err(e) => {
