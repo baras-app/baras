@@ -572,6 +572,17 @@ impl CombatEncounter {
         }
     }
 
+    pub fn set_npc_target(&mut self, npc_id: i64, target_id: i64) {
+        if let Some(npc) = self.npcs.get_mut(&npc_id) {
+            npc.current_target_id = target_id;
+        }
+    }
+
+    pub fn clear_npc_target(&mut self, npc_id: i64) {
+        if let Some(npc) = self.npcs.get_mut(&npc_id) {
+            npc.current_target_id = 0;
+        }
+    }
     // ═══════════════════════════════════════════════════════════════════════
     // Effect Instances
     // ═══════════════════════════════════════════════════════════════════════

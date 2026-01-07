@@ -63,6 +63,9 @@ impl EventProcessor {
         // 1f. Boss HP tracking and phase transitions
         signals.extend(self.handle_boss_hp_and_phases(&event, cache));
 
+        // 1e. NPC Target Tracking
+        signals.extend(self.handle_target_changed(&event, cache));
+
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 2: Signal Emission (pure transformation)
         // ═══════════════════════════════════════════════════════════════════════
@@ -458,6 +461,43 @@ impl EventProcessor {
         signals
     }
 
+    fn handle_target_changed(
+        &self,
+        event: &CombatEvent,
+        cache: &mut SessionCache,
+    ) -> Vec<GameSignal> {
+        let mut signals = Vec::new();
+
+        match event.effect.effect_id {
+            effect_id::TARGETSET => {
+                signals.push(GameSignal::TargetChanged {
+                    source_id: event.source_entity.log_id,
+                    source_npc_id: event.source_entity.class_id,
+                    source_name: event.source_entity.name,
+                    target_id: event.target_entity.log_id,
+                    target_name: event.target_entity.name,
+                    target_npc_id: event.target_entity.class_id,
+                    target_entity_type: event.target_entity.entity_type,
+                    timestamp: event.timestamp,
+                });
+                if let Some(enc) = cache.current_encounter_mut() {
+                    enc.set_npc_target(event.source_entity.log_id, event.source_entity.log_id);
+                }
+            }
+            effect_id::TARGETCLEARED => {
+                signals.push(GameSignal::TargetCleared {
+                    source_id: event.source_entity.log_id,
+                    timestamp: event.timestamp,
+                });
+                if let Some(enc) = cache.current_encounter_mut() {
+                    enc.clear_npc_target(event.source_entity.log_id);
+                }
+            }
+            _ => {}
+        }
+        signals
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Phase 2: Signal Emission (pure transformation, no state changes)
     // ═══════════════════════════════════════════════════════════════════════════
@@ -551,26 +591,6 @@ impl EventProcessor {
                 timestamp: event.timestamp,
             });
         }
-
-        // Target changes
-        if effect_id == effect_id::TARGETSET {
-            signals.push(GameSignal::TargetChanged {
-                source_id: event.source_entity.log_id,
-                source_npc_id: event.source_entity.class_id,
-                source_name: event.source_entity.name,
-                target_id: event.target_entity.log_id,
-                target_name: event.target_entity.name,
-                target_npc_id: event.target_entity.class_id,
-                target_entity_type: event.target_entity.entity_type,
-                timestamp: event.timestamp,
-            });
-        } else if effect_id == effect_id::TARGETCLEARED {
-            signals.push(GameSignal::TargetCleared {
-                source_id: event.source_entity.log_id,
-                timestamp: event.timestamp,
-            });
-        }
-
         signals
     }
 
