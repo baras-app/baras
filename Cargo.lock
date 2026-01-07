@@ -730,7 +730,6 @@ dependencies = [
  "chrono",
  "confy",
  "datafusion",
- "datafusion-functions-nested",
  "datafusion-functions-table",
  "dirs",
  "encoding_rs",
