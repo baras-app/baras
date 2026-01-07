@@ -188,8 +188,8 @@ pub enum GameSignal {
         /// NPC class/template ID (for matching against boss definitions)
         npc_id: i64,
         entity_name: String,
-        current_hp: i64,
-        max_hp: i64,
+        current_hp: i32,
+        max_hp: i32,
         /// Previous HP percentage (before this update)
         old_hp_percent: f32,
         /// New HP percentage (after this update)

@@ -36,7 +36,7 @@ pub enum PhaseType {
 
 /// Real-time boss health data for overlay display
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct BossHealthEntry {
+pub struct OverlayHealthEntry {
     pub name: String,
     pub current: i32,
     pub max: i32,
@@ -45,7 +45,7 @@ pub struct BossHealthEntry {
     pub first_seen_at: Option<NaiveDateTime>,
 }
 
-impl BossHealthEntry {
+impl OverlayHealthEntry {
     pub fn percent(&self) -> f32 {
         if self.max > 0 {
             (self.current as f32 / self.max as f32) * 100.0

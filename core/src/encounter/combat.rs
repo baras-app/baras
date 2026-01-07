@@ -15,13 +15,14 @@ use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::IStr;
 use crate::dsl::{BossEncounterDefinition, CounterCondition, CounterDefinition};
 use crate::game_data::{Difficulty, SHIELD_EFFECT_IDS, defense_type, effect_id};
+use crate::is_boss;
 
 use super::challenge::ChallengeTracker;
 use super::effect_instance::EffectInstance;
 use super::entity_info::{NpcInfo, PlayerInfo};
 use super::metrics::MetricAccumulator;
 use super::shielding::PendingAbsorption;
-use super::{BossHealthEntry, EncounterState};
+use super::{EncounterState, OverlayHealthEntry};
 use crate::dsl::ChallengeContext;
 
 /// Processing mode for the encounter
@@ -47,17 +48,6 @@ pub struct ActiveBoss {
     pub max_hp: i64,
     /// Current HP
     pub current_hp: i64,
-}
-
-impl ActiveBoss {
-    /// Calculate HP percentage
-    pub fn hp_percent(&self) -> f32 {
-        if self.max_hp > 0 {
-            (self.current_hp as f32 / self.max_hp as f32) * 100.0
-        } else {
-            100.0
-        }
-    }
 }
 
 /// Unified combat encounter tracking all state, metrics, and boss information
@@ -92,14 +82,6 @@ pub struct CombatEncounter {
     pub phase_started_at: Option<NaiveDateTime>,
     /// Counter values
     pub counters: HashMap<String, u32>,
-    /// HP percentages by entity ID (for multi-boss encounters)
-    pub hp_by_entity: HashMap<i64, f32>,
-    /// HP percentages by NPC ID/class ID (most reliable for boss detection)
-    pub hp_by_npc_id: HashMap<i64, f32>,
-    /// Raw HP values by NPC ID: (current, max) - for overlay display
-    pub hp_raw: HashMap<i64, (i64, i64)>,
-    /// First time each NPC was seen (for sorting by encounter order)
-    pub first_seen: HashMap<i64, NaiveDateTime>,
     /// Elapsed combat time in seconds
     pub combat_time_secs: f32,
     /// Previous combat time (for TimeElapsed threshold detection)
@@ -116,7 +98,6 @@ pub struct CombatEncounter {
     pub last_combat_activity_time: Option<NaiveDateTime>,
 
     // ─── Entity Tracking ────────────────────────────────────────────────────
-    /// Local player's entity ID (the player running the parser)
     /// Players in this encounter
     pub players: HashMap<i64, PlayerInfo>,
     /// NPCs in this encounter
@@ -157,10 +138,6 @@ impl CombatEncounter {
             previous_phase: None,
             phase_started_at: None,
             counters: HashMap::new(),
-            hp_by_entity: HashMap::new(),
-            hp_by_npc_id: HashMap::new(),
-            hp_raw: HashMap::new(),
-            first_seen: HashMap::new(),
             combat_time_secs: 0.0,
             prev_combat_time_secs: 0.0,
 
@@ -247,81 +224,50 @@ impl CombatEncounter {
         self.active_boss = None;
     }
 
-    /// Update HP for a specific entity (multi-boss support)
-    ///
+    /// Update HP for a specific entity
     /// Returns `Some((old_hp, new_hp))` if HP changed significantly
-    pub fn update_entity_hp(
-        &mut self,
-        entity_id: i64,
-        npc_id: i64,
-        current: i64,
-        max: i64,
-        timestamp: NaiveDateTime,
-    ) -> Option<(f32, f32)> {
-        let new_percent = if max > 0 {
-            (current as f32 / max as f32) * 100.0
-        } else {
-            100.0
-        };
+    pub fn update_entity_hp(&mut self, npc_id: i64, current: i32, max: i32) -> Option<(f32, f32)> {
+        let npc = self.npcs.get_mut(&npc_id)?;
 
         // Use current HP as "old" for first readings - prevents false threshold crossings
-        // when we see an entity for the first time already below a threshold
-        let old_percent = self
-            .hp_by_entity
-            .get(&entity_id)
-            .copied()
-            .unwrap_or(new_percent);
+        let old_percent = npc.hp_percent();
 
         // Track by all identifiers
-        self.hp_by_entity.insert(entity_id, new_percent);
-        if npc_id != 0 {
-            self.hp_by_npc_id.insert(npc_id, new_percent);
-            self.hp_raw.insert(npc_id, (current, max));
-            self.first_seen.entry(npc_id).or_insert(timestamp);
-        }
+        npc.current_hp = current;
+        npc.max_hp = max;
 
-        if (old_percent - new_percent).abs() > 0.01 {
-            Some((old_percent, new_percent))
+        let new_pct = npc.hp_percent();
+        if (old_percent - new_pct).abs() > 0.01 {
+            Some((old_percent, new_pct))
         } else {
             None
         }
     }
 
     /// Get HP percentage for a specific NPC ID
-    pub fn get_npc_hp(&self, npc_id: i64) -> Option<f32> {
-        self.hp_by_npc_id.get(&npc_id).copied()
-    }
-
-    /// Get HP percentage by boss name
-    /// Get raw HP values (current, max) for a specific NPC ID
-    pub fn get_npc_hp_raw(&self, npc_id: i64) -> Option<(i64, i64)> {
-        self.hp_raw.get(&npc_id).copied()
-    }
-
-    /// Get all raw HP values by NPC ID (for overlay display)
-    pub fn all_hp_raw(&self) -> &HashMap<i64, (i64, i64)> {
-        &self.hp_raw
+    pub fn get_npc_hp_pct(&self, npc_id: i64) -> Option<f32> {
+        self.npcs.get(&npc_id).map(|n| n.hp_percent())
     }
 
     /// Get boss health entries for overlay display
-    pub fn get_boss_health(&self) -> Vec<BossHealthEntry> {
+    pub fn get_boss_health(&self) -> Vec<OverlayHealthEntry> {
         let Some(def) = self.active_boss_definition() else {
             return Vec::new();
         };
 
-        let mut entries: Vec<BossHealthEntry> = def
+        let mut entries: Vec<OverlayHealthEntry> = def
             .entities
             .iter()
-            .filter(|e| e.is_boss)
+            .filter(|e| e.shows_on_hp_overlay())
             .filter_map(|entity| {
                 // Try each ID in the entity's ids list
                 for &npc_id in &entity.ids {
-                    if let Some(&(current, max)) = self.hp_raw.get(&npc_id) {
-                        return Some(BossHealthEntry {
-                            name: entity.name.clone(),
-                            current: current as i32,
-                            max: max as i32,
-                            first_seen_at: self.first_seen.get(&npc_id).copied(),
+                    if let Some(npc) = self.npcs.get(&npc_id) {
+                        return Some(OverlayHealthEntry {
+                            name: crate::context::resolve(npc.name).to_string(),
+                            current: npc.current_hp,
+                            max: npc.max_hp,
+                            first_seen_at: npc.first_seen_at,
                         });
                     }
                 }
@@ -332,35 +278,6 @@ impl CombatEncounter {
         // Sort by first_seen time (encounter order)
         entries.sort_by(|a, b| a.first_seen_at.cmp(&b.first_seen_at));
         entries
-    }
-
-    /// Check if a specific boss is below HP threshold
-    pub fn is_boss_hp_below(
-        &self,
-        npc_id: Option<i64>,
-        threshold: f32,
-    ) -> bool {
-        if let Some(id) = npc_id
-            && let Some(hp) = self.hp_by_npc_id.get(&id)
-        {
-            return *hp <= threshold;
-        }
-
-        false
-    }
-
-    /// Check if a specific boss is above HP threshold
-    pub fn is_boss_hp_above(
-        &self,
-        npc_id: Option<i64>,
-        threshold: f32,
-    ) -> bool {
-        if let Some(id) = npc_id
-            && let Some(hp) = self.hp_by_npc_id.get(&id)
-        {
-            return *hp >= threshold;
-        }
-        false
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -537,7 +454,11 @@ impl CombatEncounter {
         ChallengeContext {
             current_phase: self.current_phase.clone(),
             counters: self.counters.iter().map(|(k, v)| (k.clone(), *v)).collect(),
-            hp_by_npc_id: self.hp_by_npc_id.iter().map(|(k, v)| (*k, *v)).collect(),
+            hp_by_npc_id: self
+                .npcs
+                .iter()
+                .map(|(k, v)| (*k, v.hp_percent()))
+                .collect(),
             boss_npc_ids: boss_npc_ids.to_vec(),
         }
     }
@@ -621,6 +542,9 @@ impl CombatEncounter {
                     log_id: entity.log_id,
                     class_id: entity.class_id,
                     first_seen_at: Some(timestamp),
+                    current_hp: entity.health.0,
+                    max_hp: entity.health.1,
+                    is_boss: is_boss(entity.class_id),
                     ..Default::default()
                 });
             }
@@ -868,27 +792,5 @@ impl CombatEncounter {
 
         stats.sort_by(|a, b| b.dps.cmp(&a.dps));
         Some(stats)
-    }
-
-    // Shielding attribution methods are in shielding.rs (impl CombatEncounter block)
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Reset
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /// Reset boss-related state (on combat end or encounter change)
-    pub fn reset_boss_state(&mut self) {
-        self.active_boss = None;
-        self.active_boss_idx = None;
-        self.current_phase = None;
-        self.previous_phase = None;
-        self.phase_started_at = None;
-        self.counters.clear();
-        self.hp_by_entity.clear();
-        self.hp_by_npc_id.clear();
-        self.hp_raw.clear();
-        self.first_seen.clear();
-        self.combat_time_secs = 0.0;
-        self.prev_combat_time_secs = 0.0;
     }
 }

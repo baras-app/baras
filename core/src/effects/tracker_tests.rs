@@ -84,7 +84,7 @@ fn make_encounter_with_player(_local_player_id: i64) -> CombatEncounter {
 fn make_encounter_with_bosses(boss_ids: &[i64]) -> CombatEncounter {
     let mut enc = CombatEncounter::new(1, ProcessingMode::Live);
     for &id in boss_ids {
-        enc.hp_by_entity.insert(id, 100.0);
+        enc.update_entity_hp(id, 100, 100);
     }
     enc
 }
@@ -94,7 +94,7 @@ fn make_encounter_with_bosses(boss_ids: &[i64]) -> CombatEncounter {
 fn make_encounter(_local_player_id: i64, boss_ids: &[i64]) -> CombatEncounter {
     let mut enc = CombatEncounter::new(1, ProcessingMode::Live);
     for &id in boss_ids {
-        enc.hp_by_entity.insert(id, 100.0);
+        enc.update_entity_hp(id, 100, 100);
     }
     enc
 }
@@ -406,7 +406,6 @@ fn test_combat_end_clears_combat_only_effects() {
 fn test_area_entered_clears_all_effects() {
     let effect = make_effect("buff", "Buff", vec![555]);
     let mut tracker = make_tracker(vec![effect]);
-    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Apply effect
@@ -562,7 +561,6 @@ fn test_boss_filter_uses_encounter_context() {
     effect.target = EntityFilter::Boss;
 
     let mut tracker = make_tracker(vec![effect]);
-    let encounter = make_encounter_with_player(1);
     let ts = now();
     let encounter = make_encounter_with_bosses(&[999]);
 
@@ -699,7 +697,6 @@ fn test_filter_local_player_rejects_other() {
     effect.source = EntityFilter::LocalPlayer;
 
     let mut tracker = make_tracker(vec![effect]);
-    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // From other player - should NOT match
@@ -797,7 +794,6 @@ fn test_filter_any_player() {
     effect.source = EntityFilter::AnyPlayer;
 
     let mut tracker = make_tracker(vec![effect]);
-    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // From local
@@ -855,7 +851,6 @@ fn test_filter_any_npc() {
     effect.target = EntityFilter::AnyNpc;
 
     let mut tracker = make_tracker(vec![effect]);
-    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // On NPC - should match
@@ -915,7 +910,6 @@ fn test_filter_npc_except_boss() {
     effect.target = EntityFilter::NpcExceptBoss;
 
     let mut tracker = make_tracker(vec![effect]);
-    let encounter = make_encounter_with_player(1);
     let ts = now();
     let encounter = make_encounter_with_bosses(&[999]);
 
@@ -980,7 +974,6 @@ fn test_filter_companion() {
     effect.target = EntityFilter::AnyCompanion;
 
     let mut tracker = make_tracker(vec![effect]);
-    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // On companion - should match
@@ -1040,7 +1033,6 @@ fn test_filter_any_player_or_companion() {
     effect.target = EntityFilter::AnyPlayerOrCompanion;
 
     let mut tracker = make_tracker(vec![effect]);
-    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // On player
@@ -1199,7 +1191,6 @@ fn test_filter_any_matches_everything() {
 fn test_non_matching_effect_id_ignored() {
     let effect = make_effect("specific", "Specific Effect", vec![12345]);
     let mut tracker = make_tracker(vec![effect]);
-    let encounter = make_encounter_with_player(1);
     let ts = now();
 
     // Wrong effect ID

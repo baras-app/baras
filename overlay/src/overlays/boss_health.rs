@@ -2,7 +2,7 @@
 //!
 //! Displays real-time health bars for boss NPCs in the current encounter.
 
-use baras_core::BossHealthEntry;
+use baras_core::OverlayHealthEntry;
 use baras_core::context::BossHealthConfig;
 
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
@@ -16,7 +16,7 @@ use crate::widgets::colors;
 #[derive(Debug, Clone, Default)]
 pub struct BossHealthData {
     /// Current boss health entries (sorted by encounter order)
-    pub entries: Vec<BossHealthEntry>,
+    pub entries: Vec<OverlayHealthEntry>,
 }
 
 /// Base dimensions for scaling calculations

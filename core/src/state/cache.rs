@@ -1,7 +1,7 @@
 use crate::dsl::BossEncounterDefinition;
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{EncounterHistory, create_encounter_summary};
-use crate::encounter::{BossHealthEntry, CombatEncounter, EncounterState, ProcessingMode};
+use crate::encounter::{OverlayHealthEntry, CombatEncounter, EncounterState, ProcessingMode};
 use crate::game_data::{Difficulty, clear_boss_registry, register_hp_overlay_entity};
 use crate::state::info::AreaInfo;
 use std::collections::{HashSet, VecDeque};
@@ -163,7 +163,7 @@ impl SessionCache {
     // --- Boss Health ---
 
     /// Get current health of all bosses from the current encounter
-    pub fn get_boss_health(&self) -> Vec<BossHealthEntry> {
+    pub fn get_boss_health(&self) -> Vec<OverlayHealthEntry> {
         self.current_encounter()
             .map(|enc| enc.get_boss_health())
             .unwrap_or_default()

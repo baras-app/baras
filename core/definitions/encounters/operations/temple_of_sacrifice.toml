@@ -336,7 +336,7 @@ trigger = { type = "combat_start" }
 id = "revan_hk47"
 name = "HK-47"
 preceded_by = "revan_p1"
-trigger = { type = "boss_hp_below", hp_percent = 64.1, selector = ["Revan"] }
+trigger = { type = "boss_hp_below", hp_percent = 65.0, selector = ["Revan"] }
 
 # -- Foci Transition (runs to Floor 2) --
 [[boss.phases]]
