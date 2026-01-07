@@ -100,8 +100,6 @@ pub struct CombatEncounter {
     pub hp_raw: HashMap<i64, (i64, i64)>,
     /// First time each NPC was seen (for sorting by encounter order)
     pub first_seen: HashMap<i64, NaiveDateTime>,
-    /// HP percentages by boss name (fallback)
-    pub hp_by_name: HashMap<String, f32>,
     /// Elapsed combat time in seconds
     pub combat_time_secs: f32,
     /// Previous combat time (for TimeElapsed threshold detection)
@@ -163,7 +161,6 @@ impl CombatEncounter {
             hp_by_npc_id: HashMap::new(),
             hp_raw: HashMap::new(),
             first_seen: HashMap::new(),
-            hp_by_name: HashMap::new(),
             combat_time_secs: 0.0,
             prev_combat_time_secs: 0.0,
 
@@ -257,7 +254,6 @@ impl CombatEncounter {
         &mut self,
         entity_id: i64,
         npc_id: i64,
-        name: &str,
         current: i64,
         max: i64,
         timestamp: NaiveDateTime,
@@ -283,7 +279,6 @@ impl CombatEncounter {
             self.hp_raw.insert(npc_id, (current, max));
             self.first_seen.entry(npc_id).or_insert(timestamp);
         }
-        self.hp_by_name.insert(name.to_string(), new_percent);
 
         if (old_percent - new_percent).abs() > 0.01 {
             Some((old_percent, new_percent))
@@ -298,10 +293,6 @@ impl CombatEncounter {
     }
 
     /// Get HP percentage by boss name
-    pub fn get_boss_hp(&self, name: &str) -> Option<f32> {
-        self.hp_by_name.get(name).copied()
-    }
-
     /// Get raw HP values (current, max) for a specific NPC ID
     pub fn get_npc_hp_raw(&self, npc_id: i64) -> Option<(i64, i64)> {
         self.hp_raw.get(&npc_id).copied()
@@ -347,17 +338,10 @@ impl CombatEncounter {
     pub fn is_boss_hp_below(
         &self,
         npc_id: Option<i64>,
-        name: Option<&str>,
         threshold: f32,
     ) -> bool {
         if let Some(id) = npc_id
             && let Some(hp) = self.hp_by_npc_id.get(&id)
-        {
-            return *hp <= threshold;
-        }
-
-        if let Some(boss_name) = name
-            && let Some(hp) = self.hp_by_name.get(boss_name)
         {
             return *hp <= threshold;
         }
@@ -369,7 +353,6 @@ impl CombatEncounter {
     pub fn is_boss_hp_above(
         &self,
         npc_id: Option<i64>,
-        name: Option<&str>,
         threshold: f32,
     ) -> bool {
         if let Some(id) = npc_id
@@ -377,13 +360,6 @@ impl CombatEncounter {
         {
             return *hp >= threshold;
         }
-
-        if let Some(boss_name) = name
-            && let Some(hp) = self.hp_by_name.get(boss_name)
-        {
-            return *hp >= threshold;
-        }
-
         false
     }
 
@@ -912,7 +888,6 @@ impl CombatEncounter {
         self.hp_by_npc_id.clear();
         self.hp_raw.clear();
         self.first_seen.clear();
-        self.hp_by_name.clear();
         self.combat_time_secs = 0.0;
         self.prev_combat_time_secs = 0.0;
     }
