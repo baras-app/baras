@@ -413,14 +413,6 @@ impl CombatEncounter {
     // Combat Time
     // ═══════════════════════════════════════════════════════════════════════
 
-    /// Start combat timer
-    pub fn start_combat(&mut self, timestamp: NaiveDateTime) {
-        self.enter_combat_time = Some(timestamp);
-        self.combat_time_secs = 0.0;
-        self.prev_combat_time_secs = 0.0;
-        self.state = EncounterState::InCombat;
-    }
-
     /// Update combat time and return (old_time, new_time) for threshold checking
     pub fn update_combat_time(&mut self, current_timestamp: NaiveDateTime) -> (f32, f32) {
         let old_time = self.combat_time_secs;
