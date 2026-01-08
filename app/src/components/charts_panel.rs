@@ -975,8 +975,8 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                 thead {
                                     tr {
                                         th { "Effect" }
-                                        th { class: "num", "#" }
-                                        th { class: "num", "t" }
+                                        th { class: "num", "Procs" }
+                                        th { class: "num", "Uptime" }
                                         th { class: "num", "%" }
                                     }
                                 }
@@ -1025,8 +1025,8 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                     thead {
                                         tr {
                                             th { "Effect" }
-                                            th { class: "num", "#" }
-                                            th { class: "num", "t" }
+                                            th { class: "num", "Procs" }
+                                            th { class: "num", "Uptime" }
                                             th { class: "num", "%" }
                                         }
                                     }
