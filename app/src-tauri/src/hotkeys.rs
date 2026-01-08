@@ -55,13 +55,15 @@ pub fn spawn_register_hotkeys(
         if let Some(ref key_str) = hotkeys.toggle_move_mode {
             if let Ok(shortcut) = key_str.parse::<Shortcut>() {
                 let state = overlay_state.clone();
+                let handle = service_handle.clone();
 
                 if let Err(e) =
                     global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
                         if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                             let state = state.clone();
+                            let handle = handle.clone();
                             tauri::async_runtime::spawn(async move {
-                                toggle_move_mode_hotkey(state).await;
+                                toggle_move_mode_hotkey(state, handle).await;
                             });
                         }
                     })
@@ -79,13 +81,15 @@ pub fn spawn_register_hotkeys(
         if let Some(ref key_str) = hotkeys.toggle_rearrange_mode {
             if let Ok(shortcut) = key_str.parse::<Shortcut>() {
                 let state = overlay_state.clone();
+                let handle = service_handle.clone();
 
                 if let Err(e) =
                     global_shortcut.on_shortcut(shortcut, move |_app, _shortcut, event| {
                         if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                             let state = state.clone();
+                            let handle = handle.clone();
                             tauri::async_runtime::spawn(async move {
-                                toggle_rearrange_mode_hotkey(state).await;
+                                toggle_rearrange_mode_hotkey(state, handle).await;
                             });
                         }
                     })
@@ -122,8 +126,8 @@ async fn toggle_visibility_hotkey(
 }
 
 /// Hotkey handler: Toggle move mode
-async fn toggle_move_mode_hotkey(overlay_state: SharedOverlayState) {
-    let (txs, new_mode) = {
+async fn toggle_move_mode_hotkey(overlay_state: SharedOverlayState, service: ServiceHandle) {
+    let (txs, new_mode, was_rearranging) = {
         let mut state = match overlay_state.lock() {
             Ok(s) => s,
             Err(_) => return,
@@ -134,13 +138,19 @@ async fn toggle_move_mode_hotkey(overlay_state: SharedOverlayState) {
         }
 
         let new_mode = !state.move_mode;
+        let was_rearranging = state.rearrange_mode;
         state.set_move_mode(new_mode);
         if new_mode {
             state.rearrange_mode = false;
         }
         let txs: Vec<_> = state.all_txs().into_iter().cloned().collect();
-        (txs, new_mode)
+        (txs, new_mode, was_rearranging)
     };
+
+    // Update shared state flag if rearrange was disabled
+    if was_rearranging && new_mode {
+        service.set_rearrange_mode(false);
+    }
 
     for tx in txs {
         let _ = tx.send(OverlayCommand::SetMoveMode(new_mode)).await;
@@ -148,7 +158,7 @@ async fn toggle_move_mode_hotkey(overlay_state: SharedOverlayState) {
 }
 
 /// Hotkey handler: Toggle rearrange mode (raid frames)
-async fn toggle_rearrange_mode_hotkey(overlay_state: SharedOverlayState) {
+async fn toggle_rearrange_mode_hotkey(overlay_state: SharedOverlayState, service: ServiceHandle) {
     let (raid_tx, new_mode) = {
         let mut state = match overlay_state.lock() {
             Ok(s) => s,
@@ -164,6 +174,9 @@ async fn toggle_rearrange_mode_hotkey(overlay_state: SharedOverlayState) {
         let tx = state.get_raid_tx().cloned();
         (tx, new_mode)
     };
+
+    // Update shared state flag for rendering loop
+    service.set_rearrange_mode(new_mode);
 
     if let Some(tx) = raid_tx {
         let _ = tx.send(OverlayCommand::SetRearrangeMode(new_mode)).await;

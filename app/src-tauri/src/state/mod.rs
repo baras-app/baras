@@ -50,6 +50,8 @@ pub struct SharedState {
     pub timer_overlay_active: AtomicBool,
     /// Whether effects countdown overlay is currently running
     pub effects_overlay_active: AtomicBool,
+    /// Whether raid frame rearrange mode is active (bypasses rendering gates)
+    pub rearrange_mode: AtomicBool,
 
     /// Shared query context for DataFusion queries (reuses SessionContext)
     pub query_context: QueryContext,
@@ -71,6 +73,7 @@ impl SharedState {
             boss_health_overlay_active: AtomicBool::new(false),
             timer_overlay_active: AtomicBool::new(false),
             effects_overlay_active: AtomicBool::new(false),
+            rearrange_mode: AtomicBool::new(false),
             // Shared query context for DataFusion (reuses SessionContext across queries)
             query_context: QueryContext::new(),
         }

@@ -919,4 +919,9 @@ impl ServiceHandle {
             _ => {}
         }
     }
+
+    /// Set rearrange mode flag (for rendering loop to bypass gates)
+    pub fn set_rearrange_mode(&self, enabled: bool) {
+        self.shared.rearrange_mode.store(enabled, Ordering::SeqCst);
+    }
 }
