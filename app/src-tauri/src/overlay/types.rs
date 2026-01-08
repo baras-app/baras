@@ -136,6 +136,8 @@ pub enum OverlayType {
     Effects,
     /// Challenge metrics overlay
     Challenges,
+    /// Alert text notifications
+    Alerts,
 }
 
 impl OverlayType {
@@ -149,6 +151,7 @@ impl OverlayType {
             OverlayType::Timers => "timers",
             OverlayType::Effects => "effects",
             OverlayType::Challenges => "challenges",
+            OverlayType::Alerts => "alerts",
         }
     }
 
@@ -162,6 +165,7 @@ impl OverlayType {
             OverlayType::Timers => "baras-timers".to_string(),
             OverlayType::Effects => "baras-effects".to_string(),
             OverlayType::Challenges => "baras-challenges".to_string(),
+            OverlayType::Alerts => "baras-alerts".to_string(),
         }
     }
 
@@ -175,6 +179,7 @@ impl OverlayType {
             OverlayType::Timers => (650, 550),
             OverlayType::Effects => (650, 700),
             OverlayType::Challenges => (950, 50),
+            OverlayType::Alerts => (950, 400),
         }
     }
 }

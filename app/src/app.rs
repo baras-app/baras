@@ -37,6 +37,7 @@ pub fn App() -> Element {
     let mut timers_enabled = use_signal(|| false);
     let mut effects_enabled = use_signal(|| false);
     let mut challenges_enabled = use_signal(|| false);
+    let mut alerts_enabled = use_signal(|| false);
     let mut overlays_visible = use_signal(|| true);
     let mut move_mode = use_signal(|| false);
     let mut rearrange_mode = use_signal(|| false);
@@ -157,6 +158,7 @@ pub fn App() -> Element {
                 &mut timers_enabled,
                 &mut effects_enabled,
                 &mut challenges_enabled,
+                &mut alerts_enabled,
                 &mut overlays_visible,
                 &mut move_mode,
                 &mut rearrange_mode,
@@ -257,13 +259,15 @@ pub fn App() -> Element {
     let timers_on = timers_enabled();
     let effects_on = effects_enabled();
     let challenges_on = challenges_enabled();
+    let alerts_on = alerts_enabled();
     let any_enabled = enabled_map.values().any(|&v| v)
         || personal_on
         || raid_on
         || boss_health_on
         || timers_on
         || effects_on
-        || challenges_on;
+        || challenges_on
+        || alerts_on;
     let is_visible = overlays_visible();
     let is_move_mode = move_mode();
     let is_rearrange = rearrange_mode();
@@ -411,7 +415,7 @@ pub fn App() -> Element {
                                         if let Some(status) = api::get_overlay_status().await {
                                             apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
                                                 &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                &mut effects_enabled, &mut challenges_enabled,
+                                                &mut effects_enabled, &mut challenges_enabled, &mut alerts_enabled,
                                                 &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
                                         }
                                     }
@@ -615,7 +619,7 @@ pub fn App() -> Element {
                                                     if let Some(status) = api::get_overlay_status().await {
                                                         apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
                                                             &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                            &mut effects_enabled, &mut challenges_enabled,
+                                                            &mut effects_enabled, &mut challenges_enabled, &mut alerts_enabled,
                                                             &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
                                                     }
                                                 }
@@ -746,6 +750,15 @@ pub fn App() -> Element {
                                     }
                                 }); },
                                 "Challenges"
+                            }
+                            button {
+                                class: if alerts_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                onclick: move |_| { spawn(async move {
+                                    if api::toggle_overlay(OverlayType::Alerts, alerts_on).await {
+                                        alerts_enabled.set(!alerts_on);
+                                    }
+                                }); },
+                                "Alerts"
                             }
                         }
 
@@ -1350,6 +1363,7 @@ fn apply_status(
     timers_enabled: &mut Signal<bool>,
     effects_enabled: &mut Signal<bool>,
     challenges_enabled: &mut Signal<bool>,
+    alerts_enabled: &mut Signal<bool>,
     overlays_visible: &mut Signal<bool>,
     move_mode: &mut Signal<bool>,
     rearrange_mode: &mut Signal<bool>,
@@ -1365,6 +1379,7 @@ fn apply_status(
     timers_enabled.set(status.timers_enabled);
     effects_enabled.set(status.effects_enabled);
     challenges_enabled.set(status.challenges_enabled);
+    alerts_enabled.set(status.alerts_enabled);
     overlays_visible.set(status.overlays_visible);
     move_mode.set(status.move_mode);
     rearrange_mode.set(status.rearrange_mode);

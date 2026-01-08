@@ -1270,6 +1270,97 @@ mod examples {
             std::thread::sleep(Duration::from_millis(16));
         }
     }
+
+    /// Run the alerts text overlay with sample alerts that fade out
+    pub fn run_alerts_overlay() {
+        use baras_core::context::AlertsOverlayConfig;
+        use baras_overlay::{AlertEntry, AlertsOverlay, Overlay, OverlayConfig};
+
+        let config = OverlayConfig {
+            x: 300,
+            y: 200,
+            width: 280,
+            height: 140,
+            namespace: "baras-alerts".to_string(),
+            click_through: false,
+            target_monitor_id: None,
+        };
+
+        let alerts_config = AlertsOverlayConfig {
+            font_size: 12,
+            ..Default::default()
+        };
+
+        let mut overlay = match AlertsOverlay::new(config, alerts_config.clone(), 180) {
+            Ok(o) => o,
+            Err(e) => {
+                eprintln!("Failed to create alerts overlay: {}", e);
+                return;
+            }
+        };
+
+        overlay.set_move_mode(true);
+
+        // Sample alert messages with colors
+        let sample_alerts = [
+            ("Adds Incoming!", [255, 100, 100, 255]),      // Red
+            ("Tank Swap Now!", [100, 200, 255, 255]),      // Blue
+            ("Spread Out!", [255, 200, 100, 255]),         // Orange
+            ("Stack on Boss!", [100, 255, 100, 255]),      // Green
+            ("Interrupt!", [255, 100, 255, 255]),          // Purple
+        ];
+
+        let start = Instant::now();
+        let mut last_frame = Instant::now();
+        let mut last_alert = Instant::now();
+        let frame_duration = Duration::from_millis(100); // 10 FPS for smooth fading
+        let alert_interval = Duration::from_secs(2);
+        let mut alert_index = 0;
+
+        println!("┌─────────────────────────────────────────────────────────────┐");
+        println!("│           Alerts Overlay - Fade-Out Demo                    │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  New alerts appear every 2 seconds                          │");
+        println!("│  Alerts show for 5 seconds, then fade over 1 second         │");
+        println!("│  Newest alerts appear at top                                │");
+        println!("│  Drag anywhere to move, corner to resize                    │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  Press Ctrl+C to exit                                       │");
+        println!("└─────────────────────────────────────────────────────────────┘");
+
+        loop {
+            if !overlay.poll_events() {
+                break;
+            }
+
+            let now = Instant::now();
+
+            // Add a new alert every 2 seconds
+            if now.duration_since(last_alert) >= alert_interval {
+                let (text, color) = sample_alerts[alert_index % sample_alerts.len()];
+                let elapsed = start.elapsed().as_secs();
+                let alert_text = format!("[{:02}:{:02}] {}", elapsed / 60, elapsed % 60, text);
+
+                let entry = AlertEntry::new(
+                    alert_text,
+                    color,
+                    alerts_config.default_duration,
+                );
+                overlay.add_alerts(vec![entry]);
+
+                alert_index += 1;
+                last_alert = now;
+            }
+
+            if now.duration_since(last_frame) >= frame_duration {
+                overlay.render();
+                last_frame = now;
+            }
+
+            let sleep_ms = if overlay.is_interactive() { 4 } else { 50 };
+            std::thread::sleep(Duration::from_millis(sleep_ms));
+        }
+    }
 }
 
 fn main() {
@@ -1287,6 +1378,7 @@ fn main() {
         "--boss" => examples::run_boss_health_overlay(),
         "--challenges" => examples::run_challenge_overlay(),
         "--challenges-h" => examples::run_challenge_overlay_horizontal(),
+        "--alerts" => examples::run_alerts_overlay(),
         _ => {
             println!("Usage: cargo run -p baras-overlay -- [OPTION]");
             println!();
@@ -1302,6 +1394,7 @@ fn main() {
             println!(
                 "  --challenges-h Challenge overlay (horizontal, 3-col: value + /s + percent)"
             );
+            println!("  --alerts       Alerts text overlay with fade-out effect");
         }
     }
 }

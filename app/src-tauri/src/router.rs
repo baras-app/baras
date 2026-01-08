@@ -220,6 +220,37 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
                     .await;
             }
         }
+        OverlayUpdate::AlertsFired(fired_alerts) => {
+            // Convert FiredAlert to AlertEntry and send to alerts overlay
+            use baras_overlay::AlertEntry;
+            use std::time::Instant;
+
+            let alerts_tx = {
+                let state = match overlay_state.lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                state.get_tx(OverlayType::Alerts).cloned()
+            };
+
+            if let Some(tx) = alerts_tx {
+                let entries: Vec<AlertEntry> = fired_alerts
+                    .into_iter()
+                    .map(|a| AlertEntry {
+                        text: a.text,
+                        color: a.color.unwrap_or([255, 255, 255, 255]),
+                        created_at: Instant::now(),
+                        duration_secs: 5.0, // Default duration, could come from config
+                    })
+                    .collect();
+
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::Alerts(
+                        baras_overlay::AlertsData { entries },
+                    )))
+                    .await;
+            }
+        }
         OverlayUpdate::CombatStarted => {
             // Could show overlay or clear entries
         }

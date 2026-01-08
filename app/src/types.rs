@@ -13,6 +13,7 @@ pub use baras_types::{
     // Selectors (unified ID-or-Name matching)
     AbilitySelector,
     // Config types
+    AlertsOverlayConfig,
     AppConfig,
     BossHealthConfig,
     ChallengeColumns,
@@ -70,6 +71,8 @@ pub struct OverlayStatus {
     pub effects_enabled: bool,
     pub challenges_running: bool,
     pub challenges_enabled: bool,
+    pub alerts_running: bool,
+    pub alerts_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -171,6 +174,7 @@ pub enum OverlayType {
     Timers,
     Effects,
     Challenges,
+    Alerts,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

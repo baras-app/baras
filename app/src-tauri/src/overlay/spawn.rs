@@ -15,13 +15,13 @@ use std::thread::{self, JoinHandle};
 use tokio::sync::mpsc::{self, Sender};
 
 use baras_core::context::{
-    BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig, OverlayPositionConfig,
-    PersonalOverlayConfig, TimerOverlayConfig,
+    AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig,
+    OverlayPositionConfig, PersonalOverlayConfig, TimerOverlayConfig,
 };
 use baras_overlay::{
-    BossHealthOverlay, ChallengeOverlay, EffectsOverlay, MetricOverlay, Overlay, OverlayConfig,
-    PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction,
-    TimerOverlay,
+    AlertsOverlay, BossHealthOverlay, ChallengeOverlay, EffectsOverlay, MetricOverlay, Overlay,
+    OverlayConfig, PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig,
+    RaidRegistryAction, TimerOverlay,
 };
 
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
@@ -431,6 +431,39 @@ pub fn create_challenges_overlay(
     let factory = move || {
         ChallengeOverlay::new(config, challenge_config, background_alpha)
             .map_err(|e| format!("Failed to create challenges overlay: {}", e))
+    };
+
+    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
+
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
+}
+
+/// Create and spawn the alerts overlay
+pub fn create_alerts_overlay(
+    position: OverlayPositionConfig,
+    alerts_config: AlertsOverlayConfig,
+    background_alpha: u8,
+) -> Result<OverlayHandle, String> {
+    let config = OverlayConfig {
+        x: position.x,
+        y: position.y,
+        width: position.width,
+        height: position.height,
+        namespace: "baras-alerts".to_string(),
+        click_through: true,
+        target_monitor_id: position.monitor_id.clone(),
+    };
+
+    let kind = OverlayType::Alerts;
+
+    let factory = move || {
+        AlertsOverlay::new(config, alerts_config, background_alpha)
+            .map_err(|e| format!("Failed to create alerts overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;

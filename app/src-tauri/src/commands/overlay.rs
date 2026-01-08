@@ -28,6 +28,8 @@ pub struct OverlayStatusResponse {
     pub effects_enabled: bool,
     pub challenges_running: bool,
     pub challenges_enabled: bool,
+    pub alerts_running: bool,
+    pub alerts_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -105,6 +107,7 @@ pub async fn get_overlay_status(
         timers_running,
         effects_running,
         challenges_running,
+        alerts_running,
         move_mode,
         rearrange_mode,
     ) = {
@@ -117,6 +120,7 @@ pub async fn get_overlay_status(
             s.is_running(OverlayType::Timers),
             s.is_effects_running(),
             s.is_challenges_running(),
+            s.is_running(OverlayType::Alerts),
             s.move_mode,
             s.rearrange_mode,
         )
@@ -136,6 +140,7 @@ pub async fn get_overlay_status(
     let timers_enabled = config.overlay_settings.is_enabled("timers");
     let effects_enabled = config.overlay_settings.is_enabled("effects");
     let challenges_enabled = config.overlay_settings.is_enabled("challenges");
+    let alerts_enabled = config.overlay_settings.is_enabled("alerts");
 
     Ok(OverlayStatusResponse {
         running: running_metric_types,
@@ -152,6 +157,8 @@ pub async fn get_overlay_status(
         effects_enabled,
         challenges_running,
         challenges_enabled,
+        alerts_running,
+        alerts_enabled,
         overlays_visible: config.overlay_settings.overlays_visible,
         move_mode,
         rearrange_mode,

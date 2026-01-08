@@ -9,6 +9,7 @@
 //! All overlays implement the `Overlay` trait, which provides a unified
 //! interface for the application layer to interact with any overlay type.
 
+mod alerts;
 mod boss_health;
 mod challenges;
 mod effects;
@@ -17,6 +18,7 @@ mod personal;
 mod raid;
 mod timers;
 
+pub use alerts::{AlertEntry, AlertsData, AlertsOverlay};
 pub use boss_health::{BossHealthData, BossHealthOverlay};
 pub use challenges::{ChallengeData, ChallengeEntry, ChallengeOverlay, PlayerContribution};
 pub use effects::{EffectEntry, EffectsData, EffectsOverlay};
@@ -58,8 +60,8 @@ pub enum RaidRegistryAction {
 
 use crate::frame::OverlayFrame;
 use baras_core::context::{
-    BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig, PersonalOverlayConfig,
-    TimerOverlayConfig,
+    AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig,
+    PersonalOverlayConfig, TimerOverlayConfig,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -83,6 +85,8 @@ pub enum OverlayData {
     Effects(EffectsData),
     /// Challenge metrics during boss encounters
     Challenges(ChallengeData),
+    /// Alert text notifications
+    Alerts(AlertsData),
 }
 
 /// Configuration updates that can be sent to overlays
@@ -102,6 +106,8 @@ pub enum OverlayConfigUpdate {
     Effects(TimerOverlayConfig, u8),
     /// Config for challenge overlay (+ background alpha)
     Challenge(ChallengeOverlayConfig, u8),
+    /// Config for alerts overlay (+ background alpha)
+    Alerts(AlertsOverlayConfig, u8),
 }
 
 /// Position information for an overlay

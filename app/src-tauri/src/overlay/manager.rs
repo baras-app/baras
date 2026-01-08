@@ -9,8 +9,9 @@ use std::time::Duration;
 
 use super::metrics::create_entries_for_type;
 use super::spawn::{
-    create_boss_health_overlay, create_challenges_overlay, create_effects_overlay,
-    create_metric_overlay, create_personal_overlay, create_raid_overlay, create_timer_overlay,
+    create_alerts_overlay, create_boss_health_overlay, create_challenges_overlay,
+    create_effects_overlay, create_metric_overlay, create_personal_overlay, create_raid_overlay,
+    create_timer_overlay,
 };
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
 use super::types::{MetricType, OverlayType};
@@ -67,6 +68,10 @@ impl OverlayManager {
             OverlayType::Challenges => {
                 let challenge_config = settings.challenge_overlay.clone();
                 create_challenges_overlay(position, challenge_config, settings.challenge_opacity)?
+            }
+            OverlayType::Alerts => {
+                let alerts_config = settings.alerts_overlay.clone();
+                create_alerts_overlay(position, alerts_config, settings.alerts_opacity)?
             }
         };
 
@@ -129,7 +134,8 @@ impl OverlayManager {
             | OverlayType::BossHealth
             | OverlayType::Timers
             | OverlayType::Effects
-            | OverlayType::Challenges => {
+            | OverlayType::Challenges
+            | OverlayType::Alerts => {
                 // These get data via separate update channels (bridge)
             }
         }
@@ -226,6 +232,10 @@ impl OverlayManager {
             OverlayType::Challenges => {
                 let challenge_config = settings.challenge_overlay.clone();
                 OverlayConfigUpdate::Challenge(challenge_config, settings.challenge_opacity)
+            }
+            OverlayType::Alerts => {
+                let alerts_config = settings.alerts_overlay.clone();
+                OverlayConfigUpdate::Alerts(alerts_config, settings.alerts_opacity)
             }
         }
     }
@@ -355,6 +365,7 @@ impl OverlayManager {
                 "timers" => OverlayType::Timers,
                 "effects" => OverlayType::Effects,
                 "challenges" => OverlayType::Challenges,
+                "alerts" => OverlayType::Alerts,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)
@@ -595,6 +606,7 @@ impl OverlayManager {
             OverlayType::Timers,
             OverlayType::Effects,
             OverlayType::Challenges,
+            OverlayType::Alerts,
         ];
         for mt in MetricType::all() {
             types.push(OverlayType::Metric(*mt));

@@ -132,6 +132,8 @@ pub enum OverlayUpdate {
     TimersUpdated(TimerData),
     /// Effects countdown overlay data
     EffectsOverlayUpdated(baras_overlay::EffectsData),
+    /// Alert text for alerts overlay
+    AlertsFired(Vec<FiredAlert>),
     /// Clear all overlay data (sent when switching files)
     ClearAllData,
 }
@@ -1103,6 +1105,12 @@ impl CombatService {
                                     voice_pack,
                                 });
                             }
+                        }
+
+                        // Send alerts to overlay (before audio consumes them)
+                        if !alerts.is_empty() {
+                            let _ =
+                                overlay_tx.try_send(OverlayUpdate::AlertsFired(alerts.clone()));
                         }
 
                         // Send alert audio events (only if audio_enabled for that alert)

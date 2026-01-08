@@ -40,6 +40,9 @@ pub mod widgets;
 pub use frame::OverlayFrame;
 pub use manager::OverlayWindow;
 pub use overlays::{
+    AlertEntry,
+    AlertsData,
+    AlertsOverlay,
     BossHealthData,
     BossHealthOverlay,
     ChallengeData,

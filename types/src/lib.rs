@@ -1013,6 +1013,51 @@ impl Default for TimerOverlayConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Alerts Overlay Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Configuration for the alerts text overlay
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AlertsOverlayConfig {
+    /// Font size for alert text (default 12)
+    #[serde(default = "default_alerts_font_size")]
+    pub font_size: u8,
+    /// Maximum number of alerts to display at once
+    #[serde(default = "default_alerts_max_display")]
+    pub max_display: u8,
+    /// Seconds to show each alert at full opacity
+    #[serde(default = "default_alerts_duration")]
+    pub default_duration: f32,
+    /// Seconds for fade-out effect after duration expires
+    #[serde(default = "default_alerts_fade_duration")]
+    pub fade_duration: f32,
+}
+
+fn default_alerts_font_size() -> u8 {
+    12
+}
+fn default_alerts_max_display() -> u8 {
+    5
+}
+fn default_alerts_duration() -> f32 {
+    5.0
+}
+fn default_alerts_fade_duration() -> f32 {
+    1.0
+}
+
+impl Default for AlertsOverlayConfig {
+    fn default() -> Self {
+        Self {
+            font_size: default_alerts_font_size(),
+            max_display: default_alerts_max_display(),
+            default_duration: default_alerts_duration(),
+            fade_duration: default_alerts_fade_duration(),
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Challenge Overlay Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1168,6 +1213,10 @@ pub struct OverlaySettings {
     pub challenge_overlay: ChallengeOverlayConfig,
     #[serde(default = "default_opacity")]
     pub challenge_opacity: u8,
+    #[serde(default)]
+    pub alerts_overlay: AlertsOverlayConfig,
+    #[serde(default = "default_opacity")]
+    pub alerts_opacity: u8,
 }
 
 impl Default for OverlaySettings {
@@ -1192,6 +1241,8 @@ impl Default for OverlaySettings {
             effects_opacity: 180,
             challenge_overlay: ChallengeOverlayConfig::default(),
             challenge_opacity: 180,
+            alerts_overlay: AlertsOverlayConfig::default(),
+            alerts_opacity: 180,
         }
     }
 }

@@ -8,8 +8,9 @@ use std::collections::HashMap;
 
 use crate::api;
 use crate::types::{
-    BossHealthConfig, ChallengeLayout, MAX_PROFILES, MetricType, OverlayAppearanceConfig,
-    OverlaySettings, PersonalOverlayConfig, PersonalStat, RaidOverlaySettings, TimerOverlayConfig,
+    AlertsOverlayConfig, BossHealthConfig, ChallengeLayout, MAX_PROFILES, MetricType,
+    OverlayAppearanceConfig, OverlaySettings, PersonalOverlayConfig, PersonalStat,
+    RaidOverlaySettings, TimerOverlayConfig,
 };
 use crate::utils::{color_to_hex, parse_hex_color};
 
@@ -82,6 +83,8 @@ pub fn SettingsPanel(
                 config.overlay_settings.effects_opacity = new_settings.effects_opacity;
                 config.overlay_settings.challenge_overlay = new_settings.challenge_overlay.clone();
                 config.overlay_settings.challenge_opacity = new_settings.challenge_opacity;
+                config.overlay_settings.alerts_overlay = new_settings.alerts_overlay.clone();
+                config.overlay_settings.alerts_opacity = new_settings.alerts_opacity;
                 config.overlay_settings.positions = existing_positions;
                 config.overlay_settings.enabled = existing_enabled;
 
@@ -272,6 +275,7 @@ pub fn SettingsPanel(
                         TabButton { label: "Timers", tab_key: "timers", selected_tab: selected_tab }
                         TabButton { label: "Effects", tab_key: "effects", selected_tab: selected_tab }
                         TabButton { label: "Challenges", tab_key: "challenges", selected_tab: selected_tab }
+                        TabButton { label: "Alerts", tab_key: "alerts", selected_tab: selected_tab }
                     }
                 }
                 div { class: "tab-group",
@@ -608,6 +612,119 @@ pub fn SettingsPanel(
                                 " Per-challenge settings (columns, color, enabled) are configured in the Encounter Editor."
                             }
                         }
+                    }
+                }
+            } else if tab == "alerts" {
+                // Alerts Settings
+                div { class: "settings-section",
+                    h4 { "Appearance" }
+
+                    OpacitySlider {
+                        label: "Background Opacity",
+                        value: current_settings.alerts_opacity,
+                        on_change: move |val| {
+                            let mut new_settings = draft_settings();
+                            new_settings.alerts_opacity = val;
+                            update_draft(new_settings);
+                        },
+                    }
+
+                    div { class: "setting-row",
+                        label { "Font Size" }
+                        input {
+                            r#type: "range",
+                            min: "8",
+                            max: "24",
+                            value: "{current_settings.alerts_overlay.font_size}",
+                            oninput: move |e| {
+                                if let Ok(val) = e.value().parse::<u8>() {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.alerts_overlay.font_size = val.clamp(8, 24);
+                                    update_draft(new_settings);
+                                }
+                            }
+                        }
+                        span { class: "value", "{current_settings.alerts_overlay.font_size}px" }
+                    }
+
+                    h4 { style: "margin-top: 16px;", "Display" }
+
+                    div { class: "setting-row",
+                        label { "Max Displayed" }
+                        select {
+                            class: "input-inline",
+                            value: "{current_settings.alerts_overlay.max_display}",
+                            onchange: move |e: Event<FormData>| {
+                                if let Ok(val) = e.value().parse::<u8>() {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.alerts_overlay.max_display = val.clamp(1, 10);
+                                    update_draft(new_settings);
+                                }
+                            },
+                            for n in 1..=10u8 {
+                                option { value: "{n}", selected: current_settings.alerts_overlay.max_display == n, "{n}" }
+                            }
+                        }
+                    }
+
+                    h4 { style: "margin-top: 16px;", "Timing" }
+
+                    div { class: "setting-row",
+                        label { "Display Duration" }
+                        input {
+                            r#type: "range",
+                            min: "1",
+                            max: "15",
+                            step: "0.5",
+                            value: "{current_settings.alerts_overlay.default_duration}",
+                            oninput: move |e| {
+                                if let Ok(val) = e.value().parse::<f32>() {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.alerts_overlay.default_duration = val.clamp(1.0, 15.0);
+                                    update_draft(new_settings);
+                                }
+                            }
+                        }
+                        span { class: "value", "{current_settings.alerts_overlay.default_duration:.1}s" }
+                    }
+
+                    div { class: "setting-row",
+                        label { "Fade Duration" }
+                        input {
+                            r#type: "range",
+                            min: "0",
+                            max: "3",
+                            step: "0.5",
+                            value: "{current_settings.alerts_overlay.fade_duration}",
+                            oninput: move |e| {
+                                if let Ok(val) = e.value().parse::<f32>() {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.alerts_overlay.fade_duration = val.clamp(0.0, 3.0);
+                                    update_draft(new_settings);
+                                }
+                            }
+                        }
+                        span { class: "value", "{current_settings.alerts_overlay.fade_duration:.1}s" }
+                    }
+
+                    div { class: "setting-row reset-row",
+                        button {
+                            class: "btn btn-reset",
+                            onclick: move |_| {
+                                let mut new_settings = draft_settings();
+                                new_settings.alerts_overlay = AlertsOverlayConfig::default();
+                                new_settings.alerts_opacity = 180;
+                                update_draft(new_settings);
+                            },
+                            i { class: "fa-solid fa-rotate-left" }
+                            span { " Reset to Defaults" }
+                        }
+                    }
+
+                    // Hint about per-alert settings
+                    p { class: "text-muted text-sm", style: "margin-top: 12px;",
+                        i { class: "fa-solid fa-info-circle" }
+                        " Per-alert color can be set when defining timers with is_alert enabled."
                     }
                 }
             } else if tab == "raid" {
