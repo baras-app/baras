@@ -87,12 +87,34 @@ fn dispose_chart(element_id: &str) {
     }
 }
 
+/// Merge overlapping/adjacent windows into continuous regions
+fn merge_effect_windows(mut windows: Vec<EffectWindow>) -> Vec<EffectWindow> {
+    if windows.is_empty() {
+        return windows;
+    }
+    windows.sort_by(|a, b| a.start_secs.partial_cmp(&b.start_secs).unwrap());
+    let mut merged = Vec::with_capacity(windows.len());
+    let mut current = windows[0].clone();
+
+    for w in windows.into_iter().skip(1) {
+        // If windows overlap or are adjacent, merge them
+        if w.start_secs <= current.end_secs {
+            current.end_secs = current.end_secs.max(w.end_secs);
+        } else {
+            merged.push(current);
+            current = w;
+        }
+    }
+    merged.push(current);
+    merged
+}
+
 fn build_time_series_option(
     data: &[TimeSeriesPoint],
     title: &str,
     color: &str,
     fill_color: &str,
-    effect_windows: &[(EffectWindow, &str)], // (window, color)
+    effect_windows: &[(i64, EffectWindow, &str)], // (effect_id, window, color)
     y_axis_name: &str,
 ) -> JsValue {
     let obj = js_sys::Object::new();
@@ -377,38 +399,87 @@ fn build_time_series_option(
     }
     js_sys::Reflect::set(&series, &JsValue::from_str("data"), &data_arr).unwrap();
 
-    // Mark areas for effect windows (on raw data series) - each with its own color
+    // Mark areas for effect windows (on raw data series) - vertically stacked per effect
     // Always set markArea (even if empty) to ensure ECharts clears previous highlights
     let mark_area = js_sys::Object::new();
     let mark_data = js_sys::Array::new();
-    for (window, win_color) in effect_windows {
-        let region = js_sys::Array::new();
-        let start = js_sys::Object::new();
-        js_sys::Reflect::set(
-            &start,
-            &JsValue::from_str("xAxis"),
-            &JsValue::from_f64(window.start_secs as f64),
-        )
-        .unwrap();
-        // Set per-region itemStyle for individual colors
-        let region_style = js_sys::Object::new();
-        js_sys::Reflect::set(
-            &region_style,
-            &JsValue::from_str("color"),
-            &JsValue::from_str(win_color),
-        )
-        .unwrap();
-        js_sys::Reflect::set(&start, &JsValue::from_str("itemStyle"), &region_style).unwrap();
-        let end = js_sys::Object::new();
-        js_sys::Reflect::set(
-            &end,
-            &JsValue::from_str("xAxis"),
-            &JsValue::from_f64(window.end_secs as f64),
-        )
-        .unwrap();
-        region.push(&start);
-        region.push(&end);
-        mark_data.push(&region);
+
+    // Calculate max y value from burst data for bounding mark areas to chart grid
+    let max_y_value = dense_data
+        .iter()
+        .map(|(_, y)| *y)
+        .fold(0.0_f64, |a, b| a.max(b));
+
+    // Group windows by effect_id, preserving selection order for consistent lane assignment
+    let mut effect_order: Vec<i64> = Vec::new();
+    let mut grouped: std::collections::HashMap<i64, (Vec<EffectWindow>, &str)> =
+        std::collections::HashMap::new();
+    for (eid, window, win_color) in effect_windows.iter() {
+        if !effect_order.contains(eid) {
+            effect_order.push(*eid);
+        }
+        grouped
+            .entry(*eid)
+            .or_insert_with(|| (Vec::new(), *win_color))
+            .0
+            .push(window.clone());
+    }
+
+    let num_effects = effect_order.len();
+    for (lane_idx, eid) in effect_order.iter().enumerate() {
+        if let Some((windows, win_color)) = grouped.remove(eid) {
+            // Merge overlapping windows for this effect
+            let merged = merge_effect_windows(windows);
+
+            // Calculate vertical bounds using yAxis data values (bounded to chart area)
+            let lane_height = max_y_value / num_effects as f64;
+            let y_bottom = lane_idx as f64 * lane_height;
+            let y_top = (lane_idx + 1) as f64 * lane_height;
+
+            for window in merged {
+                let region = js_sys::Array::new();
+                let start = js_sys::Object::new();
+                js_sys::Reflect::set(
+                    &start,
+                    &JsValue::from_str("xAxis"),
+                    &JsValue::from_f64(window.start_secs as f64),
+                )
+                .unwrap();
+                // Use yAxis values to bound within chart grid (index 0 = left/burst axis)
+                js_sys::Reflect::set(
+                    &start,
+                    &JsValue::from_str("yAxis"),
+                    &JsValue::from_f64(y_top),
+                )
+                .unwrap();
+                // Set per-region itemStyle for individual colors
+                let region_style = js_sys::Object::new();
+                js_sys::Reflect::set(
+                    &region_style,
+                    &JsValue::from_str("color"),
+                    &JsValue::from_str(win_color),
+                )
+                .unwrap();
+                js_sys::Reflect::set(&start, &JsValue::from_str("itemStyle"), &region_style)
+                    .unwrap();
+                let end = js_sys::Object::new();
+                js_sys::Reflect::set(
+                    &end,
+                    &JsValue::from_str("xAxis"),
+                    &JsValue::from_f64(window.end_secs as f64),
+                )
+                .unwrap();
+                js_sys::Reflect::set(
+                    &end,
+                    &JsValue::from_str("yAxis"),
+                    &JsValue::from_f64(y_bottom),
+                )
+                .unwrap();
+                region.push(&start);
+                region.push(&end);
+                mark_data.push(&region);
+            }
+        }
     }
     js_sys::Reflect::set(&mark_area, &JsValue::from_str("data"), &mark_data).unwrap();
     js_sys::Reflect::set(&series, &JsValue::from_str("markArea"), &mark_area).unwrap();
@@ -542,7 +613,8 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
     let mut passive_effects = use_signal(Vec::<EffectChartData>::new);
     // Multiple selected effects with assigned colors
     let mut selected_effects = use_signal(Vec::<(i64, &'static str)>::new);
-    let mut effect_windows = use_signal(Vec::<(EffectWindow, &'static str)>::new);
+    // (effect_id, window, color) - includes effect_id for grouping/stacking
+    let mut effect_windows = use_signal(Vec::<(i64, EffectWindow, &'static str)>::new);
 
     // Loading state
     let mut loading = use_signal(|| false);
@@ -675,7 +747,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                             .await
                     {
                         for w in windows {
-                            all_windows.push((w, color));
+                            all_windows.push((eid, w, color));
                         }
                     }
                 }
