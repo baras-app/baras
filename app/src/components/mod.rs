@@ -4,6 +4,7 @@
 //! to improve code organization and reduce file size.
 
 pub mod charts_panel;
+pub mod class_icons;
 pub mod combat_log;
 pub mod data_explorer;
 pub mod effect_editor;

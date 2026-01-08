@@ -477,6 +477,9 @@ impl EncounterQuery<'_> {
                 results.push(RaidOverviewRow {
                     name: names[i].clone(),
                     entity_type: entity_types[i].clone(),
+                    class_name: None,
+                    discipline_name: None,
+                    class_icon: None,
                     damage_total: damage_totals[i],
                     dps: damage_totals[i] / duration,
                     threat_total: threat_totals[i],

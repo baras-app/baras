@@ -9,6 +9,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api;
+use crate::components::class_icons::get_class_icon;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Types (mirrors backend)
@@ -18,6 +19,12 @@ use crate::api;
 pub struct PlayerMetrics {
     pub entity_id: i64,
     pub name: String,
+    #[serde(default)]
+    pub discipline_name: Option<String>,
+    #[serde(default)]
+    pub class_name: Option<String>,
+    #[serde(default)]
+    pub class_icon: Option<String>,
     pub dps: i64,
     pub edps: i64,
     pub bossdps: i64,
@@ -458,7 +465,27 @@ fn EncounterDetail(encounter: EncounterSummary) -> Element {
                         tbody {
                             for player in sorted_metrics.iter() {
                                 tr {
-                                    td { class: "player-name", "{player.name}" }
+                                    td { class: "player-name",
+                                        span { class: "name-with-icon",
+                                            if let Some(icon_name) = &player.class_icon {
+                                                if let Some(icon_asset) = get_class_icon(icon_name) {
+                                                    {
+                                                        // Derive CSS class from icon filename (e.g., "sorcerer.png" -> "sorcerer")
+                                                        let class_css = icon_name.trim_end_matches(".png");
+                                                        rsx! {
+                                                            img {
+                                                                class: "class-icon class-{class_css}",
+                                                                src: *icon_asset,
+                                                                title: "{player.discipline_name.as_deref().unwrap_or(\"\")}",
+                                                                alt: ""
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            "{player.name}"
+                                        }
+                                    }
                                     td { class: "metric-value dps", "{format_number(player.dps)}" }
                                     td { class: "metric-value dps", "{format_number(player.total_damage)}" }
                                     td { class: "metric-value tps", "{format_number(player.tps)}" }

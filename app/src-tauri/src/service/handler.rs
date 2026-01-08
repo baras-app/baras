@@ -10,6 +10,7 @@ use tokio::sync::mpsc;
 use baras_core::EncounterSummary;
 use baras_core::context::{AppConfig, AppConfigExt, resolve};
 use baras_core::encounter::EncounterState;
+use baras_core::game_data::Discipline;
 use baras_core::query::{
     AbilityBreakdown, BreakdownMode, CombatLogRow, DataTab, EffectChartData, EffectWindow,
     EncounterTimeline, EntityBreakdown, PlayerDeath, RaidOverviewRow, TimeRange, TimeSeriesPoint,
@@ -412,6 +413,48 @@ impl ServiceHandle {
         let session = session_guard.as_ref().ok_or("No active session")?;
         let session = session.read().await;
 
+        let mut player_discipline_map: std::collections::HashMap<String, (String, String, String)> =
+            std::collections::HashMap::new();
+
+        if let Some(cache) = session.session_cache.as_ref() {
+            // From ALL encounters in the cache (not just current)
+            for enc in cache.encounters() {
+                for p in enc.players.values() {
+                    if let Some(disc) = Discipline::from_guid(p.discipline_id) {
+                        let name = resolve(p.name).to_string();
+                        let class_icon = disc.class().icon_name().to_string();
+                        let discipline_name = disc.name().to_string();
+                        let class_name = format!("{:?}", disc.class());
+                        player_discipline_map.insert(name, (class_name, discipline_name, class_icon));
+                    }
+                }
+            }
+
+            // Also include the main player from cache.player (always available)
+            if let Some(disc) = Discipline::from_guid(cache.player.discipline_id) {
+                let name = resolve(cache.player.name).to_string();
+                let class_icon = disc.class().icon_name().to_string();
+                let discipline_name = disc.name().to_string();
+                let class_name = format!("{:?}", disc.class());
+                player_discipline_map.insert(name, (class_name, discipline_name, class_icon));
+            }
+
+            // From encounter history (covers historical encounters)
+            for summary in cache.encounter_history.summaries() {
+                for pm in &summary.player_metrics {
+                    if let Some(disc) = &pm.discipline {
+                        let class_icon = disc.class().icon_name().to_string();
+                        let class_name = format!("{:?}", disc.class());
+                        let disc_name = pm.discipline_name.clone().unwrap_or_default();
+                        player_discipline_map.insert(
+                            pm.name.clone(),
+                            (class_name, disc_name, class_icon),
+                        );
+                    }
+                }
+            }
+        }
+
         if let Some(idx) = encounter_idx {
             let dir = session.encounters_dir().ok_or("No encounters directory")?;
             let path = dir.join(baras_core::storage::encounter_filename(idx));
@@ -427,11 +470,25 @@ impl ServiceHandle {
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared
+        let mut results = self
+            .shared
             .query_context
             .query()
             .query_raid_overview(time_range.as_ref(), duration_secs)
-            .await
+            .await?;
+
+        // Enrich results with discipline info
+        for row in &mut results {
+            if let Some((class_name, discipline_name, class_icon)) =
+                player_discipline_map.get(&row.name)
+            {
+                row.class_name = Some(class_name.clone());
+                row.discipline_name = Some(discipline_name.clone());
+                row.class_icon = Some(class_icon.clone());
+            }
+        }
+
+        Ok(results)
     }
 
     /// Query DPS over time for a specific encounter.
@@ -479,12 +536,10 @@ impl ServiceHandle {
         let mut indices = Vec::new();
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str() {
-                    if name.ends_with(".parquet") {
-                        if let Ok(idx) = name.trim_end_matches(".parquet").parse::<u32>() {
+                if let Some(name) = entry.file_name().to_str()
+                    && name.ends_with(".parquet")
+                        && let Ok(idx) = name.trim_end_matches(".parquet").parse::<u32>() {
                             indices.push(idx);
-                        }
-                    }
                 }
             }
         }

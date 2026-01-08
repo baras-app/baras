@@ -105,6 +105,7 @@ impl EntityMetrics {
             discipline: self.discipline,
             discipline_name: self.discipline_name.clone(),
             class_name: self.class_name.clone(),
+            class_icon: self.discipline.map(|d| d.class().icon_name().to_string()),
 
             // Damage dealing
             dps: self.dps as i64,
@@ -152,6 +153,7 @@ pub struct PlayerMetrics {
     pub discipline: Option<Discipline>,
     pub discipline_name: Option<String>,
     pub class_name: Option<String>,
+    pub class_icon: Option<String>,
 
     // Damage dealing
     pub dps: i64,

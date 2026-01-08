@@ -772,11 +772,8 @@ impl CombatEncounter {
                         } else {
                             Some(player.discipline_name.clone())
                         };
-                        let cls_name = if player.class_name.is_empty() {
-                            None
-                        } else {
-                            Some(player.class_name.clone())
-                        };
+                        // Derive class_name from Discipline enum (English) for CSS matching
+                        let cls_name = disc.map(|d| format!("{:?}", d.class()));
                         (disc, disc_name, cls_name)
                     } else {
                         (None, None, None)

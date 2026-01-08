@@ -129,6 +129,10 @@ pub struct EntityBreakdown {
 pub struct RaidOverviewRow {
     pub name: String,
     pub entity_type: String,
+    pub class_name: Option<String>,
+    pub discipline_name: Option<String>,
+    /// Icon filename (e.g., "assassin.png") - derived from discipline
+    pub class_icon: Option<String>,
 
     // Damage dealt
     pub damage_total: f64,

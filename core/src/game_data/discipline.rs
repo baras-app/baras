@@ -36,6 +36,30 @@ pub enum Class {
     Gunslinger,
 }
 
+impl Class {
+    /// Get the icon filename for this class (without path)
+    pub const fn icon_name(&self) -> &'static str {
+        match self {
+            Class::Sorcerer => "sorcerer.png",
+            Class::Assassin => "assassin.png",
+            Class::Juggernaut => "juggernaut.png",
+            Class::Marauder => "marauder.png",
+            Class::Mercenary => "mercenary.png",
+            Class::Powertech => "powertech.png",
+            Class::Operative => "operative.png",
+            Class::Sniper => "sniper.png",
+            Class::Sage => "sage.png",
+            Class::Shadow => "shadow.png",
+            Class::Guardian => "guardian.png",
+            Class::Sentinel => "sentinel.png",
+            Class::Commando => "commando.png",
+            Class::Vanguard => "vanguard.png",
+            Class::Scoundrel => "scoundrel.png",
+            Class::Gunslinger => "gunslinger.png",
+        }
+    }
+}
+
 /// Character discipline with associated role and class
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Discipline {

@@ -13,6 +13,7 @@ use crate::api::{
     PlayerDeath, RaidOverviewRow, TimeRange,
 };
 use crate::components::charts_panel::ChartsPanel;
+use crate::components::class_icons::get_class_icon;
 use crate::components::combat_log::CombatLog;
 use crate::components::history_panel::EncounterSummary;
 use crate::components::phase_timeline::PhaseTimelineFilter;
@@ -1334,7 +1335,27 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                         tbody {
                                             for row in rows.iter() {
                                                 tr {
-                                                    td { class: "name-col", "{row.name}" }
+                                                    td { class: "name-col",
+                                                        span { class: "name-with-icon",
+                                                            if let Some(icon_name) = &row.class_icon {
+                                                                if let Some(icon_asset) = get_class_icon(icon_name) {
+                                                                    {
+                                                                        // Derive CSS class from icon filename (e.g., "sorcerer.png" -> "sorcerer")
+                                                                        let class_css = icon_name.trim_end_matches(".png");
+                                                                        rsx! {
+                                                                            img {
+                                                                                class: "class-icon class-{class_css}",
+                                                                                src: *icon_asset,
+                                                                                title: "{row.discipline_name.as_deref().unwrap_or(\"\")}",
+                                                                                alt: ""
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            "{row.name}"
+                                                        }
+                                                    }
                                                     td { class: "num dmg", "{format_number(row.damage_total)}" }
                                                     td { class: "num dmg", "{format_number(row.dps)}" }
                                                     td { class: "num threat", "{format_number(row.threat_total)}" }
