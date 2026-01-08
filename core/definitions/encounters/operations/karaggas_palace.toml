@@ -89,6 +89,24 @@ is_boss = true
 is_kill_target = true
 
 [[boss.timer]]
+id = "unstable_energy_cs"
+name = "Unstable Energy CS"
+display_text = "Unstable Energy"
+trigger = { type = "combat_start" }
+duration_secs = 15.0
+color = [179, 26, 26, 255]
+cancel_trigger = { type = "combat_end" }
+
+[[boss.timer]]
+id = "unstable_energy"
+name = "Unstable Energy"
+trigger = { type = "ability_cast", abilities = [2778332739403776] }
+duration_secs = 15.0
+color = [179, 26, 26, 255]
+cancel_trigger = { type = "combat_end" }
+
+
+[[boss.timer]]
 id = "burning_oil"
 name = "Burning Oil"
 trigger = { type = "ability_cast", abilities = [
