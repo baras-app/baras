@@ -664,7 +664,7 @@
   color: hsl(0, 70%, 65%);
 }
 .overview-table .threat {
-  color: hsl(45, 70%, 60%);
+  color: #b39ddb;
 }
 .overview-table .taken {
   color: hsl(30, 70%, 60%);
