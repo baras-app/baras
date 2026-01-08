@@ -48,9 +48,15 @@ difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Dread Master Calphayus"
-ids = [3284949901770752]
+ids = [3273946195558400]
 is_boss = true
 is_kill_target = true
+
+[[boss.entities]]
+name = "Dread Master Calphayus (Vision)"
+ids = [3284949901770752, 3284954196738048]
+is_boss = true
+is_kill_target = false
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Dread Master Raptus
