@@ -314,7 +314,7 @@ impl BossTimerDefinition {
     ) -> crate::timers::TimerDefinition {
         crate::timers::TimerDefinition {
             id: self.id.clone(),
-            name: self.name.clone(),
+            name: self.display_text.clone().unwrap_or_else(|| self.name.clone()),
             enabled: self.enabled,
             trigger: self.trigger.clone(),
             duration_secs: self.duration_secs,
