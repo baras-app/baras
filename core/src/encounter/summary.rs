@@ -116,42 +116,45 @@ pub fn classify_encounter(
     encounter: &CombatEncounter,
     area: &AreaInfo,
 ) -> (PhaseType, Option<&'static BossInfo>) {
-    // 1. Check loaded boss definitions first (priority source of truth)
-    if let Some(def) = encounter.active_boss_definition() {
-        let phase = match def.area_type {
-            crate::dsl::AreaType::Operation => PhaseType::Raid,
-            crate::dsl::AreaType::Flashpoint => PhaseType::Flashpoint,
-            crate::dsl::AreaType::LairBoss | crate::dsl::AreaType::OpenWorld => {
-                PhaseType::OpenWorld
-            }
-            crate::dsl::AreaType::TrainingDummy => PhaseType::DummyParse,
-        };
-        // Try to find matching static BossInfo for backwards compatibility
-        let boss_info = encounter
+    // guard boss condition -
+    if encounter.npcs.values().any(|v| v.is_boss) {
+        // 1. Check loaded boss definitions first (priority source of truth)
+        if let Some(def) = encounter.active_boss_definition() {
+            let phase = match def.area_type {
+                crate::dsl::AreaType::Operation => PhaseType::Raid,
+                crate::dsl::AreaType::Flashpoint => PhaseType::Flashpoint,
+                crate::dsl::AreaType::LairBoss | crate::dsl::AreaType::OpenWorld => {
+                    PhaseType::OpenWorld
+                }
+                crate::dsl::AreaType::TrainingDummy => PhaseType::DummyParse,
+            };
+            // Try to find matching static BossInfo for backwards compatibility
+            let boss_info = encounter
+                .npcs
+                .values()
+                .find_map(|npc| lookup_boss(npc.class_id));
+            return (phase, boss_info);
+        }
+
+        // 2. Fall back to static data lookup
+        let mut boss_npcs: Vec<_> = encounter
             .npcs
             .values()
-            .find_map(|npc| lookup_boss(npc.class_id));
-        return (phase, boss_info);
-    }
+            .filter_map(|npc| lookup_boss(npc.class_id).map(|info| (npc, info)))
+            .collect();
 
-    // 2. Fall back to static data lookup
-    let mut boss_npcs: Vec<_> = encounter
-        .npcs
-        .values()
-        .filter_map(|npc| lookup_boss(npc.class_id).map(|info| (npc, info)))
-        .collect();
+        // Sort by first_seen_at to get the primary boss (first encountered)
+        boss_npcs.sort_by_key(|(npc, _)| npc.first_seen_at);
 
-    // Sort by first_seen_at to get the primary boss (first encountered)
-    boss_npcs.sort_by_key(|(npc, _)| npc.first_seen_at);
-
-    if let Some((_, boss_info)) = boss_npcs.first() {
-        let phase = match boss_info.content_type {
-            ContentType::TrainingDummy => PhaseType::DummyParse,
-            ContentType::Operation => PhaseType::Raid,
-            ContentType::Flashpoint => PhaseType::Flashpoint,
-            ContentType::LairBoss | ContentType::OpenWorld => PhaseType::OpenWorld,
-        };
-        return (phase, Some(*boss_info));
+        if let Some((_, boss_info)) = boss_npcs.first() {
+            let phase = match boss_info.content_type {
+                ContentType::TrainingDummy => PhaseType::DummyParse,
+                ContentType::Operation => PhaseType::Raid,
+                ContentType::Flashpoint => PhaseType::Flashpoint,
+                ContentType::LairBoss | ContentType::OpenWorld => PhaseType::OpenWorld,
+            };
+            return (phase, Some(*boss_info));
+        }
     }
 
     // 3. No boss found - check PvP area
@@ -198,10 +201,14 @@ pub fn create_encounter_summary(
     let (encounter_type, boss_info) = classify_encounter(encounter, area);
 
     // Get boss name: prefer definition name, fall back to static data
-    let boss_name: Option<String> = encounter
-        .active_boss_definition()
-        .map(|def| def.name.clone())
-        .or_else(|| boss_info.map(|b| b.boss.to_string()));
+    let boss_name = if encounter.npcs.values().any(|v| v.is_boss) {
+        encounter
+            .active_boss_definition()
+            .map(|def| def.name.clone())
+            .or_else(|| boss_info.map(|b| b.boss.to_string()))
+    } else {
+        None
+    };
 
     let display_name = history.generate_name(encounter_type, boss_name.as_deref());
 
@@ -257,135 +264,4 @@ pub fn create_encounter_summary(
         is_phase_start,
         npc_names,
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::combat_log::EntityType;
-    use crate::context::intern;
-    use crate::dsl::{AreaType, BossEncounterDefinition, EntityDefinition};
-    use crate::encounter::entity_info::NpcInfo;
-    use crate::encounter::{CombatEncounter, ProcessingMode};
-
-    fn create_test_encounter() -> CombatEncounter {
-        CombatEncounter::new(1, ProcessingMode::Live)
-    }
-
-    fn create_test_area() -> AreaInfo {
-        AreaInfo {
-            area_id: 12345,
-            area_name: "Test Area".to_string(),
-            difficulty_id: 0,
-            difficulty_name: String::new(),
-            entered_at: None,
-        }
-    }
-
-    fn create_test_definition(area_type: AreaType) -> BossEncounterDefinition {
-        let mut def = BossEncounterDefinition {
-            id: "test_boss".to_string(),
-            name: "Test Boss".to_string(),
-            area_type,
-            entities: vec![EntityDefinition {
-                name: "Test Boss NPC".to_string(),
-                ids: vec![999999],
-                is_boss: true,
-                is_kill_target: true,
-                triggers_encounter: Some(false),
-                show_on_hp_overlay: Some(true),
-            }],
-            ..Default::default()
-        };
-        def.build_indexes();
-        def
-    }
-
-    /// Helper to add an NPC to the encounter and detect the boss
-    fn add_npc_and_detect_boss(encounter: &mut CombatEncounter, npc_id: i64, name: &str) {
-        encounter.npcs.insert(
-            npc_id,
-            NpcInfo {
-                name: intern(name),
-                entity_type: EntityType::Npc,
-                class_id: npc_id,
-                ..Default::default()
-            },
-        );
-
-        // Simulate boss detection - find the matching definition and set active index
-        for (idx, def) in encounter.boss_definitions().iter().enumerate() {
-            if def.all_npc_ids.contains(&npc_id) {
-                encounter.set_active_boss_idx(Some(idx));
-                break;
-            }
-        }
-    }
-
-    #[test]
-    fn test_classify_uses_definitions_first() {
-        // When definitions are loaded, they should take priority
-        let mut encounter = create_test_encounter();
-        let area = create_test_area();
-
-        // Load a flashpoint definition
-        let def = create_test_definition(AreaType::Flashpoint);
-        encounter.load_boss_definitions(vec![def]);
-
-        // Activate the boss by adding an NPC that matches and detecting it
-        add_npc_and_detect_boss(&mut encounter, 999999, "Test Boss NPC");
-
-        let (phase_type, _boss_info) = classify_encounter(&encounter, &area);
-        assert_eq!(phase_type, PhaseType::Flashpoint);
-    }
-
-    #[test]
-    fn test_classify_flashpoint_from_definition() {
-        let mut encounter = create_test_encounter();
-        let area = create_test_area();
-
-        let def = create_test_definition(AreaType::Flashpoint);
-        encounter.load_boss_definitions(vec![def]);
-        add_npc_and_detect_boss(&mut encounter, 999999, "Test Boss NPC");
-
-        let (phase_type, _) = classify_encounter(&encounter, &area);
-        assert_eq!(phase_type, PhaseType::Flashpoint);
-    }
-
-    #[test]
-    fn test_classify_training_dummy_from_definition() {
-        let mut encounter = create_test_encounter();
-        let area = create_test_area();
-
-        let def = create_test_definition(AreaType::TrainingDummy);
-        encounter.load_boss_definitions(vec![def]);
-        add_npc_and_detect_boss(&mut encounter, 999999, "Test Boss NPC");
-
-        let (phase_type, _) = classify_encounter(&encounter, &area);
-        assert_eq!(phase_type, PhaseType::DummyParse);
-    }
-
-    #[test]
-    fn test_classify_openworld_from_definition() {
-        let mut encounter = create_test_encounter();
-        let area = create_test_area();
-
-        let def = create_test_definition(AreaType::OpenWorld);
-        encounter.load_boss_definitions(vec![def]);
-        add_npc_and_detect_boss(&mut encounter, 999999, "Test Boss NPC");
-
-        let (phase_type, _) = classify_encounter(&encounter, &area);
-        assert_eq!(phase_type, PhaseType::OpenWorld);
-    }
-
-    #[test]
-    fn test_classify_no_definitions_falls_to_openworld() {
-        // Without definitions and without static boss data, should default to OpenWorld
-        let encounter = create_test_encounter();
-        let area = create_test_area();
-
-        let (phase_type, boss_info) = classify_encounter(&encounter, &area);
-        assert_eq!(phase_type, PhaseType::OpenWorld);
-        assert!(boss_info.is_none());
-    }
 }

@@ -102,8 +102,7 @@ fn main() {
     // 2. Load from user config directory (standalone + overlay user encounters)
     if let Some(user_dir) =
         dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"))
-    {
-        if user_dir.exists() {
+        && user_dir.exists() {
             match load_bosses_from_dir(&user_dir) {
                 Ok(user_bosses) => {
                     if !user_bosses.is_empty() {
@@ -133,7 +132,6 @@ fn main() {
                     eprintln!("[PARSE-WORKER] Failed to load user definitions: {}", e);
                 }
             }
-        }
     }
 
     let timer = std::time::Instant::now();
