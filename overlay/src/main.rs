@@ -22,11 +22,13 @@ mod examples {
         TimerOverlayConfig,
     };
     use baras_overlay::{
-        ChallengeData, ChallengeEntry, ChallengeOverlay, Color, InteractionMode, MetricEntry,
-        MetricOverlay, Overlay, OverlayConfig, PlayerContribution, PlayerRole, RaidEffect,
-        RaidFrame, RaidGridLayout, RaidOverlay, RaidOverlayConfig, TimerData, TimerEntry,
-        TimerOverlay, colors,
+        BossHealthData, BossHealthOverlay, ChallengeData, ChallengeEntry, ChallengeOverlay, Color,
+        InteractionMode, MetricEntry, MetricOverlay, Overlay, OverlayConfig, PlayerContribution,
+        PlayerRole, RaidEffect, RaidFrame, RaidGridLayout, RaidOverlay, RaidOverlayConfig,
+        TimerData, TimerEntry, TimerOverlay, colors,
     };
+    use baras_core::context::BossHealthConfig;
+    use baras_core::OverlayHealthEntry;
 
     pub fn run_metric_overlay() {
         let config = OverlayConfig {
@@ -1195,6 +1197,79 @@ mod examples {
             std::thread::sleep(Duration::from_millis(sleep_ms));
         }
     }
+
+    /// Run the boss health overlay with sample bosses and target names
+    pub fn run_boss_health_overlay() {
+        let config = OverlayConfig {
+            x: 300,
+            y: 200,
+            width: 280,
+            height: 200,
+            namespace: "baras-boss-health".to_string(),
+            click_through: false,
+            target_monitor_id: None,
+        };
+
+        let boss_config = BossHealthConfig {
+            show_target: true,
+            ..Default::default()
+        };
+
+        let mut overlay = match BossHealthOverlay::new(config, boss_config, 180) {
+            Ok(o) => o,
+            Err(e) => {
+                eprintln!("Failed to create boss health overlay: {}", e);
+                return;
+            }
+        };
+
+        // Sample boss data with targets
+        let entries = vec![
+            OverlayHealthEntry {
+                name: "Dread Master Styrak".to_string(),
+                current: 8_500_000,
+                max: 12_000_000,
+                first_seen_at: None,
+                target_name: Some("Tanky McTank".to_string()),
+            },
+            OverlayHealthEntry {
+                name: "Kell Dragon".to_string(),
+                current: 2_100_000,
+                max: 4_000_000,
+                first_seen_at: None,
+                target_name: Some("PewPewLazors".to_string()),
+            },
+        ];
+
+        overlay.set_data(BossHealthData { entries });
+
+        let mut last_frame = Instant::now();
+        let frame_duration = Duration::from_millis(100);
+
+        println!("┌─────────────────────────────────────────────────────────────┐");
+        println!("│           Boss Health Overlay - Target Display              │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  Shows boss HP bars with current target underneath          │");
+        println!("│  Target name displayed with ⌖ symbol, right-aligned         │");
+        println!("│  Drag anywhere to move, corner to resize                    │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  Press Ctrl+C to exit                                       │");
+        println!("└─────────────────────────────────────────────────────────────┘");
+
+        loop {
+            if !overlay.poll_events() {
+                break;
+            }
+
+            let now = Instant::now();
+            if now.duration_since(last_frame) >= frame_duration {
+                overlay.render();
+                last_frame = now;
+            }
+
+            std::thread::sleep(Duration::from_millis(16));
+        }
+    }
 }
 
 fn main() {
@@ -1209,6 +1284,7 @@ fn main() {
         "--metric-8" => examples::run_metric_overlay_8(),
         "--metric-16" => examples::run_metric_overlay_16(),
         "--timers" => examples::run_timer_overlay(),
+        "--boss" => examples::run_boss_health_overlay(),
         "--challenges" => examples::run_challenge_overlay(),
         "--challenges-h" => examples::run_challenge_overlay_horizontal(),
         _ => {
@@ -1221,6 +1297,7 @@ fn main() {
             println!("  --raid         Three raid overlays showing interaction modes");
             println!("  --raid-timers  16-frame stress test with ticking timers");
             println!("  --timers       Boss timer overlay with countdown bars");
+            println!("  --boss         Boss health bars with target names");
             println!("  --challenges   Challenge overlay (vertical, 2-col: value + percent)");
             println!(
                 "  --challenges-h Challenge overlay (horizontal, 3-col: value + /s + percent)"

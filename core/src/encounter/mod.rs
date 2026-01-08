@@ -38,6 +38,7 @@ pub enum PhaseType {
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct OverlayHealthEntry {
     pub name: String,
+    pub target_name: Option<String>,
     pub current: i32,
     pub max: i32,
     /// Used for sorting by encounter order (not serialized)

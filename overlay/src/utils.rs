@@ -34,9 +34,9 @@ pub fn format_duration_short(secs: f32) -> String {
 /// Format a large number with K/M suffix for compact display
 pub fn format_number(n: i64) -> String {
     if n >= 1_000_000 {
-        format!("{:.1}M", n as f64 / 1_000_000.0)
+        format!("{:.2}M", n as f64 / 1_000_000.0)
     } else if n >= 10_000 {
-        format!("{:.1}K", n as f64 / 1_000.0)
+        format!("{:.2}K", n as f64 / 1_000.0)
     } else {
         format!("{}", n)
     }

@@ -146,7 +146,7 @@ impl BossHealthOverlay {
 
             // Format percentage for right side
             let percent_text = if self.config.show_percent {
-                format!("{:.0}%", entry.percent())
+                format!("{:.1}%", entry.percent())
             } else {
                 String::new()
             };
@@ -168,7 +168,26 @@ impl BossHealthOverlay {
                     bar_radius,
                 );
 
-            y += bar_height + entry_spacing;
+            y += bar_height;
+
+            // Draw target name below bar, right-aligned
+            if self.config.show_target
+                && let Some(ref target) = entry.target_name
+            {
+                let target_font_size = label_font_size * 0.85;
+                let target_text = format!("⌖ {}", target);
+                let (text_width, _) = self.frame.measure_text(&target_text, target_font_size);
+                self.frame.draw_text(
+                    &target_text,
+                    padding + content_width - text_width,
+                    y + target_font_size + 1.0,
+                    target_font_size,
+                    font_color,
+                );
+                y += target_font_size + 2.0;
+            }
+
+            y += entry_spacing;
         }
 
         // End frame (resize indicator, commit)
