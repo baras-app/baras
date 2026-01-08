@@ -315,6 +315,19 @@ trigger = { type = "ability_cast", abilities = [1790412951912448] }
 duration_secs = 38.0
 color = [158, 29, 224, 255]
 
+[[boss.timer]]
+id = "soa_ball_target"
+# orbs_id = "fff111f9-ed49-49b0-8526-b40dce7eaee7"
+name = "Ball Target"
+trigger = { type = "target_set", selector = [
+  "Ball Lightning",
+], target = "local_player" }
+is_alert = true
+alert_text = "Ball Lightning Targeting You!"
+color = [224, 176, 33, 255]
+difficulties = ["veteran"]
+
+
 # ─── P6 Timers (Final Platform) ───────────────────────────────────────────────
 [[boss.timer]]
 id = "soa_mind_trap_p6"
