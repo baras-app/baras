@@ -582,76 +582,7 @@
   flex-shrink: 0;
 }
 
-/* Class icon colors using CSS filters to tint white icons */
-/* Tanks - Blue tones */
-.class-icon.class-juggernaut {
-  filter: brightness(0) saturate(100%) invert(45%) sepia(80%) saturate(500%)
-    hue-rotate(180deg);
-}
-.class-icon.class-assassin {
-  filter: brightness(0) saturate(100%) invert(30%) sepia(90%) saturate(600%)
-    hue-rotate(260deg);
-}
-.class-icon.class-powertech {
-  filter: brightness(0) saturate(100%) invert(50%) sepia(70%) saturate(400%)
-    hue-rotate(160deg);
-}
-.class-icon.class-guardian {
-  filter: brightness(0) saturate(100%) invert(55%) sepia(60%) saturate(500%)
-    hue-rotate(190deg);
-}
-.class-icon.class-shadow {
-  filter: brightness(0) saturate(100%) invert(35%) sepia(85%) saturate(550%)
-    hue-rotate(240deg);
-}
-.class-icon.class-vanguard {
-  filter: brightness(0) saturate(100%) invert(45%) sepia(75%) saturate(450%)
-    hue-rotate(170deg);
-}
-
-/* Healers - Green tones */
-.class-icon.class-sorcerer {
-  filter: brightness(0) saturate(100%) invert(70%) sepia(50%) saturate(500%)
-    hue-rotate(80deg);
-}
-.class-icon.class-mercenary {
-  filter: brightness(0) saturate(100%) invert(60%) sepia(60%) saturate(450%)
-    hue-rotate(100deg);
-}
-.class-icon.class-operative {
-  filter: brightness(0) saturate(100%) invert(65%) sepia(55%) saturate(400%)
-    hue-rotate(90deg);
-}
-.class-icon.class-sage {
-  filter: brightness(0) saturate(100%) invert(75%) sepia(45%) saturate(550%)
-    hue-rotate(70deg);
-}
-.class-icon.class-commando {
-  filter: brightness(0) saturate(100%) invert(55%) sepia(65%) saturate(500%)
-    hue-rotate(110deg);
-}
-.class-icon.class-scoundrel {
-  filter: brightness(0) saturate(100%) invert(68%) sepia(52%) saturate(420%)
-    hue-rotate(85deg);
-}
-
-/* DPS - Red/Orange/Yellow tones */
-.class-icon.class-marauder {
-  filter: brightness(0) saturate(100%) invert(35%) sepia(90%) saturate(600%)
-    hue-rotate(340deg);
-}
-.class-icon.class-sniper {
-  filter: brightness(0) saturate(100%) invert(50%) sepia(80%) saturate(500%)
-    hue-rotate(10deg);
-}
-.class-icon.class-sentinel {
-  filter: brightness(0) saturate(100%) invert(40%) sepia(85%) saturate(550%)
-    hue-rotate(350deg);
-}
-.class-icon.class-gunslinger {
-  filter: brightness(0) saturate(100%) invert(55%) sepia(75%) saturate(480%)
-    hue-rotate(20deg);
-}
+/* Class icon colors defined in styles.css */
 
 /* Role icons */
 .overview-table .role-icon {
