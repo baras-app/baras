@@ -1,6 +1,7 @@
 use crate::combat_log::EntityType;
 use crate::context::IStr;
 use crate::context::resolve;
+use crate::game_data::Discipline;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default)]
@@ -48,6 +49,9 @@ pub struct EntityMetrics {
     pub entity_id: i64,
     pub name: IStr,
     pub entity_type: EntityType,
+    pub discipline: Option<Discipline>,
+    pub discipline_name: Option<String>,
+    pub class_name: Option<String>,
 
     // Damage dealing
     pub total_damage: i64,
@@ -98,6 +102,9 @@ impl EntityMetrics {
         PlayerMetrics {
             entity_id: self.entity_id,
             name: resolve(self.name).to_string(),
+            discipline: self.discipline,
+            discipline_name: self.discipline_name.clone(),
+            class_name: self.class_name.clone(),
 
             // Damage dealing
             dps: self.dps as i64,
@@ -142,6 +149,9 @@ impl EntityMetrics {
 pub struct PlayerMetrics {
     pub entity_id: i64,
     pub name: String,
+    pub discipline: Option<Discipline>,
+    pub discipline_name: Option<String>,
+    pub class_name: Option<String>,
 
     // Damage dealing
     pub dps: i64,

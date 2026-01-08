@@ -3,8 +3,10 @@
 //! Maps discipline GUIDs from combat logs to character roles (Tank, Healer, DPS).
 //! Data sourced from StarParse.
 
+use serde::{Deserialize, Serialize};
+
 /// Character role in group content
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Role {
     Tank,
     Healer,
@@ -12,7 +14,7 @@ pub enum Role {
 }
 
 /// SWTOR base classes
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Class {
     // Imperial
     Sorcerer,
@@ -35,7 +37,7 @@ pub enum Class {
 }
 
 /// Character discipline with associated role and class
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Discipline {
     // Sorcerer
     Lightning,
