@@ -15,7 +15,7 @@ use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::IStr;
 use crate::dsl::{BossEncounterDefinition, CounterCondition, CounterDefinition};
 use crate::game_data::{Difficulty, Discipline, SHIELD_EFFECT_IDS, defense_type, effect_id};
-use crate::is_boss;
+use crate::{effect_type_id, is_boss};
 
 use super::challenge::ChallengeTracker;
 use super::effect_instance::EffectInstance;
@@ -512,8 +512,9 @@ impl CombatEncounter {
     }
 
     pub fn track_event_entities(&mut self, event: &CombatEvent) {
-        if event.effect.type_id == effect_id::TARGETSET
-            || event.effect.type_id == effect_id::TARGETCLEARED
+        if event.effect.effect_id == effect_id::TARGETSET
+            || event.effect.effect_id == effect_id::TARGETCLEARED
+            || event.effect.type_id == effect_type_id::REMOVEEFFECT
         {
             return;
         }
