@@ -782,14 +782,12 @@ impl EncounterQuery<'_> {
 
         // Query pairs ApplyEffect with RemoveEffect events, calculates duration,
         // and detects active vs passive based on whether there's an AbilityActivate
-        // event at the same timestamp (within 0.15s tolerance).
-        // We use time binning to enable equi-join (DataFusion doesn't support EXISTS).
+        // event at the exact same timestamp (1:1 match in logs).
         // Group by effect_name only (not effect_id) to consolidate variants.
         // Cap uptime at 100% since overlapping windows aren't merged.
         let batches = self.sql(&format!(r#"
             WITH applies AS (
-                SELECT effect_id, effect_name, target_name, combat_time_secs as apply_time,
-                       CAST(FLOOR(combat_time_secs * 10) AS BIGINT) as time_bin,
+                SELECT effect_id, effect_name, target_name, combat_time_secs as apply_time, timestamp,
                        ROW_NUMBER() OVER (PARTITION BY effect_id, target_name ORDER BY combat_time_secs) as seq
                 FROM events
                 WHERE effect_type_id = {APPLY_EFFECT}
@@ -806,19 +804,14 @@ impl EncounterQuery<'_> {
                   {target_filter}
                   {time_filter}
             ),
-            ability_bins_raw AS (
-                SELECT DISTINCT CAST(FLOOR(combat_time_secs * 10) AS BIGINT) as time_bin
+            ability_activations AS (
+                SELECT DISTINCT timestamp as activation_ts
                 FROM events
                 WHERE effect_id = {ABILITY_ACTIVATE}
                   {time_filter}
             ),
-            ability_bins AS (
-                SELECT time_bin FROM ability_bins_raw
-                UNION SELECT time_bin + 1 FROM ability_bins_raw
-                UNION SELECT time_bin - 1 FROM ability_bins_raw
-            ),
             paired AS (
-                SELECT a.effect_id, a.effect_name, a.apply_time, a.time_bin,
+                SELECT a.effect_id, a.effect_name, a.apply_time, a.timestamp,
                        COALESCE(r.remove_time, {duration}) as remove_time
                 FROM applies a
                 LEFT JOIN removes r ON a.effect_id = r.effect_id
@@ -828,9 +821,9 @@ impl EncounterQuery<'_> {
             classified AS (
                 SELECT p.effect_id, p.effect_name, p.apply_time,
                        LEAST(p.remove_time, {duration}) - p.apply_time as duration_secs,
-                       CASE WHEN ab.time_bin IS NOT NULL THEN true ELSE false END as is_active
+                       CASE WHEN aa.activation_ts IS NOT NULL THEN true ELSE false END as is_active
                 FROM paired p
-                LEFT JOIN ability_bins ab ON p.time_bin = ab.time_bin
+                LEFT JOIN ability_activations aa ON p.timestamp = aa.activation_ts
                 WHERE p.remove_time > p.apply_time
             ),
             aggregated AS (
