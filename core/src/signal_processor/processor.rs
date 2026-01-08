@@ -358,8 +358,7 @@ impl EventProcessor {
                     current_hp: 0,
                 });
 
-                // Start combat timer and challenge tracker
-                enc.start_combat(event.timestamp);
+                // Start challenge tracker (combat already started via EnterCombat)
                 enc.challenge_tracker
                     .start(challenges, entities, npc_ids.clone(), event.timestamp);
                 if let Some(ref initial) = initial_phase {
