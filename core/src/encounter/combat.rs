@@ -268,6 +268,10 @@ impl CombatEncounter {
             .filter(|npc| entity_class_ids.contains(&npc.class_id))
             .map(|npc| OverlayHealthEntry {
                 name: crate::context::resolve(npc.name).to_string(),
+                target_name: self
+                    .players
+                    .get(&npc.current_target_id)
+                    .map(|p| crate::context::resolve(p.name).to_string()),
                 current: npc.current_hp,
                 max: npc.max_hp,
                 first_seen_at: npc.first_seen_at,

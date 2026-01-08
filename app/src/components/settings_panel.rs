@@ -340,6 +340,19 @@ pub fn SettingsPanel(
                         }
                     }
 
+                            div { class: "setting-row",
+                                label { "Show current target" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: current_settings.boss_health.show_target,
+                                    onchange: move |e: Event<FormData>| {
+                                        let mut new_settings = draft_settings();
+                                        new_settings.boss_health.show_target = e.checked();
+                                        update_draft(new_settings);
+                                    }
+                                }
+                            }
+
                     div { class: "setting-row reset-row",
                         button {
                             class: "btn btn-reset",
