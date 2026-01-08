@@ -67,6 +67,9 @@ pub struct TimerManager {
     /// Whether we're currently in combat
     pub(super) in_combat: bool,
 
+    /// Combat start timestamp (for calculating elapsed time in alerts)
+    pub(super) combat_start_time: Option<NaiveDateTime>,
+
     /// Last known game timestamp
     last_timestamp: Option<NaiveDateTime>,
 
@@ -103,6 +106,7 @@ impl TimerManager {
             started_this_tick: Vec::new(),
             cancelled_this_tick: Vec::new(),
             in_combat: false,
+            combat_start_time: None,
             last_timestamp: None,
             live_mode: true, // Default: apply recency threshold (skip old events)
             local_player_id: None,
@@ -142,6 +146,19 @@ impl TimerManager {
     /// Clear boss NPC class IDs (called when encounter ends)
     pub(super) fn clear_boss_npc_class_ids(&mut self) {
         self.boss_npc_class_ids.clear();
+    }
+
+    /// Format alert text with elapsed time prefix: "[1:23] Alert Text"
+    fn format_alert_text(&self, text: &str, timestamp: NaiveDateTime) -> String {
+        if let Some(start) = self.combat_start_time {
+            let elapsed = timestamp.signed_duration_since(start);
+            let total_secs = elapsed.num_seconds().max(0);
+            let mins = total_secs / 60;
+            let secs = total_secs % 60;
+            format!("[{}:{:02}] {}", mins, secs, text)
+        } else {
+            text.to_string()
+        }
     }
 
     /// Load timer definitions
@@ -327,22 +344,38 @@ impl TimerManager {
     /// Skips timers with audio_enabled=false.
     pub fn check_audio_offsets(&mut self) -> Vec<FiredAlert> {
         let now = Local::now().naive_local();
-        self.active_timers
+
+        // Collect timer data first (can't call format_alert_text while iterating mutably)
+        let triggered: Vec<_> = self
+            .active_timers
             .values_mut()
-            .filter(|timer| timer.audio_enabled)
             .filter_map(|timer| {
-                if timer.check_audio_offset() {
-                    Some(FiredAlert {
-                        id: timer.definition_id.clone(),
-                        name: timer.name.clone(),
-                        text: timer.name.clone(),
-                        color: Some(timer.color),
-                        timestamp: now,
-                        audio_enabled: true, // Already filtered by audio_enabled
-                        audio_file: timer.audio_file.clone(),
-                    })
+                if timer.audio_enabled && timer.check_audio_offset() {
+                    Some((
+                        timer.definition_id.clone(),
+                        timer.name.clone(),
+                        timer.color,
+                        timer.audio_file.clone(),
+                    ))
                 } else {
                     None
+                }
+            })
+            .collect();
+
+        // Now format with elapsed time
+        triggered
+            .into_iter()
+            .map(|(id, name, color, audio_file)| {
+                let text = self.format_alert_text(&name, now);
+                FiredAlert {
+                    id,
+                    name,
+                    text,
+                    color: Some(color),
+                    timestamp: now,
+                    audio_enabled: true,
+                    audio_file,
                 }
             })
             .collect()
@@ -405,10 +438,12 @@ impl TimerManager {
 
         // Alerts are ephemeral notifications, not countdown timers
         if def.is_alert {
+            let raw_text = def.alert_text.clone().unwrap_or_else(|| def.name.clone());
+            let text = self.format_alert_text(&raw_text, timestamp);
             self.fired_alerts.push(FiredAlert {
                 id: def.id.clone(),
                 name: def.name.clone(),
-                text: def.alert_text.clone().unwrap_or_else(|| def.name.clone()),
+                text,
                 color: Some(color),
                 timestamp,
                 audio_enabled,
@@ -549,10 +584,11 @@ impl TimerManager {
                 // Only fire on expiration if audio_offset == 0 (otherwise it already played at offset)
                 // Skip if audio_enabled == false
                 if timer.audio_enabled && timer.audio_file.is_some() && timer.audio_offset == 0 {
+                    let text = self.format_alert_text(&timer.name, current_time);
                     self.fired_alerts.push(FiredAlert {
                         id: timer.definition_id.clone(),
                         name: timer.name.clone(),
-                        text: timer.name.clone(),
+                        text,
                         color: Some(timer.color),
                         timestamp: current_time,
                         audio_enabled: true, // Already checked above

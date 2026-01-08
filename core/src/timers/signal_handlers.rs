@@ -524,6 +524,7 @@ pub(super) fn handle_combat_start(
     timestamp: NaiveDateTime,
 ) {
     manager.in_combat = true;
+    manager.combat_start_time = Some(timestamp);
 
     let matching: Vec<_> = manager
         .definitions
@@ -540,6 +541,7 @@ pub(super) fn handle_combat_start(
 /// Clear all combat-scoped timers and encounter context
 pub(super) fn clear_combat_timers(manager: &mut TimerManager) {
     manager.in_combat = false;
+    manager.combat_start_time = None;
     manager.active_timers.clear();
     manager.fired_alerts.clear();
     manager.boss_entity_ids.clear();
