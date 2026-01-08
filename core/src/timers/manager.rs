@@ -449,6 +449,10 @@ impl TimerManager {
                 audio_enabled,
                 audio_file,
             });
+
+            // Track alert firing for counter triggers and cancel other timers
+            self.started_this_tick.push(def.id.clone());
+            self.cancel_timers_on_start(&def.id);
             return;
         }
 
@@ -613,12 +617,12 @@ impl TimerManager {
 
         // Check for timers triggered by expirations
         let expired_ids = self.expired_this_tick.clone();
-        for expired_id in expired_ids {
+        for expired_id in &expired_ids {
             let matching: Vec<_> = self
                 .definitions
                 .values()
                 .filter(|d| {
-                    d.matches_timer_expires(&expired_id) && self.is_definition_active(d, encounter)
+                    d.matches_timer_expires(expired_id) && self.is_definition_active(d, encounter)
                 })
                 .cloned()
                 .collect();
@@ -626,6 +630,34 @@ impl TimerManager {
             for def in matching {
                 self.start_timer(&def, current_time, None);
             }
+        }
+
+        // Cancel timers with TimerExpires cancel triggers
+        for expired_id in &expired_ids {
+            self.cancel_timers_on_expire(expired_id);
+        }
+    }
+
+    /// Cancel active timers that have cancel_trigger matching the expired timer ID
+    fn cancel_timers_on_expire(&mut self, expired_timer_id: &str) {
+        let keys_to_cancel: Vec<_> = self
+            .active_timers
+            .iter()
+            .filter_map(|(key, timer)| {
+                if let Some(def) = self.definitions.get(&timer.definition_id)
+                    && let Some(ref cancel_trigger) = def.cancel_trigger
+                    && matches!(cancel_trigger, TimerTrigger::TimerExpires { timer_id } if timer_id == expired_timer_id)
+                {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for key in keys_to_cancel {
+            self.cancelled_this_tick.push(key.definition_id.clone());
+            self.active_timers.remove(&key);
         }
     }
 
