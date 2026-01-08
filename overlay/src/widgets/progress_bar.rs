@@ -149,12 +149,19 @@ impl ProgressBar {
 
         // Calculate column widths for proper layout
         // 3-column: name gets ~45%, center gets ~27%, right gets ~28%
-        // 2-column: name gets ~60%, right gets ~40%
+        // 2-column with right text: name gets remaining space after right text
+        // 2-column with center only: name gets ~55%
         let (name_width, _center_start, right_start) = if is_three_col {
             let name_w = width * 0.42;
             let center_w = width * 0.29;
             (name_w, x + name_w, x + name_w + center_w)
-        } else if self.right_text.is_some() || self.center_text.is_some() {
+        } else if let Some(ref right) = self.right_text {
+            // Measure actual right text width and give the rest to name
+            let (right_width, _) = frame.measure_text(right, effective_font_size);
+            let right_reserved = right_width + text_padding * 3.0; // padding on both sides + gap
+            let name_w = width - right_reserved;
+            (name_w, x + name_w, x + name_w)
+        } else if self.center_text.is_some() {
             let name_w = width * 0.55;
             (name_w, x + name_w, x + name_w)
         } else {
