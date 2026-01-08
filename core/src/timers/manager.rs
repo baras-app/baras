@@ -921,8 +921,12 @@ impl SignalHandler for TimerManager {
                     self.boss_npc_class_ids.insert(class_id);
                 }
 
-                // Start combat-start timers
-                signal_handlers::handle_combat_start(self, encounter, *timestamp);
+                // Start combat-start timers using actual combat start time (not boss detection time)
+                // This ensures timer remaining duration is calculated from when combat began
+                let combat_start = encounter
+                    .and_then(|e| e.enter_combat_time)
+                    .unwrap_or(*timestamp);
+                signal_handlers::handle_combat_start(self, encounter, combat_start);
             }
 
             GameSignal::BossHpChanged {
