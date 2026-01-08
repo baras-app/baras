@@ -14,7 +14,7 @@ use hashbrown::{HashMap, HashSet};
 use crate::combat_log::{CombatEvent, Entity, EntityType};
 use crate::context::IStr;
 use crate::dsl::{BossEncounterDefinition, CounterCondition, CounterDefinition};
-use crate::game_data::{Difficulty, SHIELD_EFFECT_IDS, defense_type, effect_id};
+use crate::game_data::{Difficulty, Discipline, SHIELD_EFFECT_IDS, defense_type, effect_id};
 use crate::is_boss;
 
 use super::challenge::ChallengeTracker;
@@ -763,10 +763,32 @@ impl CombatEncounter {
                     0.0
                 };
 
+                // Look up discipline info for players
+                let (discipline, discipline_name, class_name) =
+                    if let Some(player) = self.players.get(id) {
+                        let disc = Discipline::from_guid(player.discipline_id);
+                        let disc_name = if player.discipline_name.is_empty() {
+                            None
+                        } else {
+                            Some(player.discipline_name.clone())
+                        };
+                        let cls_name = if player.class_name.is_empty() {
+                            None
+                        } else {
+                            Some(player.class_name.clone())
+                        };
+                        (disc, disc_name, cls_name)
+                    } else {
+                        (None, None, None)
+                    };
+
                 Some(EntityMetrics {
                     entity_id: *id,
                     entity_type,
                     name,
+                    discipline,
+                    discipline_name,
+                    class_name,
                     total_damage: acc.damage_dealt,
                     total_damage_boss: acc.damge_dealt_boss,
                     total_damage_effective: acc.damage_dealt_effective,
