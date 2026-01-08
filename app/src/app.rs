@@ -61,6 +61,7 @@ pub fn App() -> Element {
     let mut general_settings_open = use_signal(|| false);
     let mut overlay_settings = use_signal(OverlaySettings::default);
     let selected_overlay_tab = use_signal(|| "dps".to_string());
+    let mut show_only_bosses = use_signal(|| false);
 
     // Hotkey state
     let mut hotkey_visibility = use_signal(String::new);
@@ -131,6 +132,8 @@ pub fn App() -> Element {
             audio_volume.set(config.audio.volume);
             audio_countdown_enabled.set(config.audio.countdown_enabled);
             audio_alerts_enabled.set(config.audio.alerts_enabled);
+            // UI preferences
+            show_only_bosses.set(config.show_only_bosses);
         }
 
         app_version.set(api::get_app_version().await);
@@ -585,7 +588,7 @@ pub fn App() -> Element {
                         }
                     }
 
-                    div { class: "history-container-large", HistoryPanel {} }
+                    div { class: "history-container-large", HistoryPanel { show_only_bosses } }
                 }
 
                 // ─────────────────────────────────────────────────────────────
@@ -830,7 +833,7 @@ pub fn App() -> Element {
                 // Data Explorer Tab
                 // ─────────────────────────────────────────────────────────────
                 if active_tab() == "explorer" {
-                    DataExplorerPanel {}
+                    DataExplorerPanel { show_only_bosses }
                 }
             }
 

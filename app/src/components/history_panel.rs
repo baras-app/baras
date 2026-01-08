@@ -112,13 +112,18 @@ fn group_by_area(
 // Components
 // ─────────────────────────────────────────────────────────────────────────────
 
+#[derive(Props, Clone, PartialEq)]
+pub struct HistoryPanelProps {
+    pub show_only_bosses: Signal<bool>,
+}
+
 #[component]
-pub fn HistoryPanel() -> Element {
+pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
     let mut encounters = use_signal(Vec::<EncounterSummary>::new);
     let mut expanded_id = use_signal(|| None::<u64>);
     let mut collapsed_sections = use_signal(HashSet::<String>::new);
     let mut loading = use_signal(|| true);
-    let mut show_only_bosses = use_signal(|| false);
+    let mut show_only_bosses = props.show_only_bosses;
 
     // Fetch encounter history
     use_future(move || async move {
@@ -189,7 +194,16 @@ pub fn HistoryPanel() -> Element {
                         input {
                             r#type: "checkbox",
                             checked: bosses_only,
-                            onchange: move |e| show_only_bosses.set(e.checked())
+                            onchange: move |e| {
+                                let checked = e.checked();
+                                show_only_bosses.set(checked);
+                                spawn(async move {
+                                    if let Some(mut cfg) = api::get_config().await {
+                                        cfg.show_only_bosses = checked;
+                                        api::update_config(&cfg).await;
+                                    }
+                                });
+                            }
                         }
                         span { "Bosses only" }
                     }

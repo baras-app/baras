@@ -395,6 +395,8 @@ pub struct DataExplorerProps {
     /// Initial encounter index (None = show selector)
     #[props(default)]
     pub encounter_idx: Option<u32>,
+    /// Shared bosses-only filter signal
+    pub show_only_bosses: Signal<bool>,
 }
 
 #[component]
@@ -404,7 +406,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     let mut selected_encounter = use_signal(|| props.encounter_idx);
 
     // Sidebar state
-    let mut show_only_bosses = use_signal(|| false);
+    let mut show_only_bosses = props.show_only_bosses;
     let mut collapsed_sections = use_signal(HashSet::<String>::new);
 
     // Query result state
@@ -1084,7 +1086,16 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                             input {
                                 r#type: "checkbox",
                                 checked: *show_only_bosses.read(),
-                                onchange: move |e| show_only_bosses.set(e.checked())
+                                onchange: move |e| {
+                                    let checked = e.checked();
+                                    show_only_bosses.set(checked);
+                                    spawn(async move {
+                                        if let Some(mut cfg) = api::get_config().await {
+                                            cfg.show_only_bosses = checked;
+                                            api::update_config(&cfg).await;
+                                        }
+                                    });
+                                }
                             }
                             span { "Bosses Only" }
                         }

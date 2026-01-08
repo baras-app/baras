@@ -1364,6 +1364,8 @@ pub struct AppConfig {
     pub parsely: ParselySettings,
     #[serde(default)]
     pub audio: AudioSettings,
+    #[serde(default)]
+    pub show_only_bosses: bool,
 }
 
 fn default_retention_days() -> u32 {
@@ -1386,6 +1388,7 @@ impl AppConfig {
             active_profile_name: None,
             parsely: ParselySettings::default(),
             audio: AudioSettings::default(),
+            show_only_bosses: false,
         }
     }
 }
