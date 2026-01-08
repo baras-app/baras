@@ -693,9 +693,10 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             // Load raid overview (with retry for race conditions - up to 3 seconds)
             for attempt in 0..10 {
                 if let Some(data) = api::query_raid_overview(idx, tr_opt.as_ref(), duration).await
-                    && !data.is_empty() {
-                        overview_data.set(data);
-                        break;
+                    && !data.is_empty()
+                {
+                    overview_data.set(data);
+                    break;
                 }
                 if attempt < 9 {
                     gloo_timers::future::TimeoutFuture::new(300).await;
@@ -743,9 +744,10 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             let mut entity_data = Vec::new();
             for attempt in 0..10 {
                 if let Some(data) = api::query_entity_breakdown(tab, idx, tr_opt.as_ref()).await
-                    && !data.is_empty() {
-                        entity_data = data;
-                        break;
+                    && !data.is_empty()
+                {
+                    entity_data = data;
+                    break;
                 }
                 if attempt < 9 {
                     gloo_timers::future::TimeoutFuture::new(300).await;
@@ -1197,6 +1199,11 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                             onclick: move |_| { show_overview.set(true); show_charts.set(false); show_combat_log.set(false); },
                             "Overview"
                         }
+                       button {
+                            class: if *show_charts.read() { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| { show_overview.set(false); show_charts.set(true); show_combat_log.set(false); },
+                            "Charts"
+                        }
                         button {
                             class: if !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read() && *selected_tab.read() == DataTab::Damage { "data-tab active" } else { "data-tab" },
                             onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(false); selected_tab.set(DataTab::Damage); },
@@ -1216,11 +1223,6 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                             class: if !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read() && *selected_tab.read() == DataTab::HealingTaken { "data-tab active" } else { "data-tab" },
                             onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(false); selected_tab.set(DataTab::HealingTaken); },
                             "Healing Taken"
-                        }
-                        button {
-                            class: if *show_charts.read() { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(false); show_charts.set(true); show_combat_log.set(false); },
-                            "Charts"
                         }
                         button {
                             class: if *show_combat_log.read() { "data-tab active" } else { "data-tab" },
