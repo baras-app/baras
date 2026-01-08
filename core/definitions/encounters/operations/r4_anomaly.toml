@@ -14,13 +14,18 @@ id = 833571547775799
 [[boss]]
 id = "ip_cpt"
 name = "IP-CPT"
-difficulties = ["story", "veteran", "master"]
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
 name = "IP-CPT"
 ids = [4494653210492928, 4467247024177152]
 is_boss = true
 is_kill_target = true
+
+[[boss.entities]]
+name = "Intrusion ID Unit"
+ids = [4470455364747264, 4470446774812672, 4470451069779968, 4470442479845376]
+is_boss = false
 
 [[boss.phases]]
 id = "ip_main"
@@ -29,14 +34,95 @@ start_trigger = { type = "any_of", conditions = [
   { type = "combat_start" },
   { type = "phase_ended", phase_id = "ip_bombs" },
 ] }
-end_trigger = { type = "any_of", conditions = [
-  { type = "boss_hp_below", hp_percent = 75.1, selector = [
+end_trigger = { type = "npc_appears", selector = ["Intrusion ID Unit"] }
+
+[[boss.phases]]
+id = "ip_bombs"
+name = "Bombs"
+start_trigger = { type = "phase_ended", phase_id = "ip_main" }
+end_trigger = { type = "effect_removed", effects = [4471627890819336] }
+
+[[boss.phases]]
+id = "burn"
+name = "Burn"
+start_trigger = { type = "ability_cast", abilities = [4471730970034176] }
+
+# -- Challenges
+[[boss.challenge]]
+conditions = [
+  { type = "source", match = { selector = [
     "IP-CPT",
+  ] } },
+  { type = "ability", ability_ids = [
+    4471271408533794,
   ] },
-  { type = "boss_hp_below", hp_percent = 50.1, selector = [
-    "IP-CPT",
-  ] },
-] }
+]
+id = "small_grenade"
+name = "Small Grenade"
+metric = "damage_taken"
+color = [237, 115, 100, 255]
+
+[[boss.challenge]]
+id = "bomb_dps"
+name = "Bomb DPS"
+metric = "damage"
+conditions = [{ type = "target", match = { selector = [4470446774812672] } }]
+color = [24, 156, 139, 255]
+# -- Timers
+
+[[boss.timer]]
+id = "ip_cpt_big_grenade"
+name = "Big Grenade"
+trigger = { type = "effect_applied", effects = [
+  4471271408533778,
+], target = "local_player" }
+duration_secs = 8.5
+color = [20, 153, 33, 255]
+difficulties = ["veteran"]
+
+# P2 chain: Bombs 1 -> Droids -> Bombs 2 -> Turrets
+[[boss.timer]]
+id = "ip_cpt_bombs_1"
+name = "Intrusion Units Initial"
+display_text = "Intrusion Units"
+trigger = { type = "phase_entered", phase_id = "ip_bombs" }
+duration_secs = 4.5
+color = [32, 219, 213, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "ip_cpt_droids"
+name = "Droids"
+trigger = { type = "timer_expires", timer_id = "ip_cpt_bombs_1" }
+duration_secs = 15.0
+color = [32, 219, 213, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "ip_cpt_bombs_2"
+name = "Intrusion Units"
+trigger = { type = "timer_expires", timer_id = "ip_cpt_droids" }
+duration_secs = 30.0
+color = [32, 219, 213, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "ip_cpt_turrets"
+name = "Turrets"
+trigger = { type = "timer_expires", timer_id = "ip_cpt_bombs_2" }
+duration_secs = 5.0
+color = [32, 219, 213, 255]
+difficulties = ["veteran"]
+
+# Burn phase
+[[boss.timer]]
+id = "ip_cpt_burn_rng_flor"
+name = "Burn RNG Floor"
+trigger = { type = "phase_entered", phase_id = "burn" }
+duration_secs = 4.8
+color = [219, 32, 34, 255]
+difficulties = ["veteran"]
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Watchdog
@@ -53,6 +139,204 @@ ids = [4466177577320448, 4494700455133184]
 is_boss = true
 is_kill_target = true
 
+[[boss.phases]]
+id = "wd_main"
+name = "Watchdog"
+start_trigger = { type = "any_of", conditions = [
+  { type = "combat_start" },
+  { type = "phase_ended", phase_id = "wd_beams" },
+] }
+
+[[boss.phases]]
+id = "wd_stalker"
+name = "Stalker Protocol"
+start_trigger = { type = "effect_applied", effects = [4472963625648128] }
+
+[[boss.phases]]
+id = "wd_burn"
+name = "Burn"
+start_trigger = { type = "ability_cast", abilities = [4474290770542592] }
+
+[[boss.phases]]
+id = "wd_beams"
+name = "Polarized Beam"
+start_trigger = { type = "ability_cast", abilities = [4471709495197696] }
+end_trigger = { type = "ability_cast", abilities = [4472216301338624] }
+
+[[boss.counters]]
+id = "wd_deguass_counter"
+name = "Degausses"
+increment_on = { type = "ability_cast", abilities = [4472216301338624] }
+
+[[boss.counters]]
+id = "wd_beam_counter"
+name = "Polarized Beam"
+increment_on = { type = "ability_cast", abilities = [4471709495197696] }
+reset_on = { type = "ability_cast", abilities = [4472216301338624] }
+
+
+# -- Timers
+
+[[boss.timer]]
+id = "watchdog_wd_protocol_cs"
+name = "WD Protocol 1st"
+display_text = "Watchdog Protocol"
+trigger = { type = "combat_start" }
+duration_secs = 24.0
+color = [180, 29, 224, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "watchdog_missiles_cs"
+name = "Missiles 1st"
+display_text = "The Missiles"
+trigger = { type = "combat_start" }
+duration_secs = 6.5
+color = [224, 129, 29, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "watchdog_bombs_p1"
+name = "PMX4 Bombs 1st"
+display_text = "PMX4 Bombs"
+trigger = { type = "combat_start" }
+duration_secs = 12.0
+color = [224, 30, 29, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "watchdog_bombs_p2_1st"
+name = "Bombs P2 1st"
+trigger = { type = "timer_expires", timer_id = "watchdog_invert" }
+duration_secs = 17.0
+color = [224, 30, 29, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "watchdog_bombs_p2_2nd"
+name = "PMX4 Bombs 2nd"
+display_text = "PMX4 Bombs"
+trigger = { type = "ability_cast", abilities = [4472216301338624] }
+duration_secs = 7.0
+color = [219, 28, 29, 255]
+difficulties = ["veteran", "master"]
+counter_condition = { counter_id = "wd_deguass_counter", operator = "eq", value = 2 }
+
+[[boss.timer]]
+id = "watchdog_degauss_1st"
+name = "Degauss 1st"
+display_text = "Degauss"
+trigger = { type = "combat_start" }
+duration_secs = 62.0
+color = [29, 224, 218, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "watchdog_wd_protocol_swap"
+name = "WD Protocol Swap"
+trigger = { type = "ability_cast", abilities = [4472272135913472] }
+duration_secs = 15.0
+color = [180, 29, 224, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "watchdog_wd_protocol_end"
+name = "WD Protocol END"
+trigger = { type = "timer_expires", timer_id = "watchdog_wd_protocol_swap" }
+duration_secs = 12.0
+color = [180, 29, 224, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "watchdog_missiles_cancel"
+name = "Missiles Cancel"
+trigger = { type = "any_of", conditions = [
+  { type = "ability_cast", abilities = [
+    4471709495197696,
+  ] },
+  { type = "ability_cast", abilities = [
+    4472963625648128,
+  ] },
+] }
+is_alert = true
+alert_text = "Missiles Canceled"
+color = [224, 129, 29, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "watchdog_degauss"
+name = "Degauss"
+display_text = "Degauss"
+trigger = { type = "counter_reaches", counter_id = "wd_beam_counter", value = 4 }
+duration_secs = 8.0
+color = [29, 221, 224, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "watchdog_stalker_protocol"
+name = "Stalker Protocol"
+trigger = { type = "any_of", conditions = [
+  { type = "counter_reaches", counter_id = "wd_deguass_counter", value = 1 },
+  { type = "counter_reaches", counter_id = "wd_deguass_counter", value = 3 },
+] }
+duration_secs = 7.0
+color = [135, 163, 66, 255]
+difficulties = ["veteran"]
+counter_condition = { counter_id = "wd_deguass_counter", operator = "eq", value = 0 }
+
+[[boss.timer]]
+id = "watchdog_invert"
+name = "Invert"
+trigger = { type = "ability_cast", abilities = [4472963625648128] }
+duration_secs = 19.0
+color = [135, 163, 66, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "watchdog_missiles_pb"
+name = "Missiles + Beam"
+trigger = { type = "ability_cast", abilities = [4471709495197696] }
+duration_secs = 12.0
+color = [224, 129, 29, 255]
+difficulties = ["veteran", "master"]
+counter_condition = { counter_id = "wd_beam_counter", operator = "lt", value = 3 }
+
+[[boss.timer]]
+id = "watchdog_polarized_beam"
+name = "Polarized Beam"
+trigger = { type = "ability_cast", abilities = [4468595643908096] }
+duration_secs = 11.0
+color = [43, 29, 224, 255]
+difficulties = ["veteran", "master"]
+counter_condition = { counter_id = "wd_beam_counter", operator = "eq", value = 4 }
+
+[[boss.timer]]
+id = "watchdog_polarized_beam_p2_1st"
+name = "Polarized Beam P2 1st"
+trigger = { type = "timer_expires", timer_id = "watchdog_bombs_p2_1st" }
+duration_secs = 12.0
+color = [31, 24, 224, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "watchdog_missiles"
+name = "Missiles"
+trigger = { type = "ability_cast", abilities = [4468587053973504] }
+cancel_trigger = { type = "timer_started", timer_id = "watchdog_missiles_cancel" }
+duration_secs = 11.5
+color = [224, 129, 29, 255]
+difficulties = ["veteran", "master"]
+phases = ["wd_main", "wd_stalker", "wd_beam"]
+
+[[boss.timer]]
+id = "watchdog_missiles_burn"
+name = "Missiles Burn"
+display_text = "Missiles"
+trigger = { type = "ability_cast", abilities = [4468587053973504] }
+duration_secs = 7.5
+color = [224, 129, 29, 255]
+difficulties = ["veteran", "master"]
+phases = ["wd_burn"]
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Lord Kanoth
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -67,6 +351,7 @@ name = "Lord Kanoth"
 ids = [4466190462222336, 4494876548792320]
 is_boss = true
 is_kill_target = true
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Lady Dominique
