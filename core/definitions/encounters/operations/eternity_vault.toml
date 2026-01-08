@@ -44,6 +44,16 @@ ids = [
 is_boss = true
 is_kill_target = true
 
+[[boss]]
+id = "infernal_council"
+name = "Infernal Council"
+difficulties = ["story", "veteran"]
+
+[[boss.entities]]
+name = "Infernal Council"
+ids = [2290145281703936, 2098327747297280, 2289690015170560, 2289887583666176]
+is_boss = true
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Soa
 # ═══════════════════════════════════════════════════════════════════════════════
