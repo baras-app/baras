@@ -812,7 +812,7 @@ impl EncounterQuery<'_> {
                   {time_filter}
             ),
             ability_activations AS (
-                SELECT DISTINCT timestamp as activation_ts
+                SELECT DISTINCT timestamp as activation_ts, ability_id
                 FROM events
                 WHERE effect_id = {ABILITY_ACTIVATE}
                   {time_filter}
@@ -831,6 +831,7 @@ impl EncounterQuery<'_> {
                        CASE WHEN aa.activation_ts IS NOT NULL THEN true ELSE false END as is_active
                 FROM paired p
                 LEFT JOIN ability_activations aa ON p.timestamp = aa.activation_ts
+                    AND p.effect_id = aa.ability_id
                 WHERE p.remove_time > p.apply_time
             ),
             aggregated AS (
