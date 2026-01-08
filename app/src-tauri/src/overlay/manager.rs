@@ -315,6 +315,7 @@ impl OverlayManager {
             let mut s = state.lock().map_err(|e| e.to_string())?;
             if matches!(kind, OverlayType::Raid) {
                 s.rearrange_mode = false;
+                service.set_rearrange_mode(false);
             }
             s.remove(kind)
         };
@@ -469,11 +470,11 @@ impl OverlayManager {
         };
 
         // Turn off rearrange mode first if entering move mode
-        if was_rearranging
-            && new_mode
-            && let Some(ref tx) = raid_tx
-        {
-            let _ = tx.send(OverlayCommand::SetRearrangeMode(false)).await;
+        if was_rearranging && new_mode {
+            service.set_rearrange_mode(false);
+            if let Some(ref tx) = raid_tx {
+                let _ = tx.send(OverlayCommand::SetRearrangeMode(false)).await;
+            }
         }
 
         // Broadcast move mode to all overlays
@@ -503,7 +504,10 @@ impl OverlayManager {
     }
 
     /// Toggle raid rearrange mode.
-    pub async fn toggle_rearrange(state: &SharedOverlayState) -> Result<bool, String> {
+    pub async fn toggle_rearrange(
+        state: &SharedOverlayState,
+        service: &ServiceHandle,
+    ) -> Result<bool, String> {
         let (raid_tx, new_mode) = {
             let mut s = state.lock().map_err(|e| e.to_string())?;
             if !s.is_raid_running() {
@@ -512,6 +516,9 @@ impl OverlayManager {
             s.rearrange_mode = !s.rearrange_mode;
             (s.get_raid_tx().cloned(), s.rearrange_mode)
         };
+
+        // Update shared state flag for rendering loop
+        service.set_rearrange_mode(new_mode);
 
         if let Some(tx) = raid_tx {
             let _ = tx.send(OverlayCommand::SetRearrangeMode(new_mode)).await;

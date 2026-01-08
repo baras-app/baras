@@ -90,8 +90,11 @@ pub async fn toggle_move_mode(
 }
 
 #[tauri::command]
-pub async fn toggle_raid_rearrange(state: State<'_, SharedOverlayState>) -> Result<bool, String> {
-    OverlayManager::toggle_rearrange(&state).await
+pub async fn toggle_raid_rearrange(
+    state: State<'_, SharedOverlayState>,
+    service: State<'_, ServiceHandle>,
+) -> Result<bool, String> {
+    OverlayManager::toggle_rearrange(&state, &service).await
 }
 
 #[tauri::command]

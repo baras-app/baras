@@ -537,11 +537,13 @@ impl CombatService {
                 }
                 ServiceCommand::RefreshRaidFrames => {
                     // Immediately send updated raid frame data to overlay
-                    if let Some(data) = build_raid_frame_data(&self.shared).await {
-                        let _ = self
-                            .overlay_tx
-                            .try_send(OverlayUpdate::EffectsUpdated(data));
-                    }
+                    // Pass true to bypass early-out gates (ensures clear is reflected)
+                    let data = build_raid_frame_data(&self.shared, true)
+                        .await
+                        .unwrap_or_else(|| baras_overlay::RaidFrameData { frames: vec![] });
+                    let _ = self
+                        .overlay_tx
+                        .try_send(OverlayUpdate::EffectsUpdated(data));
                 }
             }
         }
@@ -1028,14 +1030,22 @@ impl CombatService {
                     continue;
                 }
 
-                // Raid frames: send whenever there are effects
+                // Raid frames: send whenever there are effects (or always in rearrange mode)
                 if raid_active {
-                    if let Some(data) = build_raid_frame_data(&shared).await {
+                    let rearranging = shared.rearrange_mode.load(Ordering::Relaxed);
+                    if let Some(data) = build_raid_frame_data(&shared, rearranging).await {
                         let effect_count: usize = data.frames.iter().map(|f| f.effects.len()).sum();
-                        if effect_count > 0 || last_raid_effect_count > 0 {
+                        // Always send in rearrange mode, otherwise only when effects exist/changed
+                        if rearranging || effect_count > 0 || last_raid_effect_count > 0 {
                             let _ = overlay_tx.try_send(OverlayUpdate::EffectsUpdated(data));
                         }
                         last_raid_effect_count = effect_count;
+                    } else if rearranging {
+                        // In rearrange mode, send empty data to keep overlay rendering
+                        let _ = overlay_tx.try_send(OverlayUpdate::EffectsUpdated(
+                            baras_overlay::RaidFrameData { frames: vec![] },
+                        ));
+                        last_raid_effect_count = 0;
                     } else {
                         last_raid_effect_count = 0;
                     }
@@ -1400,7 +1410,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 /// Uses RaidSlotRegistry to maintain stable player positions.
 /// Players are registered ONLY when the local player applies a NEW effect to them
 /// (via the new_targets queue), not on every tick.
-async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameData> {
+async fn build_raid_frame_data(shared: &Arc<SharedState>, rearranging: bool) -> Option<RaidFrameData> {
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
@@ -1419,7 +1429,8 @@ async fn build_raid_frame_data(shared: &Arc<SharedState>) -> Option<RaidFrameDat
     // Early out: skip building data if no effects AND no registered players
     // We need to keep sending updates while effects exist OR players are registered
     // so that removals/clears are reflected in the overlay
-    if !tracker.has_active_effects() && registry.is_empty() {
+    // Skip this check in rearrange mode to always show frames
+    if !rearranging && !tracker.has_active_effects() && registry.is_empty() {
         return None;
     }
 
