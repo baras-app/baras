@@ -298,7 +298,7 @@ impl EncounterWriter {
             Field::new("dmg_type", DataType::Utf8, false),
             Field::new("is_crit", DataType::Boolean, false),
             Field::new("is_reflect", DataType::Boolean, false),
-            Field::new("dmg_type_id", DataType::Int64, false),
+            Field::new("defense_type_id", DataType::Int64, false),
             // ─── Healing Details ─────────────────────────────────────────────
             Field::new("heal_amount", DataType::Int32, false),
             Field::new("heal_effective", DataType::Int32, false),
