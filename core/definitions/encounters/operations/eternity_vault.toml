@@ -10,6 +10,8 @@ id = 833571547775670
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 1: Annihilation Droid XRR-3
 # ═══════════════════════════════════════════════════════════════════════════════
+# Mechanics unlock at HP thresholds: 95% Swipe, 75% Shockwave, 40% Salvo, 10% Burn
+# Main sequence: Missile Salvo (26s) → Groundfire → Stomp/Swipe
 
 [[boss]]
 id = "xrr3"
@@ -21,6 +23,109 @@ name = "Annihilation Droid XRR-3"
 ids = [2017165750304768, 1779997656219648, 2034611907461120, 2034573252755456]
 is_boss = true
 is_kill_target = true
+
+# ─── Missile Salvo Sequence ────────────────────────────────────────────────────
+# Salvo (26s channel) → AOE Stomp warning (5s) → Stomp hits
+
+[[boss.timer]]
+id = "xrr3_salvo"
+name = "Missile Salvo"
+trigger = { type = "ability_cast", abilities = [
+  2508436994523136,
+  2508441289490432,
+] }
+duration_secs = 26.0
+triggers_timer = "xrr3_aoe_stomp_soon"
+color = [255, 100, 100, 255]
+
+[[boss.timer]]
+id = "xrr3_aoe_stomp_soon"
+name = "AOE Stomp Soon"
+trigger = { type = "timer_expires", timer_id = "xrr3_salvo" }
+duration_secs = 5.0
+color = [220, 80, 40, 255]
+
+[[boss.timer]]
+id = "xrr3_aoe_stomp"
+name = "AOE Stomp"
+is_alert = true
+trigger = { type = "ability_cast", abilities = [
+  2138743389552640,
+  2138734799618048,
+  2068670998118400,
+  2138674670075904,
+] }
+color = [220, 100, 40, 255]
+
+# ─── Knockback Swipe Sequence ──────────────────────────────────────────────────
+# Knockback on ~20s CD
+
+[[boss.timer]]
+id = "xrr3_knockback"
+name = "Knockback"
+is_alert = true
+trigger = { type = "ability_cast", abilities = [
+  2508514303934464,
+  2508518598901760,
+] }
+color = [255, 150, 50, 255]
+
+[[boss.timer]]
+id = "xrr3_knockback_cd"
+name = "Knockback CD"
+trigger = { type = "ability_cast", abilities = [
+  2508514303934464,
+  2508518598901760,
+] }
+duration_secs = 20.0
+triggers_timer = "xrr3_knockback_soon"
+color = [228, 158, 47, 255]
+
+[[boss.timer]]
+id = "xrr3_knockback_soon"
+name = "Knockback Soon"
+trigger = { type = "timer_expires", timer_id = "xrr3_knockback_cd" }
+duration_secs = 3.0
+color = [255, 180, 80, 255]
+
+# ─── Other Alerts ──────────────────────────────────────────────────────────────
+
+[[boss.timer]]
+id = "xrr3_shockwave"
+name = "Shockwave"
+is_alert = true
+trigger = { type = "ability_cast", abilities = [2508510008967168] }
+color = [255, 200, 50, 255]
+
+# ─── Phase Transitions ─────────────────────────────────────────────────────────
+
+[[boss.timer]]
+id = "xrr3_phase_95"
+name = "95% - Swipe Active"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 95.0 }
+color = [100, 200, 255, 255]
+
+[[boss.timer]]
+id = "xrr3_phase_75"
+name = "75% - Missile Salvo Active"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 75.0 }
+color = [100, 200, 255, 255]
+
+[[boss.timer]]
+id = "xrr3_phase_40"
+name = "40% - Grounfire Active"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 40.0 }
+color = [255, 150, 100, 255]
+
+[[boss.timer]]
+id = "xrr3_phase_10"
+name = "10% - Burn Phase"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 10.0 }
+color = [255, 50, 50, 255]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Gharj
@@ -40,9 +145,96 @@ ids = [
   3725089560330240,
   2016946706972672,
 ]
-
 is_boss = true
 is_kill_target = true
+
+# ─── Platform Collapse Warning ────────────────────────────────────────────────
+# These abilities fire when platform is about to collapse (~5s warning)
+[[boss.timer]]
+id = "gharj_platform_collapse"
+name = "Platform Collapse"
+is_alert = true
+trigger = { type = "ability_cast", abilities = [
+  3592276286636032,
+  3592280581603328,
+  3592284876570624,
+  3592654243758080,
+  3592688603496448,
+] }
+color = [255, 50, 50, 255]
+
+# ─── Pulverizing Slam ─────────────────────────────────────────────────────────
+# Ground pound, ~14s after initial Leaping Smash on each platform
+[[boss.timer]]
+id = "gharj_pulverizing_slam"
+name = "Pulverizing Slam"
+trigger = { type = "ability_cast", abilities = [2508411224719360] }
+duration_secs = 14.0
+color = [224, 118, 29, 255]
+
+[[boss.timer]]
+id = "gharj_jump"
+name = "Jump"
+trigger = { type = "any_of", conditions = [
+  { type = "ability_cast", abilities = [
+    3592276286636032,
+  ] },
+  { type = "ability_cast", abilities = [
+    3592280581603328,
+  ] },
+  { type = "ability_cast", abilities = [
+    3592284876570624,
+  ] },
+  { type = "ability_cast", abilities = [
+    3592654243758080,
+  ] },
+  { type = "ability_cast", abilities = [
+    3592688603496448,
+  ] },
+] }
+duration_secs = 34.0
+color = [224, 31, 29, 255]
+difficulties = ["veteran"]
+
+
+[[boss.timer]]
+id = "gharj_hp_95"
+name = "95% - Platform Soon"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 95.0 }
+color = [36, 24, 219, 255]
+# Platform phase alerts
+[[boss.timer]]
+id = "gharj_hp_70"
+name = "70% - Platform Soon"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 70.0 }
+color = [36, 24, 219, 255]
+
+[[boss.timer]]
+id = "gharj_hp_50"
+name = "50% - Platform Soon"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 50.0 }
+color = [33, 29, 224, 255]
+
+[[boss.timer]]
+id = "gharj_hp_30"
+name = "30% - Platform Soon"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 30.0 }
+color = [33, 29, 224, 255]
+
+[[boss.timer]]
+id = "gharj_hp_10"
+name = "10% - Final Platform"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 10.0 }
+color = [255, 50, 50, 255]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Infernal Council (no timers needed - simple 1v1 fights)
+# ─────────────────────────────────────────────────────────────────────────────
 
 [[boss]]
 id = "infernal_council"
@@ -57,6 +249,12 @@ is_boss = true
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Soa
 # ═══════════════════════════════════════════════════════════════════════════════
+# P1 (100-75%): Top platform - basic attacks
+# P2: Transition at 75% - platforms start falling
+# P3: Jumping down platforms
+# P4 (75-30%): Middle platform - Mind Trap, Ball Lightning, Force Cyclone
+# P5: Transition at 30% - more platforms fall
+# P6 (30-0%): Final platform - Pylons, Mind Trap, Ball Lightning, Burn phases
 
 [[boss]]
 id = "soa"
@@ -68,3 +266,88 @@ name = "Soa"
 ids = [2017170045272064, 1783790112342016, 2289823159156736, 2290085152161792]
 is_boss = true
 is_kill_target = true
+
+# ─── Phases ───────────────────────────────────────────────────────────────────
+[[boss.phases]]
+id = "p1"
+name = "Top Platform"
+start_trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "p2"
+name = "Transition"
+start_trigger = { type = "ability_cast", abilities = [2137966000472064] }
+
+[[boss.phases]]
+id = "p4"
+name = "Middle Platform"
+start_trigger = { type = "ability_cast", abilities = [2025528051630080] }
+
+[[boss.phases]]
+id = "p5"
+name = "Transition"
+start_trigger = { type = "ability_cast", abilities = [2138051899817984] }
+
+[[boss.phases]]
+id = "p6"
+name = "Ground"
+start_trigger = { type = "ability_cast", abilities = [2482912003883008] }
+
+# ─── P4 Timers (Middle Platform) ──────────────────────────────────────────────
+[[boss.timer]]
+id = "soa_mind_trap_p4"
+name = "Mind Trap"
+trigger = { type = "ability_cast", abilities = [2025528051630080] }
+duration_secs = 38.0
+color = [33, 224, 223, 255]
+
+[[boss.timer]]
+id = "soa_ball_lightning_p4"
+name = "Ball Lightning"
+trigger = { type = "ability_cast", abilities = [2076298860036096] }
+duration_secs = 18.0
+color = [224, 176, 33, 255]
+
+[[boss.timer]]
+id = "soa_force_cyclone"
+name = "Force Cyclone"
+trigger = { type = "ability_cast", abilities = [1790412951912448] }
+duration_secs = 38.0
+color = [158, 29, 224, 255]
+
+# ─── P6 Timers (Final Platform) ───────────────────────────────────────────────
+[[boss.timer]]
+id = "soa_mind_trap_p6"
+name = "Mind Trap"
+trigger = { type = "ability_cast", abilities = [2482912003883008] }
+duration_secs = 18.0
+color = [33, 224, 220, 255]
+
+[[boss.timer]]
+id = "soa_ball_lightning_p6"
+name = "Ball Lightning"
+trigger = { type = "ability_cast", abilities = [2482985018327040] }
+duration_secs = 16.5
+color = [224, 176, 33, 255]
+
+[[boss.timer]]
+id = "soa_pylon"
+name = "Pylon"
+trigger = { type = "ability_cast", abilities = [1975835280015360] }
+duration_secs = 20.0
+color = [224, 29, 29, 255]
+
+# ─── Phase Alerts ─────────────────────────────────────────────────────────────
+[[boss.timer]]
+id = "soa_hp_75"
+name = "75% - P2 Transition"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 75.0 }
+color = [46, 32, 219, 255]
+
+[[boss.timer]]
+id = "soa_hp_30"
+name = "30% - P5 Transition"
+is_alert = true
+trigger = { type = "boss_hp_below", hp_percent = 30.0 }
+color = [29, 24, 224, 255]
