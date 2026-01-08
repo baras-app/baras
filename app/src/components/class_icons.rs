@@ -1,4 +1,4 @@
-//! Class icon assets for player display
+//! Class and role icon assets for player display
 
 use dioxus::prelude::*;
 use manganis::Asset;
@@ -21,6 +21,11 @@ static ICON_SNIPER: Asset = asset!("/assets/icons/class/sniper.png");
 static ICON_SORCERER: Asset = asset!("/assets/icons/class/sorcerer.png");
 static ICON_VANGUARD: Asset = asset!("/assets/icons/class/vanguard.png");
 
+// Pre-declare role icon assets
+static ICON_ROLE_TANK: Asset = asset!("/assets/icons/role/icon_tank.png");
+static ICON_ROLE_HEALER: Asset = asset!("/assets/icons/role/icon_heal.png");
+static ICON_ROLE_DPS: Asset = asset!("/assets/icons/role/icon_dps.png");
+
 /// Get the asset for a class icon by filename
 pub fn get_class_icon(icon_name: &str) -> Option<&'static Asset> {
     match icon_name {
@@ -40,6 +45,16 @@ pub fn get_class_icon(icon_name: &str) -> Option<&'static Asset> {
         "sniper.png" => Some(&ICON_SNIPER),
         "sorcerer.png" => Some(&ICON_SORCERER),
         "vanguard.png" => Some(&ICON_VANGUARD),
+        _ => None,
+    }
+}
+
+/// Get the asset for a role icon by filename
+pub fn get_role_icon(icon_name: &str) -> Option<&'static Asset> {
+    match icon_name {
+        "icon_tank.png" => Some(&ICON_ROLE_TANK),
+        "icon_heal.png" => Some(&ICON_ROLE_HEALER),
+        "icon_dps.png" => Some(&ICON_ROLE_DPS),
         _ => None,
     }
 }

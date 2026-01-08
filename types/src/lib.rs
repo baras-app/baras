@@ -133,6 +133,8 @@ pub struct RaidOverviewRow {
     pub discipline_name: Option<String>,
     /// Icon filename (e.g., "assassin.png") - derived from discipline
     pub class_icon: Option<String>,
+    /// Role icon filename (e.g., "icon_tank.png") - derived from discipline role
+    pub role_icon: Option<String>,
 
     // Damage dealt
     pub damage_total: f64,

@@ -2582,6 +2582,13 @@ details[open] .collapsible-summary::before {
 .class-icon.class-sentinel { filter: brightness(0) saturate(100%) invert(40%) sepia(85%) saturate(550%) hue-rotate(350deg); }
 .class-icon.class-gunslinger { filter: brightness(0) saturate(100%) invert(55%) sepia(75%) saturate(480%) hue-rotate(20deg); }
 
+/* Role icons */
+.player-name .role-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 .metric-value {
   font-family: monospace;
   color: var(--text-tertiary);

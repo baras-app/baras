@@ -13,7 +13,7 @@ use crate::api::{
     PlayerDeath, RaidOverviewRow, TimeRange,
 };
 use crate::components::charts_panel::ChartsPanel;
-use crate::components::class_icons::get_class_icon;
+use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::combat_log::CombatLog;
 use crate::components::history_panel::EncounterSummary;
 use crate::components::phase_timeline::PhaseTimelineFilter;
@@ -1335,10 +1335,18 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                                 tr {
                                                     td { class: "name-col",
                                                         span { class: "name-with-icon",
+                                                            if let Some(role_name) = &row.role_icon {
+                                                                if let Some(role_asset) = get_role_icon(role_name) {
+                                                                    img {
+                                                                        class: "role-icon",
+                                                                        src: *role_asset,
+                                                                        alt: ""
+                                                                    }
+                                                                }
+                                                            }
                                                             if let Some(icon_name) = &row.class_icon {
                                                                 if let Some(icon_asset) = get_class_icon(icon_name) {
                                                                     {
-                                                                        // Derive CSS class from icon filename (e.g., "sorcerer.png" -> "sorcerer")
                                                                         let class_css = icon_name.trim_end_matches(".png");
                                                                         rsx! {
                                                                             img {

@@ -653,6 +653,13 @@
     hue-rotate(20deg);
 }
 
+/* Role icons */
+.overview-table .role-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 .overview-table .num {
   text-align: right;
   font-family: var(--font-mono);

@@ -480,6 +480,7 @@ impl EncounterQuery<'_> {
                     class_name: None,
                     discipline_name: None,
                     class_icon: None,
+                    role_icon: None,
                     damage_total: damage_totals[i],
                     dps: damage_totals[i] / duration,
                     threat_total: threat_totals[i],

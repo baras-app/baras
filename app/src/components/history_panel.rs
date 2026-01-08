@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api;
-use crate::components::class_icons::get_class_icon;
+use crate::components::class_icons::{get_class_icon, get_role_icon};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Types (mirrors backend)
@@ -25,6 +25,8 @@ pub struct PlayerMetrics {
     pub class_name: Option<String>,
     #[serde(default)]
     pub class_icon: Option<String>,
+    #[serde(default)]
+    pub role_icon: Option<String>,
     pub dps: i64,
     pub edps: i64,
     pub bossdps: i64,
@@ -467,10 +469,18 @@ fn EncounterDetail(encounter: EncounterSummary) -> Element {
                                 tr {
                                     td { class: "player-name",
                                         span { class: "name-with-icon",
+                                            if let Some(role_name) = &player.role_icon {
+                                                if let Some(role_asset) = get_role_icon(role_name) {
+                                                    img {
+                                                        class: "role-icon",
+                                                        src: *role_asset,
+                                                        alt: ""
+                                                    }
+                                                }
+                                            }
                                             if let Some(icon_name) = &player.class_icon {
                                                 if let Some(icon_asset) = get_class_icon(icon_name) {
                                                     {
-                                                        // Derive CSS class from icon filename (e.g., "sorcerer.png" -> "sorcerer")
                                                         let class_css = icon_name.trim_end_matches(".png");
                                                         rsx! {
                                                             img {

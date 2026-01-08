@@ -13,6 +13,17 @@ pub enum Role {
     Dps,
 }
 
+impl Role {
+    /// Get the icon filename for this role (without path)
+    pub const fn icon_name(&self) -> &'static str {
+        match self {
+            Role::Tank => "icon_tank.png",
+            Role::Healer => "icon_heal.png",
+            Role::Dps => "icon_dps.png",
+        }
+    }
+}
+
 /// SWTOR base classes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Class {

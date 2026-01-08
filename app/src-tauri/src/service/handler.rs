@@ -413,8 +413,10 @@ impl ServiceHandle {
         let session = session_guard.as_ref().ok_or("No active session")?;
         let session = session.read().await;
 
-        let mut player_discipline_map: std::collections::HashMap<String, (String, String, String)> =
-            std::collections::HashMap::new();
+        let mut player_discipline_map: std::collections::HashMap<
+            String,
+            (String, String, String, String),
+        > = std::collections::HashMap::new();
 
         if let Some(cache) = session.session_cache.as_ref() {
             // From ALL encounters in the cache (not just current)
@@ -423,9 +425,11 @@ impl ServiceHandle {
                     if let Some(disc) = Discipline::from_guid(p.discipline_id) {
                         let name = resolve(p.name).to_string();
                         let class_icon = disc.class().icon_name().to_string();
+                        let role_icon = disc.role().icon_name().to_string();
                         let discipline_name = disc.name().to_string();
                         let class_name = format!("{:?}", disc.class());
-                        player_discipline_map.insert(name, (class_name, discipline_name, class_icon));
+                        player_discipline_map
+                            .insert(name, (class_name, discipline_name, class_icon, role_icon));
                     }
                 }
             }
@@ -434,9 +438,11 @@ impl ServiceHandle {
             if let Some(disc) = Discipline::from_guid(cache.player.discipline_id) {
                 let name = resolve(cache.player.name).to_string();
                 let class_icon = disc.class().icon_name().to_string();
+                let role_icon = disc.role().icon_name().to_string();
                 let discipline_name = disc.name().to_string();
                 let class_name = format!("{:?}", disc.class());
-                player_discipline_map.insert(name, (class_name, discipline_name, class_icon));
+                player_discipline_map
+                    .insert(name, (class_name, discipline_name, class_icon, role_icon));
             }
 
             // From encounter history (covers historical encounters)
@@ -444,11 +450,12 @@ impl ServiceHandle {
                 for pm in &summary.player_metrics {
                     if let Some(disc) = &pm.discipline {
                         let class_icon = disc.class().icon_name().to_string();
+                        let role_icon = disc.role().icon_name().to_string();
                         let class_name = format!("{:?}", disc.class());
                         let disc_name = pm.discipline_name.clone().unwrap_or_default();
                         player_discipline_map.insert(
                             pm.name.clone(),
-                            (class_name, disc_name, class_icon),
+                            (class_name, disc_name, class_icon, role_icon),
                         );
                     }
                 }
@@ -479,12 +486,13 @@ impl ServiceHandle {
 
         // Enrich results with discipline info
         for row in &mut results {
-            if let Some((class_name, discipline_name, class_icon)) =
+            if let Some((class_name, discipline_name, class_icon, role_icon)) =
                 player_discipline_map.get(&row.name)
             {
                 row.class_name = Some(class_name.clone());
                 row.discipline_name = Some(discipline_name.clone());
                 row.class_icon = Some(class_icon.clone());
+                row.role_icon = Some(role_icon.clone());
             }
         }
 
