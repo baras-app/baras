@@ -175,7 +175,11 @@ fn TimerRow(
                     span { class: "font-medium text-primary truncate", "{timer.name}" }
                     span { class: "text-xs text-mono text-muted truncate", "{timer.id}" }
                     span { class: "tag", "{timer.trigger.label()}" }
-                    span { class: "text-sm text-secondary", "{timer.duration_secs:.1}s" }
+                    if timer.is_alert {
+                        span { class: "tag tag-alert", "Alert" }
+                    } else {
+                        span { class: "text-sm text-secondary", "{timer.duration_secs:.1}s" }
+                    }
                 }
 
                 // Right side - fixed toggle buttons
@@ -387,18 +391,21 @@ fn TimerEditForm(
                         }
                     }
 
-                    div { class: "form-row-hz",
-                        label { "Display Text" }
-                        input {
-                            class: "input-inline",
-                            r#type: "text",
-                            style: "width: 200px;",
-                            placeholder: "(defaults to name)",
-                            value: "{draft().display_text.clone().unwrap_or_default()}",
-                            oninput: move |e| {
-                                let mut d = draft();
-                                d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
-                                draft.set(d);
+                    // Display Text only for countdown timers
+                    if !draft().is_alert {
+                        div { class: "form-row-hz",
+                            label { "Display Text" }
+                            input {
+                                class: "input-inline",
+                                r#type: "text",
+                                style: "width: 200px;",
+                                placeholder: "(defaults to name)",
+                                value: "{draft().display_text.clone().unwrap_or_default()}",
+                                oninput: move |e| {
+                                    let mut d = draft();
+                                    d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
+                                    draft.set(d);
+                                }
                             }
                         }
                     }
@@ -432,26 +439,9 @@ fn TimerEditForm(
                         }
                     }
 
+                    // Type toggle - prominent position
                     div { class: "form-row-hz",
-                        label { "Duration" }
-                        input {
-                            class: "input-inline",
-                            r#type: "number",
-                            step: ".1",
-                            min: "0",
-                            style: "width: 70px;",
-                            disabled: draft().is_alert,
-                            value: "{draft().duration_secs}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<f32>() {
-                                    let mut d = draft();
-                                    d.duration_secs = val;
-                                    draft.set(d);
-                                }
-                            }
-                        }
-                        span { class: if draft().is_alert { "text-muted opacity-50" } else { "text-muted" }, "sec" }
-                        span { class: "ml-md" }
+                        label { "Type" }
                         label { class: "flex items-center gap-xs text-sm",
                             input {
                                 r#type: "checkbox",
@@ -462,7 +452,30 @@ fn TimerEditForm(
                                     draft.set(d);
                                 }
                             }
-                            "Is Alert"
+                            "Instant Alert Only"
+                        }
+                    }
+
+                    // Duration only for countdown timers
+                    if !draft().is_alert {
+                        div { class: "form-row-hz",
+                            label { "Duration" }
+                            input {
+                                class: "input-inline",
+                                r#type: "number",
+                                step: ".1",
+                                min: "0",
+                                style: "width: 70px;",
+                                value: "{draft().duration_secs}",
+                                oninput: move |e| {
+                                    if let Ok(val) = e.value().parse::<f32>() {
+                                        let mut d = draft();
+                                        d.duration_secs = val;
+                                        draft.set(d);
+                                    }
+                                }
+                            }
+                            span { class: "text-muted", "sec" }
                         }
                     }
 
@@ -482,95 +495,98 @@ fn TimerEditForm(
                     // Note: Source/Target filtering is now handled within the trigger conditions
                     // via the ComposableTriggerEditor component
 
-                    div { class: "form-row-hz",
-                        label { "Options" }
-                        div { class: "flex gap-md flex-wrap",
-                            label { class: "flex items-center gap-xs text-sm",
-                                input {
-                                    r#type: "checkbox",
-                                    checked: draft().can_be_refreshed,
-                                    onchange: move |e| {
-                                        let mut d = draft();
-                                        d.can_be_refreshed = e.checked();
-                                        draft.set(d);
-                                    }
-                                }
-                                "Can Refresh"
-                            }
-                            div { class: "flex items-center gap-xs",
-                                span { class: "text-sm text-secondary", "Repeats" }
-                                input {
-                                    class: "input-inline",
-                                    r#type: "number",
-                                    min: "0",
-                                    max: "255",
-                                    style: "width: 50px;",
-                                    value: "{draft().repeats}",
-                                    oninput: move |e| {
-                                        if let Ok(val) = e.value().parse::<u8>() {
+                    // Timer-specific options (only for countdown timers)
+                    if !draft().is_alert {
+                        div { class: "form-row-hz",
+                            label { "Options" }
+                            div { class: "flex gap-md flex-wrap",
+                                label { class: "flex items-center gap-xs text-sm",
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: draft().can_be_refreshed,
+                                        onchange: move |e| {
                                             let mut d = draft();
-                                            d.repeats = val;
+                                            d.can_be_refreshed = e.checked();
                                             draft.set(d);
+                                        }
+                                    }
+                                    "Can Refresh"
+                                }
+                                div { class: "flex items-center gap-xs",
+                                    span { class: "text-sm text-secondary", "Repeats" }
+                                    input {
+                                        class: "input-inline",
+                                        r#type: "number",
+                                        min: "0",
+                                        max: "255",
+                                        style: "width: 50px;",
+                                        value: "{draft().repeats}",
+                                        oninput: move |e| {
+                                            if let Ok(val) = e.value().parse::<u8>() {
+                                                let mut d = draft();
+                                                d.repeats = val;
+                                                draft.set(d);
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    div { class: "form-row-hz",
-                        label { "Chains To" }
-                        select {
-                            class: "select",
-                            style: "width: 160px;",
-                            value: "{draft().chains_to.clone().unwrap_or_default()}",
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.chains_to = if e.value().is_empty() { None } else { Some(e.value()) };
-                                draft.set(d);
-                            },
-                            option { value: "", "(none)" }
-                            for tid in &other_timer_ids {
-                                option { value: "{tid}", "{tid}" }
+                        div { class: "form-row-hz",
+                            label { "Chains To" }
+                            select {
+                                class: "select",
+                                style: "width: 160px;",
+                                value: "{draft().chains_to.clone().unwrap_or_default()}",
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.chains_to = if e.value().is_empty() { None } else { Some(e.value()) };
+                                    draft.set(d);
+                                },
+                                option { value: "", "(none)" }
+                                for tid in &other_timer_ids {
+                                    option { value: "{tid}", "{tid}" }
+                                }
                             }
                         }
-                    }
 
-                    div { class: "form-row-hz", style: "align-items: flex-start;",
-                        label { style: "padding-top: 6px;", "Cancel On" }
-                        if let Some(cancel) = draft().cancel_trigger.clone() {
-                            div { class: "flex-col gap-xs",
-                                ComposableTriggerEditor {
-                                    trigger: cancel.clone(),
-                                    encounter_data: encounter_data.clone(),
-                                    on_change: move |t| {
-                                        let mut d = draft();
-                                        d.cancel_trigger = Some(t);
-                                        draft.set(d);
+                        div { class: "form-row-hz", style: "align-items: flex-start;",
+                            label { style: "padding-top: 6px;", "Cancel On" }
+                            if let Some(cancel) = draft().cancel_trigger.clone() {
+                                div { class: "flex-col gap-xs",
+                                    ComposableTriggerEditor {
+                                        trigger: cancel.clone(),
+                                        encounter_data: encounter_data.clone(),
+                                        on_change: move |t| {
+                                            let mut d = draft();
+                                            d.cancel_trigger = Some(t);
+                                            draft.set(d);
+                                        }
+                                    }
+                                    button {
+                                        class: "btn btn-sm",
+                                        style: "width: fit-content;",
+                                        onclick: move |_| {
+                                            let mut d = draft();
+                                            d.cancel_trigger = None;
+                                            draft.set(d);
+                                        },
+                                        "Remove Cancel Trigger"
                                     }
                                 }
-                                button {
-                                    class: "btn btn-sm",
-                                    style: "width: fit-content;",
-                                    onclick: move |_| {
-                                        let mut d = draft();
-                                        d.cancel_trigger = None;
-                                        draft.set(d);
-                                    },
-                                    "Remove Cancel Trigger"
-                                }
-                            }
-                        } else {
-                            div { class: "flex-col gap-xs",
-                                span { class: "text-muted text-sm", "(default: combat end)" }
-                                button {
-                                    class: "btn btn-sm",
-                                    onclick: move |_| {
-                                        let mut d = draft();
-                                        d.cancel_trigger = Some(Trigger::CombatStart);
-                                        draft.set(d);
-                                    },
-                                    "+ Add Cancel Trigger"
+                            } else {
+                                div { class: "flex-col gap-xs",
+                                    span { class: "text-muted text-sm", "(default: combat end)" }
+                                    button {
+                                        class: "btn btn-sm",
+                                        onclick: move |_| {
+                                            let mut d = draft();
+                                            d.cancel_trigger = Some(Trigger::CombatStart);
+                                            draft.set(d);
+                                        },
+                                        "+ Add Cancel Trigger"
+                                    }
                                 }
                             }
                         }
@@ -610,26 +626,28 @@ fn TimerEditForm(
                         }
                     }
 
-                    // ─── Show At ─────────────────────────────────────────────────
-                    div { class: "form-row-hz",
-                        label { "Show at" }
-                        input {
-                            r#type: "number",
-                            class: "input-inline",
-                            style: "width: 60px;",
-                            min: "0",
-                            max: "{draft().duration_secs as u32}",
-                            value: "{draft().show_at_secs as u32}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<f32>() {
-                                    let mut d = draft();
-                                    // Clamp to duration
-                                    d.show_at_secs = val.min(d.duration_secs).max(0.0);
-                                    draft.set(d);
+                    // ─── Show At (only for countdown timers) ─────────────────────
+                    if !draft().is_alert {
+                        div { class: "form-row-hz",
+                            label { "Show at" }
+                            input {
+                                r#type: "number",
+                                class: "input-inline",
+                                style: "width: 60px;",
+                                min: "0",
+                                max: "{draft().duration_secs as u32}",
+                                value: "{draft().show_at_secs as u32}",
+                                oninput: move |e| {
+                                    if let Ok(val) = e.value().parse::<f32>() {
+                                        let mut d = draft();
+                                        // Clamp to duration
+                                        d.show_at_secs = val.min(d.duration_secs).max(0.0);
+                                        draft.set(d);
+                                    }
                                 }
                             }
+                            span { class: "text-sm text-secondary", "sec remaining (0 = always)" }
                         }
-                        span { class: "text-sm text-secondary", "sec remaining (0 = always)" }
                     }
 
                     // ─── Conditions ──────────────────────────────────────────────
@@ -661,30 +679,10 @@ fn TimerEditForm(
                         }
                     }
 
-                    // ─── Audio & Alerts ──────────────────────────────────────────
-                    span { class: "text-sm font-bold text-secondary mt-md", "Audio & Alerts" }
-
-                    div { class: "form-row-hz mt-xs",
-                        label { "Countdown" }
-                        input {
-                            class: "input-inline",
-                            r#type: "number",
-                            step: "1",
-                            min: "0",
-                            style: "width: 60px;",
-                            placeholder: "-",
-                            value: "{draft().alert_at_secs.map(|v| v.to_string()).unwrap_or_default()}",
-                            oninput: move |e| {
-                                let mut d = draft();
-                                d.alert_at_secs = e.value().parse::<f32>().ok();
-                                draft.set(d);
-                            }
-                        }
-                        span { class: "text-muted", "sec" }
-                    }
-
+                    // ─── Alert (only for instant alerts) ─────────────────────────
                     if draft().is_alert {
-                        div { class: "form-row-hz",
+                        span { class: "text-sm font-bold text-secondary mt-md", "Alert" }
+                        div { class: "form-row-hz mt-xs",
                             label { "Alert Text" }
                             input {
                                 class: "input-inline",
@@ -701,7 +699,8 @@ fn TimerEditForm(
                         }
                     }
 
-                    // ─── Audio Section ───────────────────────────────────────────────
+                    // ─── Audio ────────────────────────────────────────────────────
+                    span { class: "text-sm font-bold text-secondary mt-md", "Audio" }
                     div { class: "form-row-hz",
                         label { "Enable Audio" }
                         input {
@@ -716,7 +715,7 @@ fn TimerEditForm(
                     }
 
                     div { class: "form-row-hz",
-                        label { "Alert Sound" }
+                        label { "Sound" }
                         div { class: "flex items-center gap-xs",
                             select {
                                 class: "select-inline",
@@ -758,76 +757,70 @@ fn TimerEditForm(
                         }
                     }
 
-                    // Audio offset - when to play the sound before timer expires
-                    div { class: "form-row-hz",
-                        label { "Audio Offset" }
-                        div { class: "flex items-center gap-md",
-                            select {
-                                class: "select-inline",
-                                style: "width: 120px;",
-                                value: "{draft().audio.offset}",
-                                onchange: move |e| {
-                                    if let Ok(val) = e.value().parse::<u8>() {
-                                        let mut d = draft();
-                                        d.audio.offset = val;
-                                        draft.set(d);
-                                    }
-                                },
-                                option { value: "0", "On expiration" }
-                                option { value: "1", "1s before" }
-                                option { value: "2", "2s before" }
-                                option { value: "3", "3s before" }
-                                option { value: "4", "4s before" }
-                                option { value: "5", "5s before" }
-                                option { value: "6", "6s before" }
-                                option { value: "7", "7s before" }
-                                option { value: "8", "8s before" }
-                                option { value: "9", "9s before" }
-                                option { value: "10", "10s before" }
+                    // Audio timing options (only for countdown timers)
+                    if !draft().is_alert {
+                        div { class: "form-row-hz",
+                            label { "Audio Offset" }
+                            div { class: "flex items-center gap-md",
+                                select {
+                                    class: "select-inline",
+                                    style: "width: 120px;",
+                                    value: "{draft().audio.offset}",
+                                    onchange: move |e| {
+                                        if let Ok(val) = e.value().parse::<u8>() {
+                                            let mut d = draft();
+                                            d.audio.offset = val;
+                                            draft.set(d);
+                                        }
+                                    },
+                                    option { value: "0", "On expiration" }
+                                    option { value: "1", "1s before" }
+                                    option { value: "2", "2s before" }
+                                    option { value: "3", "3s before" }
+                                    option { value: "4", "4s before" }
+                                    option { value: "5", "5s before" }
+                                    option { value: "6", "6s before" }
+                                    option { value: "7", "7s before" }
+                                    option { value: "8", "8s before" }
+                                    option { value: "9", "9s before" }
+                                    option { value: "10", "10s before" }
+                                }
                             }
                         }
-                    }
 
-                    div { class: "form-row-hz",
-                        label { "Countdown" }
-                        div { class: "flex items-center gap-md",
-                            select {
-                                class: "select-inline",
-                                style: "width: 80px;",
-                                value: "{draft().audio.countdown_start}",
-                                onchange: move |e| {
-                                    if let Ok(val) = e.value().parse::<u8>() {
+                        div { class: "form-row-hz",
+                            label { "Voice" }
+                            div { class: "flex items-center gap-md",
+                                select {
+                                    class: "select-inline",
+                                    style: "width: 80px;",
+                                    value: "{draft().audio.countdown_start}",
+                                    onchange: move |e| {
+                                        if let Ok(val) = e.value().parse::<u8>() {
+                                            let mut d = draft();
+                                            d.audio.countdown_start = val;
+                                            draft.set(d);
+                                        }
+                                    },
+                                    option { value: "0", "Off" }
+                                    option { value: "3", "3s" }
+                                    option { value: "5", "5s" }
+                                    option { value: "10", "10s" }
+                                }
+                                select {
+                                    class: "select-inline",
+                                    style: "width: 100px;",
+                                    value: "{draft().audio.countdown_voice.clone().unwrap_or_else(|| \"Amy\".to_string())}",
+                                    onchange: move |e| {
                                         let mut d = draft();
-                                        d.audio.countdown_start = val;
+                                        d.audio.countdown_voice = if e.value() == "Amy" { None } else { Some(e.value()) };
                                         draft.set(d);
-                                    }
-                                },
-                                option { value: "0", "Off" }
-                                option { value: "1", "1s" }
-                                option { value: "2", "2s" }
-                                option { value: "3", "3s" }
-                                option { value: "4", "4s" }
-                                option { value: "5", "5s" }
-                                option { value: "6", "6s" }
-                                option { value: "7", "7s" }
-                                option { value: "8", "8s" }
-                                option { value: "9", "9s" }
-                                option { value: "10", "10s" }
-                            }
-                            span { class: "text-sm text-secondary", "Voice" }
-                            select {
-                                class: "select-inline",
-                                style: "width: 100px;",
-                                value: "{draft().audio.countdown_voice.clone().unwrap_or_else(|| \"Amy\".to_string())}",
-                                onchange: move |e| {
-                                    let mut d = draft();
-                                    d.audio.countdown_voice = if e.value() == "Amy" { None } else { Some(e.value()) };
-                                    draft.set(d);
-                                },
-                                option { value: "Amy", "Amy" }
-                                option { value: "Jim", "Jim" }
-                                option { value: "Yolo", "Yolo" }
-                                option { value: "Nerevar", "Nerevar" }
+                                    },
+                                    option { value: "Amy", "Amy" }
+                                    option { value: "Jim", "Jim" }
+                                    option { value: "Yolo", "Yolo" }
+                                    option { value: "Nerevar", "Nerevar" }
+                                }
                             }
                         }
                     }

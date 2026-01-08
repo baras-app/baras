@@ -17,6 +17,8 @@
   --swtor-gold-dim: #8a7020;
   --swtor-gold-glow: rgba(201, 162, 39, 0.3);
   --swtor-red: #ff4a4a;
+  --swtor-orange: #ff8c42;
+  --swtor-orange-alpha-15: rgba(255, 140, 66, 0.15);
 
   /* ─── Colors - Semantic ──────────────────────────────────────────────────────── */
   --color-success: #5fd98e;
@@ -4823,6 +4825,11 @@ details[open] .collapsible-summary::before {
 .tag-success {
   background: var(--color-success-bg);
   color: var(--color-success);
+}
+
+.tag-alert {
+  background: var(--swtor-orange-alpha-15);
+  color: var(--swtor-orange);
 }
 
 .tag-muted {
