@@ -421,7 +421,6 @@ impl EncounterQuery<'_> {
             damage_dealt AS (
                 SELECT source_name as name,
                        SUM(dmg_amount) as damage_total,
-                       SUM(threat) as threat_total
                 FROM events
                 WHERE dmg_amount > 0 {time_filter}
                 GROUP BY source_name
@@ -441,12 +440,19 @@ impl EncounterQuery<'_> {
                 FROM events
                 WHERE heal_amount > 0 {time_filter}
                 GROUP BY source_name
+            ),
+            threat AS (
+                SELECT source_name as name,
+                    SUM(threat) as threat_total
+                FROM events
+                WHERE threat > 0 {time_filter}
+                GROUP BY source_name
             )
             SELECT
                 p.name,
                 p.entity_type,
                 COALESCE(d.damage_total, 0) as damage_total,
-                COALESCE(d.threat_total, 0) as threat_total,
+                COALESCE(th.threat_total, 0) as threat_total,
                 COALESCE(t.damage_taken_total, 0) as damage_taken_total,
                 COALESCE(t.absorbed_total, 0) as absorbed_total,
                 COALESCE(h.healing_total, 0) as healing_total,
@@ -456,6 +462,7 @@ impl EncounterQuery<'_> {
             LEFT JOIN damage_dealt d ON p.name = d.name
             LEFT JOIN damage_taken t ON p.name = t.name
             LEFT JOIN healing_done h ON p.name = h.name
+            LEFT JOIN threat as th ON p.name = th.name
             ORDER BY damage_total DESC
         "#
             ))
