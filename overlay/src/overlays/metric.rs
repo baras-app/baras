@@ -147,7 +147,9 @@ impl MetricOverlay {
 
         // Get scaled layout values
         let padding = self.frame.scaled(BASE_PADDING);
-        let font_size = self.frame.scaled(BASE_FONT_SIZE);
+        // Scale font size partially with bar scaling (40% of the bar scale increase)
+        let font_scale = 1.0 + (self.scaling_factor - 1.0) * 0.4;
+        let font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);
         let scaled_bar_height = BASE_BAR_HEIGHT * self.scaling_factor;
         let ideal_bar_height = self.frame.scaled(scaled_bar_height);
         let bar_spacing = self.frame.scaled(BASE_BAR_SPACING);
