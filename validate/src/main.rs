@@ -100,6 +100,10 @@ struct Args {
     #[arg(long)]
     all_abilities: bool,
 
+    /// Show all entities seen in the log
+    #[arg(long)]
+    all_entities: bool,
+
     // ─────────────────────────────────────────────────────────────────────────
     // Verification
     // ─────────────────────────────────────────────────────────────────────────
@@ -297,7 +301,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let mut challenge_ctx = ChallengeContext::default();
-    challenge_ctx.boss_npc_ids = boss_npc_ids;
+    challenge_ctx.boss_npc_ids = boss_npc_ids.clone();
 
     // Track player names for challenge breakdown
     let mut player_names: HashMap<i64, String> = HashMap::new();
@@ -468,12 +472,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Track entities, abilities, effects
         track_event(&mut state, &event, boss_def);
 
+        // Update boss HP for CLI display (per-encounter)
+        for entity in [&event.source_entity, &event.target_entity] {
+            if entity.entity_type == EntityType::Npc
+                && state.boss_entity_ids.contains(&entity.class_id)
+                && entity.health.1 > 0
+            {
+                let name = resolve(entity.name).to_string();
+                cli.update_boss_hp(
+                    &name,
+                    entity.class_id,
+                    entity.health.0 as i64,
+                    entity.health.1 as i64,
+                );
+            }
+        }
+
         // Process signals for output and state updates
         for signal in &signals {
             match signal {
                 GameSignal::CombatStarted { timestamp, .. } => {
                     state.combat_start = Some(*timestamp);
                     cli.combat_start(*timestamp);
+                    // Reset challenge tracker for new encounter
+                    challenge_tracker.start(
+                        boss_def.challenges.clone(),
+                        boss_def.entities.clone(),
+                        boss_npc_ids.clone(),
+                        *timestamp,
+                    );
                 }
                 GameSignal::CombatEnded { timestamp, .. } => {
                     // Calculate duration from combat start
@@ -482,7 +509,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     } else {
                         0.0
                     };
-                    cli.combat_end(*timestamp, duration);
+                    // Finalize and get challenge snapshot for this encounter
+                    challenge_tracker.set_duration(duration);
+                    let challenge_snapshot = challenge_tracker.snapshot();
+                    cli.combat_end(*timestamp, duration, &challenge_snapshot);
                 }
                 GameSignal::BossEncounterDetected {
                     definition_id,
@@ -866,79 +896,35 @@ fn print_detailed_report(
     println!("  Log: {} ({} events)", log_name, event_count);
     println!("══════════════════════════════════════════════════════════════════════");
 
-    // Entities
-    println!();
-    println!("ENTITIES SEEN:");
-    println!(
-        "  {:20} {:30} {:12} {:6} {:12}",
-        "NPC ID", "Name", "First Seen", "Deaths", "Last Death"
-    );
-    println!("  {}", "─".repeat(86));
-
-    let mut entities: Vec<_> = state.entities.values().collect();
-    entities.sort_by_key(|e| e.first_seen);
-
-    for entity in &entities {
-        let first_seen = entity
-            .first_seen
-            .map(|ts| format_combat_time(state.combat_start, ts))
-            .unwrap_or_else(|| "?".to_string());
-        let last_death = entity
-            .last_death
-            .map(|ts| format_combat_time(state.combat_start, ts))
-            .unwrap_or_else(|| "-".to_string());
+    // Entities (only show with --all-entities flag)
+    if args.all_entities {
+        println!();
+        println!("ENTITIES SEEN:");
         println!(
             "  {:20} {:30} {:12} {:6} {:12}",
-            entity.npc_id,
-            truncate(&entity.name, 30),
-            first_seen,
-            entity.death_count,
-            last_death
+            "NPC ID", "Name", "First Seen", "Deaths", "Last Death"
         );
-    }
+        println!("  {}", "─".repeat(86));
 
-    // Boss HP
-    let boss_npc_ids: HashSet<i64> = boss
-        .entities
-        .iter()
-        .filter(|e| e.is_boss)
-        .flat_map(|e| e.ids.iter().copied())
-        .collect();
+        let mut entities: Vec<_> = state.entities.values().collect();
+        entities.sort_by_key(|e| e.first_seen);
 
-    let boss_entities: Vec<_> = entities
-        .iter()
-        .filter(|e| boss_npc_ids.contains(&e.npc_id) && e.max_hp.is_some())
-        .collect();
-
-    if !boss_entities.is_empty() {
-        println!();
-        println!("BOSS HP (last known):");
-        println!(
-            "  {:30} {:>15} {:>10} {:12}",
-            "Name", "HP", "%", "Last Seen"
-        );
-        println!("  {}", "─".repeat(70));
-
-        for entity in boss_entities {
-            let hp = entity.last_hp.unwrap_or(0);
-            let max_hp = entity.max_hp.unwrap_or(1);
-            let pct = if max_hp > 0 {
-                (hp as f64 / max_hp as f64) * 100.0
-            } else {
-                0.0
-            };
-            let last_seen = entity
-                .last_seen
+        for entity in &entities {
+            let first_seen = entity
+                .first_seen
                 .map(|ts| format_combat_time(state.combat_start, ts))
                 .unwrap_or_else(|| "?".to_string());
-
+            let last_death = entity
+                .last_death
+                .map(|ts| format_combat_time(state.combat_start, ts))
+                .unwrap_or_else(|| "-".to_string());
             println!(
-                "  {:30} {:>10}/{:<10} {:>6.1}% {:12}",
+                "  {:20} {:30} {:12} {:6} {:12}",
+                entity.npc_id,
                 truncate(&entity.name, 30),
-                hp,
-                max_hp,
-                pct,
-                last_seen
+                first_seen,
+                entity.death_count,
+                last_death
             );
         }
     }
