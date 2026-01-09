@@ -429,7 +429,7 @@ difficulties = ["veteran", "master"]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 4: Kephess the Undying
+# Boss 4: Kephess
 # ═══════════════════════════════════════════════════════════════════════════════
 # Kephess returns! Key mechanics:
 # - Invulnerable: Boss shields, must DPS down the shield
@@ -439,11 +439,11 @@ difficulties = ["veteran", "master"]
 
 [[boss]]
 id = "kephess_the_undying"
-name = "Kephess the Undying"
+name = "Kephess"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Kephess the Undying"
+name = "Kephess"
 ids = [
   2937620191510528,
   3013121421606912,
@@ -470,17 +470,13 @@ trigger = { type = "combat_start" }
 id = "kephess_cascade"
 name = "Cascade"
 preceded_by = "kephess_main"
-trigger = { type = "boss_hp_below", hp_percent = 50.0, selector = [
-  "Kephess the Undying",
-] }
+trigger = { type = "boss_hp_below", hp_percent = 50.0, selector = ["Kephess"] }
 
 [[boss.phases]]
 id = "kephess_burn"
 name = "Burn"
 preceded_by = "kephess_cascade"
-trigger = { type = "boss_hp_below", hp_percent = 10.0, selector = [
-  "Kephess the Undying",
-] }
+trigger = { type = "boss_hp_below", hp_percent = 10.0, selector = ["Kephess"] }
 
 # ─── Counters ───────────────────────────────────────────────────────────────────
 
@@ -491,7 +487,7 @@ name = "Overcharges"
 increment_on = { type = "ability_cast", abilities = [
   3012687629910016,
 ], source = { selector = [
-  "Kephess the Undying",
+  "Kephess",
 ] } }
 reset_on = { type = "combat_end" }
 
@@ -503,7 +499,7 @@ name = "Nanites"
 increment_on = { type = "ability_cast", abilities = [
   2977765250826240,
 ], source = { selector = [
-  "Kephess the Undying",
+  "Kephess",
 ] } }
 reset_on = { type = "counter_reaches", counter_id = "nanites_count", value = 4 }
 
@@ -514,7 +510,6 @@ reset_on = { type = "counter_reaches", counter_id = "nanites_count", value = 4 }
 id = "kephess_invulnerable"
 name = "Invulnerable"
 trigger = { type = "ability_cast", abilities = [3008070540066816] }
-source = { selector = ["Kephess the Undying"] }
 duration_secs = 9.0
 color = [20, 154, 174, 255]
 difficulties = ["veteran", "master"]
@@ -523,8 +518,11 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "kephess_first_nanites"
 name = "1st Nanites + Jump"
-trigger = { type = "ability_cast", abilities = [3008070540066816] }
-source = { selector = ["Kephess the Undying"] }
+trigger = { type = "ability_cast", abilities = [
+  3008070540066816,
+], souce = [
+  "Kephess",
+] }
 duration_secs = 15.0
 color = [222, 31, 30, 255]
 difficulties = ["veteran", "master"]
@@ -545,9 +543,9 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "kephess_targeted"
 name = "Targeted by Boss"
-trigger = { type = "effect_applied", effects = [3012687629910274] }
-source = { selector = ["Kephess the Undying"] }
-target = "local_player"
+trigger = { type = "effect_applied", effects = [
+  3012687629910274,
+], target = "local_player" }
 is_alert = true
 alert_text = "Targeted by boss!"
 color = [217, 76, 30, 255]
@@ -556,8 +554,9 @@ color = [217, 76, 30, 255]
 [[boss.timer]]
 id = "kephess_sphere_target"
 name = "Targeted by Sphere"
-trigger = { type = "target_set", selector = [3013095651803136] }
-target = "local_player"
+trigger = { type = "target_set", selector = [
+  3013095651803136,
+], target = "local_player" }
 is_alert = true
 alert_text = "Targeted by sphere!"
 color = [195, 30, 222, 255]
@@ -566,9 +565,9 @@ color = [195, 30, 222, 255]
 [[boss.timer]]
 id = "kephess_nanites_alert"
 name = "Nanites"
-trigger = { type = "effect_removed", effects = [3012588845662464] }
-source = { selector = ["Kephess the Undying"] }
-target = "local_player"
+trigger = { type = "effect_removed", effects = [
+  3012588845662464,
+], target = "local_player" }
 is_alert = true
 alert_text = "Nanites dropped!"
 color = [34, 190, 28, 255]
@@ -583,7 +582,7 @@ difficulties = ["veteran", "master"]
 id = "kephess_laser_blast"
 name = "Laser Blast"
 trigger = { type = "ability_cast", abilities = [3012687629910016] }
-source = { selector = ["Kephess the Undying"] }
+source = { selector = ["Kephess"] }
 counter_condition = { counter_id = "overcharge_count", operator = "eq", value = 0 }
 duration_secs = 4.5
 color = [46, 34, 228, 255]
@@ -594,7 +593,7 @@ difficulties = ["veteran", "master"]
 id = "kephess_nanites_1"
 name = "Corrupted Nanites"
 trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess the Undying"] }
+source = { selector = ["Kephess"] }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 0 }
 duration_secs = 15.0
 color = [49, 190, 28, 255]
@@ -605,7 +604,7 @@ difficulties = ["veteran", "master"]
 id = "kephess_nanites_2_mm"
 name = "Corrupted Nanites"
 trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess the Undying"] }
+source = { selector = ["Kephess"] }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 1 }
 duration_secs = 15.0
 color = [39, 197, 29, 255]
@@ -616,7 +615,7 @@ difficulties = ["master"]
 id = "kephess_nanites_2_vm"
 name = "Nanites + Jump"
 trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess the Undying"] }
+source = { selector = ["Kephess"] }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 1 }
 duration_secs = 15.0
 color = [220, 45, 32, 255]
@@ -627,7 +626,7 @@ difficulties = ["veteran"]
 id = "kephess_nanites_3"
 name = "Nanites + Jump"
 trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess the Undying"] }
+source = { selector = ["Kephess"] }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 2 }
 duration_secs = 15.0
 color = [220, 36, 26, 255]
@@ -638,7 +637,7 @@ difficulties = ["veteran", "master"]
 id = "kephess_jump_1"
 name = "Jump"
 trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess the Undying"] }
+source = { selector = ["Kephess"] }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 0 }
 is_alert = true
 alert_text = "Jump!"
@@ -650,7 +649,7 @@ difficulties = ["veteran", "master"]
 id = "kephess_jump_3"
 name = "Jump"
 trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess the Undying"] }
+source = { selector = ["Kephess"] }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 2 }
 is_alert = true
 alert_text = "Jump!"
@@ -698,6 +697,7 @@ increment_on = { type = "entity_death", selector = ["Grasping Tentacle"] }
 name = "Terror (P1)"
 ids = [3025220344479744]
 is_boss = true
+show_on_hp_overlay = false
 triggers_encounter = true
 
 # Phase 2 - the kill target

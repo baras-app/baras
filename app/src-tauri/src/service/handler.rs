@@ -358,6 +358,8 @@ impl ServiceHandle {
         self.shared
             .query_context
             .query()
+            .await
+            .query()
             .query_breakdown(
                 tab,
                 entity_name.as_deref(),
@@ -397,6 +399,8 @@ impl ServiceHandle {
 
         self.shared
             .query_context
+            .query()
+            .await
             .query()
             .breakdown_by_entity(tab, time_range.as_ref())
             .await
@@ -481,6 +485,8 @@ impl ServiceHandle {
             .shared
             .query_context
             .query()
+            .await
+            .query()
             .query_raid_overview(time_range.as_ref(), duration_secs)
             .await?;
 
@@ -528,6 +534,8 @@ impl ServiceHandle {
 
         self.shared
             .query_context
+            .query()
+            .await
             .query()
             .dps_over_time(bucket_ms, source_name.as_deref(), time_range.as_ref())
             .await
@@ -579,7 +587,7 @@ impl ServiceHandle {
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().encounter_timeline().await
+        self.shared.query_context.query().await.query().encounter_timeline().await
     }
 
     /// Query HPS over time for a specific encounter.
@@ -611,6 +619,8 @@ impl ServiceHandle {
 
         self.shared
             .query_context
+            .query()
+            .await
             .query()
             .hps_over_time(bucket_ms, source_name.as_deref(), time_range.as_ref())
             .await
@@ -646,6 +656,8 @@ impl ServiceHandle {
         self.shared
             .query_context
             .query()
+            .await
+            .query()
             .dtps_over_time(bucket_ms, target_name.as_deref(), time_range.as_ref())
             .await
     }
@@ -679,6 +691,8 @@ impl ServiceHandle {
 
         self.shared
             .query_context
+            .query()
+            .await
             .query()
             .query_effect_uptime(target_name.as_deref(), time_range.as_ref(), duration_secs)
             .await
@@ -714,6 +728,8 @@ impl ServiceHandle {
 
         self.shared
             .query_context
+            .query()
+            .await
             .query()
             .query_effect_windows(
                 effect_id,
@@ -757,6 +773,8 @@ impl ServiceHandle {
         self.shared
             .query_context
             .query()
+            .await
+            .query()
             .query_combat_log(
                 offset,
                 limit,
@@ -799,6 +817,8 @@ impl ServiceHandle {
         self.shared
             .query_context
             .query()
+            .await
+            .query()
             .query_combat_log_count(
                 source_filter.as_deref(),
                 target_filter.as_deref(),
@@ -832,7 +852,7 @@ impl ServiceHandle {
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().query_source_names().await
+        self.shared.query_context.query().await.query().query_source_names().await
     }
 
     /// Get distinct target names for combat log filter dropdown.
@@ -859,7 +879,7 @@ impl ServiceHandle {
             self.shared.query_context.register_batch(batch).await?;
         }
 
-        self.shared.query_context.query().query_target_names().await
+        self.shared.query_context.query().await.query().query_target_names().await
     }
 
     /// Query player deaths in an encounter.
@@ -888,6 +908,8 @@ impl ServiceHandle {
 
         self.shared
             .query_context
+            .query()
+            .await
             .query()
             .query_player_deaths()
             .await
