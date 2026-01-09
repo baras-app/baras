@@ -11,8 +11,10 @@ mod verification;
 
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::Read;
 use std::path::PathBuf;
+
+use encoding_rs::WINDOWS_1252;
 
 use chrono::NaiveDateTime;
 use clap::{Parser, ValueEnum};
@@ -261,10 +263,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut state = ValidationState::default();
     populate_tracked_ids(&mut state, boss_def);
 
-    // Parse log file
-    let file = File::open(&args.log)?;
-    let reader = BufReader::new(file);
-    let lines: Vec<String> = reader.lines().filter_map(|l| l.ok()).collect();
+    // Parse log file with Windows-1252 encoding (SWTOR uses this for non-ASCII characters)
+    let mut file = File::open(&args.log)?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)?;
+    let (content, _, _) = WINDOWS_1252.decode(&bytes);
+    let lines: Vec<&str> = content.lines().collect();
 
     if lines.is_empty() {
         return Err("Log file is empty or unreadable".into());
