@@ -227,9 +227,14 @@ impl TimerDefinition {
 
     /// Check if this timer triggers when an NPC sets its target.
     /// Delegates to unified `Trigger::matches_target_set`.
-    pub fn matches_target_set(&self, source_npc_id: i64, source_name: Option<&str>) -> bool {
+    pub fn matches_target_set(
+        &self,
+        entities: &[crate::dsl::EntityDefinition],
+        source_npc_id: i64,
+        source_name: Option<&str>,
+    ) -> bool {
         self.trigger
-            .matches_target_set(source_npc_id, source_name.unwrap_or(""))
+            .matches_target_set(entities, source_npc_id, source_name)
     }
 
     /// Check if this timer triggers when damage is taken from an ability.

@@ -61,6 +61,22 @@ pub trait EntityFilterMatching {
         npc_id: Option<i64>,
         boss_npc_ids: &[i64],
     ) -> bool;
+
+    /// Check if this filter matches a source/target entity by NPC ID and name.
+    ///
+    /// Uses roster-based matching for proper localization support.
+    /// For Selector filters, resolves via roster alias → NPC ID → name.
+    ///
+    /// # Arguments
+    /// * `entities` - Entity roster for name resolution
+    /// * `npc_id` - NPC class/template ID
+    /// * `name` - Entity's display name (may be localized)
+    fn matches_source_target(
+        &self,
+        entities: &[EntityDefinition],
+        npc_id: i64,
+        name: &str,
+    ) -> bool;
 }
 
 impl EntityFilterMatching for EntityFilter {
@@ -145,6 +161,40 @@ impl EntityFilterMatching for EntityFilter {
 
             // Any entity
             EntityFilter::Any => true,
+        }
+    }
+
+    fn matches_source_target(
+        &self,
+        entities: &[EntityDefinition],
+        npc_id: i64,
+        name: &str,
+    ) -> bool {
+        match self {
+            // Any matches everything
+            EntityFilter::Any => true,
+
+            // NPC filters - match any NPC
+            EntityFilter::AnyNpc | EntityFilter::Boss | EntityFilter::NpcExceptBoss => npc_id != 0,
+
+            // Player filters - match when npc_id is 0 (players don't have NPC IDs)
+            EntityFilter::LocalPlayer
+            | EntityFilter::OtherPlayers
+            | EntityFilter::AnyPlayer
+            | EntityFilter::GroupMembers
+            | EntityFilter::GroupMembersExceptLocal => npc_id == 0,
+
+            // Companion filters
+            EntityFilter::AnyCompanion | EntityFilter::AnyPlayerOrCompanion => {
+                // Can't distinguish companions from players with just npc_id
+                // Fall back to name-only matching for now
+                false
+            }
+
+            // Unified selector - matches via roster alias → NPC ID → name
+            EntityFilter::Selector(selectors) => {
+                selectors.matches_with_roster(entities, npc_id, Some(name))
+            }
         }
     }
 }

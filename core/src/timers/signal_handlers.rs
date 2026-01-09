@@ -11,7 +11,6 @@ use crate::dsl::EntityDefinition;
 use crate::encounter::CombatEncounter;
 
 use super::{TimerManager, TimerTrigger};
-use crate::dsl::EntitySelectorExt;
 
 /// Get the entity roster from the current encounter, or empty slice if none.
 fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
@@ -220,12 +219,14 @@ pub(super) fn handle_boss_hp_change(
     }
 
     // Check for cancel triggers on boss HP threshold
+    let entities = get_entities(encounter);
     let npc_name_owned = npc_name.to_string();
-    manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::BossHpBelow { hp_percent, selector }
-            if previous_hp > *hp_percent && current_hp <= *hp_percent
-            && (selector.is_empty() || selector.matches_npc_id(npc_id) || selector.matches_name_only(&npc_name_owned))),
-        &format!("boss HP below threshold for {}", npc_name)
+    manager.cancel_timers_matching_with_entities(
+        entities,
+        |t, ents| {
+            t.matches_boss_hp_below(ents, npc_id, &npc_name_owned, previous_hp, current_hp)
+        },
+        &format!("boss HP below threshold for {}", npc_name),
     );
 }
 
@@ -338,11 +339,12 @@ pub(super) fn handle_npc_first_seen(
     }
 
     // Check for cancel triggers on NPC appears
+    let entities = get_entities(encounter);
     let npc_name_owned = npc_name.to_string();
-    manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::NpcAppears { selector }
-            if !selector.is_empty() && (selector.matches_npc_id(npc_id) || selector.matches_name_only(&npc_name_owned))),
-        &format!("NPC {} appeared", npc_name)
+    manager.cancel_timers_matching_with_entities(
+        entities,
+        |t, ents| t.matches_npc_appears(ents, npc_id, &npc_name_owned),
+        &format!("NPC {} appeared", npc_name),
     );
 }
 
@@ -369,11 +371,12 @@ pub(super) fn handle_entity_death(
     }
 
     // Check for cancel triggers on entity death
+    let entities = get_entities(encounter);
     let entity_name_owned = entity_name.to_string();
-    manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::EntityDeath { selector }
-            if selector.is_empty() || selector.matches_npc_id(npc_id) || selector.matches_name_only(&entity_name_owned)),
-        &format!("entity {} died", entity_name)
+    manager.cancel_timers_matching_with_entities(
+        entities,
+        |t, ents| t.matches_entity_death(ents, npc_id, &entity_name_owned),
+        &format!("entity {} died", entity_name),
     );
 }
 
@@ -390,16 +393,17 @@ pub(super) fn handle_target_set(
     timestamp: NaiveDateTime,
 ) {
     let source_name_str = crate::context::resolve(source_name);
+    let entities = get_entities(encounter);
 
     let matching: Vec<_> = manager
         .definitions
         .values()
         .filter(|d| {
-            d.matches_target_set(source_npc_id, Some(source_name_str))
+            d.matches_target_set(entities, source_npc_id, Some(source_name_str))
                 && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger,
-                    get_entities(encounter),
+                    entities,
                     source_entity_id,
                     EntityType::Npc,
                     source_name,
@@ -419,10 +423,10 @@ pub(super) fn handle_target_set(
 
     // Check for cancel triggers on target set
     let source_name_owned = source_name_str.to_string();
-    manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::TargetSet { selector, .. }
-            if !selector.is_empty() && (selector.matches_npc_id(source_npc_id) || selector.matches_name_only(&source_name_owned))),
-        &format!("target set by {}", source_name_owned)
+    manager.cancel_timers_matching_with_entities(
+        entities,
+        |t, ents| t.matches_target_set(ents, source_npc_id, Some(&source_name_owned)),
+        &format!("target set by {}", source_name_owned),
     );
 }
 
