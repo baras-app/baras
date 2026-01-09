@@ -30,12 +30,33 @@ impl LogParser {
 
     pub fn parse_line(&self, line_number: u64, _line: &str) -> Option<CombatEvent> {
         let b = _line.as_bytes();
-        let brackets: Vec<usize> = memchr_iter(b'[', b).collect();
-        let end_brackets: Vec<usize> = memchr_iter(b']', b).collect();
 
-        // guard against invalid lines being read throw away lines w/ != 5 bracket delimited
-        // segments
-        if brackets.len() != 5 || end_brackets.len() != 5 {
+        // Use fixed arrays instead of Vec to avoid heap allocation
+        let mut brackets = [0usize; 5];
+        let mut end_brackets = [0usize; 5];
+        let mut bracket_count = 0;
+        let mut end_bracket_count = 0;
+
+        for pos in memchr_iter(b'[', b) {
+            if bracket_count < 5 {
+                brackets[bracket_count] = pos;
+                bracket_count += 1;
+            } else {
+                return None; // More than 5 brackets = invalid
+            }
+        }
+
+        for pos in memchr_iter(b']', b) {
+            if end_bracket_count < 5 {
+                end_brackets[end_bracket_count] = pos;
+                end_bracket_count += 1;
+            } else {
+                return None;
+            }
+        }
+
+        // guard against invalid lines
+        if bracket_count != 5 || end_bracket_count != 5 {
             return None;
         }
 
@@ -129,10 +150,14 @@ impl LogParser {
             });
         }
 
-        let pipes: Vec<usize> = memchr_iter(b'|', bytes).collect();
-        let name_segment = &segment[..pipes[0]];
-        // let _ = &segment[pipes[0] + 1..pipes[1]]; // coordinates ignore for now not used
-        let health_segment = &segment[pipes[1]..];
+        // Find first two pipes (only need positions 0 and 1)
+        let mut pipe_iter = memchr_iter(b'|', bytes);
+        let pipe0 = pipe_iter.next()?;
+        let pipe1 = pipe_iter.next()?;
+
+        let name_segment = &segment[..pipe0];
+        // coordinates between pipe0 and pipe1 are ignored
+        let health_segment = &segment[pipe1..];
 
         let (name, class_id, log_id, entity_type) = LogParser::parse_entity_name_id(name_segment)?;
         let health = LogParser::parse_entity_health(health_segment)?;
@@ -219,10 +244,28 @@ impl LogParser {
 
     fn parse_effect(segment: &str) -> Option<Effect> {
         let bytes = segment.as_bytes();
-        let braces: Vec<usize> = memchr_iter(b'{', bytes).collect();
-        let end_braces: Vec<usize> = memchr_iter(b'}', bytes).collect();
         let slash = memchr(b'/', bytes);
-        if braces.len() < 2 || end_braces.len() < 2 {
+
+        // Collect up to 3 brace positions without heap allocation
+        let mut braces = [0usize; 3];
+        let mut end_braces = [0usize; 3];
+        let mut brace_count = 0;
+        let mut end_brace_count = 0;
+
+        for pos in memchr_iter(b'{', bytes) {
+            if brace_count < 3 {
+                braces[brace_count] = pos;
+                brace_count += 1;
+            }
+        }
+        for pos in memchr_iter(b'}', bytes) {
+            if end_brace_count < 3 {
+                end_braces[end_brace_count] = pos;
+                end_brace_count += 1;
+            }
+        }
+
+        if brace_count < 2 || end_brace_count < 2 {
             return Some(Effect {
                 ..Default::default()
             });
@@ -234,7 +277,7 @@ impl LogParser {
         let effect_id = parse_i64!(&segment[braces[1] + 1..end_braces[1]]);
 
         let (difficulty_name, difficulty_id) =
-            if type_id == effect_type_id::AREAENTERED && braces.len() == 3 {
+            if type_id == effect_type_id::AREAENTERED && brace_count == 3 {
                 (
                     intern(segment[end_braces[1] + 1..braces[2]].trim()),
                     parse_i64!(segment[braces[2] + 1..end_braces[2]]),

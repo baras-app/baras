@@ -766,12 +766,14 @@ dependencies = [
 name = "baras-parse-worker"
 version = "0.1.0"
 dependencies = [
+ "arrow",
  "baras-core",
  "chrono",
  "dirs",
  "encoding_rs",
  "memchr",
  "memmap2",
+ "parquet",
  "rayon",
  "serde",
  "serde_json",

@@ -327,7 +327,7 @@ impl EncounterWriter {
 
         let file = File::create(path)?;
         let props = WriterProperties::builder()
-            .set_compression(Compression::ZSTD(Default::default()))
+            .set_compression(Compression::LZ4)
             .build();
 
         let mut writer = ArrowWriter::try_new(file, schema, Some(props))?;
