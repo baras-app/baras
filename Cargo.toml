@@ -4,3 +4,8 @@ members = ["types", "core", "overlay", "app", "app/src-tauri", "validate", "pars
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"
+
+[profile.release]
+lto = "thin"           # Link-time optimization across crates
+codegen-units = 1      # Better optimization (slower compile)
+panic = "abort"        # No unwinding overhead
