@@ -100,7 +100,10 @@ cancel_trigger = { type = "combat_end" }
 [[boss.timer]]
 id = "unstable_energy"
 name = "Unstable Energy"
-trigger = { type = "ability_cast", abilities = [2778332739403776] }
+trigger = { type = "ability_cast", abilities = [
+  2778332739403776, # 8M
+  2778341329338368, # 16M
+] }
 duration_secs = 15.0
 color = [179, 26, 26, 255]
 cancel_trigger = { type = "combat_end" }
@@ -110,7 +113,8 @@ cancel_trigger = { type = "combat_end" }
 id = "burning_oil"
 name = "Burning Oil"
 trigger = { type = "ability_cast", abilities = [
-  2778384279011328,
+  2778384279011328, # 8M
+  2778392868945920, # 16M
 ], source = "boss" }
 duration_secs = 15.0
 color = [179, 26, 26, 255]
@@ -120,7 +124,8 @@ cancel_trigger = { type = "combat_end" }
 id = "mouse_droids"
 name = "Mouse Droids"
 trigger = { type = "ability_cast", abilities = [
-  2778268314894336,
+  2778268314894336, # 8M
+  2778281199796224, # 16M
 ], source = "boss" }
 duration_secs = 59.0
 color = [255, 230, 128, 255]
@@ -130,7 +135,8 @@ cancel_trigger = { type = "combat_end" }
 id = "tunneling_drill"
 name = "Tunneling Drill"
 trigger = { type = "ability_cast", abilities = [
-  2778294084698112,
+  2778294084698112, # 8M
+  2778302674632704, # 16M
 ], source = "boss" }
 duration_secs = 24.5
 color = [179, 204, 255, 255]
@@ -140,7 +146,8 @@ cancel_trigger = { type = "combat_end" }
 id = "cluster_bombs"
 name = "Cluster Bombs"
 trigger = { type = "ability_cast", abilities = [
-  2778276904828928,
+  2778276904828928, # 8M
+  2778285494763520, # 16M
 ], source = "boss" }
 duration_secs = 20.0
 color = [102, 51, 102, 255]
