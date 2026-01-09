@@ -448,6 +448,97 @@ impl OverlayManager {
         Ok(true)
     }
 
+    /// Temporarily hide all overlays (does NOT persist to config).
+    /// Used for auto-hide during conversations.
+    pub async fn temporary_hide_all(
+        state: &SharedOverlayState,
+        service: &ServiceHandle,
+    ) -> Result<bool, String> {
+        // Drain and shutdown all overlays (no config update)
+        let handles = {
+            let mut s = state.lock().map_err(|e| e.to_string())?;
+            s.move_mode = false;
+            // DO NOT update s.overlays_visible - this is temporary
+            s.drain()
+        };
+
+        for handle in handles {
+            Self::shutdown_no_position(handle).await;
+        }
+
+        // Clear all overlay status flags
+        service.set_overlay_active("raid", false);
+        service.set_overlay_active("boss_health", false);
+        service.set_overlay_active("timers", false);
+        service.set_overlay_active("effects", false);
+
+        Ok(true)
+    }
+
+    /// Restore overlays after temporary hide (does NOT modify config).
+    /// Only respawns overlays that are enabled in config.
+    pub async fn temporary_show_all(
+        state: &SharedOverlayState,
+        service: &ServiceHandle,
+    ) -> Result<(), String> {
+        let config = service.config().await;
+
+        // Only restore if global visibility is still enabled in config
+        if !config.overlay_settings.overlays_visible {
+            return Ok(());
+        }
+
+        let enabled_keys = config.overlay_settings.enabled_types();
+
+        // Get combat data once for all overlays
+        let combat_data = if service.is_tailing().await {
+            service.current_combat_data().await
+        } else {
+            None
+        };
+
+        for key in &enabled_keys {
+            let kind = match key.as_str() {
+                "personal" => OverlayType::Personal,
+                "raid" => OverlayType::Raid,
+                "boss_health" => OverlayType::BossHealth,
+                "timers" => OverlayType::Timers,
+                "effects" => OverlayType::Effects,
+                "challenges" => OverlayType::Challenges,
+                "alerts" => OverlayType::Alerts,
+                _ => {
+                    if let Some(mt) = MetricType::from_config_key(key) {
+                        OverlayType::Metric(mt)
+                    } else {
+                        continue;
+                    }
+                }
+            };
+
+            // Check if running, spawn, and insert
+            let spawn_result = {
+                let mut s = state.lock().map_err(|e| e.to_string())?;
+                if s.is_running(kind) {
+                    continue;
+                }
+                let Ok(result) = Self::spawn(kind, &config.overlay_settings) else {
+                    continue;
+                };
+                let tx = result.handle.tx.clone();
+                s.insert(result.handle);
+                tx
+            };
+
+            // Send initial data
+            Self::send_initial_data(kind, &spawn_result, combat_data.as_ref()).await;
+
+            // Update overlay status flag
+            service.set_overlay_active(key, true);
+        }
+
+        Ok(())
+    }
+
     /// Toggle move mode for all overlays.
     /// Returns the new move mode state.
     pub async fn toggle_move_mode(

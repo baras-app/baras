@@ -82,7 +82,12 @@ pub fn run() {
                 app.handle().manage(handle.clone());
 
                 // Spawn the overlay update router (needs service handle for registry updates)
-                spawn_overlay_router(overlay_rx, overlay_state.clone(), handle.clone());
+                spawn_overlay_router(
+                    overlay_rx,
+                    overlay_state.clone(),
+                    handle.clone(),
+                    handle.shared.clone(),
+                );
 
                 // Auto-show enabled overlays on startup
                 spawn_auto_show_overlays(overlay_state.clone(), handle.clone());

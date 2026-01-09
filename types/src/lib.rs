@@ -1217,6 +1217,9 @@ pub struct OverlaySettings {
     pub alerts_overlay: AlertsOverlayConfig,
     #[serde(default = "default_opacity")]
     pub alerts_opacity: u8,
+    /// Auto-hide overlays when local player is in a conversation
+    #[serde(default)]
+    pub hide_during_conversations: bool,
 }
 
 impl Default for OverlaySettings {
@@ -1243,6 +1246,7 @@ impl Default for OverlaySettings {
             challenge_opacity: 180,
             alerts_overlay: AlertsOverlayConfig::default(),
             alerts_opacity: 180,
+            hide_during_conversations: false,
         }
     }
 }

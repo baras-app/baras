@@ -136,6 +136,10 @@ pub enum OverlayUpdate {
     AlertsFired(Vec<FiredAlert>),
     /// Clear all overlay data (sent when switching files)
     ClearAllData,
+    /// Local player entered conversation - temporarily hide overlays
+    ConversationStarted,
+    /// Local player exited conversation - restore overlays if we hid them
+    ConversationEnded,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,6 +173,8 @@ struct CombatSignalHandler {
     session_event_tx: std::sync::mpsc::Sender<SessionEvent>,
     /// Channel for overlay updates (to clear overlays on combat end)
     overlay_tx: mpsc::Sender<OverlayUpdate>,
+    /// Local player entity ID (set on first DisciplineChanged)
+    local_player_id: Option<i64>,
 }
 
 impl CombatSignalHandler {
@@ -185,6 +191,7 @@ impl CombatSignalHandler {
             area_load_tx,
             session_event_tx,
             overlay_tx,
+            local_player_id: None,
         }
     }
 }
@@ -213,12 +220,40 @@ impl SignalHandler for CombatSignalHandler {
                 discipline_id,
                 ..
             } => {
+                // First DisciplineChanged is always the local player
+                if self.local_player_id.is_none() {
+                    self.local_player_id = Some(*entity_id);
+                }
                 // Update raid registry with discipline info for role icons
                 if let Ok(mut registry) = self.shared.raid_registry.lock() {
                     registry.update_discipline(*entity_id, 0, *discipline_id);
                 }
                 // Notify frontend of player info change
                 let _ = self.session_event_tx.send(SessionEvent::PlayerInitialized);
+            }
+            GameSignal::EffectApplied {
+                effect_id,
+                target_id,
+                ..
+            } => {
+                // Check for conversation effect on local player
+                if *effect_id == baras_core::game_data::effect_id::CONVERSATION
+                    && self.local_player_id == Some(*target_id)
+                {
+                    let _ = self.overlay_tx.try_send(OverlayUpdate::ConversationStarted);
+                }
+            }
+            GameSignal::EffectRemoved {
+                effect_id,
+                target_id,
+                ..
+            } => {
+                // Check for conversation effect removed from local player
+                if *effect_id == baras_core::game_data::effect_id::CONVERSATION
+                    && self.local_player_id == Some(*target_id)
+                {
+                    let _ = self.overlay_tx.try_send(OverlayUpdate::ConversationEnded);
+                }
             }
             GameSignal::AreaEntered { area_id, .. } => {
                 // Send area ID through channel for event-driven loading

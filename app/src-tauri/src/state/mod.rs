@@ -53,6 +53,12 @@ pub struct SharedState {
     /// Whether raid frame rearrange mode is active (bypasses rendering gates)
     pub rearrange_mode: AtomicBool,
 
+    // ─── Conversation auto-hide state ───────────────────────────────────────
+    /// Whether overlays are temporarily hidden due to conversation
+    pub conversation_hiding_active: AtomicBool,
+    /// Whether overlays were visible before conversation started (for restore)
+    pub overlays_visible_before_conversation: AtomicBool,
+
     /// Shared query context for DataFusion queries (reuses SessionContext)
     pub query_context: QueryContext,
 }
@@ -74,6 +80,9 @@ impl SharedState {
             timer_overlay_active: AtomicBool::new(false),
             effects_overlay_active: AtomicBool::new(false),
             rearrange_mode: AtomicBool::new(false),
+            // Conversation auto-hide state
+            conversation_hiding_active: AtomicBool::new(false),
+            overlays_visible_before_conversation: AtomicBool::new(false),
             // Shared query context for DataFusion (reuses SessionContext across queries)
             query_context: QueryContext::new(),
         }

@@ -4,10 +4,14 @@
 //! Also handles the raid overlay's registry action channel and forwards swap/clear commands
 //! back to the service registry.
 
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
+
 use crate::overlay::{
-    MetricType, OverlayCommand, OverlayType, SharedOverlayState, create_all_entries,
+    MetricType, OverlayCommand, OverlayManager, OverlayType, SharedOverlayState, create_all_entries,
 };
 use crate::service::{OverlayUpdate, ServiceHandle};
+use crate::state::SharedState;
 use baras_overlay::{OverlayData, RaidRegistryAction};
 use tokio::sync::mpsc;
 
@@ -18,6 +22,7 @@ pub fn spawn_overlay_router(
     mut rx: mpsc::Receiver<OverlayUpdate>,
     overlay_state: SharedOverlayState,
     service_handle: ServiceHandle,
+    shared: Arc<SharedState>,
 ) {
     // Create async channel for registry actions (bridges sync overlay thread → async router)
     let (registry_tx, mut registry_rx) = mpsc::channel::<RaidRegistryAction>(32);
@@ -55,7 +60,12 @@ pub fn spawn_overlay_router(
                 update = rx.recv() => {
                     match update {
                         Some(update) => {
-                            process_overlay_update(&overlay_state, update).await;
+                            process_overlay_update(
+                                &overlay_state,
+                                &service_handle,
+                                &shared,
+                                update,
+                            ).await;
                         }
                         None => {
                             // Channel closed
@@ -87,7 +97,12 @@ async fn process_registry_action(service_handle: &ServiceHandle, action: RaidReg
 }
 
 /// Process a single overlay update
-async fn process_overlay_update(overlay_state: &SharedOverlayState, update: OverlayUpdate) {
+async fn process_overlay_update(
+    overlay_state: &SharedOverlayState,
+    service_handle: &ServiceHandle,
+    shared: &Arc<SharedState>,
+    update: OverlayUpdate,
+) {
     match update {
         OverlayUpdate::DataUpdated(data) => {
             // Create entries for all metric overlay types
@@ -345,6 +360,37 @@ async fn process_overlay_update(overlay_state: &SharedOverlayState, update: Over
             // Now send to all channels (outside lock scope)
             for (tx, data) in channels {
                 let _ = tx.send(OverlayCommand::UpdateData(data)).await;
+            }
+        }
+        OverlayUpdate::ConversationStarted => {
+            // Check if auto-hide during conversations is enabled
+            let hide_enabled = shared.config.read().await.overlay_settings.hide_during_conversations;
+            if !hide_enabled {
+                return;
+            }
+
+            // Check if overlays are currently visible and running
+            let currently_visible = overlay_state
+                .lock()
+                .ok()
+                .is_some_and(|s| s.overlays_visible && !s.overlays.is_empty());
+
+            if currently_visible {
+                // Remember that we hid them and that they were visible
+                shared.overlays_visible_before_conversation.store(true, Ordering::SeqCst);
+                shared.conversation_hiding_active.store(true, Ordering::SeqCst);
+                let _ = OverlayManager::temporary_hide_all(overlay_state, service_handle).await;
+            }
+        }
+        OverlayUpdate::ConversationEnded => {
+            // Only restore if we were the ones who hid them
+            if shared.conversation_hiding_active.load(Ordering::SeqCst) {
+                shared.conversation_hiding_active.store(false, Ordering::SeqCst);
+
+                if shared.overlays_visible_before_conversation.load(Ordering::SeqCst) {
+                    shared.overlays_visible_before_conversation.store(false, Ordering::SeqCst);
+                    let _ = OverlayManager::temporary_show_all(overlay_state, service_handle).await;
+                }
             }
         }
     }
