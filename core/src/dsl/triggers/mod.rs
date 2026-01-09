@@ -567,18 +567,23 @@ impl Trigger {
     }
 
     /// Check if trigger matches target set (NPC targeting something).
-    pub fn matches_target_set(&self, source_npc_id: i64, source_name: &str) -> bool {
+    pub fn matches_target_set(
+        &self,
+        entities: &[EntityDefinition],
+        source_npc_id: i64,
+        source_name: Option<&str>,
+    ) -> bool {
         match self {
             Self::TargetSet { selector, .. } => {
                 // Require explicit filter
                 if selector.is_empty() {
                     return false;
                 }
-                selector.matches_npc_id(source_npc_id) || selector.matches_name_only(source_name)
+                selector.matches_with_roster(entities, source_npc_id, source_name)
             }
             Self::AnyOf { conditions } => conditions
                 .iter()
-                .any(|c| c.matches_target_set(source_npc_id, source_name)),
+                .any(|c| c.matches_target_set(entities, source_npc_id, source_name)),
             _ => false,
         }
     }

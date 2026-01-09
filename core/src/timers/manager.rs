@@ -545,6 +545,37 @@ impl TimerManager {
         }
     }
 
+    /// Cancel active timers whose cancel_trigger matches the given predicate (with entity roster)
+    pub(super) fn cancel_timers_matching_with_entities<F>(
+        &mut self,
+        entities: &[crate::dsl::EntityDefinition],
+        trigger_matches: F,
+        _reason: &str,
+    ) where
+        F: Fn(&TimerTrigger, &[crate::dsl::EntityDefinition]) -> bool,
+    {
+        let keys_to_cancel: Vec<_> = self
+            .active_timers
+            .iter()
+            .filter_map(|(key, timer)| {
+                if let Some(def) = self.definitions.get(&timer.definition_id)
+                    && let Some(ref cancel_trigger) = def.cancel_trigger
+                    && trigger_matches(cancel_trigger, entities)
+                {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Remove cancelled timers and track cancellations
+        for key in keys_to_cancel {
+            self.cancelled_this_tick.push(key.definition_id.clone());
+            self.active_timers.remove(&key);
+        }
+    }
+
     /// Process timer expirations, repeats, and chains
     fn process_expirations(
         &mut self,

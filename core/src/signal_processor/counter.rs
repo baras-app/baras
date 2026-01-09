@@ -5,7 +5,7 @@
 
 use crate::combat_log::{CombatEvent, EntityType};
 use crate::dsl::BossEncounterDefinition;
-use crate::dsl::{EntitySelectorExt, Trigger};
+use crate::dsl::{EntityFilterMatching, EntitySelectorExt, Trigger};
 use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
 
@@ -210,12 +210,14 @@ pub fn check_counter_trigger(
             {
                 return false;
             }
-            // Check source filter if specified
+            // Check source filter if specified (use roster-based matching for localization)
             if !source.is_any() {
                 let source_name = crate::context::resolve(event.source_entity.name);
-                if !source.matches_name(source_name)
-                    && !source.matches_npc_id(event.source_entity.class_id)
-                {
+                if !source.matches_source_target(
+                    &boss_def.entities,
+                    event.source_entity.class_id,
+                    source_name,
+                ) {
                     return false;
                 }
             }
@@ -232,7 +234,7 @@ pub fn check_counter_trigger(
             if !effects.is_empty() && !effects.iter().any(|s| s.matches(eff_id, Some(eff_name))) {
                 return false;
             }
-            // Check target filter if specified
+            // Check target filter if specified (use roster-based matching for localization)
             if !target.is_any() {
                 // Special case: "local_player" matches player entities
                 if target.is_local_player() {
@@ -241,9 +243,11 @@ pub fn check_counter_trigger(
                     }
                 } else {
                     let target_name = crate::context::resolve(event.target_entity.name);
-                    if !target.matches_name(target_name)
-                        && !target.matches_npc_id(event.target_entity.class_id)
-                    {
+                    if !target.matches_source_target(
+                        &boss_def.entities,
+                        event.target_entity.class_id,
+                        target_name,
+                    ) {
                         return false;
                     }
                 }
@@ -261,7 +265,7 @@ pub fn check_counter_trigger(
             if !effects.is_empty() && !effects.iter().any(|s| s.matches(eff_id, Some(eff_name))) {
                 return false;
             }
-            // Check target filter if specified
+            // Check target filter if specified (use roster-based matching for localization)
             if !target.is_any() {
                 if target.is_local_player() {
                     if event.target_entity.entity_type != EntityType::Player {
@@ -269,9 +273,11 @@ pub fn check_counter_trigger(
                     }
                 } else {
                     let target_name = crate::context::resolve(event.target_entity.name);
-                    if !target.matches_name(target_name)
-                        && !target.matches_npc_id(event.target_entity.class_id)
-                    {
+                    if !target.matches_source_target(
+                        &boss_def.entities,
+                        event.target_entity.class_id,
+                        target_name,
+                    ) {
                         return false;
                     }
                 }
@@ -333,6 +339,7 @@ pub fn check_counter_trigger(
             current_signals.iter().any(|s| {
                 if let GameSignal::BossHpChanged {
                     new_hp_percent,
+                    npc_id,
                     entity_name,
                     ..
                 } = s
@@ -341,7 +348,9 @@ pub fn check_counter_trigger(
                         return false;
                     }
                     // Check entity filter if specified
-                    if !selector.is_empty() && !selector.matches_name_only(entity_name) {
+                    if !selector.is_empty()
+                        && !selector.matches_with_roster(&boss_def.entities, *npc_id, Some(entity_name))
+                    {
                         return false;
                     }
                     true
@@ -379,18 +388,21 @@ pub fn check_counter_trigger(
                     {
                         return false;
                     }
+                    // Use roster-based matching for localization support
                     if !source.is_any() {
                         let source_name_str = crate::context::resolve(*source_name);
-                        if !source.matches_name(source_name_str)
-                            && !source.matches_npc_id(*source_npc_id)
-                        {
+                        if !source.matches_source_target(
+                            &boss_def.entities,
+                            *source_npc_id,
+                            source_name_str,
+                        ) {
                             return false;
                         }
                     }
                     if !target.is_any() {
-                        // Targets are typically players (no NPC ID), so only match by name
+                        // Target NPC ID is not available in DamageTaken signal, use 0
                         let target_name_str = crate::context::resolve(*target_name);
-                        if !target.matches_name(target_name_str) {
+                        if !target.matches_source_target(&boss_def.entities, 0, target_name_str) {
                             return false;
                         }
                     }
