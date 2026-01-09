@@ -216,30 +216,37 @@ impl MetricOverlay {
 
         let content_width = width - padding * 2.0;
         let bar_radius = 4.0 * self.frame.scale_factor();
-        let mut y = padding;
 
-        // Draw header using Header widget
-        let header_end_y = if self.appearance.show_header {
+        // Calculate total height of all bars
+        let total_bars_height = if num_entries > 0 {
+            num_entries as f32 * bar_height + (num_entries - 1).max(0) as f32 * effective_spacing
+        } else {
+            0.0
+        };
+
+        // Calculate bar start position based on stack direction
+        let bars_start_y = if self.stack_from_bottom {
+            // Stack from bottom: position bars at bottom of available space
+            padding + header_space + available_for_bars - total_bars_height
+        } else {
+            // Stack from top: bars start after header
+            padding + header_space
+        };
+
+        // Draw header just above the first bar
+        let mut y = if self.appearance.show_header {
+            let header_y = bars_start_y - header_space;
             Header::new(&self.title).with_color(font_color).render(
                 &mut self.frame,
                 padding,
-                y,
+                header_y,
                 content_width,
                 font_size,
                 bar_spacing,
-            )
+            );
+            bars_start_y
         } else {
-            y
-        };
-
-        // Calculate starting Y for bars based on stack direction
-        y = if self.stack_from_bottom && num_entries > 0 {
-            // Stack from bottom: position bars at bottom of available space
-            let total_bars_height = num_entries as f32 * bar_height
-                + (num_entries - 1).max(0) as f32 * effective_spacing;
-            header_end_y + available_for_bars - total_bars_height
-        } else {
-            header_end_y
+            bars_start_y
         };
 
         // Find max value for scaling (use actual rate values, not max_value field)
