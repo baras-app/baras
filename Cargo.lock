@@ -752,8 +752,10 @@ version = "0.1.0"
 dependencies = [
  "baras-core",
  "cosmic-text",
+ "fontdb",
  "memmap2",
  "rustix",
+ "sys-locale",
  "tiny-skia",
  "tokio",
  "wayland-client",

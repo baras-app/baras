@@ -4,6 +4,7 @@
 //! All rendering is done on the CPU and produces an RGBA pixel buffer.
 #![allow(clippy::too_many_arguments)]
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use cosmic_text::{
     Attrs, Buffer, Color as CosmicColor, Family, FontSystem, LayoutGlyph, Metrics, Shaping,
@@ -13,6 +14,27 @@ use tiny_skia::{
     Color, FillRule, LineCap, LineJoin, Paint, PathBuilder, PixmapMut, Rect, Stroke, StrokeDash,
     Transform,
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared Font Database
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Global font database, initialized once and shared across all renderers.
+/// Each overlay thread clones this database (cheap - uses Arc internally)
+/// to create its own FontSystem, avoiding repeated system font scanning.
+static SHARED_FONT_DB: OnceLock<fontdb::Database> = OnceLock::new();
+
+/// Get a clone of the shared font database.
+/// First call initializes by scanning system fonts; subsequent calls are cheap clones.
+fn get_shared_font_db() -> fontdb::Database {
+    SHARED_FONT_DB
+        .get_or_init(|| {
+            let mut db = fontdb::Database::new();
+            db.load_system_fonts();
+            db
+        })
+        .clone()
+}
 
 /// Maximum entries in the text shaping cache (LRU eviction when exceeded)
 const TEXT_CACHE_MAX_ENTRIES: usize = 512;
@@ -42,9 +64,16 @@ pub struct Renderer {
 
 impl Renderer {
     /// Create a new renderer
+    ///
+    /// Uses a shared font database to avoid repeatedly scanning system fonts.
+    /// The first renderer created will initialize the database; subsequent
+    /// renderers clone it cheaply (fontdb uses Arc internally).
     pub fn new() -> Self {
+        // Get system locale for proper text shaping
+        let locale = sys_locale::get_locale().unwrap_or_else(|| "en-US".to_string());
+
         Self {
-            font_system: FontSystem::new(),
+            font_system: FontSystem::new_with_locale_and_db(locale, get_shared_font_db()),
             swash_cache: SwashCache::new(),
             text_cache: HashMap::with_capacity(256),
             cache_access_counter: 0,
