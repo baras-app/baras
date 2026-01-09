@@ -244,6 +244,7 @@ difficulties = ["story", "veteran"]
 [[boss.entities]]
 name = "Infernal Council"
 ids = [2290145281703936, 2098327747297280, 2289690015170560, 2289887583666176]
+show_on_hp_overlay = false
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
