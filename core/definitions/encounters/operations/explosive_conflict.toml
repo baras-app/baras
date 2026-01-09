@@ -80,8 +80,9 @@ difficulties = ["veteran", "master"]
 id = "zt_baradium_poisoning"
 name = "Baradium Poisoning"
 is_alert = true
-trigger = { type = "effect_applied", effects = [3004561551786240] }
-target = "local_player"
+trigger = { type = "effect_applied", effects = [
+  3004561551786240,
+], target = "local_player" }
 alert_text = "Use Medpack!"
 difficulties = ["master"]
 
@@ -89,8 +90,9 @@ difficulties = ["master"]
 id = "zt_weakened"
 name = "Weakened"
 is_alert = true
-trigger = { type = "effect_applied", effects = [2857132504383753] }
-target = "local_player"
+trigger = { type = "effect_applied", effects = [
+  2857132504383753,
+], target = "local_player" }
 alert_text = "Weakened"
 difficulties = ["veteran", "master"]
 
@@ -98,8 +100,9 @@ difficulties = ["veteran", "master"]
 id = "zt_fearful"
 name = "Fearful"
 is_alert = true
-trigger = { type = "effect_applied", effects = [2857171159089412] }
-target = "local_player"
+trigger = { type = "effect_applied", effects = [
+  2857171159089412,
+], target = "local_player" }
 alert_text = "Fearful"
 difficulties = ["veteran", "master"]
 
