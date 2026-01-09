@@ -463,7 +463,7 @@ fn TimerEditForm(
                             input {
                                 class: "input-inline",
                                 r#type: "number",
-                                step: ".1",
+                                step: "any",
                                 min: "0",
                                 style: "width: 70px;",
                                 value: "{draft().duration_secs}",
@@ -634,9 +634,10 @@ fn TimerEditForm(
                                 r#type: "number",
                                 class: "input-inline",
                                 style: "width: 60px;",
+                                step: "any",
                                 min: "0",
-                                max: "{draft().duration_secs as u32}",
-                                value: "{draft().show_at_secs as u32}",
+                                max: "{draft().duration_secs}",
+                                value: "{draft().show_at_secs}",
                                 oninput: move |e| {
                                     if let Ok(val) = e.value().parse::<f32>() {
                                         let mut d = draft();

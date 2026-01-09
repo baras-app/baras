@@ -657,9 +657,9 @@ fn EffectEditForm(
                                 r#type: "number",
                                 class: "input-inline",
                                 style: "width: 70px;",
-                                step: ".1",
+                                step: "any",
                                 min: "0",
-                                value: "{draft().duration_secs.unwrap_or(0.0) as u32}",
+                                value: "{draft().duration_secs.unwrap_or(0.0)}",
                                 oninput: move |e| {
                                     let mut d = draft();
                                     d.duration_secs = e.value().parse::<f32>().ok().filter(|&v| v > 0.0);
@@ -688,9 +688,10 @@ fn EffectEditForm(
                                 r#type: "number",
                                 class: "input-inline",
                                 style: "width: 50px;",
+                                step: "any",
                                 min: "0",
-                                max: "{draft().duration_secs.unwrap_or(999.0) as u32}",
-                                value: "{draft().show_at_secs as u32}",
+                                max: "{draft().duration_secs.unwrap_or(999.0)}",
+                                value: "{draft().show_at_secs}",
                                 oninput: move |e| {
                                     if let Ok(val) = e.value().parse::<f32>() {
                                         let mut d = draft();
