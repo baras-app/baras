@@ -65,6 +65,18 @@ impl From<crate::dsl::AreaType> for ContentType {
     }
 }
 
+/// Game difficulty IDs (language-independent)
+pub mod difficulty_id {
+    pub const STORY_8: i64 = 836045448953651;
+    pub const VETERAN_8: i64 = 836045448953652;
+    pub const STORY_16: i64 = 836045448953653;
+    pub const VETERAN_16: i64 = 836045448953654;
+    pub const MASTER_8: i64 = 836045448953655;
+    pub const MASTER_16: i64 = 836045448953656; // Inferred from pattern
+    pub const VETERAN_4: i64 = 836045448953657;
+    pub const MASTER_4: i64 = 836045448953658; // Inferred from pattern
+}
+
 /// Difficulty mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Difficulty {
@@ -111,6 +123,21 @@ impl Difficulty {
             Difficulty::Veteran16 => "HM 16",
             Difficulty::Master8 => "NiM 8",
             Difficulty::Master16 => "NiM 16",
+        }
+    }
+
+    /// Parse from game difficulty ID (language-independent, preferred method)
+    pub fn from_difficulty_id(id: i64) -> Option<Self> {
+        match id {
+            difficulty_id::STORY_8 => Some(Difficulty::Story8),
+            difficulty_id::VETERAN_8 => Some(Difficulty::Veteran8),
+            difficulty_id::STORY_16 => Some(Difficulty::Story16),
+            difficulty_id::VETERAN_16 => Some(Difficulty::Veteran16),
+            difficulty_id::MASTER_8 => Some(Difficulty::Master8),
+            difficulty_id::MASTER_16 => Some(Difficulty::Master16),
+            difficulty_id::VETERAN_4 => Some(Difficulty::Veteran4),
+            difficulty_id::MASTER_4 => Some(Difficulty::Master4),
+            _ => None,
         }
     }
 

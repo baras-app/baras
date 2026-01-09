@@ -250,9 +250,9 @@ impl EventProcessor {
         // Also update the current encounter's area/difficulty
         // (fixes timers with difficulty filters when AreaEntered fires mid-session)
         if let Some(enc) = cache.current_encounter_mut() {
-            let difficulty_name = resolve(event.effect.difficulty_name);
-            enc.set_difficulty(crate::game_data::Difficulty::from_game_string(
-                difficulty_name,
+            // Use difficulty_id (language-independent) instead of parsing localized strings
+            enc.set_difficulty(crate::game_data::Difficulty::from_difficulty_id(
+                event.effect.difficulty_id,
             ));
             let area_id = if event.effect.effect_id != 0 {
                 Some(event.effect.effect_id)

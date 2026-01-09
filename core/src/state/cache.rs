@@ -91,9 +91,9 @@ impl SessionCache {
             CombatEncounter::new(id, ProcessingMode::Live)
         };
 
-        // Set context from current area
-        encounter.set_difficulty(Difficulty::from_game_string(
-            &self.current_area.difficulty_name,
+        // Set context from current area (use ID for language independence)
+        encounter.set_difficulty(Difficulty::from_difficulty_id(
+            self.current_area.difficulty_id,
         ));
         let area_id = if self.current_area.area_id != 0 {
             Some(self.current_area.area_id)
