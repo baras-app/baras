@@ -41,7 +41,15 @@ impl OverlayManager {
         let handle = match kind {
             OverlayType::Metric(metric_type) => {
                 let appearance = get_appearance_for_type(settings, metric_type);
-                create_metric_overlay(metric_type, position, appearance, settings.metric_opacity)?
+                create_metric_overlay(
+                    metric_type,
+                    position,
+                    appearance,
+                    settings.metric_opacity,
+                    settings.metric_show_empty_bars,
+                    settings.metric_stack_from_bottom,
+                    settings.metric_scaling_factor,
+                )?
             }
             OverlayType::Personal => {
                 let personal_config = settings.personal_overlay.clone();
@@ -207,7 +215,13 @@ impl OverlayManager {
         match kind {
             OverlayType::Metric(metric_type) => {
                 let appearance = get_appearance_for_type(settings, metric_type);
-                OverlayConfigUpdate::Metric(appearance, settings.metric_opacity)
+                OverlayConfigUpdate::Metric(
+                    appearance,
+                    settings.metric_opacity,
+                    settings.metric_show_empty_bars,
+                    settings.metric_stack_from_bottom,
+                    settings.metric_scaling_factor,
+                )
             }
             OverlayType::Personal => {
                 let personal_config = settings.personal_overlay.clone();

@@ -196,6 +196,9 @@ pub fn create_metric_overlay(
     position: OverlayPositionConfig,
     appearance: OverlayAppearanceConfig,
     background_alpha: u8,
+    show_empty_bars: bool,
+    stack_from_bottom: bool,
+    scaling_factor: f32,
 ) -> Result<OverlayHandle, String> {
     // Position is already relative to the monitor - pass directly
     // On Wayland: used as layer-shell margins
@@ -215,8 +218,16 @@ pub fn create_metric_overlay(
 
     // Create a factory closure that will be called inside the spawned thread
     let factory = move || {
-        MetricOverlay::new(config, &title, appearance, background_alpha)
-            .map_err(|e| format!("Failed to create {} overlay: {}", title, e))
+        MetricOverlay::new(
+            config,
+            &title,
+            appearance,
+            background_alpha,
+            show_empty_bars,
+            stack_from_bottom,
+            scaling_factor,
+        )
+        .map_err(|e| format!("Failed to create {} overlay: {}", title, e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;

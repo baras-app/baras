@@ -696,27 +696,6 @@ pub fn App() -> Element {
                             }
                         }
 
-                        // Behavior settings
-                        h4 { class: "subsection-title", "Behavior" }
-                        div { class: "settings-row",
-                            label { class: "checkbox-label",
-                                input {
-                                    r#type: "checkbox",
-                                    checked: overlay_settings().hide_during_conversations,
-                                    onchange: move |e| {
-                                        let enabled = e.checked();
-                                        spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
-                                                cfg.overlay_settings.hide_during_conversations = enabled;
-                                                let _ = api::update_config(&cfg).await;
-                                            }
-                                        });
-                                    },
-                                }
-                                span { "Hide during conversations" }
-                            }
-                        }
-
                         // General overlays
                         h4 { class: "subsection-title", "General" }
                         div { class: "overlay-grid",
@@ -807,6 +786,27 @@ pub fn App() -> Element {
                                         }
                                     }
                                 }
+                            }
+                        }
+
+                        // Behavior settings
+                        h4 { class: "subsection-title text-muted", "Behavior" }
+                        div { class: "settings-row",
+                            label { class: "checkbox-label",
+                                input {
+                                    r#type: "checkbox",
+                                    checked: overlay_settings().hide_during_conversations,
+                                    onchange: move |e| {
+                                        let enabled = e.checked();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.overlay_settings.hide_during_conversations = enabled;
+                                                let _ = api::update_config(&cfg).await;
+                                            }
+                                        });
+                                    },
+                                }
+                                span { class: "text-button-style", "Hide during conversations" }
                             }
                         }
 

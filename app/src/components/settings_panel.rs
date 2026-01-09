@@ -72,6 +72,9 @@ pub fn SettingsPanel(
                 config.overlay_settings.appearances = new_settings.appearances.clone();
                 config.overlay_settings.personal_overlay = new_settings.personal_overlay.clone();
                 config.overlay_settings.metric_opacity = new_settings.metric_opacity;
+                config.overlay_settings.metric_show_empty_bars = new_settings.metric_show_empty_bars;
+                config.overlay_settings.metric_stack_from_bottom = new_settings.metric_stack_from_bottom;
+                config.overlay_settings.metric_scaling_factor = new_settings.metric_scaling_factor;
                 config.overlay_settings.personal_opacity = new_settings.personal_opacity;
                 config.overlay_settings.raid_overlay = new_settings.raid_overlay.clone();
                 config.overlay_settings.raid_opacity = new_settings.raid_opacity;
@@ -290,22 +293,74 @@ pub fn SettingsPanel(
                             }
                         }
                     }
-                    div { class: "inline-opacity metrics-opacity",
-                        label { "Metrics Opacity" }
-                        input {
-                            r#type: "range",
-                            min: "0",
-                            max: "255",
-                            value: "{current_settings.metric_opacity}",
-                            oninput: move |e| {
-                                if let Ok(val) = e.value().parse::<u8>() {
-                                    let mut new_settings = draft_settings();
-                                    new_settings.metric_opacity = val;
-                                    update_draft(new_settings);
+                    details { class: "settings-section collapsible metrics-global",
+                        summary { class: "collapsible-summary",
+                            i { class: "fa-solid fa-sliders summary-icon" }
+                            "Global Metrics Settings"
+                        }
+                        div { class: "collapsible-content",
+                            div { class: "setting-row",
+                                label { "Background Opacity" }
+                                input {
+                                    r#type: "range",
+                                    min: "0",
+                                    max: "255",
+                                    value: "{current_settings.metric_opacity}",
+                                    oninput: move |e| {
+                                        if let Ok(val) = e.value().parse::<u8>() {
+                                            let mut new_settings = draft_settings();
+                                            new_settings.metric_opacity = val;
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                                span { class: "value", "{current_settings.metric_opacity}" }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Bar Thickness" }
+                                input {
+                                    r#type: "range",
+                                    min: "100",
+                                    max: "200",
+                                    value: "{(current_settings.metric_scaling_factor * 100.0) as i32}",
+                                    oninput: move |e| {
+                                        if let Ok(val) = e.value().parse::<i32>() {
+                                            let mut new_settings = draft_settings();
+                                            new_settings.metric_scaling_factor = val as f32 / 100.0;
+                                            update_draft(new_settings);
+                                        }
+                                    }
+                                }
+                                span { class: "value", "{(current_settings.metric_scaling_factor * 100.0) as i32}%" }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Show Empty Bars" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: current_settings.metric_show_empty_bars,
+                                    onchange: move |e: Event<FormData>| {
+                                        let mut new_settings = draft_settings();
+                                        new_settings.metric_show_empty_bars = e.checked();
+                                        update_draft(new_settings);
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Stack From Bottom" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: current_settings.metric_stack_from_bottom,
+                                    onchange: move |e: Event<FormData>| {
+                                        let mut new_settings = draft_settings();
+                                        new_settings.metric_stack_from_bottom = e.checked();
+                                        update_draft(new_settings);
+                                    }
                                 }
                             }
                         }
-                        span { class: "value", "{current_settings.metric_opacity}" }
                     }
                 }
             }

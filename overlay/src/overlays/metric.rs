@@ -69,6 +69,9 @@ pub struct MetricOverlay {
     entries: Vec<MetricEntry>,
     title: String,
     appearance: OverlayAppearanceConfig,
+    show_empty_bars: bool,
+    stack_from_bottom: bool,
+    scaling_factor: f32,
 }
 
 impl MetricOverlay {
@@ -78,6 +81,9 @@ impl MetricOverlay {
         title: &str,
         appearance: OverlayAppearanceConfig,
         background_alpha: u8,
+        show_empty_bars: bool,
+        stack_from_bottom: bool,
+        scaling_factor: f32,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_background_alpha(background_alpha);
@@ -88,6 +94,9 @@ impl MetricOverlay {
             entries: Vec::new(),
             title: title.to_string(),
             appearance,
+            show_empty_bars,
+            stack_from_bottom,
+            scaling_factor: scaling_factor.clamp(1.0, 2.0),
         })
     }
 
@@ -99,6 +108,21 @@ impl MetricOverlay {
     /// Update background alpha
     pub fn set_background_alpha(&mut self, alpha: u8) {
         self.frame.set_background_alpha(alpha);
+    }
+
+    /// Update show empty bars setting
+    pub fn set_show_empty_bars(&mut self, show: bool) {
+        self.show_empty_bars = show;
+    }
+
+    /// Update stack from bottom setting
+    pub fn set_stack_from_bottom(&mut self, stack: bool) {
+        self.stack_from_bottom = stack;
+    }
+
+    /// Update scaling factor (clamped to 1.0-2.0)
+    pub fn set_scaling_factor(&mut self, factor: f32) {
+        self.scaling_factor = factor.clamp(1.0, 2.0);
     }
 
     /// Update the metric entries
@@ -124,7 +148,8 @@ impl MetricOverlay {
         // Get scaled layout values
         let padding = self.frame.scaled(BASE_PADDING);
         let font_size = self.frame.scaled(BASE_FONT_SIZE);
-        let ideal_bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
+        let scaled_bar_height = BASE_BAR_HEIGHT * self.scaling_factor;
+        let ideal_bar_height = self.frame.scaled(scaled_bar_height);
         let bar_spacing = self.frame.scaled(BASE_BAR_SPACING);
         // Use absolute minimum bar height (not scaled) to handle extreme aspect ratios
         let min_bar_height = MIN_BAR_HEIGHT_ABSOLUTE;
@@ -137,9 +162,14 @@ impl MetricOverlay {
         let show_total = self.appearance.show_total;
         let show_per_second = self.appearance.show_per_second;
 
-        // Limit entries to max_entries
+        // Filter and limit entries to max_entries
         let max_entries = self.appearance.max_entries as usize;
-        let visible_entries: Vec<_> = self.entries.iter().take(max_entries).collect();
+        let visible_entries: Vec<_> = self
+            .entries
+            .iter()
+            .filter(|e| self.show_empty_bars || e.value != 0)
+            .take(max_entries)
+            .collect();
         let num_entries = visible_entries.len();
 
         // Calculate space reserved for header and footer (must match actual widget heights)
@@ -187,16 +217,28 @@ impl MetricOverlay {
         let mut y = padding;
 
         // Draw header using Header widget
-        if self.appearance.show_header {
-            y = Header::new(&self.title).with_color(font_color).render(
+        let header_end_y = if self.appearance.show_header {
+            Header::new(&self.title).with_color(font_color).render(
                 &mut self.frame,
                 padding,
                 y,
                 content_width,
                 font_size,
                 bar_spacing,
-            );
-        }
+            )
+        } else {
+            y
+        };
+
+        // Calculate starting Y for bars based on stack direction
+        y = if self.stack_from_bottom && num_entries > 0 {
+            // Stack from bottom: position bars at bottom of available space
+            let total_bars_height = num_entries as f32 * bar_height
+                + (num_entries - 1).max(0) as f32 * effective_spacing;
+            header_end_y + available_for_bars - total_bars_height
+        } else {
+            header_end_y
+        };
 
         // Find max value for scaling (use actual rate values, not max_value field)
         let max_val = visible_entries
@@ -215,6 +257,10 @@ impl MetricOverlay {
         } else {
             base_text_size
         };
+
+        // Calculate footer sums
+        let rate_sum: i64 = visible_entries.iter().map(|e| e.value).sum();
+        let total_sum: i64 = visible_entries.iter().map(|e| e.total_value).sum();
 
         for entry in &visible_entries {
             // Determine fill color (use entry color if custom, otherwise config bar_color)
@@ -267,10 +313,6 @@ impl MetricOverlay {
 
         // Draw footer using Footer widget
         if self.appearance.show_footer {
-            // Calculate sums based on display mode
-            let rate_sum: i64 = visible_entries.iter().map(|e| e.value).sum();
-            let total_sum: i64 = visible_entries.iter().map(|e| e.total_value).sum();
-
             let footer = if show_per_second && show_total {
                 // Both enabled: show total sum in center, rate sum on right
                 Footer::new(format_number(rate_sum))
@@ -310,9 +352,14 @@ impl Overlay for MetricOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Metric(appearance, alpha) = config {
+        if let OverlayConfigUpdate::Metric(appearance, alpha, show_empty, stack_bottom, scale) =
+            config
+        {
             self.set_appearance(appearance);
             self.set_background_alpha(alpha);
+            self.set_show_empty_bars(show_empty);
+            self.set_stack_from_bottom(stack_bottom);
+            self.set_scaling_factor(scale);
         }
     }
 

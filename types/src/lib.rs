@@ -649,6 +649,9 @@ fn default_true() -> bool {
 fn default_opacity() -> u8 {
     180
 }
+fn default_scaling_factor() -> f32 {
+    1.0
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Overlay Appearance Config
@@ -1187,6 +1190,12 @@ pub struct OverlaySettings {
     pub personal_overlay: PersonalOverlayConfig,
     #[serde(default = "default_opacity")]
     pub metric_opacity: u8,
+    #[serde(default = "default_true")]
+    pub metric_show_empty_bars: bool,
+    #[serde(default)]
+    pub metric_stack_from_bottom: bool,
+    #[serde(default = "default_scaling_factor")]
+    pub metric_scaling_factor: f32,
     #[serde(default = "default_opacity")]
     pub personal_opacity: u8,
     #[serde(default)]
@@ -1231,6 +1240,9 @@ impl Default for OverlaySettings {
             overlays_visible: true,
             personal_overlay: PersonalOverlayConfig::default(),
             metric_opacity: 180,
+            metric_show_empty_bars: true,
+            metric_stack_from_bottom: false,
+            metric_scaling_factor: 1.0,
             personal_opacity: 180,
             class_icons_enabled: false,
             default_appearances: HashMap::new(),

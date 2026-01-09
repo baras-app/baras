@@ -4512,6 +4512,12 @@ details[open] .collapsible-summary::before {
   color: var(--text-muted);
 }
 
+.text-button-style {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: clamp(0.6rem, 1.4vh, 0.9rem);
+}
+
 .text-secondary {
   color: var(--text-secondary);
 }
