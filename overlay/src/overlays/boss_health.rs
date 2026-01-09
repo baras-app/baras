@@ -32,6 +32,11 @@ const BASE_PADDING: f32 = 8.0;
 const BASE_FONT_SIZE: f32 = 13.0;
 const BASE_LABEL_FONT_SIZE: f32 = 8.5;
 
+/// Maximum number of bosses we optimize scaling for
+const MAX_SUPPORTED_BOSSES: usize = 7;
+/// Minimum compression factor to keep entries readable
+const MIN_COMPRESSION: f32 = 0.4;
+
 /// Boss health bar overlay
 pub struct BossHealthOverlay {
     frame: OverlayFrame,
@@ -85,20 +90,41 @@ impl BossHealthOverlay {
         (base_font_size * scale).max(min_font)
     }
 
-    /// Render the overlay
-    pub fn render(&mut self) {
-        let width = self.frame.width() as f32;
-
+    /// Calculate compression factor to fit entries in available height
+    fn compression_factor(&self, entry_count: usize, has_targets: bool) -> f32 {
+        let height = self.frame.height() as f32;
         let padding = self.frame.scaled(BASE_PADDING);
+
+        // Calculate height of one entry at base scale
         let bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
         let label_height = self.frame.scaled(BASE_LABEL_HEIGHT);
         let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING);
         let label_bar_gap = self.frame.scaled(BASE_LABEL_BAR_GAP);
-        let font_size = self.frame.scaled(BASE_FONT_SIZE);
         let label_font_size = self.frame.scaled(BASE_LABEL_FONT_SIZE);
 
-        let bar_color = color_from_rgba(self.config.bar_color);
-        let font_color = color_from_rgba(self.config.font_color);
+        // Per-entry height: label + gap + bar + spacing
+        let mut entry_height = label_height + label_bar_gap + bar_height + entry_spacing;
+
+        // Add target line height if targets are shown
+        if has_targets {
+            let target_font_size = label_font_size * 0.85;
+            entry_height += target_font_size + 2.0;
+        }
+
+        // Total height needed for all entries
+        let total_needed = padding * 2.0 + entry_height * entry_count as f32 - entry_spacing;
+        let available = height;
+
+        if total_needed <= available {
+            1.0
+        } else {
+            (available / total_needed).max(MIN_COMPRESSION)
+        }
+    }
+
+    /// Render the overlay
+    pub fn render(&mut self) {
+        let width = self.frame.width() as f32;
 
         // Begin frame (clear, background, border)
         self.frame.begin_frame();
@@ -109,6 +135,7 @@ impl BossHealthOverlay {
             .entries
             .iter()
             .filter(|e| e.percent() > 0.0)
+            .take(MAX_SUPPORTED_BOSSES)
             .cloned()
             .collect();
 
@@ -118,8 +145,27 @@ impl BossHealthOverlay {
             return;
         }
 
+        // Check if any entry has a target (for compression calculation)
+        let has_targets =
+            self.config.show_target && entries.iter().any(|e| e.target_name.is_some());
+
+        // Calculate compression factor based on entry count
+        let compression = self.compression_factor(entries.len(), has_targets);
+
+        // Apply compression to entry-specific dimensions
+        let padding = self.frame.scaled(BASE_PADDING);
+        let bar_height = self.frame.scaled(BASE_BAR_HEIGHT) * compression;
+        let label_height = self.frame.scaled(BASE_LABEL_HEIGHT) * compression;
+        let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING) * compression;
+        let label_bar_gap = self.frame.scaled(BASE_LABEL_BAR_GAP) * compression;
+        let font_size = self.frame.scaled(BASE_FONT_SIZE) * compression;
+        let label_font_size = self.frame.scaled(BASE_LABEL_FONT_SIZE) * compression;
+
+        let bar_color = color_from_rgba(self.config.bar_color);
+        let font_color = color_from_rgba(self.config.font_color);
+
         let content_width = width - padding * 2.0;
-        let bar_radius = 4.0 * self.frame.scale_factor();
+        let bar_radius = 4.0 * self.frame.scale_factor() * compression;
 
         let mut y = padding;
 

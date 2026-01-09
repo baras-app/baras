@@ -1198,72 +1198,197 @@ mod examples {
         }
     }
 
-    /// Run the boss health overlay with sample bosses and target names
+    /// Run boss health overlays: one with 1 boss, one with 7 bosses (Dread Council)
+    /// Demonstrates entry compression/scaling for multi-boss encounters
     pub fn run_boss_health_overlay() {
-        let config = OverlayConfig {
-            x: 300,
-            y: 200,
-            width: 280,
-            height: 200,
-            namespace: "baras-boss-health".to_string(),
-            click_through: false,
-            target_monitor_id: None,
-        };
-
         let boss_config = BossHealthConfig {
             show_target: true,
             ..Default::default()
         };
 
-        let mut overlay = match BossHealthOverlay::new(config, boss_config, 180) {
+        // Left overlay: Single boss
+        let config_single = OverlayConfig {
+            x: 50,
+            y: 200,
+            width: 280,
+            height: 200,
+            namespace: "baras-boss-health-1".to_string(),
+            click_through: false,
+            target_monitor_id: None,
+        };
+
+        // Middle overlay: 3 bosses
+        let config_triple = OverlayConfig {
+            x: 350,
+            y: 200,
+            width: 280,
+            height: 200,
+            namespace: "baras-boss-health-3".to_string(),
+            click_through: false,
+            target_monitor_id: None,
+        };
+
+        // Right overlay: 7 bosses (Dread Council)
+        let config_multi = OverlayConfig {
+            x: 650,
+            y: 200,
+            width: 280,
+            height: 200,
+            namespace: "baras-boss-health-7".to_string(),
+            click_through: false,
+            target_monitor_id: None,
+        };
+
+        let mut overlay_single = match BossHealthOverlay::new(config_single, boss_config.clone(), 180) {
             Ok(o) => o,
             Err(e) => {
-                eprintln!("Failed to create boss health overlay: {}", e);
+                eprintln!("Failed to create single boss overlay: {}", e);
                 return;
             }
         };
 
-        // Sample boss data with targets
-        let entries = vec![
+        let mut overlay_triple = match BossHealthOverlay::new(config_triple, boss_config.clone(), 180) {
+            Ok(o) => o,
+            Err(e) => {
+                eprintln!("Failed to create triple boss overlay: {}", e);
+                return;
+            }
+        };
+
+        let mut overlay_multi = match BossHealthOverlay::new(config_multi, boss_config, 180) {
+            Ok(o) => o,
+            Err(e) => {
+                eprintln!("Failed to create multi boss overlay: {}", e);
+                return;
+            }
+        };
+
+        // Single boss data
+        let single_entries = vec![OverlayHealthEntry {
+            name: "Dread Master Styrak".to_string(),
+            current: 8_500_000,
+            max: 12_000_000,
+            first_seen_at: None,
+            target_name: Some("Tanky McTank".to_string()),
+        }];
+
+        // 3 bosses: Typical multi-boss phase (e.g., Operator IX cores, Terror tentacles)
+        let triple_entries = vec![
             OverlayHealthEntry {
-                name: "Dread Master Styrak".to_string(),
-                current: 8_500_000,
-                max: 12_000_000,
+                name: "Operator IX".to_string(),
+                current: 4_200_000,
+                max: 6_000_000,
                 first_seen_at: None,
                 target_name: Some("Tanky McTank".to_string()),
             },
             OverlayHealthEntry {
-                name: "Kell Dragon".to_string(),
-                current: 2_100_000,
+                name: "Master Control".to_string(),
+                current: 2_800_000,
                 max: 4_000_000,
                 first_seen_at: None,
                 target_name: Some("PewPewLazors".to_string()),
             },
+            OverlayHealthEntry {
+                name: "Regulator".to_string(),
+                current: 1_500_000,
+                max: 2_000_000,
+                first_seen_at: None,
+                target_name: None,
+            },
         ];
 
-        overlay.set_data(BossHealthData { entries });
+        // 7 bosses: Dread Council (Brontes, Bestia, Calphayus, Raptus, Styrak, Tyrans, and a bonus)
+        let multi_entries = vec![
+            OverlayHealthEntry {
+                name: "Dread Master Brontes".to_string(),
+                current: 6_200_000,
+                max: 8_000_000,
+                first_seen_at: None,
+                target_name: Some("Shield Wall".to_string()),
+            },
+            OverlayHealthEntry {
+                name: "Dread Master Bestia".to_string(),
+                current: 5_800_000,
+                max: 8_000_000,
+                first_seen_at: None,
+                target_name: Some("Tanky McTank".to_string()),
+            },
+            OverlayHealthEntry {
+                name: "Dread Master Calphayus".to_string(),
+                current: 7_100_000,
+                max: 8_000_000,
+                first_seen_at: None,
+                target_name: None,
+            },
+            OverlayHealthEntry {
+                name: "Dread Master Raptus".to_string(),
+                current: 4_500_000,
+                max: 8_000_000,
+                first_seen_at: None,
+                target_name: Some("PewPewLazors".to_string()),
+            },
+            OverlayHealthEntry {
+                name: "Dread Master Styrak".to_string(),
+                current: 3_200_000,
+                max: 8_000_000,
+                first_seen_at: None,
+                target_name: Some("StabbySith".to_string()),
+            },
+            OverlayHealthEntry {
+                name: "Dread Master Tyrans".to_string(),
+                current: 6_800_000,
+                max: 8_000_000,
+                first_seen_at: None,
+                target_name: None,
+            },
+            OverlayHealthEntry {
+                name: "Dread Guard".to_string(),
+                current: 1_500_000,
+                max: 2_000_000,
+                first_seen_at: None,
+                target_name: Some("ArsenalMerc".to_string()),
+            },
+        ];
+
+        overlay_single.set_data(BossHealthData {
+            entries: single_entries,
+        });
+        overlay_triple.set_data(BossHealthData {
+            entries: triple_entries,
+        });
+        overlay_multi.set_data(BossHealthData {
+            entries: multi_entries,
+        });
 
         let mut last_frame = Instant::now();
         let frame_duration = Duration::from_millis(100);
 
         println!("┌─────────────────────────────────────────────────────────────┐");
-        println!("│           Boss Health Overlay - Target Display              │");
+        println!("│     Boss Health Overlay - Scaling Demo (1 vs 3 vs 7)        │");
         println!("├─────────────────────────────────────────────────────────────┤");
-        println!("│  Shows boss HP bars with current target underneath          │");
-        println!("│  Target name displayed with ⌖ symbol, right-aligned         │");
+        println!("│  LEFT:   1 boss  (no compression)                           │");
+        println!("│  MIDDLE: 3 bosses (mild compression)                        │");
+        println!("│  RIGHT:  7 bosses (Dread Council, max compression)          │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  Shows HP bars with ⌖ target name (when available)          │");
         println!("│  Drag anywhere to move, corner to resize                    │");
         println!("├─────────────────────────────────────────────────────────────┤");
         println!("│  Press Ctrl+C to exit                                       │");
         println!("└─────────────────────────────────────────────────────────────┘");
 
         loop {
-            if !overlay.poll_events() {
+            if !overlay_single.poll_events()
+                || !overlay_triple.poll_events()
+                || !overlay_multi.poll_events()
+            {
                 break;
             }
 
             let now = Instant::now();
             if now.duration_since(last_frame) >= frame_duration {
-                overlay.render();
+                overlay_single.render();
+                overlay_triple.render();
+                overlay_multi.render();
                 last_frame = now;
             }
 
