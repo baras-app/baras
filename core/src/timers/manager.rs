@@ -148,17 +148,9 @@ impl TimerManager {
         self.boss_npc_class_ids.clear();
     }
 
-    /// Format alert text with elapsed time prefix: "[1:23] Alert Text"
-    fn format_alert_text(&self, text: &str, timestamp: NaiveDateTime) -> String {
-        if let Some(start) = self.combat_start_time {
-            let elapsed = timestamp.signed_duration_since(start);
-            let total_secs = elapsed.num_seconds().max(0);
-            let mins = total_secs / 60;
-            let secs = total_secs % 60;
-            format!("[{}:{:02}] {}", mins, secs, text)
-        } else {
-            text.to_string()
-        }
+    /// Format alert text for display
+    fn format_alert_text(&self, text: &str, _timestamp: NaiveDateTime) -> String {
+        text.to_string()
     }
 
     /// Load timer definitions
