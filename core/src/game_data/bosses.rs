@@ -72,9 +72,10 @@ pub mod difficulty_id {
     pub const STORY_16: i64 = 836045448953653;
     pub const VETERAN_16: i64 = 836045448953654;
     pub const MASTER_8: i64 = 836045448953655;
-    pub const MASTER_16: i64 = 836045448953656; // Inferred from pattern
+    pub const MASTER_16: i64 = 836045448953656;
+    pub const STORY_4: i64 = 836045448953658;
     pub const VETERAN_4: i64 = 836045448953657;
-    pub const MASTER_4: i64 = 836045448953658; // Inferred from pattern
+    pub const MASTER_4: i64 = 836045448953659;
 }
 
 /// Difficulty mode
