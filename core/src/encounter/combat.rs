@@ -508,12 +508,24 @@ impl CombatEncounter {
     }
 
     pub fn track_event_entities(&mut self, event: &CombatEvent) {
-        if event.effect.effect_id == effect_id::TARGETSET
-            || event.effect.effect_id == effect_id::TARGETCLEARED
-            || event.effect.type_id == effect_type_id::REMOVEEFFECT
-        {
+        if event.effect.type_id == effect_type_id::REMOVEEFFECT {
             return;
         }
+
+        // For TARGETSET/TARGETCLEARED, only track NPC/Companion sources (not players)
+        // This ensures bosses are registered before we try to set their target
+        if event.effect.effect_id == effect_id::TARGETSET
+            || event.effect.effect_id == effect_id::TARGETCLEARED
+        {
+            if matches!(
+                event.source_entity.entity_type,
+                EntityType::Npc | EntityType::Companion
+            ) {
+                self.try_track_entity(&event.source_entity, event.timestamp);
+            }
+            return;
+        }
+
         self.try_track_entity(&event.source_entity, event.timestamp);
         self.try_track_entity(&event.target_entity, event.timestamp);
     }

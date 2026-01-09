@@ -480,7 +480,9 @@ impl EventProcessor {
                     timestamp: event.timestamp,
                 });
                 if let Some(enc) = cache.current_encounter_mut() {
-                    enc.set_npc_target(event.source_entity.log_id, event.source_entity.log_id);
+                    // Ensure NPC is tracked before setting target (Phase 3 runs after Phase 1)
+                    enc.track_event_entities(event);
+                    enc.set_npc_target(event.source_entity.log_id, event.target_entity.log_id);
                 }
             }
             effect_id::TARGETCLEARED => {
@@ -489,6 +491,8 @@ impl EventProcessor {
                     timestamp: event.timestamp,
                 });
                 if let Some(enc) = cache.current_encounter_mut() {
+                    // Ensure NPC is tracked before clearing target
+                    enc.track_event_entities(event);
                     enc.clear_npc_target(event.source_entity.log_id);
                 }
             }
