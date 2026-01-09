@@ -957,7 +957,7 @@ pub struct BossHealthConfig {
     pub font_color: Color,
     #[serde(default = "default_true")]
     pub show_percent: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub show_target: bool,
 }
 
@@ -971,7 +971,7 @@ impl Default for BossHealthConfig {
             bar_color: overlay_colors::BOSS_BAR,
             font_color: overlay_colors::WHITE,
             show_percent: true,
-            show_target: false,
+            show_target: true,
         }
     }
 }
