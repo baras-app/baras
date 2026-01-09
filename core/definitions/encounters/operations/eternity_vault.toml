@@ -108,14 +108,14 @@ color = [100, 200, 255, 255]
 
 [[boss.timer]]
 id = "xrr3_phase_75"
-name = "75% - Missile Salvo Active"
+name = "75%"
 is_alert = true
 trigger = { type = "boss_hp_below", hp_percent = 75.0 }
 color = [100, 200, 255, 255]
 
 [[boss.timer]]
 id = "xrr3_phase_40"
-name = "40% - Grounfire Active"
+name = "40% - Groundfire Active"
 is_alert = true
 trigger = { type = "boss_hp_below", hp_percent = 40.0 }
 color = [255, 150, 100, 255]
