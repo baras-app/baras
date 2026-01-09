@@ -567,6 +567,14 @@ impl EffectTracker {
                 // Refresh if allowed
                 if def.can_be_refreshed {
                     existing.refresh(timestamp, duration);
+
+                    // Re-register target in raid registry if they were removed
+                    if existing.is_from_local_player {
+                        self.new_targets.push(NewTargetInfo {
+                            entity_id: effect_target_id,
+                            name: effect_target_name,
+                        });
+                    }
                 }
             } else {
                 // Create new effect

@@ -771,7 +771,7 @@ mod examples {
             ("Lightning Storm", 20.0, [100, 150, 255, 255]), // Blue
             ("Adds Spawn", 45.0, [180, 100, 220, 255]), // Purple
             ("Enrage Check", 60.0, [255, 180, 50, 255]), // Orange
-            ("Tank Swap", 15.0, [100, 220, 100, 255]), // Green
+            ("A VERY LONG Tank Swap", 15.0, [100, 220, 100, 255]), // Green
         ];
 
         mechanics
@@ -1310,7 +1310,6 @@ mod examples {
             ("Interrupt!", [255, 100, 255, 255]),          // Purple
         ];
 
-        let start = Instant::now();
         let mut last_frame = Instant::now();
         let mut last_alert = Instant::now();
         let frame_duration = Duration::from_millis(100); // 10 FPS for smooth fading
@@ -1338,11 +1337,9 @@ mod examples {
             // Add a new alert every 2 seconds
             if now.duration_since(last_alert) >= alert_interval {
                 let (text, color) = sample_alerts[alert_index % sample_alerts.len()];
-                let elapsed = start.elapsed().as_secs();
-                let alert_text = format!("[{:02}:{:02}] {}", elapsed / 60, elapsed % 60, text);
 
                 let entry = AlertEntry::new(
-                    alert_text,
+                    text.to_string(),
                     color,
                     alerts_config.default_duration,
                 );
