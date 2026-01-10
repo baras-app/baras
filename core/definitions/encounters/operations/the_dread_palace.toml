@@ -22,6 +22,47 @@ ids = [3273941900591104]
 is_boss = true
 is_kill_target = true
 
+
+[[boss.phases]]
+id = "bestia_monsters"
+name = "Monsters"
+start_trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "bestisa_main"
+name = "Bestia"
+start_trigger = { type = "boss_hp_below", hp_percent = 99.9, selector = [
+  "Dread Master Bestia",
+] }
+
+[[boss.phases]]
+id = "bestia_plus_monsters"
+name = "Bestia and Monsters"
+start_trigger = { type = "ability_cast", abilities = [
+  3310672460906496,
+], source = { selector = [
+  "Dread Master Bestia",
+] } }
+
+[[boss.timer]]
+id = "bestia_tentacle_cs"
+name = "First Tentacle"
+display_text = "Tentacle Spawn"
+trigger = { type = "combat_start" }
+duration_secs = 15.0
+color = [32, 72, 219, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "bestia_dread_monster"
+name = "Dread Monster Spawn"
+display_text = "Dread Monster Spawn"
+trigger = { type = "timer_expires", timer_id = "bestia_tentacle_cs" }
+duration_secs = 15.0
+color = [32, 72, 219, 255]
+difficulties = ["veteran", "master"]
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Dread Master Tyrans
 # ═══════════════════════════════════════════════════════════════════════════════
