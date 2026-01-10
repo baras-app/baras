@@ -1,14 +1,14 @@
 {
   "version": "2026.1.901",
-  "notes": "-hotfix timers for non-english users",
-  "pub_date": "2026-01-09T23:26:14Z",
+  "notes": "- hotfix non-english locale timer support",
+  "pub_date": "2026-01-10T00:46:27Z",
   "platforms": {
     "linux-x86_64": {
-      "signature": "Not Found",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTY0pJZnZRK3YyNHBaZTdZOWVtRTVvenZ6TCtVcXZnRGVRMFFSOXIzVmNoY2FhU0dwWmtBZzJUWWRxNzNPcU9kL0FiZnVZUUxsNXdTMEp0UEQ1dDR4d2VlcXVVMWptQUF3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4MDA1NDA2CWZpbGU6QkFSQVNfMjAyNi4xLjkwMV9hbWQ2NC5BcHBJbWFnZQpIMnc3RFpHYVJ4TEowblAwYkFvZmFQS0FNcXVxcU5XOFpOWjBCdFg3MTBXSXpHSys0eUpLV2RNVmR2NlpFeXBqbk9ZYzZPVFd3dU4rMEUyWUZqZEdDUT09Cg==",
       "url": "https://github.com/baras-app/baras/releases/download/v2026.1.901/BARAS_2026.1.901_amd64.AppImage"
     },
     "windows-x86_64": {
-      "signature": "Not Found",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTY0pJZnZRK3YyNHREWmduYU5lS2o4aXJJbjlRaWFRbU1haUJrUFNhbTVGVlFHeS82aE92bXhHRkFMVmRWTGQyY21YNW4zVk52ekpMWVU0RG1qMG9XVW1JSkJFVFdmdHdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzY4MDA1OTY0CWZpbGU6QkFSQVNfMjAyNi4xLjkwMV94NjQtc2V0dXAuZXhlCk1HMEl2QUc3WDA1Qk5lUFRnVnZXVzBZRm5WMmNDRHFZNDVJWG85WkJiNzRDeXFkbU5JUStDT1FkODU5Q2tFYWE2SElmbjlERGl4Y1QvaXRQbTNpMEN3PT0K",
       "url": "https://github.com/baras-app/baras/releases/download/v2026.1.901/BARAS_2026.1.901_x64-setup.exe"
     }
   }
