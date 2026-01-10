@@ -698,7 +698,6 @@ color = [100, 210, 237, 255]
 
 [[boss.timer]]
 id = "brontes_clone_1st"
-# orbs_id = "8d2926ec-52aa-4964-8248-58e76f263816"
 name = "Clone 1st"
 display_text = "Kephess Clone"
 trigger = { type = "boss_hp_below", hp_percent = 96.0, selector = [
@@ -711,7 +710,6 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "brontes_clone"
-# orbs_id = "80468d76-58be-4049-9706-d09f0cfec56f"
 name = "Clone Spawn"
 trigger = { type = "ability_cast", abilities = [3309152042483712] }
 cancel_trigger = { type = "timer_expires", timer_id = "brontes_cant_clone" }
@@ -761,7 +759,6 @@ phases = ["hands"]
 
 [[boss.timer]]
 id = "brontes_sphere_aggro"
-# orbs_id = "579f6248-7b3c-47ff-8571-d8f6350a6b08"
 name = "Sphere Aggro"
 trigger = { type = "target_set", selector = [
   "Energy Sphere",
@@ -773,7 +770,6 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "brontes_fingers_knock_1st"
-# orbs_id = "db354336-4ce7-4917-9bf4-2dd5cef510fa"
 name = "Fingers Knockback 1st"
 trigger = { type = "ability_cast", abilities = [3303572879966208] }
 duration_secs = 12.0
@@ -785,7 +781,6 @@ id = "brontes_fingers_knock"
 trigger = { type = "any_of", conditions = [
   { type = "timer_expires", timer_id = "brontes_fingers_knock_1st" },
 ] }
-# orbs_id = "7d3d2462-2f57-4967-9692-91034ce06598"
 name = "Fingers Knockback"
 duration_secs = 30.0
 color = [219, 33, 32, 255]
