@@ -8,6 +8,7 @@
 //! - Providing clean historical mode support (phases work without Timer/Effect managers)
 //! - Centralizing all combat state in one place
 
+use arrow::array::ArrowNativeTypeOp;
 use chrono::NaiveDateTime;
 use hashbrown::{HashMap, HashSet};
 
@@ -512,6 +513,7 @@ impl CombatEncounter {
             return;
         }
 
+
         // For TARGETSET/TARGETCLEARED, only track NPC/Companion sources (not players)
         // This ensures bosses are registered before we try to set their target
         if event.effect.effect_id == effect_id::TARGETSET
@@ -532,6 +534,11 @@ impl CombatEncounter {
 
     #[inline]
     fn try_track_entity(&mut self, entity: &Entity, timestamp: NaiveDateTime) {
+        // Dont register zero health entities
+        if entity.health.0.is_zero() {
+            return;
+        }
+
         match entity.entity_type {
             EntityType::Player => {
                 self.players
