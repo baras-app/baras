@@ -45,6 +45,9 @@ pub struct ActiveEffect {
     /// Entity ID of who applied this effect
     pub source_entity_id: i64,
 
+    /// Name of the source entity (from event)
+    pub source_name: IStr,
+
     /// Entity ID of who has this effect
     pub target_entity_id: i64,
 
@@ -127,6 +130,7 @@ impl ActiveEffect {
         name: String,
         display_text: String,
         source_entity_id: i64,
+        source_name: IStr,
         target_entity_id: i64,
         target_name: IStr,
         is_from_local_player: bool,
@@ -159,6 +163,7 @@ impl ActiveEffect {
             name,
             display_text,
             source_entity_id,
+            source_name,
             target_entity_id,
             target_name,
             is_from_local_player,
