@@ -123,7 +123,7 @@ id = "holding_pens"
 name = "Lights Out"
 
 [[boss.entities]]
-name = "Pursuit Droid"
+name = "Czerka Pursuit Droid"
 ids = [4389417921806336]
 is_boss = true
 triggers_encounter = true
@@ -144,6 +144,11 @@ ids = [4397956316790784]
 is_boss = false
 is_kill_target = false
 triggers_encounter = true
+
+[[boss.entities]]
+name = "Warden Enforcer"
+ids = [4338552624119808]
+is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: trandos (Pack Leader)
