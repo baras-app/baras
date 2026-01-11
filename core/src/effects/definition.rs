@@ -59,8 +59,10 @@ impl EffectCategory {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DisplayTarget {
-    /// Show on raid frames overlay (HOTs on group members)
+    /// No overlay specified - effect won't display unless show_on_raid_frames is set
     #[default]
+    None,
+    /// Show on raid frames overlay (HOTs on group members)
     RaidFrames,
     /// Show on personal buffs bar (procs/buffs on self)
     PersonalBuffs,
@@ -129,10 +131,6 @@ pub struct EffectDefinition {
     /// Show this effect on raid frames (HOTs/shields typically true, DOTs false)
     #[serde(default)]
     pub show_on_raid_frames: bool,
-
-    /// Show this effect on the effects overlay (countdown display)
-    #[serde(default)]
-    pub show_on_effects_overlay: bool,
 
     /// Only show when remaining time is at or below this threshold (0 = always show)
     #[serde(default)]
@@ -207,7 +205,10 @@ impl EffectDefinition {
     /// Check if an ability cast matches this definition's trigger
     pub fn matches_ability_cast(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
         if let Trigger::AbilityCast { abilities, .. } = &self.trigger {
-            abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+            abilities.is_empty()
+                || abilities
+                    .iter()
+                    .any(|s| s.matches(ability_id, ability_name))
         } else {
             false
         }

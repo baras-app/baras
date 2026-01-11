@@ -23,11 +23,21 @@
 # duration_secs = 21.0                  # None = indefinite
 # fixed_duration = false                # Ignore game EffectRemoved events
 #
+# # Display Target - which overlay to show this effect on
+# display_target = "raid_frames"        # Options:
+#   - "raid_frames"       (default) HOTs on group members
+#   - "personal_buffs"    Procs/buffs on self
+#   - "personal_debuffs"  Debuffs on self (boss mechanics)
+#   - "cooldowns"         Ability cooldowns
+#   - "dot_tracker"       DOTs on enemies
+#   - "effects_overlay"   Legacy countdown bars
+#
 # # Display
 # category = "hot"                      # hot | shield | buff | debuff | cleansable | proc | mechanic
 # color = [80, 200, 80, 255]            # Override RGBA (None = use category)
-# show_on_raid_frames = false
-# show_on_effects_overlay = false
+# icon_ability_id = 123456              # Optional ability ID for icon lookup
+# show_on_raid_frames = false           # Legacy: also show on raid frames
+# show_on_effects_overlay = false       # Legacy: also show on effects overlay
 # show_at_secs = 0                      # Only show when remaining <= N
 #
 # # Behavior
@@ -39,11 +49,29 @@
 # [[effect]]
 # id = "recklessness_cd"
 # name = "Recklessness"
+# display_target = "cooldowns"
 # trigger = { type = "ability_cast", abilities = [123456], source = "local_player", target = "any" }
 # duration_secs = 90.0                  # Cooldown duration
 # fixed_duration = true                 # Ignore EffectRemoved - expire only via timer
 # category = "proc"
-# show_on_raid_frames = true
+#
+# ─── Personal Buff Tracking (procs on self) ────────────────────────────────
+# [[effect]]
+# id = "power_surge_proc"
+# name = "power surge"
+# display_target = "personal_buffs"
+# trigger = { type = "effect_applied", effects = [123456], source = "local_player", target = "local_player" }
+# duration_secs = 15.0
+# category = "proc"
+#
+# ─── DOT Tracking (debuffs on enemies) ─────────────────────────────────────
+# [[effect]]
+# id = "my_dot"
+# name = "My DOT"
+# display_target = "dot_tracker"
+# trigger = { type = "effect_applied", effects = [123456], source = "local_player", target = "any_npc" }
+# duration_secs = 18.0
+# category = "debuff"
 #
 # ─── Audio Settings ────────────────────────────────────────────────────────
 # [effect.audio]
@@ -52,3 +80,27 @@
 # offset = 0                            # Seconds before expiration
 # countdown_start = 0                   # 0 = disabled
 # countdown_voice = "Amy"
+#
+[[effect]]
+id = "supercharge"
+name = "Supercharge"
+display_target = "personal_buffs"
+trigger = { type = "effect_applied", effects = [
+  3408198283296768,
+], source = "local_player", target = "local_player" }
+duration_secs = 60.0
+is_refreshed_on_modify = true
+icon_ability_id = 3408198283296768
+category = "proc"
+
+[[effect]]
+id = "master_surge_cd"
+name = "Master Surge"
+display_target = "cooldowns"
+trigger = { type = "effect_removed", effects = [
+  4626719159877632,
+], source = "local_player", target = "local_player" }
+duration_secs = 20.0
+fixed_duration = true
+icon_ability_id = 4626719159877632
+category = "proc"

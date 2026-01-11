@@ -1,4 +1,4 @@
-# Damage Over Time effects - tracked but NOT shown on raid frames
+# Damage Over Time effects - tracked on the DOT Tracker overlay
 # Effect IDs sourced from ORBS
 # These are debuffs applied to enemies, shown in a separate DOT overlay
 
@@ -6,218 +6,274 @@
 id = "affliction"
 name = "Affliction"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [808192586022912], source = "any", target = "any" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  808192586022912,
+], source = "any", target = "any" }
 refresh_abilities = [808192586022912]
 duration_secs = 18.0
 color = [62, 173, 28, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "weaken_mind"
 name = "Weaken Mind"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [812861215473664], source = "any", target = "any" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  812861215473664,
+], source = "any", target = "any" }
 refresh_abilities = [812861215473664]
 duration_secs = 18.0
 color = [153, 143, 121, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "creeping_terror"
 name = "Creeping Terror"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [808424514256896], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  808424514256896,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [808424514256896]
 duration_secs = 18.0
 color = [145, 66, 9, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "sever_force"
 name = "Sever Force"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [813226287693824], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  813226287693824,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [813226287693824]
 duration_secs = 18.0
 color = [64, 145, 76, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "force_breach"
 name = "Force Breach"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [964675424485376], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  964675424485376,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [964675424485376]
 duration_secs = 18.0
 color = [184, 79, 15, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "corrosive_dart"
 name = "Corrosive Dart"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [3465720780292096], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  3465720780292096,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [3465720780292096]
 duration_secs = 24.0
 color = [145, 64, 98, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "vital_shot"
 name = "Vital Shot"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [2115340112756736], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  2115340112756736,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [2115340112756736]
 duration_secs = 24.0
 color = [64, 64, 145, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "corrosive_grenade_op"
 name = "Corrosive Grenade (Op)"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [1703989619982930], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  1703989619982930,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [1703989619982930]
 duration_secs = 24.0
 color = [32, 173, 7, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "corrosive_grenade_snipe"
 name = "Corrosive Grenade (Sniper)"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [1703989619982932], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  1703989619982932,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [1703989619982932]
 duration_secs = 24.0
 color = [32, 173, 7, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "shrap_bomb"
 name = "Shrap Bomb"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [807698664783872], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  807698664783872,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [807698664783872]
 duration_secs = 18.0
 color = [148, 114, 34, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "scorch"
 name = "Scorch"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [3384812186370048], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  3384812186370048,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [3384812186370048]
 duration_secs = 30.0
 color = [173, 46, 3, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "plasmatize"
 name = "Plasmatize"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [3391666954174464], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  3391666954174464,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [3391666954174464]
 duration_secs = 30.0
 color = [173, 3, 171, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "incendiary_missile"
 name = "Incendiary Missile"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [2027022700249344], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  2027022700249344,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [2027022700249088]
 duration_secs = 15.0
 color = [204, 145, 37, 255]
-show_on_raid_frames = false
 
 [[effect]]
-id = "serrated_shot"
-name = "Serrated Shot"
+id = "serrated_bolt"
+name = "serrated bolt"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [3394707791020290], source = "local_player", target = "any_npc" }
-refresh_abilities = [3394707791020032]
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  3418278571540736,
+], source = "local_player", target = "any_npc" }
+refresh_abilities = [3418278571540480]
 duration_secs = 15.0
 color = [144, 80, 204, 255]
-show_on_raid_frames = false
+
+[[effect]]
+id = "marked"
+name = "Marked"
+category = "debuff"
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  3418278571540762,
+], source = "local_player", target = "any_npc" }
+refresh_abilities = [3418278571540480]
+duration_secs = 45.0
+color = [144, 80, 204, 255]
 
 [[effect]]
 id = "incendiary_round"
 name = "Incendiary Round"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [3391477975613734], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  3391477975613734,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [3391477975613440]
 duration_secs = 15.0
 color = [173, 72, 14, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "shatter"
 name = "Shatter"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [1169953386397696], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  1169953386397696,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [1169953386397696]
 duration_secs = 12.0
 color = [194, 116, 8, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "plasma_brand"
 name = "Plasma Brand"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [3429368177098752], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  3429368177098752,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [3429368177098752]
 duration_secs = 12.0
 color = [8, 157, 194, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "eviscerate"
 name = "Eviscerate"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [3426078232150278], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  3426078232150278,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [2210507998101504]
 duration_secs = 6.0
 color = [194, 8, 29, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "burning_purpose"
 name = "Burning Purpose"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [3429814853697796], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  3429814853697796,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [2210512293068800]
 duration_secs = 6.0
 color = [194, 70, 8, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "draining_scream"
 name = "Draining Scream"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [807857578574081], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  807857578574081,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [998270658674688]
 duration_secs = 6.0
 color = [153, 27, 2, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "burning_blade"
 name = "Burning Blade"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [1280638988583168], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  1280638988583168,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [1191698805817344]
 duration_secs = 6.0
 color = [196, 148, 14, 255]
-show_on_raid_frames = false
 
 [[effect]]
 id = "discharge"
 name = "Discharge"
 category = "debuff"
-trigger = { type = "effect_applied", effects = [808235535695872], source = "local_player", target = "any_npc" }
+display_target = "dot_tracker"
+trigger = { type = "effect_applied", effects = [
+  808235535695872,
+], source = "local_player", target = "any_npc" }
 refresh_abilities = [808235535695872]
 duration_secs = 18.0
 color = [126, 14, 196, 255]
-show_on_raid_frames = false

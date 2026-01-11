@@ -153,7 +153,6 @@ pub async fn get_overlay_status(
     let raid_enabled = config.overlay_settings.is_enabled("raid");
     let boss_health_enabled = config.overlay_settings.is_enabled("boss_health");
     let timers_enabled = config.overlay_settings.is_enabled("timers");
-    let effects_enabled = config.overlay_settings.is_enabled("effects");
     let challenges_enabled = config.overlay_settings.is_enabled("challenges");
     let alerts_enabled = config.overlay_settings.is_enabled("alerts");
     let personal_buffs_enabled = config.overlay_settings.is_enabled("personal_buffs");

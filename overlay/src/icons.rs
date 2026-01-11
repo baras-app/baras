@@ -28,8 +28,8 @@ pub struct IconCache {
     ability_to_icon: HashMap<u64, String>,
     /// Cached decoded icons (icon_name -> IconData)
     cache: Mutex<HashMap<String, IconData>>,
-    /// Path to the icons ZIP file
-    zip_path: String,
+    /// Paths to icons ZIP files (checked in order)
+    zip_paths: Vec<String>,
     /// Maximum cache size
     max_cache_size: usize,
 }
@@ -39,15 +39,28 @@ impl IconCache {
     ///
     /// # Arguments
     /// * `csv_path` - Path to icons.csv (ability_id,en,icon)
-    /// * `zip_path` - Path to icons.zip
+    /// * `zip_path` - Path to icons.zip (will also check icons2.zip in same dir)
     /// * `max_cache_size` - Maximum number of icons to cache
     pub fn new(csv_path: &Path, zip_path: &Path, max_cache_size: usize) -> Result<Self, String> {
         let ability_to_icon = load_icon_csv(csv_path)?;
+        eprintln!("[ICONS] Loaded {} ability->icon mappings from CSV", ability_to_icon.len());
+
+        // Build list of ZIP paths to check
+        let mut zip_paths = vec![zip_path.to_string_lossy().to_string()];
+
+        // Also check icons2.zip in the same directory
+        if let Some(parent) = zip_path.parent() {
+            let zip2_path = parent.join("icons2.zip");
+            if zip2_path.exists() {
+                eprintln!("[ICONS] Found secondary ZIP: {:?}", zip2_path);
+                zip_paths.push(zip2_path.to_string_lossy().to_string());
+            }
+        }
 
         Ok(Self {
             ability_to_icon,
             cache: Mutex::new(HashMap::new()),
-            zip_path: zip_path.to_string_lossy().to_string(),
+            zip_paths,
             max_cache_size,
         })
     }
@@ -59,8 +72,20 @@ impl IconCache {
 
     /// Get icon data for an ability ID (loads from ZIP if not cached)
     pub fn get_icon(&self, ability_id: u64) -> Option<IconData> {
-        let icon_name = self.ability_to_icon.get(&ability_id)?;
-        self.get_icon_by_name(icon_name)
+        let icon_name = match self.ability_to_icon.get(&ability_id) {
+            Some(name) => name,
+            None => {
+                eprintln!("[ICONS] No CSV mapping for ability_id={}", ability_id);
+                return None;
+            }
+        };
+        match self.get_icon_by_name(icon_name) {
+            Some(data) => Some(data),
+            None => {
+                eprintln!("[ICONS] Failed to load '{}' for ability_id={}", icon_name, ability_id);
+                None
+            }
+        }
     }
 
     /// Get icon data by name (loads from ZIP if not cached)
@@ -91,22 +116,27 @@ impl IconCache {
         Some(data)
     }
 
-    /// Load icon from ZIP file
+    /// Load icon from ZIP files (tries each in order)
     fn load_from_zip(&self, icon_name: &str) -> Option<IconData> {
-        let file = File::open(&self.zip_path).ok()?;
-        let reader = BufReader::new(file);
-        let mut archive = ZipArchive::new(reader).ok()?;
-
-        // Try with .png extension
         let filename = format!("{}.png", icon_name);
-        let mut zip_file = archive.by_name(&filename).ok()?;
 
-        // Read PNG data
-        let mut png_data = Vec::new();
-        zip_file.read_to_end(&mut png_data).ok()?;
+        for zip_path in &self.zip_paths {
+            if let Ok(file) = File::open(zip_path) {
+                let reader = BufReader::new(file);
+                if let Ok(mut archive) = ZipArchive::new(reader) {
+                    if let Ok(mut zip_file) = archive.by_name(&filename) {
+                        let mut png_data = Vec::new();
+                        if zip_file.read_to_end(&mut png_data).is_ok() {
+                            if let Some(data) = decode_png(&png_data) {
+                                return Some(data);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-        // Decode PNG to RGBA
-        decode_png(&png_data)
+        None
     }
 
     /// Check if an icon exists for the given ability ID
@@ -139,7 +169,7 @@ fn load_icon_csv(path: &Path) -> Result<HashMap<u64, String>, String> {
         let parts: Vec<&str> = line.splitn(3, ',').collect();
         if parts.len() >= 3 {
             if let Ok(ability_id) = parts[0].parse::<u64>() {
-                let icon_name = parts[2].trim().to_string();
+                let icon_name = parts[2].trim().to_lowercase();
                 if !icon_name.is_empty() {
                     map.insert(ability_id, icon_name);
                 }
