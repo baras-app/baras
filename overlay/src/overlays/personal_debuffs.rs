@@ -187,8 +187,8 @@ impl PersonalDebuffsOverlay {
             .map(|d| (d.effect_id, d.format_time(), d.stacks))
             .collect();
 
-        // Skip render if nothing changed
-        if current_state == self.last_rendered {
+        // Skip render if nothing changed (but always render at least once)
+        if current_state == self.last_rendered && !self.last_rendered.is_empty() {
             return;
         }
         self.last_rendered = current_state;

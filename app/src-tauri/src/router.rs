@@ -217,24 +217,6 @@ async fn process_overlay_update(
                     .await;
             }
         }
-        OverlayUpdate::EffectsOverlayUpdated(effects_data) => {
-            // Send effects data to effects countdown overlay
-            let effects_tx = {
-                let state = match overlay_state.lock() {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                state.get_effects_tx().cloned()
-            };
-
-            if let Some(tx) = effects_tx {
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::Effects(
-                        effects_data,
-                    )))
-                    .await;
-            }
-        }
         OverlayUpdate::AlertsFired(fired_alerts) => {
             // Convert FiredAlert to AlertEntry and send to alerts overlay
             use baras_overlay::AlertEntry;
@@ -328,7 +310,9 @@ async fn process_overlay_update(
 
             if let Some(tx) = tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::DotTracker(dot_data)))
+                    .send(OverlayCommand::UpdateData(OverlayData::DotTracker(
+                        dot_data,
+                    )))
                     .await;
             }
         }
@@ -410,11 +394,6 @@ async fn process_overlay_update(
                     channels.push((tx.clone(), OverlayData::Timers(Default::default())));
                 }
 
-                // Effects overlay
-                if let Some(tx) = state.get_effects_tx() {
-                    channels.push((tx.clone(), OverlayData::Effects(Default::default())));
-                }
-
                 // Challenges overlay
                 if let Some(tx) = state.get_challenges_tx() {
                     channels.push((tx.clone(), OverlayData::Challenges(Default::default())));
@@ -450,7 +429,12 @@ async fn process_overlay_update(
         }
         OverlayUpdate::ConversationStarted => {
             // Check if auto-hide during conversations is enabled
-            let hide_enabled = shared.config.read().await.overlay_settings.hide_during_conversations;
+            let hide_enabled = shared
+                .config
+                .read()
+                .await
+                .overlay_settings
+                .hide_during_conversations;
             if !hide_enabled {
                 return;
             }
@@ -463,18 +447,29 @@ async fn process_overlay_update(
 
             if currently_visible {
                 // Remember that we hid them and that they were visible
-                shared.overlays_visible_before_conversation.store(true, Ordering::SeqCst);
-                shared.conversation_hiding_active.store(true, Ordering::SeqCst);
+                shared
+                    .overlays_visible_before_conversation
+                    .store(true, Ordering::SeqCst);
+                shared
+                    .conversation_hiding_active
+                    .store(true, Ordering::SeqCst);
                 let _ = OverlayManager::temporary_hide_all(overlay_state, service_handle).await;
             }
         }
         OverlayUpdate::ConversationEnded => {
             // Only restore if we were the ones who hid them
             if shared.conversation_hiding_active.load(Ordering::SeqCst) {
-                shared.conversation_hiding_active.store(false, Ordering::SeqCst);
+                shared
+                    .conversation_hiding_active
+                    .store(false, Ordering::SeqCst);
 
-                if shared.overlays_visible_before_conversation.load(Ordering::SeqCst) {
-                    shared.overlays_visible_before_conversation.store(false, Ordering::SeqCst);
+                if shared
+                    .overlays_visible_before_conversation
+                    .load(Ordering::SeqCst)
+                {
+                    shared
+                        .overlays_visible_before_conversation
+                        .store(false, Ordering::SeqCst);
                     let _ = OverlayManager::temporary_show_all(overlay_state, service_handle).await;
                 }
             }

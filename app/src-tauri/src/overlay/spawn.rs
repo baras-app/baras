@@ -20,7 +20,7 @@ use baras_core::context::{
 };
 use baras_overlay::{
     AlertsOverlay, BossHealthOverlay, ChallengeOverlay, CooldownConfig, CooldownOverlay,
-    DotTrackerConfig, DotTrackerOverlay, EffectsOverlay, MetricOverlay, Overlay, OverlayConfig,
+    DotTrackerConfig, DotTrackerOverlay, MetricOverlay, Overlay, OverlayConfig,
     PersonalBuffsConfig, PersonalBuffsOverlay, PersonalDebuffsConfig, PersonalDebuffsOverlay,
     PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction,
     TimerOverlay,
@@ -383,39 +383,6 @@ pub fn create_timer_overlay(
     let factory = move || {
         TimerOverlay::new(config, timer_config, background_alpha)
             .map_err(|e| format!("Failed to create timer overlay: {}", e))
-    };
-
-    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
-
-    Ok(OverlayHandle {
-        tx,
-        handle,
-        kind,
-        registry_action_rx: None,
-    })
-}
-
-/// Create and spawn the effects countdown overlay
-pub fn create_effects_overlay(
-    position: OverlayPositionConfig,
-    effects_config: TimerOverlayConfig,
-    background_alpha: u8,
-) -> Result<OverlayHandle, String> {
-    let config = OverlayConfig {
-        x: position.x,
-        y: position.y,
-        width: position.width,
-        height: position.height,
-        namespace: "baras-effects".to_string(),
-        click_through: true,
-        target_monitor_id: position.monitor_id.clone(),
-    };
-
-    let kind = OverlayType::Effects;
-
-    let factory = move || {
-        EffectsOverlay::new(config, effects_config, background_alpha)
-            .map_err(|e| format!("Failed to create effects overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;

@@ -178,16 +178,6 @@ impl OverlayState {
             .collect()
     }
 
-    /// Get the channel for effects overlay (convenience)
-    pub fn get_effects_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::Effects)
-    }
-
-    /// Check if effects overlay is running
-    pub fn is_effects_running(&self) -> bool {
-        self.overlays.contains_key(&OverlayType::Effects)
-    }
-
     /// Get the channel for challenges overlay (convenience)
     pub fn get_challenges_tx(&self) -> Option<&Sender<OverlayCommand>> {
         self.get_tx(OverlayType::Challenges)

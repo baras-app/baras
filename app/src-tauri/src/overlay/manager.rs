@@ -13,9 +13,9 @@ use std::time::Duration;
 use super::metrics::create_entries_for_type;
 use super::spawn::{
     create_alerts_overlay, create_boss_health_overlay, create_challenges_overlay,
-    create_cooldowns_overlay, create_dot_tracker_overlay, create_effects_overlay,
-    create_metric_overlay, create_personal_buffs_overlay, create_personal_debuffs_overlay,
-    create_personal_overlay, create_raid_overlay, create_timer_overlay,
+    create_cooldowns_overlay, create_dot_tracker_overlay, create_metric_overlay,
+    create_personal_buffs_overlay, create_personal_debuffs_overlay, create_personal_overlay,
+    create_raid_overlay, create_timer_overlay,
 };
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
 use super::types::{MetricType, OverlayType};
@@ -73,10 +73,6 @@ impl OverlayManager {
                 let timer_config = settings.timer_overlay.clone();
                 create_timer_overlay(position, timer_config, settings.timer_opacity)?
             }
-            OverlayType::Effects => {
-                let effects_config = settings.effects_overlay.clone();
-                create_effects_overlay(position, effects_config, settings.effects_opacity)?
-            }
             OverlayType::Challenges => {
                 let challenge_config = settings.challenge_overlay.clone();
                 create_challenges_overlay(position, challenge_config, settings.challenge_opacity)?
@@ -87,15 +83,27 @@ impl OverlayManager {
             }
             OverlayType::PersonalBuffs => {
                 let buffs_config = settings.personal_buffs.clone();
-                create_personal_buffs_overlay(position, buffs_config, settings.personal_buffs_opacity)?
+                create_personal_buffs_overlay(
+                    position,
+                    buffs_config,
+                    settings.personal_buffs_opacity,
+                )?
             }
             OverlayType::PersonalDebuffs => {
                 let debuffs_config = settings.personal_debuffs.clone();
-                create_personal_debuffs_overlay(position, debuffs_config, settings.personal_debuffs_opacity)?
+                create_personal_debuffs_overlay(
+                    position,
+                    debuffs_config,
+                    settings.personal_debuffs_opacity,
+                )?
             }
             OverlayType::Cooldowns => {
                 let cooldowns_config = settings.cooldown_tracker.clone();
-                create_cooldowns_overlay(position, cooldowns_config, settings.cooldown_tracker_opacity)?
+                create_cooldowns_overlay(
+                    position,
+                    cooldowns_config,
+                    settings.cooldown_tracker_opacity,
+                )?
             }
             OverlayType::DotTracker => {
                 let dot_config = settings.dot_tracker.clone();
@@ -161,7 +169,6 @@ impl OverlayManager {
             OverlayType::Raid
             | OverlayType::BossHealth
             | OverlayType::Timers
-            | OverlayType::Effects
             | OverlayType::Challenges
             | OverlayType::Alerts
             | OverlayType::PersonalBuffs
@@ -263,10 +270,6 @@ impl OverlayManager {
                 let timer_config = settings.timer_overlay.clone();
                 OverlayConfigUpdate::Timers(timer_config, settings.timer_opacity)
             }
-            OverlayType::Effects => {
-                let effects_config = settings.effects_overlay.clone();
-                OverlayConfigUpdate::Effects(effects_config, settings.effects_opacity)
-            }
             OverlayType::Challenges => {
                 let challenge_config = settings.challenge_overlay.clone();
                 OverlayConfigUpdate::Challenge(challenge_config, settings.challenge_opacity)
@@ -300,7 +303,10 @@ impl OverlayManager {
                     show_target_name: cfg.show_target_name,
                     stack_priority: cfg.stack_priority,
                 };
-                OverlayConfigUpdate::PersonalDebuffs(debuffs_config, settings.personal_debuffs_opacity)
+                OverlayConfigUpdate::PersonalDebuffs(
+                    debuffs_config,
+                    settings.personal_debuffs_opacity,
+                )
             }
             OverlayType::Cooldowns => {
                 let cfg = &settings.cooldown_tracker;
@@ -452,7 +458,6 @@ impl OverlayManager {
                 "raid" => OverlayType::Raid,
                 "boss_health" => OverlayType::BossHealth,
                 "timers" => OverlayType::Timers,
-                "effects" => OverlayType::Effects,
                 "challenges" => OverlayType::Challenges,
                 "alerts" => OverlayType::Alerts,
                 "personal_buffs" => OverlayType::PersonalBuffs,
@@ -595,7 +600,6 @@ impl OverlayManager {
                 "raid" => OverlayType::Raid,
                 "boss_health" => OverlayType::BossHealth,
                 "timers" => OverlayType::Timers,
-                "effects" => OverlayType::Effects,
                 "challenges" => OverlayType::Challenges,
                 "alerts" => OverlayType::Alerts,
                 "personal_buffs" => OverlayType::PersonalBuffs,
@@ -798,7 +802,6 @@ impl OverlayManager {
             OverlayType::Raid,
             OverlayType::BossHealth,
             OverlayType::Timers,
-            OverlayType::Effects,
             OverlayType::Challenges,
             OverlayType::Alerts,
             OverlayType::PersonalBuffs,

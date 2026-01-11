@@ -28,8 +28,8 @@ use baras_core::{
     EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler,
 };
 use baras_overlay::{
-    BossHealthData, ChallengeData, ChallengeEntry, Color, CooldownData, CooldownEntry,
-    DotEntry, DotTarget, DotTrackerData, PersonalBuff, PersonalBuffsData, PersonalDebuff,
+    BossHealthData, ChallengeData, ChallengeEntry, Color, CooldownData, CooldownEntry, DotEntry,
+    DotTarget, DotTrackerData, PersonalBuff, PersonalBuffsData, PersonalDebuff,
     PersonalDebuffsData, PersonalStats, PlayerContribution, PlayerRole, RaidEffect, RaidFrame,
     RaidFrameData, TimerData, TimerEntry,
 };
@@ -132,8 +132,6 @@ pub enum OverlayUpdate {
     BossHealthUpdated(BossHealthData),
     /// Timer data for timer overlay
     TimersUpdated(TimerData),
-    /// Effects countdown overlay data
-    EffectsOverlayUpdated(baras_overlay::EffectsData),
     /// Alert text for alerts overlay
     AlertsFired(Vec<FiredAlert>),
     /// Personal buffs/procs on self
@@ -1059,8 +1057,11 @@ impl CombatService {
                 let boss_active = shared.boss_health_overlay_active.load(Ordering::Relaxed);
                 let timer_active = shared.timer_overlay_active.load(Ordering::Relaxed);
                 let effects_active = shared.effects_overlay_active.load(Ordering::Relaxed);
-                let personal_buffs_active = shared.personal_buffs_overlay_active.load(Ordering::Relaxed);
-                let personal_debuffs_active = shared.personal_debuffs_overlay_active.load(Ordering::Relaxed);
+                let personal_buffs_active =
+                    shared.personal_buffs_overlay_active.load(Ordering::Relaxed);
+                let personal_debuffs_active = shared
+                    .personal_debuffs_overlay_active
+                    .load(Ordering::Relaxed);
                 let cooldowns_active = shared.cooldowns_overlay_active.load(Ordering::Relaxed);
                 let dot_tracker_active = shared.dot_tracker_overlay_active.load(Ordering::Relaxed);
                 let in_combat = shared.in_combat.load(Ordering::Relaxed);
@@ -1111,25 +1112,6 @@ impl CombatService {
                         last_raid_effect_count = 0;
                     }
                 }
-
-                // Effects countdown: only send if there are effects or effects just cleared
-                if effects_active {
-                    if let Some(data) = build_effects_overlay_data(&shared).await {
-                        let effect_count = data.entries.len();
-                        // Only send if effects exist, or if we need to clear (was non-zero, now zero)
-                        if effect_count > 0 || last_effects_count > 0 {
-                            let _ = overlay_tx.try_send(OverlayUpdate::EffectsOverlayUpdated(data));
-                        }
-                        last_effects_count = effect_count;
-                    } else if last_effects_count > 0 {
-                        // No effects, but we had some before - send clear
-                        let _ = overlay_tx.try_send(OverlayUpdate::EffectsOverlayUpdated(
-                            baras_overlay::EffectsData { entries: vec![] },
-                        ));
-                        last_effects_count = 0;
-                    }
-                }
-
                 // Personal buffs: only send if there are buffs or buffs just cleared
                 if personal_buffs_active {
                     if let Some(data) = build_personal_buffs_data(&shared).await {
@@ -1151,7 +1133,8 @@ impl CombatService {
                     if let Some(data) = build_personal_debuffs_data(&shared).await {
                         let count = data.debuffs.len();
                         if count > 0 || last_personal_debuffs_count > 0 {
-                            let _ = overlay_tx.try_send(OverlayUpdate::PersonalDebuffsUpdated(data));
+                            let _ =
+                                overlay_tx.try_send(OverlayUpdate::PersonalDebuffsUpdated(data));
                         }
                         last_personal_debuffs_count = count;
                     } else if last_personal_debuffs_count > 0 {
@@ -1171,9 +1154,10 @@ impl CombatService {
                         }
                         last_cooldowns_count = count;
                     } else if last_cooldowns_count > 0 {
-                        let _ = overlay_tx.try_send(OverlayUpdate::CooldownsUpdated(
-                            CooldownData { entries: vec![] },
-                        ));
+                        let _ =
+                            overlay_tx.try_send(OverlayUpdate::CooldownsUpdated(CooldownData {
+                                entries: vec![],
+                            }));
                         last_cooldowns_count = 0;
                     }
                 }
@@ -1187,9 +1171,10 @@ impl CombatService {
                         }
                         last_dot_tracker_count = count;
                     } else if last_dot_tracker_count > 0 {
-                        let _ = overlay_tx.try_send(OverlayUpdate::DotTrackerUpdated(
-                            DotTrackerData { targets: vec![] },
-                        ));
+                        let _ =
+                            overlay_tx.try_send(OverlayUpdate::DotTrackerUpdated(DotTrackerData {
+                                targets: vec![],
+                            }));
                         last_dot_tracker_count = 0;
                     }
                 }
@@ -1244,8 +1229,7 @@ impl CombatService {
 
                         // Send alerts to overlay (before audio consumes them)
                         if !alerts.is_empty() {
-                            let _ =
-                                overlay_tx.try_send(OverlayUpdate::AlertsFired(alerts.clone()));
+                            let _ = overlay_tx.try_send(OverlayUpdate::AlertsFired(alerts.clone()));
                         }
 
                         // Send alert audio events (only if audio_enabled for that alert)
@@ -1535,7 +1519,10 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 /// Uses RaidSlotRegistry to maintain stable player positions.
 /// Players are registered ONLY when the local player applies a NEW effect to them
 /// (via the new_targets queue), not on every tick.
-async fn build_raid_frame_data(shared: &Arc<SharedState>, rearranging: bool) -> Option<RaidFrameData> {
+async fn build_raid_frame_data(
+    shared: &Arc<SharedState>,
+    rearranging: bool,
+) -> Option<RaidFrameData> {
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
@@ -2010,7 +1997,9 @@ async fn build_cooldowns_data(shared: &Arc<SharedState>) -> Option<CooldownData>
     effects.sort_by(|a, b| {
         let a_remaining = calculate_remaining_secs(a).unwrap_or(f32::MAX);
         let b_remaining = calculate_remaining_secs(b).unwrap_or(f32::MAX);
-        a_remaining.partial_cmp(&b_remaining).unwrap_or(std::cmp::Ordering::Equal)
+        a_remaining
+            .partial_cmp(&b_remaining)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let entries: Vec<CooldownEntry> = effects
