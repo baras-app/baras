@@ -934,10 +934,6 @@ impl ServiceHandle {
                 .shared
                 .timer_overlay_active
                 .store(active, Ordering::SeqCst),
-            "effects" => self
-                .shared
-                .effects_overlay_active
-                .store(active, Ordering::SeqCst),
             "personal_buffs" => self
                 .shared
                 .personal_buffs_overlay_active

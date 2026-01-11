@@ -101,9 +101,6 @@ pub struct ActiveEffect {
     /// Show on raid frames overlay
     pub show_on_raid_frames: bool,
 
-    /// Show on effects countdown overlay
-    pub show_on_effects_overlay: bool,
-
     /// Only show when remaining time is at or below this (0 = always show)
     pub show_at_secs: f32,
 
@@ -150,7 +147,6 @@ impl ActiveEffect {
         display_target: DisplayTarget,
         icon_ability_id: u64,
         show_on_raid_frames: bool,
-        show_on_effects_overlay: bool,
         show_at_secs: f32,
         audio: &crate::dsl::AudioConfig,
     ) -> Self {
@@ -191,7 +187,6 @@ impl ActiveEffect {
             display_target,
             icon_ability_id,
             show_on_raid_frames,
-            show_on_effects_overlay,
             show_at_secs,
             audio_played: false,
             countdown_announced: [false; 10],
@@ -214,8 +209,18 @@ impl ActiveEffect {
             self.expires_at =
                 Some(event_timestamp + chrono::Duration::milliseconds(d.as_millis() as i64));
             self.duration = Some(d);
-            // Update system time instant so overlay expiry calculation is correct
-            self.applied_instant = Instant::now();
+
+            // Calculate lag between game event and system processing
+            let now_system = chrono::Local::now().naive_local();
+            let lag_ms = now_system
+                .signed_duration_since(event_timestamp)
+                .num_milliseconds()
+                .max(0) as u64;
+            let lag_duration = Duration::from_millis(lag_ms);
+
+            // Backdate applied_instant to account for processing lag
+            let now = Instant::now();
+            self.applied_instant = now.checked_sub(lag_duration).unwrap_or(now);
         }
 
         // Clear removed state if we were fading out (effect came back)
@@ -439,7 +444,7 @@ impl ActiveEffect {
 
         // Fire in window [0, 0.3) - catches expiration before effect is removed
         // This matches the countdown window logic
-        if (0.0..0.3).contains(&remaining){
+        if (0.0..0.3).contains(&remaining) {
             self.audio_played = true;
             return true;
         }

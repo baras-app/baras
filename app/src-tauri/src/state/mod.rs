@@ -48,8 +48,6 @@ pub struct SharedState {
     pub boss_health_overlay_active: AtomicBool,
     /// Whether timer overlay is currently running
     pub timer_overlay_active: AtomicBool,
-    /// Whether effects countdown overlay is currently running
-    pub effects_overlay_active: AtomicBool,
     /// Whether personal buffs overlay is currently running
     pub personal_buffs_overlay_active: AtomicBool,
     /// Whether personal debuffs overlay is currently running
@@ -86,7 +84,6 @@ impl SharedState {
             raid_overlay_active: AtomicBool::new(false),
             boss_health_overlay_active: AtomicBool::new(false),
             timer_overlay_active: AtomicBool::new(false),
-            effects_overlay_active: AtomicBool::new(false),
             personal_buffs_overlay_active: AtomicBool::new(false),
             personal_debuffs_overlay_active: AtomicBool::new(false),
             cooldowns_overlay_active: AtomicBool::new(false),

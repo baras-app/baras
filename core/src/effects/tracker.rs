@@ -240,7 +240,6 @@ impl EffectTracker {
         for effect in self.active_effects.values_mut() {
             if let Some(def) = definitions.effects.get(&effect.definition_id) {
                 effect.show_on_raid_frames = def.show_on_raid_frames;
-                effect.show_on_effects_overlay = def.show_on_effects_overlay;
                 effect.color = def.effective_color();
                 effect.category = def.category;
             }
@@ -291,17 +290,18 @@ impl EffectTracker {
     // ─────────────────────────────────────────────────────────────────────────────
 
     /// Get effects destined for raid frames overlay (HOTs on group members)
+    /// Uses the `show_on_raid_frames` flag, not `display_target`
     pub fn raid_frame_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects.values().filter(|e| {
-            e.display_target == DisplayTarget::RaidFrames && e.removed_at.is_none()
-        })
+        self.active_effects
+            .values()
+            .filter(|e| e.show_on_raid_frames && e.removed_at.is_none())
     }
 
     /// Get effects destined for personal buffs bar
     pub fn personal_buff_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects.values().filter(|e| {
-            e.display_target == DisplayTarget::PersonalBuffs && e.removed_at.is_none()
-        })
+        self.active_effects
+            .values()
+            .filter(|e| e.display_target == DisplayTarget::PersonalBuffs && e.removed_at.is_none())
     }
 
     /// Get effects destined for personal debuffs bar
@@ -313,9 +313,9 @@ impl EffectTracker {
 
     /// Get effects destined for cooldown tracker
     pub fn cooldown_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects.values().filter(|e| {
-            e.display_target == DisplayTarget::Cooldowns && e.removed_at.is_none()
-        })
+        self.active_effects
+            .values()
+            .filter(|e| e.display_target == DisplayTarget::Cooldowns && e.removed_at.is_none())
     }
 
     /// Get effects destined for DOT tracker, grouped by target entity
@@ -323,7 +323,7 @@ impl EffectTracker {
         let mut by_target: std::collections::HashMap<i64, Vec<&ActiveEffect>> =
             std::collections::HashMap::new();
         for effect in self.active_effects.values() {
-            if effect.display_target == DisplayTarget::DotTracker && effect.removed_at.is_none() {
+            if effect.removed_at.is_none() && effect.display_target == DisplayTarget::DotTracker {
                 by_target
                     .entry(effect.target_entity_id)
                     .or_default()
@@ -335,9 +335,9 @@ impl EffectTracker {
 
     /// Get effects destined for generic effects overlay (legacy)
     pub fn effects_overlay_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
-        self.active_effects.values().filter(|e| {
-            e.display_target == DisplayTarget::EffectsOverlay && e.removed_at.is_none()
-        })
+        self.active_effects
+            .values()
+            .filter(|e| e.display_target == DisplayTarget::EffectsOverlay && e.removed_at.is_none())
     }
 
     /// Drain the queue of targets for raid frame registration attempts.
@@ -467,7 +467,6 @@ impl EffectTracker {
                     def.display_target,
                     icon_ability_id,
                     def.show_on_raid_frames,
-                    def.show_on_effects_overlay,
                     def.show_at_secs,
                     &def.audio,
                 );
@@ -475,6 +474,12 @@ impl EffectTracker {
                 if let Some(c) = charges {
                     effect.set_stacks(c);
                 }
+
+                // Debug logging for effect creation
+                eprintln!(
+                    "[DOT_DEBUG] Created effect '{}' display_target={:?} icon_ability_id={}",
+                    effect.name, effect.display_target, effect.icon_ability_id
+                );
 
                 self.active_effects.insert(key, effect);
                 should_register = true;
@@ -521,7 +526,12 @@ impl EffectTracker {
             .definitions
             .enabled()
             .filter(|def| def.can_refresh_with(action_id as u64, Some(action_name_str)))
-            .map(|def| (def.id.clone(), def.duration_secs.map(Duration::from_secs_f32)))
+            .map(|def| {
+                (
+                    def.id.clone(),
+                    def.duration_secs.map(Duration::from_secs_f32),
+                )
+            })
             .collect();
 
         for (def_id, duration) in refreshable_def_ids {
@@ -571,21 +581,21 @@ impl EffectTracker {
         const COLLECT_WINDOW_MS: i64 = 10;
 
         // Check if we're in collecting state and this damage is within window
-        if let Some(ref mut collecting) = self.aoe_collecting {
-            if collecting.ability_id == ability_id {
-                let diff_ms = (timestamp - collecting.anchor_timestamp)
-                    .num_milliseconds()
-                    .abs();
-                if diff_ms <= COLLECT_WINDOW_MS {
-                    // Within window - add target if not already collected
-                    if !collecting.targets.contains(&target_id) {
-                        collecting.targets.push(target_id);
-                    }
-                    return;
-                } else {
-                    // Outside window - finalize and refresh all collected targets
-                    self.finalize_aoe_refresh();
+        if let Some(ref mut collecting) = self.aoe_collecting
+            && collecting.ability_id == ability_id
+        {
+            let diff_ms = (timestamp - collecting.anchor_timestamp)
+                .num_milliseconds()
+                .abs();
+            if diff_ms <= COLLECT_WINDOW_MS {
+                // Within window - add target if not already collected
+                if !collecting.targets.contains(&target_id) {
+                    collecting.targets.push(target_id);
                 }
+                return;
+            } else {
+                // Outside window - finalize and refresh all collected targets
+                self.finalize_aoe_refresh();
             }
         }
 
@@ -632,7 +642,12 @@ impl EffectTracker {
             .definitions
             .enabled()
             .filter(|def| def.can_refresh_with(collecting.ability_id as u64, None))
-            .map(|def| (def.id.clone(), def.duration_secs.map(Duration::from_secs_f32)))
+            .map(|def| {
+                (
+                    def.id.clone(),
+                    def.duration_secs.map(Duration::from_secs_f32),
+                )
+            })
             .collect();
 
         // Refresh effects on all collected targets
@@ -766,7 +781,6 @@ impl EffectTracker {
                     def.display_target,
                     icon_ability_id,
                     def.show_on_raid_frames,
-                    def.show_on_effects_overlay,
                     def.show_at_secs,
                     &def.audio,
                 );
@@ -815,18 +829,18 @@ impl EffectTracker {
             if def.is_effect_applied_trigger() {
                 // Mark existing effect as removed (normal behavior)
                 // But skip if fixed_duration is set - only expire via timer
-                if !def.fixed_duration {
-                    if let Some(effect) = self.active_effects.get_mut(&key) {
-                        // Skip removal if the effect was refreshed recently (within 1 second).
-                        // When a DoT is reapplied, the game sends ApplyEffect (new) then
-                        // RemoveEffect (old) - sometimes in the same batch, sometimes with
-                        // a slight delay. We don't want to remove the effect we just refreshed.
-                        let since_refresh = timestamp
-                            .signed_duration_since(effect.last_refreshed_at)
-                            .num_milliseconds();
-                        if since_refresh > 1000 {
-                            effect.mark_removed();
-                        }
+                if !def.fixed_duration
+                    && let Some(effect) = self.active_effects.get_mut(&key)
+                {
+                    // Skip removal if the effect was refreshed recently (within 1 second).
+                    // When a DoT is reapplied, the game sends ApplyEffect (new) then
+                    // RemoveEffect (old) - sometimes in the same batch, sometimes with
+                    // a slight delay. We don't want to remove the effect we just refreshed.
+                    let since_refresh = timestamp
+                        .signed_duration_since(effect.last_refreshed_at)
+                        .num_milliseconds();
+                    if since_refresh > 1000 {
+                        effect.mark_removed();
                     }
                 }
             } else if def.is_effect_removed_trigger() {
@@ -851,7 +865,6 @@ impl EffectTracker {
                     def.display_target,
                     icon_ability_id,
                     def.show_on_raid_frames,
-                    def.show_on_effects_overlay,
                     def.show_at_secs,
                     &def.audio,
                 );
@@ -892,10 +905,8 @@ impl EffectTracker {
             if let Some(effect) = self.active_effects.get_mut(&key) {
                 effect.set_stacks(charges);
 
-                // Check if this action should refresh the effect (requires is_refreshed_on_modify)
-                if def.is_refreshed_on_modify
-                    && def.can_refresh_with(action_id as u64, Some(action_name_str))
-                {
+                // Refresh duration on ModifyCharges if is_refreshed_on_modify is set
+                if def.is_refreshed_on_modify {
                     let duration = def.duration_secs.map(Duration::from_secs_f32);
                     effect.refresh(timestamp, duration);
                 }

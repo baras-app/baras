@@ -24,8 +24,8 @@ use baras_core::encounter::summary::classify_encounter;
 use baras_core::game_data::{Discipline, Role};
 use baras_core::timers::FiredAlert;
 use baras_core::{
-    ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, EffectCategory,
-    EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler,
+    ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, DisplayTarget,
+    EffectCategory, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler,
 };
 use baras_overlay::{
     BossHealthData, ChallengeData, ChallengeEntry, Color, CooldownData, CooldownEntry, DotEntry,
@@ -302,6 +302,8 @@ pub struct CombatService {
     area_index: Arc<baras_core::boss::AreaIndex>,
     /// Currently loaded area ID (0 = none)
     loaded_area_id: i64,
+    /// Icon cache for ability icons (shared with SharedState for overlay data building)
+    icon_cache: Option<Arc<baras_overlay::icons::IconCache>>,
 }
 
 impl CombatService {
@@ -356,6 +358,9 @@ impl CombatService {
         );
         tauri::async_runtime::spawn(audio_service.run());
 
+        // Initialize icon cache for ability icons
+        let icon_cache = Self::init_icon_cache(&app_handle);
+
         let service = Self {
             app_handle,
             shared: shared.clone(),
@@ -371,6 +376,7 @@ impl CombatService {
             definitions,
             area_index,
             loaded_area_id: 0,
+            icon_cache,
         };
 
         let handle = ServiceHandle { cmd_tx, shared };
@@ -433,6 +439,55 @@ impl CombatService {
         dirs::config_dir().map(|p| p.join("baras").join("timer_preferences.toml"))
     }
 
+    /// Initialize the icon cache for ability icons
+    fn init_icon_cache(app_handle: &AppHandle) -> Option<Arc<baras_overlay::icons::IconCache>> {
+        use baras_overlay::icons::IconCache;
+
+        eprintln!("[ICONS] Initializing icon cache...");
+
+        // Try bundled resources first, fall back to dev path
+        let icons_dir = app_handle
+            .path()
+            .resolve("icons", tauri::path::BaseDirectory::Resource)
+            .ok()
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| {
+                // Dev fallback: relative to project root
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .join("icons")
+            });
+
+        eprintln!("[ICONS] Looking for icons at {:?}", icons_dir);
+
+        let csv_path = icons_dir.join("icons.csv");
+        let zip_path = icons_dir.join("icons.zip");
+
+        if !csv_path.exists() || !zip_path.exists() {
+            eprintln!(
+                "[ICONS] Icon files not found at {:?} (csv={}, zip={})",
+                icons_dir,
+                csv_path.exists(),
+                zip_path.exists()
+            );
+            return None;
+        }
+
+        match IconCache::new(&csv_path, &zip_path, 200) {
+            Ok(cache) => {
+                eprintln!("[ICONS] Loaded icon cache from {:?}", icons_dir);
+                Some(Arc::new(cache))
+            }
+            Err(e) => {
+                eprintln!("[ICONS] Failed to load icon cache: {}", e);
+                None
+            }
+        }
+    }
+
     /// Load effect definitions from bundled and user config directories
     /// Loading order (later overrides earlier):
     /// 1. Bundled definitions (shipped with app)
@@ -482,10 +537,11 @@ impl CombatService {
     fn load_definitions_from_dir(
         set: &mut DefinitionSet,
         dir: &std::path::Path,
-        _source: &str,
+        source: &str,
         overwrite: bool,
     ) {
         let Ok(entries) = std::fs::read_dir(dir) else {
+            eprintln!("[EFFECTS] Failed to read dir: {:?}", dir);
             return;
         };
 
@@ -506,10 +562,24 @@ impl CombatService {
             }
         });
 
+        eprintln!("[EFFECTS] Loading {} files from {:?} (source={})", files.len(), dir, source);
+
         for path in files {
             if let Ok(contents) = std::fs::read_to_string(&path)
                 && let Ok(config) = toml::from_str::<DefinitionConfig>(&contents)
             {
+                // Log dot_tracker definitions
+                let dot_tracker_count = config
+                    .effects
+                    .iter()
+                    .filter(|e| e.display_target == DisplayTarget::DotTracker)
+                    .count();
+                eprintln!(
+                    "[EFFECTS]   {:?}: {} effects ({} dot_tracker)",
+                    path.file_name().unwrap_or_default(),
+                    config.effects.len(),
+                    dot_tracker_count
+                );
                 set.add_definitions(config.effects, overwrite);
             }
         }
@@ -1040,6 +1110,7 @@ impl CombatService {
         let shared = self.shared.clone();
         let overlay_tx = self.overlay_tx.clone();
         let audio_tx = self.audio_tx.clone();
+        let icon_cache = self.icon_cache.clone();
         let effects_handle = tokio::spawn(async move {
             // Track previous state to avoid redundant updates
             let mut last_raid_effect_count: usize = 0;
@@ -1056,7 +1127,6 @@ impl CombatService {
                 let raid_active = shared.raid_overlay_active.load(Ordering::Relaxed);
                 let boss_active = shared.boss_health_overlay_active.load(Ordering::Relaxed);
                 let timer_active = shared.timer_overlay_active.load(Ordering::Relaxed);
-                let effects_active = shared.effects_overlay_active.load(Ordering::Relaxed);
                 let personal_buffs_active =
                     shared.personal_buffs_overlay_active.load(Ordering::Relaxed);
                 let personal_debuffs_active = shared
@@ -1071,12 +1141,11 @@ impl CombatService {
                 let any_overlay_active = raid_active
                     || boss_active
                     || timer_active
-                    || effects_active
                     || personal_buffs_active
                     || personal_debuffs_active
                     || cooldowns_active
                     || dot_tracker_active;
-                let needs_audio = is_live && (in_combat || raid_active || effects_active);
+                let needs_audio = is_live && (in_combat || raid_active);
 
                 // Adaptive sleep: fast when active, slow when idle
                 // 30ms matches tail polling for consistent ~60ms max latency
@@ -1114,7 +1183,7 @@ impl CombatService {
                 }
                 // Personal buffs: only send if there are buffs or buffs just cleared
                 if personal_buffs_active {
-                    if let Some(data) = build_personal_buffs_data(&shared).await {
+                    if let Some(data) = build_personal_buffs_data(&shared, icon_cache.as_ref()).await {
                         let count = data.buffs.len();
                         if count > 0 || last_personal_buffs_count > 0 {
                             let _ = overlay_tx.try_send(OverlayUpdate::PersonalBuffsUpdated(data));
@@ -1130,7 +1199,7 @@ impl CombatService {
 
                 // Personal debuffs: only send if there are debuffs or debuffs just cleared
                 if personal_debuffs_active {
-                    if let Some(data) = build_personal_debuffs_data(&shared).await {
+                    if let Some(data) = build_personal_debuffs_data(&shared, icon_cache.as_ref()).await {
                         let count = data.debuffs.len();
                         if count > 0 || last_personal_debuffs_count > 0 {
                             let _ =
@@ -1147,7 +1216,7 @@ impl CombatService {
 
                 // Cooldowns: only send if there are cooldowns or cooldowns just cleared
                 if cooldowns_active {
-                    if let Some(data) = build_cooldowns_data(&shared).await {
+                    if let Some(data) = build_cooldowns_data(&shared, icon_cache.as_ref()).await {
                         let count = data.entries.len();
                         if count > 0 || last_cooldowns_count > 0 {
                             let _ = overlay_tx.try_send(OverlayUpdate::CooldownsUpdated(data));
@@ -1164,7 +1233,7 @@ impl CombatService {
 
                 // DOT tracker: only send if there are targets or targets just cleared
                 if dot_tracker_active {
-                    if let Some(data) = build_dot_tracker_data(&shared).await {
+                    if let Some(data) = build_dot_tracker_data(&shared, icon_cache.as_ref()).await {
                         let count = data.targets.len();
                         if count > 0 || last_dot_tracker_count > 0 {
                             let _ = overlay_tx.try_send(OverlayUpdate::DotTrackerUpdated(data));
@@ -1689,74 +1758,6 @@ async fn build_timer_data_with_audio(
     Some((TimerData { entries }, countdowns, alerts))
 }
 
-/// Build effects countdown overlay data from active effects
-async fn build_effects_overlay_data(
-    shared: &Arc<SharedState>,
-) -> Option<baras_overlay::EffectsData> {
-    use baras_overlay::EffectEntry;
-
-    let session_guard = shared.session.read().await;
-    let session = session_guard.as_ref()?;
-    let session = session.read().await;
-
-    // Get effect tracker (Live mode only)
-    let effect_tracker = session.effect_tracker()?;
-    let tracker = effect_tracker.lock().ok()?;
-
-    // Early out: skip if no effects at all (including fading ones)
-    if !tracker.has_active_effects() {
-        return None;
-    }
-
-    // Filter to effects marked for effects overlay and convert to entries
-    // Use system time (like raid frames) so countdown ticks smoothly outside combat
-    // Sort by applied_at to keep bar positions stable (oldest first)
-    let mut effects: Vec<_> = tracker
-        .active_effects()
-        .filter(|e| e.show_on_effects_overlay && e.removed_at.is_none())
-        .collect();
-    effects.sort_by_key(|e| e.applied_at);
-
-    let entries: Vec<EffectEntry> = effects
-        .into_iter()
-        .filter_map(|effect| {
-            let duration = effect.duration?;
-            let total = duration.as_secs_f32();
-
-            // Calculate remaining using system time (same logic as convert_to_raid_effect)
-            // Lag = time between game event and our processing
-            let time_since_processing = effect.applied_instant.elapsed();
-            let system_time_at_processing = chrono::Local::now().naive_local()
-                - chrono::Duration::milliseconds(time_since_processing.as_millis() as i64);
-            let lag_ms = system_time_at_processing
-                .signed_duration_since(effect.last_refreshed_at)
-                .num_milliseconds()
-                .max(0) as u64;
-            let lag = std::time::Duration::from_millis(lag_ms);
-
-            // Compensated expiry instant
-            let compensated_expiry = effect.applied_instant + duration - lag.min(duration);
-            let remaining = compensated_expiry.saturating_duration_since(std::time::Instant::now());
-            let remaining_secs = remaining.as_secs_f32();
-
-            if remaining_secs <= 0.0 {
-                return None;
-            }
-
-            Some(EffectEntry {
-                name: effect.display_text.clone(),
-                remaining_secs,
-                total_secs: total,
-                color: effect.color,
-                stacks: effect.stacks,
-            })
-        })
-        .collect();
-
-    // Always return data (even empty) so overlay clears when effects expire
-    Some(baras_overlay::EffectsData { entries })
-}
-
 /// Result of processing effect audio
 struct EffectAudioResult {
     /// Countdown announcements: (effect_name, seconds, voice_pack)
@@ -1899,7 +1900,12 @@ fn calculate_remaining_secs(effect: &ActiveEffect) -> Option<f32> {
 }
 
 /// Build personal buffs overlay data from active effects
-async fn build_personal_buffs_data(shared: &Arc<SharedState>) -> Option<PersonalBuffsData> {
+async fn build_personal_buffs_data(
+    shared: &Arc<SharedState>,
+    icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
+) -> Option<PersonalBuffsData> {
+    use std::sync::Arc as StdArc;
+
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
@@ -1920,6 +1926,13 @@ async fn build_personal_buffs_data(shared: &Arc<SharedState>) -> Option<Personal
             let total_secs = effect.duration?.as_secs_f32();
             let remaining_secs = calculate_remaining_secs(effect)?;
 
+            // Load icon from cache
+            let icon = icon_cache.and_then(|cache| {
+                cache.get_icon(effect.icon_ability_id).map(|data| {
+                    StdArc::new((data.width, data.height, data.rgba))
+                })
+            });
+
             Some(PersonalBuff {
                 effect_id: effect.game_effect_id,
                 icon_ability_id: effect.icon_ability_id,
@@ -1930,7 +1943,7 @@ async fn build_personal_buffs_data(shared: &Arc<SharedState>) -> Option<Personal
                 stacks: effect.stacks,
                 source_name: resolve(effect.source_name).to_string(),
                 target_name: resolve(effect.target_name).to_string(),
-                icon: None, // Icon loading TODO
+                icon,
             })
         })
         .collect();
@@ -1939,7 +1952,12 @@ async fn build_personal_buffs_data(shared: &Arc<SharedState>) -> Option<Personal
 }
 
 /// Build personal debuffs overlay data from active effects
-async fn build_personal_debuffs_data(shared: &Arc<SharedState>) -> Option<PersonalDebuffsData> {
+async fn build_personal_debuffs_data(
+    shared: &Arc<SharedState>,
+    icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
+) -> Option<PersonalDebuffsData> {
+    use std::sync::Arc as StdArc;
+
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
@@ -1960,6 +1978,13 @@ async fn build_personal_debuffs_data(shared: &Arc<SharedState>) -> Option<Person
             let total_secs = effect.duration?.as_secs_f32();
             let remaining_secs = calculate_remaining_secs(effect)?;
 
+            // Load icon from cache
+            let icon = icon_cache.and_then(|cache| {
+                cache.get_icon(effect.icon_ability_id).map(|data| {
+                    StdArc::new((data.width, data.height, data.rgba))
+                })
+            });
+
             Some(PersonalDebuff {
                 effect_id: effect.game_effect_id,
                 icon_ability_id: effect.icon_ability_id,
@@ -1971,7 +1996,7 @@ async fn build_personal_debuffs_data(shared: &Arc<SharedState>) -> Option<Person
                 is_cleansable: effect.category == EffectCategory::Cleansable,
                 source_name: resolve(effect.source_name).to_string(),
                 target_name: resolve(effect.target_name).to_string(),
-                icon: None, // Icon loading TODO
+                icon,
             })
         })
         .collect();
@@ -1980,7 +2005,12 @@ async fn build_personal_debuffs_data(shared: &Arc<SharedState>) -> Option<Person
 }
 
 /// Build cooldowns overlay data from active effects
-async fn build_cooldowns_data(shared: &Arc<SharedState>) -> Option<CooldownData> {
+async fn build_cooldowns_data(
+    shared: &Arc<SharedState>,
+    icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
+) -> Option<CooldownData> {
+    use std::sync::Arc as StdArc;
+
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
@@ -2008,6 +2038,13 @@ async fn build_cooldowns_data(shared: &Arc<SharedState>) -> Option<CooldownData>
             let total_secs = effect.duration?.as_secs_f32();
             let remaining_secs = calculate_remaining_secs(effect)?;
 
+            // Load icon from cache
+            let icon = icon_cache.and_then(|cache| {
+                cache.get_icon(effect.icon_ability_id).map(|data| {
+                    StdArc::new((data.width, data.height, data.rgba))
+                })
+            });
+
             Some(CooldownEntry {
                 ability_id: effect.game_effect_id,
                 icon_ability_id: effect.icon_ability_id,
@@ -2019,7 +2056,7 @@ async fn build_cooldowns_data(shared: &Arc<SharedState>) -> Option<CooldownData>
                 max_charges: effect.stacks, // Default to current stacks (no max info available)
                 source_name: resolve(effect.source_name).to_string(),
                 target_name: resolve(effect.target_name).to_string(),
-                icon: None, // Icon loading TODO
+                icon,
             })
         })
         .collect();
@@ -2028,7 +2065,11 @@ async fn build_cooldowns_data(shared: &Arc<SharedState>) -> Option<CooldownData>
 }
 
 /// Build DOT tracker overlay data from active effects
-async fn build_dot_tracker_data(shared: &Arc<SharedState>) -> Option<DotTrackerData> {
+async fn build_dot_tracker_data(
+    shared: &Arc<SharedState>,
+    icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
+) -> Option<DotTrackerData> {
+    use std::sync::Arc as StdArc;
     use std::time::Instant;
 
     let session_guard = shared.session.read().await;
@@ -2059,6 +2100,13 @@ async fn build_dot_tracker_data(shared: &Arc<SharedState>) -> Option<DotTrackerD
                     let total_secs = effect.duration?.as_secs_f32();
                     let remaining_secs = calculate_remaining_secs(effect)?;
 
+                    // Load icon from cache
+                    let icon = icon_cache.and_then(|cache| {
+                        cache.get_icon(effect.icon_ability_id).map(|data| {
+                            StdArc::new((data.width, data.height, data.rgba))
+                        })
+                    });
+
                     Some(DotEntry {
                         effect_id: effect.game_effect_id,
                         icon_ability_id: effect.icon_ability_id,
@@ -2069,7 +2117,7 @@ async fn build_dot_tracker_data(shared: &Arc<SharedState>) -> Option<DotTrackerD
                         stacks: effect.stacks,
                         source_name: resolve(effect.source_name).to_string(),
                         target_name: resolve(effect.target_name).to_string(),
-                        icon: None, // Icon loading TODO
+                        icon,
                     })
                 })
                 .collect();

@@ -40,7 +40,6 @@ pub struct EffectListItem {
     pub is_refreshed_on_modify: bool,
     pub color: Option<[u8; 4]>,
     pub show_on_raid_frames: bool,
-    pub show_on_effects_overlay: bool,
     pub show_at_secs: f32,
 
     // Behavior
@@ -71,7 +70,6 @@ impl EffectListItem {
             is_refreshed_on_modify: def.is_refreshed_on_modify,
             color: def.color,
             show_on_raid_frames: def.show_on_raid_frames,
-            show_on_effects_overlay: def.show_on_effects_overlay,
             show_at_secs: def.show_at_secs,
             persist_past_death: def.persist_past_death,
             track_outside_combat: def.track_outside_combat,
@@ -95,7 +93,6 @@ impl EffectListItem {
             is_refreshed_on_modify: self.is_refreshed_on_modify,
             color: self.color,
             show_on_raid_frames: self.show_on_raid_frames,
-            show_on_effects_overlay: self.show_on_effects_overlay,
             show_at_secs: self.show_at_secs,
             persist_past_death: self.persist_past_death,
             track_outside_combat: self.track_outside_combat,

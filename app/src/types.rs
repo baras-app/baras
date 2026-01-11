@@ -71,8 +71,6 @@ pub struct OverlayStatus {
     pub boss_health_enabled: bool,
     pub timers_running: bool,
     pub timers_enabled: bool,
-    pub effects_running: bool,
-    pub effects_enabled: bool,
     pub challenges_running: bool,
     pub challenges_enabled: bool,
     pub alerts_running: bool,
@@ -492,7 +490,6 @@ pub struct EffectListItem {
     // Display
     pub color: Option<[u8; 4]>,
     pub show_on_raid_frames: bool,
-    pub show_on_effects_overlay: bool,
     pub show_at_secs: f32,
 
     // Behavior

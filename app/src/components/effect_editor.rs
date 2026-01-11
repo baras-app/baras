@@ -132,16 +132,12 @@ fn set_trigger_target(trigger: Trigger, target: EntityFilter) -> Trigger {
 /// Set the effects on an effect-based trigger
 fn set_trigger_effects(trigger: Trigger, effects: Vec<EffectSelector>) -> Trigger {
     match trigger {
-        Trigger::EffectApplied {
-            source, target, ..
-        } => Trigger::EffectApplied {
+        Trigger::EffectApplied { source, target, .. } => Trigger::EffectApplied {
             effects,
             source,
             target,
         },
-        Trigger::EffectRemoved {
-            source, target, ..
-        } => Trigger::EffectRemoved {
+        Trigger::EffectRemoved { source, target, .. } => Trigger::EffectRemoved {
             effects,
             source,
             target,
@@ -153,9 +149,7 @@ fn set_trigger_effects(trigger: Trigger, effects: Vec<EffectSelector>) -> Trigge
 /// Set the abilities on an ability-based trigger
 fn set_trigger_abilities(trigger: Trigger, abilities: Vec<AbilitySelector>) -> Trigger {
     match trigger {
-        Trigger::AbilityCast {
-            source, target, ..
-        } => Trigger::AbilityCast {
+        Trigger::AbilityCast { source, target, .. } => Trigger::AbilityCast {
             abilities,
             source,
             target,
@@ -184,7 +178,6 @@ fn default_effect(name: String) -> EffectListItem {
         is_refreshed_on_modify: false,
         color: Some([80, 200, 80, 255]),
         show_on_raid_frames: true,
-        show_on_effects_overlay: false,
         show_at_secs: 0.0,
         persist_past_death: false,
         track_outside_combat: true,
@@ -270,7 +263,6 @@ pub fn EffectEditorPanel() -> Element {
             })
             .collect::<Vec<_>>()
     });
-
 
     // Handlers
     let on_save = move |updated_effect: EffectListItem| {
@@ -600,21 +592,6 @@ fn EffectRow(
                         }
                     }
 
-                    // Effects overlay toggle
-                    span {
-                        class: "row-toggle",
-                        title: if effect.show_on_effects_overlay { "Hide on effects overlay" } else { "Show on effects overlay" },
-                        onclick: move |e| {
-                            e.stop_propagation();
-                            let mut updated = effect_for_overlay.clone();
-                            updated.show_on_effects_overlay = !updated.show_on_effects_overlay;
-                            on_save.call(updated);
-                        },
-                        span {
-                            class: if effect.show_on_effects_overlay { "text-warning" } else { "text-muted" },
-                            if effect.show_on_effects_overlay { "◎" } else { "✗" }
-                        }
-                    }
                 }
             }
 
@@ -927,19 +904,6 @@ fn EffectEditForm(
                                 }
                             }
                             "Show on Raid Frames"
-                        }
-
-                        label { class: "flex items-center gap-xs text-sm",
-                            input {
-                                r#type: "checkbox",
-                                checked: draft().show_on_effects_overlay,
-                                onchange: move |e| {
-                                    let mut d = draft();
-                                    d.show_on_effects_overlay = e.checked();
-                                    draft.set(d);
-                                }
-                            }
-                            "Show on Effects Overlay"
                         }
 
                         label { class: "flex items-center gap-xs text-sm",
