@@ -25,6 +25,7 @@ fn default_counter(name: String) -> CounterDefinition {
         increment_on: Trigger::AbilityCast {
             abilities: vec![],
             source: EntityFilter::default(),
+            target: EntityFilter::default(),
         },
         decrement_on: None,
         reset_on: Trigger::CombatEnd,
@@ -304,6 +305,7 @@ fn CounterEditForm(
                                     Some(Trigger::AbilityCast {
                                         abilities: vec![],
                                         source: EntityFilter::default(),
+                                        target: EntityFilter::default(),
                                     })
                                 };
                                 draft.set(d);

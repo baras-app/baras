@@ -13,9 +13,156 @@ use super::encounter_editor::triggers::{
 };
 use crate::api;
 use crate::types::{
-    AbilitySelector, AudioConfig, EffectCategory, EffectListItem, EffectTriggerMode, EntityFilter,
+    AbilitySelector, AudioConfig, EffectCategory, EffectListItem, EffectSelector, EntityFilter,
     Trigger,
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trigger Helper Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Get the source and target filters from a trigger
+fn get_trigger_filters(trigger: &Trigger) -> (EntityFilter, EntityFilter) {
+    match trigger {
+        Trigger::EffectApplied { source, target, .. }
+        | Trigger::EffectRemoved { source, target, .. }
+        | Trigger::AbilityCast { source, target, .. }
+        | Trigger::DamageTaken { source, target, .. } => (source.clone(), target.clone()),
+        _ => (EntityFilter::Any, EntityFilter::Any),
+    }
+}
+
+/// Get the "when" label for effect-based triggers
+fn get_effect_when_label(trigger: &Trigger) -> &'static str {
+    match trigger {
+        Trigger::EffectApplied { .. } => "Effect Applied",
+        Trigger::EffectRemoved { .. } => "Effect Removed",
+        _ => "Effect Applied",
+    }
+}
+
+/// Get the effects from an effect-based trigger (returns is_effect_trigger, effects)
+fn get_trigger_effects(trigger: &Trigger) -> (bool, Vec<EffectSelector>) {
+    match trigger {
+        Trigger::EffectApplied { effects, .. } | Trigger::EffectRemoved { effects, .. } => {
+            (true, effects.clone())
+        }
+        _ => (false, vec![]),
+    }
+}
+
+/// Get abilities from an ability-based trigger
+fn get_trigger_abilities(trigger: &Trigger) -> Vec<AbilitySelector> {
+    match trigger {
+        Trigger::AbilityCast { abilities, .. } => abilities.clone(),
+        _ => vec![],
+    }
+}
+
+/// Set the source filter on a trigger
+fn set_trigger_source(trigger: Trigger, source: EntityFilter) -> Trigger {
+    match trigger {
+        Trigger::EffectApplied {
+            effects, target, ..
+        } => Trigger::EffectApplied {
+            effects,
+            source,
+            target,
+        },
+        Trigger::EffectRemoved {
+            effects, target, ..
+        } => Trigger::EffectRemoved {
+            effects,
+            source,
+            target,
+        },
+        Trigger::AbilityCast {
+            abilities, target, ..
+        } => Trigger::AbilityCast {
+            abilities,
+            source,
+            target,
+        },
+        Trigger::DamageTaken {
+            abilities, target, ..
+        } => Trigger::DamageTaken {
+            abilities,
+            source,
+            target,
+        },
+        other => other,
+    }
+}
+
+/// Set the target filter on a trigger
+fn set_trigger_target(trigger: Trigger, target: EntityFilter) -> Trigger {
+    match trigger {
+        Trigger::EffectApplied {
+            effects, source, ..
+        } => Trigger::EffectApplied {
+            effects,
+            source,
+            target,
+        },
+        Trigger::EffectRemoved {
+            effects, source, ..
+        } => Trigger::EffectRemoved {
+            effects,
+            source,
+            target,
+        },
+        Trigger::AbilityCast {
+            abilities, source, ..
+        } => Trigger::AbilityCast {
+            abilities,
+            source,
+            target,
+        },
+        Trigger::DamageTaken {
+            abilities, source, ..
+        } => Trigger::DamageTaken {
+            abilities,
+            source,
+            target,
+        },
+        other => other,
+    }
+}
+
+/// Set the effects on an effect-based trigger
+fn set_trigger_effects(trigger: Trigger, effects: Vec<EffectSelector>) -> Trigger {
+    match trigger {
+        Trigger::EffectApplied {
+            source, target, ..
+        } => Trigger::EffectApplied {
+            effects,
+            source,
+            target,
+        },
+        Trigger::EffectRemoved {
+            source, target, ..
+        } => Trigger::EffectRemoved {
+            effects,
+            source,
+            target,
+        },
+        other => other,
+    }
+}
+
+/// Set the abilities on an ability-based trigger
+fn set_trigger_abilities(trigger: Trigger, abilities: Vec<AbilitySelector>) -> Trigger {
+    match trigger {
+        Trigger::AbilityCast {
+            source, target, ..
+        } => Trigger::AbilityCast {
+            abilities,
+            source,
+            target,
+        },
+        other => other,
+    }
+}
 
 /// Create a default effect with sensible defaults
 fn default_effect(name: String) -> EffectListItem {
@@ -26,17 +173,15 @@ fn default_effect(name: String) -> EffectListItem {
         file_path: String::new(),
         enabled: true,
         category: EffectCategory::Hot,
-        trigger: EffectTriggerMode::EffectApplied,
-        start_trigger: None,
+        trigger: Trigger::EffectApplied {
+            effects: vec![],
+            source: EntityFilter::LocalPlayer,
+            target: EntityFilter::GroupMembers,
+        },
         fixed_duration: false,
-        effects: vec![],
         refresh_abilities: vec![],
-        source: EntityFilter::LocalPlayer,
-        target: EntityFilter::GroupMembers,
         duration_secs: Some(15.0),
-        can_be_refreshed: true,
         is_refreshed_on_modify: false,
-        max_stacks: 1,
         color: Some([80, 200, 80, 255]),
         show_on_raid_frames: true,
         show_on_effects_overlay: false,
@@ -45,9 +190,6 @@ fn default_effect(name: String) -> EffectListItem {
         track_outside_combat: true,
         on_apply_trigger_timer: None,
         on_expire_trigger_timer: None,
-        encounters: vec![],
-        alert_near_expiration: false,
-        alert_threshold_secs: 3.0,
         audio: AudioConfig::default(),
     }
 }
@@ -77,10 +219,9 @@ impl EffectTriggerType {
 
     /// Determine trigger type from effect data
     fn from_effect(effect: &EffectListItem) -> Self {
-        if effect.start_trigger.is_some() {
-            Self::AbilityCast
-        } else {
-            Self::EffectBased
+        match &effect.trigger {
+            Trigger::AbilityCast { .. } => Self::AbilityCast,
+            _ => Self::EffectBased,
         }
     }
 }
@@ -599,20 +740,20 @@ fn EffectEditForm(
                                     };
                                     trigger_type.set(new_type);
                                     let mut d = draft();
-                                    match new_type {
-                                        EffectTriggerType::EffectBased => {
-                                            d.start_trigger = None;
-                                        }
-                                        EffectTriggerType::AbilityCast => {
-                                            d.effects = vec![];
-                                            if d.start_trigger.is_none() {
-                                                d.start_trigger = Some(Trigger::AbilityCast {
-                                                    abilities: vec![],
-                                                    source: EntityFilter::LocalPlayer,
-                                                });
-                                            }
-                                        }
-                                    }
+                                    // Convert trigger to new type, preserving source/target
+                                    let (source, target) = get_trigger_filters(&d.trigger);
+                                    d.trigger = match new_type {
+                                        EffectTriggerType::EffectBased => Trigger::EffectApplied {
+                                            effects: vec![],
+                                            source,
+                                            target,
+                                        },
+                                        EffectTriggerType::AbilityCast => Trigger::AbilityCast {
+                                            abilities: vec![],
+                                            source,
+                                            target,
+                                        },
+                                    };
                                     draft.set(d);
                                 },
                                 for tt in EffectTriggerType::all() {
@@ -623,19 +764,20 @@ fn EffectEditForm(
                                 label { "When" }
                                 select {
                                     class: "select-inline",
-                                    value: "{draft().trigger.label()}",
+                                    value: "{get_effect_when_label(&draft().trigger)}",
                                     onchange: move |e| {
                                         let mut d = draft();
+                                        let (_, effects) = get_trigger_effects(&d.trigger);
+                                        let (source, target) = get_trigger_filters(&d.trigger);
                                         d.trigger = match e.value().as_str() {
-                                            "Effect Applied" => EffectTriggerMode::EffectApplied,
-                                            "Effect Removed" => EffectTriggerMode::EffectRemoved,
+                                            "Effect Applied" => Trigger::EffectApplied { effects, source, target },
+                                            "Effect Removed" => Trigger::EffectRemoved { effects, source, target },
                                             _ => d.trigger,
                                         };
                                         draft.set(d);
                                     },
-                                    for trigger in EffectTriggerMode::all() {
-                                        option { value: "{trigger.label()}", "{trigger.label()}" }
-                                    }
+                                    option { value: "Effect Applied", "Effect Applied" }
+                                    option { value: "Effect Removed", "Effect Removed" }
                                 }
                             }
                         }
@@ -645,28 +787,28 @@ fn EffectEditForm(
                             label { "Source" }
                             EntityFilterDropdown {
                                 label: "",
-                                value: draft().source.clone(),
+                                value: get_trigger_filters(&draft().trigger).0.clone(),
                                 options: EntityFilter::source_options(),
                                 on_change: move |f| {
                                     let mut d = draft();
-                                    d.source = f;
+                                    d.trigger = set_trigger_source(d.trigger.clone(), f);
                                     draft.set(d);
                                 }
                             }
                             label { "Target" }
                             EntityFilterDropdown {
                                 label: "",
-                                value: draft().target.clone(),
+                                value: get_trigger_filters(&draft().trigger).1.clone(),
                                 options: EntityFilter::target_options(),
                                 on_change: move |f| {
                                     let mut d = draft();
-                                    d.target = f;
+                                    d.trigger = set_trigger_target(d.trigger.clone(), f);
                                     draft.set(d);
                                 }
                             }
                         }
 
-                        // Duration, Max Stacks
+                        // Duration and Show at
                         div { class: "form-row-hz",
                             label { "Duration" }
                             input {
@@ -683,22 +825,6 @@ fn EffectEditForm(
                                 }
                             }
                             span { class: "text-muted", "sec" }
-                            label { "Max Stacks" }
-                            input {
-                                r#type: "number",
-                                class: "input-inline",
-                                style: "width: 50px;",
-                                min: "0",
-                                max: "255",
-                                value: "{draft().max_stacks}",
-                                oninput: move |e| {
-                                    if let Ok(val) = e.value().parse::<u8>() {
-                                        let mut d = draft();
-                                        d.max_stacks = val;
-                                        draft.set(d);
-                                    }
-                                }
-                            }
                             label { "Show at" }
                             input {
                                 r#type: "number",
@@ -718,8 +844,6 @@ fn EffectEditForm(
                                 }
                             }
                             span { class: "text-sm text-secondary", "sec remaining" }
-
-
                         }
 
                         // Effects or Trigger Abilities (based on trigger type)
@@ -727,34 +851,19 @@ fn EffectEditForm(
                             if trigger_type() == EffectTriggerType::EffectBased {
                                 EffectSelectorEditor {
                                     label: "Effects",
-                                    selectors: draft().effects.clone(),
+                                    selectors: get_trigger_effects(&draft().trigger).1,
                                     on_change: move |selectors| {
                                         let mut d = draft();
-                                        d.effects = selectors;
+                                        d.trigger = set_trigger_effects(d.trigger.clone(), selectors);
                                         draft.set(d);
                                     }
                                 }
                             } else {
                                 TriggerAbilitiesEditor {
-                                    abilities: draft().start_trigger.as_ref()
-                                        .and_then(|t| match t {
-                                            Trigger::AbilityCast { abilities, .. } => Some(abilities.clone()),
-                                            _ => None,
-                                        })
-                                        .unwrap_or_default(),
+                                    abilities: get_trigger_abilities(&draft().trigger),
                                     on_change: move |abilities| {
                                         let mut d = draft();
-                                        if let Some(Trigger::AbilityCast { source, .. }) = &d.start_trigger {
-                                            d.start_trigger = Some(Trigger::AbilityCast {
-                                                abilities,
-                                                source: source.clone(),
-                                            });
-                                        } else {
-                                            d.start_trigger = Some(Trigger::AbilityCast {
-                                                abilities,
-                                                source: EntityFilter::LocalPlayer,
-                                            });
-                                        }
+                                        d.trigger = set_trigger_abilities(d.trigger.clone(), abilities);
                                         draft.set(d);
                                     }
                                 }
@@ -847,18 +956,6 @@ fn EffectEditForm(
                             "Fixed Duration (for cooldowns)"
                         }
 
-                        label { class: "flex items-center gap-xs text-sm",
-                            input {
-                                r#type: "checkbox",
-                                checked: draft().can_be_refreshed,
-                                onchange: move |e| {
-                                    let mut d = draft();
-                                    d.can_be_refreshed = e.checked();
-                                    draft.set(d);
-                                }
-                            }
-                            "Can be refreshed"
-                        }
                        label { class: "flex items-center gap-xs text-sm",
                             input {
                                 r#type: "checkbox",

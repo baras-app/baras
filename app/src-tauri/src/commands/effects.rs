@@ -12,10 +12,7 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
 use baras_core::dsl::{AudioConfig, Trigger};
-use baras_core::effects::{
-    DefinitionConfig, EffectCategory, EffectDefinition, EffectSelector, EffectTriggerMode,
-    EntityFilter,
-};
+use baras_core::effects::{DefinitionConfig, EffectCategory, EffectDefinition};
 use baras_types::AbilitySelector;
 
 use crate::service::ServiceHandle;
@@ -36,17 +33,11 @@ pub struct EffectListItem {
     // Effect data
     pub enabled: bool,
     pub category: EffectCategory,
-    pub trigger: EffectTriggerMode,
-    pub start_trigger: Option<Trigger>,
+    pub trigger: Trigger,
     pub fixed_duration: bool,
-    pub effects: Vec<EffectSelector>,
     pub refresh_abilities: Vec<AbilitySelector>,
-    pub source: EntityFilter,
-    pub target: EntityFilter,
     pub duration_secs: Option<f32>,
-    pub can_be_refreshed: bool,
     pub is_refreshed_on_modify: bool,
-    pub max_stacks: u8,
     pub color: Option<[u8; 4]>,
     pub show_on_raid_frames: bool,
     pub show_on_effects_overlay: bool,
@@ -59,13 +50,6 @@ pub struct EffectListItem {
     // Timer integration
     pub on_apply_trigger_timer: Option<String>,
     pub on_expire_trigger_timer: Option<String>,
-
-    // Context
-    pub encounters: Vec<String>,
-
-    // Alerts
-    pub alert_near_expiration: bool,
-    pub alert_threshold_secs: f32,
 
     // Audio
     pub audio: AudioConfig,
@@ -80,17 +64,11 @@ impl EffectListItem {
             file_path: file_path.to_string_lossy().to_string(),
             enabled: def.enabled,
             category: def.category,
-            trigger: def.trigger,
-            start_trigger: def.start_trigger.clone(),
+            trigger: def.trigger.clone(),
             fixed_duration: def.fixed_duration,
-            effects: def.effects.clone(),
             refresh_abilities: def.refresh_abilities.clone(),
-            source: def.source.clone(),
-            target: def.target.clone(),
             duration_secs: def.duration_secs,
-            can_be_refreshed: def.can_be_refreshed,
             is_refreshed_on_modify: def.is_refreshed_on_modify,
-            max_stacks: def.max_stacks,
             color: def.color,
             show_on_raid_frames: def.show_on_raid_frames,
             show_on_effects_overlay: def.show_on_effects_overlay,
@@ -99,9 +77,6 @@ impl EffectListItem {
             track_outside_combat: def.track_outside_combat,
             on_apply_trigger_timer: def.on_apply_trigger_timer.clone(),
             on_expire_trigger_timer: def.on_expire_trigger_timer.clone(),
-            encounters: def.encounters.clone(),
-            alert_near_expiration: def.alert_near_expiration,
-            alert_threshold_secs: def.alert_threshold_secs,
             audio: def.audio.clone(),
         }
     }
@@ -113,17 +88,11 @@ impl EffectListItem {
             display_text: self.display_text.clone(),
             enabled: self.enabled,
             category: self.category,
-            trigger: self.trigger,
-            start_trigger: self.start_trigger.clone(),
+            trigger: self.trigger.clone(),
             fixed_duration: self.fixed_duration,
-            effects: self.effects.clone(),
             refresh_abilities: self.refresh_abilities.clone(),
-            source: self.source.clone(),
-            target: self.target.clone(),
             duration_secs: self.duration_secs,
-            can_be_refreshed: self.can_be_refreshed,
             is_refreshed_on_modify: self.is_refreshed_on_modify,
-            max_stacks: self.max_stacks,
             color: self.color,
             show_on_raid_frames: self.show_on_raid_frames,
             show_on_effects_overlay: self.show_on_effects_overlay,
@@ -132,10 +101,20 @@ impl EffectListItem {
             track_outside_combat: self.track_outside_combat,
             on_apply_trigger_timer: self.on_apply_trigger_timer.clone(),
             on_expire_trigger_timer: self.on_expire_trigger_timer.clone(),
-            encounters: self.encounters.clone(),
-            alert_near_expiration: self.alert_near_expiration,
-            alert_threshold_secs: self.alert_threshold_secs,
             audio: self.audio.clone(),
+        }
+    }
+
+    /// Check if this effect has a valid trigger configuration
+    fn has_valid_trigger(&self) -> bool {
+        match &self.trigger {
+            Trigger::EffectApplied { effects, .. } | Trigger::EffectRemoved { effects, .. } => {
+                !effects.is_empty() || !self.refresh_abilities.is_empty()
+            }
+            Trigger::AbilityCast { abilities, .. } => {
+                !abilities.is_empty() || !self.refresh_abilities.is_empty()
+            }
+            _ => false,
         }
     }
 }
@@ -355,13 +334,9 @@ pub async fn update_effect_definition(
     effect: EffectListItem,
 ) -> Result<(), String> {
     // Validate effect has at least one way to match
-    // (start_trigger like AbilityCast can also trigger effects)
-    if effect.effects.is_empty()
-        && effect.refresh_abilities.is_empty()
-        && effect.start_trigger.is_none()
-    {
+    if !effect.has_valid_trigger() {
         return Err(
-            "Effect must have at least one effect ID, refresh ability, or start_trigger to match against. \
+            "Effect must have at least one effect ID, ability, or refresh ability to match against. \
             Without these, the effect will never trigger."
                 .to_string(),
         );
@@ -415,13 +390,9 @@ pub async fn create_effect_definition(
     mut effect: EffectListItem,
 ) -> Result<EffectListItem, String> {
     // Validate effect has at least one way to match
-    // (start_trigger like AbilityCast can also trigger effects)
-    if effect.effects.is_empty()
-        && effect.refresh_abilities.is_empty()
-        && effect.start_trigger.is_none()
-    {
+    if !effect.has_valid_trigger() {
         return Err(
-            "Effect must have at least one effect ID, refresh ability, or start_trigger to match against. \
+            "Effect must have at least one effect ID, ability, or refresh ability to match against. \
             Without these, the effect will never trigger."
                 .to_string(),
         );

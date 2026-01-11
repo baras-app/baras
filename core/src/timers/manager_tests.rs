@@ -75,6 +75,7 @@ fn test_ability_cast_triggers_timer() {
         TimerTrigger::AbilityCast {
             abilities: vec![AbilitySelector::Id(3302391763959808)],
             source: EntityFilter::Any,
+            target: EntityFilter::Any,
         },
         15.0,
     );
@@ -181,10 +182,12 @@ fn test_anyof_condition_triggers_on_either() {
                 TimerTrigger::AbilityCast {
                     abilities: vec![AbilitySelector::Id(111)],
                     source: EntityFilter::Any,
+                    target: EntityFilter::Any,
                 },
                 TimerTrigger::AbilityCast {
                     abilities: vec![AbilitySelector::Id(222)],
                     source: EntityFilter::Any,
+                    target: EntityFilter::Any,
                 },
             ],
         },
@@ -259,6 +262,7 @@ fn test_anyof_mixed_trigger_types() {
                 TimerTrigger::AbilityCast {
                     abilities: vec![AbilitySelector::Id(333)],
                     source: EntityFilter::Any,
+                    target: EntityFilter::Any,
                 },
             ],
         },
@@ -303,6 +307,7 @@ fn test_cancel_on_timer() {
         TimerTrigger::AbilityCast {
             abilities: vec![AbilitySelector::Id(444)],
             source: EntityFilter::Any,
+            target: EntityFilter::Any,
         },
         30.0,
     );
@@ -355,6 +360,7 @@ fn test_wrong_ability_does_not_trigger() {
         TimerTrigger::AbilityCast {
             abilities: vec![AbilitySelector::Id(12345)],
             source: EntityFilter::Any,
+            target: EntityFilter::Any,
         },
         10.0,
     );
@@ -728,6 +734,7 @@ fn test_integration_ability_timer_with_real_log() {
         TimerTrigger::AbilityCast {
             abilities: vec![AbilitySelector::Id(807737319514112)],
             source: EntityFilter::Any,
+            target: EntityFilter::Any,
         }, // Basic Attack
         10.0,
     );
@@ -980,6 +987,7 @@ fn test_timer_refresh_resets_expiration() {
             TimerTrigger::AbilityCast {
                 abilities: vec![AbilitySelector::Id(12345)],
                 source: EntityFilter::Any,
+                target: EntityFilter::Any,
             },
             5.0,
         )
@@ -1059,6 +1067,7 @@ fn test_timer_no_refresh_when_disabled() {
             TimerTrigger::AbilityCast {
                 abilities: vec![AbilitySelector::Id(12345)],
                 source: EntityFilter::Any,
+                target: EntityFilter::Any,
             },
             10.0,
         )

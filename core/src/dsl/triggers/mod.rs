@@ -71,6 +71,9 @@ pub enum Trigger {
         /// Who cast the ability (default: any)
         #[serde(default = "EntityFilter::default_any")]
         source: EntityFilter,
+        /// Who the ability targets (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        target: EntityFilter,
     },
 
     /// Effect/buff is applied. [TPC]
@@ -292,7 +295,11 @@ impl Trigger {
     /// Only affects trigger variants that support these filters.
     pub fn with_source_target(self, source: EntityFilter, target: EntityFilter) -> Self {
         match self {
-            Self::AbilityCast { abilities, .. } => Self::AbilityCast { abilities, source },
+            Self::AbilityCast { abilities, .. } => Self::AbilityCast {
+                abilities,
+                source,
+                target,
+            },
             Self::EffectApplied { effects, .. } => Self::EffectApplied {
                 effects,
                 source,
@@ -637,6 +644,7 @@ mod tests {
                 Trigger::AbilityCast {
                     abilities: vec![AbilitySelector::Id(123)],
                     source: EntityFilter::Any,
+                    target: EntityFilter::Any,
                 },
                 Trigger::CombatStart,
             ],
@@ -649,6 +657,7 @@ mod tests {
         let trigger = Trigger::AbilityCast {
             abilities: vec![AbilitySelector::Id(123), AbilitySelector::Id(456)],
             source: EntityFilter::Selector(vec![EntitySelector::Id(789)]),
+            target: EntityFilter::Any,
         };
         let toml = toml::to_string(&trigger).unwrap();
         let parsed: Trigger = toml::from_str(&toml).unwrap();

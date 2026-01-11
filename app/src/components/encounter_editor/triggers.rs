@@ -378,7 +378,7 @@ pub fn SimpleTriggerEditor(
                     let new_trigger = match e.value().as_str() {
                         "combat_start" => TimerTrigger::CombatStart,
                         "combat_end" => TimerTrigger::CombatEnd,
-                        "ability_cast" => TimerTrigger::AbilityCast { abilities: vec![], source: EntityFilter::default() },
+                        "ability_cast" => TimerTrigger::AbilityCast { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "effect_applied" => TimerTrigger::EffectApplied { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "damage_taken" => TimerTrigger::DamageTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
@@ -428,9 +428,13 @@ pub fn SimpleTriggerEditor(
                     | TimerTrigger::AnyPhaseChange
                     | TimerTrigger::Never
                     | TimerTrigger::Manual => rsx! {},
-                    TimerTrigger::AbilityCast { abilities, source } => {
+                    TimerTrigger::AbilityCast { abilities, source, target } => {
                         let source_for_abilities = source.clone();
+                        let target_for_abilities = target.clone();
                         let abilities_for_source = abilities.clone();
+                        let target_for_source = target.clone();
+                        let abilities_for_target = abilities.clone();
+                        let source_for_target = source.clone();
                         rsx! {
                             AbilitySelectorEditor {
                                 label: "Abilities",
@@ -438,6 +442,7 @@ pub fn SimpleTriggerEditor(
                                 on_change: move |sels| on_change.call(TimerTrigger::AbilityCast {
                                     abilities: sels,
                                     source: source_for_abilities.clone(),
+                                    target: target_for_abilities.clone(),
                                 })
                             }
                             EntityFilterDropdown {
@@ -447,6 +452,17 @@ pub fn SimpleTriggerEditor(
                                 on_change: move |f| on_change.call(TimerTrigger::AbilityCast {
                                     abilities: abilities_for_source.clone(),
                                     source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::AbilityCast {
+                                    abilities: abilities_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
                                 })
                             }
                         }
@@ -1188,7 +1204,7 @@ fn SimplePhaseTriggerEditor(
                             hp_percent: 50.0,
                             selector: vec![],
                         },
-                        "ability_cast" => PhaseTrigger::AbilityCast { abilities: vec![], source: EntityFilter::default() },
+                        "ability_cast" => PhaseTrigger::AbilityCast { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "effect_applied" => PhaseTrigger::EffectApplied { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "effect_removed" => PhaseTrigger::EffectRemoved { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "damage_taken" => PhaseTrigger::DamageTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
@@ -1304,9 +1320,13 @@ fn SimplePhaseTriggerEditor(
                             }
                         }
                     },
-                    PhaseTrigger::AbilityCast { abilities, source } => {
+                    PhaseTrigger::AbilityCast { abilities, source, target } => {
                         let source_for_abilities = source.clone();
+                        let target_for_abilities = target.clone();
                         let abilities_for_source = abilities.clone();
+                        let target_for_source = target.clone();
+                        let abilities_for_target = abilities.clone();
+                        let source_for_target = source.clone();
                         rsx! {
                             AbilitySelectorEditor {
                                 label: "Abilities",
@@ -1314,6 +1334,7 @@ fn SimplePhaseTriggerEditor(
                                 on_change: move |sels| on_change.call(PhaseTrigger::AbilityCast {
                                     abilities: sels,
                                     source: source_for_abilities.clone(),
+                                    target: target_for_abilities.clone(),
                                 })
                             }
                             EntityFilterDropdown {
@@ -1323,6 +1344,17 @@ fn SimplePhaseTriggerEditor(
                                 on_change: move |f| on_change.call(PhaseTrigger::AbilityCast {
                                     abilities: abilities_for_source.clone(),
                                     source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(PhaseTrigger::AbilityCast {
+                                    abilities: abilities_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
                                 })
                             }
                         }
@@ -1566,6 +1598,7 @@ pub fn CounterTriggerEditor(
                         "ability_cast" => CounterTrigger::AbilityCast {
                             abilities: vec![],
                             source: EntityFilter::default(),
+                            target: EntityFilter::default(),
                         },
                         "effect_applied" => CounterTrigger::EffectApplied {
                             effects: vec![],
@@ -1638,9 +1671,13 @@ pub fn CounterTriggerEditor(
                     CounterTrigger::CombatStart | CounterTrigger::CombatEnd
                     | CounterTrigger::AnyPhaseChange | CounterTrigger::Never => rsx! {},
 
-                    CounterTrigger::AbilityCast { abilities, source } => {
+                    CounterTrigger::AbilityCast { abilities, source, target } => {
                         let source_for_abilities = source.clone();
+                        let target_for_abilities = target.clone();
                         let abilities_for_source = abilities.clone();
+                        let target_for_source = target.clone();
+                        let abilities_for_target = abilities.clone();
+                        let source_for_target = source.clone();
                         rsx! {
                             AbilitySelectorEditor {
                                 label: "Abilities",
@@ -1648,6 +1685,7 @@ pub fn CounterTriggerEditor(
                                 on_change: move |sels| on_change.call(CounterTrigger::AbilityCast {
                                     abilities: sels,
                                     source: source_for_abilities.clone(),
+                                    target: target_for_abilities.clone(),
                                 })
                             }
                             EntityFilterDropdown {
@@ -1657,6 +1695,17 @@ pub fn CounterTriggerEditor(
                                 on_change: move |f| on_change.call(CounterTrigger::AbilityCast {
                                     abilities: abilities_for_source.clone(),
                                     source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(CounterTrigger::AbilityCast {
+                                    abilities: abilities_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
                                 })
                             }
                         }

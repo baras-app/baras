@@ -448,30 +448,6 @@ impl EffectCategory {
     }
 }
 
-/// When the effect tracking should start
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EffectTriggerMode {
-    /// Track starts when effect is applied (default)
-    #[default]
-    EffectApplied,
-    /// Track starts when effect is removed
-    EffectRemoved,
-}
-
-impl EffectTriggerMode {
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::EffectApplied => "Effect Applied",
-            Self::EffectRemoved => "Effect Removed",
-        }
-    }
-
-    pub fn all() -> &'static [EffectTriggerMode] {
-        &[Self::EffectApplied, Self::EffectRemoved]
-    }
-}
-
 /// Effect item for the effect editor list view (matches backend EffectListItem)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EffectListItem {
@@ -485,29 +461,18 @@ pub struct EffectListItem {
     // Core
     pub enabled: bool,
     pub category: EffectCategory,
-    pub trigger: EffectTriggerMode,
-
-    // AbilityCast trigger (overrides trigger + effects when set)
-    #[serde(default)]
-    pub start_trigger: Option<Trigger>,
+    pub trigger: Trigger,
 
     // If true, ignore game EffectRemoved - use duration_secs only
     #[serde(default)]
     pub fixed_duration: bool,
 
-    // Matching
-    pub effects: Vec<EffectSelector>,
+    // Matching - abilities that refresh the effect duration
     pub refresh_abilities: Vec<AbilitySelector>,
-
-    // Filtering
-    pub source: EntityFilter,
-    pub target: EntityFilter,
 
     // Duration
     pub duration_secs: Option<f32>,
-    pub can_be_refreshed: bool,
     pub is_refreshed_on_modify: bool,
-    pub max_stacks: u8,
 
     // Display
     pub color: Option<[u8; 4]>,
@@ -515,20 +480,13 @@ pub struct EffectListItem {
     pub show_on_effects_overlay: bool,
     pub show_at_secs: f32,
 
-    // Behavior (advanced)
+    // Behavior
     pub persist_past_death: bool,
     pub track_outside_combat: bool,
 
-    // Timer integration (advanced)
+    // Timer integration
     pub on_apply_trigger_timer: Option<String>,
     pub on_expire_trigger_timer: Option<String>,
-
-    // Context (advanced)
-    pub encounters: Vec<String>,
-
-    // Alerts (advanced)
-    pub alert_near_expiration: bool,
-    pub alert_threshold_secs: f32,
 
     // Audio
     #[serde(default)]

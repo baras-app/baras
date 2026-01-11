@@ -8,24 +8,13 @@ use serde::{Deserialize, Serialize};
 use crate::dsl::AudioConfig;
 use crate::dsl::Trigger;
 
-// Re-export EntityFilter from shared module
+// Re-export from shared modules
 pub use crate::dsl::EntityFilter;
 pub use crate::dsl::{AbilitySelector, EffectSelector};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Effect Definitions
 // ═══════════════════════════════════════════════════════════════════════════
-
-/// When the effect tracking should start
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EffectTriggerMode {
-    /// Track starts when effect is applied (default)
-    #[default]
-    EffectApplied,
-    /// Track starts when effect is removed
-    EffectRemoved,
-}
 
 /// How an effect should be categorized and displayed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -84,51 +73,28 @@ pub struct EffectDefinition {
     #[serde(default = "crate::serde_defaults::default_true")]
     pub enabled: bool,
 
-    // ─── Matching ───────────────────────────────────────────────────────────
-    /// Effect selectors (ID or name) that match this definition.
-    /// Used when trigger is EffectApplied/EffectRemoved (or not set).
-    #[serde(default)]
-    pub effects: Vec<EffectSelector>,
-
-    /// What starts tracking. Defaults to EffectApplied matching `effects`.
-    /// Use AbilityCast for proc/cooldown tracking independent of game effects.
-    #[serde(default)]
-    pub trigger: EffectTriggerMode,
-
-    /// Optional explicit trigger (AbilityCast, EffectApplied, EffectRemoved).
-    /// When set, overrides `trigger` and `effects` fields.
-    #[serde(default, rename = "start_trigger")]
-    pub start_trigger: Option<Trigger>,
+    // ─── Trigger ────────────────────────────────────────────────────────────
+    /// What starts tracking this effect.
+    /// Use EffectApplied/EffectRemoved for buff/debuff tracking,
+    /// or AbilityCast for proc/cooldown tracking.
+    pub trigger: Trigger,
 
     /// If true, ignore game EffectRemoved signals - only expire via duration_secs.
     /// Useful for tracking cooldowns that shouldn't end when the buff is consumed.
     #[serde(default)]
     pub fixed_duration: bool,
 
-    /// Abilities (ID or name) that can apply or refresh this effect
+    /// Abilities (ID or name) that can refresh this effect's duration
     #[serde(default)]
     pub refresh_abilities: Vec<AbilitySelector>,
-
-    // ─── Filtering ──────────────────────────────────────────────────────────
-    /// Who must apply the effect for it to be tracked
-    #[serde(default)]
-    pub source: EntityFilter,
-
-    /// Who must receive the effect for it to be tracked
-    #[serde(default)]
-    pub target: EntityFilter,
-
-    // ─── Duration ───────────────────────────────────────────────────────────
-    /// Expected duration in seconds (None = indefinite/unknown)
-    pub duration_secs: Option<f32>,
-
-    /// Can this effect be refreshed by reapplication?
-    #[serde(default = "crate::serde_defaults::default_true")]
-    pub can_be_refreshed: bool,
 
     /// Whether or not the effect will refresh on ModifyCharges events
     #[serde(default)]
     pub is_refreshed_on_modify: bool,
+
+    // ─── Duration ───────────────────────────────────────────────────────────
+    /// Expected duration in seconds (None = indefinite/unknown)
+    pub duration_secs: Option<f32>,
 
     // ─── Display ────────────────────────────────────────────────────────────
     /// Effect category (determines default color)
@@ -137,10 +103,6 @@ pub struct EffectDefinition {
 
     /// Override color as RGBA (None = use category default)
     pub color: Option<[u8; 4]>,
-
-    /// Maximum stacks to display (0 = don't show stacks)
-    #[serde(default)]
-    pub max_stacks: u8,
 
     /// Show this effect on raid frames (HOTs/shields typically true, DOTs false)
     #[serde(default)]
@@ -170,20 +132,6 @@ pub struct EffectDefinition {
     /// Timer ID to start when this effect expires/is removed
     pub on_expire_trigger_timer: Option<String>,
 
-    // ─── Context ────────────────────────────────────────────────────────────
-    /// Only track in specific encounters (empty = all encounters)
-    #[serde(default)]
-    pub encounters: Vec<String>,
-
-    // ─── Alerts ─────────────────────────────────────────────────────────────
-    /// Show visual warning when effect is about to expire
-    #[serde(default)]
-    pub alert_near_expiration: bool,
-
-    /// Seconds before expiration to show warning
-    #[serde(default = "default_alert_threshold")]
-    pub alert_threshold_secs: f32,
-
     // ─── Audio ─────────────────────────────────────────────────────────────────
     /// Audio configuration (alerts, custom sounds)
     #[serde(default)]
@@ -196,11 +144,43 @@ impl EffectDefinition {
         self.color.unwrap_or_else(|| self.category.default_color())
     }
 
-    /// Check if an effect ID/name matches this definition
+    /// Get the display text, falling back to name if not set
+    pub fn display_text(&self) -> &str {
+        self.display_text.as_deref().unwrap_or(&self.name)
+    }
+
+    /// Check if this is an EffectApplied trigger
+    pub fn is_effect_applied_trigger(&self) -> bool {
+        matches!(self.trigger, Trigger::EffectApplied { .. })
+    }
+
+    /// Check if this is an EffectRemoved trigger
+    pub fn is_effect_removed_trigger(&self) -> bool {
+        matches!(self.trigger, Trigger::EffectRemoved { .. })
+    }
+
+    /// Check if this is an AbilityCast trigger
+    pub fn is_ability_cast_trigger(&self) -> bool {
+        matches!(self.trigger, Trigger::AbilityCast { .. })
+    }
+
+    /// Check if an effect ID/name matches this definition's trigger
     pub fn matches_effect(&self, effect_id: u64, effect_name: Option<&str>) -> bool {
-        self.effects
-            .iter()
-            .any(|s| s.matches(effect_id, effect_name))
+        match &self.trigger {
+            Trigger::EffectApplied { effects, .. } | Trigger::EffectRemoved { effects, .. } => {
+                !effects.is_empty() && effects.iter().any(|s| s.matches(effect_id, effect_name))
+            }
+            _ => false,
+        }
+    }
+
+    /// Check if an ability cast matches this definition's trigger
+    pub fn matches_ability_cast(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+        if let Trigger::AbilityCast { abilities, .. } = &self.trigger {
+            abilities.is_empty() || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+        } else {
+            false
+        }
     }
 
     /// Check if an ability can refresh this effect
@@ -210,39 +190,27 @@ impl EffectDefinition {
             .any(|s| s.matches(ability_id, ability_name))
     }
 
-    /// Check if this definition uses an AbilityCast start trigger
-    pub fn has_ability_cast_trigger(&self) -> bool {
-        matches!(self.start_trigger, Some(Trigger::AbilityCast { .. }))
-    }
-
-    /// Check if an ability cast matches this definition's start_trigger
-    pub fn matches_ability_cast(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
-        if let Some(Trigger::AbilityCast { ref abilities, .. }) = self.start_trigger {
-            abilities.is_empty()
-                || abilities
-                    .iter()
-                    .any(|s| s.matches(ability_id, ability_name))
-        } else {
-            false
+    /// Get the source filter from the trigger
+    pub fn source_filter(&self) -> &EntityFilter {
+        match &self.trigger {
+            Trigger::EffectApplied { source, .. }
+            | Trigger::EffectRemoved { source, .. }
+            | Trigger::AbilityCast { source, .. }
+            | Trigger::DamageTaken { source, .. } => source,
+            _ => &EntityFilter::Any,
         }
     }
 
-    /// Get the source filter from start_trigger (if AbilityCast)
-    pub fn ability_cast_source_filter(&self) -> Option<&EntityFilter> {
-        if let Some(Trigger::AbilityCast { ref source, .. }) = self.start_trigger {
-            Some(source)
-        } else {
-            None
+    /// Get the target filter from the trigger
+    pub fn target_filter(&self) -> &EntityFilter {
+        match &self.trigger {
+            Trigger::EffectApplied { target, .. }
+            | Trigger::EffectRemoved { target, .. }
+            | Trigger::AbilityCast { target, .. }
+            | Trigger::DamageTaken { target, .. } => target,
+            _ => &EntityFilter::Any,
         }
     }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Serde Helpers
-// ═══════════════════════════════════════════════════════════════════════════
-
-fn default_alert_threshold() -> f32 {
-    3.0
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

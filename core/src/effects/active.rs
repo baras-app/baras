@@ -98,6 +98,9 @@ pub struct ActiveEffect {
     /// Show on effects countdown overlay
     pub show_on_effects_overlay: bool,
 
+    /// Only show when remaining time is at or below this (0 = always show)
+    pub show_at_secs: f32,
+
     // ─── Audio ────────────────────────────────────────────────────────────────
     /// Whether on-apply audio has been played
     pub audio_played: bool,
@@ -140,6 +143,7 @@ impl ActiveEffect {
         category: EffectCategory,
         show_on_raid_frames: bool,
         show_on_effects_overlay: bool,
+        show_at_secs: f32,
         audio: &crate::dsl::AudioConfig,
     ) -> Self {
         // Calculate lag compensation: how far behind was the game event from system time?
@@ -178,6 +182,7 @@ impl ActiveEffect {
             category,
             show_on_raid_frames,
             show_on_effects_overlay,
+            show_at_secs,
             audio_played: false,
             countdown_announced: [false; 10],
             countdown_start: audio.countdown_start,
@@ -303,6 +308,18 @@ impl ActiveEffect {
         remaining.as_secs_f32()
     }
 
+    /// Check if effect should be visible based on show_at_secs threshold
+    ///
+    /// Returns true if:
+    /// - show_at_secs is 0 (always show), OR
+    /// - remaining time is at or below show_at_secs threshold
+    pub fn is_visible(&self) -> bool {
+        if self.show_at_secs <= 0.0 {
+            return true; // 0 means always show
+        }
+        self.remaining_secs_realtime() <= self.show_at_secs
+    }
+
     /// Check if countdown should be announced (matches timer logic exactly)
     ///
     /// Announces N when remaining is in [N, N+0.3) to sync with visual display:
@@ -412,7 +429,7 @@ impl ActiveEffect {
 
         // Fire in window [0, 0.3) - catches expiration before effect is removed
         // This matches the countdown window logic
-        if remaining >= 0.0 && remaining < 0.3 {
+        if (0.0..0.3).contains(&remaining){
             self.audio_played = true;
             return true;
         }

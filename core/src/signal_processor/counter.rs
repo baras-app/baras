@@ -197,7 +197,7 @@ pub fn check_counter_trigger(
         Trigger::CombatEnd => current_signals
             .iter()
             .any(|s| matches!(s, GameSignal::CombatEnded { .. })),
-        Trigger::AbilityCast { abilities, source } => {
+        Trigger::AbilityCast { abilities, source, .. } => {
             if event.effect.effect_id != effect_id::ABILITYACTIVATE {
                 return false;
             }

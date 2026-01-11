@@ -16,7 +16,7 @@ use crate::dsl::EntityFilterMatching;
 use crate::encounter::CombatEncounter;
 use crate::signal_processor::{GameSignal, SignalHandler};
 
-use super::{ActiveEffect, EffectDefinition, EffectTriggerMode};
+use super::{ActiveEffect, EffectDefinition, EffectKey};
 
 /// Get the entity roster from the current encounter, or empty slice if none.
 fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
@@ -29,6 +29,18 @@ fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
                 .as_slice()
         })
         .unwrap_or(EMPTY)
+}
+
+/// Get the set of boss entity IDs from the current encounter.
+fn get_boss_ids(encounter: Option<&CombatEncounter>) -> HashSet<i64> {
+    encounter
+        .map(|e| {
+            e.npcs
+                .values()
+                .filter_map(|npc| npc.is_boss.then_some(npc.log_id))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Combined set of effect definitions
@@ -53,13 +65,12 @@ impl DefinitionSet {
         let mut duplicates = Vec::new();
         for def in definitions {
             // Warn about effects that will never match anything
-            // (unless they have an explicit start_trigger like AbilityCast)
-            if def.effects.is_empty()
+            if !def.matches_effect(0, None)
+                && !def.is_ability_cast_trigger()
                 && def.refresh_abilities.is_empty()
-                && def.start_trigger.is_none()
             {
                 eprintln!(
-                    "[EFFECT WARNING] Effect '{}' has no effects, refresh_abilities, or start_trigger - it will never match anything!",
+                    "[EFFECT WARNING] Effect '{}' has no effect selectors or abilities - it may never match anything!",
                     def.id
                 );
             }
@@ -111,13 +122,6 @@ impl DefinitionSet {
     }
 }
 
-/// Key for identifying unique effect instances
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct EffectInstanceKey {
-    definition_id: String,
-    target_entity_id: i64,
-}
-
 /// Entity info for filter matching
 #[derive(Debug, Clone, Copy)]
 struct EntityInfo {
@@ -153,7 +157,7 @@ pub struct EffectTracker {
     definitions: DefinitionSet,
 
     /// Currently active effects
-    active_effects: HashMap<EffectInstanceKey, ActiveEffect>,
+    active_effects: HashMap<EffectKey, ActiveEffect>,
 
     /// Current game time (latest timestamp from signals)
     current_game_time: Option<NaiveDateTime>,
@@ -345,7 +349,7 @@ impl EffectTracker {
 
         let matching_defs: Vec<_> = all_matches
             .into_iter()
-            .filter(|def| def.trigger == EffectTriggerMode::EffectApplied)
+            .filter(|def| def.is_effect_applied_trigger())
             .filter(|def| self.matches_filters(def, source_info, target_info, encounter))
             .collect();
 
@@ -353,7 +357,7 @@ impl EffectTracker {
         let mut should_register = false;
 
         for def in matching_defs {
-            let key = EffectInstanceKey {
+            let key = EffectKey {
                 definition_id: def.id.clone(),
                 target_entity_id: target_id,
             };
@@ -363,13 +367,7 @@ impl EffectTracker {
             if let Some(existing) = self.active_effects.get_mut(&key) {
                 // Refresh existing effect if this action is in refresh_abilities
                 let action_name_str = crate::context::resolve(action_name);
-                let should_refresh = if def.refresh_abilities.is_empty() {
-                    def.can_be_refreshed
-                } else {
-                    def.can_refresh_with(action_id as u64, Some(action_name_str))
-                };
-
-                if should_refresh {
+                if def.can_refresh_with(action_id as u64, Some(action_name_str)) {
                     existing.refresh(timestamp, duration);
                     if let Some(c) = charges {
                         existing.set_stacks(c);
@@ -378,7 +376,7 @@ impl EffectTracker {
                 }
             } else {
                 // Create new effect
-                let display_text = def.display_text.clone().unwrap_or_else(|| def.name.clone());
+                let display_text = def.display_text().to_string();
                 let mut effect = ActiveEffect::new(
                     def.id.clone(),
                     effect_id as u64,
@@ -395,6 +393,7 @@ impl EffectTracker {
                     def.category,
                     def.show_on_raid_frames,
                     def.show_on_effects_overlay,
+                    def.show_at_secs,
                     &def.audio,
                 );
 
@@ -437,7 +436,7 @@ impl EffectTracker {
         let refreshable_defs: Vec<_> = self
             .definitions
             .enabled()
-            .filter(|def| def.can_refresh_with(action_id as u64, Some(&action_name_str)))
+            .filter(|def| def.can_refresh_with(action_id as u64, Some(action_name_str)))
             .map(|def| {
                 (
                     def.id.clone(),
@@ -448,7 +447,7 @@ impl EffectTracker {
 
         let mut did_refresh = false;
         for (def_id, duration) in refreshable_defs {
-            let key = EffectInstanceKey {
+            let key = EffectKey {
                 definition_id: def_id,
                 target_entity_id: target_id,
             };
@@ -499,7 +498,7 @@ impl EffectTracker {
         // Find definitions with AbilityCast triggers that match this ability
         let matching_defs: Vec<_> = self
             .definitions
-            .find_ability_cast_matching(ability_id as u64, Some(&ability_name_str))
+            .find_ability_cast_matching(ability_id as u64, Some(ability_name_str))
             .into_iter()
             .collect();
 
@@ -516,22 +515,16 @@ impl EffectTracker {
         };
 
         // Get boss IDs for filter matching
-        let boss_ids: HashSet<i64> = encounter
-            .map(|e| {
-                e.npcs
-                    .values()
-                    .filter_map(|npc| npc.is_boss.then_some(npc.log_id))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let boss_ids = get_boss_ids(encounter);
 
         let is_from_local = local_player_id == Some(source_id);
 
         let entities = get_entities(encounter);
         for def in matching_defs {
             // Check source filter from the trigger
-            if let Some(source_filter) = def.ability_cast_source_filter() {
-                if !source_filter.matches(
+            let source_filter = def.source_filter();
+            if !source_filter.is_any()
+                && !source_filter.matches(
                     entities,
                     source_info.id,
                     source_info.entity_type,
@@ -539,14 +532,14 @@ impl EffectTracker {
                     source_info.npc_id,
                     local_player_id,
                     &boss_ids,
-                ) {
-                    continue;
-                }
+                )
+            {
+                continue;
             }
 
             // For procs, the effect is typically shown on the caster (source)
             // Use target from definition's target filter, or default to source
-            let effect_target_id = if def.target.is_local_player() {
+            let effect_target_id = if def.target_filter().is_local_player() {
                 local_player_id.unwrap_or(source_id)
             } else {
                 target_id
@@ -557,7 +550,7 @@ impl EffectTracker {
                 target_name
             };
 
-            let key = EffectInstanceKey {
+            let key = EffectKey {
                 definition_id: def.id.clone(),
                 target_entity_id: effect_target_id,
             };
@@ -565,21 +558,19 @@ impl EffectTracker {
             let duration = def.duration_secs.map(Duration::from_secs_f32);
 
             if let Some(existing) = self.active_effects.get_mut(&key) {
-                // Refresh if allowed
-                if def.can_be_refreshed {
-                    existing.refresh(timestamp, duration);
+                // Refresh existing effect (same trigger ability was cast again)
+                existing.refresh(timestamp, duration);
 
-                    // Re-register target in raid registry if they were removed
-                    if existing.is_from_local_player {
-                        self.new_targets.push(NewTargetInfo {
-                            entity_id: effect_target_id,
-                            name: effect_target_name,
-                        });
-                    }
+                // Re-register target in raid registry if they were removed
+                if existing.is_from_local_player {
+                    self.new_targets.push(NewTargetInfo {
+                        entity_id: effect_target_id,
+                        name: effect_target_name,
+                    });
                 }
             } else {
                 // Create new effect
-                let display_text = def.display_text.clone().unwrap_or_else(|| def.name.clone());
+                let display_text = def.display_text().to_string();
                 let effect = ActiveEffect::new(
                     def.id.clone(),
                     ability_id as u64, // Use ability ID since this is ability-triggered
@@ -596,6 +587,7 @@ impl EffectTracker {
                     def.category,
                     def.show_on_raid_frames,
                     def.show_on_effects_overlay,
+                    def.show_at_secs,
                     &def.audio,
                 );
                 self.active_effects.insert(key, effect);
@@ -628,52 +620,50 @@ impl EffectTracker {
 
         let matching_defs: Vec<_> = self
             .definitions
-            .find_matching(effect_id as u64, Some(&effect_name_str))
+            .find_matching(effect_id as u64, Some(effect_name_str))
             .into_iter()
             .collect();
 
         let is_from_local = local_player_id == Some(source_id);
 
         for def in matching_defs {
-            let key = EffectInstanceKey {
+            let key = EffectKey {
                 definition_id: def.id.clone(),
                 target_entity_id: target_id,
             };
 
-            match def.trigger {
-                EffectTriggerMode::EffectApplied => {
-                    // Mark existing effect as removed (normal behavior)
-                    // But skip if fixed_duration is set - only expire via timer
-                    if !def.fixed_duration {
-                        if let Some(effect) = self.active_effects.get_mut(&key) {
-                            effect.mark_removed();
-                        }
+            if def.is_effect_applied_trigger() {
+                // Mark existing effect as removed (normal behavior)
+                // But skip if fixed_duration is set - only expire via timer
+                if !def.fixed_duration {
+                    if let Some(effect) = self.active_effects.get_mut(&key) {
+                        effect.mark_removed();
                     }
                 }
-                EffectTriggerMode::EffectRemoved => {
-                    // Create new effect when the game effect is removed (cooldown tracking)
-                    let duration = def.duration_secs.map(Duration::from_secs_f32);
-                    let display_text = def.display_text.clone().unwrap_or_else(|| def.name.clone());
-                    let effect = ActiveEffect::new(
-                        def.id.clone(),
-                        effect_id as u64,
-                        def.name.clone(),
-                        display_text,
-                        source_id,
-                        source_name,
-                        target_id,
-                        target_name,
-                        is_from_local,
-                        timestamp,
-                        duration,
-                        def.effective_color(),
-                        def.category,
-                        def.show_on_raid_frames,
-                        def.show_on_effects_overlay,
-                        &def.audio,
-                    );
-                    self.active_effects.insert(key, effect);
-                }
+            } else if def.is_effect_removed_trigger() {
+                // Create new effect when the game effect is removed (cooldown tracking)
+                let duration = def.duration_secs.map(Duration::from_secs_f32);
+                let display_text = def.display_text().to_string();
+                let effect = ActiveEffect::new(
+                    def.id.clone(),
+                    effect_id as u64,
+                    def.name.clone(),
+                    display_text,
+                    source_id,
+                    source_name,
+                    target_id,
+                    target_name,
+                    is_from_local,
+                    timestamp,
+                    duration,
+                    def.effective_color(),
+                    def.category,
+                    def.show_on_raid_frames,
+                    def.show_on_effects_overlay,
+                    def.show_at_secs,
+                    &def.audio,
+                );
+                self.active_effects.insert(key, effect);
             }
         }
     }
@@ -702,7 +692,7 @@ impl EffectTracker {
         let action_name_str = crate::context::resolve(action_name);
 
         for def in matching_defs {
-            let key = EffectInstanceKey {
+            let key = EffectKey {
                 definition_id: def.id.clone(),
                 target_entity_id: target_id,
             };
@@ -710,15 +700,10 @@ impl EffectTracker {
             if let Some(effect) = self.active_effects.get_mut(&key) {
                 effect.set_stacks(charges);
 
-                // Check if this action should refresh the effect
-                let should_refresh = if def.refresh_abilities.is_empty() {
-                    def.can_be_refreshed && def.is_refreshed_on_modify
-                } else {
-                    def.can_refresh_with(action_id as u64, Some(action_name_str))
-                        && def.is_refreshed_on_modify
-                };
-
-                if should_refresh {
+                // Check if this action should refresh the effect (requires is_refreshed_on_modify)
+                if def.is_refreshed_on_modify
+                    && def.can_refresh_with(action_id as u64, Some(action_name_str))
+                {
                     let duration = def.duration_secs.map(Duration::from_secs_f32);
                     effect.refresh(timestamp, duration);
                 }
@@ -781,18 +766,11 @@ impl EffectTracker {
     ) -> bool {
         // Get local player ID from self, boss entity IDs from encounter
         let local_player_id = self.local_player_id;
-        let boss_ids: HashSet<i64> = encounter
-            .map(|e| {
-                e.npcs
-                    .values()
-                    .filter_map(|npc| npc.is_boss.then_some(npc.log_id))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let boss_ids = get_boss_ids(encounter);
 
         let entities = get_entities(encounter);
 
-        def.source.matches(
+        def.source_filter().matches(
             entities,
             source.id,
             source.entity_type,
@@ -800,7 +778,7 @@ impl EffectTracker {
             source.npc_id,
             local_player_id,
             &boss_ids,
-        ) && def.target.matches(
+        ) && def.target_filter().matches(
             entities,
             target.id,
             target.entity_type,
