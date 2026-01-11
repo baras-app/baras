@@ -184,6 +184,35 @@ impl OverlayWindow {
         self.renderer.measure_text(text, font_size)
     }
 
+    /// Draw an RGBA image at the specified position with scaling
+    pub fn draw_image(
+        &mut self,
+        image_data: &[u8],
+        image_width: u32,
+        image_height: u32,
+        dest_x: f32,
+        dest_y: f32,
+        dest_width: f32,
+        dest_height: f32,
+    ) {
+        let width = self.platform.width();
+        let height = self.platform.height();
+        if let Some(buffer) = self.platform.pixel_buffer() {
+            self.renderer.draw_image(
+                buffer,
+                width,
+                height,
+                image_data,
+                image_width,
+                image_height,
+                dest_x,
+                dest_y,
+                dest_width,
+                dest_height,
+            );
+        }
+    }
+
     /// Commit the current frame to the screen
     pub fn commit(&mut self) {
         self.platform.commit();

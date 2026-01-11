@@ -1140,6 +1140,199 @@ impl Default for ChallengeOverlayConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Personal Buffs Overlay Config
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Configuration for the personal buffs bar overlay
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersonalBuffsConfig {
+    /// Icon size in pixels
+    #[serde(default = "default_icon_size")]
+    pub icon_size: u8,
+    /// Maximum buffs to display
+    #[serde(default = "default_max_buffs")]
+    pub max_display: u8,
+    /// Show effect names below icons
+    #[serde(default)]
+    pub show_effect_names: bool,
+    /// Show countdown text on icons
+    #[serde(default = "default_true")]
+    pub show_countdown: bool,
+    /// Show source name (who applied the buff)
+    #[serde(default)]
+    pub show_source_name: bool,
+    /// Show target name
+    #[serde(default)]
+    pub show_target_name: bool,
+    /// When true, stacks are shown large and centered; timer is secondary
+    #[serde(default)]
+    pub stack_priority: bool,
+}
+
+fn default_icon_size() -> u8 {
+    32
+}
+fn default_max_buffs() -> u8 {
+    8
+}
+
+impl Default for PersonalBuffsConfig {
+    fn default() -> Self {
+        Self {
+            icon_size: 32,
+            max_display: 8,
+            show_effect_names: false,
+            show_countdown: true,
+            show_source_name: false,
+            show_target_name: false,
+            stack_priority: false,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Personal Debuffs Overlay Config
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Configuration for the personal debuffs bar overlay
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersonalDebuffsConfig {
+    /// Icon size in pixels
+    #[serde(default = "default_icon_size")]
+    pub icon_size: u8,
+    /// Maximum debuffs to display
+    #[serde(default = "default_max_buffs")]
+    pub max_display: u8,
+    /// Show effect names below icons
+    #[serde(default)]
+    pub show_effect_names: bool,
+    /// Show countdown text on icons
+    #[serde(default = "default_true")]
+    pub show_countdown: bool,
+    /// Highlight cleansable debuffs
+    #[serde(default = "default_true")]
+    pub highlight_cleansable: bool,
+    /// Show source name (who applied - useful for boss debuffs)
+    #[serde(default = "default_true")]
+    pub show_source_name: bool,
+    /// Show target name
+    #[serde(default)]
+    pub show_target_name: bool,
+    /// When true, stacks are shown large and centered; timer is secondary
+    #[serde(default)]
+    pub stack_priority: bool,
+}
+
+impl Default for PersonalDebuffsConfig {
+    fn default() -> Self {
+        Self {
+            icon_size: 32,
+            max_display: 8,
+            show_effect_names: false,
+            show_countdown: true,
+            highlight_cleansable: true,
+            show_source_name: true,
+            show_target_name: false,
+            stack_priority: false,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cooldown Tracker Overlay Config
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Configuration for the cooldown tracker overlay
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CooldownTrackerConfig {
+    /// Icon size in pixels
+    #[serde(default = "default_icon_size")]
+    pub icon_size: u8,
+    /// Maximum cooldowns to display
+    #[serde(default = "default_max_cooldowns")]
+    pub max_display: u8,
+    /// Show ability names
+    #[serde(default = "default_true")]
+    pub show_ability_names: bool,
+    /// Sort by remaining time
+    #[serde(default = "default_true")]
+    pub sort_by_remaining: bool,
+    /// Show source name
+    #[serde(default)]
+    pub show_source_name: bool,
+    /// Show target of ability (for targeted CDs like taunts)
+    #[serde(default)]
+    pub show_target_name: bool,
+}
+
+fn default_max_cooldowns() -> u8 {
+    10
+}
+
+impl Default for CooldownTrackerConfig {
+    fn default() -> Self {
+        Self {
+            icon_size: 32,
+            max_display: 10,
+            show_ability_names: true,
+            sort_by_remaining: true,
+            show_source_name: false,
+            show_target_name: false,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOT Tracker Overlay Config
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Configuration for the multi-target DOT tracker overlay
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DotTrackerConfig {
+    /// Maximum targets to track simultaneously
+    #[serde(default = "default_max_targets")]
+    pub max_targets: u8,
+    /// Icon size in pixels
+    #[serde(default = "default_small_icon")]
+    pub icon_size: u8,
+    /// How many seconds to keep a target after last DOT expires
+    #[serde(default = "default_prune_delay")]
+    pub prune_delay_secs: f32,
+    /// Font color for target names
+    #[serde(default = "default_font_color")]
+    pub font_color: Color,
+    /// Show DOT names alongside icons
+    #[serde(default)]
+    pub show_effect_names: bool,
+    /// Show source name (who applied)
+    #[serde(default)]
+    pub show_source_name: bool,
+}
+
+fn default_max_targets() -> u8 {
+    6
+}
+fn default_small_icon() -> u8 {
+    20
+}
+fn default_prune_delay() -> f32 {
+    2.0
+}
+
+impl Default for DotTrackerConfig {
+    fn default() -> Self {
+        Self {
+            max_targets: 6,
+            icon_size: 20,
+            prune_delay_secs: 2.0,
+            font_color: overlay_colors::WHITE,
+            show_effect_names: false,
+            show_source_name: false,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Hotkey Settings
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1228,6 +1421,22 @@ pub struct OverlaySettings {
     pub alerts_overlay: AlertsOverlayConfig,
     #[serde(default = "default_opacity")]
     pub alerts_opacity: u8,
+    #[serde(default)]
+    pub personal_buffs: PersonalBuffsConfig,
+    #[serde(default = "default_opacity")]
+    pub personal_buffs_opacity: u8,
+    #[serde(default)]
+    pub personal_debuffs: PersonalDebuffsConfig,
+    #[serde(default = "default_opacity")]
+    pub personal_debuffs_opacity: u8,
+    #[serde(default)]
+    pub cooldown_tracker: CooldownTrackerConfig,
+    #[serde(default = "default_opacity")]
+    pub cooldown_tracker_opacity: u8,
+    #[serde(default)]
+    pub dot_tracker: DotTrackerConfig,
+    #[serde(default = "default_opacity")]
+    pub dot_tracker_opacity: u8,
     /// Auto-hide overlays when local player is in a conversation
     #[serde(default)]
     pub hide_during_conversations: bool,
@@ -1260,6 +1469,14 @@ impl Default for OverlaySettings {
             challenge_opacity: 180,
             alerts_overlay: AlertsOverlayConfig::default(),
             alerts_opacity: 180,
+            personal_buffs: PersonalBuffsConfig::default(),
+            personal_buffs_opacity: 180,
+            personal_debuffs: PersonalDebuffsConfig::default(),
+            personal_debuffs_opacity: 180,
+            cooldown_tracker: CooldownTrackerConfig::default(),
+            cooldown_tracker_opacity: 180,
+            dot_tracker: DotTrackerConfig::default(),
+            dot_tracker_opacity: 180,
             hide_during_conversations: false,
         }
     }
@@ -1384,6 +1601,16 @@ pub struct AppConfig {
     pub audio: AudioSettings,
     #[serde(default)]
     pub show_only_bosses: bool,
+
+    /// Player alacrity percentage (e.g., 15.4 for 15.4% alacrity).
+    /// Used to calculate actual effect durations.
+    #[serde(default)]
+    pub alacrity_percent: f32,
+
+    /// Average network latency in milliseconds (e.g., 50 for 50ms).
+    /// Used to adjust effect duration calculations.
+    #[serde(default)]
+    pub latency_ms: u16,
 }
 
 fn default_retention_days() -> u32 {
@@ -1407,6 +1634,8 @@ impl AppConfig {
             parsely: ParselySettings::default(),
             audio: AudioSettings::default(),
             show_only_bosses: false,
+            alacrity_percent: 0.0,
+            latency_ms: 0,
         }
     }
 }

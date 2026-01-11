@@ -35,9 +35,12 @@ pub fn App() -> Element {
     let mut raid_enabled = use_signal(|| false);
     let mut boss_health_enabled = use_signal(|| false);
     let mut timers_enabled = use_signal(|| false);
-    let mut effects_enabled = use_signal(|| false);
     let mut challenges_enabled = use_signal(|| false);
     let mut alerts_enabled = use_signal(|| false);
+    let mut personal_buffs_enabled = use_signal(|| false);
+    let mut personal_debuffs_enabled = use_signal(|| false);
+    let mut cooldowns_enabled = use_signal(|| false);
+    let mut dot_tracker_enabled = use_signal(|| false);
     let mut overlays_visible = use_signal(|| true);
     let mut move_mode = use_signal(|| false);
     let mut rearrange_mode = use_signal(|| false);
@@ -159,9 +162,12 @@ pub fn App() -> Element {
                 &mut raid_enabled,
                 &mut boss_health_enabled,
                 &mut timers_enabled,
-                &mut effects_enabled,
                 &mut challenges_enabled,
                 &mut alerts_enabled,
+                &mut personal_buffs_enabled,
+                &mut personal_debuffs_enabled,
+                &mut cooldowns_enabled,
+                &mut dot_tracker_enabled,
                 &mut overlays_visible,
                 &mut move_mode,
                 &mut rearrange_mode,
@@ -260,17 +266,23 @@ pub fn App() -> Element {
     let raid_on = raid_enabled();
     let boss_health_on = boss_health_enabled();
     let timers_on = timers_enabled();
-    let effects_on = effects_enabled();
     let challenges_on = challenges_enabled();
     let alerts_on = alerts_enabled();
+    let personal_buffs_on = personal_buffs_enabled();
+    let personal_debuffs_on = personal_debuffs_enabled();
+    let cooldowns_on = cooldowns_enabled();
+    let dot_tracker_on = dot_tracker_enabled();
     let any_enabled = enabled_map.values().any(|&v| v)
         || personal_on
         || raid_on
         || boss_health_on
         || timers_on
-        || effects_on
         || challenges_on
-        || alerts_on;
+        || alerts_on
+        || personal_buffs_on
+        || personal_debuffs_on
+        || cooldowns_on
+        || dot_tracker_on;
     let is_visible = overlays_visible();
     let is_move_mode = move_mode();
     let is_rearrange = rearrange_mode();
@@ -418,7 +430,9 @@ pub fn App() -> Element {
                                         if let Some(status) = api::get_overlay_status().await {
                                             apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
                                                 &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                &mut effects_enabled, &mut challenges_enabled, &mut alerts_enabled,
+                                                &mut challenges_enabled, &mut alerts_enabled,
+                                                &mut personal_buffs_enabled, &mut personal_debuffs_enabled,
+                                                &mut cooldowns_enabled, &mut dot_tracker_enabled,
                                                 &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
                                         }
                                     }
@@ -622,7 +636,9 @@ pub fn App() -> Element {
                                                     if let Some(status) = api::get_overlay_status().await {
                                                         apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
                                                             &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                            &mut effects_enabled, &mut challenges_enabled, &mut alerts_enabled,
+                                                            &mut challenges_enabled, &mut alerts_enabled,
+                                                            &mut personal_buffs_enabled, &mut personal_debuffs_enabled,
+                                                            &mut cooldowns_enabled, &mut dot_tracker_enabled,
                                                             &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
                                                     }
                                                 }
@@ -737,15 +753,6 @@ pub fn App() -> Element {
                                 "Encounter Timers"
                             }
                             button {
-                                class: if effects_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
-                                onclick: move |_| { spawn(async move {
-                                    if api::toggle_overlay(OverlayType::Effects, effects_on).await {
-                                        effects_enabled.set(!effects_on);
-                                    }
-                                }); },
-                                "Effects Timers"
-                            }
-                            button {
                                 class: if challenges_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::Challenges, challenges_on).await {
@@ -762,6 +769,47 @@ pub fn App() -> Element {
                                     }
                                 }); },
                                 "Alerts"
+                            }
+                        }
+
+                        // Effects overlays
+                        h4 { class: "subsection-title", "Effects" }
+                        div { class: "overlay-grid",
+                            button {
+                                class: if personal_buffs_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                onclick: move |_| { spawn(async move {
+                                    if api::toggle_overlay(OverlayType::PersonalBuffs, personal_buffs_on).await {
+                                        personal_buffs_enabled.set(!personal_buffs_on);
+                                    }
+                                }); },
+                                "Personal Buffs"
+                            }
+                            button {
+                                class: if personal_debuffs_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                onclick: move |_| { spawn(async move {
+                                    if api::toggle_overlay(OverlayType::PersonalDebuffs, personal_debuffs_on).await {
+                                        personal_debuffs_enabled.set(!personal_debuffs_on);
+                                    }
+                                }); },
+                                "Personal Debuffs"
+                            }
+                            button {
+                                class: if cooldowns_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                onclick: move |_| { spawn(async move {
+                                    if api::toggle_overlay(OverlayType::Cooldowns, cooldowns_on).await {
+                                        cooldowns_enabled.set(!cooldowns_on);
+                                    }
+                                }); },
+                                "Cooldowns"
+                            }
+                            button {
+                                class: if dot_tracker_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                onclick: move |_| { spawn(async move {
+                                    if api::toggle_overlay(OverlayType::DotTracker, dot_tracker_on).await {
+                                        dot_tracker_enabled.set(!dot_tracker_on);
+                                    }
+                                }); },
+                                "DOT Tracker"
                             }
                         }
 
@@ -1385,9 +1433,12 @@ fn apply_status(
     raid_enabled: &mut Signal<bool>,
     boss_health_enabled: &mut Signal<bool>,
     timers_enabled: &mut Signal<bool>,
-    effects_enabled: &mut Signal<bool>,
     challenges_enabled: &mut Signal<bool>,
     alerts_enabled: &mut Signal<bool>,
+    personal_buffs_enabled: &mut Signal<bool>,
+    personal_debuffs_enabled: &mut Signal<bool>,
+    cooldowns_enabled: &mut Signal<bool>,
+    dot_tracker_enabled: &mut Signal<bool>,
     overlays_visible: &mut Signal<bool>,
     move_mode: &mut Signal<bool>,
     rearrange_mode: &mut Signal<bool>,
@@ -1401,9 +1452,12 @@ fn apply_status(
     raid_enabled.set(status.raid_enabled);
     boss_health_enabled.set(status.boss_health_enabled);
     timers_enabled.set(status.timers_enabled);
-    effects_enabled.set(status.effects_enabled);
     challenges_enabled.set(status.challenges_enabled);
     alerts_enabled.set(status.alerts_enabled);
+    personal_buffs_enabled.set(status.personal_buffs_enabled);
+    personal_debuffs_enabled.set(status.personal_debuffs_enabled);
+    cooldowns_enabled.set(status.cooldowns_enabled);
+    dot_tracker_enabled.set(status.dot_tracker_enabled);
     overlays_visible.set(status.overlays_visible);
     move_mode.set(status.move_mode);
     rearrange_mode.set(status.rearrange_mode);

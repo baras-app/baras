@@ -5,6 +5,7 @@ pub mod dsl;
 pub mod effects;
 pub mod encounter;
 pub mod game_data;
+pub mod icons;
 pub mod query;
 pub mod serde_defaults;
 pub mod signal_processor;
@@ -27,8 +28,8 @@ pub use dsl::{
     PhaseDefinition, PhaseTrigger, load_bosses_from_dir,
 };
 pub use effects::{
-    ActiveEffect, DefinitionConfig, DefinitionSet, EffectCategory, EffectDefinition, EffectTracker,
-    NewTargetInfo,
+    ActiveEffect, DefinitionConfig, DefinitionSet, DisplayTarget, EffectCategory,
+    EffectDefinition, EffectTracker, NewTargetInfo,
 };
 pub use encounter::metrics::PlayerMetrics;
 pub use encounter::summary::{EncounterHistory, EncounterSummary};
@@ -38,3 +39,4 @@ pub use query::{AbilityBreakdown, EncounterQuery, EntityBreakdown, TimeSeriesPoi
 pub use signal_processor::{EventProcessor, GameSignal, SignalHandler};
 pub use state::SessionCache;
 pub use timers::{ActiveTimer, TimerDefinition, TimerKey, TimerManager, TimerTrigger};
+pub use icons::{IconRegistry, calculate_effect_duration, TICK_BIAS_SECS};

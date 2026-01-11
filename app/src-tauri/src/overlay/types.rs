@@ -138,6 +138,14 @@ pub enum OverlayType {
     Challenges,
     /// Alert text notifications
     Alerts,
+    /// Personal buffs/procs on self
+    PersonalBuffs,
+    /// Personal debuffs on self (from NPCs/bosses)
+    PersonalDebuffs,
+    /// Ability cooldowns
+    Cooldowns,
+    /// DOTs on enemy targets
+    DotTracker,
 }
 
 impl OverlayType {
@@ -152,6 +160,10 @@ impl OverlayType {
             OverlayType::Effects => "effects",
             OverlayType::Challenges => "challenges",
             OverlayType::Alerts => "alerts",
+            OverlayType::PersonalBuffs => "personal_buffs",
+            OverlayType::PersonalDebuffs => "personal_debuffs",
+            OverlayType::Cooldowns => "cooldowns",
+            OverlayType::DotTracker => "dot_tracker",
         }
     }
 
@@ -166,6 +178,10 @@ impl OverlayType {
             OverlayType::Effects => "baras-effects".to_string(),
             OverlayType::Challenges => "baras-challenges".to_string(),
             OverlayType::Alerts => "baras-alerts".to_string(),
+            OverlayType::PersonalBuffs => "baras-personal-buffs".to_string(),
+            OverlayType::PersonalDebuffs => "baras-personal-debuffs".to_string(),
+            OverlayType::Cooldowns => "baras-cooldowns".to_string(),
+            OverlayType::DotTracker => "baras-dot-tracker".to_string(),
         }
     }
 
@@ -180,6 +196,10 @@ impl OverlayType {
             OverlayType::Effects => (650, 700),
             OverlayType::Challenges => (950, 50),
             OverlayType::Alerts => (950, 400),
+            OverlayType::PersonalBuffs => (350, 200),
+            OverlayType::PersonalDebuffs => (350, 280),
+            OverlayType::Cooldowns => (50, 500),
+            OverlayType::DotTracker => (50, 650),
         }
     }
 }

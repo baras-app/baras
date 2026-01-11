@@ -198,6 +198,26 @@ impl OverlayState {
         self.overlays.contains_key(&OverlayType::Challenges)
     }
 
+    /// Get the channel for personal buffs overlay (convenience)
+    pub fn get_personal_buffs_tx(&self) -> Option<&Sender<OverlayCommand>> {
+        self.get_tx(OverlayType::PersonalBuffs)
+    }
+
+    /// Get the channel for personal debuffs overlay (convenience)
+    pub fn get_personal_debuffs_tx(&self) -> Option<&Sender<OverlayCommand>> {
+        self.get_tx(OverlayType::PersonalDebuffs)
+    }
+
+    /// Get the channel for cooldowns overlay (convenience)
+    pub fn get_cooldowns_tx(&self) -> Option<&Sender<OverlayCommand>> {
+        self.get_tx(OverlayType::Cooldowns)
+    }
+
+    /// Get the channel for DOT tracker overlay (convenience)
+    pub fn get_dot_tracker_tx(&self) -> Option<&Sender<OverlayCommand>> {
+        self.get_tx(OverlayType::DotTracker)
+    }
+
     /// Insert an overlay handle
     pub fn insert(&mut self, handle: OverlayHandle) {
         self.overlays.insert(handle.kind, handle);

@@ -938,6 +938,22 @@ impl ServiceHandle {
                 .shared
                 .effects_overlay_active
                 .store(active, Ordering::SeqCst),
+            "personal_buffs" => self
+                .shared
+                .personal_buffs_overlay_active
+                .store(active, Ordering::SeqCst),
+            "personal_debuffs" => self
+                .shared
+                .personal_debuffs_overlay_active
+                .store(active, Ordering::SeqCst),
+            "cooldowns" => self
+                .shared
+                .cooldowns_overlay_active
+                .store(active, Ordering::SeqCst),
+            "dot_tracker" => self
+                .shared
+                .dot_tracker_overlay_active
+                .store(active, Ordering::SeqCst),
             _ => {}
         }
     }

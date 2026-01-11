@@ -266,6 +266,72 @@ async fn process_overlay_update(
                     .await;
             }
         }
+        OverlayUpdate::PersonalBuffsUpdated(buffs_data) => {
+            let tx = {
+                let state = match overlay_state.lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                state.get_personal_buffs_tx().cloned()
+            };
+
+            if let Some(tx) = tx {
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::PersonalBuffs(
+                        buffs_data,
+                    )))
+                    .await;
+            }
+        }
+        OverlayUpdate::PersonalDebuffsUpdated(debuffs_data) => {
+            let tx = {
+                let state = match overlay_state.lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                state.get_personal_debuffs_tx().cloned()
+            };
+
+            if let Some(tx) = tx {
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::PersonalDebuffs(
+                        debuffs_data,
+                    )))
+                    .await;
+            }
+        }
+        OverlayUpdate::CooldownsUpdated(cooldowns_data) => {
+            let tx = {
+                let state = match overlay_state.lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                state.get_cooldowns_tx().cloned()
+            };
+
+            if let Some(tx) = tx {
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::Cooldowns(
+                        cooldowns_data,
+                    )))
+                    .await;
+            }
+        }
+        OverlayUpdate::DotTrackerUpdated(dot_data) => {
+            let tx = {
+                let state = match overlay_state.lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                state.get_dot_tracker_tx().cloned()
+            };
+
+            if let Some(tx) = tx {
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::DotTracker(dot_data)))
+                    .await;
+            }
+        }
         OverlayUpdate::CombatStarted => {
             // Could show overlay or clear entries
         }
@@ -352,6 +418,26 @@ async fn process_overlay_update(
                 // Challenges overlay
                 if let Some(tx) = state.get_challenges_tx() {
                     channels.push((tx.clone(), OverlayData::Challenges(Default::default())));
+                }
+
+                // Personal buffs overlay
+                if let Some(tx) = state.get_personal_buffs_tx() {
+                    channels.push((tx.clone(), OverlayData::PersonalBuffs(Default::default())));
+                }
+
+                // Personal debuffs overlay
+                if let Some(tx) = state.get_personal_debuffs_tx() {
+                    channels.push((tx.clone(), OverlayData::PersonalDebuffs(Default::default())));
+                }
+
+                // Cooldowns overlay
+                if let Some(tx) = state.get_cooldowns_tx() {
+                    channels.push((tx.clone(), OverlayData::Cooldowns(Default::default())));
+                }
+
+                // DOT tracker overlay
+                if let Some(tx) = state.get_dot_tracker_tx() {
+                    channels.push((tx.clone(), OverlayData::DotTracker(Default::default())));
                 }
 
                 channels

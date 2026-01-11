@@ -210,6 +210,28 @@ impl OverlayFrame {
         self.window.measure_text(text, font_size)
     }
 
+    /// Draw an RGBA image at the specified position with scaling
+    pub fn draw_image(
+        &mut self,
+        image_data: &[u8],
+        image_width: u32,
+        image_height: u32,
+        dest_x: f32,
+        dest_y: f32,
+        dest_width: f32,
+        dest_height: f32,
+    ) {
+        self.window.draw_image(
+            image_data,
+            image_width,
+            image_height,
+            dest_x,
+            dest_y,
+            dest_width,
+            dest_height,
+        );
+    }
+
     /// Draw a filled rectangle
     pub fn fill_rect(&mut self, x: f32, y: f32, w: f32, h: f32, color: Color) {
         self.window.fill_rect(x, y, w, h, color);

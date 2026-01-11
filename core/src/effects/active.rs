@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 
 use chrono::NaiveDateTime;
 
-use super::EffectCategory;
+use super::{DisplayTarget, EffectCategory};
 use crate::context::IStr;
 
 /// How long to show a faded effect after removal before deleting
@@ -92,6 +92,12 @@ pub struct ActiveEffect {
     /// Effect category
     pub category: EffectCategory,
 
+    /// Which overlay should display this effect
+    pub display_target: DisplayTarget,
+
+    /// Ability ID for icon lookup (may differ from game_effect_id)
+    pub icon_ability_id: u64,
+
     /// Show on raid frames overlay
     pub show_on_raid_frames: bool,
 
@@ -141,6 +147,8 @@ impl ActiveEffect {
         duration: Option<Duration>,
         color: [u8; 4],
         category: EffectCategory,
+        display_target: DisplayTarget,
+        icon_ability_id: u64,
         show_on_raid_frames: bool,
         show_on_effects_overlay: bool,
         show_at_secs: f32,
@@ -180,6 +188,8 @@ impl ActiveEffect {
             stacks: 1,
             color,
             category,
+            display_target,
+            icon_ability_id,
             show_on_raid_frames,
             show_on_effects_overlay,
             show_at_secs,
