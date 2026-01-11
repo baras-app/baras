@@ -12,18 +12,30 @@
 mod alerts;
 mod boss_health;
 mod challenges;
+mod cooldowns;
+mod dot_tracker;
 mod effects;
 mod metric;
 mod personal;
+mod personal_buffs;
+mod personal_debuffs;
 mod raid;
 mod timers;
 
 pub use alerts::{AlertEntry, AlertsData, AlertsOverlay};
 pub use boss_health::{BossHealthData, BossHealthOverlay};
 pub use challenges::{ChallengeData, ChallengeEntry, ChallengeOverlay, PlayerContribution};
+pub use cooldowns::{CooldownConfig, CooldownData, CooldownEntry, CooldownOverlay};
+pub use dot_tracker::{DotEntry, DotTarget, DotTrackerConfig, DotTrackerData, DotTrackerOverlay};
 pub use effects::{EffectEntry, EffectsData, EffectsOverlay};
 pub use metric::{MetricEntry, MetricOverlay};
 pub use personal::{PersonalOverlay, PersonalStats};
+pub use personal_buffs::{
+    PersonalBuff, PersonalBuffsConfig, PersonalBuffsData, PersonalBuffsOverlay,
+};
+pub use personal_debuffs::{
+    PersonalDebuff, PersonalDebuffsConfig, PersonalDebuffsData, PersonalDebuffsOverlay,
+};
 pub use raid::{
     // Effect config bounds (for UI sliders, validation, etc.)
     EFFECT_OFFSET_DEFAULT,
@@ -87,6 +99,14 @@ pub enum OverlayData {
     Challenges(ChallengeData),
     /// Alert text notifications
     Alerts(AlertsData),
+    /// Personal buffs/procs on self
+    PersonalBuffs(PersonalBuffsData),
+    /// Personal debuffs on self (from NPCs/bosses)
+    PersonalDebuffs(PersonalDebuffsData),
+    /// Ability cooldowns
+    Cooldowns(CooldownData),
+    /// DOTs on enemy targets
+    DotTracker(DotTrackerData),
 }
 
 /// Configuration updates that can be sent to overlays
@@ -108,6 +128,14 @@ pub enum OverlayConfigUpdate {
     Challenge(ChallengeOverlayConfig, u8),
     /// Config for alerts overlay (+ background alpha)
     Alerts(AlertsOverlayConfig, u8),
+    /// Config for personal buffs overlay (+ background alpha)
+    PersonalBuffs(PersonalBuffsConfig, u8),
+    /// Config for personal debuffs overlay (+ background alpha)
+    PersonalDebuffs(PersonalDebuffsConfig, u8),
+    /// Config for cooldown overlay (+ background alpha)
+    Cooldowns(CooldownConfig, u8),
+    /// Config for DOT tracker overlay (+ background alpha)
+    DotTracker(DotTrackerConfig, u8),
 }
 
 /// Position information for an overlay

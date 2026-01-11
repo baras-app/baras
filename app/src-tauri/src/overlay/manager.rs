@@ -4,14 +4,18 @@
 //! This consolidates the duplicated logic that was scattered across commands.
 
 use baras_core::context::{OverlayPositionConfig, OverlaySettings};
-use baras_overlay::{OverlayConfigUpdate, OverlayData, RaidGridLayout, RaidOverlayConfig};
+use baras_overlay::{
+    CooldownConfig, DotTrackerConfig, OverlayConfigUpdate, OverlayData, PersonalBuffsConfig,
+    PersonalDebuffsConfig, RaidGridLayout, RaidOverlayConfig,
+};
 use std::time::Duration;
 
 use super::metrics::create_entries_for_type;
 use super::spawn::{
     create_alerts_overlay, create_boss_health_overlay, create_challenges_overlay,
-    create_effects_overlay, create_metric_overlay, create_personal_overlay, create_raid_overlay,
-    create_timer_overlay,
+    create_cooldowns_overlay, create_dot_tracker_overlay, create_effects_overlay,
+    create_metric_overlay, create_personal_buffs_overlay, create_personal_debuffs_overlay,
+    create_personal_overlay, create_raid_overlay, create_timer_overlay,
 };
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
 use super::types::{MetricType, OverlayType};
@@ -81,6 +85,22 @@ impl OverlayManager {
                 let alerts_config = settings.alerts_overlay.clone();
                 create_alerts_overlay(position, alerts_config, settings.alerts_opacity)?
             }
+            OverlayType::PersonalBuffs => {
+                let buffs_config = settings.personal_buffs.clone();
+                create_personal_buffs_overlay(position, buffs_config, settings.personal_buffs_opacity)?
+            }
+            OverlayType::PersonalDebuffs => {
+                let debuffs_config = settings.personal_debuffs.clone();
+                create_personal_debuffs_overlay(position, debuffs_config, settings.personal_debuffs_opacity)?
+            }
+            OverlayType::Cooldowns => {
+                let cooldowns_config = settings.cooldown_tracker.clone();
+                create_cooldowns_overlay(position, cooldowns_config, settings.cooldown_tracker_opacity)?
+            }
+            OverlayType::DotTracker => {
+                let dot_config = settings.dot_tracker.clone();
+                create_dot_tracker_overlay(position, dot_config, settings.dot_tracker_opacity)?
+            }
         };
 
         Ok(SpawnResult {
@@ -143,7 +163,11 @@ impl OverlayManager {
             | OverlayType::Timers
             | OverlayType::Effects
             | OverlayType::Challenges
-            | OverlayType::Alerts => {
+            | OverlayType::Alerts
+            | OverlayType::PersonalBuffs
+            | OverlayType::PersonalDebuffs
+            | OverlayType::Cooldowns
+            | OverlayType::DotTracker => {
                 // These get data via separate update channels (bridge)
             }
         }
@@ -250,6 +274,56 @@ impl OverlayManager {
             OverlayType::Alerts => {
                 let alerts_config = settings.alerts_overlay.clone();
                 OverlayConfigUpdate::Alerts(alerts_config, settings.alerts_opacity)
+            }
+            OverlayType::PersonalBuffs => {
+                let cfg = &settings.personal_buffs;
+                let buffs_config = PersonalBuffsConfig {
+                    icon_size: cfg.icon_size,
+                    max_display: cfg.max_display,
+                    show_effect_names: cfg.show_effect_names,
+                    show_countdown: cfg.show_countdown,
+                    show_source_name: cfg.show_source_name,
+                    show_target_name: cfg.show_target_name,
+                    stack_priority: cfg.stack_priority,
+                };
+                OverlayConfigUpdate::PersonalBuffs(buffs_config, settings.personal_buffs_opacity)
+            }
+            OverlayType::PersonalDebuffs => {
+                let cfg = &settings.personal_debuffs;
+                let debuffs_config = PersonalDebuffsConfig {
+                    icon_size: cfg.icon_size,
+                    max_display: cfg.max_display,
+                    show_effect_names: cfg.show_effect_names,
+                    show_countdown: cfg.show_countdown,
+                    highlight_cleansable: cfg.highlight_cleansable,
+                    show_source_name: cfg.show_source_name,
+                    show_target_name: cfg.show_target_name,
+                    stack_priority: cfg.stack_priority,
+                };
+                OverlayConfigUpdate::PersonalDebuffs(debuffs_config, settings.personal_debuffs_opacity)
+            }
+            OverlayType::Cooldowns => {
+                let cfg = &settings.cooldown_tracker;
+                let cooldowns_config = CooldownConfig {
+                    icon_size: cfg.icon_size,
+                    max_display: cfg.max_display,
+                    show_ability_names: cfg.show_ability_names,
+                    sort_by_remaining: cfg.sort_by_remaining,
+                    show_source_name: cfg.show_source_name,
+                    show_target_name: cfg.show_target_name,
+                };
+                OverlayConfigUpdate::Cooldowns(cooldowns_config, settings.cooldown_tracker_opacity)
+            }
+            OverlayType::DotTracker => {
+                let cfg = &settings.dot_tracker;
+                let dot_config = DotTrackerConfig {
+                    max_targets: cfg.max_targets,
+                    icon_size: cfg.icon_size,
+                    prune_delay_secs: cfg.prune_delay_secs,
+                    show_effect_names: cfg.show_effect_names,
+                    show_source_name: cfg.show_source_name,
+                };
+                OverlayConfigUpdate::DotTracker(dot_config, settings.dot_tracker_opacity)
             }
         }
     }
@@ -381,6 +455,10 @@ impl OverlayManager {
                 "effects" => OverlayType::Effects,
                 "challenges" => OverlayType::Challenges,
                 "alerts" => OverlayType::Alerts,
+                "personal_buffs" => OverlayType::PersonalBuffs,
+                "personal_debuffs" => OverlayType::PersonalDebuffs,
+                "cooldowns" => OverlayType::Cooldowns,
+                "dot_tracker" => OverlayType::DotTracker,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)
@@ -520,6 +598,10 @@ impl OverlayManager {
                 "effects" => OverlayType::Effects,
                 "challenges" => OverlayType::Challenges,
                 "alerts" => OverlayType::Alerts,
+                "personal_buffs" => OverlayType::PersonalBuffs,
+                "personal_debuffs" => OverlayType::PersonalDebuffs,
+                "cooldowns" => OverlayType::Cooldowns,
+                "dot_tracker" => OverlayType::DotTracker,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)
@@ -719,6 +801,10 @@ impl OverlayManager {
             OverlayType::Effects,
             OverlayType::Challenges,
             OverlayType::Alerts,
+            OverlayType::PersonalBuffs,
+            OverlayType::PersonalDebuffs,
+            OverlayType::Cooldowns,
+            OverlayType::DotTracker,
         ];
         for mt in MetricType::all() {
             types.push(OverlayType::Metric(*mt));

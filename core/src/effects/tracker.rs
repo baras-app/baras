@@ -16,7 +16,7 @@ use crate::dsl::EntityFilterMatching;
 use crate::encounter::CombatEncounter;
 use crate::signal_processor::{GameSignal, SignalHandler};
 
-use super::{ActiveEffect, EffectDefinition, EffectKey};
+use super::{ActiveEffect, DisplayTarget, EffectDefinition, EffectKey};
 
 /// Get the entity roster from the current encounter, or empty slice if none.
 fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
@@ -286,6 +286,60 @@ impl EffectTracker {
             .filter(move |e| e.target_entity_id == target_id)
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Categorized Output Methods (by DisplayTarget)
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// Get effects destined for raid frames overlay (HOTs on group members)
+    pub fn raid_frame_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
+        self.active_effects.values().filter(|e| {
+            e.display_target == DisplayTarget::RaidFrames && e.removed_at.is_none()
+        })
+    }
+
+    /// Get effects destined for personal buffs bar
+    pub fn personal_buff_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
+        self.active_effects.values().filter(|e| {
+            e.display_target == DisplayTarget::PersonalBuffs && e.removed_at.is_none()
+        })
+    }
+
+    /// Get effects destined for personal debuffs bar
+    pub fn personal_debuff_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
+        self.active_effects.values().filter(|e| {
+            e.display_target == DisplayTarget::PersonalDebuffs && e.removed_at.is_none()
+        })
+    }
+
+    /// Get effects destined for cooldown tracker
+    pub fn cooldown_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
+        self.active_effects.values().filter(|e| {
+            e.display_target == DisplayTarget::Cooldowns && e.removed_at.is_none()
+        })
+    }
+
+    /// Get effects destined for DOT tracker, grouped by target entity
+    pub fn dot_tracker_effects(&self) -> std::collections::HashMap<i64, Vec<&ActiveEffect>> {
+        let mut by_target: std::collections::HashMap<i64, Vec<&ActiveEffect>> =
+            std::collections::HashMap::new();
+        for effect in self.active_effects.values() {
+            if effect.display_target == DisplayTarget::DotTracker && effect.removed_at.is_none() {
+                by_target
+                    .entry(effect.target_entity_id)
+                    .or_default()
+                    .push(effect);
+            }
+        }
+        by_target
+    }
+
+    /// Get effects destined for generic effects overlay (legacy)
+    pub fn effects_overlay_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
+        self.active_effects.values().filter(|e| {
+            e.display_target == DisplayTarget::EffectsOverlay && e.removed_at.is_none()
+        })
+    }
+
     /// Drain the queue of targets for raid frame registration attempts.
     /// Called by the service - the registry handles duplicate rejection.
     pub fn take_new_targets(&mut self) -> Vec<NewTargetInfo> {
@@ -395,6 +449,7 @@ impl EffectTracker {
             } else {
                 // Create new effect
                 let display_text = def.display_text().to_string();
+                let icon_ability_id = def.icon_ability_id.unwrap_or(effect_id as u64);
                 let mut effect = ActiveEffect::new(
                     def.id.clone(),
                     effect_id as u64,
@@ -409,6 +464,8 @@ impl EffectTracker {
                     duration,
                     def.effective_color(),
                     def.category,
+                    def.display_target,
+                    icon_ability_id,
                     def.show_on_raid_frames,
                     def.show_on_effects_overlay,
                     def.show_at_secs,
@@ -691,6 +748,7 @@ impl EffectTracker {
             } else {
                 // Create new effect
                 let display_text = def.display_text().to_string();
+                let icon_ability_id = def.icon_ability_id.unwrap_or(ability_id as u64);
                 let effect = ActiveEffect::new(
                     def.id.clone(),
                     ability_id as u64, // Use ability ID since this is ability-triggered
@@ -705,6 +763,8 @@ impl EffectTracker {
                     duration,
                     def.effective_color(),
                     def.category,
+                    def.display_target,
+                    icon_ability_id,
                     def.show_on_raid_frames,
                     def.show_on_effects_overlay,
                     def.show_at_secs,
@@ -773,6 +833,7 @@ impl EffectTracker {
                 // Create new effect when the game effect is removed (cooldown tracking)
                 let duration = def.duration_secs.map(Duration::from_secs_f32);
                 let display_text = def.display_text().to_string();
+                let icon_ability_id = def.icon_ability_id.unwrap_or(effect_id as u64);
                 let effect = ActiveEffect::new(
                     def.id.clone(),
                     effect_id as u64,
@@ -787,6 +848,8 @@ impl EffectTracker {
                     duration,
                     def.effective_color(),
                     def.category,
+                    def.display_target,
+                    icon_ability_id,
                     def.show_on_raid_frames,
                     def.show_on_effects_overlay,
                     def.show_at_secs,

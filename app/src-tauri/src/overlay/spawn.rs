@@ -19,9 +19,16 @@ use baras_core::context::{
     OverlayPositionConfig, PersonalOverlayConfig, TimerOverlayConfig,
 };
 use baras_overlay::{
-    AlertsOverlay, BossHealthOverlay, ChallengeOverlay, EffectsOverlay, MetricOverlay, Overlay,
-    OverlayConfig, PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig,
-    RaidRegistryAction, TimerOverlay,
+    AlertsOverlay, BossHealthOverlay, ChallengeOverlay, CooldownConfig, CooldownOverlay,
+    DotTrackerConfig, DotTrackerOverlay, EffectsOverlay, MetricOverlay, Overlay, OverlayConfig,
+    PersonalBuffsConfig, PersonalBuffsOverlay, PersonalDebuffsConfig, PersonalDebuffsOverlay,
+    PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction,
+    TimerOverlay,
+};
+use baras_types::{
+    CooldownTrackerConfig, DotTrackerConfig as TypesDotTrackerConfig,
+    PersonalBuffsConfig as TypesPersonalBuffsConfig,
+    PersonalDebuffsConfig as TypesPersonalDebuffsConfig,
 };
 
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
@@ -475,6 +482,180 @@ pub fn create_alerts_overlay(
     let factory = move || {
         AlertsOverlay::new(config, alerts_config, background_alpha)
             .map_err(|e| format!("Failed to create alerts overlay: {}", e))
+    };
+
+    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
+
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
+}
+
+/// Create and spawn the personal buffs overlay
+pub fn create_personal_buffs_overlay(
+    position: OverlayPositionConfig,
+    buffs_config: TypesPersonalBuffsConfig,
+    background_alpha: u8,
+) -> Result<OverlayHandle, String> {
+    let config = OverlayConfig {
+        x: position.x,
+        y: position.y,
+        width: position.width,
+        height: position.height,
+        namespace: "baras-personal-buffs".to_string(),
+        click_through: true,
+        target_monitor_id: position.monitor_id.clone(),
+    };
+
+    let kind = OverlayType::PersonalBuffs;
+
+    // Convert types config to overlay config
+    let overlay_config = PersonalBuffsConfig {
+        icon_size: buffs_config.icon_size,
+        max_display: buffs_config.max_display,
+        show_effect_names: buffs_config.show_effect_names,
+        show_countdown: buffs_config.show_countdown,
+        show_source_name: buffs_config.show_source_name,
+        show_target_name: buffs_config.show_target_name,
+        stack_priority: buffs_config.stack_priority,
+    };
+
+    let factory = move || {
+        PersonalBuffsOverlay::new(config, overlay_config, background_alpha)
+            .map_err(|e| format!("Failed to create personal buffs overlay: {}", e))
+    };
+
+    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
+
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
+}
+
+/// Create and spawn the personal debuffs overlay
+pub fn create_personal_debuffs_overlay(
+    position: OverlayPositionConfig,
+    debuffs_config: TypesPersonalDebuffsConfig,
+    background_alpha: u8,
+) -> Result<OverlayHandle, String> {
+    let config = OverlayConfig {
+        x: position.x,
+        y: position.y,
+        width: position.width,
+        height: position.height,
+        namespace: "baras-personal-debuffs".to_string(),
+        click_through: true,
+        target_monitor_id: position.monitor_id.clone(),
+    };
+
+    let kind = OverlayType::PersonalDebuffs;
+
+    // Convert types config to overlay config
+    let overlay_config = PersonalDebuffsConfig {
+        icon_size: debuffs_config.icon_size,
+        max_display: debuffs_config.max_display,
+        show_effect_names: debuffs_config.show_effect_names,
+        show_countdown: debuffs_config.show_countdown,
+        highlight_cleansable: debuffs_config.highlight_cleansable,
+        show_source_name: debuffs_config.show_source_name,
+        show_target_name: debuffs_config.show_target_name,
+        stack_priority: debuffs_config.stack_priority,
+    };
+
+    let factory = move || {
+        PersonalDebuffsOverlay::new(config, overlay_config, background_alpha)
+            .map_err(|e| format!("Failed to create personal debuffs overlay: {}", e))
+    };
+
+    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
+
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
+}
+
+/// Create and spawn the cooldowns tracker overlay
+pub fn create_cooldowns_overlay(
+    position: OverlayPositionConfig,
+    cooldowns_config: CooldownTrackerConfig,
+    background_alpha: u8,
+) -> Result<OverlayHandle, String> {
+    let config = OverlayConfig {
+        x: position.x,
+        y: position.y,
+        width: position.width,
+        height: position.height,
+        namespace: "baras-cooldowns".to_string(),
+        click_through: true,
+        target_monitor_id: position.monitor_id.clone(),
+    };
+
+    let kind = OverlayType::Cooldowns;
+
+    // Convert types config to overlay config
+    let overlay_config = CooldownConfig {
+        icon_size: cooldowns_config.icon_size,
+        max_display: cooldowns_config.max_display,
+        show_ability_names: cooldowns_config.show_ability_names,
+        sort_by_remaining: cooldowns_config.sort_by_remaining,
+        show_source_name: cooldowns_config.show_source_name,
+        show_target_name: cooldowns_config.show_target_name,
+    };
+
+    let factory = move || {
+        CooldownOverlay::new(config, overlay_config, background_alpha)
+            .map_err(|e| format!("Failed to create cooldowns overlay: {}", e))
+    };
+
+    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
+
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
+}
+
+/// Create and spawn the DOT tracker overlay
+pub fn create_dot_tracker_overlay(
+    position: OverlayPositionConfig,
+    dot_config: TypesDotTrackerConfig,
+    background_alpha: u8,
+) -> Result<OverlayHandle, String> {
+    let config = OverlayConfig {
+        x: position.x,
+        y: position.y,
+        width: position.width,
+        height: position.height,
+        namespace: "baras-dot-tracker".to_string(),
+        click_through: true,
+        target_monitor_id: position.monitor_id.clone(),
+    };
+
+    let kind = OverlayType::DotTracker;
+
+    // Convert types config to overlay config (font_color in types not used by overlay)
+    let overlay_config = DotTrackerConfig {
+        max_targets: dot_config.max_targets,
+        icon_size: dot_config.icon_size,
+        prune_delay_secs: dot_config.prune_delay_secs,
+        show_effect_names: dot_config.show_effect_names,
+        show_source_name: dot_config.show_source_name,
+    };
+
+    let factory = move || {
+        DotTrackerOverlay::new(config, overlay_config, background_alpha)
+            .map_err(|e| format!("Failed to create DOT tracker overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;

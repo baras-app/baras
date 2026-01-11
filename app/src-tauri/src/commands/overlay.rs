@@ -30,6 +30,14 @@ pub struct OverlayStatusResponse {
     pub challenges_enabled: bool,
     pub alerts_running: bool,
     pub alerts_enabled: bool,
+    pub personal_buffs_running: bool,
+    pub personal_buffs_enabled: bool,
+    pub personal_debuffs_running: bool,
+    pub personal_debuffs_enabled: bool,
+    pub cooldowns_running: bool,
+    pub cooldowns_enabled: bool,
+    pub dot_tracker_running: bool,
+    pub dot_tracker_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -111,6 +119,10 @@ pub async fn get_overlay_status(
         effects_running,
         challenges_running,
         alerts_running,
+        personal_buffs_running,
+        personal_debuffs_running,
+        cooldowns_running,
+        dot_tracker_running,
         move_mode,
         rearrange_mode,
     ) = {
@@ -124,6 +136,10 @@ pub async fn get_overlay_status(
             s.is_effects_running(),
             s.is_challenges_running(),
             s.is_running(OverlayType::Alerts),
+            s.is_running(OverlayType::PersonalBuffs),
+            s.is_running(OverlayType::PersonalDebuffs),
+            s.is_running(OverlayType::Cooldowns),
+            s.is_running(OverlayType::DotTracker),
             s.move_mode,
             s.rearrange_mode,
         )
@@ -144,6 +160,10 @@ pub async fn get_overlay_status(
     let effects_enabled = config.overlay_settings.is_enabled("effects");
     let challenges_enabled = config.overlay_settings.is_enabled("challenges");
     let alerts_enabled = config.overlay_settings.is_enabled("alerts");
+    let personal_buffs_enabled = config.overlay_settings.is_enabled("personal_buffs");
+    let personal_debuffs_enabled = config.overlay_settings.is_enabled("personal_debuffs");
+    let cooldowns_enabled = config.overlay_settings.is_enabled("cooldowns");
+    let dot_tracker_enabled = config.overlay_settings.is_enabled("dot_tracker");
 
     Ok(OverlayStatusResponse {
         running: running_metric_types,
@@ -162,6 +182,14 @@ pub async fn get_overlay_status(
         challenges_enabled,
         alerts_running,
         alerts_enabled,
+        personal_buffs_running,
+        personal_buffs_enabled,
+        personal_debuffs_running,
+        personal_debuffs_enabled,
+        cooldowns_running,
+        cooldowns_enabled,
+        dot_tracker_running,
+        dot_tracker_enabled,
         overlays_visible: config.overlay_settings.overlays_visible,
         move_mode,
         rearrange_mode,

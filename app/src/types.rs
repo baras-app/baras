@@ -73,6 +73,14 @@ pub struct OverlayStatus {
     pub challenges_enabled: bool,
     pub alerts_running: bool,
     pub alerts_enabled: bool,
+    pub personal_buffs_running: bool,
+    pub personal_buffs_enabled: bool,
+    pub personal_debuffs_running: bool,
+    pub personal_debuffs_enabled: bool,
+    pub cooldowns_running: bool,
+    pub cooldowns_enabled: bool,
+    pub dot_tracker_running: bool,
+    pub dot_tracker_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -175,6 +183,10 @@ pub enum OverlayType {
     Effects,
     Challenges,
     Alerts,
+    PersonalBuffs,
+    PersonalDebuffs,
+    Cooldowns,
+    DotTracker,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

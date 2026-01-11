@@ -196,6 +196,14 @@ impl Renderer {
         h: f32,
         color: Color,
     ) {
+        // Validate dimensions to avoid tiny-skia panics
+        if w < 1.0 || h < 1.0 || x < 0.0 || y < 0.0 {
+            return;
+        }
+        if x + w > width as f32 || y + h > height as f32 {
+            return;
+        }
+
         let Some(mut pixmap) = PixmapMut::from_bytes(buffer, width, height) else {
             return;
         };
@@ -207,7 +215,7 @@ impl Renderer {
 
         let mut paint = Paint::default();
         paint.set_color(color);
-        paint.anti_alias = true;
+        paint.anti_alias = false; // Disable AA to avoid hairline_aa panics
 
         pixmap.fill_rect(rect, &paint, Transform::identity(), None);
     }
@@ -374,6 +382,81 @@ impl Renderer {
     /// Measure text dimensions (uses shaping cache, no glyph clone)
     pub fn measure_text(&mut self, text: &str, font_size: f32) -> (f32, f32) {
         self.ensure_cached(text, font_size)
+    }
+
+    /// Draw an RGBA image at the specified position with scaling
+    ///
+    /// The image is alpha-blended onto the buffer.
+    pub fn draw_image(
+        &self,
+        buffer: &mut [u8],
+        buf_width: u32,
+        buf_height: u32,
+        image_data: &[u8],
+        image_width: u32,
+        image_height: u32,
+        dest_x: f32,
+        dest_y: f32,
+        dest_width: f32,
+        dest_height: f32,
+    ) {
+        if image_data.len() != (image_width * image_height * 4) as usize {
+            return;
+        }
+
+        let dest_x = dest_x as i32;
+        let dest_y = dest_y as i32;
+        let dest_w = dest_width as i32;
+        let dest_h = dest_height as i32;
+
+        let scale_x = image_width as f32 / dest_width;
+        let scale_y = image_height as f32 / dest_height;
+
+        for dy in 0..dest_h {
+            let py = dest_y + dy;
+            if py < 0 || py >= buf_height as i32 {
+                continue;
+            }
+
+            for dx in 0..dest_w {
+                let px = dest_x + dx;
+                if px < 0 || px >= buf_width as i32 {
+                    continue;
+                }
+
+                // Sample from source image (nearest neighbor)
+                let src_x = ((dx as f32 * scale_x) as u32).min(image_width - 1);
+                let src_y = ((dy as f32 * scale_y) as u32).min(image_height - 1);
+                let src_idx = ((src_y * image_width + src_x) * 4) as usize;
+
+                let src_r = image_data[src_idx];
+                let src_g = image_data[src_idx + 1];
+                let src_b = image_data[src_idx + 2];
+                let src_a = image_data[src_idx + 3];
+
+                if src_a == 0 {
+                    continue;
+                }
+
+                let dest_idx = ((py as u32 * buf_width + px as u32) * 4) as usize;
+                if dest_idx + 3 >= buffer.len() {
+                    continue;
+                }
+
+                // Alpha blend
+                let alpha = src_a as f32 / 255.0;
+                let inv_alpha = 1.0 - alpha;
+
+                buffer[dest_idx] =
+                    (src_r as f32 * alpha + buffer[dest_idx] as f32 * inv_alpha) as u8;
+                buffer[dest_idx + 1] =
+                    (src_g as f32 * alpha + buffer[dest_idx + 1] as f32 * inv_alpha) as u8;
+                buffer[dest_idx + 2] =
+                    (src_b as f32 * alpha + buffer[dest_idx + 2] as f32 * inv_alpha) as u8;
+                buffer[dest_idx + 3] =
+                    (src_a.max(buffer[dest_idx + 3])) as u8;
+            }
+        }
     }
 }
 

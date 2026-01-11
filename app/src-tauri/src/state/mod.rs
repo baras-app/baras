@@ -50,6 +50,14 @@ pub struct SharedState {
     pub timer_overlay_active: AtomicBool,
     /// Whether effects countdown overlay is currently running
     pub effects_overlay_active: AtomicBool,
+    /// Whether personal buffs overlay is currently running
+    pub personal_buffs_overlay_active: AtomicBool,
+    /// Whether personal debuffs overlay is currently running
+    pub personal_debuffs_overlay_active: AtomicBool,
+    /// Whether cooldowns overlay is currently running
+    pub cooldowns_overlay_active: AtomicBool,
+    /// Whether DOT tracker overlay is currently running
+    pub dot_tracker_overlay_active: AtomicBool,
     /// Whether raid frame rearrange mode is active (bypasses rendering gates)
     pub rearrange_mode: AtomicBool,
 
@@ -79,6 +87,10 @@ impl SharedState {
             boss_health_overlay_active: AtomicBool::new(false),
             timer_overlay_active: AtomicBool::new(false),
             effects_overlay_active: AtomicBool::new(false),
+            personal_buffs_overlay_active: AtomicBool::new(false),
+            personal_debuffs_overlay_active: AtomicBool::new(false),
+            cooldowns_overlay_active: AtomicBool::new(false),
+            dot_tracker_overlay_active: AtomicBool::new(false),
             rearrange_mode: AtomicBool::new(false),
             // Conversation auto-hide state
             conversation_hiding_active: AtomicBool::new(false),

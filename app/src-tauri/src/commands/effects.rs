@@ -102,6 +102,8 @@ impl EffectListItem {
             on_apply_trigger_timer: self.on_apply_trigger_timer.clone(),
             on_expire_trigger_timer: self.on_expire_trigger_timer.clone(),
             audio: self.audio.clone(),
+            display_target: Default::default(),
+            icon_ability_id: None,
         }
     }
 

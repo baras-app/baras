@@ -52,6 +52,28 @@ impl EffectCategory {
     }
 }
 
+/// Which overlay should display this effect.
+///
+/// Effects are routed to different overlays based on this setting,
+/// allowing specialized displays for each use case.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DisplayTarget {
+    /// Show on raid frames overlay (HOTs on group members)
+    #[default]
+    RaidFrames,
+    /// Show on personal buffs bar (procs/buffs on self)
+    PersonalBuffs,
+    /// Show on personal debuffs bar (debuffs on self from NPCs/bosses)
+    PersonalDebuffs,
+    /// Show on cooldown tracker (ability cooldowns)
+    Cooldowns,
+    /// Show on multi-target DOT tracker (DOTs on enemies)
+    DotTracker,
+    /// Show on generic effects countdown overlay (legacy)
+    EffectsOverlay,
+}
+
 /// Definition of an effect to track (loaded from config)
 ///
 /// This is the "template" that describes what game effect to watch for
@@ -115,6 +137,14 @@ pub struct EffectDefinition {
     /// Only show when remaining time is at or below this threshold (0 = always show)
     #[serde(default)]
     pub show_at_secs: f32,
+
+    /// Which overlay should display this effect
+    #[serde(default)]
+    pub display_target: DisplayTarget,
+
+    /// Icon ability ID for display (falls back to effect_id or trigger ability if not set)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_ability_id: Option<u64>,
 
     // ─── Behavior ───────────────────────────────────────────────────────────
     /// Should this effect persist after target dies?

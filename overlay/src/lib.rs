@@ -29,6 +29,7 @@
 //! ```
 
 pub mod frame;
+pub mod icons;
 pub mod manager;
 pub mod overlays;
 pub mod platform;
@@ -48,6 +49,17 @@ pub use overlays::{
     ChallengeData,
     ChallengeEntry,
     ChallengeOverlay,
+    // Cooldowns overlay
+    CooldownConfig,
+    CooldownData,
+    CooldownEntry,
+    CooldownOverlay,
+    // DOT tracker overlay
+    DotEntry,
+    DotTarget,
+    DotTrackerConfig,
+    DotTrackerData,
+    DotTrackerOverlay,
     // Effect config bounds
     EFFECT_OFFSET_DEFAULT,
     EFFECT_OFFSET_MAX,
@@ -65,6 +77,16 @@ pub use overlays::{
     OverlayConfigUpdate,
     OverlayData,
     OverlayPosition,
+    // Personal buffs overlay
+    PersonalBuff,
+    PersonalBuffsConfig,
+    PersonalBuffsData,
+    PersonalBuffsOverlay,
+    // Personal debuffs overlay
+    PersonalDebuff,
+    PersonalDebuffsConfig,
+    PersonalDebuffsData,
+    PersonalDebuffsOverlay,
     PersonalOverlay,
     PersonalStats,
     PlayerContribution,

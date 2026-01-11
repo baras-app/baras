@@ -19,6 +19,10 @@ sys-locale = "0.3"   # System locale detection
 # Async runtime
 tokio = { version = "1.48", features = ["sync", "rt", "macros"] }
 
+# Icon loading
+png = "0.17"
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
+
 # Platform: Wayland (Linux)
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 wayland-client = "0.31"
