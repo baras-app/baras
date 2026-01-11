@@ -13,8 +13,8 @@ use super::encounter_editor::triggers::{
 };
 use crate::api;
 use crate::types::{
-    AbilitySelector, AudioConfig, EffectCategory, EffectListItem, EffectSelector, EntityFilter,
-    Trigger,
+    AbilitySelector, AudioConfig, DisplayTarget, EffectCategory, EffectListItem, EffectSelector,
+    EntityFilter, Trigger,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -172,13 +172,17 @@ fn default_effect(name: String) -> EffectListItem {
             source: EntityFilter::LocalPlayer,
             target: EntityFilter::GroupMembers,
         },
-        fixed_duration: false,
+        ignore_effect_removed: false,
         refresh_abilities: vec![],
         duration_secs: Some(15.0),
         is_refreshed_on_modify: false,
         color: Some([80, 200, 80, 255]),
-        show_on_raid_frames: true,
         show_at_secs: 0.0,
+        display_target: DisplayTarget::None,
+        icon_ability_id: None,
+        show_icon: true,
+        is_affected_by_alacrity: false,
+        cooldown_ready_secs: 0.0,
         persist_past_death: false,
         track_outside_combat: true,
         on_apply_trigger_timer: None,
@@ -259,7 +263,7 @@ pub fn EffectEditorPanel() -> Element {
             .filter(|e| {
                 e.name.to_lowercase().contains(&query)
                     || e.id.to_lowercase().contains(&query)
-                    || e.category.label().to_lowercase().contains(&query)
+                    || e.display_target.label().to_lowercase().contains(&query)
             })
             .collect::<Vec<_>>()
     });
@@ -503,8 +507,6 @@ fn EffectRow(
     // Clones for toggle handlers
     let effect_for_enable = effect.clone();
     let effect_for_audio = effect.clone();
-    let effect_for_raid = effect.clone();
-    let effect_for_overlay = effect.clone();
 
     rsx! {
         div { class: if expanded { "effect-row expanded" } else { "effect-row" },
@@ -535,7 +537,7 @@ fn EffectRow(
                     if !is_draft {
                         span { class: "effect-id-inline", "{effect.id}" }
                     }
-                    span { class: "effect-category-badge", "{effect.category.label()}" }
+                    span { class: "effect-target-badge", "{effect.display_target.label()}" }
 
                     if let Some(dur) = effect.duration_secs {
                         span { class: "effect-duration", "{dur:.0}s" }
@@ -575,23 +577,6 @@ fn EffectRow(
                             if effect.audio.enabled { "🔊" } else { "🔇" }
                         }
                     }
-
-                    // Raid frames toggle
-                    span {
-                        class: "row-toggle",
-                        title: if effect.show_on_raid_frames { "Hide on raid frames" } else { "Show on raid frames" },
-                        onclick: move |e| {
-                            e.stop_propagation();
-                            let mut updated = effect_for_raid.clone();
-                            updated.show_on_raid_frames = !updated.show_on_raid_frames;
-                            on_save.call(updated);
-                        },
-                        span {
-                            class: if effect.show_on_raid_frames { "text-info" } else { "text-muted" },
-                            if effect.show_on_raid_frames { "⊞" } else { "✗" }
-                        }
-                    }
-
                 }
             }
 
@@ -623,6 +608,35 @@ fn EffectEditForm(
     let mut draft = use_signal(|| effect.clone());
     let mut confirm_delete = use_signal(|| false);
     let mut trigger_type = use_signal(|| EffectTriggerType::from_effect(&effect));
+    let mut icon_preview_url = use_signal(|| None::<String>);
+
+    // Load icon preview - use explicit icon_ability_id, or fall back to first trigger effect ID
+    let current_draft = draft();
+    let preview_id = current_draft.icon_ability_id.or_else(|| {
+        // Try to get first effect ID from trigger as fallback
+        let (is_effect_trigger, effects) = get_trigger_effects(&current_draft.trigger);
+        if is_effect_trigger {
+            effects.first().and_then(|sel| match sel {
+                EffectSelector::Id(id) => Some(*id),
+                EffectSelector::Name(_) => None,
+            })
+        } else {
+            None
+        }
+    });
+    use_effect(move || {
+        if let Some(ability_id) = preview_id {
+            spawn(async move {
+                if let Some(url) = api::get_icon_preview(ability_id).await {
+                    icon_preview_url.set(Some(url));
+                } else {
+                    icon_preview_url.set(None);
+                }
+            });
+        } else {
+            icon_preview_url.set(None);
+        }
+    });
 
     let effect_original = effect.clone();
     // For drafts, always enable save; for existing effects, only when changed
@@ -893,34 +907,135 @@ fn EffectEditForm(
                             "Enabled"
                         }
 
-                        label { class: "flex items-center gap-xs text-sm",
-                            input {
-                                r#type: "checkbox",
-                                checked: draft().show_on_raid_frames,
+                        // Display Target dropdown
+                        div { class: "form-row-hz",
+                            label { class: "text-sm text-secondary", "Display Target" }
+                            select {
+                                class: "select-inline",
                                 onchange: move |e| {
                                     let mut d = draft();
-                                    d.show_on_raid_frames = e.checked();
+                                    d.display_target = match e.value().as_str() {
+                                        "None" => DisplayTarget::None,
+                                        "Raid Frames" => DisplayTarget::RaidFrames,
+                                        "Personal Buffs" => DisplayTarget::PersonalBuffs,
+                                        "Personal Debuffs" => DisplayTarget::PersonalDebuffs,
+                                        "Cooldowns" => DisplayTarget::Cooldowns,
+                                        "DOT Tracker" => DisplayTarget::DotTracker,
+                                        "Effects Overlay" => DisplayTarget::EffectsOverlay,
+                                        _ => d.display_target,
+                                    };
+                                    draft.set(d);
+                                },
+                                for target in DisplayTarget::all() {
+                                    option {
+                                        value: "{target.label()}",
+                                        selected: *target == draft().display_target,
+                                        "{target.label()}"
+                                    }
+                                }
+                            }
+                        }
+
+                        // Icon Ability ID with preview
+                        div { class: "form-row-hz",
+                            label { class: "text-sm text-secondary", "Icon ID" }
+                            input {
+                                r#type: "text",
+                                class: "input-inline",
+                                style: "width: 140px;",
+                                placeholder: "(auto)",
+                                value: "{draft().icon_ability_id.map(|id| id.to_string()).unwrap_or_default()}",
+                                oninput: move |e| {
+                                    let mut d = draft();
+                                    d.icon_ability_id = if e.value().is_empty() {
+                                        None
+                                    } else {
+                                        e.value().parse::<u64>().ok()
+                                    };
                                     draft.set(d);
                                 }
                             }
-                            "Show on Raid Frames"
+                            // Icon preview
+                            if let Some(ref url) = icon_preview_url() {
+                                img {
+                                    src: "{url}",
+                                    class: "icon-preview",
+                                    width: "24",
+                                    height: "24",
+                                    alt: "Icon preview"
+                                }
+                            } else if draft().icon_ability_id.is_some() {
+                                span { class: "text-muted text-xs", "(not found)" }
+                            }
                         }
 
                         label { class: "flex items-center gap-xs text-sm",
                             input {
                                 r#type: "checkbox",
-                                checked: draft().fixed_duration,
-                                title: "Ignore game EffectRemoved - only expire via duration timer",
+                                checked: draft().show_icon,
                                 onchange: move |e| {
                                     let mut d = draft();
-                                    d.fixed_duration = e.checked();
+                                    d.show_icon = e.checked();
                                     draft.set(d);
                                 }
                             }
-                            "Fixed Duration (for cooldowns)"
+                            "Show Icon"
                         }
 
-                       label { class: "flex items-center gap-xs text-sm",
+                        label { class: "flex items-center gap-xs text-sm",
+                            input {
+                                r#type: "checkbox",
+                                checked: draft().is_affected_by_alacrity,
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.is_affected_by_alacrity = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                            "Affected by Alacrity"
+                        }
+
+                        // Cooldown Ready Secs (only for Cooldowns display target)
+                        if draft().display_target == DisplayTarget::Cooldowns {
+                            div { class: "form-row-hz",
+                                label { class: "text-sm text-secondary", "Ready State" }
+                                input {
+                                    r#type: "number",
+                                    class: "input-inline",
+                                    style: "width: 60px;",
+                                    step: "0.1",
+                                    min: "0",
+                                    value: "{draft().cooldown_ready_secs}",
+                                    oninput: move |e| {
+                                        if let Ok(val) = e.value().parse::<f32>() {
+                                            let mut d = draft();
+                                            d.cooldown_ready_secs = val.max(0.0);
+                                            draft.set(d);
+                                        }
+                                    }
+                                }
+                                span { class: "text-sm text-muted", "sec" }
+                            }
+                        }
+
+                        // Hide for Cooldowns - they always ignore effect removed events
+                        if draft().display_target != DisplayTarget::Cooldowns {
+                            label { class: "flex items-center gap-xs text-sm",
+                                input {
+                                    r#type: "checkbox",
+                                    checked: draft().ignore_effect_removed,
+                                    title: "Ignore game EffectRemoved - only expire via duration timer",
+                                    onchange: move |e| {
+                                        let mut d = draft();
+                                        d.ignore_effect_removed = e.checked();
+                                        draft.set(d);
+                                    }
+                                }
+                                "Ignore Effect Removed"
+                            }
+                        }
+
+                        label { class: "flex items-center gap-xs text-sm",
                             input {
                                 r#type: "checkbox",
                                 checked: draft().is_refreshed_on_modify,
@@ -930,9 +1045,8 @@ fn EffectEditForm(
                                     draft.set(d);
                                 }
                             }
-                            "Refresh duration when charges are modified"
+                            "Refresh on Charge Change"
                         }
-
 
                         label { class: "flex items-center gap-xs text-sm",
                             input {

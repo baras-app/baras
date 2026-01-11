@@ -40,6 +40,10 @@ pub struct CooldownEntry {
     pub target_name: String,
     /// Pre-loaded icon RGBA data (width, height, rgba_bytes) - Arc for cheap cloning
     pub icon: Option<Arc<(u32, u32, Vec<u8>)>>,
+    /// Whether to show the icon (true) or use colored square (false)
+    pub show_icon: bool,
+    /// Whether cooldown is in "ready" state (remaining <= cooldown_ready_secs)
+    pub is_in_ready_state: bool,
 }
 
 impl CooldownEntry {
@@ -222,31 +226,36 @@ impl CooldownOverlay {
             let x = padding;
 
             // Draw icon from cache or colored square fallback
+            // Only show icon if show_icon is true
             let cache_key = (entry.icon_ability_id, icon_size_u32);
-            let has_icon = if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
-                self.frame.draw_image(
-                    scaled_icon,
-                    icon_size_u32,
-                    icon_size_u32,
-                    x,
-                    y,
-                    icon_size,
-                    icon_size,
-                );
-                true
-            } else if let Some(ref icon_arc) = entry.icon {
-                // Fallback if cache miss
-                let (img_w, img_h, ref rgba) = **icon_arc;
-                self.frame.draw_image(
-                    rgba,
-                    img_w,
-                    img_h,
-                    x,
-                    y,
-                    icon_size,
-                    icon_size,
-                );
-                true
+            let has_icon = if entry.show_icon {
+                if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
+                    self.frame.draw_image(
+                        scaled_icon,
+                        icon_size_u32,
+                        icon_size_u32,
+                        x,
+                        y,
+                        icon_size,
+                        icon_size,
+                    );
+                    true
+                } else if let Some(ref icon_arc) = entry.icon {
+                    // Fallback if cache miss
+                    let (img_w, img_h, ref rgba) = **icon_arc;
+                    self.frame.draw_image(
+                        rgba,
+                        img_w,
+                        img_h,
+                        x,
+                        y,
+                        icon_size,
+                        icon_size,
+                    );
+                    true
+                } else {
+                    false
+                }
             } else {
                 false
             };
@@ -279,9 +288,9 @@ impl CooldownOverlay {
                 );
             }
 
-            // Border
-            let border_color = if entry.is_ready() {
-                colors::effect_buff() // Green/bright when ready
+            // Border - use light-blue when in "ready" state
+            let border_color = if entry.is_in_ready_state {
+                colors::cooldown_ready() // Light-blue when in ready state
             } else {
                 colors::white()
             };
@@ -322,6 +331,13 @@ impl CooldownOverlay {
             let text_x = x + icon_size + padding;
             let text_y = y + icon_size / 2.0;
 
+            // Determine text color based on state
+            let ready_text_color = if entry.is_in_ready_state {
+                colors::cooldown_ready() // Light-blue for ready state
+            } else {
+                colors::label_dim()
+            };
+
             if self.config.show_ability_names {
                 // Ability name on top
                 let name_y = text_y - font_size * 0.3;
@@ -335,23 +351,18 @@ impl CooldownOverlay {
 
                 // Countdown below
                 let time_text = entry.format_time();
-                let time_color = if entry.is_ready() {
-                    colors::effect_buff()
-                } else {
-                    colors::label_dim()
-                };
                 self.frame.draw_text(
                     &time_text,
                     text_x,
                     name_y + font_size + 2.0,
                     font_size * 0.9,
-                    time_color,
+                    ready_text_color,
                 );
             } else {
                 // Just countdown centered
                 let time_text = entry.format_time();
                 let time_color = if entry.is_ready() {
-                    colors::effect_buff()
+                    ready_text_color
                 } else {
                     colors::white()
                 };

@@ -20,3 +20,8 @@ pub fn parse_hex_color(hex: &str) -> Option<Color> {
 pub fn color_to_hex(color: &Color) -> String {
     format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2])
 }
+
+/// Default function for serde that returns true
+pub fn default_true() -> bool {
+    true
+}

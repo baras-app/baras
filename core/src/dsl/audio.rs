@@ -23,6 +23,11 @@ pub struct AudioConfig {
     /// Voice pack for countdown (None = default)
     #[serde(default)]
     pub countdown_voice: Option<String>,
+
+    /// Alert text to display on alert overlay when effect triggers.
+    /// If non-empty, sends this text to the alert overlay.
+    #[serde(default)]
+    pub alert_text: Option<String>,
 }
 
 impl AudioConfig {
@@ -34,5 +39,10 @@ impl AudioConfig {
     /// Check if countdown audio is enabled
     pub fn has_countdown(&self) -> bool {
         self.enabled && self.countdown_start > 0
+    }
+
+    /// Check if alert text is configured
+    pub fn has_alert_text(&self) -> bool {
+        self.alert_text.as_ref().is_some_and(|t| !t.is_empty())
     }
 }

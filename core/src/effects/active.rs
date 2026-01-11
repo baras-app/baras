@@ -104,6 +104,12 @@ pub struct ActiveEffect {
     /// Only show when remaining time is at or below this (0 = always show)
     pub show_at_secs: f32,
 
+    /// Whether to show the icon (true) or use colored square (false)
+    pub show_icon: bool,
+
+    /// Seconds to show "Ready" state after cooldown ends (0 = disabled)
+    pub cooldown_ready_secs: f32,
+
     // ─── Audio ────────────────────────────────────────────────────────────────
     /// Whether on-apply audio has been played
     pub audio_played: bool,
@@ -148,6 +154,8 @@ impl ActiveEffect {
         icon_ability_id: u64,
         show_on_raid_frames: bool,
         show_at_secs: f32,
+        show_icon: bool,
+        cooldown_ready_secs: f32,
         audio: &crate::dsl::AudioConfig,
     ) -> Self {
         // Calculate lag compensation: how far behind was the game event from system time?
@@ -188,6 +196,8 @@ impl ActiveEffect {
             icon_ability_id,
             show_on_raid_frames,
             show_at_secs,
+            show_icon,
+            cooldown_ready_secs,
             audio_played: false,
             countdown_announced: [false; 10],
             countdown_start: audio.countdown_start,

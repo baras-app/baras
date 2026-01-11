@@ -40,6 +40,8 @@ pub struct DotEntry {
     pub target_name: String,
     /// Pre-loaded icon RGBA data (width, height, rgba_bytes) - Arc for cheap cloning
     pub icon: Option<Arc<(u32, u32, Vec<u8>)>>,
+    /// Whether to show the icon (true) or use colored square (false)
+    pub show_icon: bool,
 }
 
 impl DotEntry {
@@ -250,23 +252,34 @@ impl DotTrackerOverlay {
 
             for dot in &target.dots {
                 // Draw icon from cache or colored square fallback
+                // Only show icon if show_icon is true
                 let cache_key = (dot.icon_ability_id, icon_size_u32);
-                if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
-                    self.frame.draw_image(
-                        scaled_icon,
-                        icon_size_u32,
-                        icon_size_u32,
-                        icon_x,
-                        y,
-                        icon_size,
-                        icon_size,
-                    );
-                } else if let Some(ref icon_arc) = dot.icon {
-                    // Fallback if cache miss
-                    let (img_w, img_h, ref rgba) = **icon_arc;
-                    self.frame
-                        .draw_image(rgba, img_w, img_h, icon_x, y, icon_size, icon_size);
+                let has_icon = if dot.show_icon {
+                    if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
+                        self.frame.draw_image(
+                            scaled_icon,
+                            icon_size_u32,
+                            icon_size_u32,
+                            icon_x,
+                            y,
+                            icon_size,
+                            icon_size,
+                        );
+                        true
+                    } else if let Some(ref icon_arc) = dot.icon {
+                        // Fallback if cache miss
+                        let (img_w, img_h, ref rgba) = **icon_arc;
+                        self.frame
+                            .draw_image(rgba, img_w, img_h, icon_x, y, icon_size, icon_size);
+                        true
+                    } else {
+                        false
+                    }
                 } else {
+                    false
+                };
+
+                if !has_icon {
                     // Fallback: colored square
                     let bg_color = color_from_rgba(dot.color);
                     self.frame

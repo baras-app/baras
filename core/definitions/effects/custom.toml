@@ -21,7 +21,9 @@
 #
 # # Duration
 # duration_secs = 21.0                  # None = indefinite
-# fixed_duration = false                # Ignore game EffectRemoved events
+# ignore_effect_removed = false         # Ignore game EffectRemoved events (auto for cooldowns)
+# is_affected_by_alacrity = false       # Reduce duration based on player's alacrity
+# cooldown_ready_secs = 0               # Show "ready" state for N secs after CD ends
 #
 # # Display Target - which overlay to show this effect on
 # display_target = "raid_frames"        # Options:
@@ -36,6 +38,7 @@
 # category = "hot"                      # hot | shield | buff | debuff | cleansable | proc | mechanic
 # color = [80, 200, 80, 255]            # Override RGBA (None = use category)
 # icon_ability_id = 123456              # Optional ability ID for icon lookup
+# show_icon = true                      # Use icon (true) or colored square (false)
 # show_on_raid_frames = false           # Legacy: also show on raid frames
 # show_on_effects_overlay = false       # Legacy: also show on effects overlay
 # show_at_secs = 0                      # Only show when remaining <= N
@@ -52,7 +55,7 @@
 # display_target = "cooldowns"
 # trigger = { type = "ability_cast", abilities = [123456], source = "local_player", target = "any" }
 # duration_secs = 90.0                  # Cooldown duration
-# fixed_duration = true                 # Ignore EffectRemoved - expire only via timer
+# # Note: cooldowns automatically ignore EffectRemoved events
 # category = "proc"
 #
 # ─── Personal Buff Tracking (procs on self) ────────────────────────────────
@@ -80,27 +83,5 @@
 # offset = 0                            # Seconds before expiration
 # countdown_start = 0                   # 0 = disabled
 # countdown_voice = "Amy"
+# alert_text = "Effect Ready!"          # Text to show on alert overlay
 #
-[[effect]]
-id = "supercharge"
-name = "Supercharge"
-display_target = "personal_buffs"
-trigger = { type = "effect_applied", effects = [
-  3408198283296768,
-], source = "local_player", target = "local_player" }
-duration_secs = 60.0
-is_refreshed_on_modify = true
-icon_ability_id = 3408198283296768
-category = "proc"
-
-[[effect]]
-id = "master_surge_cd"
-name = "Master Surge"
-display_target = "cooldowns"
-trigger = { type = "effect_removed", effects = [
-  4626719159877632,
-], source = "local_player", target = "local_player" }
-duration_secs = 20.0
-fixed_duration = true
-icon_ability_id = 4626719159877632
-category = "proc"

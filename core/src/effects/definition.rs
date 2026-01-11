@@ -105,8 +105,9 @@ pub struct EffectDefinition {
 
     /// If true, ignore game EffectRemoved signals - only expire via duration_secs.
     /// Useful for tracking cooldowns that shouldn't end when the buff is consumed.
-    #[serde(default)]
-    pub fixed_duration: bool,
+    /// Note: Cooldowns (DisplayTarget::Cooldowns) always ignore effect removed events.
+    #[serde(default, alias = "fixed_duration")]
+    pub ignore_effect_removed: bool,
 
     /// Abilities (ID or name) that can refresh this effect's duration
     #[serde(default)]
@@ -119,6 +120,17 @@ pub struct EffectDefinition {
     // ─── Duration ───────────────────────────────────────────────────────────
     /// Expected duration in seconds (None = indefinite/unknown)
     pub duration_secs: Option<f32>,
+
+    /// Whether this duration/cooldown is affected by player's alacrity stat.
+    /// If true, duration = base_duration / (1 + alacrity_percent/100).
+    /// If false (default), duration is static.
+    #[serde(default)]
+    pub is_affected_by_alacrity: bool,
+
+    /// Seconds to show "ready" state after cooldown expires (0 = disabled).
+    /// When cooldown ends, shows in light-blue "ready" state for this duration.
+    #[serde(default)]
+    pub cooldown_ready_secs: f32,
 
     // ─── Display ────────────────────────────────────────────────────────────
     /// Effect category (determines default color)
@@ -143,6 +155,10 @@ pub struct EffectDefinition {
     /// Icon ability ID for display (falls back to effect_id or trigger ability if not set)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon_ability_id: Option<u64>,
+
+    /// Whether to show the icon (true) or fall back to colored square (false)
+    #[serde(default = "crate::serde_defaults::default_true")]
+    pub show_icon: bool,
 
     // ─── Behavior ───────────────────────────────────────────────────────────
     /// Should this effect persist after target dies?

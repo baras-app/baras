@@ -38,6 +38,8 @@ pub struct PersonalBuff {
     pub target_name: String,
     /// Pre-loaded icon RGBA data (width, height, rgba_bytes) - Arc for cheap cloning
     pub icon: Option<Arc<(u32, u32, Vec<u8>)>>,
+    /// Whether to show the icon (true) or use colored square (false)
+    pub show_icon: bool,
 }
 
 impl PersonalBuff {
@@ -207,31 +209,42 @@ impl PersonalBuffsOverlay {
 
         for buff in self.data.buffs.iter().take(max_display) {
             // Draw icon from cache or colored square fallback
+            // Only show icon if show_icon is true
             let cache_key = (buff.icon_ability_id, icon_size_u32);
-            if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
-                // Draw pre-scaled icon (no scaling needed)
-                self.frame.draw_image(
-                    scaled_icon,
-                    icon_size_u32,
-                    icon_size_u32,
-                    x,
-                    y,
-                    icon_size,
-                    icon_size,
-                );
-            } else if let Some(ref icon_arc) = buff.icon {
-                // Fallback if cache miss (shouldn't happen)
-                let (img_w, img_h, ref rgba) = **icon_arc;
-                self.frame.draw_image(
-                    rgba,
-                    img_w,
-                    img_h,
-                    x,
-                    y,
-                    icon_size,
-                    icon_size,
-                );
+            let has_icon = if buff.show_icon {
+                if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
+                    // Draw pre-scaled icon (no scaling needed)
+                    self.frame.draw_image(
+                        scaled_icon,
+                        icon_size_u32,
+                        icon_size_u32,
+                        x,
+                        y,
+                        icon_size,
+                        icon_size,
+                    );
+                    true
+                } else if let Some(ref icon_arc) = buff.icon {
+                    // Fallback if cache miss (shouldn't happen)
+                    let (img_w, img_h, ref rgba) = **icon_arc;
+                    self.frame.draw_image(
+                        rgba,
+                        img_w,
+                        img_h,
+                        x,
+                        y,
+                        icon_size,
+                        icon_size,
+                    );
+                    true
+                } else {
+                    false
+                }
             } else {
+                false
+            };
+
+            if !has_icon {
                 // Fallback: colored square
                 let bg_color = color_from_rgba(buff.color);
                 self.frame.fill_rounded_rect(

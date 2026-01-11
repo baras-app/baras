@@ -181,6 +181,10 @@ pub struct EffectTracker {
     /// Local player ID (set from session cache during signal dispatch)
     local_player_id: Option<i64>,
 
+    /// Player's alacrity percentage (e.g., 15.4 for 15.4%)
+    /// Used to adjust durations for effects with is_affected_by_alacrity = true
+    alacrity_percent: f32,
+
     /// Queue of targets that received effects from local player.
     /// Drained by the service to attempt registration in the raid registry.
     /// The registry itself handles duplicate rejection.
@@ -210,10 +214,31 @@ impl EffectTracker {
             current_game_time: None,
             live_mode: false, // Start in historical mode
             local_player_id: None,
+            alacrity_percent: 0.0,
             new_targets: Vec::new(),
             pending_aoe_refresh: None,
             aoe_collecting: None,
         }
+    }
+
+    /// Set the player's alacrity percentage for duration calculations
+    pub fn set_alacrity(&mut self, alacrity_percent: f32) {
+        self.alacrity_percent = alacrity_percent;
+    }
+
+    /// Calculate effective duration for a definition, applying alacrity if configured
+    /// For cooldowns with cooldown_ready_secs, adds the ready period to the total duration
+    fn effective_duration(&self, def: &super::EffectDefinition) -> Option<Duration> {
+        def.duration_secs.map(|base_secs| {
+            let adjusted = if def.is_affected_by_alacrity && self.alacrity_percent > 0.0 {
+                base_secs / (1.0 + self.alacrity_percent / 100.0)
+            } else {
+                base_secs
+            };
+            // Add cooldown_ready_secs to extend the total duration for the ready state
+            let total = adjusted + def.cooldown_ready_secs;
+            Duration::from_secs_f32(total)
+        })
     }
 
     /// Handle signals with explicit local player ID from session cache
@@ -433,7 +458,7 @@ impl EffectTracker {
                 target_entity_id: target_id,
             };
 
-            let duration = def.duration_secs.map(Duration::from_secs_f32);
+            let duration = self.effective_duration(def);
 
             if let Some(existing) = self.active_effects.get_mut(&key) {
                 // Always refresh when the same effect is applied again.
@@ -468,6 +493,8 @@ impl EffectTracker {
                     icon_ability_id,
                     def.show_on_raid_frames,
                     def.show_at_secs,
+                    def.show_icon,
+                    def.cooldown_ready_secs,
                     &def.audio,
                 );
 
@@ -529,7 +556,7 @@ impl EffectTracker {
             .map(|def| {
                 (
                     def.id.clone(),
-                    def.duration_secs.map(Duration::from_secs_f32),
+                    self.effective_duration(def),
                 )
             })
             .collect();
@@ -645,7 +672,7 @@ impl EffectTracker {
             .map(|def| {
                 (
                     def.id.clone(),
-                    def.duration_secs.map(Duration::from_secs_f32),
+                    self.effective_duration(def),
                 )
             })
             .collect();
@@ -747,7 +774,7 @@ impl EffectTracker {
                 target_entity_id: effect_target_id,
             };
 
-            let duration = def.duration_secs.map(Duration::from_secs_f32);
+            let duration = self.effective_duration(def);
 
             if let Some(existing) = self.active_effects.get_mut(&key) {
                 // Refresh existing effect (same trigger ability was cast again)
@@ -782,6 +809,8 @@ impl EffectTracker {
                     icon_ability_id,
                     def.show_on_raid_frames,
                     def.show_at_secs,
+                    def.show_icon,
+                    def.cooldown_ready_secs,
                     &def.audio,
                 );
                 self.active_effects.insert(key, effect);
@@ -828,8 +857,10 @@ impl EffectTracker {
 
             if def.is_effect_applied_trigger() {
                 // Mark existing effect as removed (normal behavior)
-                // But skip if fixed_duration is set - only expire via timer
-                if !def.fixed_duration
+                // Skip if ignore_effect_removed OR cooldowns (cooldowns always use timer-based expiry)
+                let is_cooldown = def.display_target == DisplayTarget::Cooldowns;
+                if !def.ignore_effect_removed
+                    && !is_cooldown
                     && let Some(effect) = self.active_effects.get_mut(&key)
                 {
                     // Skip removal if the effect was refreshed recently (within 1 second).
@@ -845,7 +876,7 @@ impl EffectTracker {
                 }
             } else if def.is_effect_removed_trigger() {
                 // Create new effect when the game effect is removed (cooldown tracking)
-                let duration = def.duration_secs.map(Duration::from_secs_f32);
+                let duration = self.effective_duration(def);
                 let display_text = def.display_text().to_string();
                 let icon_ability_id = def.icon_ability_id.unwrap_or(effect_id as u64);
                 let effect = ActiveEffect::new(
@@ -866,6 +897,8 @@ impl EffectTracker {
                     icon_ability_id,
                     def.show_on_raid_frames,
                     def.show_at_secs,
+                    def.show_icon,
+                    def.cooldown_ready_secs,
                     &def.audio,
                 );
                 self.active_effects.insert(key, effect);
@@ -902,13 +935,19 @@ impl EffectTracker {
                 target_entity_id: target_id,
             };
 
+            // Calculate duration before borrowing active_effects mutably
+            let duration = if def.is_refreshed_on_modify {
+                self.effective_duration(def)
+            } else {
+                None
+            };
+
             if let Some(effect) = self.active_effects.get_mut(&key) {
                 effect.set_stacks(charges);
 
                 // Refresh duration on ModifyCharges if is_refreshed_on_modify is set
-                if def.is_refreshed_on_modify {
-                    let duration = def.duration_secs.map(Duration::from_secs_f32);
-                    effect.refresh(timestamp, duration);
+                if let Some(dur) = duration {
+                    effect.refresh(timestamp, Some(dur));
                 }
             }
         }

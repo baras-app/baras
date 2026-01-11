@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
 use baras_core::dsl::{AudioConfig, Trigger};
-use baras_core::effects::{DefinitionConfig, EffectCategory, EffectDefinition};
+use baras_core::effects::{DefinitionConfig, DisplayTarget, EffectCategory, EffectDefinition};
 use baras_types::AbilitySelector;
 
 use crate::service::ServiceHandle;
@@ -34,13 +34,21 @@ pub struct EffectListItem {
     pub enabled: bool,
     pub category: EffectCategory,
     pub trigger: Trigger,
-    pub fixed_duration: bool,
+    pub ignore_effect_removed: bool,
     pub refresh_abilities: Vec<AbilitySelector>,
     pub duration_secs: Option<f32>,
     pub is_refreshed_on_modify: bool,
     pub color: Option<[u8; 4]>,
-    pub show_on_raid_frames: bool,
     pub show_at_secs: f32,
+
+    // Display routing
+    pub display_target: DisplayTarget,
+    pub icon_ability_id: Option<u64>,
+    pub show_icon: bool,
+
+    // Duration modifiers
+    pub is_affected_by_alacrity: bool,
+    pub cooldown_ready_secs: f32,
 
     // Behavior
     pub persist_past_death: bool,
@@ -64,13 +72,17 @@ impl EffectListItem {
             enabled: def.enabled,
             category: def.category,
             trigger: def.trigger.clone(),
-            fixed_duration: def.fixed_duration,
+            ignore_effect_removed: def.ignore_effect_removed,
             refresh_abilities: def.refresh_abilities.clone(),
             duration_secs: def.duration_secs,
             is_refreshed_on_modify: def.is_refreshed_on_modify,
             color: def.color,
-            show_on_raid_frames: def.show_on_raid_frames,
             show_at_secs: def.show_at_secs,
+            display_target: def.display_target,
+            icon_ability_id: def.icon_ability_id,
+            show_icon: def.show_icon,
+            is_affected_by_alacrity: def.is_affected_by_alacrity,
+            cooldown_ready_secs: def.cooldown_ready_secs,
             persist_past_death: def.persist_past_death,
             track_outside_combat: def.track_outside_combat,
             on_apply_trigger_timer: def.on_apply_trigger_timer.clone(),
@@ -87,20 +99,23 @@ impl EffectListItem {
             enabled: self.enabled,
             category: self.category,
             trigger: self.trigger.clone(),
-            fixed_duration: self.fixed_duration,
+            ignore_effect_removed: self.ignore_effect_removed,
             refresh_abilities: self.refresh_abilities.clone(),
             duration_secs: self.duration_secs,
             is_refreshed_on_modify: self.is_refreshed_on_modify,
             color: self.color,
-            show_on_raid_frames: self.show_on_raid_frames,
+            show_on_raid_frames: self.display_target == DisplayTarget::RaidFrames,
             show_at_secs: self.show_at_secs,
             persist_past_death: self.persist_past_death,
             track_outside_combat: self.track_outside_combat,
             on_apply_trigger_timer: self.on_apply_trigger_timer.clone(),
             on_expire_trigger_timer: self.on_expire_trigger_timer.clone(),
             audio: self.audio.clone(),
-            display_target: Default::default(),
-            icon_ability_id: None,
+            display_target: self.display_target,
+            icon_ability_id: self.icon_ability_id,
+            is_affected_by_alacrity: self.is_affected_by_alacrity,
+            cooldown_ready_secs: self.cooldown_ready_secs,
+            show_icon: self.show_icon,
         }
     }
 
@@ -546,4 +561,113 @@ fn generate_effect_id(name: &str) -> String {
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>()
         .join("_")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Icon Preview
+// ─────────────────────────────────────────────────────────────────────────────
+
+use std::collections::HashMap;
+use std::io::Read;
+use std::sync::Mutex;
+use zip::ZipArchive;
+
+/// Lazy-loaded icon name lookup cache
+static ICON_NAME_CACHE: std::sync::OnceLock<Mutex<HashMap<u64, String>>> = std::sync::OnceLock::new();
+
+/// Get or load the icon name mapping from CSV
+fn get_icon_name_mapping(app_handle: &AppHandle) -> Option<&Mutex<HashMap<u64, String>>> {
+    Some(ICON_NAME_CACHE.get_or_init(|| {
+        let icons_dir = app_handle
+            .path()
+            .resolve("icons", tauri::path::BaseDirectory::Resource)
+            .ok()
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| {
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .join("icons")
+            });
+
+        let csv_path = icons_dir.join("icons.csv");
+        let mut map = HashMap::new();
+
+        if let Ok(content) = std::fs::read_to_string(&csv_path) {
+            for line in content.lines().skip(1) {
+                let line = line.trim_start_matches('\u{feff}');
+                if line.is_empty() || line.starts_with("ability_id") {
+                    continue;
+                }
+                let parts: Vec<&str> = line.splitn(3, ',').collect();
+                if parts.len() >= 3 {
+                    if let Ok(ability_id) = parts[0].parse::<u64>() {
+                        let icon_name = parts[2].trim().to_lowercase();
+                        if !icon_name.is_empty() {
+                            map.insert(ability_id, icon_name);
+                        }
+                    }
+                }
+            }
+        }
+
+        Mutex::new(map)
+    }))
+}
+
+/// Get icon PNG data as base64 for a given ability ID
+#[tauri::command]
+pub async fn get_icon_preview(app_handle: AppHandle, ability_id: u64) -> Result<String, String> {
+    // Look up icon name
+    let icon_name = {
+        let cache = get_icon_name_mapping(&app_handle).ok_or("Failed to load icon mapping")?;
+        let map = cache.lock().map_err(|_| "Lock poisoned")?;
+        map.get(&ability_id).cloned()
+    };
+
+    let icon_name = icon_name.ok_or_else(|| format!("No icon mapping for ability {}", ability_id))?;
+
+    // Get icons directory
+    let icons_dir = app_handle
+        .path()
+        .resolve("icons", tauri::path::BaseDirectory::Resource)
+        .ok()
+        .filter(|p| p.exists())
+        .unwrap_or_else(|| {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("icons")
+        });
+
+    // Try to load from ZIP files
+    let zip_paths = [
+        icons_dir.join("icons.zip"),
+        icons_dir.join("icons2.zip"),
+    ];
+
+    let filename = format!("{}.png", icon_name);
+
+    for zip_path in &zip_paths {
+        if let Ok(file) = std::fs::File::open(zip_path) {
+            let reader = std::io::BufReader::new(file);
+            if let Ok(mut archive) = ZipArchive::new(reader) {
+                if let Ok(mut zip_file) = archive.by_name(&filename) {
+                    let mut png_data = Vec::new();
+                    if zip_file.read_to_end(&mut png_data).is_ok() {
+                        // Return base64 encoded PNG
+                        use base64::Engine;
+                        let base64_data = base64::engine::general_purpose::STANDARD.encode(&png_data);
+                        return Ok(format!("data:image/png;base64,{}", base64_data));
+                    }
+                }
+            }
+        }
+    }
+
+    Err(format!("Icon '{}' not found in ZIP archives", icon_name))
 }

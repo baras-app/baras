@@ -149,6 +149,9 @@ impl ServiceHandle {
         let new_slots = config.overlay_settings.raid_overlay.grid_columns
             * config.overlay_settings.raid_overlay.grid_rows;
 
+        let alacrity_changed = old_config.alacrity_percent != config.alacrity_percent;
+        let new_alacrity = config.alacrity_percent;
+
         *self.shared.config.write().await = config.clone();
         config.save();
 
@@ -157,6 +160,18 @@ impl ServiceHandle {
             && let Ok(mut registry) = self.shared.raid_registry.lock()
         {
             registry.set_max_slots(new_slots);
+        }
+
+        // Update effect tracker alacrity if it changed
+        if alacrity_changed {
+            if let Some(session) = self.shared.session.read().await.as_ref() {
+                let session = session.read().await;
+                if let Some(tracker) = session.effect_tracker() {
+                    if let Ok(mut tracker) = tracker.lock() {
+                        tracker.set_alacrity(new_alacrity);
+                    }
+                }
+            }
         }
 
         if old_dir != new_dir {

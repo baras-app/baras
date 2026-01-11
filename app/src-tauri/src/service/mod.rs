@@ -1055,10 +1055,13 @@ impl CombatService {
         let _ = trigger_tx.try_send(MetricsTrigger::InitialLoad);
 
         // Enable live mode for effect/timer tracking (skip historical events)
+        // Also set alacrity from config for duration calculations
         {
             let session_guard = session.read().await;
             session_guard.set_effect_live_mode(true);
             session_guard.set_timer_live_mode(true);
+            let config = self.shared.config.read().await;
+            session_guard.set_effect_alacrity(config.alacrity_percent);
         }
 
         // Spawn the tail task to watch for new lines
@@ -1944,6 +1947,7 @@ async fn build_personal_buffs_data(
                 source_name: resolve(effect.source_name).to_string(),
                 target_name: resolve(effect.target_name).to_string(),
                 icon,
+                show_icon: effect.show_icon,
             })
         })
         .collect();
@@ -1997,6 +2001,7 @@ async fn build_personal_debuffs_data(
                 source_name: resolve(effect.source_name).to_string(),
                 target_name: resolve(effect.target_name).to_string(),
                 icon,
+                show_icon: effect.show_icon,
             })
         })
         .collect();
@@ -2023,6 +2028,7 @@ async fn build_cooldowns_data(
     }
 
     let mut effects: Vec<_> = tracker.cooldown_effects().collect();
+
     // Sort by remaining time (shortest first)
     effects.sort_by(|a, b| {
         let a_remaining = calculate_remaining_secs(a).unwrap_or(f32::MAX);
@@ -2035,8 +2041,20 @@ async fn build_cooldowns_data(
     let entries: Vec<CooldownEntry> = effects
         .into_iter()
         .filter_map(|effect| {
-            let total_secs = effect.duration?.as_secs_f32();
-            let remaining_secs = calculate_remaining_secs(effect)?;
+            // Duration includes ready_secs for tracker lifetime, subtract for display
+            let tracker_total = effect.duration?.as_secs_f32();
+            let total_secs = tracker_total - effect.cooldown_ready_secs;
+
+            // Remaining time until tracker expires
+            let tracker_remaining = calculate_remaining_secs(effect)?;
+
+            // Display remaining = tracker remaining minus ready period (clamped to 0)
+            // So display hits 0 when entering ready state, not when effect disappears
+            let remaining_secs = (tracker_remaining - effect.cooldown_ready_secs).max(0.0);
+
+            // In ready state when tracker remaining is within the ready period
+            let is_in_ready_state =
+                effect.cooldown_ready_secs > 0.0 && tracker_remaining <= effect.cooldown_ready_secs;
 
             // Load icon from cache
             let icon = icon_cache.and_then(|cache| {
@@ -2057,6 +2075,8 @@ async fn build_cooldowns_data(
                 source_name: resolve(effect.source_name).to_string(),
                 target_name: resolve(effect.target_name).to_string(),
                 icon,
+                show_icon: effect.show_icon,
+                is_in_ready_state,
             })
         })
         .collect();
@@ -2118,6 +2138,7 @@ async fn build_dot_tracker_data(
                         source_name: resolve(effect.source_name).to_string(),
                         target_name: resolve(effect.target_name).to_string(),
                         icon,
+                        show_icon: effect.show_icon,
                     })
                 })
                 .collect();

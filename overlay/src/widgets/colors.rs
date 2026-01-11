@@ -111,6 +111,12 @@ pub fn effect_proc() -> Color {
     Color::from_rgba8(80, 200, 220, 255)
 }
 
+/// Cooldown ready state - bright light-blue
+#[inline]
+pub fn cooldown_ready() -> Color {
+    Color::from_rgba8(100, 200, 255, 255)
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Frame/Window Colors
 // ─────────────────────────────────────────────────────────────────────────

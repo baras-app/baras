@@ -469,6 +469,7 @@ impl TimerManager {
             offset: def.audio.offset,
             countdown_start: def.audio.countdown_start,
             countdown_voice: def.audio.countdown_voice.clone(),
+            alert_text: def.audio.alert_text.clone(),
         };
 
         // Create new timer

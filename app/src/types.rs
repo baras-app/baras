@@ -421,6 +421,46 @@ pub struct AreaListItem {
 // Effect Editor Types
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Which overlay should display this effect
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DisplayTarget {
+    #[default]
+    None,
+    RaidFrames,
+    PersonalBuffs,
+    PersonalDebuffs,
+    Cooldowns,
+    DotTracker,
+    EffectsOverlay,
+}
+
+impl DisplayTarget {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::None => "None",
+            Self::RaidFrames => "Raid Frames",
+            Self::PersonalBuffs => "Personal Buffs",
+            Self::PersonalDebuffs => "Personal Debuffs",
+            Self::Cooldowns => "Cooldowns",
+            Self::DotTracker => "DOT Tracker",
+            Self::EffectsOverlay => "Effects Overlay",
+        }
+    }
+
+    pub fn all() -> &'static [DisplayTarget] {
+        &[
+            Self::None,
+            Self::RaidFrames,
+            Self::PersonalBuffs,
+            Self::PersonalDebuffs,
+            Self::Cooldowns,
+            Self::DotTracker,
+            Self::EffectsOverlay,
+        ]
+    }
+}
+
 /// Effect category for display grouping
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -477,23 +517,41 @@ pub struct EffectListItem {
     pub trigger: Trigger,
 
     // If true, ignore game EffectRemoved - use duration_secs only
+    // Note: Cooldowns always ignore effect removed events
     #[serde(default)]
-    pub fixed_duration: bool,
+    pub ignore_effect_removed: bool,
 
     // Matching - abilities that refresh the effect duration
     pub refresh_abilities: Vec<AbilitySelector>,
 
     // Duration
     pub duration_secs: Option<f32>,
+    #[serde(default)]
     pub is_refreshed_on_modify: bool,
 
     // Display
     pub color: Option<[u8; 4]>,
-    pub show_on_raid_frames: bool,
+    #[serde(default)]
     pub show_at_secs: f32,
 
+    // Display routing
+    #[serde(default)]
+    pub display_target: DisplayTarget,
+    #[serde(default)]
+    pub icon_ability_id: Option<u64>,
+    #[serde(default = "crate::utils::default_true")]
+    pub show_icon: bool,
+
+    // Duration modifiers
+    #[serde(default)]
+    pub is_affected_by_alacrity: bool,
+    #[serde(default)]
+    pub cooldown_ready_secs: f32,
+
     // Behavior
+    #[serde(default)]
     pub persist_past_death: bool,
+    #[serde(default)]
     pub track_outside_combat: bool,
 
     // Timer integration

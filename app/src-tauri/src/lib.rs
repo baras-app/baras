@@ -192,6 +192,7 @@ pub fn run() {
             commands::delete_effect_definition,
             commands::duplicate_effect_definition,
             commands::get_effect_files,
+            commands::get_icon_preview,
             // Parsely upload
             commands::upload_to_parsely,
             // Query commands

@@ -363,6 +363,16 @@ impl ParsingSession {
         }
     }
 
+    /// Set player alacrity for effect duration calculations.
+    /// No-op in Historical mode (session has no effect tracker).
+    pub fn set_effect_alacrity(&self, alacrity_percent: f32) {
+        if let Some(tracker) = &self.effect_tracker {
+            if let Ok(mut tracker) = tracker.lock() {
+                tracker.set_alacrity(alacrity_percent);
+            }
+        }
+    }
+
     /// Enable/disable live mode for timer tracking.
     /// Call with `true` after initial file load to filter stale events.
     /// No-op in Historical mode (session has no timer manager).

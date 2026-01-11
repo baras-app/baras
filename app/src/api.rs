@@ -599,6 +599,12 @@ pub async fn create_effect_definition(effect: &EffectListItem) -> Result<EffectL
     from_js(result).ok_or_else(|| "Failed to deserialize created effect".to_string())
 }
 
+/// Get icon preview as base64 data URL for an ability ID
+pub async fn get_icon_preview(ability_id: u64) -> Option<String> {
+    let result = invoke("get_icon_preview", build_args("abilityId", &ability_id)).await;
+    from_js(result)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Parsely Upload
 // ─────────────────────────────────────────────────────────────────────────────
