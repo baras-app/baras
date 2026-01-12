@@ -276,6 +276,7 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                                                     let is_expanded = selected == Some(enc_id);
                                                     let row_class = if is_expanded { "expanded" } else { "" };
                                                     let success_class = if enc.success { "success" } else { "wipe" };
+                                                    let npc_list = enc.npc_names.join(", ");
 
                                                     rsx! {
                                                         tr {
@@ -289,7 +290,12 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                                                                 }
                                                             },
                                                             td { class: "col-name",
-                                                                span { class: "encounter-name", "{enc.display_name}" }
+                                                                div { class: "encounter-info",
+                                                                    span { class: "encounter-name", "{enc.display_name}" }
+                                                                    if !npc_list.is_empty() {
+                                                                        span { class: "encounter-npcs", "{npc_list}" }
+                                                                    }
+                                                                }
                                                             }
                                                             td { class: "col-duration",
                                                                 "{format_duration(enc.duration_seconds)}"

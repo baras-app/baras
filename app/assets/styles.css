@@ -2413,6 +2413,7 @@ details[open] .collapsible-summary::before {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85em;
+  table-layout: fixed;
 }
 
 .history-table th,
@@ -2446,7 +2447,8 @@ details[open] .collapsible-summary::before {
 }
 
 .col-name {
-  width: 45%;
+  width: 65%;
+  overflow: hidden;
 }
 
 .col-type {
@@ -2462,9 +2464,27 @@ details[open] .collapsible-summary::before {
   text-align: center;
 }
 
+.encounter-info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  overflow: hidden;
+}
+
 .encounter-name {
   font-weight: 500;
   color: #e0e0e0;
+  flex-shrink: 0;
+}
+
+.encounter-npcs {
+  font-size: 0.75em;
+  opacity: 0.7;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .difficulty-badge {
