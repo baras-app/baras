@@ -282,11 +282,13 @@ impl TimerDefinition {
         }
 
         // Check difficulty filter
-        if !self.difficulties.is_empty()
-            && let Some(diff) = difficulty
-            && !self.difficulties.iter().any(|d| diff.matches_config_key(d))
-        {
-            return false;
+        if !self.difficulties.is_empty() {
+            let Some(diff) = difficulty else {
+                return false; // Timer requires specific difficulties but none is set
+            };
+            if !self.difficulties.iter().any(|d| diff.matches_config_key(d)) {
+                return false;
+            }
         }
 
         true

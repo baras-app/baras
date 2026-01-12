@@ -152,8 +152,11 @@ impl EventProcessor {
     fn update_area_from_event(&self, event: &CombatEvent, cache: &mut SessionCache) {
         cache.current_area.area_name = resolve(event.effect.effect_name).to_string();
         cache.current_area.area_id = event.effect.effect_id;
-        cache.current_area.difficulty_id = event.effect.difficulty_id;
-        cache.current_area.difficulty_name = resolve(event.effect.difficulty_name).to_string();
+        // Only update difficulty if we get a valid ID (game sends 0 first, then real value)
+        if event.effect.difficulty_id != 0 {
+            cache.current_area.difficulty_id = event.effect.difficulty_id;
+            cache.current_area.difficulty_name = resolve(event.effect.difficulty_name).to_string();
+        }
         cache.current_area.entered_at = Some(event.timestamp);
     }
 
@@ -257,9 +260,13 @@ impl EventProcessor {
         // (fixes timers with difficulty filters when AreaEntered fires mid-session)
         if let Some(enc) = cache.current_encounter_mut() {
             // Use difficulty_id (language-independent) instead of parsing localized strings
-            enc.set_difficulty(crate::game_data::Difficulty::from_difficulty_id(
-                event.effect.difficulty_id,
-            ));
+            // Note: Game sends two AreaEntered events - first with difficulty_id=0, then with real value
+            // Only update difficulty if we get a valid ID (non-zero)
+            if event.effect.difficulty_id != 0 {
+                enc.set_difficulty(crate::game_data::Difficulty::from_difficulty_id(
+                    event.effect.difficulty_id,
+                ));
+            }
             let area_id = if event.effect.effect_id != 0 {
                 Some(event.effect.effect_id)
             } else {

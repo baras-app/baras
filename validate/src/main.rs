@@ -518,6 +518,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Process signals for output and state updates
         for signal in &signals {
             match signal {
+                GameSignal::AreaEntered { difficulty_id, .. } => {
+                    // Set difficulty from the actual log file's AreaEntered event
+                    if let Some(enc) = cache.current_encounter_mut() {
+                        enc.difficulty = baras_core::Difficulty::from_difficulty_id(*difficulty_id);
+                    }
+                }
                 GameSignal::CombatStarted { timestamp, .. } => {
                     state.combat_start = Some(*timestamp);
                     cli.combat_start(*timestamp);
@@ -532,8 +538,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if let Some(enc) = cache.current_encounter_mut() {
                         enc.area_id = Some(boss_def.area_id);
                         enc.area_name = Some(boss_def.area_name.clone());
-                        // Default to Veteran8 for 8-man operations
-                        enc.difficulty = Some(baras_core::Difficulty::Veteran8);
+                        // Difficulty is now set from AreaEntered signal above
                     }
                 }
                 GameSignal::CombatEnded { timestamp, .. } => {
