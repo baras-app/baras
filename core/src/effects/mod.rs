@@ -35,6 +35,6 @@ mod tracker_tests;
 pub use active::{ActiveEffect, EffectKey};
 pub use definition::{
     AbilitySelector, AlertTrigger, DefinitionConfig, DisplayTarget, EffectCategory,
-    EffectDefinition, EffectSelector, EntityFilter,
+    EffectDefinition, EffectSelector, EntityFilter, EFFECTS_DSL_VERSION,
 };
 pub use tracker::{DefinitionSet, EffectTracker, NewTargetInfo};

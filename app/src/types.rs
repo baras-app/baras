@@ -535,7 +535,9 @@ pub struct EffectListItem {
     pub name: String,
     #[serde(default)]
     pub display_text: Option<String>,
-    pub file_path: String,
+    /// Whether this effect has a user override (vs bundled-only)
+    #[serde(default)]
+    pub is_user_override: bool,
 
     // Core
     pub enabled: bool,

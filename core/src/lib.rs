@@ -29,7 +29,7 @@ pub use dsl::{
 };
 pub use effects::{
     ActiveEffect, DefinitionConfig, DefinitionSet, DisplayTarget, EffectCategory,
-    EffectDefinition, EffectTracker, NewTargetInfo,
+    EffectDefinition, EffectTracker, NewTargetInfo, EFFECTS_DSL_VERSION,
 };
 pub use encounter::metrics::PlayerMetrics;
 pub use encounter::summary::{EncounterHistory, EncounterSummary};

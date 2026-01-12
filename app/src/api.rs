@@ -549,45 +549,16 @@ pub async fn update_effect_definition(effect: &EffectListItem) -> bool {
 
 /// Delete an effect
 /// Returns true on success. Tauri commands returning Result<(), String> serialize Ok(()) as null.
-pub async fn delete_effect_definition(effect_id: &str, file_path: &str) -> bool {
-    let obj = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &obj,
-        &JsValue::from_str("effectId"),
-        &JsValue::from_str(effect_id),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &obj,
-        &JsValue::from_str("filePath"),
-        &JsValue::from_str(file_path),
-    )
-    .unwrap();
-
-    let _result = invoke("delete_effect_definition", obj.into()).await;
+pub async fn delete_effect_definition(effect_id: &str) -> bool {
+    let args = build_args("effectId", effect_id);
+    let _result = invoke("delete_effect_definition", args).await;
     true
 }
 
 /// Duplicate an effect
-pub async fn duplicate_effect_definition(
-    effect_id: &str,
-    file_path: &str,
-) -> Option<EffectListItem> {
-    let obj = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &obj,
-        &JsValue::from_str("effectId"),
-        &JsValue::from_str(effect_id),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &obj,
-        &JsValue::from_str("filePath"),
-        &JsValue::from_str(file_path),
-    )
-    .unwrap();
-
-    let result = invoke("duplicate_effect_definition", obj.into()).await;
+pub async fn duplicate_effect_definition(effect_id: &str) -> Option<EffectListItem> {
+    let args = build_args("effectId", effect_id);
+    let result = invoke("duplicate_effect_definition", args).await;
     from_js(result)
 }
 

@@ -1594,6 +1594,10 @@ pub struct AppConfig {
     #[serde(default)]
     pub show_only_bosses: bool,
 
+    /// Hide log files smaller than 1MB in the file browser (enabled by default).
+    #[serde(default = "default_true")]
+    pub hide_small_log_files: bool,
+
     /// Player alacrity percentage (e.g., 15.4 for 15.4% alacrity).
     /// Used to calculate actual effect durations.
     #[serde(default)]
@@ -1626,6 +1630,7 @@ impl AppConfig {
             parsely: ParselySettings::default(),
             audio: AudioSettings::default(),
             show_only_bosses: false,
+            hide_small_log_files: true,
             alacrity_percent: 0.0,
             latency_ms: 0,
         }

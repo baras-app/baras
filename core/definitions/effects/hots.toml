@@ -1,6 +1,8 @@
 # Healer HoTs and Shields - displayed on raid frames
 # Effect IDs sourced from ORBS/StarParse
 
+version = 1
+
 [[effect]]
 id = "kolto_probe"
 name = "Kolto Probe"

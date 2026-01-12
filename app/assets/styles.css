@@ -2144,6 +2144,26 @@ details[open] .collapsible-summary::before {
   color: var(--text-muted);
 }
 
+.file-browser-filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.8em;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.file-browser-filter-toggle:hover {
+  color: var(--text-primary);
+}
+
+.file-browser-filter-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
 .file-browser-list {
   flex: 1;
   overflow-y: auto;

@@ -164,7 +164,7 @@ fn default_effect(name: String) -> EffectListItem {
         id: String::new(),
         name,
         display_text: None,
-        file_path: String::new(),
+        is_user_override: false,
         enabled: true,
         category: EffectCategory::Hot,
         trigger: Trigger::EffectApplied {
@@ -367,7 +367,7 @@ pub fn EffectEditorPanel() -> Element {
         expanded_effect.set(None);
 
         spawn(async move {
-            if api::delete_effect_definition(&effect.id, &effect.file_path).await {
+            if api::delete_effect_definition(&effect.id).await {
                 save_status.set("Deleted".to_string());
                 status_is_error.set(false);
             } else {
@@ -380,7 +380,7 @@ pub fn EffectEditorPanel() -> Element {
     let on_duplicate = move |effect: EffectListItem| {
         spawn(async move {
             if let Some(new_effect) =
-                api::duplicate_effect_definition(&effect.id, &effect.file_path).await
+                api::duplicate_effect_definition(&effect.id).await
             {
                 let new_id = new_effect.id.clone();
                 let mut current = effects();

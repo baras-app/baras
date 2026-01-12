@@ -293,9 +293,19 @@ impl EffectDefinition {
 // Config File Structure
 // ═══════════════════════════════════════════════════════════════════════════
 
+/// Current DSL version for effect definitions.
+/// Increment this when making breaking changes to the DSL format.
+/// User config files with mismatched versions will be deleted on startup.
+pub const EFFECTS_DSL_VERSION: u32 = 1;
+
 /// Root structure for effect config files (TOML)
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DefinitionConfig {
+    /// DSL version - used to detect and handle breaking changes.
+    /// If user file version != EFFECTS_DSL_VERSION, the user file is deleted.
+    #[serde(default)]
+    pub version: u32,
+
     /// Effect definitions in this file
     #[serde(default, rename = "effect")]
     pub effects: Vec<EffectDefinition>,

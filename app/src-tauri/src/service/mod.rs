@@ -24,8 +24,9 @@ use baras_core::encounter::summary::classify_encounter;
 use baras_core::game_data::{Discipline, Role};
 use baras_core::timers::FiredAlert;
 use baras_core::{
-    ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet, DisplayTarget,
+    ActiveEffect, BossEncounterDefinition, DefinitionConfig, DefinitionSet,
     EffectCategory, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler,
+    EFFECTS_DSL_VERSION,
 };
 use baras_overlay::{
     BossHealthData, ChallengeData, ChallengeEntry, Color, CooldownData, CooldownEntry, DotEntry,
@@ -487,100 +488,117 @@ impl CombatService {
         }
     }
 
-    /// Load effect definitions from bundled and user config directories
-    /// Loading order (later overrides earlier):
-    /// 1. Bundled definitions (shipped with app)
-    /// 2. User defaults (~/.config/baras/effects/defaults/)
-    /// 3. User root files (~/.config/baras/effects/*.toml, custom.toml last)
+    /// Get the user effects config file path
+    fn get_user_effects_path() -> Option<PathBuf> {
+        dirs::config_dir().map(|p| p.join("baras").join("definitions").join("effects.toml"))
+    }
+
+    /// Clean up old user effects directory structure (pre-delta architecture)
+    fn cleanup_old_effects_dir() {
+        let Some(old_dir) = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("effects")) else {
+            return;
+        };
+
+        if old_dir.is_dir() {
+            eprintln!("[EFFECTS] Removing old effects directory: {:?}", old_dir);
+            if let Err(e) = std::fs::remove_dir_all(&old_dir) {
+                eprintln!("[EFFECTS] Failed to remove old effects directory: {}", e);
+            }
+        }
+    }
+
+    /// Load effect definitions from bundled resources and user config file.
+    ///
+    /// Architecture (delta-based):
+    /// 1. Load bundled definitions from app resources (base layer)
+    /// 2. Load user overrides from single file: ~/.config/baras/definitions/effects.toml
+    /// 3. User effects with matching IDs replace bundled effects entirely
+    ///
+    /// Version checking:
+    /// - User file must have `version = N` matching EFFECTS_DSL_VERSION
+    /// - Mismatched versions cause user file to be deleted (breaking DSL change)
     fn load_effect_definitions(app_handle: &AppHandle) -> DefinitionSet {
-        // Bundled definitions: shipped with the app in resources
-        let bundled_dir = app_handle
-            .path()
-            .resolve("definitions/effects", tauri::path::BaseDirectory::Resource)
-            .ok();
+        // Clean up old directory structure on first run after update
+        Self::cleanup_old_effects_dir();
 
-        // User config directories
-        let effects_dir =
-            dirs::config_dir().map(|p| p.join("baras").join("definitions").join("effects"));
-        let defaults_dir = effects_dir.as_ref().map(|p| p.join("defaults"));
-
-        // Load definitions from TOML files
         let mut set = DefinitionSet::new();
 
-        // 1. Load from bundled directory first (lowest priority)
-        if let Some(ref path) = bundled_dir
-            && path.exists()
+        // 1. Load bundled definitions from app resources
+        if let Some(bundled_dir) = app_handle
+            .path()
+            .resolve("definitions/effects", tauri::path::BaseDirectory::Resource)
+            .ok()
+            .filter(|p| p.exists())
         {
-            Self::load_definitions_from_dir(&mut set, path, "bundled", false);
+            Self::load_bundled_definitions(&mut set, &bundled_dir);
         }
 
-        // 2. Load from user defaults directory (user-editable base definitions)
-        if let Some(ref path) = defaults_dir
-            && path.exists()
+        // 2. Load user overrides from single config file
+        if let Some(user_path) = Self::get_user_effects_path()
+            && user_path.exists()
         {
-            Self::load_definitions_from_dir(&mut set, path, "defaults", true);
-        }
-
-        // 3. Load from user root directory (highest priority, custom.toml loaded last)
-        if let Some(ref path) = effects_dir
-            && path.exists()
-        {
-            Self::load_definitions_from_dir(&mut set, path, "custom", true);
+            Self::load_user_effects(&mut set, &user_path);
         }
 
         set
     }
 
-    /// Load effect definitions from a directory of TOML files
-    /// custom.toml is always loaded last so user overrides take precedence
-    fn load_definitions_from_dir(
-        set: &mut DefinitionSet,
-        dir: &std::path::Path,
-        source: &str,
-        overwrite: bool,
-    ) {
+    /// Load bundled effect definitions from a directory
+    fn load_bundled_definitions(set: &mut DefinitionSet, dir: &std::path::Path) {
         let Ok(entries) = std::fs::read_dir(dir) else {
-            eprintln!("[EFFECTS] Failed to read dir: {:?}", dir);
+            eprintln!("[EFFECTS] Failed to read bundled dir: {:?}", dir);
             return;
         };
 
-        // Collect and sort files, putting custom.toml last
-        let mut files: Vec<_> = entries
+        let files: Vec<_> = entries
             .flatten()
             .map(|e| e.path())
-            .filter(|p| p.extension().is_some_and(|ext| ext == "toml"))
+            .filter(|p| {
+                p.extension().is_some_and(|ext| ext == "toml")
+                    && !p.file_name().is_some_and(|n| n == "custom.toml") // Skip template
+            })
             .collect();
 
-        files.sort_by(|a, b| {
-            let a_is_custom = a.file_name().is_some_and(|n| n == "custom.toml");
-            let b_is_custom = b.file_name().is_some_and(|n| n == "custom.toml");
-            match (a_is_custom, b_is_custom) {
-                (true, false) => std::cmp::Ordering::Greater,
-                (false, true) => std::cmp::Ordering::Less,
-                _ => a.cmp(b),
-            }
-        });
-
-        eprintln!("[EFFECTS] Loading {} files from {:?} (source={})", files.len(), dir, source);
+        eprintln!("[EFFECTS] Loading {} bundled files from {:?}", files.len(), dir);
 
         for path in files {
             if let Ok(contents) = std::fs::read_to_string(&path)
                 && let Ok(config) = toml::from_str::<DefinitionConfig>(&contents)
             {
-                // Log dot_tracker definitions
-                let dot_tracker_count = config
-                    .effects
-                    .iter()
-                    .filter(|e| e.display_target == DisplayTarget::DotTracker)
-                    .count();
-                eprintln!(
-                    "[EFFECTS]   {:?}: {} effects ({} dot_tracker)",
-                    path.file_name().unwrap_or_default(),
-                    config.effects.len(),
-                    dot_tracker_count
-                );
-                set.add_definitions(config.effects, overwrite);
+                let count = config.effects.len();
+                set.add_definitions(config.effects, false);
+                eprintln!("[EFFECTS]   {:?}: {} effects", path.file_name().unwrap_or_default(), count);
             }
+        }
+    }
+
+    /// Load user effect overrides from single config file
+    fn load_user_effects(set: &mut DefinitionSet, path: &std::path::Path) {
+        let Ok(contents) = std::fs::read_to_string(path) else {
+            eprintln!("[EFFECTS] Failed to read user effects file: {:?}", path);
+            return;
+        };
+
+        let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) else {
+            eprintln!("[EFFECTS] Failed to parse user effects file: {:?}", path);
+            // Delete invalid file
+            let _ = std::fs::remove_file(path);
+            return;
+        };
+
+        // Version check - delete file if version mismatch
+        if config.version != EFFECTS_DSL_VERSION {
+            eprintln!(
+                "[EFFECTS] User effects version mismatch (file={}, expected={}), deleting: {:?}",
+                config.version, EFFECTS_DSL_VERSION, path
+            );
+            let _ = std::fs::remove_file(path);
+            return;
+        }
+
+        if !config.effects.is_empty() {
+            eprintln!("[EFFECTS] Loading {} user overrides from {:?}", config.effects.len(), path);
+            set.add_definitions(config.effects, true); // Overwrite bundled
         }
     }
 

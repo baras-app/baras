@@ -1,5 +1,8 @@
-# Custom Effect Definitions
-# Add your own effects here - this file is preserved across updates
+# Custom Effect Definitions Reference
+# User overrides are stored in: ~/.config/baras/definitions/effects.toml
+# Effects defined there will override bundled effects with the same ID
+
+version = 1
 #
 # ─── Standard Effect (tracks game buffs/debuffs) ───────────────────────────
 # [[effect]]

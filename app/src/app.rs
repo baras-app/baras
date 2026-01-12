@@ -57,6 +57,7 @@ pub fn App() -> Element {
     let mut log_files = use_signal(Vec::<LogFileInfo>::new);
     let mut upload_status = use_signal(|| None::<(String, bool, String)>); // (path, success, message)
     let mut file_browser_filter = use_signal(String::new);
+    let mut hide_small_log_files = use_signal(|| true);
 
     // UI state
     let mut active_tab = use_signal(|| "session".to_string());
@@ -126,6 +127,7 @@ pub fn App() -> Element {
             auto_delete_empty.set(config.auto_delete_empty_files);
             auto_delete_old.set(config.auto_delete_old_files);
             retention_days.set(config.log_retention_days);
+            hide_small_log_files.set(config.hide_small_log_files);
             minimize_to_tray.set(config.minimize_to_tray);
             parsely_username.set(config.parsely.username);
             parsely_password.set(config.parsely.password);
@@ -1285,6 +1287,25 @@ pub fn App() -> Element {
                                 value: "{file_browser_filter}",
                                 oninput: move |e| file_browser_filter.set(e.value()),
                             }
+                            label {
+                                class: "file-browser-filter-toggle",
+                                title: "Hide files smaller than 1MB",
+                                input {
+                                    r#type: "checkbox",
+                                    checked: hide_small_log_files(),
+                                    onchange: move |e| {
+                                        let checked = e.checked();
+                                        hide_small_log_files.set(checked);
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.hide_small_log_files = checked;
+                                                api::update_config(&cfg).await;
+                                            }
+                                        });
+                                    },
+                                }
+                                " Hide <1MB"
+                            }
                             button {
                                 class: "btn btn-close",
                                 onclick: move |_| file_browser_open.set(false),
@@ -1301,7 +1322,13 @@ pub fn App() -> Element {
                             } else {
                                 {
                                     let filter = file_browser_filter().to_lowercase();
+                                    let hide_small = hide_small_log_files();
                                     let filtered: Vec<_> = log_files().iter().filter(|f| {
+                                        // Size filter: hide files < 1MB if enabled
+                                        if hide_small && f.file_size < 1024 * 1024 {
+                                            return false;
+                                        }
+                                        // Text filter
                                         if filter.is_empty() {
                                             return true;
                                         }
