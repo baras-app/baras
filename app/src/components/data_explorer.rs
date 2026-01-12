@@ -438,6 +438,8 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     let mut show_overview = use_signal(|| true);
     let mut overview_data = use_signal(Vec::<RaidOverviewRow>::new);
     let mut player_deaths = use_signal(Vec::<PlayerDeath>::new);
+    // Track last (encounter, time_range) we fetched overview data for (prevents re-fetch loops)
+    let mut last_overview_fetch = use_signal(|| None::<(Option<u32>, TimeRange)>);
 
     // Charts mode - show time series charts with effect highlighting
     let mut show_charts = use_signal(|| false);
@@ -638,6 +640,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             entities.set(Vec::new());
             overview_data.set(Vec::new());
             player_deaths.set(Vec::new());
+            last_overview_fetch.set(None);
             selected_source.set(None);
             timeline.set(None);
             time_range.set(TimeRange::default());
@@ -673,11 +676,17 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             return;
         }
 
-        // Skip if we already have overview data (avoid re-fetching on every tab switch)
-        // Only re-fetch if time range changed or on Overview tab (for accuracy)
-        let has_data = !overview_data.read().is_empty();
-        if has_data && !is_overview {
-            return;
+        // Check if we've already fetched for this (encounter, time_range) combo
+        // This avoids reading overview_data which would create a reactive loop
+        let last = last_overview_fetch.read().clone();
+        if let Some((last_idx, last_tr)) = last {
+            if last_idx == idx && last_tr == tr {
+                return; // Already fetched for this exact state
+            }
+            // On non-overview tabs, any loaded data for this encounter is fine (class icons only)
+            if !is_overview && last_idx == idx {
+                return;
+            }
         }
 
         spawn(async move {
@@ -704,6 +713,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                     && !data.is_empty()
                 {
                     overview_data.set(data);
+                    last_overview_fetch.set(Some((idx, tr)));
                     break;
                 }
                 if attempt < 9 {
