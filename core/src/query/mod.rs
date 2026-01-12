@@ -338,7 +338,12 @@ impl EncounterQuery<'_> {
             ))
             .await?;
 
-        let duration = duration_secs.unwrap_or(1.0).max(0.001) as f64;
+        // Use time range duration if provided, otherwise fall back to full fight duration
+        let duration = if let Some(tr) = time_range {
+            (tr.end - tr.start).max(0.001) as f64
+        } else {
+            duration_secs.unwrap_or(1.0).max(0.001) as f64
+        };
 
         let mut results = Vec::new();
         for batch in &batches {
