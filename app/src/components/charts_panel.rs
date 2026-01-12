@@ -4,11 +4,13 @@
 //! Uses ECharts for visualization via wasm-bindgen JS interop.
 
 use dioxus::prelude::*;
+use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api::{self, EffectChartData, EffectWindow, TimeRange, TimeSeriesPoint};
 use crate::components::ability_icon::AbilityIcon;
+use crate::components::class_icons::get_class_icon;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ECharts JS Interop
@@ -598,6 +600,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
     // Entity selection (default to none - show aggregated data)
     let mut selected_entity = use_signal(|| None::<String>);
     let mut entities = use_signal(Vec::<String>::new);
+    let mut class_icons = use_signal(HashMap::<String, String>::new);
 
     // Chart visibility toggles
     let mut show_dps = use_signal(|| true);
@@ -641,17 +644,25 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                 // Retry up to 3 seconds if data not ready
                 for attempt in 0..10 {
                     if let Some(data) = api::query_raid_overview(idx, None, None).await {
-                        let names: Vec<String> = data
+                        let players: Vec<_> = data
                             .into_iter()
                             .filter(|r| r.entity_type == "Player" || r.entity_type == "Companion")
-                            .map(|r| r.name)
                             .collect();
-                        if !names.is_empty() {
+                        if !players.is_empty() {
                             // Auto-select first player
-                            if let Some(first) = names.first() {
-                                selected_entity.set(Some(first.clone()));
+                            if let Some(first) = players.first() {
+                                selected_entity.set(Some(first.name.clone()));
                             }
-                            entities.set(names);
+                            // Store class icons lookup
+                            let icons: HashMap<String, String> = players
+                                .iter()
+                                .filter_map(|r| {
+                                    r.class_icon.as_ref().map(|icon| (r.name.clone(), icon.clone()))
+                                })
+                                .collect();
+                            class_icons.set(icons);
+                            // Store entity names
+                            entities.set(players.into_iter().map(|r| r.name).collect());
                             return;
                         }
                     }
@@ -878,6 +889,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                             {
                                 let n = name.clone();
                                 let is_selected = selected_entity.read().as_ref() == Some(&n);
+                                let icon = class_icons.read().get(&n).cloned();
                                 rsx! {
                                     div {
                                         class: if is_selected { "entity-item selected" } else { "entity-item" },
@@ -892,6 +904,15 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                                 }
                                             }
                                         },
+                                        if let Some(icon_name) = &icon {
+                                            if let Some(icon_asset) = get_class_icon(icon_name) {
+                                                img {
+                                                    class: "entity-class-icon",
+                                                    src: *icon_asset,
+                                                    alt: ""
+                                                }
+                                            }
+                                        }
                                         "{name}"
                                     }
                                 }

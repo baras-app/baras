@@ -4,7 +4,7 @@
 //! Uses DataFusion SQL queries over parquet files for historical data.
 
 use dioxus::prelude::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
@@ -660,25 +660,30 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
         });
     });
 
-    // Lazy load: Overview tab data (overview_data + deaths)
+    // Load overview data (for class icons on all tabs + Overview display)
+    // This runs for any tab when we have an encounter and timeline
     use_effect(move || {
         let idx = *selected_encounter.read();
         let is_overview = *show_overview.read() && !*show_charts.read() && !*show_combat_log.read();
         let tr = time_range();
         let has_timeline = timeline.read().is_some();
 
-        // Only load when Overview tab is active, have an encounter, AND timeline is loaded
-        if !is_overview || idx.is_none() || !has_timeline {
-            // Clear overview data when leaving the tab
-            if !is_overview {
-                overview_data.set(Vec::new());
-                player_deaths.set(Vec::new());
-            }
+        // Need encounter and timeline to load overview data
+        if idx.is_none() || !has_timeline {
+            return;
+        }
+
+        // Skip if we already have overview data (avoid re-fetching on every tab switch)
+        // Only re-fetch if time range changed or on Overview tab (for accuracy)
+        let has_data = !overview_data.read().is_empty();
+        if has_data && !is_overview {
             return;
         }
 
         spawn(async move {
-            loading.set(true);
+            if is_overview {
+                loading.set(true);
+            }
             let full_duration = timeline.read().as_ref().map(|t| t.duration_secs);
             let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
                 None
@@ -706,12 +711,13 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 }
             }
 
-            // Load player deaths
-            if let Some(deaths) = api::query_player_deaths(idx).await {
-                player_deaths.set(deaths);
+            // Load player deaths (only needed for Overview tab)
+            if is_overview {
+                if let Some(deaths) = api::query_player_deaths(idx).await {
+                    player_deaths.set(deaths);
+                }
+                loading.set(false);
             }
-
-            loading.set(false);
         });
     });
 
@@ -937,6 +943,19 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             .filter(|e| !players_only || e.entity_type == "Player" || e.entity_type == "Companion")
             .cloned()
             .collect::<Vec<_>>()
+    });
+
+    // Memoized class icon lookup from overview data (player name -> class_icon)
+    let class_icon_lookup = use_memo(move || {
+        overview_data
+            .read()
+            .iter()
+            .filter_map(|row| {
+                row.class_icon
+                    .as_ref()
+                    .map(|icon| (row.name.clone(), icon.clone()))
+            })
+            .collect::<HashMap<String, String>>()
     });
 
     // Group stats for hierarchical display
@@ -1450,6 +1469,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                             let name = entity.source_name.clone();
                                             let is_selected = selected_source.read().as_ref() == Some(&name);
                                             let is_npc = entity.entity_type == "Npc";
+                                            let class_icon = class_icon_lookup().get(&name).cloned();
                                             rsx! {
                                                 div {
                                                     class: if is_selected { "entity-row selected" } else if is_npc { "entity-row npc" } else { "entity-row" },
@@ -1457,7 +1477,18 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                                         let name = name.clone();
                                                         move |_| on_source_click(name.clone())
                                                     },
-                                                    span { class: "entity-name", "{entity.source_name}" }
+                                                    span { class: "entity-name",
+                                                        if let Some(icon_name) = &class_icon {
+                                                            if let Some(icon_asset) = get_class_icon(icon_name) {
+                                                                img {
+                                                                    class: "entity-class-icon",
+                                                                    src: *icon_asset,
+                                                                    alt: ""
+                                                                }
+                                                            }
+                                                        }
+                                                        "{entity.source_name}"
+                                                    }
                                                     span { class: "entity-value", "{format_number(entity.total_value)}" }
                                                     span { class: "entity-abilities", "{entity.abilities_used} abilities" }
                                                 }

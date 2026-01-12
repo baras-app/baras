@@ -736,6 +736,9 @@
 }
 
 .charts-sidebar .entity-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 8px;
   font-size: 12px;
   background: var(--bg-tertiary);

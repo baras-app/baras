@@ -5509,11 +5509,19 @@ details[open] .collapsible-summary::before {
 }
 
 .entity-row .entity-name {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
   font-size: 0.85em;
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 0.2em;
+}
+
+.entity-class-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .entity-row .entity-value {
