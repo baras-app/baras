@@ -770,18 +770,6 @@ impl CombatEncounter {
             return None;
         }
 
-        // DEBUG: Trace entity IDs in this encounter
-        eprintln!("=== calculate_entity_metrics DEBUG ===");
-        eprintln!("Encounter ID: {}", self.id);
-        eprintln!("accumulated_data keys: {:?}", self.accumulated_data.keys().collect::<Vec<_>>());
-        eprintln!("npcs keys: {:?}", self.npcs.keys().collect::<Vec<_>>());
-        eprintln!("players keys: {:?}", self.players.keys().collect::<Vec<_>>());
-        eprintln!("player_disciplines keys: {:?}", player_disciplines.keys().collect::<Vec<_>>());
-        for (id, npc) in &self.npcs {
-            eprintln!("  npc {} -> name: {:?}, type: {:?}", id, crate::context::resolve(npc.name), npc.entity_type);
-        }
-        eprintln!("=== END DEBUG ===");
-
         let mut stats: Vec<EntityMetrics> = self
             .accumulated_data
             .iter()
