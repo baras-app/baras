@@ -125,24 +125,23 @@ impl EventProcessor {
         cache.player.discipline_name = resolve(event.effect.discipline_name).to_string();
     }
 
-    fn add_player_to_encounter(&self, event: &CombatEvent, cache: &mut SessionCache) {
-        let Some(enc) = cache.current_encounter_mut() else {
-            return;
+    fn register_player_discipline(&self, event: &CombatEvent, cache: &mut SessionCache) {
+        let player_info = PlayerInfo {
+            id: event.source_entity.log_id,
+            name: event.source_entity.name,
+            class_id: event.effect.effect_id,
+            class_name: resolve(event.effect.effect_name).to_string(),
+            discipline_id: event.effect.discipline_id,
+            discipline_name: resolve(event.effect.discipline_name).to_string(),
+            is_dead: false,
+            death_time: None,
+            current_target_id: 0,
         };
 
-        enc.players
-            .entry(event.source_entity.log_id)
-            .or_insert(PlayerInfo {
-                id: event.source_entity.log_id,
-                name: event.source_entity.name,
-                class_id: event.effect.effect_id,
-                class_name: resolve(event.effect.effect_name).to_string(),
-                discipline_id: event.effect.discipline_id,
-                discipline_name: resolve(event.effect.discipline_name).to_string(),
-                is_dead: false,
-                death_time: None,
-                current_target_id: 0,
-            });
+        // Upsert into session-level player discipline registry (source of truth)
+        cache
+            .player_disciplines
+            .insert(event.source_entity.log_id, player_info);
     }
 
     fn update_area_from_event(&self, event: &CombatEvent, cache: &mut SessionCache) {
@@ -180,13 +179,14 @@ impl EventProcessor {
             }
         }
 
-        // Track player in encounter
-        self.add_player_to_encounter(event, cache);
+        // Register player discipline in session-level registry
+        self.register_player_discipline(event, cache);
 
         // Emit DisciplineChanged for ALL players (used for raid frame role detection)
         if event.effect.discipline_id != 0 {
             signals.push(GameSignal::DisciplineChanged {
                 entity_id: event.source_entity.log_id,
+                class_id: event.effect.effect_id,
                 discipline_id: event.effect.discipline_id,
                 timestamp: event.timestamp,
             });

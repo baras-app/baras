@@ -59,6 +59,17 @@ struct WorkerAreaInfo {
     difficulty_name: String,
 }
 
+/// Player discipline entry from parse worker subprocess.
+#[derive(Debug, serde::Deserialize)]
+struct WorkerPlayerDiscipline {
+    entity_id: i64,
+    name: String,
+    class_id: i64,
+    class_name: String,
+    discipline_id: i64,
+    discipline_name: String,
+}
+
 /// Output from the parse worker subprocess (matches parse-worker JSON output).
 #[derive(Debug, serde::Deserialize)]
 struct ParseWorkerOutput {
@@ -68,6 +79,7 @@ struct ParseWorkerOutput {
     encounters: Vec<EncounterSummary>,
     player: WorkerPlayerInfo,
     area: WorkerAreaInfo,
+    player_disciplines: Vec<WorkerPlayerDiscipline>,
     elapsed_ms: u128,
 }
 
@@ -225,6 +237,7 @@ impl SignalHandler for CombatSignalHandler {
             }
             GameSignal::DisciplineChanged {
                 entity_id,
+                class_id,
                 discipline_id,
                 ..
             } => {
@@ -234,7 +247,7 @@ impl SignalHandler for CombatSignalHandler {
                 }
                 // Update raid registry with discipline info for role icons
                 if let Ok(mut registry) = self.shared.raid_registry.lock() {
-                    registry.update_discipline(*entity_id, 0, *discipline_id);
+                    registry.update_discipline(*entity_id, *class_id, *discipline_id);
                 }
                 // Notify frontend of player info change
                 let _ = self.session_event_tx.send(SessionEvent::PlayerInitialized);
@@ -1018,6 +1031,25 @@ impl CombatService {
                             cache.current_area.area_id = parse_result.area.area_id;
                             cache.current_area.difficulty_name =
                                 parse_result.area.difficulty_name.clone();
+
+                            // Import player disciplines from subprocess
+                            for disc in &parse_result.player_disciplines {
+                                use baras_core::encounter::entity_info::PlayerInfo;
+                                cache.player_disciplines.insert(
+                                    disc.entity_id,
+                                    PlayerInfo {
+                                        id: disc.entity_id,
+                                        name: baras_core::context::intern(&disc.name),
+                                        class_id: disc.class_id,
+                                        class_name: disc.class_name.clone(),
+                                        discipline_id: disc.discipline_id,
+                                        discipline_name: disc.discipline_name.clone(),
+                                        is_dead: false,
+                                        death_time: None,
+                                        current_target_id: 0,
+                                    },
+                                );
+                            }
                         }
 
                         // Enable live parquet writing (continues from where subprocess left off)
@@ -1485,8 +1517,8 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         Some(format!("{:?}", encounter_type))
     };
 
-    // Calculate metrics for all players
-    let entity_metrics = encounter.calculate_entity_metrics()?;
+    // Calculate metrics for all players (use session-level discipline registry)
+    let entity_metrics = encounter.calculate_entity_metrics(&cache.player_disciplines)?;
     let metrics: Vec<PlayerMetrics> = entity_metrics
         .into_iter()
         .filter(|m| m.entity_type != EntityType::Npc)

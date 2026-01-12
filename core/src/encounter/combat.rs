@@ -753,7 +753,10 @@ impl CombatEncounter {
         }
     }
 
-    pub fn calculate_entity_metrics(&self) -> Option<Vec<super::metrics::EntityMetrics>> {
+    pub fn calculate_entity_metrics(
+        &self,
+        player_disciplines: &hashbrown::HashMap<i64, super::entity_info::PlayerInfo>,
+    ) -> Option<Vec<super::metrics::EntityMetrics>> {
         use super::metrics::EntityMetrics;
 
         let duration = self.duration_seconds()?;
@@ -794,9 +797,9 @@ impl CombatEncounter {
                     0.0
                 };
 
-                // Look up discipline info for players
+                // Look up discipline info from session-level registry (source of truth)
                 let (discipline, discipline_name, class_name) =
-                    if let Some(player) = self.players.get(id) {
+                    if let Some(player) = player_disciplines.get(id) {
                         let disc = Discipline::from_guid(player.discipline_id);
                         let disc_name = if player.discipline_name.is_empty() {
                             None

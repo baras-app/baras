@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::CombatEncounter;
 use super::PhaseType;
+use super::entity_info::PlayerInfo;
 use super::metrics::PlayerMetrics;
 use crate::combat_log::EntityType;
 use crate::context::resolve;
@@ -187,6 +188,7 @@ pub fn create_encounter_summary(
     encounter: &CombatEncounter,
     area: &AreaInfo,
     history: &mut EncounterHistory,
+    player_disciplines: &HashMap<i64, PlayerInfo>,
 ) -> Option<EncounterSummary> {
     // Skip encounters that never started combat
     #[allow(clippy::question_mark)]
@@ -214,7 +216,7 @@ pub fn create_encounter_summary(
 
     // Calculate metrics and filter to players only
     let player_metrics: Vec<PlayerMetrics> = encounter
-        .calculate_entity_metrics()
+        .calculate_entity_metrics(player_disciplines)
         .unwrap_or_default()
         .into_iter()
         .filter(|m| m.entity_type != EntityType::Npc)

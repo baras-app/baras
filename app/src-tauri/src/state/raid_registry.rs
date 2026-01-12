@@ -39,7 +39,8 @@ pub struct RaidSlotRegistry {
     max_slots: u8,
     /// Pending discipline info for entities not yet registered
     /// (DisciplineChanged often fires before player is registered)
-    pending_disciplines: HashMap<i64, i64>,
+    /// Maps entity_id -> (class_id, discipline_id)
+    pending_disciplines: HashMap<i64, (i64, i64)>,
 }
 
 impl RaidSlotRegistry {
@@ -67,7 +68,8 @@ impl RaidSlotRegistry {
         let mut player = RegisteredPlayer::new(entity_id, name);
 
         // Check for pending discipline info (DisciplineChanged often fires before registration)
-        if let Some(discipline_id) = self.pending_disciplines.remove(&entity_id) {
+        if let Some((class_id, discipline_id)) = self.pending_disciplines.remove(&entity_id) {
+            player.class_id = Some(class_id);
             player.discipline_id = Some(discipline_id);
         }
 
@@ -77,7 +79,7 @@ impl RaidSlotRegistry {
     }
 
     /// Update player's class/discipline from DisciplineChanged event.
-    /// If the player isn't registered yet, stores the discipline for later application.
+    /// If the player isn't registered yet, stores both class and discipline for later application.
     pub fn update_discipline(&mut self, entity_id: i64, class_id: i64, discipline_id: i64) {
         if let Some(&slot) = self.entity_to_slot.get(&entity_id) {
             // Player is registered - update directly
@@ -86,8 +88,8 @@ impl RaidSlotRegistry {
                 player.discipline_id = Some(discipline_id);
             }
         } else {
-            // Player not registered yet - store for later
-            self.pending_disciplines.insert(entity_id, discipline_id);
+            // Player not registered yet - store both class_id and discipline_id for later
+            self.pending_disciplines.insert(entity_id, (class_id, discipline_id));
         }
     }
 

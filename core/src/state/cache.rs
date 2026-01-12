@@ -4,6 +4,7 @@ use crate::encounter::summary::{EncounterHistory, create_encounter_summary};
 use crate::encounter::{OverlayHealthEntry, CombatEncounter, EncounterState, ProcessingMode};
 use crate::game_data::{Difficulty, clear_boss_registry, register_hp_overlay_entity};
 use crate::state::info::AreaInfo;
+use hashbrown::HashMap;
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
@@ -34,6 +35,11 @@ pub struct SessionCache {
     /// NPC instance log IDs that have been seen in this session (for NpcFirstSeen signals)
     /// Tracks by log_id (instance) not class_id (template) so each spawn is detected
     pub seen_npc_instances: HashSet<i64>,
+
+    // Player discipline registry (session-scoped)
+    /// Maps player entity_id -> PlayerInfo with discipline data
+    /// This is the source of truth for player disciplines, updated on every DisciplineChanged event
+    pub player_disciplines: HashMap<i64, PlayerInfo>,
 }
 
 impl Default for SessionCache {
@@ -53,6 +59,7 @@ impl SessionCache {
             encounter_history: EncounterHistory::new(),
             boss_definitions: Arc::new(Vec::new()),
             seen_npc_instances: HashSet::new(),
+            player_disciplines: HashMap::new(),
         };
         cache.push_new_encounter();
         cache
@@ -69,9 +76,12 @@ impl SessionCache {
             return;
         }
 
-        if let Some(summary) =
-            create_encounter_summary(encounter, &self.current_area, &mut self.encounter_history)
-        {
+        if let Some(summary) = create_encounter_summary(
+            encounter,
+            &self.current_area,
+            &mut self.encounter_history,
+            &self.player_disciplines,
+        ) {
             self.encounter_history.add(summary);
         }
     }

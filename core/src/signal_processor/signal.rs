@@ -159,6 +159,7 @@ pub enum GameSignal {
     /// Player discipline detected (fires for ALL players, not just local)
     DisciplineChanged {
         entity_id: i64,
+        class_id: i64,
         discipline_id: i64,
         timestamp: NaiveDateTime,
     },

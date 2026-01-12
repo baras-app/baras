@@ -43,6 +43,17 @@ struct PlayerInfo {
     entity_id: i64,
 }
 
+/// Player discipline entry for the registry (all players in session).
+#[derive(Debug, Serialize)]
+struct PlayerDisciplineEntry {
+    entity_id: i64,
+    name: String,
+    class_id: i64,
+    class_name: String,
+    discipline_id: i64,
+    discipline_name: String,
+}
+
 /// Area info for main process.
 #[derive(Debug, Serialize)]
 struct AreaInfoOutput {
@@ -66,6 +77,8 @@ struct ParseOutput {
     player: PlayerInfo,
     /// Area info at end of file.
     area: AreaInfoOutput,
+    /// Player disciplines for all players in session (for Data Explorer enrichment).
+    player_disciplines: Vec<PlayerDisciplineEntry>,
     /// Elapsed time in milliseconds.
     elapsed_ms: u128,
 }
@@ -550,7 +563,7 @@ fn parse_file(
     let event_count = events.len();
 
     // Process events and write encounters
-    let (encounters, player, area) =
+    let (encounters, player, area, player_disciplines) =
         process_and_write_encounters(events, output_dir, boss_definitions)?;
 
     Ok(ParseOutput {
@@ -560,6 +573,7 @@ fn parse_file(
         encounters,
         player,
         area,
+        player_disciplines,
         elapsed_ms: 0, // Filled in by caller
     })
 }
@@ -568,7 +582,7 @@ fn process_and_write_encounters(
     events: Vec<CombatEvent>,
     output_dir: &Path,
     boss_definitions: &[BossEncounterDefinition],
-) -> Result<(Vec<EncounterSummary>, PlayerInfo, AreaInfoOutput), String> {
+) -> Result<(Vec<EncounterSummary>, PlayerInfo, AreaInfoOutput, Vec<PlayerDisciplineEntry>), String> {
     use std::sync::mpsc;
 
     // Spawn background writer thread
@@ -637,5 +651,19 @@ fn process_and_write_encounters(
         difficulty_name: cache.current_area.difficulty_name.clone(),
     };
 
-    Ok((encounter_summaries, player, area))
+    // Extract player disciplines for all players in session
+    let player_disciplines: Vec<PlayerDisciplineEntry> = cache
+        .player_disciplines
+        .values()
+        .map(|p| PlayerDisciplineEntry {
+            entity_id: p.id,
+            name: resolve(p.name).to_string(),
+            class_id: p.class_id,
+            class_name: p.class_name.clone(),
+            discipline_id: p.discipline_id,
+            discipline_name: p.discipline_name.clone(),
+        })
+        .collect();
+
+    Ok((encounter_summaries, player, area, player_disciplines))
 }

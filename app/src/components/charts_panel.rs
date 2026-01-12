@@ -965,18 +965,18 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
 
                 // Effects section (below charts)
                 div { class: "effects-row",
-                    // Active effects
+                    // Abilities (active effects triggered by ability cast)
                     div { class: "effects-section",
-                        h4 { "Active Effects" }
+                        h4 { "Abilities" }
                         if active.is_empty() {
-                            div { class: "effects-empty", "No active effects" }
+                            div { class: "effects-empty", "No abilities" }
                         } else {
                             div { class: "effect-table-wrapper",
                                 table { class: "effect-table",
                                 thead {
                                     tr {
-                                        th { "Effect" }
-                                        th { class: "num", "Procs" }
+                                        th { "Ability" }
+                                        th { class: "num", "Casts" }
                                         th { class: "num", "Uptime" }
                                         th { class: "num", "%" }
                                     }
@@ -1056,12 +1056,7 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                                         }
                                                         selected_effects.set(effects);
                                                     },
-                                                    td { class: "effect-name-cell",
-                                                        if let Some(aid) = effect.ability_id {
-                                                            AbilityIcon { key: "{aid}", ability_id: aid, size: 16 }
-                                                        }
-                                                        "{effect.effect_name}"
-                                                    }
+                                                    td { "{effect.effect_name}" }
                                                     td { class: "num", "{effect.count}" }
                                                     td { class: "num", "{format_duration(effect.total_duration_secs)}" }
                                                     td { class: "num", "{format_pct(effect.uptime_pct)}" }

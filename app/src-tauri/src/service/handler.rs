@@ -439,15 +439,50 @@ impl ServiceHandle {
         let session = session_guard.as_ref().ok_or("No active session")?;
         let session = session.read().await;
 
+        // Build discipline map - source depends on live vs historical query
         let mut player_discipline_map: std::collections::HashMap<
             String,
             (String, String, String, String),
         > = std::collections::HashMap::new();
 
-        if let Some(cache) = session.session_cache.as_ref() {
-            // From ALL encounters in the cache (not just current)
-            for enc in cache.encounters() {
-                for p in enc.players.values() {
+        if let Some(idx) = encounter_idx {
+            // Historical query: get discipline info from that encounter's summary
+            // This captures the discipline each player had AT THAT TIME
+            if let Some(cache) = session.session_cache.as_ref() {
+                if let Some(summary) = cache
+                    .encounter_history
+                    .summaries()
+                    .iter()
+                    .find(|s| s.encounter_id == idx as u64)
+                {
+                    for pm in &summary.player_metrics {
+                        if let (Some(class_icon), Some(role_icon)) =
+                            (&pm.class_icon, &pm.role_icon)
+                        {
+                            player_discipline_map.insert(
+                                pm.name.clone(),
+                                (
+                                    pm.class_name.clone().unwrap_or_default(),
+                                    pm.discipline_name.clone().unwrap_or_default(),
+                                    class_icon.clone(),
+                                    role_icon.clone(),
+                                ),
+                            );
+                        }
+                    }
+                }
+            }
+
+            let dir = session.encounters_dir().ok_or("No encounters directory")?;
+            let path = dir.join(baras_core::storage::encounter_filename(idx));
+            if !path.exists() {
+                return Err(format!("Encounter file not found: {:?}", path));
+            }
+            self.shared.query_context.register_parquet(&path).await?;
+        } else {
+            // Live query: use session-level registry (current disciplines)
+            if let Some(cache) = session.session_cache.as_ref() {
+                for p in cache.player_disciplines.values() {
                     if let Some(disc) = Discipline::from_guid(p.discipline_id) {
                         let name = resolve(p.name).to_string();
                         let class_icon = disc.class().icon_name().to_string();
@@ -460,42 +495,6 @@ impl ServiceHandle {
                 }
             }
 
-            // Also include the main player from cache.player (always available)
-            if let Some(disc) = Discipline::from_guid(cache.player.discipline_id) {
-                let name = resolve(cache.player.name).to_string();
-                let class_icon = disc.class().icon_name().to_string();
-                let role_icon = disc.role().icon_name().to_string();
-                let discipline_name = disc.name().to_string();
-                let class_name = format!("{:?}", disc.class());
-                player_discipline_map
-                    .insert(name, (class_name, discipline_name, class_icon, role_icon));
-            }
-
-            // From encounter history (covers historical encounters)
-            for summary in cache.encounter_history.summaries() {
-                for pm in &summary.player_metrics {
-                    if let Some(disc) = &pm.discipline {
-                        let class_icon = disc.class().icon_name().to_string();
-                        let role_icon = disc.role().icon_name().to_string();
-                        let class_name = format!("{:?}", disc.class());
-                        let disc_name = pm.discipline_name.clone().unwrap_or_default();
-                        player_discipline_map.insert(
-                            pm.name.clone(),
-                            (class_name, disc_name, class_icon, role_icon),
-                        );
-                    }
-                }
-            }
-        }
-
-        if let Some(idx) = encounter_idx {
-            let dir = session.encounters_dir().ok_or("No encounters directory")?;
-            let path = dir.join(baras_core::storage::encounter_filename(idx));
-            if !path.exists() {
-                return Err(format!("Encounter file not found: {:?}", path));
-            }
-            self.shared.query_context.register_parquet(&path).await?;
-        } else {
             let writer = session
                 .encounter_writer()
                 .ok_or("No live encounter buffer")?;
