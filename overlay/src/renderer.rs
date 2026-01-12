@@ -197,10 +197,7 @@ impl Renderer {
         color: Color,
     ) {
         // Validate dimensions to avoid tiny-skia panics
-        if w < 1.0 || h < 1.0 || x < 0.0 || y < 0.0 {
-            return;
-        }
-        if x + w > width as f32 || y + h > height as f32 {
+        if w <= 0.0 || h <= 0.0 || x < 0.0 || y < 0.0 {
             return;
         }
 
@@ -215,7 +212,7 @@ impl Renderer {
 
         let mut paint = Paint::default();
         paint.set_color(color);
-        paint.anti_alias = false; // Disable AA to avoid hairline_aa panics
+        paint.anti_alias = true;
 
         pixmap.fill_rect(rect, &paint, Transform::identity(), None);
     }
