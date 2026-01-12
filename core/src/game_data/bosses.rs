@@ -66,6 +66,7 @@ impl From<crate::dsl::AreaType> for ContentType {
 }
 
 /// Game difficulty IDs (language-independent)
+#[allow(unused)]
 pub mod difficulty_id {
     pub const STORY_8: i64 = 836045448953651;
     pub const VETERAN_8: i64 = 836045448953652;
