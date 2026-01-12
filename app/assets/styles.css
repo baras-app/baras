@@ -4097,6 +4097,35 @@ details[open] .collapsible-summary::before {
   font-size: 0.85em;
 }
 
+.player-stats-bar {
+  display: flex;
+  gap: 1.5em;
+  padding: 0.5em 0;
+  margin-bottom: 0.5em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.player-stats-bar .stat-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.player-stats-bar label {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.player-stats-bar input {
+  width: 60px;
+  padding: 0.3em 0.5em;
+  background: rgba(50, 50, 55, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9em;
+}
+
 .effect-search-bar {
   display: flex;
   gap: 0.5em;

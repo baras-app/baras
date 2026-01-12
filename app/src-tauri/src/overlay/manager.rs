@@ -5,16 +5,16 @@
 
 use baras_core::context::{OverlayPositionConfig, OverlaySettings};
 use baras_overlay::{
-    CooldownConfig, DotTrackerConfig, OverlayConfigUpdate, OverlayData, PersonalBuffsConfig,
-    PersonalDebuffsConfig, RaidGridLayout, RaidOverlayConfig,
+    CooldownConfig, DotTrackerConfig, EffectsABConfig, EffectsLayout, OverlayConfigUpdate,
+    OverlayData, RaidGridLayout, RaidOverlayConfig,
 };
 use std::time::Duration;
 
 use super::metrics::create_entries_for_type;
 use super::spawn::{
     create_alerts_overlay, create_boss_health_overlay, create_challenges_overlay,
-    create_cooldowns_overlay, create_dot_tracker_overlay, create_metric_overlay,
-    create_personal_buffs_overlay, create_personal_debuffs_overlay, create_personal_overlay,
+    create_cooldowns_overlay, create_dot_tracker_overlay, create_effects_a_overlay,
+    create_effects_b_overlay, create_metric_overlay, create_personal_overlay,
     create_raid_overlay, create_timer_overlay,
 };
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
@@ -81,20 +81,20 @@ impl OverlayManager {
                 let alerts_config = settings.alerts_overlay.clone();
                 create_alerts_overlay(position, alerts_config, settings.alerts_opacity)?
             }
-            OverlayType::PersonalBuffs => {
-                let buffs_config = settings.personal_buffs.clone();
-                create_personal_buffs_overlay(
+            OverlayType::EffectsA => {
+                let buffs_config = settings.effects_a.clone();
+                create_effects_a_overlay(
                     position,
                     buffs_config,
-                    settings.personal_buffs_opacity,
+                    settings.effects_a_opacity,
                 )?
             }
-            OverlayType::PersonalDebuffs => {
-                let debuffs_config = settings.personal_debuffs.clone();
-                create_personal_debuffs_overlay(
+            OverlayType::EffectsB => {
+                let debuffs_config = settings.effects_b.clone();
+                create_effects_b_overlay(
                     position,
                     debuffs_config,
-                    settings.personal_debuffs_opacity,
+                    settings.effects_b_opacity,
                 )?
             }
             OverlayType::Cooldowns => {
@@ -171,8 +171,8 @@ impl OverlayManager {
             | OverlayType::Timers
             | OverlayType::Challenges
             | OverlayType::Alerts
-            | OverlayType::PersonalBuffs
-            | OverlayType::PersonalDebuffs
+            | OverlayType::EffectsA
+            | OverlayType::EffectsB
             | OverlayType::Cooldowns
             | OverlayType::DotTracker => {
                 // These get data via separate update channels (bridge)
@@ -278,34 +278,43 @@ impl OverlayManager {
                 let alerts_config = settings.alerts_overlay.clone();
                 OverlayConfigUpdate::Alerts(alerts_config, settings.alerts_opacity)
             }
-            OverlayType::PersonalBuffs => {
-                let cfg = &settings.personal_buffs;
-                let buffs_config = PersonalBuffsConfig {
+            OverlayType::EffectsA => {
+                let cfg = &settings.effects_a;
+                let layout = if cfg.layout_vertical {
+                    EffectsLayout::Vertical
+                } else {
+                    EffectsLayout::Horizontal
+                };
+                let buffs_config = EffectsABConfig {
                     icon_size: cfg.icon_size,
                     max_display: cfg.max_display,
+                    layout,
                     show_effect_names: cfg.show_effect_names,
                     show_countdown: cfg.show_countdown,
-                    show_source_name: cfg.show_source_name,
-                    show_target_name: cfg.show_target_name,
+                    highlight_cleansable: false,
                     stack_priority: cfg.stack_priority,
                 };
-                OverlayConfigUpdate::PersonalBuffs(buffs_config, settings.personal_buffs_opacity)
+                OverlayConfigUpdate::EffectsA(buffs_config, settings.effects_a_opacity)
             }
-            OverlayType::PersonalDebuffs => {
-                let cfg = &settings.personal_debuffs;
-                let debuffs_config = PersonalDebuffsConfig {
+            OverlayType::EffectsB => {
+                let cfg = &settings.effects_b;
+                let layout = if cfg.layout_vertical {
+                    EffectsLayout::Vertical
+                } else {
+                    EffectsLayout::Horizontal
+                };
+                let debuffs_config = EffectsABConfig {
                     icon_size: cfg.icon_size,
                     max_display: cfg.max_display,
+                    layout,
                     show_effect_names: cfg.show_effect_names,
                     show_countdown: cfg.show_countdown,
                     highlight_cleansable: cfg.highlight_cleansable,
-                    show_source_name: cfg.show_source_name,
-                    show_target_name: cfg.show_target_name,
                     stack_priority: cfg.stack_priority,
                 };
-                OverlayConfigUpdate::PersonalDebuffs(
+                OverlayConfigUpdate::EffectsB(
                     debuffs_config,
-                    settings.personal_debuffs_opacity,
+                    settings.effects_b_opacity,
                 )
             }
             OverlayType::Cooldowns => {
@@ -460,8 +469,8 @@ impl OverlayManager {
                 "timers" => OverlayType::Timers,
                 "challenges" => OverlayType::Challenges,
                 "alerts" => OverlayType::Alerts,
-                "personal_buffs" => OverlayType::PersonalBuffs,
-                "personal_debuffs" => OverlayType::PersonalDebuffs,
+                "effects_a" => OverlayType::EffectsA,
+                "effects_b" => OverlayType::EffectsB,
                 "cooldowns" => OverlayType::Cooldowns,
                 "dot_tracker" => OverlayType::DotTracker,
                 _ => {
@@ -602,8 +611,8 @@ impl OverlayManager {
                 "timers" => OverlayType::Timers,
                 "challenges" => OverlayType::Challenges,
                 "alerts" => OverlayType::Alerts,
-                "personal_buffs" => OverlayType::PersonalBuffs,
-                "personal_debuffs" => OverlayType::PersonalDebuffs,
+                "effects_a" => OverlayType::EffectsA,
+                "effects_b" => OverlayType::EffectsB,
                 "cooldowns" => OverlayType::Cooldowns,
                 "dot_tracker" => OverlayType::DotTracker,
                 _ => {
@@ -804,8 +813,8 @@ impl OverlayManager {
             OverlayType::Timers,
             OverlayType::Challenges,
             OverlayType::Alerts,
-            OverlayType::PersonalBuffs,
-            OverlayType::PersonalDebuffs,
+            OverlayType::EffectsA,
+            OverlayType::EffectsB,
             OverlayType::Cooldowns,
             OverlayType::DotTracker,
         ];

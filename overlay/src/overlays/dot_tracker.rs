@@ -118,7 +118,9 @@ const BASE_PADDING: f32 = 4.0;
 const BASE_ROW_SPACING: f32 = 4.0;
 const BASE_ICON_SPACING: f32 = 2.0;
 const BASE_FONT_SIZE: f32 = 10.0;
-const BASE_NAME_WIDTH: f32 = 80.0;
+const BASE_NAME_WIDTH: f32 = 100.0;
+/// Max characters per line before wrapping
+const NAME_WRAP_CHARS: usize = 12;
 
 /// DOT tracker overlay - rows of targets with DOT icons
 pub struct DotTrackerOverlay {
@@ -237,15 +239,23 @@ impl DotTrackerOverlay {
 
             let x = padding;
 
-            // Target name (truncated to fit)
-            let display_name = truncate_name(&target.name, 12);
-            self.frame.draw_text(
-                &display_name,
-                x,
-                y + icon_size / 2.0 + font_size / 3.0,
-                font_size,
-                colors::white(),
-            );
+            // Wrap target name into lines
+            let name_lines = wrap_name(&target.name, NAME_WRAP_CHARS);
+            let line_height = font_size + 2.0;
+            let total_text_height = name_lines.len() as f32 * line_height;
+
+            // Center the text block vertically relative to icon
+            let text_start_y = y + (icon_size - total_text_height) / 2.0 + font_size;
+
+            for (i, line) in name_lines.iter().enumerate() {
+                self.frame.draw_text(
+                    line,
+                    x,
+                    text_start_y + i as f32 * line_height,
+                    font_size,
+                    colors::white(),
+                );
+            }
 
             // DOT icons after name
             let mut icon_x = x + name_width;
@@ -371,13 +381,41 @@ impl DotTrackerOverlay {
     }
 }
 
-/// Truncate a name to fit within a character limit
-fn truncate_name(name: &str, max_chars: usize) -> String {
-    if name.chars().count() <= max_chars {
-        name.to_string()
+/// Wrap a name into multiple lines at word boundaries
+fn wrap_name(name: &str, max_chars: usize) -> Vec<String> {
+    let total_chars = name.chars().count();
+    if total_chars <= max_chars {
+        return vec![name.to_string()];
+    }
+
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+
+    for word in name.split_whitespace() {
+        if current_line.is_empty() {
+            // First word on line - add it even if too long
+            current_line = word.to_string();
+        } else if current_line.chars().count() + 1 + word.chars().count() <= max_chars {
+            // Word fits on current line
+            current_line.push(' ');
+            current_line.push_str(word);
+        } else {
+            // Word doesn't fit - start new line
+            lines.push(current_line);
+            current_line = word.to_string();
+        }
+    }
+
+    // Don't forget the last line
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    // If no lines were created (shouldn't happen), return original
+    if lines.is_empty() {
+        vec![name.to_string()]
     } else {
-        let truncated: String = name.chars().take(max_chars - 1).collect();
-        format!("{}…", truncated)
+        lines
     }
 }
 

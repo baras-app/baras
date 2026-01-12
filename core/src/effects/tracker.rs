@@ -16,7 +16,9 @@ use crate::dsl::EntityFilterMatching;
 use crate::encounter::CombatEncounter;
 use crate::signal_processor::{GameSignal, SignalHandler};
 
-use super::{ActiveEffect, DisplayTarget, EffectDefinition, EffectKey};
+use crate::timers::FiredAlert;
+
+use super::{ActiveEffect, AlertTrigger, DisplayTarget, EffectDefinition, EffectKey};
 
 /// Get the entity roster from the current encounter, or empty slice if none.
 fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
@@ -185,6 +187,10 @@ pub struct EffectTracker {
     /// Used to adjust durations for effects with is_affected_by_alacrity = true
     alacrity_percent: f32,
 
+    /// Player's network latency in milliseconds
+    /// Added to effect durations to compensate for network delay
+    latency_ms: u16,
+
     /// Queue of targets that received effects from local player.
     /// Drained by the service to attempt registration in the raid registry.
     /// The registry itself handles duplicate rejection.
@@ -197,6 +203,13 @@ pub struct EffectTracker {
     /// State when we've found the anchor (primary target damage) and are
     /// collecting other targets hit within ±10ms.
     aoe_collecting: Option<AoeRefreshCollecting>,
+
+    /// Alerts fired by effect start/end triggers
+    fired_alerts: Vec<FiredAlert>,
+
+    /// Current target for each entity (source_id -> target_id)
+    /// Used as fallback when encounter doesn't have target info (e.g., outside combat)
+    current_targets: HashMap<i64, i64>,
 }
 
 impl Default for EffectTracker {
@@ -215,10 +228,18 @@ impl EffectTracker {
             live_mode: false, // Start in historical mode
             local_player_id: None,
             alacrity_percent: 0.0,
+            latency_ms: 0,
             new_targets: Vec::new(),
             pending_aoe_refresh: None,
             aoe_collecting: None,
+            fired_alerts: Vec::new(),
+            current_targets: HashMap::new(),
         }
+    }
+
+    /// Take any fired alerts (drains the queue)
+    pub fn take_fired_alerts(&mut self) -> Vec<FiredAlert> {
+        std::mem::take(&mut self.fired_alerts)
     }
 
     /// Set the player's alacrity percentage for duration calculations
@@ -226,17 +247,31 @@ impl EffectTracker {
         self.alacrity_percent = alacrity_percent;
     }
 
-    /// Calculate effective duration for a definition, applying alacrity if configured
+    /// Set the player's network latency for duration calculations
+    pub fn set_latency(&mut self, latency_ms: u16) {
+        self.latency_ms = latency_ms;
+    }
+
+    /// Calculate effective duration for a definition, applying alacrity and latency if configured
     /// For cooldowns with cooldown_ready_secs, adds the ready period to the total duration
+    ///
+    /// Formula: (base_duration / (1 + alacrity)) + latency + cooldown_ready_secs
     fn effective_duration(&self, def: &super::EffectDefinition) -> Option<Duration> {
         def.duration_secs.map(|base_secs| {
+            // Apply alacrity reduction if enabled for this effect
             let adjusted = if def.is_affected_by_alacrity && self.alacrity_percent > 0.0 {
                 base_secs / (1.0 + self.alacrity_percent / 100.0)
             } else {
                 base_secs
             };
+            // Add latency compensation for effects affected by alacrity (network-sensitive)
+            let with_latency = if def.is_affected_by_alacrity && self.latency_ms > 0 {
+                adjusted + (self.latency_ms as f32 / 1000.0)
+            } else {
+                adjusted
+            };
             // Add cooldown_ready_secs to extend the total duration for the ready state
-            let total = adjusted + def.cooldown_ready_secs;
+            let total = with_latency + def.cooldown_ready_secs;
             Duration::from_secs_f32(total)
         })
     }
@@ -322,17 +357,17 @@ impl EffectTracker {
             .filter(|e| e.show_on_raid_frames && e.removed_at.is_none())
     }
 
-    /// Get effects destined for personal buffs bar
-    pub fn personal_buff_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
+    /// Get effects destined for Effects A overlay
+    pub fn effects_a(&self) -> impl Iterator<Item = &ActiveEffect> {
         self.active_effects
             .values()
-            .filter(|e| e.display_target == DisplayTarget::PersonalBuffs && e.removed_at.is_none())
+            .filter(|e| e.display_target == DisplayTarget::EffectsA && e.removed_at.is_none())
     }
 
-    /// Get effects destined for personal debuffs bar
-    pub fn personal_debuff_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
+    /// Get effects destined for Effects B overlay
+    pub fn effects_b(&self) -> impl Iterator<Item = &ActiveEffect> {
         self.active_effects.values().filter(|e| {
-            e.display_target == DisplayTarget::PersonalDebuffs && e.removed_at.is_none()
+            e.display_target == DisplayTarget::EffectsB && e.removed_at.is_none()
         })
     }
 
@@ -377,10 +412,39 @@ impl EffectTracker {
             return;
         };
 
-        // Mark duration-expired effects as removed
+        // Collect definition IDs of effects whose base duration just ended (for OnExpire alerts)
+        let mut base_ended_def_ids: Vec<String> = Vec::new();
+
+        // Check for base duration expiry and mark fully expired effects as removed
         for effect in self.active_effects.values_mut() {
+            // Fire OnExpire alert when base duration ends (before ready state)
+            if !effect.on_end_alert_fired && effect.has_base_duration_ended() {
+                effect.on_end_alert_fired = true;
+                base_ended_def_ids.push(effect.definition_id.clone());
+            }
+
+            // Mark as removed when full duration (including ready state) expires
             if effect.is_active(current_time) && effect.has_duration_expired(current_time) {
                 effect.mark_removed();
+            }
+        }
+
+        // Fire alerts for effects whose base duration ended
+        for def_id in base_ended_def_ids {
+            if let Some(def) = self.definitions.effects.get(&def_id) {
+                if def.alert_on == AlertTrigger::OnExpire {
+                    if let Some(text) = &def.alert_text {
+                        self.fired_alerts.push(FiredAlert {
+                            id: def.id.clone(),
+                            name: def.name.clone(),
+                            text: text.clone(),
+                            color: def.color,
+                            timestamp: current_time,
+                            audio_enabled: false,
+                            audio_file: None,
+                        });
+                    }
+                }
             }
         }
 
@@ -410,9 +474,10 @@ impl EffectTracker {
     ) {
         self.current_game_time = Some(timestamp);
 
-        // Garbage collect dead effects before processing new ones.
-        self.active_effects
-            .retain(|_, effect| effect.is_active(timestamp));
+        // Garbage collect only effects that have finished fading out.
+        // Don't use is_active() here - that would remove expiring effects before
+        // they can be refreshed by a reapplication in this same signal batch.
+        self.active_effects.retain(|_, effect| !effect.should_remove());
 
         // Skip effect tracking when processing historical data (initial file load)
         if !self.live_mode {
@@ -451,6 +516,7 @@ impl EffectTracker {
 
         let is_from_local = local_player_id == Some(source_id);
         let mut should_register = false;
+        let mut pending_alerts: Vec<FiredAlert> = Vec::new();
 
         for def in matching_defs {
             let key = EffectKey {
@@ -471,6 +537,21 @@ impl EffectTracker {
                     existing.set_stacks(c);
                 }
                 should_register = true;
+
+                // Collect alert for effect refresh if configured
+                if def.alert_on == AlertTrigger::OnApply {
+                    if let Some(text) = &def.alert_text {
+                        pending_alerts.push(FiredAlert {
+                            id: def.id.clone(),
+                            name: def.name.clone(),
+                            text: text.clone(),
+                            color: def.color,
+                            timestamp,
+                            audio_enabled: false,
+                            audio_file: None,
+                        });
+                    }
+                }
             } else {
                 // Create new effect
                 let display_text = def.display_text().to_string();
@@ -494,24 +575,39 @@ impl EffectTracker {
                     def.show_on_raid_frames,
                     def.show_at_secs,
                     def.show_icon,
+                    def.display_source,
                     def.cooldown_ready_secs,
                     &def.audio,
+                    def.alert_text.clone(),
+                    def.alert_on == AlertTrigger::OnExpire,
                 );
 
                 if let Some(c) = charges {
                     effect.set_stacks(c);
                 }
 
-                // Debug logging for effect creation
-                eprintln!(
-                    "[DOT_DEBUG] Created effect '{}' display_target={:?} icon_ability_id={}",
-                    effect.name, effect.display_target, effect.icon_ability_id
-                );
-
                 self.active_effects.insert(key, effect);
                 should_register = true;
+
+                // Collect alert for effect start if configured
+                if def.alert_on == AlertTrigger::OnApply {
+                    if let Some(text) = &def.alert_text {
+                        pending_alerts.push(FiredAlert {
+                            id: def.id.clone(),
+                            name: def.name.clone(),
+                            text: text.clone(),
+                            color: def.color,
+                            timestamp,
+                            audio_enabled: false,
+                            audio_file: None,
+                        });
+                    }
+                }
             }
         }
+
+        // Queue collected alerts
+        self.fired_alerts.extend(pending_alerts);
 
         // Queue target for raid frame registration only when effect was created or refreshed.
         if should_register
@@ -810,8 +906,11 @@ impl EffectTracker {
                     def.show_on_raid_frames,
                     def.show_at_secs,
                     def.show_icon,
+                    def.display_source,
                     def.cooldown_ready_secs,
                     &def.audio,
+                    def.alert_text.clone(),
+                    def.alert_on == AlertTrigger::OnExpire,
                 );
                 self.active_effects.insert(key, effect);
             }
@@ -898,8 +997,11 @@ impl EffectTracker {
                     def.show_on_raid_frames,
                     def.show_at_secs,
                     def.show_icon,
+                    def.display_source,
                     def.cooldown_ready_secs,
                     &def.audio,
+                    def.alert_text.clone(),
+                    def.alert_on == AlertTrigger::OnExpire,
                 );
                 self.active_effects.insert(key, effect);
             }
@@ -1164,27 +1266,29 @@ impl SignalHandler for EffectTracker {
                 );
 
                 // Refresh existing effects (local player only)
-                // Use explicit target if available, otherwise query encounter for current target
+                // Use explicit target if available, otherwise query encounter or fallback cache
                 let local_player_id = self.local_player_id;
                 if local_player_id == Some(*source_id) {
                     let is_self_or_empty = *target_id == 0 || *target_id == *source_id;
                     let resolved_target = if is_self_or_empty {
-                        // Query encounter for caster's current target
-                        encounter.and_then(|e| e.get_current_target(*source_id))
+                        // Query encounter for caster's current target, fall back to cached target,
+                        // finally default to self (game casts on caster when no target)
+                        encounter
+                            .and_then(|e| e.get_current_target(*source_id))
+                            .or_else(|| self.current_targets.get(source_id).copied())
+                            .unwrap_or(*source_id)
                     } else {
-                        Some(*target_id)
+                        *target_id
                     };
 
-                    if let Some(refresh_target) = resolved_target {
-                        self.refresh_effects_by_action(
-                            *ability_id,
-                            *ability_name,
-                            refresh_target,
-                            *target_name,
-                            target_entity_type,
-                            *timestamp,
-                        );
-                    }
+                    self.refresh_effects_by_action(
+                        *ability_id,
+                        *ability_name,
+                        resolved_target,
+                        *target_name,
+                        target_entity_type,
+                        *timestamp,
+                    );
 
                     // For AoE abilities ([=] target), set up pending state for damage correlation
                     // This allows us to detect and refresh effects on secondary targets too
@@ -1210,6 +1314,17 @@ impl SignalHandler for EffectTracker {
                         current_target,
                     );
                 }
+            }
+            GameSignal::TargetChanged {
+                source_id,
+                target_id,
+                ..
+            } => {
+                // Cache target for fallback when encounter doesn't have target info
+                self.current_targets.insert(*source_id, *target_id);
+            }
+            GameSignal::TargetCleared { source_id, .. } => {
+                self.current_targets.remove(source_id);
             }
             // Boss entity IDs are now read from encounter.hp_by_entity in matches_filters
             _ => {}

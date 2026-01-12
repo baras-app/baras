@@ -12,7 +12,9 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
 use baras_core::dsl::{AudioConfig, Trigger};
-use baras_core::effects::{DefinitionConfig, DisplayTarget, EffectCategory, EffectDefinition};
+use baras_core::effects::{
+    AlertTrigger, DefinitionConfig, DisplayTarget, EffectCategory, EffectDefinition,
+};
 use baras_types::AbilitySelector;
 
 use crate::service::ServiceHandle;
@@ -45,6 +47,7 @@ pub struct EffectListItem {
     pub display_target: DisplayTarget,
     pub icon_ability_id: Option<u64>,
     pub show_icon: bool,
+    pub display_source: bool,
 
     // Duration modifiers
     pub is_affected_by_alacrity: bool,
@@ -57,6 +60,10 @@ pub struct EffectListItem {
     // Timer integration
     pub on_apply_trigger_timer: Option<String>,
     pub on_expire_trigger_timer: Option<String>,
+
+    // Alerts
+    pub alert_text: Option<String>,
+    pub alert_on: AlertTrigger,
 
     // Audio
     pub audio: AudioConfig,
@@ -81,12 +88,15 @@ impl EffectListItem {
             display_target: def.display_target,
             icon_ability_id: def.icon_ability_id,
             show_icon: def.show_icon,
+            display_source: def.display_source,
             is_affected_by_alacrity: def.is_affected_by_alacrity,
             cooldown_ready_secs: def.cooldown_ready_secs,
             persist_past_death: def.persist_past_death,
             track_outside_combat: def.track_outside_combat,
             on_apply_trigger_timer: def.on_apply_trigger_timer.clone(),
             on_expire_trigger_timer: def.on_expire_trigger_timer.clone(),
+            alert_text: def.alert_text.clone(),
+            alert_on: def.alert_on,
             audio: def.audio.clone(),
         }
     }
@@ -110,12 +120,15 @@ impl EffectListItem {
             track_outside_combat: self.track_outside_combat,
             on_apply_trigger_timer: self.on_apply_trigger_timer.clone(),
             on_expire_trigger_timer: self.on_expire_trigger_timer.clone(),
+            alert_text: self.alert_text.clone(),
+            alert_on: self.alert_on,
             audio: self.audio.clone(),
             display_target: self.display_target,
             icon_ability_id: self.icon_ability_id,
             is_affected_by_alacrity: self.is_affected_by_alacrity,
             cooldown_ready_secs: self.cooldown_ready_secs,
             show_icon: self.show_icon,
+            display_source: self.display_source,
         }
     }
 
@@ -239,38 +252,59 @@ fn load_user_effects(app_handle: &AppHandle) -> Result<Vec<EffectWithPath>, Stri
 }
 
 /// Load effects from a directory with their file paths
+/// Deduplicates by effect ID - custom.toml takes precedence over defaults
 fn load_effects_with_paths(dir: &PathBuf) -> Result<Vec<EffectWithPath>, String> {
-    let mut results = Vec::new();
+    use std::collections::HashMap;
 
     if !dir.exists() {
-        return Ok(results);
+        return Ok(Vec::new());
     }
 
     let entries =
         std::fs::read_dir(dir).map_err(|e| format!("Failed to read directory {:?}: {}", dir, e))?;
 
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.extension().is_some_and(|ext| ext == "toml") {
-            match std::fs::read_to_string(&path) {
-                Ok(contents) => {
-                    if let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
-                        for effect in config.effects {
-                            results.push(EffectWithPath {
+    // Collect and sort files - custom.toml last so it overwrites defaults
+    let mut files: Vec<_> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|ext| ext == "toml"))
+        .collect();
+
+    files.sort_by(|a, b| {
+        let a_is_custom = a.file_name().is_some_and(|n| n == "custom.toml");
+        let b_is_custom = b.file_name().is_some_and(|n| n == "custom.toml");
+        match (a_is_custom, b_is_custom) {
+            (true, false) => std::cmp::Ordering::Greater,
+            (false, true) => std::cmp::Ordering::Less,
+            _ => a.cmp(b),
+        }
+    });
+
+    // Use HashMap to deduplicate - later entries (custom.toml) overwrite earlier ones
+    let mut by_id: HashMap<String, EffectWithPath> = HashMap::new();
+
+    for path in files {
+        match std::fs::read_to_string(&path) {
+            Ok(contents) => {
+                if let Ok(config) = toml::from_str::<DefinitionConfig>(&contents) {
+                    for effect in config.effects {
+                        by_id.insert(
+                            effect.id.clone(),
+                            EffectWithPath {
                                 effect,
                                 file_path: path.clone(),
-                            });
-                        }
+                            },
+                        );
                     }
                 }
-                Err(e) => {
-                    eprintln!("[EFFECTS] Failed to read {:?}: {}", path, e);
-                }
+            }
+            Err(e) => {
+                eprintln!("[EFFECTS] Failed to read {:?}: {}", path, e);
             }
         }
     }
 
-    Ok(results)
+    Ok(by_id.into_values().collect())
 }
 
 /// Save effects to a TOML file

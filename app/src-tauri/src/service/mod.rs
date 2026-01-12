@@ -29,9 +29,8 @@ use baras_core::{
 };
 use baras_overlay::{
     BossHealthData, ChallengeData, ChallengeEntry, Color, CooldownData, CooldownEntry, DotEntry,
-    DotTarget, DotTrackerData, PersonalBuff, PersonalBuffsData, PersonalDebuff,
-    PersonalDebuffsData, PersonalStats, PlayerContribution, PlayerRole, RaidEffect, RaidFrame,
-    RaidFrameData, TimerData, TimerEntry,
+    DotTarget, DotTrackerData, EffectABEntry, EffectsABData, PersonalStats, PlayerContribution,
+    PlayerRole, RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry,
 };
 
 use crate::audio::{AudioEvent, AudioSender, AudioService};
@@ -134,10 +133,10 @@ pub enum OverlayUpdate {
     TimersUpdated(TimerData),
     /// Alert text for alerts overlay
     AlertsFired(Vec<FiredAlert>),
-    /// Personal buffs/procs on self
-    PersonalBuffsUpdated(PersonalBuffsData),
-    /// Personal debuffs on self (from NPCs/bosses)
-    PersonalDebuffsUpdated(PersonalDebuffsData),
+    /// Effects A overlay data
+    EffectsAUpdated(EffectsABData),
+    /// Effects B overlay data
+    EffectsBUpdated(EffectsABData),
     /// Ability cooldowns
     CooldownsUpdated(CooldownData),
     /// DOTs on enemy targets
@@ -1055,13 +1054,14 @@ impl CombatService {
         let _ = trigger_tx.try_send(MetricsTrigger::InitialLoad);
 
         // Enable live mode for effect/timer tracking (skip historical events)
-        // Also set alacrity from config for duration calculations
+        // Also set alacrity/latency from config for duration calculations
         {
             let session_guard = session.read().await;
             session_guard.set_effect_live_mode(true);
             session_guard.set_timer_live_mode(true);
             let config = self.shared.config.read().await;
             session_guard.set_effect_alacrity(config.alacrity_percent);
+            session_guard.set_effect_latency(config.latency_ms);
         }
 
         // Spawn the tail task to watch for new lines
@@ -1120,8 +1120,8 @@ impl CombatService {
             let mut last_effects_count: usize = 0;
 
             // Track previous state for new overlays to avoid redundant updates
-            let mut last_personal_buffs_count: usize = 0;
-            let mut last_personal_debuffs_count: usize = 0;
+            let mut last_effects_a_count: usize = 0;
+            let mut last_effects_b_count: usize = 0;
             let mut last_cooldowns_count: usize = 0;
             let mut last_dot_tracker_count: usize = 0;
 
@@ -1130,10 +1130,10 @@ impl CombatService {
                 let raid_active = shared.raid_overlay_active.load(Ordering::Relaxed);
                 let boss_active = shared.boss_health_overlay_active.load(Ordering::Relaxed);
                 let timer_active = shared.timer_overlay_active.load(Ordering::Relaxed);
-                let personal_buffs_active =
-                    shared.personal_buffs_overlay_active.load(Ordering::Relaxed);
-                let personal_debuffs_active = shared
-                    .personal_debuffs_overlay_active
+                let effects_a_active =
+                    shared.effects_a_overlay_active.load(Ordering::Relaxed);
+                let effects_b_active = shared
+                    .effects_b_overlay_active
                     .load(Ordering::Relaxed);
                 let cooldowns_active = shared.cooldowns_overlay_active.load(Ordering::Relaxed);
                 let dot_tracker_active = shared.dot_tracker_overlay_active.load(Ordering::Relaxed);
@@ -1144,8 +1144,8 @@ impl CombatService {
                 let any_overlay_active = raid_active
                     || boss_active
                     || timer_active
-                    || personal_buffs_active
-                    || personal_debuffs_active
+                    || effects_a_active
+                    || effects_b_active
                     || cooldowns_active
                     || dot_tracker_active;
                 let needs_audio = is_live && (in_combat || raid_active);
@@ -1184,36 +1184,36 @@ impl CombatService {
                         last_raid_effect_count = 0;
                     }
                 }
-                // Personal buffs: only send if there are buffs or buffs just cleared
-                if personal_buffs_active {
-                    if let Some(data) = build_personal_buffs_data(&shared, icon_cache.as_ref()).await {
-                        let count = data.buffs.len();
-                        if count > 0 || last_personal_buffs_count > 0 {
-                            let _ = overlay_tx.try_send(OverlayUpdate::PersonalBuffsUpdated(data));
+                // Effects A: only send if there are effects or effects just cleared
+                if effects_a_active {
+                    if let Some(data) = build_effects_a_data(&shared, icon_cache.as_ref()).await {
+                        let count = data.effects.len();
+                        if count > 0 || last_effects_a_count > 0 {
+                            let _ = overlay_tx.try_send(OverlayUpdate::EffectsAUpdated(data));
                         }
-                        last_personal_buffs_count = count;
-                    } else if last_personal_buffs_count > 0 {
-                        let _ = overlay_tx.try_send(OverlayUpdate::PersonalBuffsUpdated(
-                            PersonalBuffsData { buffs: vec![] },
+                        last_effects_a_count = count;
+                    } else if last_effects_a_count > 0 {
+                        let _ = overlay_tx.try_send(OverlayUpdate::EffectsAUpdated(
+                            EffectsABData { effects: vec![] },
                         ));
-                        last_personal_buffs_count = 0;
+                        last_effects_a_count = 0;
                     }
                 }
 
-                // Personal debuffs: only send if there are debuffs or debuffs just cleared
-                if personal_debuffs_active {
-                    if let Some(data) = build_personal_debuffs_data(&shared, icon_cache.as_ref()).await {
-                        let count = data.debuffs.len();
-                        if count > 0 || last_personal_debuffs_count > 0 {
+                // Effects B: only send if there are effects or effects just cleared
+                if effects_b_active {
+                    if let Some(data) = build_effects_b_data(&shared, icon_cache.as_ref()).await {
+                        let count = data.effects.len();
+                        if count > 0 || last_effects_b_count > 0 {
                             let _ =
-                                overlay_tx.try_send(OverlayUpdate::PersonalDebuffsUpdated(data));
+                                overlay_tx.try_send(OverlayUpdate::EffectsBUpdated(data));
                         }
-                        last_personal_debuffs_count = count;
-                    } else if last_personal_debuffs_count > 0 {
-                        let _ = overlay_tx.try_send(OverlayUpdate::PersonalDebuffsUpdated(
-                            PersonalDebuffsData { debuffs: vec![] },
+                        last_effects_b_count = count;
+                    } else if last_effects_b_count > 0 {
+                        let _ = overlay_tx.try_send(OverlayUpdate::EffectsBUpdated(
+                            EffectsABData { effects: vec![] },
                         ));
-                        last_personal_debuffs_count = 0;
+                        last_effects_b_count = 0;
                     }
                 }
 
@@ -1266,6 +1266,10 @@ impl CombatService {
                             text: alert.name,
                             custom_sound: alert.file,
                         });
+                    }
+                    // Send text alerts to overlay
+                    if !effect_audio.text_alerts.is_empty() {
+                        let _ = overlay_tx.try_send(OverlayUpdate::AlertsFired(effect_audio.text_alerts));
                     }
                 }
 
@@ -1731,6 +1735,13 @@ async fn build_timer_data_with_audio(
     let offset_alerts = timer_mgr.check_audio_offsets();
     alerts.extend(offset_alerts);
 
+    // Also get alerts from effect tracker (effect start/end alerts)
+    if let Some(effect_tracker) = session.effect_tracker() {
+        if let Ok(mut tracker) = effect_tracker.lock() {
+            alerts.extend(tracker.take_fired_alerts());
+        }
+    }
+
     // If not in combat, return only alerts (no countdown checks)
     let in_combat = shared.in_combat.load(Ordering::SeqCst);
     if !in_combat {
@@ -1767,6 +1778,8 @@ struct EffectAudioResult {
     countdowns: Vec<(String, u8, String)>,
     /// Alert sounds to play
     alerts: Vec<EffectAlert>,
+    /// Text alerts fired on effect expiration
+    text_alerts: Vec<FiredAlert>,
 }
 
 struct EffectAlert {
@@ -1778,20 +1791,21 @@ struct EffectAlert {
 async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAudioResult {
     let mut countdowns = Vec::new();
     let mut alerts = Vec::new();
+    let mut text_alerts = Vec::new();
 
     // Get session (same pattern as build_effects_overlay_data)
     let session_guard = shared.session.read().await;
     let Some(session_arc) = session_guard.as_ref() else {
-        return EffectAudioResult { countdowns, alerts };
+        return EffectAudioResult { countdowns, alerts, text_alerts };
     };
     let session = session_arc.read().await;
 
     // Get effect tracker (Live mode only)
     let Some(effect_tracker) = session.effect_tracker() else {
-        return EffectAudioResult { countdowns, alerts };
+        return EffectAudioResult { countdowns, alerts, text_alerts };
     };
     let Ok(mut tracker) = effect_tracker.lock() else {
-        return EffectAudioResult { countdowns, alerts };
+        return EffectAudioResult { countdowns, alerts, text_alerts };
     };
 
     for effect in tracker.active_effects_mut() {
@@ -1827,17 +1841,30 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
                 file: effect.audio_file.clone(),
             });
         }
+
+        // Check for text alert on expiration
+        if let Some(text) = effect.check_expiration_alert().map(|s| s.to_string()) {
+            text_alerts.push(FiredAlert {
+                id: effect.definition_id.clone(),
+                name: effect.name.clone(),
+                text,
+                color: Some(effect.color),
+                timestamp: chrono::Local::now().naive_local(),
+                audio_enabled: false,
+                audio_file: None,
+            });
+        }
     }
 
-    EffectAudioResult { countdowns, alerts }
+    EffectAudioResult { countdowns, alerts, text_alerts }
 }
 
 /// Convert an ActiveEffect (core) to RaidEffect (overlay)
 ///
-/// Compensates for the delay between game events and log processing.
+/// Uses the pre-computed lag compensation from ActiveEffect.
+/// The applied_instant is already backdated to game event time in ActiveEffect::new() and refresh(),
+/// so we just add the duration to get the expiry.
 fn convert_to_raid_effect(effect: &ActiveEffect) -> RaidEffect {
-    use chrono::Local;
-
     // Determine if this is a buff based on category
     let is_buff = matches!(
         effect.category,
@@ -1849,64 +1876,32 @@ fn convert_to_raid_effect(effect: &ActiveEffect) -> RaidEffect {
         .with_color_rgba(effect.color)
         .with_is_buff(is_buff);
 
-    // Calculate system expiry with lag compensation
+    // applied_instant is already lag-compensated (backdated to game event time)
+    // Just add duration to get the expiry instant
     if let Some(dur) = effect.duration {
-        // Calculate the lag that existed when we PROCESSED the event, not current lag.
-        // system_time_at_processing = now - time_since_we_processed
-        let time_since_processing = effect.applied_instant.elapsed();
-        let system_time_at_processing = Local::now().naive_local()
-            - chrono::Duration::milliseconds(time_since_processing.as_millis() as i64);
-
-        // Lag = system time at processing - game timestamp at processing
-        let lag_ms = system_time_at_processing
-            .signed_duration_since(effect.last_refreshed_at)
-            .num_milliseconds()
-            .max(0) as u64;
-        let lag = std::time::Duration::from_millis(lag_ms);
-
-        // Compensate: subtract lag from the calculated expiry
-        let compensated_expiry = effect.applied_instant + dur - lag.min(dur);
-
-        raid_effect = raid_effect
-            .with_duration(dur)
-            .with_expiry(compensated_expiry);
+        let expires_at = effect.applied_instant + dur;
+        raid_effect = raid_effect.with_duration(dur).with_expiry(expires_at);
     }
 
     raid_effect
 }
 
-/// Calculate lag-compensated remaining time for an effect
+/// Calculate remaining time for an effect in seconds
+/// Uses the pre-computed lag compensation in applied_instant
 fn calculate_remaining_secs(effect: &ActiveEffect) -> Option<f32> {
-    let duration = effect.duration?;
-    let total = duration.as_secs_f32();
-
-    // Calculate lag: time between game event and our processing
-    let time_since_processing = effect.applied_instant.elapsed();
-    let system_time_at_processing = chrono::Local::now().naive_local()
-        - chrono::Duration::milliseconds(time_since_processing.as_millis() as i64);
-    let lag_ms = system_time_at_processing
-        .signed_duration_since(effect.last_refreshed_at)
-        .num_milliseconds()
-        .max(0) as u64;
-    let lag = std::time::Duration::from_millis(lag_ms);
-
-    // Compensated expiry instant
-    let compensated_expiry = effect.applied_instant + duration - lag.min(duration);
-    let remaining = compensated_expiry.saturating_duration_since(std::time::Instant::now());
-    let remaining_secs = remaining.as_secs_f32();
-
-    if remaining_secs <= 0.0 {
-        return None;
+    let remaining = effect.remaining_secs_realtime();
+    if remaining <= 0.0 {
+        None
+    } else {
+        Some(remaining)
     }
-
-    Some(remaining_secs)
 }
 
-/// Build personal buffs overlay data from active effects
-async fn build_personal_buffs_data(
+/// Build effects A overlay data from active effects
+async fn build_effects_a_data(
     shared: &Arc<SharedState>,
     icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
-) -> Option<PersonalBuffsData> {
+) -> Option<EffectsABData> {
     use std::sync::Arc as StdArc;
 
     let session_guard = shared.session.read().await;
@@ -1920,10 +1915,10 @@ async fn build_personal_buffs_data(
         return None;
     }
 
-    let mut effects: Vec<_> = tracker.personal_buff_effects().collect();
+    let mut effects: Vec<_> = tracker.effects_a().collect();
     effects.sort_by_key(|e| e.applied_at);
 
-    let buffs: Vec<PersonalBuff> = effects
+    let entries: Vec<EffectABEntry> = effects
         .into_iter()
         .filter_map(|effect| {
             let total_secs = effect.duration?.as_secs_f32();
@@ -1936,7 +1931,7 @@ async fn build_personal_buffs_data(
                 })
             });
 
-            Some(PersonalBuff {
+            Some(EffectABEntry {
                 effect_id: effect.game_effect_id,
                 icon_ability_id: effect.icon_ability_id,
                 name: effect.name.clone(),
@@ -1948,18 +1943,20 @@ async fn build_personal_buffs_data(
                 target_name: resolve(effect.target_name).to_string(),
                 icon,
                 show_icon: effect.show_icon,
+                display_source: effect.display_source,
+                is_cleansable: false,
             })
         })
         .collect();
 
-    Some(PersonalBuffsData { buffs })
+    Some(EffectsABData { effects: entries })
 }
 
-/// Build personal debuffs overlay data from active effects
-async fn build_personal_debuffs_data(
+/// Build effects B overlay data from active effects
+async fn build_effects_b_data(
     shared: &Arc<SharedState>,
     icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
-) -> Option<PersonalDebuffsData> {
+) -> Option<EffectsABData> {
     use std::sync::Arc as StdArc;
 
     let session_guard = shared.session.read().await;
@@ -1973,10 +1970,10 @@ async fn build_personal_debuffs_data(
         return None;
     }
 
-    let mut effects: Vec<_> = tracker.personal_debuff_effects().collect();
+    let mut effects: Vec<_> = tracker.effects_b().collect();
     effects.sort_by_key(|e| e.applied_at);
 
-    let debuffs: Vec<PersonalDebuff> = effects
+    let entries: Vec<EffectABEntry> = effects
         .into_iter()
         .filter_map(|effect| {
             let total_secs = effect.duration?.as_secs_f32();
@@ -1989,7 +1986,7 @@ async fn build_personal_debuffs_data(
                 })
             });
 
-            Some(PersonalDebuff {
+            Some(EffectABEntry {
                 effect_id: effect.game_effect_id,
                 icon_ability_id: effect.icon_ability_id,
                 name: effect.name.clone(),
@@ -2002,11 +1999,12 @@ async fn build_personal_debuffs_data(
                 target_name: resolve(effect.target_name).to_string(),
                 icon,
                 show_icon: effect.show_icon,
+                display_source: effect.display_source,
             })
         })
         .collect();
 
-    Some(PersonalDebuffsData { debuffs })
+    Some(EffectsABData { effects: entries })
 }
 
 /// Build cooldowns overlay data from active effects
@@ -2076,6 +2074,7 @@ async fn build_cooldowns_data(
                 target_name: resolve(effect.target_name).to_string(),
                 icon,
                 show_icon: effect.show_icon,
+                display_source: effect.display_source,
                 is_in_ready_state,
             })
         })

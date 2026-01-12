@@ -188,14 +188,14 @@ impl OverlayState {
         self.overlays.contains_key(&OverlayType::Challenges)
     }
 
-    /// Get the channel for personal buffs overlay (convenience)
-    pub fn get_personal_buffs_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::PersonalBuffs)
+    /// Get the channel for effects A overlay (convenience)
+    pub fn get_effects_a_tx(&self) -> Option<&Sender<OverlayCommand>> {
+        self.get_tx(OverlayType::EffectsA)
     }
 
-    /// Get the channel for personal debuffs overlay (convenience)
-    pub fn get_personal_debuffs_tx(&self) -> Option<&Sender<OverlayCommand>> {
-        self.get_tx(OverlayType::PersonalDebuffs)
+    /// Get the channel for effects B overlay (convenience)
+    pub fn get_effects_b_tx(&self) -> Option<&Sender<OverlayCommand>> {
+        self.get_tx(OverlayType::EffectsB)
     }
 
     /// Get the channel for cooldowns overlay (convenience)

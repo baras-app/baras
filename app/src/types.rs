@@ -21,14 +21,14 @@ pub use baras_types::{
     Color,
     CooldownTrackerConfig,
     DotTrackerConfig,
+    EffectsAConfig,
+    EffectsBConfig,
     EffectSelector,
     EntityFilter,
     EntitySelector,
     MAX_PROFILES,
     OverlayAppearanceConfig,
     OverlaySettings,
-    PersonalBuffsConfig,
-    PersonalDebuffsConfig,
     PersonalOverlayConfig,
     PersonalStat,
     RaidOverlaySettings,
@@ -75,10 +75,10 @@ pub struct OverlayStatus {
     pub challenges_enabled: bool,
     pub alerts_running: bool,
     pub alerts_enabled: bool,
-    pub personal_buffs_running: bool,
-    pub personal_buffs_enabled: bool,
-    pub personal_debuffs_running: bool,
-    pub personal_debuffs_enabled: bool,
+    pub effects_a_running: bool,
+    pub effects_a_enabled: bool,
+    pub effects_b_running: bool,
+    pub effects_b_enabled: bool,
     pub cooldowns_running: bool,
     pub cooldowns_enabled: bool,
     pub dot_tracker_running: bool,
@@ -184,8 +184,8 @@ pub enum OverlayType {
     Timers,
     Challenges,
     Alerts,
-    PersonalBuffs,
-    PersonalDebuffs,
+    EffectsA,
+    EffectsB,
     Cooldowns,
     DotTracker,
 }
@@ -428,8 +428,10 @@ pub enum DisplayTarget {
     #[default]
     None,
     RaidFrames,
-    PersonalBuffs,
-    PersonalDebuffs,
+    #[serde(alias = "personal_buffs")]
+    EffectsA,
+    #[serde(alias = "personal_debuffs")]
+    EffectsB,
     Cooldowns,
     DotTracker,
     EffectsOverlay,
@@ -440,8 +442,8 @@ impl DisplayTarget {
         match self {
             Self::None => "None",
             Self::RaidFrames => "Raid Frames",
-            Self::PersonalBuffs => "Personal Buffs",
-            Self::PersonalDebuffs => "Personal Debuffs",
+            Self::EffectsA => "Effects A",
+            Self::EffectsB => "Effects B",
             Self::Cooldowns => "Cooldowns",
             Self::DotTracker => "DOT Tracker",
             Self::EffectsOverlay => "Effects Overlay",
@@ -452,8 +454,8 @@ impl DisplayTarget {
         &[
             Self::None,
             Self::RaidFrames,
-            Self::PersonalBuffs,
-            Self::PersonalDebuffs,
+            Self::EffectsA,
+            Self::EffectsB,
             Self::Cooldowns,
             Self::DotTracker,
             Self::EffectsOverlay,
@@ -501,6 +503,30 @@ impl EffectCategory {
     }
 }
 
+/// When to trigger an alert for this effect
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AlertTrigger {
+    #[default]
+    None,
+    OnApply,
+    OnExpire,
+}
+
+impl AlertTrigger {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::None => "None",
+            Self::OnApply => "Effect Start",
+            Self::OnExpire => "Effect End",
+        }
+    }
+
+    pub fn all() -> &'static [AlertTrigger] {
+        &[Self::None, Self::OnApply, Self::OnExpire]
+    }
+}
+
 /// Effect item for the effect editor list view (matches backend EffectListItem)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EffectListItem {
@@ -541,6 +567,9 @@ pub struct EffectListItem {
     pub icon_ability_id: Option<u64>,
     #[serde(default = "crate::utils::default_true")]
     pub show_icon: bool,
+    /// Display source entity name on personal overlays
+    #[serde(default)]
+    pub display_source: bool,
 
     // Duration modifiers
     #[serde(default)]
@@ -557,6 +586,12 @@ pub struct EffectListItem {
     // Timer integration
     pub on_apply_trigger_timer: Option<String>,
     pub on_expire_trigger_timer: Option<String>,
+
+    // Alerts
+    #[serde(default)]
+    pub alert_text: Option<String>,
+    #[serde(default)]
+    pub alert_on: AlertTrigger,
 
     // Audio
     #[serde(default)]

@@ -20,15 +20,13 @@ use baras_core::context::{
 };
 use baras_overlay::{
     AlertsOverlay, BossHealthOverlay, ChallengeOverlay, CooldownConfig, CooldownOverlay,
-    DotTrackerConfig, DotTrackerOverlay, MetricOverlay, Overlay, OverlayConfig,
-    PersonalBuffsConfig, PersonalBuffsOverlay, PersonalDebuffsConfig, PersonalDebuffsOverlay,
-    PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction,
-    TimerOverlay,
+    DotTrackerConfig, DotTrackerOverlay, EffectsABConfig, EffectsABOverlay, MetricOverlay,
+    Overlay, OverlayConfig, PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig,
+    RaidRegistryAction, TimerOverlay,
 };
 use baras_types::{
     CooldownTrackerConfig, DotTrackerConfig as TypesDotTrackerConfig,
-    PersonalBuffsConfig as TypesPersonalBuffsConfig,
-    PersonalDebuffsConfig as TypesPersonalDebuffsConfig,
+    EffectsAConfig as TypesEffectsAConfig, EffectsBConfig as TypesEffectsBConfig,
 };
 
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
@@ -461,38 +459,44 @@ pub fn create_alerts_overlay(
     })
 }
 
-/// Create and spawn the personal buffs overlay
-pub fn create_personal_buffs_overlay(
+/// Create and spawn the Effects A overlay
+pub fn create_effects_a_overlay(
     position: OverlayPositionConfig,
-    buffs_config: TypesPersonalBuffsConfig,
+    effects_config: TypesEffectsAConfig,
     background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
+    use baras_overlay::EffectsLayout;
+
     let config = OverlayConfig {
         x: position.x,
         y: position.y,
         width: position.width,
         height: position.height,
-        namespace: "baras-personal-buffs".to_string(),
+        namespace: "baras-effects-a".to_string(),
         click_through: true,
         target_monitor_id: position.monitor_id.clone(),
     };
 
-    let kind = OverlayType::PersonalBuffs;
+    let kind = OverlayType::EffectsA;
 
     // Convert types config to overlay config
-    let overlay_config = PersonalBuffsConfig {
-        icon_size: buffs_config.icon_size,
-        max_display: buffs_config.max_display,
-        show_effect_names: buffs_config.show_effect_names,
-        show_countdown: buffs_config.show_countdown,
-        show_source_name: buffs_config.show_source_name,
-        show_target_name: buffs_config.show_target_name,
-        stack_priority: buffs_config.stack_priority,
+    let overlay_config = EffectsABConfig {
+        icon_size: effects_config.icon_size,
+        max_display: effects_config.max_display,
+        layout: if effects_config.layout_vertical {
+            EffectsLayout::Vertical
+        } else {
+            EffectsLayout::Horizontal
+        },
+        show_effect_names: effects_config.show_effect_names,
+        show_countdown: effects_config.show_countdown,
+        highlight_cleansable: false,
+        stack_priority: effects_config.stack_priority,
     };
 
     let factory = move || {
-        PersonalBuffsOverlay::new(config, overlay_config, background_alpha)
-            .map_err(|e| format!("Failed to create personal buffs overlay: {}", e))
+        EffectsABOverlay::new(config, overlay_config, background_alpha, "Effects A")
+            .map_err(|e| format!("Failed to create Effects A overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
@@ -505,39 +509,44 @@ pub fn create_personal_buffs_overlay(
     })
 }
 
-/// Create and spawn the personal debuffs overlay
-pub fn create_personal_debuffs_overlay(
+/// Create and spawn the Effects B overlay
+pub fn create_effects_b_overlay(
     position: OverlayPositionConfig,
-    debuffs_config: TypesPersonalDebuffsConfig,
+    effects_config: TypesEffectsBConfig,
     background_alpha: u8,
 ) -> Result<OverlayHandle, String> {
+    use baras_overlay::EffectsLayout;
+
     let config = OverlayConfig {
         x: position.x,
         y: position.y,
         width: position.width,
         height: position.height,
-        namespace: "baras-personal-debuffs".to_string(),
+        namespace: "baras-effects-b".to_string(),
         click_through: true,
         target_monitor_id: position.monitor_id.clone(),
     };
 
-    let kind = OverlayType::PersonalDebuffs;
+    let kind = OverlayType::EffectsB;
 
     // Convert types config to overlay config
-    let overlay_config = PersonalDebuffsConfig {
-        icon_size: debuffs_config.icon_size,
-        max_display: debuffs_config.max_display,
-        show_effect_names: debuffs_config.show_effect_names,
-        show_countdown: debuffs_config.show_countdown,
-        highlight_cleansable: debuffs_config.highlight_cleansable,
-        show_source_name: debuffs_config.show_source_name,
-        show_target_name: debuffs_config.show_target_name,
-        stack_priority: debuffs_config.stack_priority,
+    let overlay_config = EffectsABConfig {
+        icon_size: effects_config.icon_size,
+        max_display: effects_config.max_display,
+        layout: if effects_config.layout_vertical {
+            EffectsLayout::Vertical
+        } else {
+            EffectsLayout::Horizontal
+        },
+        show_effect_names: effects_config.show_effect_names,
+        show_countdown: effects_config.show_countdown,
+        highlight_cleansable: effects_config.highlight_cleansable,
+        stack_priority: effects_config.stack_priority,
     };
 
     let factory = move || {
-        PersonalDebuffsOverlay::new(config, overlay_config, background_alpha)
-            .map_err(|e| format!("Failed to create personal debuffs overlay: {}", e))
+        EffectsABOverlay::new(config, overlay_config, background_alpha, "Effects B")
+            .map_err(|e| format!("Failed to create Effects B overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;

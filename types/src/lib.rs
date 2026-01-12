@@ -1140,30 +1140,27 @@ impl Default for ChallengeOverlayConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Personal Buffs Overlay Config
+// Effects A/B Overlay Config (consolidated personal effects)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Configuration for the personal buffs bar overlay
+/// Configuration for Effects A overlay
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PersonalBuffsConfig {
+pub struct EffectsAConfig {
     /// Icon size in pixels
     #[serde(default = "default_icon_size")]
     pub icon_size: u8,
-    /// Maximum buffs to display
+    /// Maximum effects to display
     #[serde(default = "default_max_buffs")]
     pub max_display: u8,
-    /// Show effect names below icons
+    /// Use vertical layout (true) or horizontal (false)
+    #[serde(default)]
+    pub layout_vertical: bool,
+    /// Show effect names below/beside icons
     #[serde(default)]
     pub show_effect_names: bool,
     /// Show countdown text on icons
     #[serde(default = "default_true")]
     pub show_countdown: bool,
-    /// Show source name (who applied the buff)
-    #[serde(default)]
-    pub show_source_name: bool,
-    /// Show target name
-    #[serde(default)]
-    pub show_target_name: bool,
     /// When true, stacks are shown large and centered; timer is secondary
     #[serde(default)]
     pub stack_priority: bool,
@@ -1176,67 +1173,62 @@ fn default_max_buffs() -> u8 {
     8
 }
 
-impl Default for PersonalBuffsConfig {
+impl Default for EffectsAConfig {
     fn default() -> Self {
         Self {
             icon_size: 32,
             max_display: 8,
+            layout_vertical: false,
             show_effect_names: false,
             show_countdown: true,
-            show_source_name: false,
-            show_target_name: false,
             stack_priority: false,
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Personal Debuffs Overlay Config
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Configuration for the personal debuffs bar overlay
+/// Configuration for Effects B overlay
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PersonalDebuffsConfig {
+pub struct EffectsBConfig {
     /// Icon size in pixels
     #[serde(default = "default_icon_size")]
     pub icon_size: u8,
-    /// Maximum debuffs to display
+    /// Maximum effects to display
     #[serde(default = "default_max_buffs")]
     pub max_display: u8,
-    /// Show effect names below icons
+    /// Use vertical layout (true) or horizontal (false)
+    #[serde(default)]
+    pub layout_vertical: bool,
+    /// Show effect names below/beside icons
     #[serde(default)]
     pub show_effect_names: bool,
     /// Show countdown text on icons
     #[serde(default = "default_true")]
     pub show_countdown: bool,
-    /// Highlight cleansable debuffs
+    /// Highlight cleansable effects
     #[serde(default = "default_true")]
     pub highlight_cleansable: bool,
-    /// Show source name (who applied - useful for boss debuffs)
-    #[serde(default = "default_true")]
-    pub show_source_name: bool,
-    /// Show target name
-    #[serde(default)]
-    pub show_target_name: bool,
     /// When true, stacks are shown large and centered; timer is secondary
     #[serde(default)]
     pub stack_priority: bool,
 }
 
-impl Default for PersonalDebuffsConfig {
+impl Default for EffectsBConfig {
     fn default() -> Self {
         Self {
             icon_size: 32,
             max_display: 8,
+            layout_vertical: false,
             show_effect_names: false,
             show_countdown: true,
             highlight_cleansable: true,
-            show_source_name: true,
-            show_target_name: false,
             stack_priority: false,
         }
     }
 }
+
+// Legacy aliases for backwards compatibility
+pub type PersonalBuffsConfig = EffectsAConfig;
+pub type PersonalDebuffsConfig = EffectsBConfig;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cooldown Tracker Overlay Config
@@ -1421,14 +1413,14 @@ pub struct OverlaySettings {
     pub alerts_overlay: AlertsOverlayConfig,
     #[serde(default = "default_opacity")]
     pub alerts_opacity: u8,
-    #[serde(default)]
-    pub personal_buffs: PersonalBuffsConfig,
-    #[serde(default = "default_opacity")]
-    pub personal_buffs_opacity: u8,
-    #[serde(default)]
-    pub personal_debuffs: PersonalDebuffsConfig,
-    #[serde(default = "default_opacity")]
-    pub personal_debuffs_opacity: u8,
+    #[serde(default, alias = "personal_buffs")]
+    pub effects_a: EffectsAConfig,
+    #[serde(default = "default_opacity", alias = "personal_buffs_opacity")]
+    pub effects_a_opacity: u8,
+    #[serde(default, alias = "personal_debuffs")]
+    pub effects_b: EffectsBConfig,
+    #[serde(default = "default_opacity", alias = "personal_debuffs_opacity")]
+    pub effects_b_opacity: u8,
     #[serde(default)]
     pub cooldown_tracker: CooldownTrackerConfig,
     #[serde(default = "default_opacity")]
@@ -1469,10 +1461,10 @@ impl Default for OverlaySettings {
             challenge_opacity: 180,
             alerts_overlay: AlertsOverlayConfig::default(),
             alerts_opacity: 180,
-            personal_buffs: PersonalBuffsConfig::default(),
-            personal_buffs_opacity: 180,
-            personal_debuffs: PersonalDebuffsConfig::default(),
-            personal_debuffs_opacity: 180,
+            effects_a: EffectsAConfig::default(),
+            effects_a_opacity: 180,
+            effects_b: EffectsBConfig::default(),
+            effects_b_opacity: 180,
             cooldown_tracker: CooldownTrackerConfig::default(),
             cooldown_tracker_opacity: 180,
             dot_tracker: DotTrackerConfig::default(),

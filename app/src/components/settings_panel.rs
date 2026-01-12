@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use crate::api;
 use crate::types::{
     AlertsOverlayConfig, BossHealthConfig, ChallengeLayout, CooldownTrackerConfig,
-    DotTrackerConfig, MAX_PROFILES, MetricType, OverlayAppearanceConfig, OverlaySettings,
-    PersonalBuffsConfig, PersonalDebuffsConfig, PersonalOverlayConfig, PersonalStat,
+    DotTrackerConfig, EffectsAConfig, EffectsBConfig, MAX_PROFILES, MetricType,
+    OverlayAppearanceConfig, OverlaySettings, PersonalOverlayConfig, PersonalStat,
     RaidOverlaySettings, TimerOverlayConfig,
 };
 use crate::utils::{color_to_hex, parse_hex_color};
@@ -89,10 +89,10 @@ pub fn SettingsPanel(
                 config.overlay_settings.challenge_opacity = new_settings.challenge_opacity;
                 config.overlay_settings.alerts_overlay = new_settings.alerts_overlay.clone();
                 config.overlay_settings.alerts_opacity = new_settings.alerts_opacity;
-                config.overlay_settings.personal_buffs = new_settings.personal_buffs.clone();
-                config.overlay_settings.personal_buffs_opacity = new_settings.personal_buffs_opacity;
-                config.overlay_settings.personal_debuffs = new_settings.personal_debuffs.clone();
-                config.overlay_settings.personal_debuffs_opacity = new_settings.personal_debuffs_opacity;
+                config.overlay_settings.effects_a = new_settings.effects_a.clone();
+                config.overlay_settings.effects_a_opacity = new_settings.effects_a_opacity;
+                config.overlay_settings.effects_b = new_settings.effects_b.clone();
+                config.overlay_settings.effects_b_opacity = new_settings.effects_b_opacity;
                 config.overlay_settings.cooldown_tracker = new_settings.cooldown_tracker.clone();
                 config.overlay_settings.cooldown_tracker_opacity = new_settings.cooldown_tracker_opacity;
                 config.overlay_settings.dot_tracker = new_settings.dot_tracker.clone();
@@ -292,8 +292,8 @@ pub fn SettingsPanel(
                 div { class: "tab-group",
                     span { class: "tab-group-label", "Effects" }
                     div { class: "tab-group-buttons",
-                        TabButton { label: "Personal Buffs", tab_key: "personal_buffs", selected_tab: selected_tab }
-                        TabButton { label: "Personal Debuffs", tab_key: "personal_debuffs", selected_tab: selected_tab }
+                        TabButton { label: "Effects A", tab_key: "effects_a", selected_tab: selected_tab }
+                        TabButton { label: "Effects B", tab_key: "effects_b", selected_tab: selected_tab }
                         TabButton { label: "Cooldowns", tab_key: "cooldowns", selected_tab: selected_tab }
                         TabButton { label: "DOT Tracker", tab_key: "dot_tracker", selected_tab: selected_tab }
                     }
@@ -488,17 +488,17 @@ pub fn SettingsPanel(
                         }
                     }
                 }
-            } else if tab == "personal_buffs" {
-                // Personal Buffs Settings
+            } else if tab == "effects_a" {
+                // Effects A Settings
                 div { class: "settings-section",
                     h4 { "Appearance" }
 
                     OpacitySlider {
                         label: "Background Opacity",
-                        value: current_settings.personal_buffs_opacity,
+                        value: current_settings.effects_a_opacity,
                         on_change: move |val| {
                             let mut new_settings = draft_settings();
-                            new_settings.personal_buffs_opacity = val;
+                            new_settings.effects_a_opacity = val;
                             update_draft(new_settings);
                         },
                     }
@@ -509,32 +509,47 @@ pub fn SettingsPanel(
                             r#type: "range",
                             min: "16",
                             max: "64",
-                            value: "{current_settings.personal_buffs.icon_size}",
+                            value: "{current_settings.effects_a.icon_size}",
                             oninput: move |e| {
                                 if let Ok(val) = e.value().parse::<u8>() {
                                     let mut new_settings = draft_settings();
-                                    new_settings.personal_buffs.icon_size = val.clamp(16, 64);
+                                    new_settings.effects_a.icon_size = val.clamp(16, 64);
                                     update_draft(new_settings);
                                 }
                             }
                         }
-                        span { class: "value", "{current_settings.personal_buffs.icon_size}px" }
+                        span { class: "value", "{current_settings.effects_a.icon_size}px" }
                     }
 
                     div { class: "setting-row",
                         label { "Max Displayed" }
                         select {
                             class: "input-inline",
-                            value: "{current_settings.personal_buffs.max_display}",
+                            value: "{current_settings.effects_a.max_display}",
                             onchange: move |e: Event<FormData>| {
                                 if let Ok(val) = e.value().parse::<u8>() {
                                     let mut new_settings = draft_settings();
-                                    new_settings.personal_buffs.max_display = val.clamp(1, 16);
+                                    new_settings.effects_a.max_display = val.clamp(1, 16);
                                     update_draft(new_settings);
                                 }
                             },
                             for n in 1..=16u8 {
-                                option { value: "{n}", selected: current_settings.personal_buffs.max_display == n, "{n}" }
+                                option { value: "{n}", selected: current_settings.effects_a.max_display == n, "{n}" }
+                            }
+                        }
+                    }
+
+                    h4 { style: "margin-top: 16px;", "Layout" }
+
+                    div { class: "setting-row",
+                        label { "Vertical Layout" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.effects_a.layout_vertical,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.effects_a.layout_vertical = e.checked();
+                                update_draft(new_settings);
                             }
                         }
                     }
@@ -545,10 +560,10 @@ pub fn SettingsPanel(
                         label { "Show Countdown" }
                         input {
                             r#type: "checkbox",
-                            checked: current_settings.personal_buffs.show_countdown,
+                            checked: current_settings.effects_a.show_countdown,
                             onchange: move |e: Event<FormData>| {
                                 let mut new_settings = draft_settings();
-                                new_settings.personal_buffs.show_countdown = e.checked();
+                                new_settings.effects_a.show_countdown = e.checked();
                                 update_draft(new_settings);
                             }
                         }
@@ -558,10 +573,10 @@ pub fn SettingsPanel(
                         label { "Show Effect Names" }
                         input {
                             r#type: "checkbox",
-                            checked: current_settings.personal_buffs.show_effect_names,
+                            checked: current_settings.effects_a.show_effect_names,
                             onchange: move |e: Event<FormData>| {
                                 let mut new_settings = draft_settings();
-                                new_settings.personal_buffs.show_effect_names = e.checked();
+                                new_settings.effects_a.show_effect_names = e.checked();
                                 update_draft(new_settings);
                             }
                         }
@@ -571,10 +586,10 @@ pub fn SettingsPanel(
                         label { "Prioritize Stacked Effects" }
                         input {
                             r#type: "checkbox",
-                            checked: current_settings.personal_buffs.stack_priority,
+                            checked: current_settings.effects_a.stack_priority,
                             onchange: move |e: Event<FormData>| {
                                 let mut new_settings = draft_settings();
-                                new_settings.personal_buffs.stack_priority = e.checked();
+                                new_settings.effects_a.stack_priority = e.checked();
                                 update_draft(new_settings);
                             }
                         }
@@ -585,8 +600,8 @@ pub fn SettingsPanel(
                             class: "btn btn-reset",
                             onclick: move |_| {
                                 let mut new_settings = draft_settings();
-                                new_settings.personal_buffs = PersonalBuffsConfig::default();
-                                new_settings.personal_buffs_opacity = 180;
+                                new_settings.effects_a = EffectsAConfig::default();
+                                new_settings.effects_a_opacity = 180;
                                 update_draft(new_settings);
                             },
                             i { class: "fa-solid fa-rotate-left" }
@@ -594,17 +609,17 @@ pub fn SettingsPanel(
                         }
                     }
                 }
-            } else if tab == "personal_debuffs" {
-                // Personal Debuffs Settings
+            } else if tab == "effects_b" {
+                // Effects B Settings
                 div { class: "settings-section",
                     h4 { "Appearance" }
 
                     OpacitySlider {
                         label: "Background Opacity",
-                        value: current_settings.personal_debuffs_opacity,
+                        value: current_settings.effects_b_opacity,
                         on_change: move |val| {
                             let mut new_settings = draft_settings();
-                            new_settings.personal_debuffs_opacity = val;
+                            new_settings.effects_b_opacity = val;
                             update_draft(new_settings);
                         },
                     }
@@ -615,32 +630,47 @@ pub fn SettingsPanel(
                             r#type: "range",
                             min: "16",
                             max: "64",
-                            value: "{current_settings.personal_debuffs.icon_size}",
+                            value: "{current_settings.effects_b.icon_size}",
                             oninput: move |e| {
                                 if let Ok(val) = e.value().parse::<u8>() {
                                     let mut new_settings = draft_settings();
-                                    new_settings.personal_debuffs.icon_size = val.clamp(16, 64);
+                                    new_settings.effects_b.icon_size = val.clamp(16, 64);
                                     update_draft(new_settings);
                                 }
                             }
                         }
-                        span { class: "value", "{current_settings.personal_debuffs.icon_size}px" }
+                        span { class: "value", "{current_settings.effects_b.icon_size}px" }
                     }
 
                     div { class: "setting-row",
                         label { "Max Displayed" }
                         select {
                             class: "input-inline",
-                            value: "{current_settings.personal_debuffs.max_display}",
+                            value: "{current_settings.effects_b.max_display}",
                             onchange: move |e: Event<FormData>| {
                                 if let Ok(val) = e.value().parse::<u8>() {
                                     let mut new_settings = draft_settings();
-                                    new_settings.personal_debuffs.max_display = val.clamp(1, 16);
+                                    new_settings.effects_b.max_display = val.clamp(1, 16);
                                     update_draft(new_settings);
                                 }
                             },
                             for n in 1..=16u8 {
-                                option { value: "{n}", selected: current_settings.personal_debuffs.max_display == n, "{n}" }
+                                option { value: "{n}", selected: current_settings.effects_b.max_display == n, "{n}" }
+                            }
+                        }
+                    }
+
+                    h4 { style: "margin-top: 16px;", "Layout" }
+
+                    div { class: "setting-row",
+                        label { "Vertical Layout" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.effects_b.layout_vertical,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.effects_b.layout_vertical = e.checked();
+                                update_draft(new_settings);
                             }
                         }
                     }
@@ -651,10 +681,10 @@ pub fn SettingsPanel(
                         label { "Show Countdown" }
                         input {
                             r#type: "checkbox",
-                            checked: current_settings.personal_debuffs.show_countdown,
+                            checked: current_settings.effects_b.show_countdown,
                             onchange: move |e: Event<FormData>| {
                                 let mut new_settings = draft_settings();
-                                new_settings.personal_debuffs.show_countdown = e.checked();
+                                new_settings.effects_b.show_countdown = e.checked();
                                 update_draft(new_settings);
                             }
                         }
@@ -664,10 +694,10 @@ pub fn SettingsPanel(
                         label { "Show Effect Names" }
                         input {
                             r#type: "checkbox",
-                            checked: current_settings.personal_debuffs.show_effect_names,
+                            checked: current_settings.effects_b.show_effect_names,
                             onchange: move |e: Event<FormData>| {
                                 let mut new_settings = draft_settings();
-                                new_settings.personal_debuffs.show_effect_names = e.checked();
+                                new_settings.effects_b.show_effect_names = e.checked();
                                 update_draft(new_settings);
                             }
                         }
@@ -677,23 +707,10 @@ pub fn SettingsPanel(
                         label { "Highlight Cleansable" }
                         input {
                             r#type: "checkbox",
-                            checked: current_settings.personal_debuffs.highlight_cleansable,
+                            checked: current_settings.effects_b.highlight_cleansable,
                             onchange: move |e: Event<FormData>| {
                                 let mut new_settings = draft_settings();
-                                new_settings.personal_debuffs.highlight_cleansable = e.checked();
-                                update_draft(new_settings);
-                            }
-                        }
-                    }
-
-                    div { class: "setting-row",
-                        label { "Show Source Name" }
-                        input {
-                            r#type: "checkbox",
-                            checked: current_settings.personal_debuffs.show_source_name,
-                            onchange: move |e: Event<FormData>| {
-                                let mut new_settings = draft_settings();
-                                new_settings.personal_debuffs.show_source_name = e.checked();
+                                new_settings.effects_b.highlight_cleansable = e.checked();
                                 update_draft(new_settings);
                             }
                         }
@@ -703,10 +720,10 @@ pub fn SettingsPanel(
                         label { "Prioritize Stacked Effects" }
                         input {
                             r#type: "checkbox",
-                            checked: current_settings.personal_debuffs.stack_priority,
+                            checked: current_settings.effects_b.stack_priority,
                             onchange: move |e: Event<FormData>| {
                                 let mut new_settings = draft_settings();
-                                new_settings.personal_debuffs.stack_priority = e.checked();
+                                new_settings.effects_b.stack_priority = e.checked();
                                 update_draft(new_settings);
                             }
                         }
@@ -717,8 +734,8 @@ pub fn SettingsPanel(
                             class: "btn btn-reset",
                             onclick: move |_| {
                                 let mut new_settings = draft_settings();
-                                new_settings.personal_debuffs = PersonalDebuffsConfig::default();
-                                new_settings.personal_debuffs_opacity = 180;
+                                new_settings.effects_b = EffectsBConfig::default();
+                                new_settings.effects_b_opacity = 180;
                                 update_draft(new_settings);
                             },
                             i { class: "fa-solid fa-rotate-left" }

@@ -13,8 +13,8 @@ use super::encounter_editor::triggers::{
 };
 use crate::api;
 use crate::types::{
-    AbilitySelector, AudioConfig, DisplayTarget, EffectCategory, EffectListItem, EffectSelector,
-    EntityFilter, Trigger,
+    AbilitySelector, AlertTrigger, AudioConfig, DisplayTarget, EffectCategory, EffectListItem,
+    EffectSelector, EntityFilter, Trigger,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -181,12 +181,15 @@ fn default_effect(name: String) -> EffectListItem {
         display_target: DisplayTarget::None,
         icon_ability_id: None,
         show_icon: true,
+        display_source: false,
         is_affected_by_alacrity: false,
         cooldown_ready_secs: 0.0,
         persist_past_death: false,
         track_outside_combat: true,
         on_apply_trigger_timer: None,
         on_expire_trigger_timer: None,
+        alert_text: None,
+        alert_on: AlertTrigger::None,
         audio: AudioConfig::default(),
     }
 }
@@ -219,6 +222,74 @@ impl EffectTriggerType {
         match &effect.trigger {
             Trigger::AbilityCast { .. } => Self::AbilityCast,
             _ => Self::EffectBased,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Player Stats Bar
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Inline bar for alacrity and latency settings
+#[component]
+fn PlayerStatsBar() -> Element {
+    let mut alacrity = use_signal(|| 0.0f32);
+    let mut latency = use_signal(|| 0u16);
+    let mut loaded = use_signal(|| false);
+
+    // Load from config on mount
+    use_effect(move || {
+        if !loaded() {
+            spawn(async move {
+                if let Some(config) = api::get_config().await {
+                    alacrity.set(config.alacrity_percent);
+                    latency.set(config.latency_ms);
+                    loaded.set(true);
+                }
+            });
+        }
+    });
+
+    let save_config = move || {
+        let new_alacrity = alacrity();
+        let new_latency = latency();
+        spawn(async move {
+            if let Some(mut config) = api::get_config().await {
+                config.alacrity_percent = new_alacrity;
+                config.latency_ms = new_latency;
+                api::update_config(&config).await;
+            }
+        });
+    };
+
+    rsx! {
+        div { class: "player-stats-bar",
+            div { class: "stat-input",
+                label { "Alacrity %" }
+                input {
+                    r#type: "text",
+                    value: "{alacrity():.1}",
+                    onchange: move |e| {
+                        if let Ok(val) = e.value().parse::<f32>() {
+                            alacrity.set(val.clamp(0.0, 30.0));
+                            save_config();
+                        }
+                    }
+                }
+            }
+            div { class: "stat-input",
+                label { "Latency (ms)" }
+                input {
+                    r#type: "text",
+                    value: "{latency()}",
+                    onchange: move |e| {
+                        if let Ok(val) = e.value().parse::<u16>() {
+                            latency.set(val.clamp(0, 500));
+                            save_config();
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -399,6 +470,9 @@ pub fn EffectEditorPanel() -> Element {
                     }
                 }
             }
+
+            // Player stats for duration calculations
+            PlayerStatsBar {}
 
             // Search bar
             div { class: "effect-search-bar",
@@ -691,28 +765,31 @@ fn EffectEditForm(
                             }
                         }
 
-                        // Category
+                        // Display Target (prominent position - determines which overlay shows this effect)
                         div { class: "form-row-hz",
-                            label { "Category" }
+                            label { "Display Target" }
                             select {
                                 class: "select-inline",
-                                value: "{draft().category.label()}",
+                                value: "{draft().display_target.label()}",
                                 onchange: move |e| {
                                     let mut d = draft();
-                                    d.category = match e.value().as_str() {
-                                        "HoT" => EffectCategory::Hot,
-                                        "Shield" => EffectCategory::Shield,
-                                        "Buff" => EffectCategory::Buff,
-                                        "Debuff" => EffectCategory::Debuff,
-                                        "Cleansable" => EffectCategory::Cleansable,
-                                        "Proc" => EffectCategory::Proc,
-                                        "Mechanic" => EffectCategory::Mechanic,
-                                        _ => d.category,
+                                    d.display_target = match e.value().as_str() {
+                                        "None" => DisplayTarget::None,
+                                        "Raid Frames" => DisplayTarget::RaidFrames,
+                                        "Effects A" => DisplayTarget::EffectsA,
+                                        "Effects B" => DisplayTarget::EffectsB,
+                                        "Cooldowns" => DisplayTarget::Cooldowns,
+                                        "DOT Tracker" => DisplayTarget::DotTracker,
+                                        "Effects Overlay" => DisplayTarget::EffectsOverlay,
+                                        _ => d.display_target,
                                     };
                                     draft.set(d);
                                 },
-                                for cat in EffectCategory::all() {
-                                    option { value: "{cat.label()}", "{cat.label()}" }
+                                for target in DisplayTarget::all() {
+                                    option {
+                                        value: "{target.label()}",
+                                        "{target.label()}"
+                                    }
                                 }
                             }
                         }
@@ -907,35 +984,6 @@ fn EffectEditForm(
                             "Enabled"
                         }
 
-                        // Display Target dropdown
-                        div { class: "form-row-hz",
-                            label { class: "text-sm text-secondary", "Display Target" }
-                            select {
-                                class: "select-inline",
-                                onchange: move |e| {
-                                    let mut d = draft();
-                                    d.display_target = match e.value().as_str() {
-                                        "None" => DisplayTarget::None,
-                                        "Raid Frames" => DisplayTarget::RaidFrames,
-                                        "Personal Buffs" => DisplayTarget::PersonalBuffs,
-                                        "Personal Debuffs" => DisplayTarget::PersonalDebuffs,
-                                        "Cooldowns" => DisplayTarget::Cooldowns,
-                                        "DOT Tracker" => DisplayTarget::DotTracker,
-                                        "Effects Overlay" => DisplayTarget::EffectsOverlay,
-                                        _ => d.display_target,
-                                    };
-                                    draft.set(d);
-                                },
-                                for target in DisplayTarget::all() {
-                                    option {
-                                        value: "{target.label()}",
-                                        selected: *target == draft().display_target,
-                                        "{target.label()}"
-                                    }
-                                }
-                            }
-                        }
-
                         // Icon Ability ID with preview
                         div { class: "form-row-hz",
                             label { class: "text-sm text-secondary", "Icon ID" }
@@ -980,6 +1028,22 @@ fn EffectEditForm(
                                 }
                             }
                             "Show Icon"
+                        }
+
+                        // Display Source - only for personal overlays
+                        if matches!(draft().display_target, DisplayTarget::EffectsA | DisplayTarget::EffectsB | DisplayTarget::Cooldowns) {
+                            label { class: "flex items-center gap-xs text-sm",
+                                input {
+                                    r#type: "checkbox",
+                                    checked: draft().display_source,
+                                    onchange: move |e| {
+                                        let mut d = draft();
+                                        d.display_source = e.checked();
+                                        draft.set(d);
+                                    }
+                                }
+                                "Display Source"
+                            }
                         }
 
                         label { class: "flex items-center gap-xs text-sm",
@@ -1072,6 +1136,45 @@ fn EffectEditForm(
                                 }
                             }
                             "Track Outside Combat"
+                        }
+
+                        // Alert section
+                        div { class: "form-row-hz",
+                            label { "Alert Text" }
+                            input {
+                                r#type: "text",
+                                placeholder: "(none)",
+                                value: "{draft().alert_text.clone().unwrap_or_default()}",
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.alert_text = if e.value().is_empty() { None } else { Some(e.value()) };
+                                    draft.set(d);
+                                }
+                            }
+                        }
+
+                        div { class: "form-row-hz",
+                            label { "Alert On" }
+                            select {
+                                class: "select-inline",
+                                value: "{draft().alert_on.label()}",
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.alert_on = match e.value().as_str() {
+                                        "Effect Start" => AlertTrigger::OnApply,
+                                        "Effect End" => AlertTrigger::OnExpire,
+                                        _ => AlertTrigger::None,
+                                    };
+                                    draft.set(d);
+                                },
+                                for trigger in AlertTrigger::all() {
+                                    option {
+                                        value: "{trigger.label()}",
+                                        selected: *trigger == draft().alert_on,
+                                        "{trigger.label()}"
+                                    }
+                                }
+                            }
                         }
 
                         label { class: "flex items-center gap-xs text-sm",

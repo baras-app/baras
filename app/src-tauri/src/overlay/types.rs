@@ -136,10 +136,10 @@ pub enum OverlayType {
     Challenges,
     /// Alert text notifications
     Alerts,
-    /// Personal buffs/procs on self
-    PersonalBuffs,
-    /// Personal debuffs on self (from NPCs/bosses)
-    PersonalDebuffs,
+    /// Effects A overlay (personal effects)
+    EffectsA,
+    /// Effects B overlay (personal effects)
+    EffectsB,
     /// Ability cooldowns
     Cooldowns,
     /// DOTs on enemy targets
@@ -157,8 +157,8 @@ impl OverlayType {
             OverlayType::Timers => "timers",
             OverlayType::Challenges => "challenges",
             OverlayType::Alerts => "alerts",
-            OverlayType::PersonalBuffs => "personal_buffs",
-            OverlayType::PersonalDebuffs => "personal_debuffs",
+            OverlayType::EffectsA => "effects_a",
+            OverlayType::EffectsB => "effects_b",
             OverlayType::Cooldowns => "cooldowns",
             OverlayType::DotTracker => "dot_tracker",
         }
@@ -174,8 +174,8 @@ impl OverlayType {
             OverlayType::Timers => "baras-timers".to_string(),
             OverlayType::Challenges => "baras-challenges".to_string(),
             OverlayType::Alerts => "baras-alerts".to_string(),
-            OverlayType::PersonalBuffs => "baras-personal-buffs".to_string(),
-            OverlayType::PersonalDebuffs => "baras-personal-debuffs".to_string(),
+            OverlayType::EffectsA => "baras-effects-a".to_string(),
+            OverlayType::EffectsB => "baras-effects-b".to_string(),
             OverlayType::Cooldowns => "baras-cooldowns".to_string(),
             OverlayType::DotTracker => "baras-dot-tracker".to_string(),
         }
@@ -191,8 +191,8 @@ impl OverlayType {
             OverlayType::Timers => (650, 550),
             OverlayType::Challenges => (950, 50),
             OverlayType::Alerts => (950, 400),
-            OverlayType::PersonalBuffs => (350, 200),
-            OverlayType::PersonalDebuffs => (350, 280),
+            OverlayType::EffectsA => (350, 200),
+            OverlayType::EffectsB => (350, 280),
             OverlayType::Cooldowns => (50, 500),
             OverlayType::DotTracker => (50, 650),
         }

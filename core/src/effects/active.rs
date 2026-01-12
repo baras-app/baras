@@ -107,6 +107,9 @@ pub struct ActiveEffect {
     /// Whether to show the icon (true) or use colored square (false)
     pub show_icon: bool,
 
+    /// Whether to display the source entity name on personal overlays
+    pub display_source: bool,
+
     /// Seconds to show "Ready" state after cooldown ends (0 = disabled)
     pub cooldown_ready_secs: f32,
 
@@ -131,6 +134,15 @@ pub struct ActiveEffect {
 
     /// Whether audio is enabled for this effect
     pub audio_enabled: bool,
+
+    /// Whether the "on end" alert has been fired (to prevent duplicates)
+    pub on_end_alert_fired: bool,
+
+    /// Alert text to display (None = no alert configured)
+    pub alert_text: Option<String>,
+
+    /// Whether to fire alert on expiration (vs on apply)
+    pub alert_on_expire: bool,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -155,8 +167,11 @@ impl ActiveEffect {
         show_on_raid_frames: bool,
         show_at_secs: f32,
         show_icon: bool,
+        display_source: bool,
         cooldown_ready_secs: f32,
         audio: &crate::dsl::AudioConfig,
+        alert_text: Option<String>,
+        alert_on_expire: bool,
     ) -> Self {
         // Calculate lag compensation: how far behind was the game event from system time?
         // This accounts for file I/O delay, processing time, etc.
@@ -197,6 +212,7 @@ impl ActiveEffect {
             show_on_raid_frames,
             show_at_secs,
             show_icon,
+            display_source,
             cooldown_ready_secs,
             audio_played: false,
             countdown_announced: [false; 10],
@@ -208,6 +224,9 @@ impl ActiveEffect {
             audio_file: audio.file.clone(),
             audio_offset: audio.offset,
             audio_enabled: audio.enabled,
+            on_end_alert_fired: false,
+            alert_text,
+            alert_on_expire,
         }
     }
 
@@ -235,6 +254,8 @@ impl ActiveEffect {
 
         // Clear removed state if we were fading out (effect came back)
         self.removed_at = None;
+        // Reset on-end alert so it can fire again
+        self.on_end_alert_fired = false;
     }
 
     /// Update stack count
@@ -324,13 +345,26 @@ impl ActiveEffect {
 
     // ─── Audio Methods ──────────────────────────────────────────────────────────
 
-    /// Get remaining time in seconds using realtime (for audio sync)
+    /// Get remaining time in seconds using realtime (includes ready state time)
     /// Uses system time (Instant) for smooth countdown independent of game log timing
+    /// Note: For audio/alerts, use `remaining_base_secs_realtime()` instead
     pub fn remaining_secs_realtime(&self) -> f32 {
         let Some(dur) = self.duration else { return 0.0 };
         let elapsed = self.applied_instant.elapsed();
         let remaining = dur.saturating_sub(elapsed);
         remaining.as_secs_f32()
+    }
+
+    /// Get remaining time until BASE duration ends (excludes ready state time)
+    /// This is what audio countdowns and alerts should use
+    pub fn remaining_base_secs_realtime(&self) -> f32 {
+        (self.remaining_secs_realtime() - self.cooldown_ready_secs).max(0.0)
+    }
+
+    /// Check if base duration has ended (entered ready state or fully expired)
+    /// Returns true when remaining <= cooldown_ready_secs (or <= 0 if no ready state)
+    pub fn has_base_duration_ended(&self) -> bool {
+        self.remaining_base_secs_realtime() <= 0.0
     }
 
     /// Check if effect should be visible based on show_at_secs threshold
@@ -351,6 +385,8 @@ impl ActiveEffect {
     /// - remaining 3.8s → no announcement (too early)
     /// - remaining 3.2s → announces 3 (in window [3.0, 3.3))
     /// - remaining 2.2s → announces 2
+    ///
+    /// Uses BASE duration (excludes ready state time)
     pub fn check_countdown(&mut self) -> Option<u8> {
         // Don't announce if effect was manually removed
         if self.removed_at.is_some() {
@@ -361,7 +397,8 @@ impl ActiveEffect {
             return None;
         }
 
-        let remaining = self.remaining_secs_realtime();
+        // Use base remaining (excludes ready state)
+        let remaining = self.remaining_base_secs_realtime();
 
         // Check each second from countdown_start down to 1
         for seconds in (1..=self.countdown_start.min(10)).rev() {
@@ -387,6 +424,8 @@ impl ActiveEffect {
     /// - audio_offset > 0 (offset of 0 means fire on expiration, handled separately)
     /// - remaining time crossed below the offset threshold
     /// - hasn't already fired
+    ///
+    /// Uses BASE duration (excludes ready state time)
     pub fn check_audio_offset(&mut self) -> bool {
         // Don't play if effect was manually removed
         if self.removed_at.is_some() {
@@ -408,7 +447,8 @@ impl ActiveEffect {
             return false;
         }
 
-        let remaining = self.remaining_secs_realtime();
+        // Use base remaining (excludes ready state)
+        let remaining = self.remaining_base_secs_realtime();
 
         // Fire when we cross into the offset window
         if remaining <= self.audio_offset as f32 && remaining > 0.0 {
@@ -427,8 +467,7 @@ impl ActiveEffect {
     /// - remaining time is in [0, 0.3) window (fires just as effect expires)
     /// - hasn't already fired
     ///
-    /// Uses a small window like countdown to ensure we catch expiration
-    /// before the effect is removed from the tracker.
+    /// Uses BASE duration (excludes ready state time)
     pub fn check_expiration_audio(&mut self) -> bool {
         // Don't play if effect was manually removed (cleansed, clicked off, etc.)
         if self.removed_at.is_some() {
@@ -450,16 +489,43 @@ impl ActiveEffect {
             return false;
         }
 
-        let remaining = self.remaining_secs_realtime();
+        // Use base remaining (excludes ready state)
+        let remaining = self.remaining_base_secs_realtime();
 
-        // Fire in window [0, 0.3) - catches expiration before effect is removed
-        // This matches the countdown window logic
+        // Fire in window [0, 0.3) - catches base duration expiration
         if (0.0..0.3).contains(&remaining) {
             self.audio_played = true;
             return true;
         }
 
         false
+    }
+
+    /// Check if alert should fire on expiration
+    ///
+    /// Returns Some(text) when alert should fire, None otherwise.
+    /// Uses same window as audio expiration [0, 0.3)
+    pub fn check_expiration_alert(&mut self) -> Option<&str> {
+        if self.removed_at.is_some() {
+            return None;
+        }
+
+        if !self.alert_on_expire {
+            return None;
+        }
+
+        if self.on_end_alert_fired {
+            return None;
+        }
+
+        let remaining = self.remaining_base_secs_realtime();
+
+        if (0.0..0.3).contains(&remaining) {
+            self.on_end_alert_fired = true;
+            return self.alert_text.as_deref();
+        }
+
+        None
     }
 }
 

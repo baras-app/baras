@@ -28,10 +28,10 @@ pub struct OverlayStatusResponse {
     pub challenges_enabled: bool,
     pub alerts_running: bool,
     pub alerts_enabled: bool,
-    pub personal_buffs_running: bool,
-    pub personal_buffs_enabled: bool,
-    pub personal_debuffs_running: bool,
-    pub personal_debuffs_enabled: bool,
+    pub effects_a_running: bool,
+    pub effects_a_enabled: bool,
+    pub effects_b_running: bool,
+    pub effects_b_enabled: bool,
     pub cooldowns_running: bool,
     pub cooldowns_enabled: bool,
     pub dot_tracker_running: bool,
@@ -116,8 +116,8 @@ pub async fn get_overlay_status(
         timers_running,
         challenges_running,
         alerts_running,
-        personal_buffs_running,
-        personal_debuffs_running,
+        effects_a_running,
+        effects_b_running,
         cooldowns_running,
         dot_tracker_running,
         move_mode,
@@ -132,8 +132,8 @@ pub async fn get_overlay_status(
             s.is_running(OverlayType::Timers),
             s.is_challenges_running(),
             s.is_running(OverlayType::Alerts),
-            s.is_running(OverlayType::PersonalBuffs),
-            s.is_running(OverlayType::PersonalDebuffs),
+            s.is_running(OverlayType::EffectsA),
+            s.is_running(OverlayType::EffectsB),
             s.is_running(OverlayType::Cooldowns),
             s.is_running(OverlayType::DotTracker),
             s.move_mode,
@@ -155,8 +155,8 @@ pub async fn get_overlay_status(
     let timers_enabled = config.overlay_settings.is_enabled("timers");
     let challenges_enabled = config.overlay_settings.is_enabled("challenges");
     let alerts_enabled = config.overlay_settings.is_enabled("alerts");
-    let personal_buffs_enabled = config.overlay_settings.is_enabled("personal_buffs");
-    let personal_debuffs_enabled = config.overlay_settings.is_enabled("personal_debuffs");
+    let effects_a_enabled = config.overlay_settings.is_enabled("effects_a");
+    let effects_b_enabled = config.overlay_settings.is_enabled("effects_b");
     let cooldowns_enabled = config.overlay_settings.is_enabled("cooldowns");
     let dot_tracker_enabled = config.overlay_settings.is_enabled("dot_tracker");
 
@@ -175,10 +175,10 @@ pub async fn get_overlay_status(
         challenges_enabled,
         alerts_running,
         alerts_enabled,
-        personal_buffs_running,
-        personal_buffs_enabled,
-        personal_debuffs_running,
-        personal_debuffs_enabled,
+        effects_a_running,
+        effects_a_enabled,
+        effects_b_running,
+        effects_b_enabled,
         cooldowns_running,
         cooldowns_enabled,
         dot_tracker_running,

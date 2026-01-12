@@ -373,6 +373,16 @@ impl ParsingSession {
         }
     }
 
+    /// Set player latency for effect duration calculations.
+    /// No-op in Historical mode (session has no effect tracker).
+    pub fn set_effect_latency(&self, latency_ms: u16) {
+        if let Some(tracker) = &self.effect_tracker {
+            if let Ok(mut tracker) = tracker.lock() {
+                tracker.set_latency(latency_ms);
+            }
+        }
+    }
+
     /// Enable/disable live mode for timer tracking.
     /// Call with `true` after initial file load to filter stale events.
     /// No-op in Historical mode (session has no timer manager).

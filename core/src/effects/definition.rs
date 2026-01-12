@@ -52,6 +52,19 @@ impl EffectCategory {
     }
 }
 
+/// When to trigger an alert for this effect
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AlertTrigger {
+    /// No alert
+    #[default]
+    None,
+    /// Alert when effect is applied/starts
+    OnApply,
+    /// Alert when effect expires/ends
+    OnExpire,
+}
+
 /// Which overlay should display this effect.
 ///
 /// Effects are routed to different overlays based on this setting,
@@ -64,10 +77,12 @@ pub enum DisplayTarget {
     None,
     /// Show on raid frames overlay (HOTs on group members)
     RaidFrames,
-    /// Show on personal buffs bar (procs/buffs on self)
-    PersonalBuffs,
-    /// Show on personal debuffs bar (debuffs on self from NPCs/bosses)
-    PersonalDebuffs,
+    /// Show on Effects A overlay (personal effects)
+    #[serde(alias = "personal_buffs")]
+    EffectsA,
+    /// Show on Effects B overlay (personal effects)
+    #[serde(alias = "personal_debuffs")]
+    EffectsB,
     /// Show on cooldown tracker (ability cooldowns)
     Cooldowns,
     /// Show on multi-target DOT tracker (DOTs on enemies)
@@ -160,6 +175,11 @@ pub struct EffectDefinition {
     #[serde(default = "crate::serde_defaults::default_true")]
     pub show_icon: bool,
 
+    /// Whether to display the source entity name on personal overlays
+    /// (Cooldowns, PersonalBuffs, PersonalDebuffs)
+    #[serde(default)]
+    pub display_source: bool,
+
     // ─── Behavior ───────────────────────────────────────────────────────────
     /// Should this effect persist after target dies?
     #[serde(default)]
@@ -175,6 +195,15 @@ pub struct EffectDefinition {
 
     /// Timer ID to start when this effect expires/is removed
     pub on_expire_trigger_timer: Option<String>,
+
+    // ─── Alerts ────────────────────────────────────────────────────────────────
+    /// Text to display in the alerts overlay
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alert_text: Option<String>,
+
+    /// When to trigger the alert
+    #[serde(default)]
+    pub alert_on: AlertTrigger,
 
     // ─── Audio ─────────────────────────────────────────────────────────────────
     /// Audio configuration (alerts, custom sounds)

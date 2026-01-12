@@ -150,7 +150,9 @@ impl ServiceHandle {
             * config.overlay_settings.raid_overlay.grid_rows;
 
         let alacrity_changed = old_config.alacrity_percent != config.alacrity_percent;
+        let latency_changed = old_config.latency_ms != config.latency_ms;
         let new_alacrity = config.alacrity_percent;
+        let new_latency = config.latency_ms;
 
         *self.shared.config.write().await = config.clone();
         config.save();
@@ -162,13 +164,18 @@ impl ServiceHandle {
             registry.set_max_slots(new_slots);
         }
 
-        // Update effect tracker alacrity if it changed
-        if alacrity_changed {
+        // Update effect tracker alacrity/latency if changed
+        if alacrity_changed || latency_changed {
             if let Some(session) = self.shared.session.read().await.as_ref() {
                 let session = session.read().await;
                 if let Some(tracker) = session.effect_tracker() {
                     if let Ok(mut tracker) = tracker.lock() {
-                        tracker.set_alacrity(new_alacrity);
+                        if alacrity_changed {
+                            tracker.set_alacrity(new_alacrity);
+                        }
+                        if latency_changed {
+                            tracker.set_latency(new_latency);
+                        }
                     }
                 }
             }
@@ -949,13 +956,13 @@ impl ServiceHandle {
                 .shared
                 .timer_overlay_active
                 .store(active, Ordering::SeqCst),
-            "personal_buffs" => self
+            "effects_a" => self
                 .shared
-                .personal_buffs_overlay_active
+                .effects_a_overlay_active
                 .store(active, Ordering::SeqCst),
-            "personal_debuffs" => self
+            "effects_b" => self
                 .shared
-                .personal_debuffs_overlay_active
+                .effects_b_overlay_active
                 .store(active, Ordering::SeqCst),
             "cooldowns" => self
                 .shared

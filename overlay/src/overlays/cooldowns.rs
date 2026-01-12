@@ -42,6 +42,8 @@ pub struct CooldownEntry {
     pub icon: Option<Arc<(u32, u32, Vec<u8>)>>,
     /// Whether to show the icon (true) or use colored square (false)
     pub show_icon: bool,
+    /// Whether to display the source entity name
+    pub display_source: bool,
     /// Whether cooldown is in "ready" state (remaining <= cooldown_ready_secs)
     pub is_in_ready_state: bool,
 }
@@ -351,13 +353,26 @@ impl CooldownOverlay {
 
                 // Countdown below
                 let time_text = entry.format_time();
+                let time_y = name_y + font_size + 2.0;
                 self.frame.draw_text(
                     &time_text,
                     text_x,
-                    name_y + font_size + 2.0,
+                    time_y,
                     font_size * 0.9,
                     ready_text_color,
                 );
+
+                // Source name below countdown (per-effect toggle)
+                if entry.display_source && !entry.source_name.is_empty() {
+                    let source_font_size = font_size * 0.8;
+                    self.frame.draw_text(
+                        &entry.source_name,
+                        text_x,
+                        time_y + font_size * 0.9 + 2.0,
+                        source_font_size,
+                        colors::label_dim(),
+                    );
+                }
             } else {
                 // Just countdown centered
                 let time_text = entry.format_time();
@@ -373,6 +388,18 @@ impl CooldownOverlay {
                     font_size,
                     time_color,
                 );
+
+                // Source name below countdown (per-effect toggle)
+                if entry.display_source && !entry.source_name.is_empty() {
+                    let source_font_size = font_size * 0.8;
+                    self.frame.draw_text(
+                        &entry.source_name,
+                        text_x,
+                        text_y + font_size / 3.0 + font_size + 2.0,
+                        source_font_size,
+                        colors::label_dim(),
+                    );
+                }
             }
 
             y += row_height;

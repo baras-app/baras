@@ -216,8 +216,9 @@ impl RaidFrame {
             .iter_mut()
             .find(|e| e.effect_id == effect.effect_id)
         {
-            // Refresh: update expiry and take higher stack count
+            // Refresh: update expiry, duration, and take higher stack count
             existing.expires_at = effect.expires_at;
+            existing.duration = effect.duration;
             existing.charges = existing.charges.max(effect.charges);
         } else if self.effects.len() < max_effects {
             // New effect, have room
@@ -932,8 +933,11 @@ impl RaidOverlay {
 
             if fill_percent > 0.0 {
                 // Fill depletes from bottom to top (remaining time shrinks upward)
-                let fill_height = (effect_size - border_width * 2.0) * fill_percent;
-                let fill_y = ey + effect_size - border_width - fill_height;
+                // Use explicit bottom coordinate to avoid floating-point rounding issues
+                let max_fill_height = effect_size - border_width * 2.0;
+                let fill_bottom = ey + effect_size - border_width;
+                let fill_height = (max_fill_height * fill_percent).round();
+                let fill_y = fill_bottom - fill_height;
 
                 // Combine per-effect alpha (from color) with config opacity
                 // This allows per-effect control while config acts as global multiplier
@@ -948,10 +952,11 @@ impl RaidOverlay {
                 );
 
                 // Inner fill area (inset by border width)
+                // Use rounded coordinates to avoid sub-pixel rendering artifacts
                 self.frame.fill_rect(
-                    ex + border_width,
-                    fill_y,
-                    effect_size - border_width * 2.0,
+                    (ex + border_width).round(),
+                    fill_y.round(),
+                    max_fill_height.round(),
                     fill_height,
                     fill_color,
                 );

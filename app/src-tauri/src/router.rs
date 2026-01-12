@@ -248,36 +248,36 @@ async fn process_overlay_update(
                     .await;
             }
         }
-        OverlayUpdate::PersonalBuffsUpdated(buffs_data) => {
+        OverlayUpdate::EffectsAUpdated(effects_data) => {
             let tx = {
                 let state = match overlay_state.lock() {
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_personal_buffs_tx().cloned()
+                state.get_effects_a_tx().cloned()
             };
 
             if let Some(tx) = tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::PersonalBuffs(
-                        buffs_data,
+                    .send(OverlayCommand::UpdateData(OverlayData::EffectsA(
+                        effects_data,
                     )))
                     .await;
             }
         }
-        OverlayUpdate::PersonalDebuffsUpdated(debuffs_data) => {
+        OverlayUpdate::EffectsBUpdated(effects_data) => {
             let tx = {
                 let state = match overlay_state.lock() {
                     Ok(s) => s,
                     Err(_) => return,
                 };
-                state.get_personal_debuffs_tx().cloned()
+                state.get_effects_b_tx().cloned()
             };
 
             if let Some(tx) = tx {
                 let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::PersonalDebuffs(
-                        debuffs_data,
+                    .send(OverlayCommand::UpdateData(OverlayData::EffectsB(
+                        effects_data,
                     )))
                     .await;
             }
@@ -399,14 +399,14 @@ async fn process_overlay_update(
                     channels.push((tx.clone(), OverlayData::Challenges(Default::default())));
                 }
 
-                // Personal buffs overlay
-                if let Some(tx) = state.get_personal_buffs_tx() {
-                    channels.push((tx.clone(), OverlayData::PersonalBuffs(Default::default())));
+                // Effects A overlay
+                if let Some(tx) = state.get_effects_a_tx() {
+                    channels.push((tx.clone(), OverlayData::EffectsA(Default::default())));
                 }
 
-                // Personal debuffs overlay
-                if let Some(tx) = state.get_personal_debuffs_tx() {
-                    channels.push((tx.clone(), OverlayData::PersonalDebuffs(Default::default())));
+                // Effects B overlay
+                if let Some(tx) = state.get_effects_b_tx() {
+                    channels.push((tx.clone(), OverlayData::EffectsB(Default::default())));
                 }
 
                 // Cooldowns overlay

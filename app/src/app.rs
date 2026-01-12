@@ -37,8 +37,8 @@ pub fn App() -> Element {
     let mut timers_enabled = use_signal(|| false);
     let mut challenges_enabled = use_signal(|| false);
     let mut alerts_enabled = use_signal(|| false);
-    let mut personal_buffs_enabled = use_signal(|| false);
-    let mut personal_debuffs_enabled = use_signal(|| false);
+    let mut effects_a_enabled = use_signal(|| false);
+    let mut effects_b_enabled = use_signal(|| false);
     let mut cooldowns_enabled = use_signal(|| false);
     let mut dot_tracker_enabled = use_signal(|| false);
     let mut overlays_visible = use_signal(|| true);
@@ -164,8 +164,8 @@ pub fn App() -> Element {
                 &mut timers_enabled,
                 &mut challenges_enabled,
                 &mut alerts_enabled,
-                &mut personal_buffs_enabled,
-                &mut personal_debuffs_enabled,
+                &mut effects_a_enabled,
+                &mut effects_b_enabled,
                 &mut cooldowns_enabled,
                 &mut dot_tracker_enabled,
                 &mut overlays_visible,
@@ -268,8 +268,8 @@ pub fn App() -> Element {
     let timers_on = timers_enabled();
     let challenges_on = challenges_enabled();
     let alerts_on = alerts_enabled();
-    let personal_buffs_on = personal_buffs_enabled();
-    let personal_debuffs_on = personal_debuffs_enabled();
+    let effects_a_on = effects_a_enabled();
+    let effects_b_on = effects_b_enabled();
     let cooldowns_on = cooldowns_enabled();
     let dot_tracker_on = dot_tracker_enabled();
     let any_enabled = enabled_map.values().any(|&v| v)
@@ -279,8 +279,8 @@ pub fn App() -> Element {
         || timers_on
         || challenges_on
         || alerts_on
-        || personal_buffs_on
-        || personal_debuffs_on
+        || effects_a_on
+        || effects_b_on
         || cooldowns_on
         || dot_tracker_on;
     let is_visible = overlays_visible();
@@ -431,7 +431,7 @@ pub fn App() -> Element {
                                             apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
                                                 &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
                                                 &mut challenges_enabled, &mut alerts_enabled,
-                                                &mut personal_buffs_enabled, &mut personal_debuffs_enabled,
+                                                &mut effects_a_enabled, &mut effects_b_enabled,
                                                 &mut cooldowns_enabled, &mut dot_tracker_enabled,
                                                 &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
                                         }
@@ -637,7 +637,7 @@ pub fn App() -> Element {
                                                         apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
                                                             &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
                                                             &mut challenges_enabled, &mut alerts_enabled,
-                                                            &mut personal_buffs_enabled, &mut personal_debuffs_enabled,
+                                                            &mut effects_a_enabled, &mut effects_b_enabled,
                                                             &mut cooldowns_enabled, &mut dot_tracker_enabled,
                                                             &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
                                                     }
@@ -776,22 +776,22 @@ pub fn App() -> Element {
                         h4 { class: "subsection-title", "Effects" }
                         div { class: "overlay-grid",
                             button {
-                                class: if personal_buffs_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                class: if effects_a_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
                                 onclick: move |_| { spawn(async move {
-                                    if api::toggle_overlay(OverlayType::PersonalBuffs, personal_buffs_on).await {
-                                        personal_buffs_enabled.set(!personal_buffs_on);
+                                    if api::toggle_overlay(OverlayType::EffectsA, effects_a_on).await {
+                                        effects_a_enabled.set(!effects_a_on);
                                     }
                                 }); },
-                                "Personal Buffs"
+                                "Effects A"
                             }
                             button {
-                                class: if personal_debuffs_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                class: if effects_b_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
                                 onclick: move |_| { spawn(async move {
-                                    if api::toggle_overlay(OverlayType::PersonalDebuffs, personal_debuffs_on).await {
-                                        personal_debuffs_enabled.set(!personal_debuffs_on);
+                                    if api::toggle_overlay(OverlayType::EffectsB, effects_b_on).await {
+                                        effects_b_enabled.set(!effects_b_on);
                                     }
                                 }); },
-                                "Personal Debuffs"
+                                "Effects B"
                             }
                             button {
                                 class: if cooldowns_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
@@ -1435,8 +1435,8 @@ fn apply_status(
     timers_enabled: &mut Signal<bool>,
     challenges_enabled: &mut Signal<bool>,
     alerts_enabled: &mut Signal<bool>,
-    personal_buffs_enabled: &mut Signal<bool>,
-    personal_debuffs_enabled: &mut Signal<bool>,
+    effects_a_enabled: &mut Signal<bool>,
+    effects_b_enabled: &mut Signal<bool>,
     cooldowns_enabled: &mut Signal<bool>,
     dot_tracker_enabled: &mut Signal<bool>,
     overlays_visible: &mut Signal<bool>,
@@ -1454,8 +1454,8 @@ fn apply_status(
     timers_enabled.set(status.timers_enabled);
     challenges_enabled.set(status.challenges_enabled);
     alerts_enabled.set(status.alerts_enabled);
-    personal_buffs_enabled.set(status.personal_buffs_enabled);
-    personal_debuffs_enabled.set(status.personal_debuffs_enabled);
+    effects_a_enabled.set(status.effects_a_enabled);
+    effects_b_enabled.set(status.effects_b_enabled);
     cooldowns_enabled.set(status.cooldowns_enabled);
     dot_tracker_enabled.set(status.dot_tracker_enabled);
     overlays_visible.set(status.overlays_visible);
