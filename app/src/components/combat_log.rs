@@ -6,6 +6,7 @@ use dioxus::prelude::*;
 use wasm_bindgen::JsCast;
 
 use crate::api::{self, CombatLogRow, TimeRange};
+use crate::components::ability_icon::AbilityIcon;
 
 /// Row height in pixels for virtual scrolling calculations.
 const ROW_HEIGHT: f64 = 24.0;
@@ -370,6 +371,9 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                                 div { class: "log-cell log-type {effect_type_class(&row.effect_type)}", "{row.effect_type}" }
                                 div { class: "log-cell log-target", "{row.target_name}" }
                                 div { class: "log-cell log-ability",
+                                    if row.ability_id != 0 {
+                                        AbilityIcon { key: "{row.ability_id}", ability_id: row.ability_id, size: 16 }
+                                    }
                                     if !row.ability_name.is_empty() {
                                         "{row.ability_name}"
                                     } else {

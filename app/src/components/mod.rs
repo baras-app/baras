@@ -3,6 +3,7 @@
 //! This module contains reusable UI components extracted from app.rs
 //! to improve code organization and reduce file size.
 
+pub mod ability_icon;
 pub mod charts_panel;
 pub mod class_icons;
 pub mod combat_log;

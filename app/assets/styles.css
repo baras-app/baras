@@ -5660,6 +5660,17 @@ details[open] .collapsible-summary::before {
   vertical-align: middle;
 }
 
+.ability-table .ability-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.ability-icon {
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
 .ability-table tbody tr:hover {
   background: var(--blue-alpha-5);
 }

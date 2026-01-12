@@ -179,6 +179,8 @@ pub struct EffectWindow {
 pub struct EffectChartData {
     pub effect_id: i64,
     pub effect_name: String,
+    /// Ability ID that triggered this effect (for icon lookup)
+    pub ability_id: Option<i64>,
     /// True if triggered by ability activation (active), false if passive/proc
     pub is_active: bool,
     /// Number of times effect was applied
@@ -217,6 +219,8 @@ pub struct CombatLogRow {
     pub effect_type: String,
     /// Ability name
     pub ability_name: String,
+    /// Ability ID (for icon lookup)
+    pub ability_id: i64,
     /// Effect/result name (for buffs/debuffs)
     pub effect_name: String,
     /// Damage or heal value (effective)

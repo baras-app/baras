@@ -912,7 +912,8 @@ impl EncounterQuery<'_> {
             classified AS (
                 SELECT p.effect_id, p.effect_name, p.apply_time,
                        LEAST(p.remove_time, {duration}) - p.apply_time as duration_secs,
-                       CASE WHEN aa.activation_ts IS NOT NULL THEN true ELSE false END as is_active
+                       CASE WHEN aa.activation_ts IS NOT NULL THEN true ELSE false END as is_active,
+                       aa.ability_id
                 FROM paired p
                 LEFT JOIN ability_activations aa ON p.timestamp = aa.activation_ts
                     AND p.effect_id = aa.ability_id
@@ -920,12 +921,13 @@ impl EncounterQuery<'_> {
             ),
             aggregated AS (
                 SELECT MIN(effect_id) as effect_id, effect_name, is_active,
+                       MIN(ability_id) as ability_id,
                        COUNT(*) as count,
                        SUM(duration_secs) as total_duration
                 FROM classified
                 GROUP BY effect_name, is_active
             )
-            SELECT effect_id, effect_name, is_active, count, total_duration,
+            SELECT effect_id, effect_name, ability_id, is_active, count, total_duration,
                    LEAST(total_duration * 100.0 / {duration}, 100.0) as uptime_pct
             FROM aggregated
             ORDER BY total_duration DESC
@@ -935,9 +937,20 @@ impl EncounterQuery<'_> {
         for batch in &batches {
             let effect_ids = col_i64(batch, 0)?;
             let effect_names = col_strings(batch, 1)?;
+            // ability_id is nullable (NULL for passive effects)
+            let ability_ids: Vec<Option<i64>> = {
+                let col = batch.column(2);
+                if let Some(a) = col.as_any().downcast_ref::<arrow::array::Int64Array>() {
+                    (0..a.len())
+                        .map(|i| if a.is_null(i) { None } else { Some(a.value(i)) })
+                        .collect()
+                } else {
+                    vec![None; batch.num_rows()]
+                }
+            };
             // is_active comes as a boolean, but DataFusion might return it as various types
             let is_actives: Vec<bool> = {
-                let col = batch.column(2);
+                let col = batch.column(3);
                 if let Some(a) = col.as_any().downcast_ref::<arrow::array::BooleanArray>() {
                     (0..a.len()).map(|i| a.value(i)).collect()
                 } else {
@@ -945,14 +958,15 @@ impl EncounterQuery<'_> {
                     vec![false; batch.num_rows()]
                 }
             };
-            let counts = col_i64(batch, 3)?;
-            let total_durations = col_f32(batch, 4)?;
-            let uptime_pcts = col_f32(batch, 5)?;
+            let counts = col_i64(batch, 4)?;
+            let total_durations = col_f32(batch, 5)?;
+            let uptime_pcts = col_f32(batch, 6)?;
 
             for i in 0..batch.num_rows() {
                 results.push(EffectChartData {
                     effect_id: effect_ids[i],
                     effect_name: effect_names[i].clone(),
+                    ability_id: ability_ids[i],
                     is_active: is_actives[i],
                     count: counts[i],
                     total_duration_secs: total_durations[i],
@@ -1072,6 +1086,7 @@ impl EncounterQuery<'_> {
                 target_entity_type,
                 effect_type_name,
                 ability_name,
+                ability_id,
                 effect_name,
                 COALESCE(dmg_effective, 0) + COALESCE(heal_effective, 0) as value,
                 COALESCE(dmg_absorbed, 0) as absorbed,
@@ -1098,14 +1113,15 @@ impl EncounterQuery<'_> {
             let target_types = col_strings(batch, 5)?;
             let effect_types = col_strings(batch, 6)?;
             let ability_names = col_strings(batch, 7)?;
-            let effect_names = col_strings(batch, 8)?;
-            let values = col_i32(batch, 9)?;
-            let absorbeds = col_i32(batch, 10)?;
-            let overheals = col_i32(batch, 11)?;
-            let threats = col_f32(batch, 12)?;
-            let is_crits = col_bool(batch, 13)?;
-            let damage_types = col_strings(batch, 14)?;
-            let defense_type_ids = col_i64(batch, 15)?;
+            let ability_ids = col_i64(batch, 8)?;
+            let effect_names = col_strings(batch, 9)?;
+            let values = col_i32(batch, 10)?;
+            let absorbeds = col_i32(batch, 11)?;
+            let overheals = col_i32(batch, 12)?;
+            let threats = col_f32(batch, 13)?;
+            let is_crits = col_bool(batch, 14)?;
+            let damage_types = col_strings(batch, 15)?;
+            let defense_type_ids = col_i64(batch, 16)?;
 
             for i in 0..batch.num_rows() {
                 results.push(CombatLogRow {
@@ -1117,6 +1133,7 @@ impl EncounterQuery<'_> {
                     target_type: target_types[i].clone(),
                     effect_type: effect_types[i].clone(),
                     ability_name: ability_names[i].clone(),
+                    ability_id: ability_ids[i],
                     effect_name: effect_names[i].clone(),
                     value: values[i],
                     absorbed: absorbeds[i],

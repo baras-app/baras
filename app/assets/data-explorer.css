@@ -916,6 +916,12 @@
   padding-left: 3px;
 }
 
+.effect-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Charts tab color */
 .data-tab:nth-child(6).active::after {
   background: hsl(270, 60%, 55%);
@@ -1061,6 +1067,9 @@
 .log-ability {
   flex: 1;
   min-width: 150px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .log-value {
   width: 70px;

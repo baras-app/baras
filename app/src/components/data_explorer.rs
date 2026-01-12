@@ -12,6 +12,7 @@ use crate::api::{
     self, AbilityBreakdown, BreakdownMode, DataTab, EncounterTimeline, EntityBreakdown,
     PlayerDeath, RaidOverviewRow, TimeRange,
 };
+use crate::components::ability_icon::AbilityIcon;
 use crate::components::charts_panel::ChartsPanel;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::combat_log::CombatLog;
@@ -1648,8 +1649,11 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                                 // Ability rows (only shown when Ability breakdown is enabled)
                                                 if show_ability_col {
                                                     for ability in abilities.iter() {
-                                                        tr { class: if stats.target.is_some() { "ability-row indented" } else { "ability-row" },
-                                                            td { class: "ability-name-cell", "{ability.ability_name}" }
+                                                        tr { key: "{ability.ability_id}", class: if stats.target.is_some() { "ability-row indented" } else { "ability-row" },
+                                                            td { class: "ability-name-cell",
+                                                                AbilityIcon { key: "{ability.ability_id}", ability_id: ability.ability_id }
+                                                                "{ability.ability_name}"
+                                                            }
                                                             td { class: "num", "{format_number(ability.total_value)}" }
                                                             td { class: "num pct-cell",
                                                                 span { class: "pct-bar", style: "width: {ability.percent_of_total.min(100.0)}%;" }

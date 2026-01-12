@@ -8,6 +8,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api::{self, EffectChartData, EffectWindow, TimeRange, TimeSeriesPoint};
+use crate::components::ability_icon::AbilityIcon;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ECharts JS Interop
@@ -1000,7 +1001,12 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                                         }
                                                         selected_effects.set(effects);
                                                     },
-                                                    td { "{effect.effect_name}" }
+                                                    td { class: "effect-name-cell",
+                                                        if let Some(aid) = effect.ability_id {
+                                                            AbilityIcon { key: "{aid}", ability_id: aid, size: 16 }
+                                                        }
+                                                        "{effect.effect_name}"
+                                                    }
                                                     td { class: "num", "{effect.count}" }
                                                     td { class: "num", "{format_duration(effect.total_duration_secs)}" }
                                                     td { class: "num", "{format_pct(effect.uptime_pct)}" }
@@ -1050,7 +1056,12 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                                         }
                                                         selected_effects.set(effects);
                                                     },
-                                                    td { "{effect.effect_name}" }
+                                                    td { class: "effect-name-cell",
+                                                        if let Some(aid) = effect.ability_id {
+                                                            AbilityIcon { key: "{aid}", ability_id: aid, size: 16 }
+                                                        }
+                                                        "{effect.effect_name}"
+                                                    }
                                                     td { class: "num", "{effect.count}" }
                                                     td { class: "num", "{format_duration(effect.total_duration_secs)}" }
                                                     td { class: "num", "{format_pct(effect.uptime_pct)}" }
