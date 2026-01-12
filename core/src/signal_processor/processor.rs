@@ -126,6 +126,11 @@ impl EventProcessor {
     }
 
     fn register_player_discipline(&self, event: &CombatEvent, cache: &mut SessionCache) {
+        // Only register actual players, not companions
+        if event.source_entity.entity_type != EntityType::Player {
+            return;
+        }
+
         let player_info = PlayerInfo {
             id: event.source_entity.log_id,
             name: event.source_entity.name,

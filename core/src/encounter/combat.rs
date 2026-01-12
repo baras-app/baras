@@ -545,6 +545,12 @@ impl CombatEncounter {
                     });
             }
             EntityType::Npc | EntityType::Companion => {
+                // Only register companions during active combat to avoid stale entries
+                // from mount/dismount respawns in the "dead zone" between encounters
+                if entity.entity_type == EntityType::Companion && self.state != EncounterState::InCombat {
+                    return;
+                }
+
                 self.npcs.entry(entity.log_id).or_insert_with(|| NpcInfo {
                     name: entity.name,
                     entity_type: entity.entity_type,
@@ -763,6 +769,18 @@ impl CombatEncounter {
         if duration <= 0 {
             return None;
         }
+
+        // DEBUG: Trace entity IDs in this encounter
+        eprintln!("=== calculate_entity_metrics DEBUG ===");
+        eprintln!("Encounter ID: {}", self.id);
+        eprintln!("accumulated_data keys: {:?}", self.accumulated_data.keys().collect::<Vec<_>>());
+        eprintln!("npcs keys: {:?}", self.npcs.keys().collect::<Vec<_>>());
+        eprintln!("players keys: {:?}", self.players.keys().collect::<Vec<_>>());
+        eprintln!("player_disciplines keys: {:?}", player_disciplines.keys().collect::<Vec<_>>());
+        for (id, npc) in &self.npcs {
+            eprintln!("  npc {} -> name: {:?}, type: {:?}", id, crate::context::resolve(npc.name), npc.entity_type);
+        }
+        eprintln!("=== END DEBUG ===");
 
         let mut stats: Vec<EntityMetrics> = self
             .accumulated_data
