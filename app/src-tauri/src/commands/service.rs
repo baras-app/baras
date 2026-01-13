@@ -50,6 +50,12 @@ pub async fn cleanup_logs(
     Ok(handle.cleanup_logs(delete_empty, retention_days).await)
 }
 
+#[tauri::command]
+pub async fn refresh_file_sizes(handle: State<'_, ServiceHandle>) -> Result<(), String> {
+    handle.refresh_file_sizes().await;
+    Ok(())
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tailing Commands
 // ─────────────────────────────────────────────────────────────────────────────

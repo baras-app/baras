@@ -232,6 +232,16 @@ impl DirectoryIndex {
 
         (empty_deleted, old_deleted)
     }
+
+    /// Update file sizes for all entries without re-parsing content (fast stat-only)
+    pub fn refresh_file_sizes(&mut self) {
+        for entry in self.entries.values_mut() {
+            if let Ok(metadata) = fs::metadata(&entry.path) {
+                entry.file_size = metadata.len();
+                entry.is_empty = entry.file_size == 0;
+            }
+        }
+    }
 }
 
 pub fn parse_log_filename(filename: &str) -> Option<(NaiveDate, NaiveDateTime)> {

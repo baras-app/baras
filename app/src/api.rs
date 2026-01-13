@@ -261,6 +261,11 @@ pub async fn cleanup_logs(delete_empty: bool, retention_days: Option<u32>) -> (u
     from_js(result).unwrap_or((0, 0))
 }
 
+/// Refresh file sizes in the directory index (fast stat-only)
+pub async fn refresh_file_sizes() {
+    let _ = invoke("refresh_file_sizes", JsValue::NULL).await;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // File Browser Commands
 // ─────────────────────────────────────────────────────────────────────────────

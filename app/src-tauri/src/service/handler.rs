@@ -128,6 +128,12 @@ impl ServiceHandle {
         index.cleanup(delete_empty, retention_days)
     }
 
+    /// Refresh file sizes in the directory index (fast stat-only, no re-parsing)
+    pub async fn refresh_file_sizes(&self) {
+        let mut index = self.shared.directory_index.write().await;
+        index.refresh_file_sizes();
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Configuration
     // ─────────────────────────────────────────────────────────────────────────

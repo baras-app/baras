@@ -157,6 +157,7 @@ pub fn run() {
             commands::get_log_directory_size,
             commands::get_log_file_count,
             commands::cleanup_logs,
+            commands::refresh_file_sizes,
             commands::get_tailing_status,
             commands::get_watching_status,
             commands::get_current_metrics,

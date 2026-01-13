@@ -495,8 +495,9 @@ pub fn App() -> Element {
                         onclick: move |_| {
                             file_browser_filter.set(String::new()); // Clear filter on open
                             file_browser_open.set(true);
-                            // Fetch files when opening
+                            // Refresh file sizes then fetch files
                             spawn(async move {
+                                api::refresh_file_sizes().await;
                                 let result = api::get_log_files().await;
                                 if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
                                     log_files.set(files);
