@@ -361,12 +361,20 @@ impl ActiveEffect {
     ///
     /// Returns true if:
     /// - show_at_secs is 0 (always show), OR
-    /// - remaining time is at or below show_at_secs threshold
+    /// - remaining BASE time is at or below show_at_secs threshold
+    ///
+    /// For cooldowns with ready state, we add cooldown_ready_secs to the threshold
+    /// so that show_at_secs represents seconds of BASE duration remaining.
+    /// E.g., show_at_secs=30 with ready_secs=20 shows when total remaining <= 50,
+    /// which is when base remaining = 30.
     pub fn is_visible(&self) -> bool {
         if self.show_at_secs <= 0.0 {
             return true; // 0 means always show
         }
-        self.remaining_secs_realtime() <= self.show_at_secs
+        // Add ready_secs to threshold so comparison is against total remaining
+        // but threshold represents base duration remaining
+        let effective_threshold = self.show_at_secs + self.cooldown_ready_secs;
+        self.remaining_secs_realtime() <= effective_threshold
     }
 
     /// Check if countdown should be announced (matches timer logic exactly)
