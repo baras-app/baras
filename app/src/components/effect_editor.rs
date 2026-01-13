@@ -686,7 +686,7 @@ fn EffectEditForm(
     // Load icon preview - use explicit icon_ability_id, or fall back to first trigger effect ID
     let current_draft = draft();
     let preview_id = current_draft.icon_ability_id.or_else(|| {
-        // Try to get first effect ID from trigger as fallback
+        // Try to get first effect ID from effect triggers
         let (is_effect_trigger, effects) = get_trigger_effects(&current_draft.trigger);
         if is_effect_trigger {
             effects.first().and_then(|sel| match sel {
@@ -694,7 +694,12 @@ fn EffectEditForm(
                 EffectSelector::Name(_) => None,
             })
         } else {
-            None
+            // Try to get first ability ID from ability triggers
+            let abilities = get_trigger_abilities(&current_draft.trigger);
+            abilities.first().and_then(|sel| match sel {
+                AbilitySelector::Id(id) => Some(*id),
+                AbilitySelector::Name(_) => None,
+            })
         }
     });
     use_effect(move || {
