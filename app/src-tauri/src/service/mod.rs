@@ -1860,7 +1860,20 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
     };
 
     for effect in tracker.active_effects_mut() {
-        // Skip effects without audio (but don't skip removed - they might need expiration audio)
+        // Check for text alert on expiration (independent of audio settings)
+        if let Some(text) = effect.check_expiration_alert().map(|s| s.to_string()) {
+            text_alerts.push(FiredAlert {
+                id: effect.definition_id.clone(),
+                name: effect.name.clone(),
+                text,
+                color: Some(effect.color),
+                timestamp: chrono::Local::now().naive_local(),
+                audio_enabled: false,
+                audio_file: None,
+            });
+        }
+
+        // Skip audio checks for effects without audio enabled
         if !effect.audio_enabled {
             continue;
         }
@@ -1890,19 +1903,6 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
             alerts.push(EffectAlert {
                 name: effect.display_text.clone(),
                 file: effect.audio_file.clone(),
-            });
-        }
-
-        // Check for text alert on expiration
-        if let Some(text) = effect.check_expiration_alert().map(|s| s.to_string()) {
-            text_alerts.push(FiredAlert {
-                id: effect.definition_id.clone(),
-                name: effect.name.clone(),
-                text,
-                color: Some(effect.color),
-                timestamp: chrono::Local::now().naive_local(),
-                audio_enabled: false,
-                audio_file: None,
             });
         }
     }
@@ -1966,6 +1966,10 @@ async fn build_effects_a_data(
     let entries: Vec<EffectABEntry> = effects
         .into_iter()
         .filter_map(|effect| {
+            // Skip effects hidden by show_at_secs threshold
+            if !effect.is_visible() {
+                return None;
+            }
             let total_secs = effect.duration?.as_secs_f32();
             let remaining_secs = calculate_remaining_secs(effect)?;
 
@@ -2020,6 +2024,10 @@ async fn build_effects_b_data(
     let entries: Vec<EffectABEntry> = effects
         .into_iter()
         .filter_map(|effect| {
+            // Skip effects hidden by show_at_secs threshold
+            if !effect.is_visible() {
+                return None;
+            }
             let total_secs = effect.duration?.as_secs_f32();
             let remaining_secs = calculate_remaining_secs(effect)?;
 
@@ -2082,6 +2090,10 @@ async fn build_cooldowns_data(
     let entries: Vec<CooldownEntry> = effects
         .into_iter()
         .filter_map(|effect| {
+            // Skip effects hidden by show_at_secs threshold
+            if !effect.is_visible() {
+                return None;
+            }
             // Duration includes ready_secs for tracker lifetime, subtract for display
             let tracker_total = effect.duration?.as_secs_f32();
             let total_secs = tracker_total - effect.cooldown_ready_secs;
@@ -2159,6 +2171,10 @@ async fn build_dot_tracker_data(
             let dots: Vec<DotEntry> = effects
                 .into_iter()
                 .filter_map(|effect| {
+                    // Skip effects hidden by show_at_secs threshold
+                    if !effect.is_visible() {
+                        return None;
+                    }
                     let total_secs = effect.duration?.as_secs_f32();
                     let remaining_secs = calculate_remaining_secs(effect)?;
 
