@@ -765,6 +765,7 @@ fn entity_to_info(entity: &baras_core::combat_log::Entity, local_player_id: i64)
             name: resolve(entity.name).to_string(),
             is_player: true,
             is_local_player: entity.log_id == local_player_id,
+            is_current_target: false,
             npc_id: None,
         },
         EntityType::Npc | EntityType::Companion => EntityInfo {
@@ -772,6 +773,7 @@ fn entity_to_info(entity: &baras_core::combat_log::Entity, local_player_id: i64)
             name: resolve(entity.name).to_string(),
             is_player: false,
             is_local_player: false,
+            is_current_target: false,
             npc_id: Some(entity.class_id),
         },
         _ => EntityInfo::default(),

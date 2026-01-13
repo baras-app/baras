@@ -1678,18 +1678,20 @@ impl AppConfig {
 pub enum EntityFilter {
     /// The local player only
     LocalPlayer,
-    /// Local player's companion
+    /// Other players (not local player)
+    #[serde(alias = "group_members_except_local")]
     OtherPlayers,
     /// Any player (including local)
+    #[serde(alias = "group_members")]
     AnyPlayer,
     /// Any companion (any player's)
     AnyCompanion,
     /// Any player or companion
     AnyPlayerOrCompanion,
-    /// Group members (players in the local player's group)
-    GroupMembers,
-    /// Group members except local player
-    GroupMembersExceptLocal,
+    /// Any entity except local player (players, companions, NPCs)
+    AnyExceptLocal,
+    /// The local player's current target
+    CurrentTarget,
     /// Boss NPCs specifically
     Boss,
     /// Non-boss NPCs (trash mobs / adds)
@@ -1712,8 +1714,8 @@ impl EntityFilter {
             Self::AnyPlayer => "Any Player",
             Self::AnyCompanion => "Any Companion",
             Self::AnyPlayerOrCompanion => "Any Player or Companion",
-            Self::GroupMembers => "Group Members",
-            Self::GroupMembersExceptLocal => "Other Group Members",
+            Self::AnyExceptLocal => "Any Except Local",
+            Self::CurrentTarget => "Current Target",
             Self::Boss => "Boss",
             Self::NpcExceptBoss => "Adds (Non-Boss)",
             Self::AnyNpc => "Any NPC",
@@ -1784,8 +1786,8 @@ impl EntityFilter {
             Self::AnyPlayer => "any_player",
             Self::AnyCompanion => "any_companion",
             Self::AnyPlayerOrCompanion => "any_player_or_companion",
-            Self::GroupMembers => "group_members",
-            Self::GroupMembersExceptLocal => "group_members_except_local",
+            Self::AnyExceptLocal => "any_except_local",
+            Self::CurrentTarget => "current_target",
             Self::Boss => "boss",
             Self::NpcExceptBoss => "npc_except_boss",
             Self::AnyNpc => "any_npc",
@@ -1803,8 +1805,8 @@ impl EntityFilter {
             Self::AnyPlayer,
             Self::AnyCompanion,
             Self::AnyPlayerOrCompanion,
-            Self::GroupMembers,
-            Self::GroupMembersExceptLocal,
+            Self::AnyExceptLocal,
+            Self::CurrentTarget,
             Self::Boss,
             Self::NpcExceptBoss,
             Self::AnyNpc,
@@ -1820,8 +1822,8 @@ impl EntityFilter {
             Self::AnyPlayer,
             Self::AnyCompanion,
             Self::AnyPlayerOrCompanion,
-            Self::GroupMembers,
-            Self::GroupMembersExceptLocal,
+            Self::AnyExceptLocal,
+            Self::CurrentTarget,
             Self::Boss,
             Self::NpcExceptBoss,
             Self::AnyNpc,

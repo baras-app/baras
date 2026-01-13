@@ -169,7 +169,7 @@ fn default_effect(name: String) -> EffectListItem {
         trigger: Trigger::EffectApplied {
             effects: vec![],
             source: EntityFilter::LocalPlayer,
-            target: EntityFilter::GroupMembers,
+            target: EntityFilter::Any,
         },
         ignore_effect_removed: false,
         refresh_abilities: vec![],

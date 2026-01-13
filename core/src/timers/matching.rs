@@ -27,6 +27,7 @@ pub(super) fn matches_source_target_filters(
     target_name: IStr,
     target_npc_id: i64,
     local_player_id: Option<i64>,
+    current_target_id: Option<i64>,
     boss_entity_ids: &HashSet<i64>,
 ) -> bool {
     // Check source filter if present (None = any, passes)
@@ -38,6 +39,7 @@ pub(super) fn matches_source_target_filters(
             source_name,
             source_npc_id,
             local_player_id,
+            current_target_id,
             boss_entity_ids,
         ) {
             return false;
@@ -53,6 +55,7 @@ pub(super) fn matches_source_target_filters(
             target_name,
             target_npc_id,
             local_player_id,
+            current_target_id,
             boss_entity_ids,
         ) {
             return false;

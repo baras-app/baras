@@ -27,6 +27,7 @@ pub trait EntityFilterMatching {
     /// * `entity_name` - Entity's display name (interned)
     /// * `npc_id` - NPC class/template ID (0 for players/companions)
     /// * `local_player_id` - The local player's entity ID (for LocalPlayer filter)
+    /// * `current_target_id` - The local player's current target entity ID
     /// * `boss_entity_ids` - Set of entity IDs marked as bosses
     fn matches(
         &self,
@@ -36,6 +37,7 @@ pub trait EntityFilterMatching {
         entity_name: IStr,
         npc_id: i64,
         local_player_id: Option<i64>,
+        current_target_id: Option<i64>,
         boss_entity_ids: &HashSet<i64>,
     ) -> bool;
 
@@ -49,6 +51,7 @@ pub trait EntityFilterMatching {
     /// * `entities` - Entity roster for name resolution
     /// * `is_player` - Whether entity is a player
     /// * `is_local_player` - Whether entity is the local player
+    /// * `is_current_target` - Whether entity is the local player's current target
     /// * `name` - Entity's display name
     /// * `npc_id` - NPC class/template ID (None for players)
     /// * `boss_npc_ids` - Boss NPC class IDs from encounter config
@@ -57,6 +60,7 @@ pub trait EntityFilterMatching {
         entities: &[EntityDefinition],
         is_player: bool,
         is_local_player: bool,
+        is_current_target: bool,
         name: &str,
         npc_id: Option<i64>,
         boss_npc_ids: &[i64],
@@ -88,6 +92,7 @@ impl EntityFilterMatching for EntityFilter {
         entity_name: IStr,
         npc_id: i64,
         local_player_id: Option<i64>,
+        current_target_id: Option<i64>,
         boss_entity_ids: &HashSet<i64>,
     ) -> bool {
         let is_local = local_player_id == Some(entity_id);
@@ -100,12 +105,14 @@ impl EntityFilterMatching for EntityFilter {
             EntityFilter::LocalPlayer => is_local && is_player,
             EntityFilter::OtherPlayers => !is_local && is_player,
             EntityFilter::AnyPlayer => is_player,
-            EntityFilter::GroupMembers => is_player,
-            EntityFilter::GroupMembersExceptLocal => !is_local && is_player,
 
             // Companion filters
             EntityFilter::AnyCompanion => is_companion,
             EntityFilter::AnyPlayerOrCompanion => is_player || is_companion,
+
+            // Broad filters
+            EntityFilter::AnyExceptLocal => !is_local,
+            EntityFilter::CurrentTarget => current_target_id == Some(entity_id),
 
             // NPC filters
             EntityFilter::AnyNpc => is_npc,
@@ -128,6 +135,7 @@ impl EntityFilterMatching for EntityFilter {
         entities: &[EntityDefinition],
         is_player: bool,
         is_local_player: bool,
+        is_current_target: bool,
         name: &str,
         npc_id: Option<i64>,
         boss_npc_ids: &[i64],
@@ -139,11 +147,13 @@ impl EntityFilterMatching for EntityFilter {
             EntityFilter::LocalPlayer => is_player && is_local_player,
             EntityFilter::OtherPlayers => is_player && !is_local_player,
             EntityFilter::AnyPlayer => is_player,
-            EntityFilter::GroupMembers => is_player,
-            EntityFilter::GroupMembersExceptLocal => is_player && !is_local_player,
 
             // Companion filters - not applicable in challenge context
             EntityFilter::AnyCompanion | EntityFilter::AnyPlayerOrCompanion => false,
+
+            // Broad filters
+            EntityFilter::AnyExceptLocal => !is_local_player,
+            EntityFilter::CurrentTarget => is_current_target,
 
             // NPC filters - use NPC class IDs for boss matching
             EntityFilter::AnyNpc => is_npc,
@@ -172,17 +182,15 @@ impl EntityFilterMatching for EntityFilter {
     ) -> bool {
         match self {
             // Any matches everything
-            EntityFilter::Any => true,
+            EntityFilter::Any | EntityFilter::AnyExceptLocal => true,
 
             // NPC filters - match any NPC
             EntityFilter::AnyNpc | EntityFilter::Boss | EntityFilter::NpcExceptBoss => npc_id != 0,
 
             // Player filters - match when npc_id is 0 (players don't have NPC IDs)
-            EntityFilter::LocalPlayer
-            | EntityFilter::OtherPlayers
-            | EntityFilter::AnyPlayer
-            | EntityFilter::GroupMembers
-            | EntityFilter::GroupMembersExceptLocal => npc_id == 0,
+            EntityFilter::LocalPlayer | EntityFilter::OtherPlayers | EntityFilter::AnyPlayer => {
+                npc_id == 0
+            }
 
             // Companion filters
             EntityFilter::AnyCompanion | EntityFilter::AnyPlayerOrCompanion => {
@@ -190,6 +198,9 @@ impl EntityFilterMatching for EntityFilter {
                 // Fall back to name-only matching for now
                 false
             }
+
+            // CurrentTarget requires runtime context not available here
+            EntityFilter::CurrentTarget => false,
 
             // Unified selector - matches via roster alias → NPC ID → name
             EntityFilter::Selector(selectors) => {

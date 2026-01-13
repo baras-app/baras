@@ -27,12 +27,15 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
         .unwrap()
         .challenge_context(&boss_npc_ids);
 
-    // Get local player ID for local_player matching
+    // Get local player ID and current target for filter matching
     let local_player_id = cache.player.id;
+    let current_target_id = cache
+        .current_encounter()
+        .and_then(|enc| enc.get_current_target(local_player_id));
 
     // Convert entities to EntityInfo
-    let source = entity_to_info(&event.source_entity, local_player_id);
-    let target = entity_to_info(&event.target_entity, local_player_id);
+    let source = entity_to_info(&event.source_entity, local_player_id, current_target_id);
+    let target = entity_to_info(&event.target_entity, local_player_id, current_target_id);
 
     // Get mutable access to the encounter's tracker
     let Some(enc) = cache.current_encounter_mut() else {
@@ -94,13 +97,19 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
 }
 
 /// Convert a combat log Entity to EntityInfo for challenge matching.
-pub fn entity_to_info(entity: &Entity, local_player_id: i64) -> EntityInfo {
+pub fn entity_to_info(
+    entity: &Entity,
+    local_player_id: i64,
+    current_target_id: Option<i64>,
+) -> EntityInfo {
+    let is_current_target = current_target_id == Some(entity.log_id);
     match entity.entity_type {
         EntityType::Player => EntityInfo {
             entity_id: entity.log_id,
             name: resolve(entity.name).to_string(),
             is_player: true,
             is_local_player: entity.log_id == local_player_id,
+            is_current_target,
             npc_id: None,
         },
         EntityType::Npc | EntityType::Companion => EntityInfo {
@@ -108,6 +117,7 @@ pub fn entity_to_info(entity: &Entity, local_player_id: i64) -> EntityInfo {
             name: resolve(entity.name).to_string(),
             is_player: false,
             is_local_player: false,
+            is_current_target,
             npc_id: Some(entity.class_id),
         },
         _ => EntityInfo::default(),

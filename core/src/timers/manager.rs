@@ -80,6 +80,9 @@ pub struct TimerManager {
     /// Local player's entity ID (for LocalPlayer filter)
     pub(super) local_player_id: Option<i64>,
 
+    /// Local player's current target entity ID (for CurrentTarget filter)
+    pub(super) current_target_id: Option<i64>,
+
     /// Boss entity IDs currently in combat (for Boss filter)
     /// These are runtime entity IDs (log_id), not NPC class IDs
     pub(super) boss_entity_ids: HashSet<i64>,
@@ -110,6 +113,7 @@ impl TimerManager {
             last_timestamp: None,
             live_mode: true, // Default: apply recency threshold (skip old events)
             local_player_id: None,
+            current_target_id: None,
             boss_entity_ids: HashSet::new(),
             boss_npc_class_ids: HashSet::new(),
         }
@@ -713,6 +717,7 @@ impl TimerManager {
             target_name,
             target_npc_id,
             self.local_player_id,
+            self.current_target_id,
             &self.boss_entity_ids,
         )
     }
@@ -913,6 +918,11 @@ impl SignalHandler for TimerManager {
                 timestamp,
                 ..
             } => {
+                // Track local player's current target for CurrentTarget filter
+                if self.local_player_id == Some(*source_id) {
+                    self.current_target_id = Some(*target_id);
+                }
+
                 // Check for TargetSet triggers (e.g., sphere targeting player)
                 signal_handlers::handle_target_set(
                     self,
@@ -926,8 +936,11 @@ impl SignalHandler for TimerManager {
                     *timestamp,
                 );
             }
-            GameSignal::TargetCleared { .. } => {
-                // No-op for timer manager
+            GameSignal::TargetCleared { source_id, .. } => {
+                // Clear local player's current target if they cleared their target
+                if self.local_player_id == Some(*source_id) {
+                    self.current_target_id = None;
+                }
             }
 
             GameSignal::DamageTaken {

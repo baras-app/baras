@@ -830,6 +830,7 @@ impl EffectTracker {
         let is_from_local = local_player_id == Some(source_id);
 
         let entities = get_entities(encounter);
+        let current_target_id = local_player_id.and_then(|id| self.current_targets.get(&id).copied());
         for def in matching_defs {
             // Check source filter from the trigger
             let source_filter = def.source_filter();
@@ -841,6 +842,7 @@ impl EffectTracker {
                     source_info.name,
                     source_info.npc_id,
                     local_player_id,
+                    current_target_id,
                     &boss_ids,
                 )
             {
@@ -1106,6 +1108,8 @@ impl EffectTracker {
     ) -> bool {
         // Get local player ID from self, boss entity IDs from encounter
         let local_player_id = self.local_player_id;
+        let current_target_id =
+            local_player_id.and_then(|id| self.current_targets.get(&id).copied());
         let boss_ids = get_boss_ids(encounter);
 
         let entities = get_entities(encounter);
@@ -1117,6 +1121,7 @@ impl EffectTracker {
             source.name,
             source.npc_id,
             local_player_id,
+            current_target_id,
             &boss_ids,
         ) && def.target_filter().matches(
             entities,
@@ -1125,6 +1130,7 @@ impl EffectTracker {
             target.name,
             target.npc_id,
             local_player_id,
+            current_target_id,
             &boss_ids,
         )
     }

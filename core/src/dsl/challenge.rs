@@ -209,6 +209,9 @@ pub struct EntityInfo {
     /// Is this the local player?
     pub is_local_player: bool,
 
+    /// Is this the local player's current target?
+    pub is_current_target: bool,
+
     /// NPC class ID (None for players)
     pub npc_id: Option<i64>,
 }
@@ -221,6 +224,7 @@ impl EntityInfo {
             name: name.into(),
             is_player: true,
             is_local_player: is_local,
+            is_current_target: false,
             npc_id: None,
         }
     }
@@ -232,6 +236,7 @@ impl EntityInfo {
             name: name.into(),
             is_player: false,
             is_local_player: false,
+            is_current_target: false,
             npc_id: Some(npc_id),
         }
     }
@@ -263,6 +268,7 @@ impl ChallengeCondition {
                     entities,
                     s.is_player,
                     s.is_local_player,
+                    s.is_current_target,
                     &s.name,
                     s.npc_id,
                     &ctx.boss_npc_ids,
@@ -274,6 +280,7 @@ impl ChallengeCondition {
                     entities,
                     t.is_player,
                     t.is_local_player,
+                    t.is_current_target,
                     &t.name,
                     t.npc_id,
                     &ctx.boss_npc_ids,
@@ -368,6 +375,7 @@ mod tests {
                 name: resolve(entity.name).to_string(),
                 is_player: true,
                 is_local_player: entity.log_id == local_player_id,
+                is_current_target: false,
                 npc_id: None,
             },
             EntityType::Npc | EntityType::Companion => EntityInfo {
@@ -375,6 +383,7 @@ mod tests {
                 name: resolve(entity.name).to_string(),
                 is_player: false,
                 is_local_player: false,
+                is_current_target: false,
                 npc_id: Some(entity.class_id),
             },
             _ => EntityInfo::default(),
@@ -387,6 +396,7 @@ mod tests {
             &[],
             info.is_player,
             info.is_local_player,
+            info.is_current_target,
             &info.name,
             info.npc_id,
             boss_ids,
