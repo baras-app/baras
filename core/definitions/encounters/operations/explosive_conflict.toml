@@ -281,14 +281,6 @@ duration_secs = 15
 color = [23, 197, 209, 255]
 difficulties = ["veteran", "master"]
 
-[[boss.timer]]
-id = "fs_void_zone_cs"
-name = "Void Zone"
-trigger = { type = "combat_start" }
-duration_secs = 10
-color = [24, 92, 224, 255]
-difficulties = ["veteran", "master"]
-
 # -- Ability Timers (refresh on cast) --
 [[boss.timer]]
 id = "fs_mortar_volley"
@@ -353,14 +345,6 @@ trigger = { type = "ability_cast", abilities = [2876691785449472] }
 duration_secs = 30
 color = [23, 197, 209, 255]
 difficulties = ["veteran"]
-
-[[boss.timer]]
-id = "fs_void_zone"
-name = "Void Zone"
-trigger = { type = "ability_cast", abilities = [2876713260285952] }
-duration_secs = 15
-color = [24, 92, 224, 255]
-difficulties = ["veteran", "master"]
 
 # -- Alerts --
 # ═══════════════════════════════════════════════════════════════════════════════
