@@ -124,7 +124,7 @@ const BASE_ICON_SPACING: f32 = 2.0;
 const BASE_FONT_SIZE: f32 = 10.0;
 const BASE_NAME_WIDTH: f32 = 100.0;
 /// Max characters per line before wrapping
-const NAME_WRAP_CHARS: usize = 12;
+const NAME_WRAP_CHARS: usize = 16;
 
 /// DOT tracker overlay - rows of targets with DOT icons
 pub struct DotTrackerOverlay {
@@ -276,13 +276,14 @@ impl DotTrackerOverlay {
             // Wrap target name into lines
             let name_lines = wrap_name(&target.name, NAME_WRAP_CHARS);
             let line_height = font_size + 2.0;
-            let total_text_height = std::cmp::min(2, name_lines.len()) as f32 * line_height;
+            let total_lines = name_lines.len();
+            let total_text_height = std::cmp::min(2, total_lines) as f32 * line_height;
 
             // Center the text block vertically relative to icon
             let text_start_y = y + (icon_size - total_text_height) / 2.0 + font_size;
 
             for (i, line) in name_lines.iter().enumerate() {
-                if i == 1 {
+                if i == 1 && total_lines > 2 {
                     self.frame.draw_text(
                         &format!("{}...", line),
                         x,
