@@ -513,7 +513,6 @@ impl CombatEncounter {
             return;
         }
 
-
         // For TARGETSET/TARGETCLEARED, track the source entity (player, NPC, or companion)
         // so we can set their current target before the entity lookup
         if event.effect.effect_id == effect_id::TARGETSET
@@ -547,7 +546,9 @@ impl CombatEncounter {
             EntityType::Npc | EntityType::Companion => {
                 // Only register companions during active combat to avoid stale entries
                 // from mount/dismount respawns in the "dead zone" between encounters
-                if entity.entity_type == EntityType::Companion && self.state != EncounterState::InCombat {
+                if entity.entity_type == EntityType::Companion
+                    && self.state != EncounterState::InCombat
+                {
                     return;
                 }
 
@@ -690,7 +691,9 @@ impl CombatEncounter {
                 .entry(event.source_entity.log_id)
                 .or_default();
 
-            if event.details.dmg_amount > 0 {
+            if event.details.dmg_amount > 0
+                && event.source_entity.log_id != event.target_entity.log_id
+            {
                 source.damage_dealt += event.details.dmg_amount as i64;
                 source.damage_dealt_effective += event.details.dmg_effective as i64;
                 source.damage_hit_count += 1;
