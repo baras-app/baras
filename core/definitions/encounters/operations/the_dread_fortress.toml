@@ -568,6 +568,30 @@ color = [219, 96, 28, 255]
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
+id = "corruptor_zero_gravity_ranged_mode_1st"
+name = "Gravity (Ranged Mode 1st)"
+display_text = "Gravity"
+trigger = { type = "npc_appears", selector = ["Corruptor Zero"] }
+duration_secs = 57.5
+color = [219, 96, 28, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "corruptor_zero_gravity_delay"
+name = "Gravity Delay"
+trigger = { type = "any_of", conditions = [
+  { type = "ability_cast", abilities = [
+    3321882325549056,
+  ] },
+  { type = "ability_cast", abilities = [
+    3344271990063104,
+  ] },
+] }
+duration_secs = 11.5
+color = [204, 191, 30, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
 id = "corruptor_zero_concussion_mine"
 name = "Concussion Mine"
 trigger = { type = "any_of", conditions = [
