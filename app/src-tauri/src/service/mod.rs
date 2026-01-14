@@ -2148,7 +2148,7 @@ async fn build_cooldowns_data(
             Some(CooldownEntry {
                 ability_id: effect.game_effect_id,
                 icon_ability_id: effect.icon_ability_id,
-                name: effect.name.clone(),
+                name: effect.display_text.clone(),
                 remaining_secs,
                 total_secs,
                 color: effect.color,

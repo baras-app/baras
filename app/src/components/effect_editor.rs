@@ -347,12 +347,15 @@ pub fn EffectEditorPanel() -> Element {
         }
 
         spawn(async move {
-            if api::update_effect_definition(&updated_effect).await {
-                save_status.set("Saved".to_string());
-                status_is_error.set(false);
-            } else {
-                save_status.set("Failed to save".to_string());
-                status_is_error.set(true);
+            match api::update_effect_definition(&updated_effect).await {
+                Ok(()) => {
+                    save_status.set("Saved".to_string());
+                    status_is_error.set(false);
+                }
+                Err(e) => {
+                    save_status.set(e);
+                    status_is_error.set(true);
+                }
             }
         });
     };
@@ -366,12 +369,15 @@ pub fn EffectEditorPanel() -> Element {
         expanded_effect.set(None);
 
         spawn(async move {
-            if api::delete_effect_definition(&effect.id).await {
-                save_status.set("Deleted".to_string());
-                status_is_error.set(false);
-            } else {
-                save_status.set("Failed to delete".to_string());
-                status_is_error.set(true);
+            match api::delete_effect_definition(&effect.id).await {
+                Ok(()) => {
+                    save_status.set("Deleted".to_string());
+                    status_is_error.set(false);
+                }
+                Err(e) => {
+                    save_status.set(e);
+                    status_is_error.set(true);
+                }
             }
         });
     };

@@ -4441,8 +4441,10 @@ details[open] .collapsible-summary::before {
   color: var(--text-disabled);
   font-size: 0.75em;
   font-family: monospace;
-  margin-left: 0.5em;
-  flex: 1;
+  margin-left: auto;
+  padding-left: 0.5em;
+  text-align: right;
+  min-width: 180px;
 }
 
 .effect-target-badge {

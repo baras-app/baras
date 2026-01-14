@@ -545,19 +545,19 @@ pub async fn get_effect_definitions() -> Option<Vec<EffectListItem>> {
 }
 
 /// Update an existing effect
-/// Returns true on success. Tauri commands returning Result<(), String> serialize Ok(()) as null.
-pub async fn update_effect_definition(effect: &EffectListItem) -> bool {
+/// Returns Ok(()) on success, Err with message on failure.
+pub async fn update_effect_definition(effect: &EffectListItem) -> Result<(), String> {
     let args = build_args("effect", effect);
-    let _result = invoke("update_effect_definition", args).await;
-    true
+    try_invoke("update_effect_definition", args).await?;
+    Ok(())
 }
 
 /// Delete an effect
-/// Returns true on success. Tauri commands returning Result<(), String> serialize Ok(()) as null.
-pub async fn delete_effect_definition(effect_id: &str) -> bool {
+/// Returns Ok(()) on success, Err with message on failure.
+pub async fn delete_effect_definition(effect_id: &str) -> Result<(), String> {
     let args = build_args("effectId", effect_id);
-    let _result = invoke("delete_effect_definition", args).await;
-    true
+    try_invoke("delete_effect_definition", args).await?;
+    Ok(())
 }
 
 /// Duplicate an effect
