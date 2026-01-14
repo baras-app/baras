@@ -378,9 +378,7 @@ pub fn EffectEditorPanel() -> Element {
 
     let on_duplicate = move |effect: EffectListItem| {
         spawn(async move {
-            if let Some(new_effect) =
-                api::duplicate_effect_definition(&effect.id).await
-            {
+            if let Some(new_effect) = api::duplicate_effect_definition(&effect.id).await {
                 let new_id = new_effect.id.clone();
                 let mut current = effects();
                 current.push(new_effect);
@@ -477,7 +475,7 @@ pub fn EffectEditorPanel() -> Element {
             div { class: "effect-search-bar",
                 input {
                     r#type: "text",
-                    placeholder: "Search by name, ID, or category...",
+                    placeholder: "Search by name, ID, or display overlay...",
                     value: "{search_query}",
                     class: "effect-search-input",
                     oninput: move |e| search_query.set(e.value())

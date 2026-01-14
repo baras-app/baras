@@ -1198,3 +1198,20 @@ pub async fn query_player_deaths(encounter_idx: Option<u32>) -> Option<Vec<Playe
     let result = invoke("query_player_deaths", obj.into()).await;
     from_js(result)
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Changelog Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+use crate::types::ChangelogResponse;
+
+/// Check if changelog should be shown and get rendered HTML content.
+pub async fn get_changelog() -> Option<ChangelogResponse> {
+    let result = invoke("get_changelog", JsValue::NULL).await;
+    from_js(result)
+}
+
+/// Mark the changelog as viewed for the current version.
+pub async fn mark_changelog_viewed() {
+    invoke("mark_changelog_viewed", JsValue::NULL).await;
+}

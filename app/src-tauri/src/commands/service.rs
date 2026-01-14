@@ -3,7 +3,7 @@
 //! Commands for log files, tailing, configuration, session info, and profiles.
 
 use std::path::PathBuf;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use baras_core::EncounterSummary;
 use baras_core::PlayerMetrics;
@@ -240,6 +240,71 @@ pub async fn rename_profile(
     *handle.shared.config.write().await = config.clone();
     config.save();
     Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Changelog Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Response for changelog check - contains HTML content if changelog should be shown.
+#[derive(serde::Serialize)]
+pub struct ChangelogResponse {
+    pub should_show: bool,
+    pub html: Option<String>,
+    pub version: String,
+}
+
+/// Embedded changelog content (located at app/src-tauri/CHANGELOG.md)
+const CHANGELOG_MD: &str = include_str!("../../CHANGELOG.md");
+
+/// Check if changelog should be shown and return rendered HTML.
+/// Compares current app version with last viewed version in config.
+/// Always returns HTML content so it can be viewed on demand.
+#[tauri::command]
+pub async fn get_changelog(
+    app: AppHandle,
+    handle: State<'_, ServiceHandle>,
+) -> Result<ChangelogResponse, String> {
+    let config = handle.config().await;
+    let current_version = app.config().version.clone().unwrap_or_default();
+
+    let should_show = config
+        .last_viewed_changelog_version
+        .as_ref()
+        .map(|v| v != &current_version)
+        .unwrap_or(true); // Show if never viewed
+
+    Ok(ChangelogResponse {
+        should_show,
+        html: Some(render_changelog_html()),
+        version: current_version,
+    })
+}
+
+/// Mark the changelog as viewed for the current version.
+#[tauri::command]
+pub async fn mark_changelog_viewed(
+    app: AppHandle,
+    handle: State<'_, ServiceHandle>,
+) -> Result<(), String> {
+    let current_version = app.config().version.clone().unwrap_or_default();
+    let mut config = handle.config().await;
+    config.last_viewed_changelog_version = Some(current_version);
+    *handle.shared.config.write().await = config.clone();
+    config.save();
+    Ok(())
+}
+
+/// Render markdown changelog to HTML.
+fn render_changelog_html() -> String {
+    use pulldown_cmark::{Options, Parser, html};
+
+    let options = Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TABLES;
+    let parser = Parser::new_ext(CHANGELOG_MD, options);
+
+    let mut html_output = String::new();
+    html::push_html(&mut html_output, parser);
+    html_output
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

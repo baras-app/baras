@@ -107,6 +107,14 @@ pub struct UpdateInfo {
     pub date: Option<String>,
 }
 
+/// Changelog response from backend
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ChangelogResponse {
+    pub should_show: bool,
+    pub html: Option<String>,
+    pub version: String,
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Metric Types
 // ─────────────────────────────────────────────────────────────────────────────

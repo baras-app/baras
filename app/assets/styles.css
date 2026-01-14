@@ -245,6 +245,21 @@ select optgroup {
   margin-bottom: 0.3em;
 }
 
+.app-header .header-version.clickable {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-normal);
+}
+
+.app-header .header-version.clickable:hover {
+  color: var(--swtor-gold);
+  background: var(--blue-alpha-10);
+}
+
 .app-header .header-version.update-available {
   background: linear-gradient(
     135deg,
@@ -2321,6 +2336,133 @@ details[open] .collapsible-summary::before {
 .file-item .upload-link:hover {
   color: #aac8fa;
   text-decoration: underline;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Changelog Modal (What's New)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.changelog-modal {
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
+  width: 90vw;
+  max-width: 500px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--blue-alpha-20);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 20px var(--blue-alpha-10);
+}
+
+.changelog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1em 1.25em;
+  border-bottom: 1px solid var(--blue-alpha-15);
+}
+
+.changelog-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+  color: var(--swtor-gold);
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.changelog-header h3 i {
+  color: var(--swtor-gold);
+}
+
+.changelog-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25em;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.changelog-content h1 {
+  font-size: 1.3em;
+  color: var(--swtor-gold);
+  margin: 0 0 0.75em 0;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid var(--blue-alpha-15);
+  text-align: left;
+}
+
+.changelog-content h2 {
+  font-size: 1.1em;
+  color: var(--swtor-blue);
+  margin: 1em 0 0.5em 0;
+  text-align: left;
+}
+
+.changelog-content h3 {
+  font-size: 1em;
+  color: var(--text-primary);
+  margin: 0.75em 0 0.4em 0;
+  text-align: left;
+}
+
+.changelog-content ul {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.changelog-content li {
+  margin: 0.3em 0;
+}
+
+.changelog-content p {
+  margin: 0.5em 0;
+}
+
+.changelog-content hr {
+  border: none;
+  border-top: 1px solid var(--blue-alpha-15);
+  margin: 1em 0;
+}
+
+.changelog-content em {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.changelog-content code {
+  background: var(--blue-alpha-10);
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+
+.changelog-footer {
+  display: flex;
+  justify-content: center;
+  padding: 1em 1.25em;
+  border-top: 1px solid var(--blue-alpha-15);
+}
+
+.changelog-footer .btn-primary {
+  padding: 0.6em 2em;
+  font-size: 0.95em;
+  background: linear-gradient(135deg, var(--swtor-gold) 0%, #c9a227 100%);
+  color: #1a1a2e;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all var(--transition-normal);
+}
+
+.changelog-footer .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

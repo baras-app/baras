@@ -89,6 +89,10 @@ pub fn App() -> Element {
     let mut update_available = use_signal(|| None::<UpdateInfo>);
     let mut update_installing = use_signal(|| false);
 
+    // Changelog state
+    let mut changelog_open = use_signal(|| false);
+    let mut changelog_html = use_signal(String::new);
+
     // Audio settings
     let mut audio_enabled = use_signal(|| true);
     let mut audio_volume = use_signal(|| 80u8);
@@ -257,6 +261,18 @@ pub fn App() -> Element {
         closure.forget();
     });
 
+    // Check for changelog on startup
+    use_future(move || async move {
+        if let Some(response) = api::get_changelog().await {
+            if response.should_show {
+                if let Some(html) = response.html {
+                    changelog_html.set(html);
+                    changelog_open.set(true);
+                }
+            }
+        }
+    });
+
     // ─────────────────────────────────────────────────────────────────────────
     // Computed Values
     // ─────────────────────────────────────────────────────────────────────────
@@ -334,8 +350,22 @@ pub fn App() -> Element {
                                 }
                             }
                         } else {
-                            // No update - show current version
-                            span { class: "header-version", "v{app_version}" }
+                            // No update - show current version (clickable for changelog)
+                            button {
+                                class: "header-version clickable",
+                                title: "View changelog",
+                                onclick: move |_| {
+                                    spawn(async move {
+                                        if let Some(response) = api::get_changelog().await {
+                                            if let Some(html) = response.html {
+                                                changelog_html.set(html);
+                                            }
+                                        }
+                                        changelog_open.set(true);
+                                    });
+                                },
+                                "v{app_version}"
+                            }
                         }
                     }
                     p { class: "subtitle", "Battle Analysis and Raid Assessment System" }
@@ -1442,6 +1472,55 @@ pub fn App() -> Element {
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Changelog modal (What's New)
+            if changelog_open() {
+                div {
+                    class: "modal-backdrop",
+                    onclick: move |_| {
+                        spawn(async move {
+                            api::mark_changelog_viewed().await;
+                            changelog_open.set(false);
+                        });
+                    },
+                    div {
+                        class: "changelog-modal",
+                        onclick: move |e| e.stop_propagation(),
+                        div { class: "changelog-header",
+                            h3 {
+                                i { class: "fa-solid fa-sparkles" }
+                                " What's New"
+                            }
+                            button {
+                                class: "btn btn-close",
+                                onclick: move |_| {
+                                    spawn(async move {
+                                        api::mark_changelog_viewed().await;
+                                        changelog_open.set(false);
+                                    });
+                                },
+                                "X"
+                            }
+                        }
+                        div {
+                            class: "changelog-content",
+                            dangerous_inner_html: "{changelog_html}"
+                        }
+                        div { class: "changelog-footer",
+                            button {
+                                class: "btn btn-primary",
+                                onclick: move |_| {
+                                    spawn(async move {
+                                        api::mark_changelog_viewed().await;
+                                        changelog_open.set(false);
+                                    });
+                                },
+                                "Got it!"
                             }
                         }
                     }

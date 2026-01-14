@@ -1627,6 +1627,11 @@ pub struct AppConfig {
     /// Used to adjust effect duration calculations.
     #[serde(default = "default_latency")]
     pub latency_ms: u16,
+
+    /// Last version for which the changelog was shown.
+    /// Used to show "What's New" popup only once per version.
+    #[serde(default)]
+    pub last_viewed_changelog_version: Option<String>,
 }
 
 fn default_retention_days() -> u32 {
@@ -1661,6 +1666,7 @@ impl AppConfig {
             hide_small_log_files: true,
             alacrity_percent: 0.0,
             latency_ms: 0,
+            last_viewed_changelog_version: None,
         }
     }
 }

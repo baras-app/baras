@@ -216,6 +216,9 @@ pub fn run() {
             updater::check_update,
             #[cfg(desktop)]
             updater::install_update,
+            // Changelog
+            commands::get_changelog,
+            commands::mark_changelog_viewed,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
