@@ -353,11 +353,17 @@ difficulties = ["veteran"]
 [[boss]]
 id = "colonel_vorgath"
 name = "Colonel Vorgath"
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Colonel Vorgath"
-ids = [2854224811524096, 2854117437341696, 2854229106491392, 2786080860405760]
+ids = [
+  2854224811524096,
+  2854117437341696,
+  2854229106491392,
+  2786080860405760,
+  2848692893646848,
+]
 is_boss = true
 is_kill_target = true
 
@@ -371,6 +377,7 @@ is_kill_target = false
 [[boss.entities]]
 name = "Imperial Demolitions Probe"
 ids = [2854160387014656, 2854156092047360, 2783478110224384, 2854151797080064]
+triggers_encounter = true
 is_boss = false
 
 [[boss.phases]]
