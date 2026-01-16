@@ -93,6 +93,7 @@ id = "wh_corrosive_slime"
 name = "Corrosive Slime"
 alert_text = "Slime on you"
 target = "local_player"
+difficulties = ["veteran", "master"]
 trigger = { type = "effect_applied", effects = [3010686175150344] }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -285,10 +286,12 @@ difficulties = ["story"]
 id = "dg_vitality_ext"
 name = "Vitality Extraction"
 is_alert = true
-trigger = { type = "ability_cast", abilities = [3014512991010816] }
+trigger = { type = "ability_cast", abilities = [
+  3014512991010816,
+], target = "local_player" }
 alert_text = "Vitality Extraction"
+difficulties = ["veteran", "master"]
 source = { specific = "Kel'sara" }
-target = "local_player"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Operator IX
@@ -297,6 +300,7 @@ target = "local_player"
 [[boss]]
 id = "op_ix"
 name = "Operator IX"
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Operator IX"
