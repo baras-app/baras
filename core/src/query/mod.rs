@@ -194,7 +194,11 @@ impl EncounterQuery<'_> {
             Err(e) => {
                 let msg = e.to_string();
                 // Return empty results for missing table (common during startup or empty encounters)
-                if msg.contains("not found") || msg.contains("does not exist") {
+                // or missing fields (schema evolution - older parquet files may lack new columns)
+                if msg.contains("not found")
+                    || msg.contains("does not exist")
+                    || msg.contains("No field named")
+                {
                     Ok(vec![])
                 } else {
                     Err(msg)
@@ -480,6 +484,109 @@ impl EncounterQuery<'_> {
         Ok(results)
     }
 
+    /// Query shield attribution - maps shield source IDs to total shielding given.
+    ///
+    /// Uses the pre-computed `active_shields` column which contains shield context
+    /// (source_id, position, estimated_max) captured at parse time.
+    ///
+    /// Attribution logic:
+    /// - Single shield: credit it fully with dmg_absorbed
+    /// - Multiple shields + full absorb: credit FIRST applied (FIFO)
+    /// - Multiple shields + damage through: credit earlier shields with estimated_max,
+    ///   LAST shield with actual dmg_absorbed
+    async fn query_shield_attribution(
+        &self,
+        _time_range: Option<&TimeRange>,
+    ) -> Result<std::collections::HashMap<String, f64>, String> {
+        use std::collections::HashMap;
+
+        // Fetch damage events with shields context
+        // UNNEST expands the array so each shield gets its own row
+        let batches = self
+            .sql(
+                r#"
+            WITH damage_events AS (
+                SELECT
+                    dmg_absorbed,
+                    dmg_effective,
+                    active_shields,
+                    CAST(cardinality(active_shields) AS INT) as shield_count
+                FROM events
+                WHERE dmg_absorbed > 0
+                  AND active_shields IS NOT NULL
+            ),
+            unnested AS (
+                SELECT
+                    d.dmg_absorbed,
+                    d.dmg_effective,
+                    d.shield_count,
+                    s.source_id,
+                    CAST(s.position AS INT) as position,
+                    s.estimated_max
+                FROM damage_events d
+                CROSS JOIN UNNEST(d.active_shields) as s
+            ),
+            attributed AS (
+                SELECT
+                    source_id,
+                    CASE
+                        -- Single shield: credit with actual absorbed
+                        WHEN shield_count = 1 THEN dmg_absorbed
+                        -- Multiple shields + full absorb: credit first (position=1) with absorbed
+                        WHEN shield_count > 1 AND dmg_effective = 0 AND position = 1 THEN dmg_absorbed
+                        -- Multiple shields + damage through: credit earlier shields with estimated
+                        WHEN shield_count > 1 AND dmg_effective > 0 AND position < shield_count THEN estimated_max
+                        -- Multiple shields + damage through: credit last shield with actual
+                        WHEN shield_count > 1 AND dmg_effective > 0 AND position = shield_count THEN dmg_absorbed
+                        ELSE 0
+                    END as credited_amount
+                FROM unnested
+            )
+            SELECT source_id, SUM(credited_amount) as total_shielding
+            FROM attributed
+            WHERE credited_amount > 0
+            GROUP BY source_id
+        "#,
+            )
+            .await?;
+
+        // Convert source_id to source_name via entity lookup
+        let entity_names = self.get_entity_names().await?;
+        let mut shielding_given: HashMap<String, f64> = HashMap::new();
+
+        for batch in &batches {
+            let source_ids = col_i64(batch, 0)?;
+            let totals = col_f64(batch, 1)?;
+
+            for i in 0..batch.num_rows() {
+                if let Some(name) = entity_names.get(&source_ids[i]) {
+                    *shielding_given.entry(name.clone()).or_default() += totals[i];
+                }
+            }
+        }
+
+        Ok(shielding_given)
+    }
+
+    /// Get entity ID to name mapping
+    async fn get_entity_names(&self) -> Result<std::collections::HashMap<i64, String>, String> {
+        use std::collections::HashMap;
+
+        let batches = self
+            .sql("SELECT DISTINCT source_id, source_name FROM events")
+            .await?;
+
+        let mut names: HashMap<i64, String> = HashMap::new();
+        for batch in &batches {
+            let ids = col_i64(batch, 0)?;
+            let source_names = col_strings(batch, 1)?;
+            for i in 0..batch.num_rows() {
+                names.insert(ids[i], source_names[i].clone());
+            }
+        }
+        Ok(names)
+    }
+
     /// Query raid overview - aggregated stats per player across all metrics.
     /// Returns damage dealt, threat, damage taken, absorbed, and healing for each player.
     pub async fn query_raid_overview(
@@ -491,6 +598,9 @@ impl EncounterQuery<'_> {
             .map(|tr| format!("AND {}", tr.sql_filter()))
             .unwrap_or_default();
         let duration = duration_secs.unwrap_or(1.0).max(0.001) as f64;
+
+        // Query shield attribution in parallel with main stats
+        let shielding_given = self.query_shield_attribution(time_range).await?;
 
         // CTE-based query to aggregate multiple metrics per player
         // participants: all unique source names (players who did anything)
@@ -570,8 +680,10 @@ impl EncounterQuery<'_> {
             let healing_pcts = col_f64(batch, 8)?;
 
             for i in 0..batch.num_rows() {
+                let name = names[i].clone();
+                let shield_total = shielding_given.get(&name).copied().unwrap_or(0.0);
                 results.push(RaidOverviewRow {
-                    name: names[i].clone(),
+                    name,
                     entity_type: entity_types[i].clone(),
                     class_name: None,
                     discipline_name: None,
@@ -584,6 +696,8 @@ impl EncounterQuery<'_> {
                     damage_taken_total: damage_taken_totals[i],
                     dtps: damage_taken_totals[i] / duration,
                     aps: absorbed_totals[i] / duration,
+                    shielding_given_total: shield_total,
+                    sps: shield_total / duration,
                     healing_total: healing_totals[i],
                     hps: healing_totals[i] / duration,
                     healing_effective: healing_effectives[i],

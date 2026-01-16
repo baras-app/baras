@@ -120,7 +120,6 @@ fn handle_in_combat(
             let encounter_id = enc.id;
             // End combat at last_activity_time
             if let Some(enc) = cache.current_encounter_mut() {
-                enc.flush_pending_absorptions();
                 enc.exit_combat_time = Some(last_activity);
                 enc.state = EncounterState::PostCombat {
                     exit_time: last_activity,
@@ -183,7 +182,6 @@ fn handle_in_combat(
         // Unexpected EnterCombat while in combat - terminate and restart
         let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
         if let Some(enc) = cache.current_encounter_mut() {
-            enc.flush_pending_absorptions();
             enc.exit_combat_time = Some(timestamp);
             enc.state = EncounterState::PostCombat {
                 exit_time: timestamp,
@@ -202,7 +200,6 @@ fn handle_in_combat(
     } else if effect_id == effect_id::EXITCOMBAT || all_players_dead || all_kill_targets_dead {
         let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
         if let Some(enc) = cache.current_encounter_mut() {
-            enc.flush_pending_absorptions();
             enc.exit_combat_time = Some(timestamp);
             enc.state = EncounterState::PostCombat {
                 exit_time: timestamp,
@@ -220,7 +217,6 @@ fn handle_in_combat(
     } else if effect_type_id == effect_type_id::AREAENTERED {
         let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
         if let Some(enc) = cache.current_encounter_mut() {
-            enc.flush_pending_absorptions();
             enc.exit_combat_time = Some(timestamp);
             enc.state = EncounterState::PostCombat {
                 exit_time: timestamp,

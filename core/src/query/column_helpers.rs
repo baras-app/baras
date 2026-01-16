@@ -1,6 +1,6 @@
 use datafusion::arrow::array::{
     Array, Float32Array, Float64Array, Int32Array, Int64Array, LargeStringArray, StringArray,
-    StringViewArray, UInt64Array,
+    StringViewArray, TimestampMillisecondArray, UInt64Array,
 };
 use datafusion::arrow::record_batch::RecordBatch;
 

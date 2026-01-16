@@ -22,7 +22,6 @@ use super::challenge::ChallengeTracker;
 use super::effect_instance::EffectInstance;
 use super::entity_info::{NpcInfo, PlayerInfo};
 use super::metrics::MetricAccumulator;
-use super::shielding::PendingAbsorption;
 use super::{EncounterState, OverlayHealthEntry};
 use crate::dsl::ChallengeContext;
 
@@ -109,8 +108,6 @@ pub struct CombatEncounter {
     // ─── Effect Instances (for shield attribution) ──────────────────────────
     /// Active effects by target ID
     pub effects: HashMap<i64, Vec<EffectInstance>>,
-    /// Pending shield absorptions waiting for resolution
-    pub pending_absorptions: HashMap<i64, Vec<PendingAbsorption>>,
 
     // ─── Metrics ────────────────────────────────────────────────────────────
     /// Accumulated damage/healing/etc. data by entity ID
@@ -155,7 +152,6 @@ impl CombatEncounter {
 
             // Effects
             effects: HashMap::new(),
-            pending_absorptions: HashMap::new(),
 
             // Metrics
             accumulated_data: HashMap::new(),
@@ -637,7 +633,6 @@ impl CombatEncounter {
                 applied_at: event.timestamp,
                 is_shield,
                 removed_at: None,
-                has_absorbed: false,
             });
     }
 
@@ -647,22 +642,14 @@ impl CombatEncounter {
             return;
         };
 
-        let mut removed_shield: Option<EffectInstance> = None;
         for effect_instance in effects.iter_mut().rev() {
             if effect_instance.effect_id == event.effect.effect_id
                 && effect_instance.source_id == event.source_entity.log_id
                 && effect_instance.removed_at.is_none()
             {
                 effect_instance.removed_at = Some(event.timestamp);
-                if effect_instance.is_shield {
-                    removed_shield = Some(effect_instance.clone());
-                }
                 break;
             }
-        }
-
-        if let Some(shield) = removed_shield {
-            self.resolve_pending_absorptions(target_id, &shield);
         }
     }
 

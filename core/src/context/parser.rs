@@ -170,8 +170,25 @@ impl ParsingSession {
             // Write event to parquet buffer AFTER processing
             // (so metadata captures the updated phase state)
             if let Some(writer) = &mut self.encounter_writer {
-                let metadata =
+                let mut metadata =
                     EventMetadata::from_cache(cache, self.encounter_idx, event.timestamp);
+
+                // Capture shield context for damage events with absorption
+                // Exclude natural shield rolls (tank passive procs) - these aren't from player shields
+                let is_natural_shield = event.details.defense_type_id
+                    == crate::game_data::defense_type::SHIELD
+                    && event.details.dmg_effective == event.details.dmg_amount;
+
+                if event.details.dmg_absorbed > 0 && !is_natural_shield {
+                    if let Some(enc) = cache.current_encounter() {
+                        let shields =
+                            enc.get_shield_context(event.target_entity.log_id, event.timestamp);
+                        if !shields.is_empty() {
+                            metadata.active_shields = Some(shields);
+                        }
+                    }
+                }
+
                 writer.push_event(&event, &metadata);
             }
 

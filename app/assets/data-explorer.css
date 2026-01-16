@@ -610,6 +610,9 @@
 .overview-table .heal {
   color: hsl(120, 50%, 60%);
 }
+.overview-table .shield {
+  color: hsl(190, 70%, 55%);
+}
 
 /* Totals row styling */
 .overview-table tfoot .totals-row {

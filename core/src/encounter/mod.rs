@@ -9,7 +9,7 @@ pub mod summary;
 pub use challenge::{ChallengeTracker, ChallengeValue};
 pub use combat::{ActiveBoss, CombatEncounter, ProcessingMode};
 pub use effect_instance::EffectInstance;
-pub use shielding::PendingAbsorption;
+pub use shielding::ShieldContext;
 
 use chrono::NaiveDateTime;
 

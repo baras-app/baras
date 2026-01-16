@@ -1,10 +1,12 @@
 //! Parquet writer for encounter events.
 
 use arrow::array::{
-    ArrayRef, BooleanBuilder, Float32Builder, Int32Builder, Int64Builder, StringBuilder,
-    TimestampMillisecondBuilder, UInt32Builder, UInt64Builder,
+    ArrayBuilder, ArrayRef, BooleanBuilder, Float32Builder, Int32Builder, Int64Builder, ListArray,
+    StringBuilder, StructArray, TimestampMillisecondBuilder, UInt32Builder, UInt64Builder,
+    UInt8Builder,
 };
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use arrow::buffer::{NullBuffer, OffsetBuffer};
+use arrow::datatypes::{DataType, Field, Fields, Schema, TimeUnit};
 use arrow::record_batch::RecordBatch;
 use parquet::arrow::ArrowWriter;
 use parquet::basic::Compression;
@@ -15,6 +17,7 @@ use std::sync::Arc;
 
 use crate::combat_log::CombatEvent;
 use crate::context::resolve;
+use crate::encounter::ShieldContext;
 
 /// Flattened event row for parquet storage.
 /// Contains event data + denormalized encounter metadata.
@@ -76,6 +79,11 @@ pub struct EventRow {
     pub area_name: String,
     pub boss_name: Option<String>,
     pub difficulty: Option<String>,
+
+    // ─── Shield Attribution Context ─────────────────────────────────────────
+    /// Active shields on the target at the time of damage (only for dmg_absorbed > 0).
+    /// Sorted by FIFO order. Enables simple attribution without complex SQL joins.
+    pub active_shields: Option<Vec<ShieldContext>>,
 }
 
 impl EventRow {
@@ -137,6 +145,9 @@ impl EventRow {
             area_name: metadata.area_name.clone(),
             boss_name: metadata.boss_name.clone(),
             difficulty: metadata.difficulty.clone(),
+
+            // Shield context
+            active_shields: metadata.active_shields.clone(),
         }
     }
 }
@@ -163,6 +174,8 @@ pub struct EventMetadata {
     pub area_name: String,
     pub boss_name: Option<String>,
     pub difficulty: Option<String>,
+    /// Shield context for damage events with absorption
+    pub active_shields: Option<Vec<ShieldContext>>,
 }
 
 impl EventMetadata {
@@ -203,6 +216,8 @@ impl EventMetadata {
             } else {
                 Some(cache.current_area.difficulty_name.clone())
             },
+            // Shield context populated later for damage events with absorption
+            active_shields: None,
         }
     }
 }
@@ -313,6 +328,21 @@ impl EncounterWriter {
             Field::new("area_name", DataType::Utf8, false),
             Field::new("boss_name", DataType::Utf8, true),
             Field::new("difficulty", DataType::Utf8, true),
+            // ─── Shield Attribution Context ─────────────────────────────────
+            Field::new(
+                "active_shields",
+                DataType::List(Arc::new(Field::new(
+                    "item",
+                    DataType::Struct(Fields::from(vec![
+                        Field::new("effect_id", DataType::Int64, false),
+                        Field::new("source_id", DataType::Int64, false),
+                        Field::new("position", DataType::UInt8, false),
+                        Field::new("estimated_max", DataType::Int64, false),
+                    ])),
+                    true,
+                ))),
+                true,
+            ),
         ]))
     }
 
@@ -400,6 +430,15 @@ impl EncounterWriter {
         let mut boss_name = StringBuilder::with_capacity(len, len * 30);
         let mut difficulty = StringBuilder::with_capacity(len, len * 10);
 
+        // ─── Shield Attribution Context ─────────────────────────────────────
+        // Builders for the struct fields inside the list
+        let mut shield_effect_ids = Int64Builder::with_capacity(len);
+        let mut shield_source_ids = Int64Builder::with_capacity(len);
+        let mut shield_positions = UInt8Builder::with_capacity(len);
+        let mut shield_estimated_maxes = Int64Builder::with_capacity(len);
+        // Track list offsets (null for rows without shields)
+        let mut shield_list_offsets: Vec<Option<(usize, usize)>> = Vec::with_capacity(len);
+
         for row in &self.rows {
             // Core identity
             timestamp.append_value(row.timestamp_ms);
@@ -457,7 +496,75 @@ impl EncounterWriter {
             area_name.append_value(&row.area_name);
             boss_name.append_option(row.boss_name.as_deref());
             difficulty.append_option(row.difficulty.as_deref());
+
+            // Shield context - track offsets for list building
+            if let Some(shields) = &row.active_shields {
+                if shields.is_empty() {
+                    shield_list_offsets.push(None);
+                } else {
+                    let start = shield_effect_ids.len();
+                    for s in shields {
+                        shield_effect_ids.append_value(s.effect_id);
+                        shield_source_ids.append_value(s.source_id);
+                        shield_positions.append_value(s.position);
+                        shield_estimated_maxes.append_value(s.estimated_max);
+                    }
+                    shield_list_offsets.push(Some((start, shield_effect_ids.len())));
+                }
+            } else {
+                shield_list_offsets.push(None);
+            }
         }
+
+        // Build the active_shields List<Struct> array
+        let active_shields_array = {
+            // Build the struct array from all shield entries
+            let struct_fields = Fields::from(vec![
+                Field::new("effect_id", DataType::Int64, false),
+                Field::new("source_id", DataType::Int64, false),
+                Field::new("position", DataType::UInt8, false),
+                Field::new("estimated_max", DataType::Int64, false),
+            ]);
+            let struct_array = StructArray::try_new(
+                struct_fields.clone(),
+                vec![
+                    Arc::new(shield_effect_ids.finish()) as ArrayRef,
+                    Arc::new(shield_source_ids.finish()) as ArrayRef,
+                    Arc::new(shield_positions.finish()) as ArrayRef,
+                    Arc::new(shield_estimated_maxes.finish()) as ArrayRef,
+                ],
+                None,
+            )?;
+
+            // Build offsets and nulls for the list
+            let mut offsets: Vec<i32> = Vec::with_capacity(shield_list_offsets.len() + 1);
+            let mut nulls: Vec<bool> = Vec::with_capacity(shield_list_offsets.len());
+            offsets.push(0);
+            for offset in &shield_list_offsets {
+                match offset {
+                    Some((_, end)) => {
+                        offsets.push(*end as i32);
+                        nulls.push(true);
+                    }
+                    None => {
+                        offsets.push(*offsets.last().unwrap());
+                        nulls.push(false);
+                    }
+                }
+            }
+
+            let list_field = Field::new(
+                "item",
+                DataType::Struct(struct_fields),
+                true,
+            );
+            ListArray::try_new(
+                Arc::new(list_field),
+                OffsetBuffer::new(offsets.into()),
+                Arc::new(struct_array),
+                Some(NullBuffer::from(nulls)),
+            )?
+        };
 
         let columns: Vec<ArrayRef> = vec![
             // Core identity
@@ -508,6 +615,8 @@ impl EncounterWriter {
             Arc::new(area_name.finish()),
             Arc::new(boss_name.finish()),
             Arc::new(difficulty.finish()),
+            // Shield attribution context
+            Arc::new(active_shields_array),
         ];
 
         Ok(RecordBatch::try_new(schema.clone(), columns)?)

@@ -67,6 +67,24 @@ enum LoadState {
     Error(String),
 }
 
+/// Overview table data with pre-calculated totals
+#[derive(Clone, PartialEq, Default)]
+struct OverviewTableData {
+    rows: Vec<RaidOverviewRow>,
+    total_damage: f64,
+    total_dps: f64,
+    total_threat: f64,
+    total_tps: f64,
+    total_damage_taken: f64,
+    total_dtps: f64,
+    total_aps: f64,
+    total_shielding: f64,
+    total_sps: f64,
+    total_healing: f64,
+    total_hps: f64,
+    total_ehps: f64,
+}
+
 impl ViewMode {
     /// Get the DataTab if in Detailed mode, otherwise None
     fn tab(&self) -> Option<DataTab> {
@@ -496,52 +514,47 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
             .collect();
 
         // Calculate totals
-        let total_damage: f64 = rows.iter().map(|r| r.damage_total).sum();
-        let total_dps: f64 = rows.iter().map(|r| r.dps).sum();
-        let total_threat: f64 = rows.iter().map(|r| r.threat_total).sum();
-        let total_tps: f64 = rows.iter().map(|r| r.tps).sum();
-        let total_damage_taken: f64 = rows.iter().map(|r| r.damage_taken_total).sum();
-        let total_dtps: f64 = rows.iter().map(|r| r.dtps).sum();
-        let total_aps: f64 = rows.iter().map(|r| r.aps).sum();
-        let total_healing: f64 = rows.iter().map(|r| r.healing_total).sum();
-        let total_hps: f64 = rows.iter().map(|r| r.hps).sum();
-        let total_ehps: f64 = rows.iter().map(|r| r.ehps).sum();
-
-        (
+        OverviewTableData {
+            total_damage: rows.iter().map(|r| r.damage_total).sum(),
+            total_dps: rows.iter().map(|r| r.dps).sum(),
+            total_threat: rows.iter().map(|r| r.threat_total).sum(),
+            total_tps: rows.iter().map(|r| r.tps).sum(),
+            total_damage_taken: rows.iter().map(|r| r.damage_taken_total).sum(),
+            total_dtps: rows.iter().map(|r| r.dtps).sum(),
+            total_aps: rows.iter().map(|r| r.aps).sum(),
+            total_shielding: rows.iter().map(|r| r.shielding_given_total).sum(),
+            total_sps: rows.iter().map(|r| r.sps).sum(),
+            total_healing: rows.iter().map(|r| r.healing_total).sum(),
+            total_hps: rows.iter().map(|r| r.hps).sum(),
+            total_ehps: rows.iter().map(|r| r.ehps).sum(),
             rows,
-            total_damage,
-            total_dps,
-            total_threat,
-            total_tps,
-            total_damage_taken,
-            total_dtps,
-            total_aps,
-            total_healing,
-            total_hps,
-            total_ehps,
-        )
+        }
     });
 
     // Memoized chart data for overview donut charts (derived from table data)
     let chart_data = use_memo(move || {
-        let (rows, ..) = overview_table_data();
+        let table_data = overview_table_data.read();
 
-        let damage_data: Vec<(String, f64)> = rows
+        let damage_data: Vec<(String, f64)> = table_data
+            .rows
             .iter()
             .filter(|r| r.damage_total > 0.0)
             .map(|r| (r.name.clone(), r.damage_total))
             .collect();
-        let threat_data: Vec<(String, f64)> = rows
+        let threat_data: Vec<(String, f64)> = table_data
+            .rows
             .iter()
             .filter(|r| r.threat_total > 0.0)
             .map(|r| (r.name.clone(), r.threat_total))
             .collect();
-        let healing_data: Vec<(String, f64)> = rows
+        let healing_data: Vec<(String, f64)> = table_data
+            .rows
             .iter()
             .filter(|r| r.healing_effective > 0.0)
             .map(|r| (r.name.clone(), r.healing_effective))
             .collect();
-        let taken_data: Vec<(String, f64)> = rows
+        let taken_data: Vec<(String, f64)> = table_data
+            .rows
             .iter()
             .filter(|r| r.damage_taken_total > 0.0)
             .map(|r| (r.name.clone(), r.damage_taken_total))
@@ -1427,9 +1440,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
 
                             // Overview table - uses memoized data
                             {
-                                let (rows, total_damage, total_dps, total_threat, total_tps,
-                                     total_damage_taken, total_dtps, total_aps, total_healing,
-                                     total_hps, total_ehps) = overview_table_data();
+                                let table_data = overview_table_data.read();
                                 rsx! {
                                     table { class: "overview-table",
                                         thead {
@@ -1439,6 +1450,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                                 th { class: "section-header", colspan: "2", "Threat" }
                                                 th { class: "section-header", colspan: "3", "Damage Taken" }
                                                 th { class: "section-header", colspan: "4", "Healing" }
+                                                th { class: "section-header", colspan: "2", "Shielding" }
                                             }
                                             tr { class: "sub-header",
                                                 th {}
@@ -1453,10 +1465,12 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                                 th { class: "num", "HPS" }
                                                 th { class: "num", "%" }
                                                 th { class: "num", "EHPS" }
+                                                th { class: "num", "Total" }
+                                                th { class: "num", "SPS" }
                                             }
                                         }
                                         tbody {
-                                            for row in rows.iter() {
+                                            for row in table_data.rows.iter() {
                                                 tr {
                                                     td { class: "name-col",
                                                         span { class: "name-with-icon",
@@ -1498,23 +1512,27 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                                     td { class: "num heal", "{format_number(row.hps)}" }
                                                     td { class: "num heal", "{format_pct(row.healing_pct)}" }
                                                     td { class: "num heal", "{format_number(row.ehps)}" }
+                                                    td { class: "num shield", "{format_number(row.shielding_given_total)}" }
+                                                    td { class: "num shield", "{format_number(row.sps)}" }
                                                 }
                                             }
                                         }
                                         tfoot {
                                             tr { class: "totals-row",
                                                 td { class: "name-col", "Group Total" }
-                                                td { class: "num dmg", "{format_number(total_damage)}" }
-                                                td { class: "num dmg", "{format_number(total_dps)}" }
-                                                td { class: "num threat", "{format_number(total_threat)}" }
-                                                td { class: "num threat", "{format_number(total_tps)}" }
-                                                td { class: "num taken", "{format_number(total_damage_taken)}" }
-                                                td { class: "num taken", "{format_number(total_dtps)}" }
-                                                td { class: "num taken", "{format_number(total_aps)}" }
-                                                td { class: "num heal", "{format_number(total_healing)}" }
-                                                td { class: "num heal", "{format_number(total_hps)}" }
+                                                td { class: "num dmg", "{format_number(table_data.total_damage)}" }
+                                                td { class: "num dmg", "{format_number(table_data.total_dps)}" }
+                                                td { class: "num threat", "{format_number(table_data.total_threat)}" }
+                                                td { class: "num threat", "{format_number(table_data.total_tps)}" }
+                                                td { class: "num taken", "{format_number(table_data.total_damage_taken)}" }
+                                                td { class: "num taken", "{format_number(table_data.total_dtps)}" }
+                                                td { class: "num taken", "{format_number(table_data.total_aps)}" }
+                                                td { class: "num heal", "{format_number(table_data.total_healing)}" }
+                                                td { class: "num heal", "{format_number(table_data.total_hps)}" }
                                                 td { class: "num heal", "" }
-                                                td { class: "num heal", "{format_number(total_ehps)}" }
+                                                td { class: "num heal", "{format_number(table_data.total_ehps)}" }
+                                                td { class: "num shield", "{format_number(table_data.total_shielding)}" }
+                                                td { class: "num shield", "{format_number(table_data.total_sps)}" }
                                             }
                                         }
                                     }
