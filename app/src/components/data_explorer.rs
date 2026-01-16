@@ -44,6 +44,40 @@ enum SortDirection {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// View Mode and Load State
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Which view is currently active in the data explorer
+#[derive(Clone, Copy, PartialEq, Default)]
+enum ViewMode {
+    #[default]
+    Overview,
+    Charts,
+    CombatLog,
+    Detailed(DataTab),
+}
+
+/// Loading state for async operations
+#[derive(Clone, PartialEq, Default)]
+enum LoadState {
+    #[default]
+    Idle,
+    Loading,
+    Loaded,
+    Error(String),
+}
+
+impl ViewMode {
+    /// Get the DataTab if in Detailed mode, otherwise None
+    fn tab(&self) -> Option<DataTab> {
+        match self {
+            ViewMode::Detailed(tab) => Some(*tab),
+            _ => None,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ECharts JS Interop for Overview Donut Charts
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -419,8 +453,12 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     let mut abilities = use_signal(Vec::<AbilityBreakdown>::new);
     let mut entities = use_signal(Vec::<EntityBreakdown>::new);
     let mut selected_source = use_signal(|| None::<String>);
-    let mut loading = use_signal(|| false);
-    let mut error_msg = use_signal(|| None::<String>);
+
+    // Loading states (replaces loading + error_msg)
+    let mut timeline_state = use_signal(LoadState::default);
+    let mut content_state = use_signal(LoadState::default);
+    // Generation counter to discard stale async results on rapid encounter switching
+    let mut load_generation = use_signal(|| 0u32);
 
     // Entity filter: true = players/companions only, false = show all (including NPCs)
     let mut show_players_only = use_signal(|| true);
@@ -432,25 +470,18 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     // Breakdown mode state (toggles for grouping)
     let mut breakdown_mode = use_signal(|| BreakdownMode::ability_only());
 
-    // Data tab state (Damage, Healing, DamageTaken, HealingTaken)
-    let mut selected_tab = use_signal(|| DataTab::Damage);
+    // View mode - which tab/view is active (replaces show_overview, show_charts, show_combat_log, selected_tab)
+    let mut view_mode = use_signal(ViewMode::default);
 
     // Ability table sort state
     let mut sort_column = use_signal(SortColumn::default);
     let mut sort_direction = use_signal(SortDirection::default);
 
-    // Overview mode - true shows raid overview (default), false shows detailed tabs
-    let mut show_overview = use_signal(|| true);
+    // Overview data
     let mut overview_data = use_signal(Vec::<RaidOverviewRow>::new);
     let mut player_deaths = use_signal(Vec::<PlayerDeath>::new);
     // Track last (encounter, time_range) we fetched overview data for (prevents re-fetch loops)
     let mut last_overview_fetch = use_signal(|| None::<(Option<u32>, TimeRange)>);
-
-    // Charts mode - show time series charts with effect highlighting
-    let mut show_charts = use_signal(|| false);
-
-    // Combat Log mode - show virtualized combat log table
-    let mut show_combat_log = use_signal(|| false);
 
     // Death search text - set when clicking a death to search combat log (source OR target)
     let mut death_search_text = use_signal(|| None::<String>);
@@ -522,7 +553,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     // Effect to initialize/update overview donut charts when data changes
     use_effect(move || {
         let (damage_data, threat_data, healing_data, taken_data) = chart_data();
-        let is_overview = *show_overview.read() && !*show_charts.read() && !*show_combat_log.read();
+        let is_overview = matches!(*view_mode.read(), ViewMode::Overview);
 
         // Dispose charts when not showing overview (cleanup old instances)
         if !is_overview {
@@ -601,6 +632,9 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
         });
     });
 
+    // Store unlisten handle for cleanup (Tauri returns an unlisten function)
+    let mut unlisten_handle = use_signal(|| None::<js_sys::Function>);
+
     // Listen for session updates (refresh on combat end, file load)
     use_future(move || async move {
         let closure = Closure::new(move |event: JsValue| {
@@ -622,82 +656,115 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 });
             }
         });
-        api::tauri_listen("session-updated", &closure).await;
+        let handle = api::tauri_listen("session-updated", &closure).await;
+        // Store the unlisten function for cleanup
+        if let Ok(func) = handle.dyn_into::<js_sys::Function>() {
+            let _ = unlisten_handle.try_write().map(|mut w| *w = Some(func));
+        }
         closure.forget();
     });
 
     // Cleanup on component unmount
     use_drop(move || {
         dispose_all_overview_charts();
+        // Call unlisten to clean up the event listener
+        if let Some(func) = unlisten_handle.peek().as_ref() {
+            let _ = func.call0(&JsValue::NULL);
+        }
     });
 
-    // Load data when encounter changes - ONLY loads timeline (shared by all views)
-    // Each view loads its own data lazily
+    // Load timeline when encounter changes - prerequisite for all data loading
+    // Uses generation counter to discard stale async results on rapid switching
     use_effect(move || {
         let idx = *selected_encounter.read();
 
         // Dispose charts immediately when encounter changes
         dispose_all_overview_charts();
 
+        // Increment generation to invalidate any in-flight requests
+        let generation = *load_generation.peek() + 1;
+        load_generation.set(generation);
+
+        // Clear ALL previous data when encounter changes
+        let _ = abilities.try_write().map(|mut w| *w = Vec::new());
+        let _ = entities.try_write().map(|mut w| *w = Vec::new());
+        let _ = overview_data.try_write().map(|mut w| *w = Vec::new());
+        let _ = player_deaths.try_write().map(|mut w| *w = Vec::new());
+        let _ = last_overview_fetch.try_write().map(|mut w| *w = None);
+        let _ = selected_source.try_write().map(|mut w| *w = None);
+        let _ = timeline.try_write().map(|mut w| *w = None);
+        let _ = time_range.try_write().map(|mut w| *w = TimeRange::default());
+        let _ = timeline_state.try_write().map(|mut w| *w = LoadState::Idle);
+        let _ = content_state.try_write().map(|mut w| *w = LoadState::Idle);
+
+        let Some(idx) = idx else {
+            return; // No encounter selected
+        };
+
+        let _ = timeline_state.try_write().map(|mut w| *w = LoadState::Loading);
+
         spawn(async move {
-            // Clear ALL previous data when encounter changes
-            abilities.set(Vec::new());
-            entities.set(Vec::new());
-            overview_data.set(Vec::new());
-            player_deaths.set(Vec::new());
-            last_overview_fetch.set(None);
-            selected_source.set(None);
-            timeline.set(None);
-            time_range.set(TimeRange::default());
-            error_msg.set(None);
-
-            if idx.is_none() {
-                return; // No encounter selected
+            // Check if this request is still current
+            if *load_generation.peek() != generation {
+                return; // Stale request, discard
             }
 
-            loading.set(true);
-
-            // Only load timeline (needed for phase filter in all views)
-            if let Some(tl) = api::query_encounter_timeline(idx).await {
-                let dur = tl.duration_secs;
-                time_range.set(TimeRange::full(dur));
-                timeline.set(Some(tl));
+            match api::query_encounter_timeline(Some(idx)).await {
+                Some(tl) => {
+                    // Double-check generation before applying
+                    if *load_generation.peek() != generation {
+                        return;
+                    }
+                    let dur = tl.duration_secs;
+                    let _ = time_range.try_write().map(|mut w| *w = TimeRange::full(dur));
+                    let _ = timeline.try_write().map(|mut w| *w = Some(tl));
+                    let _ = timeline_state.try_write().map(|mut w| *w = LoadState::Loaded);
+                }
+                None => {
+                    if *load_generation.peek() != generation {
+                        return;
+                    }
+                    let _ = timeline_state
+                        .try_write()
+                        .map(|mut w| *w = LoadState::Error("Failed to load encounter".into()));
+                }
             }
-
-            loading.set(false);
         });
     });
 
-    // Load overview data (for class icons on all tabs + Overview display)
-    // This runs for any tab when we have an encounter and timeline
+    // Load overview data when timeline is loaded and view_mode/time_range changes
+    // Overview data provides class icons for all views + full data for Overview tab
     use_effect(move || {
         let idx = *selected_encounter.read();
-        let is_overview = *show_overview.read() && !*show_charts.read() && !*show_combat_log.read();
+        let mode = *view_mode.read();
+        let is_overview = matches!(mode, ViewMode::Overview);
         let tr = time_range();
-        let has_timeline = timeline.read().is_some();
+        let tl_state = timeline_state();
 
-        // Need encounter and timeline to load overview data
-        if idx.is_none() || !has_timeline {
+        // Only proceed when timeline is loaded
+        if !matches!(tl_state, LoadState::Loaded) || idx.is_none() {
             return;
         }
 
         // Check if we've already fetched for this (encounter, time_range) combo
-        // This avoids reading overview_data which would create a reactive loop
         let last = last_overview_fetch.read().clone();
         if let Some((last_idx, last_tr)) = last {
             if last_idx == idx && last_tr == tr {
                 return; // Already fetched for this exact state
             }
             // On non-overview tabs, any loaded data for this encounter is fine (class icons only)
+            // But always reload on Overview tab when time_range changes
             if !is_overview && last_idx == idx {
                 return;
             }
         }
 
+        // Set content loading state for Overview tab
+        if is_overview {
+            let _ = content_state.try_write().map(|mut w| *w = LoadState::Loading);
+        }
+
         spawn(async move {
-            if is_overview {
-                loading.set(true);
-            }
             let full_duration = timeline.read().as_ref().map(|t| t.duration_secs);
             let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
                 None
@@ -712,26 +779,28 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 full_duration
             };
 
-            // Load raid overview (with retry for race conditions - up to 3 seconds)
-            for attempt in 0..10 {
-                if let Some(data) = api::query_raid_overview(idx, tr_opt.as_ref(), duration).await
-                    && !data.is_empty()
-                {
-                    overview_data.set(data);
-                    last_overview_fetch.set(Some((idx, tr)));
-                    break;
+            // Load raid overview - single attempt with proper error handling (no retry loop)
+            match api::query_raid_overview(idx, tr_opt.as_ref(), duration).await {
+                Some(data) => {
+                    let _ = overview_data.try_write().map(|mut w| *w = data);
+                    let _ = last_overview_fetch.try_write().map(|mut w| *w = Some((idx, tr)));
                 }
-                if attempt < 9 {
-                    gloo_timers::future::TimeoutFuture::new(300).await;
+                None => {
+                    if is_overview {
+                        let _ = content_state
+                            .try_write()
+                            .map(|mut w| *w = LoadState::Error("Failed to load overview".into()));
+                    }
+                    return;
                 }
             }
 
             // Load player deaths (only needed for Overview tab)
             if is_overview {
                 if let Some(deaths) = api::query_player_deaths(idx).await {
-                    player_deaths.set(deaths);
+                    let _ = player_deaths.try_write().map(|mut w| *w = deaths);
                 }
-                loading.set(false);
+                let _ = content_state.try_write().map(|mut w| *w = LoadState::Loaded);
             }
         });
     });
@@ -739,48 +808,43 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     // Lazy load: Detailed tab data (entities + abilities) for Damage/Healing/etc tabs
     use_effect(move || {
         let idx = *selected_encounter.read();
-        let tab = *selected_tab.read();
-        let is_detailed =
-            !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read();
+        let mode = *view_mode.read();
         let tr = time_range();
-        let has_timeline = timeline.read().is_some();
+        let tl_state = timeline_state();
 
-        // Only load when a detailed tab is active, have an encounter, AND timeline is loaded
-        if !is_detailed || idx.is_none() || !has_timeline {
-            // Clear detailed data when leaving
-            if !is_detailed {
-                entities.set(Vec::new());
-                abilities.set(Vec::new());
-                selected_source.set(None);
-            }
+        // Extract tab if in detailed mode, otherwise exit
+        let Some(tab) = mode.tab() else {
+            // Clear detailed data when not in detailed mode
+            let _ = entities.try_write().map(|mut w| *w = Vec::new());
+            let _ = abilities.try_write().map(|mut w| *w = Vec::new());
+            let _ = selected_source.try_write().map(|mut w| *w = None);
+            return;
+        };
+
+        // Only load when timeline is loaded and we have an encounter
+        if !matches!(tl_state, LoadState::Loaded) || idx.is_none() {
             return;
         }
 
+        let _ = content_state.try_write().map(|mut w| *w = LoadState::Loading);
+
         spawn(async move {
-            loading.set(true);
             let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
                 None
             } else {
                 Some(tr)
             };
 
-            // Load entity breakdown (with retry for race conditions - up to 3 seconds)
-            let mut entity_data = Vec::new();
-            for attempt in 0..10 {
-                if let Some(data) = api::query_entity_breakdown(tab, idx, tr_opt.as_ref()).await
-                    && !data.is_empty()
-                {
-                    entity_data = data;
-                    break;
+            // Load entity breakdown - single attempt with proper error handling
+            let entity_data = match api::query_entity_breakdown(tab, idx, tr_opt.as_ref()).await {
+                Some(data) => data,
+                None => {
+                    let _ = content_state
+                        .try_write()
+                        .map(|mut w| *w = LoadState::Error("Failed to load entities".into()));
+                    return;
                 }
-                if attempt < 9 {
-                    gloo_timers::future::TimeoutFuture::new(300).await;
-                }
-            }
-            if entity_data.is_empty() {
-                loading.set(false);
-                return;
-            }
+            };
 
             // Auto-select first player if none selected
             let auto_selected = if selected_source.read().is_none() {
@@ -792,30 +856,30 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 selected_source.read().clone()
             };
 
-            entities.set(entity_data);
+            let _ = entities.try_write().map(|mut w| *w = entity_data);
 
             // Load ability breakdown for selected (or auto-selected) source
-            let mode = *breakdown_mode.read();
+            let breakdown = *breakdown_mode.read();
             if let Some(data) = api::query_breakdown(
                 tab,
                 idx,
                 auto_selected.as_deref(),
                 tr_opt.as_ref(),
                 None, // No entity filter when source is selected
-                Some(&mode),
+                Some(&breakdown),
                 timeline.read().as_ref().map(|t| t.duration_secs),
             )
             .await
             {
-                abilities.set(data);
+                let _ = abilities.try_write().map(|mut w| *w = data);
             }
 
-            // Set selected source after abilities loaded (triggers downstream effects cleanly)
+            // Set selected source after abilities loaded
             if selected_source.read().is_none() && auto_selected.is_some() {
-                selected_source.set(auto_selected);
+                let _ = selected_source.try_write().map(|mut w| *w = auto_selected);
             }
 
-            loading.set(false);
+            let _ = content_state.try_write().map(|mut w| *w = LoadState::Loaded);
         });
     });
 
@@ -825,22 +889,24 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     // Reload abilities when entity filter or breakdown mode changes
     use_effect(move || {
         let players_only = *show_players_only.read();
-        let mode = *breakdown_mode.read();
+        let breakdown = *breakdown_mode.read();
         let idx = *selected_encounter.read();
-        let tab = *selected_tab.read();
+        let view = *view_mode.read();
         let src = selected_source.read().clone();
         let tr = time_range();
-        let is_detailed =
-            !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read();
-        let has_timeline = timeline.read().is_some();
+        let tl_state = timeline_state();
 
-        // Skip if not on detailed tab, no encounter, or timeline not loaded
-        if !is_detailed || idx.is_none() || !has_timeline {
+        // Extract tab if in detailed mode
+        let Some(tab) = view.tab() else {
+            return;
+        };
+
+        // Skip if no encounter or timeline not loaded
+        if idx.is_none() || !matches!(tl_state, LoadState::Loaded) {
             return;
         }
 
         spawn(async move {
-            loading.set(true);
             // Apply entity filter only when no specific source is selected
             let entity_filter: Option<&[&str]> = if src.is_none() && players_only {
                 Some(&["Player", "Companion"])
@@ -859,23 +925,27 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 src.as_deref(),
                 tr_opt.as_ref(),
                 entity_filter,
-                Some(&mode),
+                Some(&breakdown),
                 duration,
             )
             .await
             {
-                abilities.set(data);
+                let _ = abilities.try_write().map(|mut w| *w = data);
             }
-            loading.set(false);
         });
     });
 
     // Filter by source when selected
     let mut on_source_click = move |name: String| {
         let idx = *selected_encounter.read();
-        let tab = *selected_tab.read();
+        let mode = *view_mode.read();
         let current = selected_source.read().clone();
         let tr = time_range();
+
+        // Get tab from view_mode
+        let Some(tab) = mode.tab() else {
+            return;
+        };
 
         // Toggle selection
         let new_source = if current.as_ref() == Some(&name) {
@@ -894,7 +964,6 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
         };
 
         spawn(async move {
-            loading.set(true);
             // Apply entity filter only when no specific source is selected
             let entity_filter: Option<&[&str]> =
                 if new_source.is_none() && *show_players_only.read() {
@@ -902,7 +971,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 } else {
                     None
                 };
-            let mode = *breakdown_mode.read();
+            let breakdown = *breakdown_mode.read();
             let duration = timeline.read().as_ref().map(|t| t.duration_secs);
             if let Some(data) = api::query_breakdown(
                 tab,
@@ -910,14 +979,13 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                 new_source.as_deref(),
                 tr_opt.as_ref(),
                 entity_filter,
-                Some(&mode),
+                Some(&breakdown),
                 duration,
             )
             .await
             {
-                abilities.set(data);
+                let _ = abilities.try_write().map(|mut w| *w = data);
             }
-            loading.set(false);
         });
     };
 
@@ -1241,49 +1309,61 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                     // Data tab selector (Overview, Damage, Healing, Damage Taken, Healing Taken, Charts)
                     div { class: "data-tab-selector",
                         button {
-                            class: if *show_overview.read() && !*show_charts.read() && !*show_combat_log.read() { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(true); show_charts.set(false); show_combat_log.set(false); },
+                            class: if matches!(*view_mode.read(), ViewMode::Overview) { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| view_mode.set(ViewMode::Overview),
                             "Overview"
                         }
-                       button {
-                            class: if *show_charts.read() { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(false); show_charts.set(true); show_combat_log.set(false); },
+                        button {
+                            class: if matches!(*view_mode.read(), ViewMode::Charts) { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| view_mode.set(ViewMode::Charts),
                             "Charts"
                         }
                         button {
-                            class: if !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read() && *selected_tab.read() == DataTab::Damage { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(false); selected_tab.set(DataTab::Damage); },
+                            class: if matches!(*view_mode.read(), ViewMode::Detailed(DataTab::Damage)) { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::Damage)),
                             "Damage"
                         }
                         button {
-                            class: if !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read() && *selected_tab.read() == DataTab::Healing { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(false); selected_tab.set(DataTab::Healing); },
+                            class: if matches!(*view_mode.read(), ViewMode::Detailed(DataTab::Healing)) { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::Healing)),
                             "Healing"
                         }
                         button {
-                            class: if !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read() && *selected_tab.read() == DataTab::DamageTaken { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(false); selected_tab.set(DataTab::DamageTaken); },
+                            class: if matches!(*view_mode.read(), ViewMode::Detailed(DataTab::DamageTaken)) { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::DamageTaken)),
                             "Damage Taken"
                         }
                         button {
-                            class: if !*show_overview.read() && !*show_charts.read() && !*show_combat_log.read() && *selected_tab.read() == DataTab::HealingTaken { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { show_overview.set(false); show_charts.set(false); show_combat_log.set(false); selected_tab.set(DataTab::HealingTaken); },
+                            class: if matches!(*view_mode.read(), ViewMode::Detailed(DataTab::HealingTaken)) { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::HealingTaken)),
                             "Healing Taken"
                         }
                         button {
-                            class: if *show_combat_log.read() { "data-tab active" } else { "data-tab" },
-                            onclick: move |_| { death_search_text.set(None); show_overview.set(false); show_charts.set(false); show_combat_log.set(true); },
+                            class: if matches!(*view_mode.read(), ViewMode::CombatLog) { "data-tab active" } else { "data-tab" },
+                            onclick: move |_| { death_search_text.set(None); view_mode.set(ViewMode::CombatLog); },
                             "Combat Log"
                         }
                     }
 
-                    // Error display
-                    if let Some(err) = error_msg.read().as_ref() {
-                        div { class: "error-message", "{err}" }
+                    // Loading/Error state display
+                    match content_state() {
+                        LoadState::Loading => rsx! {
+                            div { class: "loading-banner",
+                                i { class: "fa-solid fa-spinner fa-spin" }
+                                " Loading..."
+                            }
+                        },
+                        LoadState::Error(msg) => rsx! {
+                            div { class: "error-banner",
+                                i { class: "fa-solid fa-exclamation-triangle" }
+                                " {msg}"
+                            }
+                        },
+                        _ => rsx! {}
                     }
 
                     // Content area - Overview, Charts, Combat Log, or Detailed view
-                    if *show_combat_log.read() {
+                    if matches!(*view_mode.read(), ViewMode::CombatLog) {
                         // Combat Log Panel
                         if let Some(enc_idx) = *selected_encounter.read() {
                             CombatLog {
@@ -1292,7 +1372,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                 initial_search: death_search_text(),
                             }
                         }
-                    } else if *show_charts.read() {
+                    } else if matches!(*view_mode.read(), ViewMode::Charts) {
                         // Charts Panel
                         if let Some(tl) = timeline.read().as_ref() {
                             ChartsPanel {
@@ -1301,7 +1381,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                 time_range: time_range(),
                             }
                         }
-                    } else if *show_overview.read() {
+                    } else if matches!(*view_mode.read(), ViewMode::Overview) {
                         // Raid Overview - Donut Charts + Table
                         // Uses memoized overview_table_data - charts initialized via use_effect above
                         div { class: "overview-section",
@@ -1331,9 +1411,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                                                         let start = (death_time - 10.0).max(0.0);
                                                                         time_range.set(TimeRange { start, end: death_time });
                                                                         death_search_text.set(Some(player_name.clone()));
-                                                                        show_overview.set(false);
-                                                                        show_charts.set(false);
-                                                                        show_combat_log.set(true);
+                                                                        view_mode.set(ViewMode::CombatLog);
                                                                     }
                                                                 },
                                                                 span { class: "death-name", "{name}" }
@@ -1455,14 +1533,14 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                 }
                             }
                         }
-                    } else {
+                    } else if let ViewMode::Detailed(current_tab) = *view_mode.read() {
                         // Two-column layout (Detailed breakdown)
                         div { class: "explorer-content",
                             // Entity breakdown (source filter for outgoing, target filter for incoming)
                             div { class: "entity-section",
                                 div { class: "entity-header",
                                     h4 {
-                                        if selected_tab.read().is_outgoing() { "Sources" } else { "Targets" }
+                                        if current_tab.is_outgoing() { "Sources" } else { "Targets" }
                                     }
                                     div { class: "entity-filter-tabs",
                                         button {
@@ -1521,7 +1599,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                     // Labels change based on tab: outgoing uses "Target", incoming uses "Source"
                                     // Instance mode only makes sense for damage tabs (NPCs have multiple spawns)
                                     {
-                                        let tab = *selected_tab.read();
+                                        let tab = current_tab;
                                         let is_outgoing = tab.is_outgoing();
                                         let type_label = if is_outgoing { "Target type" } else { "Source type" };
                                         let instance_label = if is_outgoing { "Target instance" } else { "Source instance" };
@@ -1588,7 +1666,7 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                 // Table with dynamic columns (sortable)
                                 {
                                 let mode = *breakdown_mode.read();
-                                let tab = *selected_tab.read();
+                                let tab = current_tab;
                                 let show_breakdown_col = mode.by_target_type || mode.by_target_instance;
                                 let show_ability_col = mode.by_ability;
                                 let breakdown_col_label = if tab.is_outgoing() { "Target" } else { "Source" };
