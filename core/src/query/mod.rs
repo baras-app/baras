@@ -93,10 +93,10 @@ impl QueryContext {
         // Fast path: check if already registered (read lock only)
         {
             let state = self.state.read().await;
-            if let RegisteredSource::Parquet(ref registered_path) = state.current_source {
-                if registered_path == path {
-                    return Ok(());
-                }
+            if let RegisteredSource::Parquet(ref registered_path) = state.current_source
+                && registered_path == path
+            {
+                return Ok(());
             }
         }
 
@@ -104,10 +104,10 @@ impl QueryContext {
         let mut state = self.state.write().await;
 
         // Double-check after acquiring write lock
-        if let RegisteredSource::Parquet(ref registered_path) = state.current_source {
-            if registered_path == path {
-                return Ok(());
-            }
+        if let RegisteredSource::Parquet(ref registered_path) = state.current_source
+            && registered_path == path
+        {
+            return Ok(());
         }
 
         // Create a FRESH SessionContext to clear all internal DataFusion state
@@ -173,7 +173,9 @@ pub struct QueryContextGuard<'a> {
 impl QueryContextGuard<'_> {
     /// Get an EncounterQuery for executing SQL
     pub fn query(&self) -> EncounterQuery<'_> {
-        EncounterQuery { ctx: &self.guard.ctx }
+        EncounterQuery {
+            ctx: &self.guard.ctx,
+        }
     }
 }
 
@@ -500,72 +502,84 @@ impl EncounterQuery<'_> {
     ) -> Result<std::collections::HashMap<String, f64>, String> {
         use std::collections::HashMap;
 
-        // Fetch damage events with shields context
-        // UNNEST expands the array so each shield gets its own row
+        // Query with UNNEST in SELECT, then extract struct fields in outer query
+        // Cast types to ensure compatibility with col_* helpers
         let batches = self
             .sql(
                 r#"
-            WITH damage_events AS (
+            SELECT
+                CAST(dmg_absorbed AS BIGINT) as dmg_absorbed,
+                CAST(dmg_effective AS BIGINT) as dmg_effective,
+                shield['source_id'] as source_id,
+                CAST(shield['position'] AS BIGINT) as position,
+                CAST(shield['estimated_max'] AS DOUBLE) as estimated_max,
+                CAST(shield_count AS BIGINT) as shield_count
+            FROM (
                 SELECT
                     dmg_absorbed,
                     dmg_effective,
-                    active_shields,
-                    CAST(cardinality(active_shields) AS INT) as shield_count
+                    UNNEST(active_shields) as shield,
+                    cardinality(active_shields) as shield_count
                 FROM events
                 WHERE dmg_absorbed > 0
-                  AND active_shields IS NOT NULL
-            ),
-            unnested AS (
-                SELECT
-                    d.dmg_absorbed,
-                    d.dmg_effective,
-                    d.shield_count,
-                    s.source_id,
-                    CAST(s.position AS INT) as position,
-                    s.estimated_max
-                FROM damage_events d
-                CROSS JOIN UNNEST(d.active_shields) as s
-            ),
-            attributed AS (
-                SELECT
-                    source_id,
-                    CASE
-                        -- Single shield: credit with actual absorbed
-                        WHEN shield_count = 1 THEN dmg_absorbed
-                        -- Multiple shields + full absorb: credit first (position=1) with absorbed
-                        WHEN shield_count > 1 AND dmg_effective = 0 AND position = 1 THEN dmg_absorbed
-                        -- Multiple shields + damage through: credit earlier shields with estimated
-                        WHEN shield_count > 1 AND dmg_effective > 0 AND position < shield_count THEN estimated_max
-                        -- Multiple shields + damage through: credit last shield with actual
-                        WHEN shield_count > 1 AND dmg_effective > 0 AND position = shield_count THEN dmg_absorbed
-                        ELSE 0
-                    END as credited_amount
-                FROM unnested
+                  AND cardinality(active_shields) > 0
             )
-            SELECT source_id, SUM(credited_amount) as total_shielding
-            FROM attributed
-            WHERE credited_amount > 0
-            GROUP BY source_id
         "#,
             )
-            .await?;
+            .await;
 
-        // Convert source_id to source_name via entity lookup
-        let entity_names = self.get_entity_names().await?;
-        let mut shielding_given: HashMap<String, f64> = HashMap::new();
+        let batches = match batches {
+            Ok(b) => b,
+            Err(_) => return Ok(HashMap::new()),
+        };
+
+        // Process unnested results - each row is one shield from one damage event
+        let mut shielding_given: HashMap<i64, f64> = HashMap::new();
 
         for batch in &batches {
-            let source_ids = col_i64(batch, 0)?;
-            let totals = col_f64(batch, 1)?;
+            let dmg_absorbeds = col_i64(batch, 0)?;
+            let dmg_effectives = col_i64(batch, 1)?;
+            let source_ids = col_i64(batch, 2)?;
+            let positions = col_i64(batch, 3)?;
+            let estimated_maxes = col_f64(batch, 4)?;
+            let shield_counts = col_i64(batch, 5)?;
 
             for i in 0..batch.num_rows() {
-                if let Some(name) = entity_names.get(&source_ids[i]) {
-                    *shielding_given.entry(name.clone()).or_default() += totals[i];
+                let dmg_absorbed = dmg_absorbeds[i] as f64;
+                let dmg_effective = dmg_effectives[i] as f64;
+                let source_id = source_ids[i];
+                let position = positions[i] as usize;
+                let estimated_max = estimated_maxes[i];
+                let shield_count = shield_counts[i] as usize;
+
+                let credited = if shield_count == 1 {
+                    // Single shield: credit with actual absorbed
+                    dmg_absorbed
+                } else if dmg_effective == 0.0 && position == 1 {
+                    // Multiple shields + full absorb: credit first with absorbed
+                    dmg_absorbed
+                } else if dmg_effective > 0.0 && position < shield_count {
+                    // Multiple shields + damage through: credit earlier with estimated
+                    estimated_max
+                } else if dmg_effective > 0.0 && position == shield_count {
+                    // Multiple shields + damage through: credit last with actual
+                    dmg_absorbed
+                } else {
+                    0.0
+                };
+
+                if credited > 0.0 {
+                    *shielding_given.entry(source_id).or_default() += credited;
                 }
             }
         }
 
-        Ok(shielding_given)
+        // Convert source_id to source_name
+        let entity_names = self.get_entity_names().await?;
+        Ok(shielding_given
+            .into_iter()
+            .filter_map(|(id, total)| entity_names.get(&id).map(|name| (name.clone(), total)))
+            .collect())
     }
 
     /// Get entity ID to name mapping
@@ -599,8 +613,11 @@ impl EncounterQuery<'_> {
             .unwrap_or_default();
         let duration = duration_secs.unwrap_or(1.0).max(0.001) as f64;
 
-        // Query shield attribution in parallel with main stats
-        let shielding_given = self.query_shield_attribution(time_range).await?;
+        // Query shield attribution
+        let shielding_given = self
+            .query_shield_attribution(time_range)
+            .await
+            .unwrap_or_default();
 
         // CTE-based query to aggregate multiple metrics per player
         // participants: all unique source names (players who did anything)

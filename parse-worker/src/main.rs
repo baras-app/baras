@@ -10,14 +10,17 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 use arrow::array::{
-    ArrayRef, BooleanBuilder, Float32Builder, Int32Builder, Int64Builder, StringBuilder,
-    TimestampMillisecondBuilder, UInt32Builder, UInt64Builder,
+    ArrayBuilder, ArrayRef, BooleanBuilder, Float32Builder, Int32Builder, Int64Builder, ListArray,
+    StringBuilder, StructArray, TimestampMillisecondBuilder, UInt32Builder, UInt64Builder,
+    UInt8Builder,
 };
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+use arrow::buffer::{NullBuffer, OffsetBuffer};
+use arrow::datatypes::{DataType, Field, Fields, Schema, TimeUnit};
 use arrow::record_batch::RecordBatch;
 use baras_core::combat_log::{CombatEvent, EntityType, LogParser};
 use baras_core::context::{parse_log_filename, resolve};
 use baras_core::dsl::{BossEncounterDefinition, load_bosses_from_dir, merge_boss_definition};
+use baras_core::game_data::defense_type;
 use baras_core::encounter::summary::EncounterSummary;
 use baras_core::signal_processor::{EventProcessor, GameSignal};
 use baras_core::state::SessionCache;
@@ -137,6 +140,12 @@ struct FastEncounterWriter {
     area_name: StringBuilder,
     boss_name: StringBuilder,
     difficulty: StringBuilder,
+    // Shield attribution context
+    shield_effect_ids: Int64Builder,
+    shield_source_ids: Int64Builder,
+    shield_positions: UInt8Builder,
+    shield_estimated_maxes: Int64Builder,
+    shield_list_offsets: Vec<Option<(usize, usize)>>,
     // Row count
     len: usize,
 }
@@ -183,6 +192,11 @@ impl FastEncounterWriter {
             area_name: StringBuilder::with_capacity(capacity, capacity * 24),
             boss_name: StringBuilder::with_capacity(capacity, capacity * 24),
             difficulty: StringBuilder::with_capacity(capacity, capacity * 8),
+            shield_effect_ids: Int64Builder::with_capacity(capacity),
+            shield_source_ids: Int64Builder::with_capacity(capacity),
+            shield_positions: UInt8Builder::with_capacity(capacity),
+            shield_estimated_maxes: Int64Builder::with_capacity(capacity),
+            shield_list_offsets: Vec::with_capacity(capacity),
             len: 0,
         }
     }
@@ -290,6 +304,46 @@ impl FastEncounterWriter {
             },
         );
 
+        // Shield attribution context - capture active shields for damage events with absorption
+        let is_natural_shield = event.details.defense_type_id == defense_type::SHIELD
+            && event.details.dmg_effective == event.details.dmg_amount;
+
+        if event.details.dmg_absorbed > 0 && !is_natural_shield {
+            // DEBUG
+            use std::io::Write;
+            static DEBUG_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+            let count = DEBUG_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if count < 10 {
+                let mut f = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/parse_worker_shield.txt").unwrap();
+                let _ = writeln!(f, "dmg_absorbed={}, has_enc={}", event.details.dmg_absorbed, cache.current_encounter().is_some());
+            }
+
+            if let Some(enc) = cache.current_encounter() {
+                let shields = enc.get_shield_context(event.target_entity.log_id, event.timestamp);
+                // DEBUG
+                if count < 10 {
+                    let mut f = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/parse_worker_shield.txt").unwrap();
+                    let _ = writeln!(f, "  shields_found={}", shields.len());
+                }
+                if !shields.is_empty() {
+                    let start = self.shield_effect_ids.len();
+                    for s in &shields {
+                        self.shield_effect_ids.append_value(s.effect_id);
+                        self.shield_source_ids.append_value(s.source_id);
+                        self.shield_positions.append_value(s.position);
+                        self.shield_estimated_maxes.append_value(s.estimated_max);
+                    }
+                    self.shield_list_offsets.push(Some((start, self.shield_effect_ids.len())));
+                } else {
+                    self.shield_list_offsets.push(None);
+                }
+            } else {
+                self.shield_list_offsets.push(None);
+            }
+        } else {
+            self.shield_list_offsets.push(None);
+        }
+
         self.len += 1;
     }
 
@@ -304,6 +358,52 @@ impl FastEncounterWriter {
         }
 
         let schema = Self::schema();
+
+        // Build the active_shields List<Struct> array
+        let active_shields_array = {
+            let struct_fields = Fields::from(vec![
+                Field::new("effect_id", DataType::Int64, false),
+                Field::new("source_id", DataType::Int64, false),
+                Field::new("position", DataType::UInt8, false),
+                Field::new("estimated_max", DataType::Int64, false),
+            ]);
+            let struct_array = StructArray::try_new(
+                struct_fields.clone(),
+                vec![
+                    Arc::new(self.shield_effect_ids.finish()) as ArrayRef,
+                    Arc::new(self.shield_source_ids.finish()) as ArrayRef,
+                    Arc::new(self.shield_positions.finish()) as ArrayRef,
+                    Arc::new(self.shield_estimated_maxes.finish()) as ArrayRef,
+                ],
+                None,
+            ).ok()?;
+
+            // Build offsets and nulls for the list
+            let mut offsets: Vec<i32> = Vec::with_capacity(self.shield_list_offsets.len() + 1);
+            let mut nulls: Vec<bool> = Vec::with_capacity(self.shield_list_offsets.len());
+            offsets.push(0);
+            for offset in &self.shield_list_offsets {
+                match offset {
+                    Some((_, end)) => {
+                        offsets.push(*end as i32);
+                        nulls.push(true);
+                    }
+                    None => {
+                        offsets.push(*offsets.last().unwrap());
+                        nulls.push(false);
+                    }
+                }
+            }
+            self.shield_list_offsets.clear();
+
+            let list_field = Field::new("item", DataType::Struct(struct_fields), true);
+            ListArray::try_new(
+                Arc::new(list_field),
+                OffsetBuffer::new(offsets.into()),
+                Arc::new(struct_array),
+                Some(NullBuffer::from(nulls)),
+            ).ok()?
+        };
 
         let columns: Vec<ArrayRef> = vec![
             Arc::new(self.timestamp.finish()),
@@ -345,6 +445,7 @@ impl FastEncounterWriter {
             Arc::new(self.area_name.finish()),
             Arc::new(self.boss_name.finish()),
             Arc::new(self.difficulty.finish()),
+            Arc::new(active_shields_array),
         ];
 
         self.len = 0;
@@ -410,6 +511,21 @@ impl FastEncounterWriter {
             Field::new("area_name", DataType::Utf8, false),
             Field::new("boss_name", DataType::Utf8, true),
             Field::new("difficulty", DataType::Utf8, true),
+            // Shield attribution context
+            Field::new(
+                "active_shields",
+                DataType::List(Arc::new(Field::new(
+                    "item",
+                    DataType::Struct(Fields::from(vec![
+                        Field::new("effect_id", DataType::Int64, false),
+                        Field::new("source_id", DataType::Int64, false),
+                        Field::new("position", DataType::UInt8, false),
+                        Field::new("estimated_max", DataType::Int64, false),
+                    ])),
+                    true,
+                ))),
+                true,
+            ),
         ]))
     }
 }
