@@ -502,28 +502,20 @@ impl EncounterQuery<'_> {
     ) -> Result<std::collections::HashMap<String, f64>, String> {
         use std::collections::HashMap;
 
-        // Query with UNNEST in SELECT, then extract struct fields in outer query
-        // Cast types to ensure compatibility with col_* helpers
+        // Query with UNNEST, only fetch columns we need for FIFO attribution
+        // Only keep position=1 rows (first shield) to avoid double-counting
         let batches = self
             .sql(
                 r#"
             SELECT
                 CAST(dmg_absorbed AS BIGINT) as dmg_absorbed,
-                CAST(dmg_effective AS BIGINT) as dmg_effective,
-                shield['source_id'] as source_id,
-                CAST(shield['position'] AS BIGINT) as position,
-                CAST(shield['estimated_max'] AS DOUBLE) as estimated_max,
-                CAST(shield_count AS BIGINT) as shield_count
+                shield['source_id'] as source_id
             FROM (
-                SELECT
-                    dmg_absorbed,
-                    dmg_effective,
-                    UNNEST(active_shields) as shield,
-                    cardinality(active_shields) as shield_count
+                SELECT dmg_absorbed, UNNEST(active_shields) as shield
                 FROM events
-                WHERE dmg_absorbed > 0
-                  AND cardinality(active_shields) > 0
+                WHERE dmg_absorbed > 0 AND cardinality(active_shields) > 0
             )
+            WHERE CAST(shield['position'] AS BIGINT) = 1
         "#,
             )
             .await;
@@ -533,44 +525,18 @@ impl EncounterQuery<'_> {
             Err(_) => return Ok(HashMap::new()),
         };
 
-        // Process unnested results - each row is one shield from one damage event
+        // Simple FIFO attribution: credit all absorbed damage to the first shield.
+        // The log's dmg_absorbed is the TOTAL absorbed by all shields combined.
         let mut shielding_given: HashMap<i64, f64> = HashMap::new();
 
         for batch in &batches {
             let dmg_absorbeds = col_i64(batch, 0)?;
-            let dmg_effectives = col_i64(batch, 1)?;
-            let source_ids = col_i64(batch, 2)?;
-            let positions = col_i64(batch, 3)?;
-            let estimated_maxes = col_f64(batch, 4)?;
-            let shield_counts = col_i64(batch, 5)?;
+            let source_ids = col_i64(batch, 1)?;
 
             for i in 0..batch.num_rows() {
                 let dmg_absorbed = dmg_absorbeds[i] as f64;
-                let dmg_effective = dmg_effectives[i] as f64;
                 let source_id = source_ids[i];
-                let position = positions[i] as usize;
-                let estimated_max = estimated_maxes[i];
-                let shield_count = shield_counts[i] as usize;
-
-                let credited = if shield_count == 1 {
-                    // Single shield: credit with actual absorbed
-                    dmg_absorbed
-                } else if dmg_effective == 0.0 && position == 1 {
-                    // Multiple shields + full absorb: credit first with absorbed
-                    dmg_absorbed
-                } else if dmg_effective > 0.0 && position < shield_count {
-                    // Multiple shields + damage through: credit earlier with estimated
-                    estimated_max
-                } else if dmg_effective > 0.0 && position == shield_count {
-                    // Multiple shields + damage through: credit last with actual
-                    dmg_absorbed
-                } else {
-                    0.0
-                };
-
-                if credited > 0.0 {
-                    *shielding_given.entry(source_id).or_default() += credited;
-                }
+                *shielding_given.entry(source_id).or_default() += dmg_absorbed;
             }
         }
 

@@ -1,17 +1,11 @@
-//! Simplified shield attribution using Parsely-style logic.
+//! Simple FIFO shield attribution.
 //!
-//! SWTOR's combat log only shows what the LAST shield absorbed, not the total.
-//! When multiple shields are active and damage gets through, earlier shields
-//! absorbed their full capacity but this isn't shown in the log.
+//! The combat log's `dmg_absorbed` shows the TOTAL absorbed by all active shields.
+//! We use simple FIFO attribution: credit all absorbed damage to whoever applied
+//! the first (oldest) active shield.
 //!
-//! ## Algorithm
-//!
-//! - **No active shields**: Check recently closed shields (500ms grace window)
-//! - **Single shield**: Credit it fully with dmg_absorbed
-//! - **Multiple shields + full absorb**: Credit FIRST applied (FIFO)
-//! - **Multiple shields + damage through**:
-//!   - Credit earlier shields with ESTIMATED absorb (from lookup table)
-//!   - Credit LAST shield with ACTUAL dmg_absorbed (what the log shows)
+//! If no shields are active, we check for recently closed shields (500ms grace window)
+//! to handle timing edge cases.
 
 use super::CombatEncounter;
 use crate::combat_log::CombatEvent;
@@ -38,13 +32,11 @@ pub struct ShieldContext {
 /// Lightweight shield reference for attribution without borrowing issues
 struct ActiveShield {
     source_id: i64,
-    effect_id: i64,
-    applied_at: NaiveDateTime,
 }
 
 impl CombatEncounter {
     /// Process a damage event that has absorption.
-    /// Attributes the absorbed damage to the appropriate shield source(s).
+    /// Credits all absorbed damage to the first (oldest) active shield using FIFO.
     pub fn attribute_shield_absorption(&mut self, event: &CombatEvent) {
         let absorbed = event.details.dmg_absorbed as i64;
         if absorbed == 0 {
@@ -52,79 +44,31 @@ impl CombatEncounter {
         }
 
         let target_id = event.target_entity.log_id;
-        let damage_got_through = event.details.dmg_effective > 0;
 
-        // Collect active shields to avoid borrow conflicts
-        let active_shields = self.get_active_shields(target_id, event.timestamp);
-
-        match (active_shields.len(), damage_got_through) {
-            (0, _) => {
-                // No active shields - try recently closed
-                self.credit_recently_closed_shield(target_id, absorbed, event.timestamp);
-            }
-            (1, _) => {
-                // Single shield: credit it fully
-                self.credit_shielding(active_shields[0].source_id, absorbed);
-            }
-            (_, false) => {
-                // Multiple shields, full absorb: credit first applied (FIFO)
-                self.credit_shielding(active_shields[0].source_id, absorbed);
-            }
-            (_, true) => {
-                // Multiple shields, damage got through - attribute based on shield types
-                self.attribute_multi_shield_break(&active_shields, absorbed);
-            }
+        // Find the first active shield (FIFO - oldest applied)
+        if let Some(first_shield) = self.get_first_active_shield(target_id, event.timestamp) {
+            self.credit_shielding(first_shield.source_id, absorbed);
+        } else {
+            // No active shields - try recently closed (grace window)
+            self.credit_recently_closed_shield(target_id, absorbed, event.timestamp);
         }
     }
 
-    /// Get active shields for a target, sorted by application time (FIFO)
-    fn get_active_shields(&self, target_id: i64, timestamp: NaiveDateTime) -> Vec<ActiveShield> {
-        let Some(effects) = self.effects.get(&target_id) else {
-            return Vec::new();
-        };
+    /// Get the first (oldest) active shield for a target
+    fn get_first_active_shield(&self, target_id: i64, timestamp: NaiveDateTime) -> Option<ActiveShield> {
+        let effects = self.effects.get(&target_id)?;
 
-        let mut shields: Vec<ActiveShield> = effects
+        effects
             .iter()
             .filter(|e| {
                 e.is_shield
                     && e.applied_at < timestamp
                     && e.removed_at.map_or(true, |r| r >= timestamp)
             })
+            .min_by_key(|e| e.applied_at)
             .map(|e| ActiveShield {
                 source_id: e.source_id,
-                effect_id: e.effect_id,
-                applied_at: e.applied_at,
             })
-            .collect();
-
-        // Sort by application time (oldest first = FIFO)
-        shields.sort_by_key(|s| s.applied_at);
-        shields
-    }
-
-    /// Handle multi-shield break scenario.
-    ///
-    /// When damage gets through with multiple shields active:
-    /// - The log's dmg_absorbed only shows what the LAST shield absorbed
-    /// - Earlier shields absorbed their full capacity (not shown in log)
-    ///
-    /// Credit earlier shields with ESTIMATED absorb, last shield with ACTUAL.
-    fn attribute_multi_shield_break(&mut self, shields: &[ActiveShield], dmg_absorbed: i64) {
-        let len = shields.len();
-
-        // Credit all shields EXCEPT the last with their estimated absorb
-        for shield in shields.iter().take(len.saturating_sub(1)) {
-            if let Some(info) = get_shield_info(shield.effect_id)
-                && let Some(estimated) = info.estimated_absorb()
-            {
-                self.credit_shielding(shield.source_id, estimated);
-            }
-        }
-
-        // Credit the last shield with the actual dmg_absorbed from the log
-        if let Some(last) = shields.last() {
-            self.credit_shielding(last.source_id, dmg_absorbed);
-        }
     }
 
     /// Credit absorption to a recently closed shield within the grace window
