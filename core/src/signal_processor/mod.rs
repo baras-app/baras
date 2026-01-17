@@ -11,6 +11,7 @@ mod phase;
 #[cfg(test)]
 mod processor_tests;
 
+pub use combat_state::tick_combat_state;
 pub use counter::check_counter_timer_triggers;
 pub use handler::SignalHandler;
 pub use processor::EventProcessor;

@@ -268,3 +268,53 @@ fn handle_post_combat(
 
     signals
 }
+
+/// Tick the combat state machine using wall-clock time.
+///
+/// This provides a fallback timeout when the event stream stops (e.g., player dies
+/// and revives but no new combat events arrive). Called periodically from the tail loop.
+///
+/// Returns CombatEnded signal if combat times out due to inactivity.
+/// Only affects InCombat state - other states are no-ops.
+pub fn tick_combat_state(cache: &mut SessionCache) -> Vec<GameSignal> {
+    let current_state = cache
+        .current_encounter()
+        .map(|e| e.state.clone())
+        .unwrap_or_default();
+
+    // Only tick during active combat
+    if !matches!(current_state, EncounterState::InCombat) {
+        return Vec::new();
+    }
+
+    // Check wall-clock timeout
+    let now = chrono::Local::now().naive_local();
+
+    if let Some(enc) = cache.current_encounter()
+        && let Some(last_activity) = enc.last_combat_activity_time
+    {
+        let elapsed = now.signed_duration_since(last_activity).num_seconds();
+        if elapsed >= COMBAT_TIMEOUT_SECONDS {
+            let encounter_id = enc.id;
+
+            // End combat at last_activity_time (same as event-driven timeout)
+            if let Some(enc) = cache.current_encounter_mut() {
+                enc.exit_combat_time = Some(last_activity);
+                enc.state = EncounterState::PostCombat {
+                    exit_time: last_activity,
+                };
+                let duration = enc.duration_seconds().unwrap_or(0) as f32;
+                enc.challenge_tracker.finalize(last_activity, duration);
+            }
+
+            cache.push_new_encounter();
+
+            return vec![GameSignal::CombatEnded {
+                timestamp: last_activity,
+                encounter_id,
+            }];
+        }
+    }
+
+    Vec::new()
+}

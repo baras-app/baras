@@ -138,6 +138,8 @@ impl Reader {
         loop {
             match reader.read_until(b'\n', &mut buf).await {
                 Ok(0) => {
+                    // No new data - tick combat state for wall-clock timeout
+                    self.state.write().await.tick();
                     sleep(TAIL_SLEEP_DURATION).await;
                     continue;
                 }

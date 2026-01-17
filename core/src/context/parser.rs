@@ -338,19 +338,32 @@ impl ParsingSession {
         self.timer_manager.as_ref().map(Arc::clone)
     }
 
-    /// Tick the effect tracker and timer manager to update expiration state.
+    /// Tick the combat state, effect tracker, and timer manager.
     ///
-    /// Call this periodically (e.g., at overlay refresh rate ~10fps) to ensure
-    /// duration-expired effects and timers are updated. No-op in Historical mode.
-    pub fn tick(&self) {
+    /// Call this periodically (e.g., from the tail loop during idle) to ensure:
+    /// - Combat timeout is checked even when no events arrive
+    /// - Duration-expired effects and timers are updated
+    ///
+    /// No-op in Historical mode for effects/timers.
+    pub fn tick(&mut self) {
+        // Tick combat state for wall-clock timeout (fallback when event stream stops)
+        if let Some(cache) = &mut self.session_cache {
+            let signals = crate::signal_processor::tick_combat_state(cache);
+            if !signals.is_empty() {
+                self.dispatch_signals(&signals);
+            }
+        }
+
+        // Tick effect tracker
         if let Some(tracker) = &self.effect_tracker {
             if let Ok(mut tracker) = tracker.lock() {
                 tracker.tick();
             }
         }
+
+        // Tick timer manager
         if let Some(timer_mgr) = &self.timer_manager {
             if let Ok(mut timer_mgr) = timer_mgr.lock() {
-                // Get encounter from cache for timer restart context
                 let encounter = self
                     .session_cache
                     .as_ref()
