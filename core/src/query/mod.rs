@@ -8,9 +8,12 @@ mod breakdown;
 mod combat_log;
 mod column_helpers;
 mod effects;
+pub mod error;
 mod overview;
 mod time_series;
 mod timeline;
+
+pub use error::QueryError;
 
 use std::path::Path;
 use std::sync::Arc;
