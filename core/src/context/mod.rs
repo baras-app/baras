@@ -1,9 +1,12 @@
 mod background_tasks;
 mod config;
+mod error;
 mod interner;
 mod log_files;
 mod parser;
 pub mod watcher;
+
+pub use error::{ConfigError, WatcherError};
 
 pub use background_tasks::BackgroundTasks;
 pub use config::{
