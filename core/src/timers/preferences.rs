@@ -6,9 +6,10 @@
 //! - Share definition files without personal settings mixed in
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Preference Types
@@ -232,24 +233,18 @@ impl TimerPreferences {
 // Error Types
 // ═══════════════════════════════════════════════════════════════════════════
 
-#[derive(Debug)]
+/// Errors during timer preferences operations
+#[derive(Debug, Error)]
 pub enum PreferencesError {
-    Io(std::path::PathBuf, std::io::Error),
-    Parse(std::path::PathBuf, toml::de::Error),
-    Serialize(toml::ser::Error),
-}
+    #[error("IO error at {0}")]
+    Io(PathBuf, #[source] std::io::Error),
 
-impl std::fmt::Display for PreferencesError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Io(path, e) => write!(f, "IO error at {}: {}", path.display(), e),
-            Self::Parse(path, e) => write!(f, "Parse error in {}: {}", path.display(), e),
-            Self::Serialize(e) => write!(f, "Serialization error: {}", e),
-        }
-    }
-}
+    #[error("parse error in {0}")]
+    Parse(PathBuf, #[source] toml::de::Error),
 
-impl std::error::Error for PreferencesError {}
+    #[error("serialization error")]
+    Serialize(#[from] toml::ser::Error),
+}
 
 #[cfg(test)]
 mod tests {

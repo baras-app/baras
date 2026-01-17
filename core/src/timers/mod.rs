@@ -16,6 +16,7 @@
 
 mod active;
 mod definition;
+mod error;
 mod manager;
 mod matching;
 mod preferences;
@@ -26,6 +27,7 @@ mod manager_tests;
 
 pub use active::{ActiveTimer, TimerKey};
 pub use definition::{TimerConfig, TimerDefinition, TimerTrigger};
+pub use error::TimerError;
 pub use manager::{FiredAlert, TimerManager};
 pub use preferences::{
     PreferencesError, TimerPreference, TimerPreferences, boss_timer_key, standalone_timer_key,
