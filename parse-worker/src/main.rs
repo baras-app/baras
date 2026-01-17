@@ -34,6 +34,7 @@ use parquet::file::properties::WriterProperties;
 use rayon::prelude::*;
 use serde::Serialize;
 use std::fs::{self, File};
+use tracing_subscriber::filter::EnvFilter;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -309,22 +310,8 @@ impl FastEncounterWriter {
             && event.details.dmg_effective == event.details.dmg_amount;
 
         if event.details.dmg_absorbed > 0 && !is_natural_shield {
-            // DEBUG
-            use std::io::Write;
-            static DEBUG_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-            let count = DEBUG_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            if count < 10 {
-                let mut f = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/parse_worker_shield.txt").unwrap();
-                let _ = writeln!(f, "dmg_absorbed={}, has_enc={}", event.details.dmg_absorbed, cache.current_encounter().is_some());
-            }
-
             if let Some(enc) = cache.current_encounter() {
                 let shields = enc.get_shield_context(event.target_entity.log_id, event.timestamp);
-                // DEBUG
-                if count < 10 {
-                    let mut f = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/parse_worker_shield.txt").unwrap();
-                    let _ = writeln!(f, "  shields_found={}", shields.len());
-                }
                 if !shields.is_empty() {
                     let start = self.shield_effect_ids.len();
                     for s in &shields {
@@ -541,9 +528,19 @@ fn entity_type_str(entity_type: &EntityType) -> &'static str {
 }
 
 fn main() {
+    // Initialize tracing subscriber (parse-worker is separate process, needs its own)
+    let filter = EnvFilter::builder()
+        .with_default_directive(tracing::Level::INFO.into())
+        .from_env_lossy();
+
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_target(true)
+        .init();
+
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 4 {
-        eprintln!(
+        tracing::error!(
             "Usage: baras-parse-worker <file_path> <session_id> <output_dir> [definitions_dir]"
         );
         std::process::exit(1);
@@ -556,7 +553,7 @@ fn main() {
 
     // Ensure output directory exists
     if let Err(e) = fs::create_dir_all(&output_dir) {
-        eprintln!("Failed to create output dir: {}", e);
+        tracing::error!(error = %e, "Failed to create output dir");
         std::process::exit(1);
     }
 
@@ -567,14 +564,11 @@ fn main() {
     if let Some(ref dir) = definitions_dir {
         match load_bosses_from_dir(dir) {
             Ok(bosses) => {
-                eprintln!(
-                    "[PARSE-WORKER] Loaded {} bundled boss definitions",
-                    bosses.len()
-                );
+                tracing::debug!(count = bosses.len(), "Loaded bundled boss definitions");
                 boss_definitions = bosses;
             }
             Err(e) => {
-                eprintln!("[PARSE-WORKER] Failed to load bundled definitions: {}", e);
+                tracing::warn!(error = %e, "Failed to load bundled definitions");
             }
         }
     }
@@ -586,10 +580,7 @@ fn main() {
             match load_bosses_from_dir(&user_dir) {
                 Ok(user_bosses) => {
                     if !user_bosses.is_empty() {
-                        eprintln!(
-                            "[PARSE-WORKER] Loaded {} user boss definitions",
-                            user_bosses.len()
-                        );
+                        tracing::debug!(count = user_bosses.len(), "Loaded user boss definitions");
                         // Merge: field-level merge for existing bosses, append new ones
                         for user_boss in user_bosses {
                             if let Some(existing) =
@@ -609,7 +600,7 @@ fn main() {
                     }
                 }
                 Err(e) => {
-                    eprintln!("[PARSE-WORKER] Failed to load user definitions: {}", e);
+                    tracing::warn!(error = %e, "Failed to load user definitions");
                 }
             }
     }
@@ -627,7 +618,7 @@ fn main() {
             }
         }
         Err(e) => {
-            eprintln!("Parse error: {}", e);
+            tracing::error!(error = %e, "Parse error");
             std::process::exit(1);
         }
     }
