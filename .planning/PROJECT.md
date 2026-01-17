@@ -25,6 +25,7 @@ Users never see a frozen UI from a panic. Errors are caught, logged, and communi
 - [ ] Proper error propagation from Tauri backend to UI
 - [ ] UI error feedback components (not frozen screens)
 - [ ] Structured logging infrastructure (errors + debug)
+- [ ] Migrate existing 382 `eprintln!` calls to unified logging
 - [ ] Reduce unnecessary `.clone()` calls in hot paths
 
 ### Out of Scope
