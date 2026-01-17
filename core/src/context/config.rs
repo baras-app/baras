@@ -3,6 +3,8 @@
 //! This module re-exports shared types from baras-types and provides
 //! platform-specific Default implementation and persistence for AppConfig.
 
+use super::error::ConfigError;
+
 // Re-export all shared types
 pub use baras_types::{
     AlertsOverlayConfig, AppConfig, BossHealthConfig, ChallengeColumns, ChallengeLayout,
@@ -46,7 +48,7 @@ fn default_log_directory() -> String {
 pub trait AppConfigExt {
     fn load() -> Self;
     fn load_with_defaults() -> Self;
-    fn save(self);
+    fn save(self) -> Result<(), ConfigError>;
     fn save_profile(&mut self, name: String) -> Result<(), &'static str>;
     fn load_profile(&mut self, name: &str) -> Result<(), &'static str>;
     fn delete_profile(&mut self, name: &str) -> Result<(), &'static str>;
@@ -65,8 +67,10 @@ impl AppConfigExt for AppConfig {
         AppConfig::with_log_directory(default_log_directory())
     }
 
-    fn save(self) {
-        confy::store("baras", "config", self).expect("Failed to save configuration");
+    fn save(self) -> Result<(), ConfigError> {
+        confy::store("baras", "config", self).map_err(ConfigError::Save)?;
+        tracing::debug!("Configuration saved successfully");
+        Ok(())
     }
 
     fn save_profile(&mut self, name: String) -> Result<(), &'static str> {

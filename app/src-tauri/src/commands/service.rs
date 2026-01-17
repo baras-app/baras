@@ -205,7 +205,7 @@ pub async fn save_profile(
 
     config.save_profile(name).map_err(|e| e.to_string())?;
     *handle.shared.config.write().await = config.clone();
-    config.save();
+    config.save().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -214,7 +214,7 @@ pub async fn load_profile(name: String, handle: State<'_, ServiceHandle>) -> Res
     let mut config = handle.config().await;
     config.load_profile(&name).map_err(|e| e.to_string())?;
     *handle.shared.config.write().await = config.clone();
-    config.save();
+    config.save().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -223,7 +223,7 @@ pub async fn delete_profile(name: String, handle: State<'_, ServiceHandle>) -> R
     let mut config = handle.config().await;
     config.delete_profile(&name).map_err(|e| e.to_string())?;
     *handle.shared.config.write().await = config.clone();
-    config.save();
+    config.save().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -238,7 +238,7 @@ pub async fn rename_profile(
         .rename_profile(&old_name, new_name)
         .map_err(|e| e.to_string())?;
     *handle.shared.config.write().await = config.clone();
-    config.save();
+    config.save().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -291,7 +291,7 @@ pub async fn mark_changelog_viewed(
     let mut config = handle.config().await;
     config.last_viewed_changelog_version = Some(current_version);
     *handle.shared.config.write().await = config.clone();
-    config.save();
+    config.save().map_err(|e| e.to_string())?;
     Ok(())
 }
 

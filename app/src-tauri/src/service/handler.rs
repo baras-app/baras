@@ -161,7 +161,9 @@ impl ServiceHandle {
         let new_latency = config.latency_ms;
 
         *self.shared.config.write().await = config.clone();
-        config.save();
+        if let Err(e) = config.save() {
+            tracing::error!(error = %e, "Failed to save configuration");
+        }
 
         // Update raid registry max slots if grid size changed
         if new_slots != old_slots
