@@ -19,3 +19,5 @@ memchr = "2.7"
 memmap2 = "0.9"
 arrow = "57"
 parquet = "57"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

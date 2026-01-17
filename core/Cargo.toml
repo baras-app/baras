@@ -36,3 +36,4 @@ datafusion = { version = "51", default-features = false, features = [
   "nested_expressions",
 ] }
 datafusion-functions-table = { version = "51.0", default-features = false }
+tracing = { workspace = true }
