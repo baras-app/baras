@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 3 of 7 (Core Error Handling)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-01-17 - Completed 03-01-PLAN.md (helper function unwrap removal)
+Last activity: 2026-01-17 - Completed 03-02-PLAN.md (signal processor invariant unwraps)
 
-Progress: [████░░░░░░] 33%
+Progress: [████░░░░░░] 39%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 2.8 min
-- Total execution time: 17 min
+- Total plans completed: 7
+- Average duration: 3.0 min
+- Total execution time: 21 min
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [████░░░░░░] 33%
 |-------|-------|-------|----------|
 | 01-logging-foundation | 2 | 7 min | 3.5 min |
 | 02-core-error-types | 3 | 6 min | 2 min |
-| 03-core-error-handling | 1 | 4 min | 4 min |
+| 03-core-error-handling | 2 | 8 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (5 min), 02-01 (2 min), 02-02 (2 min), 02-03 (2 min), 03-01 (4 min)
+- Last 5 plans: 02-01 (2 min), 02-02 (2 min), 02-03 (2 min), 03-01 (4 min), 03-02 (4 min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -62,6 +62,8 @@ Recent decisions affecting current work:
 - PreferencesError converted from manual impl to thiserror derive (02-03)
 - Use let-else early return pattern for get_entities helpers (03-01)
 - Use Option::map().unwrap_or(false) for filter predicates (03-01)
+- BUG-level tracing::error! for invariant violations in signal_processor (03-02)
+- continue for loop invariant failures, return for function-level failures (03-02)
 
 ### Pending Todos
 
@@ -73,6 +75,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-17T23:54Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-01-18T00:00Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
