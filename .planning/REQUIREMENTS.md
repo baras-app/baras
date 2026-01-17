@@ -61,31 +61,31 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
+Which phases cover which requirements.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ERR-01 | TBD | Pending |
-| ERR-02 | TBD | Pending |
-| ERR-03 | TBD | Pending |
-| ERR-04 | TBD | Pending |
-| ERR-05 | TBD | Pending |
-| ERR-06 | TBD | Pending |
-| ERR-07 | TBD | Pending |
-| ERR-08 | TBD | Pending |
-| LOG-01 | TBD | Pending |
-| LOG-02 | TBD | Pending |
-| LOG-03 | TBD | Pending |
-| LOG-04 | TBD | Pending |
-| CLN-01 | TBD | Pending |
-| CLN-02 | TBD | Pending |
-| CLN-03 | TBD | Pending |
+| LOG-01 | Phase 1: Logging Foundation | Pending |
+| ERR-03 | Phase 2: Core Error Types | Pending |
+| ERR-01 | Phase 3: Core Error Handling | Pending |
+| ERR-02 | Phase 3: Core Error Handling | Pending |
+| ERR-04 | Phase 4: Backend Error Handling | Pending |
+| ERR-05 | Phase 4: Backend Error Handling | Pending |
+| ERR-06 | Phase 5: Frontend Error Handling | Pending |
+| ERR-07 | Phase 5: Frontend Error Handling | Pending |
+| ERR-08 | Phase 5: Frontend Error Handling | Pending |
+| LOG-02 | Phase 6: Logging Migration | Pending |
+| LOG-03 | Phase 6: Logging Migration | Pending |
+| LOG-04 | Phase 6: Logging Migration | Pending |
+| CLN-01 | Phase 7: Clone Cleanup | Pending |
+| CLN-02 | Phase 7: Clone Cleanup | Pending |
+| CLN-03 | Phase 7: Clone Cleanup | Pending |
 
 **Coverage:**
 - v1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-17*
-*Last updated: 2026-01-17 after initial definition*
+*Last updated: 2026-01-17 — Traceability updated after roadmap creation*
