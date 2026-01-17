@@ -34,7 +34,10 @@ pub fn check_counter_increments(
     for counter in &counters {
         // Check increment_on trigger
         if check_counter_trigger(&counter.increment_on, event, current_signals, &def) {
-            let enc = cache.current_encounter_mut().unwrap();
+            let Some(enc) = cache.current_encounter_mut() else {
+                tracing::error!("BUG: encounter missing in check_counter_increments (increment_on)");
+                continue;
+            };
             let (old_value, new_value) = enc.modify_counter(
                 &counter.id,
                 counter.decrement, // Legacy: use decrement flag for increment_on
@@ -53,7 +56,10 @@ pub fn check_counter_increments(
         if let Some(ref decrement_trigger) = counter.decrement_on
             && check_counter_trigger(decrement_trigger, event, current_signals, &def)
         {
-            let enc = cache.current_encounter_mut().unwrap();
+            let Some(enc) = cache.current_encounter_mut() else {
+                tracing::error!("BUG: encounter missing in check_counter_increments (decrement_on)");
+                continue;
+            };
             let (old_value, new_value) = enc.modify_counter(
                 &counter.id,
                 true, // Always decrement
@@ -70,7 +76,10 @@ pub fn check_counter_increments(
 
         // Check reset_on trigger (resets to initial_value)
         if check_counter_trigger(&counter.reset_on, event, current_signals, &def) {
-            let enc = cache.current_encounter_mut().unwrap();
+            let Some(enc) = cache.current_encounter_mut() else {
+                tracing::error!("BUG: encounter missing in check_counter_increments (reset_on)");
+                continue;
+            };
             let old_value = enc.get_counter(&counter.id);
             let new_value = counter.initial_value;
 
@@ -117,7 +126,10 @@ pub fn check_counter_timer_triggers(
     for counter in &counters {
         // Check increment_on for timer triggers
         if matches_timer_trigger(&counter.increment_on, expired_timer_ids, started_timer_ids) {
-            let enc = cache.current_encounter_mut().unwrap();
+            let Some(enc) = cache.current_encounter_mut() else {
+                tracing::error!("BUG: encounter missing in check_counter_timer_triggers (increment_on)");
+                continue;
+            };
             let (old_value, new_value) =
                 enc.modify_counter(&counter.id, counter.decrement, counter.set_value);
             signals.push(GameSignal::CounterChanged {
@@ -131,7 +143,10 @@ pub fn check_counter_timer_triggers(
         // Check decrement_on for timer triggers
         if let Some(ref trigger) = counter.decrement_on {
             if matches_timer_trigger(trigger, expired_timer_ids, started_timer_ids) {
-                let enc = cache.current_encounter_mut().unwrap();
+                let Some(enc) = cache.current_encounter_mut() else {
+                    tracing::error!("BUG: encounter missing in check_counter_timer_triggers (decrement_on)");
+                    continue;
+                };
                 let (old_value, new_value) = enc.modify_counter(
                     &counter.id,
                     true, // Always decrement
@@ -148,7 +163,10 @@ pub fn check_counter_timer_triggers(
 
         // Check reset_on for timer triggers
         if matches_timer_trigger(&counter.reset_on, expired_timer_ids, started_timer_ids) {
-            let enc = cache.current_encounter_mut().unwrap();
+            let Some(enc) = cache.current_encounter_mut() else {
+                tracing::error!("BUG: encounter missing in check_counter_timer_triggers (reset_on)");
+                continue;
+            };
             let old_value = enc.get_counter(&counter.id);
             let new_value = counter.initial_value;
             if old_value != new_value {
