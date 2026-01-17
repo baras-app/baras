@@ -26,7 +26,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Logging
 
-- [ ] **LOG-01**: `tracing` crate integrated with appropriate subscriber
+- [x] **LOG-01**: `tracing` crate integrated with appropriate subscriber ✓
 - [ ] **LOG-02**: All `eprintln!` calls migrated to `tracing` macros
 - [ ] **LOG-03**: Error-level logging for all caught errors
 - [ ] **LOG-04**: Debug-level logging for diagnostic info
@@ -65,7 +65,7 @@ Which phases cover which requirements.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LOG-01 | Phase 1: Logging Foundation | Pending |
+| LOG-01 | Phase 1: Logging Foundation | Complete |
 | ERR-03 | Phase 2: Core Error Types | Pending |
 | ERR-01 | Phase 3: Core Error Handling | Pending |
 | ERR-02 | Phase 3: Core Error Handling | Pending |

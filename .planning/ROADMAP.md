@@ -10,7 +10,7 @@ This roadmap transforms BARAS from a panic-prone application into one with grace
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Logging Foundation** - Tracing infrastructure for all subsequent work
+- [x] **Phase 1: Logging Foundation** - Tracing infrastructure for all subsequent work ✓
 - [ ] **Phase 2: Core Error Types** - Custom error types per module
 - [ ] **Phase 3: Core Error Handling** - Migrate unwrap/expect in core crate
 - [ ] **Phase 4: Backend Error Handling** - Tauri commands return errors to frontend
@@ -31,8 +31,8 @@ This roadmap transforms BARAS from a panic-prone application into one with grace
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md - Add tracing dependencies to workspace and crates
-- [ ] 01-02-PLAN.md - Initialize tracing subscriber in binaries
+- [x] 01-01-PLAN.md - Add tracing dependencies to workspace and crates ✓
+- [x] 01-02-PLAN.md - Initialize tracing subscriber in binaries ✓
 
 ### Phase 2: Core Error Types
 **Goal**: Define custom error types so error handling migration has proper types to use
@@ -127,7 +127,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Logging Foundation | 0/2 | Planned | - |
+| 1. Logging Foundation | 2/2 | Complete ✓ | 2026-01-17 |
 | 2. Core Error Types | 0/TBD | Not started | - |
 | 3. Core Error Handling | 0/TBD | Not started | - |
 | 4. Backend Error Handling | 0/TBD | Not started | - |
