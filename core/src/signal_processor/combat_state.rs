@@ -20,11 +20,7 @@ use super::GameSignal;
 pub const COMBAT_TIMEOUT_SECONDS: i64 = 60;
 
 /// Advance the combat state machine and emit CombatStarted/CombatEnded signals.
-pub fn advance_combat_state(
-    event: &CombatEvent,
-    cache: &mut SessionCache,
-    post_combat_threshold_ms: i64,
-) -> Vec<GameSignal> {
+pub fn advance_combat_state(event: &CombatEvent, cache: &mut SessionCache) -> Vec<GameSignal> {
     // Track effect applications/removals for shield absorption
     track_encounter_effects(event, cache);
 
@@ -42,14 +38,7 @@ pub fn advance_combat_state(
         EncounterState::InCombat => {
             handle_in_combat(event, cache, effect_id, effect_type_id, timestamp)
         }
-        EncounterState::PostCombat { exit_time } => handle_post_combat(
-            event,
-            cache,
-            effect_id,
-            timestamp,
-            exit_time,
-            post_combat_threshold_ms,
-        ),
+        EncounterState::PostCombat { .. } => handle_post_combat(event, cache, effect_id, timestamp),
     }
 }
 
@@ -135,7 +124,7 @@ fn handle_in_combat(
 
             cache.push_new_encounter();
             // Re-process this event in the new encounter's state machine
-            signals.extend(advance_combat_state(event, cache, 0));
+            signals.extend(advance_combat_state(event, cache));
             return signals;
         }
     }
@@ -196,7 +185,7 @@ fn handle_in_combat(
         });
 
         cache.push_new_encounter();
-        signals.extend(advance_combat_state(event, cache, 0));
+        signals.extend(advance_combat_state(event, cache));
     } else if effect_id == effect_id::EXITCOMBAT || all_players_dead || all_kill_targets_dead {
         let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
         if let Some(enc) = cache.current_encounter_mut() {
@@ -250,8 +239,6 @@ fn handle_post_combat(
     cache: &mut SessionCache,
     effect_id: i64,
     timestamp: NaiveDateTime,
-    exit_time: NaiveDateTime,
-    post_combat_threshold_ms: i64,
 ) -> Vec<GameSignal> {
     let mut signals = Vec::new();
 
@@ -269,19 +256,8 @@ fn handle_post_combat(
             encounter_id: new_encounter_id,
         });
     } else if effect_id == effect_id::DAMAGE {
-        let elapsed = timestamp
-            .signed_duration_since(exit_time)
-            .num_milliseconds();
-        if elapsed <= post_combat_threshold_ms {
-            // Trailing damage - assign to ending encounter
-            if let Some(enc) = cache.current_encounter_mut() {
-                enc.track_event_entities(event);
-                enc.accumulate_data(event);
-            }
-        } else {
-            // Beyond grace period - discard and start fresh
-            cache.push_new_encounter();
-        }
+        // Discard post-combat damage - start fresh encounter
+        cache.push_new_encounter();
     } else {
         // Non-damage event - goes to next encounter
         cache.push_new_encounter();

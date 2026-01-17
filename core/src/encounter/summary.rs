@@ -23,6 +23,8 @@ pub struct EncounterSummary {
     pub encounter_type: PhaseType,
     /// ISO 8601 formatted start time (or None if unknown)
     pub start_time: Option<String>,
+    /// ISO 8601 formatted end time (or None if unknown)
+    pub end_time: Option<String>,
     pub duration_seconds: i64,
     pub success: bool,
     pub area_name: String,
@@ -239,6 +241,9 @@ pub fn create_encounter_summary(
         encounter_type,
         start_time: encounter
             .enter_combat_time
+            .map(|t| t.format("%Y-%m-%dT%H:%M:%S").to_string()),
+        end_time: encounter
+            .exit_combat_time
             .map(|t| t.format("%Y-%m-%dT%H:%M:%S").to_string()),
         duration_seconds: encounter.duration_seconds().unwrap_or(0),
         success: determine_success(encounter),

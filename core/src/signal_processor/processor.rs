@@ -9,14 +9,9 @@ use crate::state::cache::SessionCache;
 
 use super::{challenge, combat_state, counter, phase};
 
-const POST_COMBAT_THRESHOLD_MS: i64 = 1;
-
 /// Processes combat events, routes them to encounters, and emits signals.
 /// This is the state machine that manages combat lifecycle.
-pub struct EventProcessor {
-    /// Grace period for trailing damage after combat ends
-    post_combat_threshold_ms: i64,
-}
+pub struct EventProcessor;
 
 impl Default for EventProcessor {
     fn default() -> Self {
@@ -26,9 +21,7 @@ impl Default for EventProcessor {
 
 impl EventProcessor {
     pub fn new() -> Self {
-        Self {
-            post_combat_threshold_ms: POST_COMBAT_THRESHOLD_MS,
-        }
+        Self
     }
 
     /// Process an incoming event.
@@ -104,11 +97,7 @@ impl EventProcessor {
         // PHASE 3: Combat State Machine
         // ═══════════════════════════════════════════════════════════════════════
 
-        signals.extend(combat_state::advance_combat_state(
-            &event,
-            cache,
-            self.post_combat_threshold_ms,
-        ));
+        signals.extend(combat_state::advance_combat_state(&event, cache));
 
         (signals, event)
     }
