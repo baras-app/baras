@@ -69,7 +69,10 @@ pub fn check_hp_phase_transitions(
             let boss_id = def.id.clone();
             let resets = phase.resets_counters.clone();
 
-            let enc = cache.current_encounter_mut().unwrap();
+            let Some(enc) = cache.current_encounter_mut() else {
+                tracing::error!("BUG: encounter disappeared mid-function in check_hp_phase_transitions");
+                return Vec::new();
+            };
             enc.set_phase(&new_phase_id, timestamp);
             enc.reset_counters_to_initial(&resets, &counter_defs);
             enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
@@ -131,7 +134,10 @@ pub fn check_ability_phase_transitions(
             let boss_id = def.id.clone();
             let resets = phase.resets_counters.clone();
 
-            let enc = cache.current_encounter_mut().unwrap();
+            let Some(enc) = cache.current_encounter_mut() else {
+                tracing::error!("BUG: encounter disappeared mid-function in check_ability_phase_transitions");
+                return Vec::new();
+            };
             enc.set_phase(&new_phase_id, event.timestamp);
             enc.reset_counters_to_initial(&resets, &counter_defs);
             enc.challenge_tracker
@@ -195,7 +201,10 @@ pub fn check_entity_phase_transitions(
             let new_phase_id = phase.id.clone();
             let resets = phase.resets_counters.clone();
 
-            let enc = cache.current_encounter_mut().unwrap();
+            let Some(enc) = cache.current_encounter_mut() else {
+                tracing::error!("BUG: encounter disappeared mid-function in check_entity_phase_transitions");
+                return signals;
+            };
             enc.set_phase(&new_phase_id, timestamp);
             enc.reset_counters_to_initial(&resets, &counter_defs);
             enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
@@ -233,8 +242,14 @@ pub fn check_time_phase_transitions(
     }
 
     // Need to reborrow after mutation
-    let enc = cache.current_encounter().unwrap();
-    let def_idx = enc.active_boss_idx().unwrap();
+    let Some(enc) = cache.current_encounter() else {
+        tracing::error!("BUG: encounter disappeared after update_combat_time in check_time_phase_transitions");
+        return Vec::new();
+    };
+    let Some(def_idx) = enc.active_boss_idx() else {
+        tracing::error!("BUG: no active boss after update_combat_time in check_time_phase_transitions");
+        return Vec::new();
+    };
 
     let phases: Vec<_> = enc.boss_definitions()[def_idx].phases.clone();
     let counter_defs = enc.boss_definitions()[def_idx].counters.clone();
@@ -265,7 +280,10 @@ pub fn check_time_phase_transitions(
             let new_phase_id = phase.id.clone();
             let resets = phase.resets_counters.clone();
 
-            let enc = cache.current_encounter_mut().unwrap();
+            let Some(enc) = cache.current_encounter_mut() else {
+                tracing::error!("BUG: encounter disappeared mid-function in check_time_phase_transitions");
+                return Vec::new();
+            };
             enc.set_phase(&new_phase_id, timestamp);
             enc.reset_counters_to_initial(&resets, &counter_defs);
             enc.challenge_tracker.set_phase(&new_phase_id, timestamp);

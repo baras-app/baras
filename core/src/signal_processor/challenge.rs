@@ -22,10 +22,11 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
     };
 
     // Build context from current encounter state (phase, counters, HP)
-    let ctx = cache
-        .current_encounter()
-        .unwrap()
-        .challenge_context(&boss_npc_ids);
+    let Some(enc) = cache.current_encounter() else {
+        tracing::error!("BUG: encounter disappeared after boss_npc_ids extraction in process_challenge_events");
+        return;
+    };
+    let ctx = enc.challenge_context(&boss_npc_ids);
 
     // Get local player ID and current target for filter matching
     let local_player_id = cache.player.id;
