@@ -11,7 +11,7 @@ This roadmap transforms BARAS from a panic-prone application into one with grace
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Logging Foundation** - Tracing infrastructure for all subsequent work ✓
-- [ ] **Phase 2: Core Error Types** - Custom error types per module
+- [x] **Phase 2: Core Error Types** - Custom error types per module ✓
 - [ ] **Phase 3: Core Error Handling** - Migrate unwrap/expect in core crate
 - [ ] **Phase 4: Backend Error Handling** - Tauri commands return errors to frontend
 - [ ] **Phase 5: Frontend Error Handling** - UI displays errors gracefully
@@ -46,9 +46,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md - Add thiserror dependency, create combat_log and dsl error types
-- [ ] 02-02-PLAN.md - Create query and storage error types
-- [ ] 02-03-PLAN.md - Create context and timers error types, convert PreferencesError
+- [x] 02-01-PLAN.md - Add thiserror dependency, create combat_log and dsl error types ✓
+- [x] 02-02-PLAN.md - Create query and storage error types ✓
+- [x] 02-03-PLAN.md - Create context and timers error types, convert PreferencesError ✓
 
 ### Phase 3: Core Error Handling
 **Goal**: Core crate returns Results instead of panicking
@@ -132,7 +132,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Logging Foundation | 2/2 | Complete ✓ | 2026-01-17 |
-| 2. Core Error Types | 0/3 | Ready | - |
+| 2. Core Error Types | 3/3 | Complete ✓ | 2026-01-17 |
 | 3. Core Error Handling | 0/3 | Ready | - |
 | 4. Backend Error Handling | 0/TBD | Not started | - |
 | 5. Frontend Error Handling | 0/TBD | Not started | - |
