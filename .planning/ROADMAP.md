@@ -43,10 +43,12 @@ Plans:
   2. Error types use thiserror for derive macros
   3. Error types include meaningful context (not just "failed")
   4. Errors can be converted up the call chain (From impls where needed)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md - Add thiserror dependency, create combat_log and dsl error types
+- [ ] 02-02-PLAN.md - Create query and storage error types
+- [ ] 02-03-PLAN.md - Create context and timers error types, convert PreferencesError
 
 ### Phase 3: Core Error Handling
 **Goal**: Core crate returns Results instead of panicking
@@ -128,7 +130,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Logging Foundation | 2/2 | Complete ✓ | 2026-01-17 |
-| 2. Core Error Types | 0/TBD | Not started | - |
+| 2. Core Error Types | 0/3 | Ready | - |
 | 3. Core Error Handling | 0/TBD | Not started | - |
 | 4. Backend Error Handling | 0/TBD | Not started | - |
 | 5. Frontend Error Handling | 0/TBD | Not started | - |
