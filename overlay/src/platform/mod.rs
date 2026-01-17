@@ -11,6 +11,9 @@ pub const RESIZE_CORNER_SIZE: i32 = 20;
 #[cfg(all(unix, not(target_os = "macos")))]
 pub mod wayland;
 
+#[cfg(all(unix, not(target_os = "macos")))]
+pub mod x11;
+
 #[cfg(target_os = "windows")]
 pub mod windows;
 
@@ -351,7 +354,7 @@ pub trait OverlayPlatform: Sized {
 
 /// Re-export the appropriate platform for the current target
 #[cfg(all(unix, not(target_os = "macos")))]
-pub use wayland::WaylandOverlay as NativeOverlay;
+pub use linux::LinuxOverlay as NativeOverlay;
 
 #[cfg(target_os = "windows")]
 pub use windows::WindowsOverlay as NativeOverlay;
@@ -360,12 +363,184 @@ pub use windows::WindowsOverlay as NativeOverlay;
 /// This is useful for converting saved relative positions to absolute before spawning.
 #[cfg(all(unix, not(target_os = "macos")))]
 pub fn get_all_monitors() -> Vec<MonitorInfo> {
-    wayland::get_all_monitors()
+    linux::get_all_monitors()
 }
 
 #[cfg(target_os = "windows")]
 pub fn get_all_monitors() -> Vec<MonitorInfo> {
     windows::get_all_monitors()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Linux Runtime Detection (Wayland vs X11)
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[cfg(all(unix, not(target_os = "macos")))]
+mod linux {
+    use super::*;
+
+    /// Detect whether to use Wayland or X11 at runtime
+    fn use_wayland() -> bool {
+        std::env::var("WAYLAND_DISPLAY").is_ok()
+    }
+
+    /// Get all monitors using the appropriate backend
+    pub fn get_all_monitors() -> Vec<MonitorInfo> {
+        if use_wayland() {
+            wayland::get_all_monitors()
+        } else {
+            x11::get_all_monitors()
+        }
+    }
+
+    /// Linux overlay that wraps either Wayland or X11 backend
+    pub enum LinuxOverlay {
+        Wayland(wayland::WaylandOverlay),
+        X11(x11::X11Overlay),
+    }
+
+    impl OverlayPlatform for LinuxOverlay {
+        fn new(config: OverlayConfig) -> Result<Self, PlatformError> {
+            if use_wayland() {
+                wayland::WaylandOverlay::new(config).map(LinuxOverlay::Wayland)
+            } else {
+                x11::X11Overlay::new(config).map(LinuxOverlay::X11)
+            }
+        }
+
+        fn width(&self) -> u32 {
+            match self {
+                Self::Wayland(w) => w.width(),
+                Self::X11(x) => x.width(),
+            }
+        }
+
+        fn height(&self) -> u32 {
+            match self {
+                Self::Wayland(w) => w.height(),
+                Self::X11(x) => x.height(),
+            }
+        }
+
+        fn x(&self) -> i32 {
+            match self {
+                Self::Wayland(w) => w.x(),
+                Self::X11(x) => x.x(),
+            }
+        }
+
+        fn y(&self) -> i32 {
+            match self {
+                Self::Wayland(w) => w.y(),
+                Self::X11(x) => x.y(),
+            }
+        }
+
+        fn take_position_dirty(&mut self) -> bool {
+            match self {
+                Self::Wayland(w) => w.take_position_dirty(),
+                Self::X11(x) => x.take_position_dirty(),
+            }
+        }
+
+        fn set_position(&mut self, x: i32, y: i32) {
+            match self {
+                Self::Wayland(w) => w.set_position(x, y),
+                Self::X11(xo) => xo.set_position(x, y),
+            }
+        }
+
+        fn set_size(&mut self, width: u32, height: u32) {
+            match self {
+                Self::Wayland(w) => w.set_size(width, height),
+                Self::X11(x) => x.set_size(width, height),
+            }
+        }
+
+        fn set_click_through(&mut self, enabled: bool) {
+            match self {
+                Self::Wayland(w) => w.set_click_through(enabled),
+                Self::X11(x) => x.set_click_through(enabled),
+            }
+        }
+
+        fn set_drag_enabled(&mut self, enabled: bool) {
+            match self {
+                Self::Wayland(w) => w.set_drag_enabled(enabled),
+                Self::X11(x) => x.set_drag_enabled(enabled),
+            }
+        }
+
+        fn is_drag_enabled(&self) -> bool {
+            match self {
+                Self::Wayland(w) => w.is_drag_enabled(),
+                Self::X11(x) => x.is_drag_enabled(),
+            }
+        }
+
+        fn take_pending_click(&mut self) -> Option<(f32, f32)> {
+            match self {
+                Self::Wayland(w) => w.take_pending_click(),
+                Self::X11(x) => x.take_pending_click(),
+            }
+        }
+
+        fn in_resize_corner(&self) -> bool {
+            match self {
+                Self::Wayland(w) => w.in_resize_corner(),
+                Self::X11(x) => x.in_resize_corner(),
+            }
+        }
+
+        fn is_resizing(&self) -> bool {
+            match self {
+                Self::Wayland(w) => w.is_resizing(),
+                Self::X11(x) => x.is_resizing(),
+            }
+        }
+
+        fn pending_size(&self) -> Option<(u32, u32)> {
+            match self {
+                Self::Wayland(w) => w.pending_size(),
+                Self::X11(x) => x.pending_size(),
+            }
+        }
+
+        fn is_interactive(&self) -> bool {
+            match self {
+                Self::Wayland(w) => w.is_interactive(),
+                Self::X11(x) => x.is_interactive(),
+            }
+        }
+
+        fn pixel_buffer(&mut self) -> Option<&mut [u8]> {
+            match self {
+                Self::Wayland(w) => w.pixel_buffer(),
+                Self::X11(x) => x.pixel_buffer(),
+            }
+        }
+
+        fn commit(&mut self) {
+            match self {
+                Self::Wayland(w) => w.commit(),
+                Self::X11(x) => x.commit(),
+            }
+        }
+
+        fn poll_events(&mut self) -> bool {
+            match self {
+                Self::Wayland(w) => w.poll_events(),
+                Self::X11(x) => x.poll_events(),
+            }
+        }
+
+        fn get_monitors(&self) -> Vec<MonitorInfo> {
+            match self {
+                Self::Wayland(w) => w.get_monitors(),
+                Self::X11(x) => x.get_monitors(),
+            }
+        }
+    }
 }
 
 /// Find a monitor by ID, or fall back to the primary monitor
