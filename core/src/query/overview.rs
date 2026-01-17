@@ -120,7 +120,7 @@ impl EncounterQuery<'_> {
                 SELECT source_name as name,
                        SUM(dmg_amount) as damage_total,
                 FROM events
-                WHERE dmg_amount > 0 {time_filter}
+                WHERE dmg_amount > 0 AND source_id != target_id {time_filter}
                 GROUP BY source_name
             ),
             damage_taken AS (
