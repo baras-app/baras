@@ -92,9 +92,11 @@ repeats = 10
 id = "wh_corrosive_slime"
 name = "Corrosive Slime"
 alert_text = "Slime on you"
-target = "local_player"
 difficulties = ["veteran", "master"]
-trigger = { type = "effect_applied", effects = [3010686175150344] }
+is_alert = true
+trigger = { type = "effect_applied", effects = [
+  3010686175150344,
+], target = "local_player" }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: The Dread Guard
@@ -830,8 +832,9 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "tfb_spit_pool_first"
 name = "Spit Pool + Scream"
-trigger = { type = "effect_removed", effects = [3009973210578944] }
-target = "local_player"
+trigger = { type = "effect_removed", effects = [
+  3009973210578944,
+], target = "local_player" }
 duration_secs = 42.0
 color = [228, 127, 40, 255]
 difficulties = ["veteran", "master"]
