@@ -55,4 +55,7 @@ pub enum ReaderError {
         #[source]
         source: std::io::Error,
     },
+
+    #[error("session date not initialized before tailing")]
+    SessionDateMissing,
 }
