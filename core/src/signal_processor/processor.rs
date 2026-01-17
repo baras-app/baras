@@ -9,7 +9,7 @@ use crate::state::cache::SessionCache;
 
 use super::{challenge, combat_state, counter, phase};
 
-const POST_COMBAT_THRESHOLD_MS: i64 = 5000;
+const POST_COMBAT_THRESHOLD_MS: i64 = 1;
 
 /// Processes combat events, routes them to encounters, and emits signals.
 /// This is the state machine that manages combat lifecycle.

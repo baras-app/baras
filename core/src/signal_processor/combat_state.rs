@@ -92,8 +92,8 @@ fn handle_not_started(
                 encounter_id: enc.id,
             });
         }
-    } else {
-        // Buffer non-damage events for the upcoming encounter
+    } else if effect_id != effect_id::DAMAGE {
+        // Buffer non-damage events for the upcoming encounter (skip pre-combat damage)
         if let Some(enc) = cache.current_encounter_mut() {
             enc.accumulate_data(event);
         }

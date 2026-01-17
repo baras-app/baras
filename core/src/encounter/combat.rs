@@ -421,8 +421,13 @@ impl CombatEncounter {
         (old_time, self.combat_time_secs)
     }
 
-    /// Get combat duration in seconds
+    /// Get combat duration in seconds (truncated)
     pub fn duration_seconds(&self) -> Option<i64> {
+        Some(self.duration_ms()? / 1000)
+    }
+
+    /// Get combat duration in milliseconds
+    pub fn duration_ms(&self) -> Option<i64> {
         use chrono::TimeDelta;
 
         let enter = self.enter_combat_time?;
@@ -437,7 +442,7 @@ impl CombatEncounter {
             duration = duration.checked_add(&TimeDelta::days(1))?;
         }
 
-        Some(duration.num_seconds())
+        Some(duration.num_milliseconds())
     }
 
     /// Build a ChallengeContext snapshot
@@ -755,8 +760,8 @@ impl CombatEncounter {
     ) -> Option<Vec<super::metrics::EntityMetrics>> {
         use super::metrics::EntityMetrics;
 
-        let duration = self.duration_seconds()?;
-        if duration <= 0 {
+        let duration_ms = self.duration_ms()?;
+        if duration_ms <= 0 {
             return None;
         }
 
@@ -819,30 +824,30 @@ impl CombatEncounter {
                     total_damage: acc.damage_dealt,
                     total_damage_boss: acc.damge_dealt_boss,
                     total_damage_effective: acc.damage_dealt_effective,
-                    dps: (acc.damage_dealt / duration) as i32,
-                    edps: (acc.damage_dealt_effective / duration) as i32,
-                    bossdps: (acc.damge_dealt_boss / duration) as i32,
+                    dps: (acc.damage_dealt * 1000 / duration_ms) as i32,
+                    edps: (acc.damage_dealt_effective * 1000 / duration_ms) as i32,
+                    bossdps: (acc.damge_dealt_boss * 1000 / duration_ms) as i32,
                     damage_crit_pct,
                     total_healing: acc.healing_done,
                     total_healing_effective: acc.healing_effective,
-                    hps: (acc.healing_done / duration) as i32,
-                    ehps: ((acc.healing_effective + acc.shielding_given) / duration) as i32,
+                    hps: (acc.healing_done * 1000 / duration_ms) as i32,
+                    ehps: ((acc.healing_effective + acc.shielding_given) * 1000 / duration_ms) as i32,
                     heal_crit_pct,
                     effective_heal_pct,
-                    abs: (acc.shielding_given / duration) as i32,
+                    abs: (acc.shielding_given * 1000 / duration_ms) as i32,
                     total_shielding: acc.shielding_given,
                     total_damage_taken: acc.damage_received,
                     total_damage_taken_effective: acc.damage_received_effective,
-                    dtps: (acc.damage_received / duration) as i32,
-                    edtps: (acc.damage_received_effective / duration) as i32,
-                    htps: (acc.healing_received / duration) as i32,
-                    ehtps: (acc.healing_received_effective / duration) as i32,
+                    dtps: (acc.damage_received * 1000 / duration_ms) as i32,
+                    edtps: (acc.damage_received_effective * 1000 / duration_ms) as i32,
+                    htps: (acc.healing_received * 1000 / duration_ms) as i32,
+                    ehtps: (acc.healing_received_effective * 1000 / duration_ms) as i32,
                     defense_pct,
                     shield_pct,
                     total_shield_absorbed: acc.shield_roll_absorbed,
                     taunt_count: acc.taunt_count,
-                    apm: (acc.actions as f32 / duration as f32) * 60.0,
-                    tps: (acc.threat_generated / duration as f64) as i32,
+                    apm: (acc.actions as f32 * 60000.0 / duration_ms as f32),
+                    tps: (acc.threat_generated * 1000.0 / duration_ms as f64) as i32,
                     total_threat: acc.threat_generated as i64,
                 })
             })

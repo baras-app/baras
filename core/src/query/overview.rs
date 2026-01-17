@@ -93,7 +93,8 @@ impl EncounterQuery<'_> {
         let time_filter = time_range
             .map(|tr| format!("AND {}", tr.sql_filter()))
             .unwrap_or_default();
-        let duration = duration_secs.unwrap_or(1.0).max(0.001) as f64;
+        // Use milliseconds as base to match MetricAccumulator precision
+        let duration_ms = (duration_secs.unwrap_or(1.0).max(0.001) * 1000.0).round() as i64;
 
         // Query shield attribution
         let shielding_given = self
@@ -189,18 +190,18 @@ impl EncounterQuery<'_> {
                     class_icon: None,
                     role_icon: None,
                     damage_total: damage_totals[i],
-                    dps: damage_totals[i] / duration,
+                    dps: damage_totals[i] * 1000.0 / duration_ms as f64,
                     threat_total: threat_totals[i],
-                    tps: threat_totals[i] / duration,
+                    tps: threat_totals[i] * 1000.0 / duration_ms as f64,
                     damage_taken_total: damage_taken_totals[i],
-                    dtps: damage_taken_totals[i] / duration,
-                    aps: absorbed_totals[i] / duration,
+                    dtps: damage_taken_totals[i] * 1000.0 / duration_ms as f64,
+                    aps: absorbed_totals[i] * 1000.0 / duration_ms as f64,
                     shielding_given_total: shield_total,
-                    sps: shield_total / duration,
+                    sps: shield_total * 1000.0 / duration_ms as f64,
                     healing_total: healing_totals[i],
-                    hps: healing_totals[i] / duration,
+                    hps: healing_totals[i] * 1000.0 / duration_ms as f64,
                     healing_effective: healing_effectives[i],
-                    ehps: healing_effectives[i] / duration,
+                    ehps: healing_effectives[i] * 1000.0 / duration_ms as f64,
                     healing_pct: healing_pcts[i],
                 });
             }

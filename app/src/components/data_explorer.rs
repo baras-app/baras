@@ -404,9 +404,9 @@ fn parse_hsl(color: &str) -> Option<(f64, f64, f64)> {
 fn format_number(n: f64) -> String {
     let n = n as i64;
     if n >= 1_000_000 {
-        format!("{:.1}M", n as f64 / 1_000_000.0)
+        format!("{:.2}M", n as f64 / 1_000_000.0)
     } else if n >= 1_000 {
-        format!("{:.1}K", n as f64 / 1_000.0)
+        format!("{:.2}K", n as f64 / 1_000.0)
     } else {
         n.to_string()
     }

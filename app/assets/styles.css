@@ -87,16 +87,12 @@
   --shadow-glow-blue: 0 0 12px var(--blue-alpha-20);
 
   /* ─── Gradients ──────────────────────────────────────────────────────────────── */
-  --gradient-panel: linear-gradient(
-    180deg,
-    var(--bg-mid) 0%,
-    var(--bg-dark) 100%
-  );
-  --gradient-btn-active: linear-gradient(
-    180deg,
-    var(--blue-alpha-15) 0%,
-    var(--blue-alpha-5) 100%
-  );
+  --gradient-panel: linear-gradient(180deg,
+      var(--bg-mid) 0%,
+      var(--bg-dark) 100%);
+  --gradient-btn-active: linear-gradient(180deg,
+      var(--blue-alpha-15) 0%,
+      var(--blue-alpha-5) 100%);
 
   /* ─── Transitions ────────────────────────────────────────────────────────────── */
   --transition-fast: 0.1s ease;
@@ -202,12 +198,10 @@ select optgroup {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(
-    135deg,
-    var(--swtor-bg-dark) 0%,
-    var(--swtor-bg-mid) 50%,
-    var(--swtor-bg-dark) 100%
-  );
+  background: linear-gradient(135deg,
+      var(--swtor-bg-dark) 0%,
+      var(--swtor-bg-mid) 50%,
+      var(--swtor-bg-dark) 100%);
   border-bottom: 1px solid var(--swtor-border);
   padding: 0.75em 2vw;
 }
@@ -261,11 +255,9 @@ select optgroup {
 }
 
 .app-header .header-version.update-available {
-  background: linear-gradient(
-    135deg,
-    rgba(76, 175, 80, 0.2),
-    rgba(76, 175, 80, 0.1)
-  );
+  background: linear-gradient(135deg,
+      rgba(76, 175, 80, 0.2),
+      rgba(76, 175, 80, 0.1));
   border: 1px solid rgba(76, 175, 80, 0.5);
   color: #81c784;
   padding: 0.2em 0.6em;
@@ -279,11 +271,9 @@ select optgroup {
 }
 
 .app-header .header-version.update-available:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(76, 175, 80, 0.3),
-    rgba(76, 175, 80, 0.2)
-  );
+  background: linear-gradient(135deg,
+      rgba(76, 175, 80, 0.3),
+      rgba(76, 175, 80, 0.2));
   border-color: rgba(76, 175, 80, 0.7);
   color: #a5d6a7;
 }
@@ -874,11 +864,9 @@ button:active {
   text-overflow: ellipsis;
   border-width: 1px;
   border-radius: var(--radius-md);
-  background: linear-gradient(
-    180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(30, 30, 35, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(50, 50, 55, 0.9) 0%,
+      rgba(30, 30, 35, 0.95) 100%);
   border: 1px solid rgba(80, 80, 90, 0.4);
   color: #777;
   position: relative;
@@ -888,22 +876,18 @@ button:active {
 }
 
 .btn-overlay:hover:not(:disabled) {
-  background: linear-gradient(
-    180deg,
-    rgba(55, 60, 75, 0.95) 0%,
-    rgba(35, 40, 55, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(55, 60, 75, 0.95) 0%,
+      rgba(35, 40, 55, 0.95) 100%);
   border-color: var(--swtor-blue-dim);
   color: var(--swtor-blue);
   box-shadow: 0 0 10px var(--blue-alpha-15);
 }
 
 .btn-overlay.btn-active {
-  background: linear-gradient(
-    180deg,
-    var(--blue-alpha-20) 0%,
-    rgba(45, 90, 140, 0.15) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--blue-alpha-20) 0%,
+      rgba(45, 90, 140, 0.15) 100%);
   border-color: var(--swtor-blue);
   color: var(--swtor-blue);
   box-shadow:
@@ -918,11 +902,9 @@ button:active {
   font-size: clamp(0.7rem, 1.5vh, 0.95rem);
   border-width: 1px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(
-    180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(30, 30, 35, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(50, 50, 55, 0.9) 0%,
+      rgba(30, 30, 35, 0.95) 100%);
   border: 1px solid rgba(80, 80, 90, 0.4);
   transition: all 0.2s ease;
   text-transform: uppercase;
@@ -933,21 +915,17 @@ button:active {
 .btn-locked {
   min-width: unset;
   margin: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(50, 50, 55, 0.9) 0%,
+      rgba(35, 35, 40, 0.95) 100%);
   border-color: rgba(80, 80, 90, 0.4);
   color: #999;
 }
 
 .btn-locked:hover:not(:disabled) {
-  background: linear-gradient(
-    180deg,
-    rgba(60, 60, 65, 0.95) 0%,
-    rgba(45, 45, 50, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(60, 60, 65, 0.95) 0%,
+      rgba(45, 45, 50, 0.95) 100%);
   border-color: var(--text-muted);
   color: var(--text-secondary);
 }
@@ -956,22 +934,18 @@ button:active {
 .btn-unlocked {
   min-width: unset;
   margin: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(180, 140, 60, 0.25) 0%,
-    rgba(140, 100, 40, 0.2) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(180, 140, 60, 0.25) 0%,
+      rgba(140, 100, 40, 0.2) 100%);
   border-color: #b89040;
   color: #d4a850;
   box-shadow: 0 0 12px rgba(180, 140, 60, 0.2);
 }
 
 .btn-unlocked:hover:not(:disabled) {
-  background: linear-gradient(
-    180deg,
-    rgba(200, 155, 70, 0.3) 0%,
-    rgba(160, 115, 50, 0.25) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(200, 155, 70, 0.3) 0%,
+      rgba(160, 115, 50, 0.25) 100%);
   box-shadow: 0 0 15px rgba(180, 140, 60, 0.25);
 }
 
@@ -979,22 +953,18 @@ button:active {
 .btn-visible {
   min-width: unset;
   margin: 0;
-  background: linear-gradient(
-    180deg,
-    var(--blue-alpha-20) 0%,
-    rgba(45, 90, 140, 0.15) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--blue-alpha-20) 0%,
+      rgba(45, 90, 140, 0.15) 100%);
   border-color: var(--swtor-blue);
   color: var(--swtor-blue);
   box-shadow: 0 0 12px var(--swtor-blue-glow);
 }
 
 .btn-visible:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(74, 158, 255, 0.28) 0%,
-    rgba(55, 100, 155, 0.2) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(74, 158, 255, 0.28) 0%,
+      rgba(55, 100, 155, 0.2) 100%);
   box-shadow: 0 0 15px var(--swtor-blue-glow);
 }
 
@@ -1002,21 +972,17 @@ button:active {
 .btn-hidden {
   min-width: unset;
   margin: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(50, 50, 55, 0.9) 0%,
+      rgba(35, 35, 40, 0.95) 100%);
   border-color: rgba(80, 80, 90, 0.4);
   color: var(--text-disabled);
 }
 
 .btn-hidden:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(55, 60, 70, 0.95) 0%,
-    rgba(40, 45, 55, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(55, 60, 70, 0.95) 0%,
+      rgba(40, 45, 55, 0.95) 100%);
   border-color: var(--swtor-blue-dim);
   color: var(--swtor-blue);
   box-shadow: 0 0 8px var(--border-accent);
@@ -1134,21 +1100,17 @@ button:active {
 .btn-settings {
   min-width: unset;
   margin: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(50, 50, 55, 0.9) 0%,
+      rgba(35, 35, 40, 0.95) 100%);
   border-color: rgba(80, 80, 90, 0.4);
   color: #999;
 }
 
 .btn-settings:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(60, 60, 65, 0.95) 0%,
-    rgba(45, 45, 50, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(60, 60, 65, 0.95) 0%,
+      rgba(45, 45, 50, 0.95) 100%);
   border-color: var(--text-muted);
   color: var(--text-secondary);
 }
@@ -1157,32 +1119,26 @@ button:active {
 .btn-rearrange {
   min-width: unset;
   margin: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(50, 50, 55, 0.9) 0%,
+      rgba(35, 35, 40, 0.95) 100%);
   border-color: rgba(100, 100, 110, 0.4);
   color: var(--text-tertiary);
 }
 
 .btn-rearrange:hover:not(:disabled) {
-  background: linear-gradient(
-    180deg,
-    rgba(60, 75, 70, 0.95) 0%,
-    rgba(45, 60, 55, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(60, 75, 70, 0.95) 0%,
+      rgba(45, 60, 55, 0.95) 100%);
   border-color: #5a9a7a;
   color: #7acaa0;
   box-shadow: 0 0 10px rgba(90, 154, 122, 0.2);
 }
 
 .btn-rearrange.btn-active {
-  background: linear-gradient(
-    180deg,
-    rgba(90, 154, 122, 0.25) 0%,
-    rgba(60, 100, 80, 0.2) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(90, 154, 122, 0.25) 0%,
+      rgba(60, 100, 80, 0.2) 100%);
   border-color: #5a9a7a;
   color: #7acaa0;
   box-shadow:
@@ -1199,21 +1155,17 @@ button:active {
 .btn-clear-frames {
   min-width: unset;
   margin: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(50, 50, 55, 0.9) 0%,
+      rgba(35, 35, 40, 0.95) 100%);
   border-color: rgba(100, 100, 110, 0.4);
   color: var(--text-tertiary);
 }
 
 .btn-clear-frames:hover:not(:disabled) {
-  background: linear-gradient(
-    180deg,
-    rgba(75, 55, 55, 0.95) 0%,
-    rgba(60, 40, 40, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(75, 55, 55, 0.95) 0%,
+      rgba(60, 40, 40, 0.95) 100%);
   border-color: var(--swtor-red);
   color: var(--swtor-red);
   box-shadow: 0 0 10px rgba(255, 74, 74, 0.2);
@@ -1350,31 +1302,25 @@ button:active {
 
 /* Settings panel tab buttons - blue theme */
 .settings-panel .tab-btn {
-  background: linear-gradient(
-    180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(50, 50, 55, 0.9) 0%,
+      rgba(35, 35, 40, 0.95) 100%);
   border: 1px solid rgba(80, 80, 90, 0.4);
   color: var(--text-muted);
 }
 
 .settings-panel .tab-btn:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(55, 60, 75, 0.95) 0%,
-    rgba(40, 45, 60, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(55, 60, 75, 0.95) 0%,
+      rgba(40, 45, 60, 0.95) 100%);
   border-color: var(--swtor-blue-dim);
   color: var(--swtor-blue);
 }
 
 .settings-panel .tab-btn.active {
-  background: linear-gradient(
-    180deg,
-    var(--blue-alpha-20) 0%,
-    rgba(45, 90, 140, 0.15) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--blue-alpha-20) 0%,
+      rgba(45, 90, 140, 0.15) 100%);
   border-color: var(--swtor-blue);
   color: var(--swtor-blue);
   box-shadow: 0 0 10px var(--blue-alpha-15);
@@ -1958,11 +1904,9 @@ details[open] .collapsible-summary::before {
   align-items: center;
   gap: 0.5em;
   padding: 0.6em 1.2em;
-  background: linear-gradient(
-    180deg,
-    var(--blue-alpha-20) 0%,
-    rgba(45, 90, 140, 0.15) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--blue-alpha-20) 0%,
+      rgba(45, 90, 140, 0.15) 100%);
   border: 1px solid var(--swtor-blue);
   border-radius: var(--radius-lg);
   color: var(--swtor-blue);
@@ -1975,11 +1919,9 @@ details[open] .collapsible-summary::before {
 }
 
 .btn-customize:hover {
-  background: linear-gradient(
-    180deg,
-    var(--border-accent-strong) 0%,
-    rgba(55, 100, 155, 0.2) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--border-accent-strong) 0%,
+      rgba(55, 100, 155, 0.2) 100%);
   box-shadow: 0 0 15px var(--blue-alpha-25);
 }
 
@@ -2667,11 +2609,9 @@ details[open] .collapsible-summary::before {
 /* Detail row */
 .detail-row td {
   padding: 0 !important;
-  background: linear-gradient(
-    180deg,
-    rgba(40, 45, 55, 0.95) 0%,
-    rgba(30, 35, 45, 0.95) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(40, 45, 55, 0.95) 0%,
+      rgba(30, 35, 45, 0.95) 100%);
   border-top: 1px solid var(--blue-alpha-10);
 }
 
@@ -2710,6 +2650,7 @@ details[open] .collapsible-summary::before {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9em;
+  table-layout: fixed;
 }
 
 .metrics-table th,
@@ -2723,6 +2664,9 @@ details[open] .collapsible-summary::before {
   color: var(--text-muted);
   font-weight: 500;
   font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .player-name {
@@ -2745,36 +2689,100 @@ details[open] .collapsible-summary::before {
 
 /* Class icon colors using CSS filters - Official SWTOR GUI colors */
 /* Sith Warrior */
-.class-icon.class-juggernaut { filter: brightness(0) saturate(100%) invert(15%) sepia(100%) saturate(5000%) hue-rotate(350deg); } /* #D30000 */
-.class-icon.class-marauder { filter: brightness(0) saturate(100%) invert(55%) sepia(100%) saturate(2000%) hue-rotate(360deg); } /* #FF6323 */
+.class-icon.class-juggernaut {
+  filter: brightness(0) saturate(100%) invert(15%) sepia(100%) saturate(5000%) hue-rotate(350deg);
+}
+
+/* #D30000 */
+.class-icon.class-marauder {
+  filter: brightness(0) saturate(100%) invert(55%) sepia(100%) saturate(2000%) hue-rotate(360deg);
+}
+
+/* #FF6323 */
 
 /* Sith Inquisitor */
-.class-icon.class-sorcerer { filter: brightness(0) saturate(100%) invert(55%) sepia(100%) saturate(2000%) hue-rotate(250deg); } /* #BD3CFF */
-.class-icon.class-assassin { filter: brightness(0) saturate(100%) invert(35%) sepia(100%) saturate(2000%) hue-rotate(300deg); } /* #DE2084 */
+.class-icon.class-sorcerer {
+  filter: brightness(0) saturate(100%) invert(55%) sepia(100%) saturate(2000%) hue-rotate(250deg);
+}
+
+/* #BD3CFF */
+.class-icon.class-assassin {
+  filter: brightness(0) saturate(100%) invert(35%) sepia(100%) saturate(2000%) hue-rotate(300deg);
+}
+
+/* #DE2084 */
 
 /* Bounty Hunter */
-.class-icon.class-powertech { filter: brightness(0) saturate(100%) invert(85%) sepia(50%) saturate(500%) hue-rotate(350deg); } /* #FFDB8C */
-.class-icon.class-mercenary { filter: brightness(0) saturate(100%) invert(25%) sepia(100%) saturate(2000%) hue-rotate(90deg); } /* #007600 */
+.class-icon.class-powertech {
+  filter: brightness(0) saturate(100%) invert(85%) sepia(50%) saturate(500%) hue-rotate(350deg);
+}
+
+/* #FFDB8C */
+.class-icon.class-mercenary {
+  filter: brightness(0) saturate(100%) invert(25%) sepia(100%) saturate(2000%) hue-rotate(90deg);
+}
+
+/* #007600 */
 
 /* Imperial Agent */
-.class-icon.class-operative { filter: brightness(0) saturate(100%) invert(55%) sepia(100%) saturate(1000%) hue-rotate(25deg); } /* #A6A200 */
-.class-icon.class-sniper { filter: brightness(0) saturate(100%) invert(45%) sepia(30%) saturate(800%) hue-rotate(320deg); } /* #B0625C */
+.class-icon.class-operative {
+  filter: brightness(0) saturate(100%) invert(55%) sepia(100%) saturate(1000%) hue-rotate(25deg);
+}
+
+/* #A6A200 */
+.class-icon.class-sniper {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(30%) saturate(800%) hue-rotate(320deg);
+}
+
+/* #B0625C */
 
 /* Jedi Consular */
-.class-icon.class-sage { filter: brightness(0) saturate(100%) invert(80%) sepia(100%) saturate(1500%) hue-rotate(10deg); } /* #FBE700 */
-.class-icon.class-shadow { filter: brightness(0) saturate(100%) invert(70%) sepia(100%) saturate(2000%) hue-rotate(80deg); } /* #00F331 */
+.class-icon.class-sage {
+  filter: brightness(0) saturate(100%) invert(80%) sepia(100%) saturate(1500%) hue-rotate(10deg);
+}
+
+/* #FBE700 */
+.class-icon.class-shadow {
+  filter: brightness(0) saturate(100%) invert(70%) sepia(100%) saturate(2000%) hue-rotate(80deg);
+}
+
+/* #00F331 */
 
 /* Jedi Knight */
-.class-icon.class-guardian { filter: brightness(0) saturate(100%) invert(75%) sepia(100%) saturate(1500%) hue-rotate(130deg); } /* #10FDE7 */
-.class-icon.class-sentinel { filter: brightness(0) saturate(100%) invert(40%) sepia(100%) saturate(2000%) hue-rotate(190deg); } /* #0086FE */
+.class-icon.class-guardian {
+  filter: brightness(0) saturate(100%) invert(75%) sepia(100%) saturate(1500%) hue-rotate(130deg);
+}
+
+/* #10FDE7 */
+.class-icon.class-sentinel {
+  filter: brightness(0) saturate(100%) invert(40%) sepia(100%) saturate(2000%) hue-rotate(190deg);
+}
+
+/* #0086FE */
 
 /* Trooper */
-.class-icon.class-commando { filter: brightness(0) saturate(100%) invert(65%) sepia(50%) saturate(600%) hue-rotate(50deg); } /* #8FC255 */
-.class-icon.class-vanguard { filter: brightness(0) invert(100%); } /* #FFFFFF */
+.class-icon.class-commando {
+  filter: brightness(0) saturate(100%) invert(65%) sepia(50%) saturate(600%) hue-rotate(50deg);
+}
+
+/* #8FC255 */
+.class-icon.class-vanguard {
+  filter: brightness(0) invert(100%);
+}
+
+/* #FFFFFF */
 
 /* Smuggler */
-.class-icon.class-scoundrel { filter: brightness(0) saturate(100%) invert(70%) sepia(40%) saturate(600%) hue-rotate(15deg); } /* #BDB252 */
-.class-icon.class-gunslinger { filter: brightness(0) saturate(100%) invert(75%) sepia(20%) saturate(400%) hue-rotate(130deg); } /* #7EB7B5 */
+.class-icon.class-scoundrel {
+  filter: brightness(0) saturate(100%) invert(70%) sepia(40%) saturate(600%) hue-rotate(15deg);
+}
+
+/* #BDB252 */
+.class-icon.class-gunslinger {
+  filter: brightness(0) saturate(100%) invert(75%) sepia(20%) saturate(400%) hue-rotate(130deg);
+}
+
+/* #7EB7B5 */
 
 /* Role icons */
 .player-name .role-icon {
@@ -2810,16 +2818,16 @@ details[open] .collapsible-summary::before {
 }
 
 .metrics-table .col-player {
-  min-width: 100px;
+  width: 15%;
 }
 
 .metrics-table .col-metric {
-  min-width: 38px;
-  text-align: right;
+  width: 8.5%;
+  text-align: center;
 }
 
 .metrics-table td.metric-value {
-  text-align: right;
+  text-align: center;
 }
 
 .no-metrics {
@@ -2863,21 +2871,17 @@ details[open] .collapsible-summary::before {
 
 /* Phase header rows (area/phase dividers - collapsible) */
 .phase-header-row {
-  background: linear-gradient(
-    90deg,
-    rgba(60, 70, 90, 0.6) 0%,
-    rgba(40, 45, 55, 0.4) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(60, 70, 90, 0.6) 0%,
+      rgba(40, 45, 55, 0.4) 100%);
   cursor: pointer !important;
   user-select: none;
 }
 
 .phase-header-row:hover {
-  background: linear-gradient(
-    90deg,
-    rgba(70, 80, 100, 0.7) 0%,
-    rgba(50, 55, 65, 0.5) 100%
-  ) !important;
+  background: linear-gradient(90deg,
+      rgba(70, 80, 100, 0.7) 0%,
+      rgba(50, 55, 65, 0.5) 100%) !important;
 }
 
 .phase-header-row td {
@@ -3023,11 +3027,9 @@ details[open] .collapsible-summary::before {
 .tab-btn {
   flex: 1;
   padding: 0.6em 1em;
-  background: linear-gradient(
-    180deg,
-    var(--swtor-bg-light) 0%,
-    var(--swtor-bg-mid) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--swtor-bg-light) 0%,
+      var(--swtor-bg-mid) 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
   color: var(--text-muted);
@@ -3042,21 +3044,17 @@ details[open] .collapsible-summary::before {
 }
 
 .tab-btn:hover {
-  background: linear-gradient(
-    180deg,
-    var(--swtor-bg-light) 0%,
-    rgba(60, 60, 70, 0.9) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--swtor-bg-light) 0%,
+      rgba(60, 60, 70, 0.9) 100%);
   color: var(--text-secondary);
   border-color: var(--swtor-border);
 }
 
 .tab-btn.active {
-  background: linear-gradient(
-    180deg,
-    var(--blue-alpha-15) 0%,
-    var(--blue-alpha-5) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--blue-alpha-15) 0%,
+      var(--blue-alpha-5) 100%);
   color: var(--swtor-blue);
   border-color: var(--swtor-blue-dim);
   box-shadow:
@@ -3784,7 +3782,7 @@ details[open] .collapsible-summary::before {
   gap: 0.4em;
 }
 
-.trigger-id-list > label {
+.trigger-id-list>label {
   color: #999;
   font-size: 0.8em;
 }
@@ -4198,7 +4196,7 @@ details[open] .collapsible-summary::before {
   align-items: flex-start !important;
 }
 
-.trigger-section > label {
+.trigger-section>label {
   margin-bottom: 0.3em;
 }
 
@@ -4512,7 +4510,7 @@ details[open] .collapsible-summary::before {
   padding-left: var(--space-md);
 }
 
-.effect-edit-right .form-row-hz > label {
+.effect-edit-right .form-row-hz>label {
   min-width: 80px;
 }
 
@@ -4806,7 +4804,7 @@ details[open] .collapsible-summary::before {
   padding-left: var(--space-md);
 }
 
-.timer-edit-right .form-row-hz > label {
+.timer-edit-right .form-row-hz>label {
   min-width: 60px;
 }
 
@@ -5097,7 +5095,7 @@ details[open] .collapsible-summary::before {
   margin-bottom: var(--space-sm);
 }
 
-.form-row-hz > label {
+.form-row-hz>label {
   font-size: 0.85em;
   color: var(--text-secondary);
   min-width: 80px;
