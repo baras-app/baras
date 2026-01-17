@@ -547,7 +547,7 @@ impl EncounterWriter {
                         nulls.push(true);
                     }
                     None => {
-                        offsets.push(*offsets.last().unwrap());
+                        offsets.push(offsets.last().copied().unwrap_or(0));
                         nulls.push(false);
                     }
                 }

@@ -85,11 +85,14 @@ impl CombatEncounter {
         // Find a shield that was recently closed (within grace period)
         let recent_shield = effects
             .iter()
-            .filter(|e| e.is_shield && e.removed_at.is_some())
+            .filter(|e| e.is_shield)
             .filter(|e| {
-                let removed = e.removed_at.unwrap();
-                let delta = timestamp.signed_duration_since(removed).num_milliseconds();
-                (0..=RECENTLY_CLOSED_GRACE_MS).contains(&delta)
+                e.removed_at
+                    .map(|removed| {
+                        let delta = timestamp.signed_duration_since(removed).num_milliseconds();
+                        (0..=RECENTLY_CLOSED_GRACE_MS).contains(&delta)
+                    })
+                    .unwrap_or(false)
             })
             .max_by_key(|e| e.removed_at);
 
