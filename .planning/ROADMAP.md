@@ -28,10 +28,11 @@ This roadmap transforms BARAS from a panic-prone application into one with grace
   1. Application starts with tracing subscriber active
   2. Debug and error messages appear in structured log output
   3. Log level is configurable (at minimum via compile-time feature or env var)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md - Add tracing dependencies to workspace and crates
+- [ ] 01-02-PLAN.md - Initialize tracing subscriber in binaries
 
 ### Phase 2: Core Error Types
 **Goal**: Define custom error types so error handling migration has proper types to use
@@ -126,7 +127,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Logging Foundation | 0/TBD | Not started | - |
+| 1. Logging Foundation | 0/2 | Planned | - |
 | 2. Core Error Types | 0/TBD | Not started | - |
 | 3. Core Error Handling | 0/TBD | Not started | - |
 | 4. Backend Error Handling | 0/TBD | Not started | - |
