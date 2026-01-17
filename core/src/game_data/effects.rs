@@ -24,6 +24,7 @@ pub mod effect_id {
     pub const FAILEDEFFECT: i64 = 836045448945499;
     pub const HEAL: i64 = 836045448945500;
     pub const REVIVED: i64 = 836045448945494;
+    pub const RECENTLY_REVIVED: i64 = 4850293682470912;
     pub const TARGETCLEARED: i64 = 836045448953669;
     pub const TARGETSET: i64 = 836045448953668;
     pub const TAUNT: i64 = 836045448945488;

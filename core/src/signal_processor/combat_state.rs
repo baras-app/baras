@@ -134,6 +134,13 @@ fn handle_in_combat(
         .map(|e| e.all_players_dead)
         .unwrap_or(false);
 
+    // Check if local player received the post-death revive immortality buff
+    // This means they clicked revive and are now out of combat with a grace period
+    let local_player_revived = effect_type_id == effect_type_id::APPLYEFFECT
+        && effect_id == effect_id::RECENTLY_REVIVED
+        && cache.player_initialized
+        && event.source_entity.log_id == cache.player.id;
+
     // Check if all kill targets are dead (boss encounter victory condition)
     // We check all NPC INSTANCES that match kill target class_ids
     let all_kill_targets_dead = cache.current_encounter().map_or(false, |enc| {
@@ -186,7 +193,11 @@ fn handle_in_combat(
 
         cache.push_new_encounter();
         signals.extend(advance_combat_state(event, cache));
-    } else if effect_id == effect_id::EXITCOMBAT || all_players_dead || all_kill_targets_dead {
+    } else if effect_id == effect_id::EXITCOMBAT
+        || all_players_dead
+        || all_kill_targets_dead
+        || local_player_revived
+    {
         let encounter_id = cache.current_encounter().map(|e| e.id).unwrap_or(0);
         if let Some(enc) = cache.current_encounter_mut() {
             enc.exit_combat_time = Some(timestamp);
