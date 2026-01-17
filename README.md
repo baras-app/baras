@@ -54,13 +54,12 @@ If you are running a NVIDIA graphics card you must run the application with the 
 - [ ] Multi-file data persistance
 - [ ] MacOS Support
 
-
 ## Platform Support
 
-| Platform      | Status                                                                   |
-| ------------- | ------------------------------------------------------------------------ |
-| Windows 10/11 | Fully supported                                                          |
-| Linux         | Wayland DEs that support zwlr layershell (KDE, Sway, Hyprland, and more) |
+| Platform      | Status                                        |
+| ------------- | --------------------------------------------- |
+| Windows 10/11 | Fully supported                               |
+| Linux         | X11, Wayland DEs that support zwlr layershell |
 
 ## Quick Start
 
