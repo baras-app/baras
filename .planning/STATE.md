@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 2 of 7 (Core Error Types)
-Plan: 1 of TBD in current phase
+Plan: 2 of TBD in current phase
 Status: In progress
-Last activity: 2026-01-17 - Completed 02-01-PLAN.md
+Last activity: 2026-01-17 - Completed 02-02-PLAN.md
 
-Progress: [██░░░░░░░░] 21%
+Progress: [███░░░░░░░] 28%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 3.0 min
-- Total execution time: 9 min
+- Total plans completed: 4
+- Average duration: 2.8 min
+- Total execution time: 11 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-logging-foundation | 2 | 7 min | 3.5 min |
-| 02-core-error-types | 1 | 2 min | 2 min |
+| 02-core-error-types | 2 | 4 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2 min), 01-02 (5 min), 02-01 (2 min)
+- Last 5 plans: 01-01 (2 min), 01-02 (5 min), 02-01 (2 min), 02-02 (2 min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -54,6 +54,8 @@ Recent decisions affecting current work:
 - Error types include context fields (paths, line numbers) for debugging (02-01)
 - Separate ParseError vs ReaderError for combat_log (different failure modes) (02-01)
 - Use #[source] attribute for error chaining with std::io::Error (02-01)
+- Dual #[from] for Arrow and DataFusion in QueryError (frequently co-occur) (02-02)
+- Generic + context-rich variants pattern for StorageError (02-02)
 
 ### Pending Todos
 
@@ -65,6 +67,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-17T23:02Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-01-17T23:29Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
