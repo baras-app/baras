@@ -3,7 +3,10 @@
 //! Each encounter is written to a separate parquet file with denormalized metadata.
 //! Files are named `{encounter_idx:04}.parquet` (e.g., 0001.parquet, 0002.parquet).
 
+pub mod error;
 mod writer;
+
+pub use error::StorageError;
 
 pub use writer::{EncounterWriter, EventMetadata, EventRow};
 
