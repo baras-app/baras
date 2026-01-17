@@ -1055,6 +1055,11 @@ impl CombatService {
                             cache.current_area.difficulty_name =
                                 parse_result.area.difficulty_name.clone();
 
+                            // Sync next_encounter_id to continue from where subprocess left off
+                            // (fixes off-by-one bug where live encounters would have IDs that
+                            // collide with subprocess parquet files)
+                            cache.set_next_encounter_id(parse_result.encounter_count as u64);
+
                             // Create fresh encounter with correct area context
                             // (the initial encounter was created before we had area info from subprocess)
                             cache.push_new_encounter();

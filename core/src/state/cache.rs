@@ -86,6 +86,11 @@ impl SessionCache {
         }
     }
 
+    /// Set the next encounter ID (used after importing subprocess results)
+    pub fn set_next_encounter_id(&mut self, id: u64) {
+        self.next_encounter_id = id;
+    }
+
     pub fn push_new_encounter(&mut self) -> u64 {
         // Finalize the current encounter before creating a new one
         self.finalize_current_encounter();
