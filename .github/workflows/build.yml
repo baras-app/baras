@@ -11,6 +11,10 @@ on:
         description: "Build Windows artifacts"
         type: boolean
         default: true
+      build_macos:
+        description: "Build macOS artifacts"
+        type: boolean
+        default: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -129,4 +133,50 @@ jobs:
           name: windows-artifacts
           path: |
             target/release/bundle/nsis/*.exe
+          retention-days: 30
+
+  build-macos:
+    if: ${{ inputs.build_macos }}
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          cache-on-failure: true
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install Dioxus and Tauri CLIs
+        run: cargo binstall dioxus-cli tauri-cli --no-confirm --force
+
+      - name: Build parse-worker sidecar
+        run: |
+          cargo build --release --package baras-parse-worker
+          mkdir -p app/src-tauri/binaries
+          cp target/release/baras-parse-worker app/src-tauri/binaries/baras-parse-worker-x86_64-apple-darwin
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: app
+          tauriScript: cargo tauri
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: |
+            target/release/bundle/dmg/*.dmg
+            target/release/bundle/macos/*.app
           retention-days: 30

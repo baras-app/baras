@@ -17,6 +17,9 @@ pub mod x11;
 #[cfg(target_os = "windows")]
 pub mod windows;
 
+#[cfg(target_os = "macos")]
+pub mod macos;
+
 /// Information about a connected monitor
 #[derive(Debug, Clone)]
 pub struct MonitorInfo {
@@ -359,6 +362,9 @@ pub use linux::LinuxOverlay as NativeOverlay;
 #[cfg(target_os = "windows")]
 pub use windows::WindowsOverlay as NativeOverlay;
 
+#[cfg(target_os = "macos")]
+pub use macos::MacOSOverlay as NativeOverlay;
+
 /// Get all connected monitors without requiring an existing overlay window.
 /// This is useful for converting saved relative positions to absolute before spawning.
 #[cfg(all(unix, not(target_os = "macos")))]
@@ -369,6 +375,11 @@ pub fn get_all_monitors() -> Vec<MonitorInfo> {
 #[cfg(target_os = "windows")]
 pub fn get_all_monitors() -> Vec<MonitorInfo> {
     windows::get_all_monitors()
+}
+
+#[cfg(target_os = "macos")]
+pub fn get_all_monitors() -> Vec<MonitorInfo> {
+    macos::get_all_monitors()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
