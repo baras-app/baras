@@ -166,6 +166,8 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "toml 0.9.10+spec-1.1.0",
+ "tracing",
+ "tracing-subscriber",
  "tts",
  "zip 2.4.2",
 ]
@@ -747,6 +749,7 @@ dependencies = [
  "serde",
  "tokio",
  "toml 0.9.10+spec-1.1.0",
+ "tracing",
 ]
 
 [[package]]
@@ -765,6 +768,7 @@ dependencies = [
  "sys-locale",
  "tiny-skia",
  "tokio",
+ "tracing",
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",
@@ -788,6 +792,8 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -5181,6 +5187,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e0826a989adedc2a244799e823aece04662b66609d96af8dff7ac6df9a8925d"
 
 [[package]]
+name = "nu-ansi-term"
+version = "0.50.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
+dependencies = [
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8437,6 +8452,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
+ "valuable",
+]
+
+[[package]]
+name = "tracing-log"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee855f1f400bd0e5c02d150ae5de3840039a3f54b025156404e34c23c03f47c3"
+dependencies = [
+ "log",
+ "once_cell",
+ "tracing-core",
 ]
 
 [[package]]
@@ -8446,12 +8473,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f30143827ddab0d256fd843b7a66d164e9f271cfa0dde49142c5ca0ca291f1e"
 dependencies = [
  "matchers",
+ "nu-ansi-term",
  "once_cell",
  "regex-automata",
  "sharded-slab",
+ "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",
+ "tracing-log",
 ]
 
 [[package]]
@@ -8720,6 +8750,12 @@ dependencies = [
  "serde_core",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "valuable"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "vcpkg"
