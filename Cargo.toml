@@ -9,3 +9,7 @@ too_many_arguments = "allow"
 lto = "thin"           # Link-time optimization across crates
 codegen-units = 1      # Better optimization (slower compile)
 panic = "abort"        # No unwinding overhead
+
+[workspace.dependencies]
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
