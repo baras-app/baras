@@ -23,14 +23,9 @@ use super::{ActiveEffect, AlertTrigger, DisplayTarget, EffectDefinition, EffectK
 /// Get the entity roster from the current encounter, or empty slice if none.
 fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
     static EMPTY: &[EntityDefinition] = &[];
-    encounter
-        .and_then(|e| e.active_boss_idx())
-        .map(|idx| {
-            encounter.unwrap().boss_definitions()[idx]
-                .entities
-                .as_slice()
-        })
-        .unwrap_or(EMPTY)
+    let Some(enc) = encounter else { return EMPTY; };
+    let Some(idx) = enc.active_boss_idx() else { return EMPTY; };
+    enc.boss_definitions()[idx].entities.as_slice()
 }
 
 /// Get the set of boss entity IDs from the current encounter.
