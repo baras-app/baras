@@ -8,7 +8,8 @@ use web_sys::console;
 
 use crate::api;
 use crate::components::{
-    DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel, HistoryPanel, SettingsPanel,
+    use_toast_provider, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel, HistoryPanel,
+    SettingsPanel, ToastFrame,
 };
 use crate::types::{
     LogFileInfo, MetricType, OverlaySettings, OverlayStatus, OverlayType, SessionInfo, UpdateInfo,
@@ -24,6 +25,9 @@ static FONT: Asset = asset!("/assets/StarJedi.ttf");
 // ─────────────────────────────────────────────────────────────────────────────
 
 pub fn App() -> Element {
+    // Initialize toast system at app root
+    let _toast_manager = use_toast_provider();
+
     // Overlay state
     let mut metric_overlays_enabled = use_signal(|| {
         MetricType::all()
@@ -1526,6 +1530,9 @@ pub fn App() -> Element {
                     }
                 }
             }
+
+            // Toast notifications (rendered on top of everything)
+            ToastFrame {}
         }
     }
 }

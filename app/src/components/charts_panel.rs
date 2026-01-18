@@ -11,6 +11,7 @@ use wasm_bindgen_futures::spawn_local as spawn;
 use crate::api::{self, EffectChartData, EffectWindow, TimeRange, TimeSeriesPoint};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::class_icons::get_class_icon;
+use crate::utils::js_set;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ECharts JS Interop
@@ -95,7 +96,11 @@ fn merge_effect_windows(mut windows: Vec<EffectWindow>) -> Vec<EffectWindow> {
     if windows.is_empty() {
         return windows;
     }
-    windows.sort_by(|a, b| a.start_secs.partial_cmp(&b.start_secs).unwrap());
+    windows.sort_by(|a, b| {
+        a.start_secs
+            .partial_cmp(&b.start_secs)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     let mut merged = Vec::with_capacity(windows.len());
     let mut current = windows[0].clone();
 
@@ -124,46 +129,21 @@ fn build_time_series_option(
 
     // Title
     let title_obj = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &title_obj,
-        &JsValue::from_str("text"),
-        &JsValue::from_str(title),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &title_obj,
-        &JsValue::from_str("left"),
-        &JsValue::from_str("center"),
-    )
-    .unwrap();
+    js_set(&title_obj, "text", &JsValue::from_str(title));
+    js_set(&title_obj, "left", &JsValue::from_str("center"));
     let title_style = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &title_style,
-        &JsValue::from_str("color"),
-        &JsValue::from_str("#e0e0e0"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &title_style,
-        &JsValue::from_str("fontSize"),
-        &JsValue::from_f64(12.0),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&title_obj, &JsValue::from_str("textStyle"), &title_style).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("title"), &title_obj).unwrap();
+    js_set(&title_style, "color", &JsValue::from_str("#e0e0e0"));
+    js_set(&title_style, "fontSize", &JsValue::from_f64(12.0));
+    js_set(&title_obj, "textStyle", &title_style);
+    js_set(&obj, "title", &title_obj);
 
     // Grid (leave room for axis labels on both sides)
     let grid = js_sys::Object::new();
-    js_sys::Reflect::set(&grid, &JsValue::from_str("left"), &JsValue::from_str("60")).unwrap();
-    js_sys::Reflect::set(&grid, &JsValue::from_str("right"), &JsValue::from_str("60")).unwrap();
-    js_sys::Reflect::set(&grid, &JsValue::from_str("top"), &JsValue::from_str("35")).unwrap();
-    js_sys::Reflect::set(
-        &grid,
-        &JsValue::from_str("bottom"),
-        &JsValue::from_str("25"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("grid"), &grid).unwrap();
+    js_set(&grid, "left", &JsValue::from_str("60"));
+    js_set(&grid, "right", &JsValue::from_str("60"));
+    js_set(&grid, "top", &JsValue::from_str("35"));
+    js_set(&grid, "bottom", &JsValue::from_str("25"));
+    js_set(&obj, "grid", &grid);
 
     // Get min/max time from data to set axis bounds
     let min_time_ms = data.iter().map(|p| p.bucket_start_ms).min().unwrap_or(0);
@@ -173,135 +153,60 @@ fn build_time_series_option(
 
     // X-Axis (time in seconds) - format as M:SS
     let x_axis = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &x_axis,
-        &JsValue::from_str("type"),
-        &JsValue::from_str("value"),
-    )
-    .unwrap();
+    js_set(&x_axis, "type", &JsValue::from_str("value"));
     // Set explicit min/max to match data range (only draw x-axis for selected period)
-    js_sys::Reflect::set(
-        &x_axis,
-        &JsValue::from_str("min"),
-        &JsValue::from_f64(min_time_secs),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &x_axis,
-        &JsValue::from_str("max"),
-        &JsValue::from_f64(max_time_secs),
-    )
-    .unwrap();
+    js_set(&x_axis, "min", &JsValue::from_f64(min_time_secs));
+    js_set(&x_axis, "max", &JsValue::from_f64(max_time_secs));
     let axis_label = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &axis_label,
-        &JsValue::from_str("color"),
-        &JsValue::from_str("#888"),
-    )
-    .unwrap();
+    js_set(&axis_label, "color", &JsValue::from_str("#888"));
     // Formatter function to display M:SS
     let formatter = js_sys::Function::new_with_args(
         "v",
         "var m = Math.floor(v / 60); var s = Math.floor(v % 60); return m + ':' + (s < 10 ? '0' : '') + s;",
     );
-    js_sys::Reflect::set(&axis_label, &JsValue::from_str("formatter"), &formatter).unwrap();
-    js_sys::Reflect::set(&x_axis, &JsValue::from_str("axisLabel"), &axis_label).unwrap();
+    js_set(&axis_label, "formatter", &formatter);
+    js_set(&x_axis, "axisLabel", &axis_label);
     // Hide gridlines
     let x_split = js_sys::Object::new();
-    js_sys::Reflect::set(&x_split, &JsValue::from_str("show"), &JsValue::FALSE).unwrap();
-    js_sys::Reflect::set(&x_axis, &JsValue::from_str("splitLine"), &x_split).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("xAxis"), &x_axis).unwrap();
+    js_set(&x_split, "show", &JsValue::FALSE);
+    js_set(&x_axis, "splitLine", &x_split);
+    js_set(&obj, "xAxis", &x_axis);
 
     // Dual Y-Axes: Left = raw damage, Right = rate (DPS/HPS)
     let y_axis_arr = js_sys::Array::new();
 
     // Left Y-Axis (raw damage/healing totals per second)
     let y_axis_left = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &y_axis_left,
-        &JsValue::from_str("type"),
-        &JsValue::from_str("value"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &y_axis_left,
-        &JsValue::from_str("name"),
-        &JsValue::from_str("Burst"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &y_axis_left,
-        &JsValue::from_str("position"),
-        &JsValue::from_str("left"),
-    )
-    .unwrap();
+    js_set(&y_axis_left, "type", &JsValue::from_str("value"));
+    js_set(&y_axis_left, "name", &JsValue::from_str("Burst"));
+    js_set(&y_axis_left, "position", &JsValue::from_str("left"));
     let y_label_left = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &y_label_left,
-        &JsValue::from_str("color"),
-        &JsValue::from_str("#666"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&y_axis_left, &JsValue::from_str("axisLabel"), &y_label_left).unwrap();
+    js_set(&y_label_left, "color", &JsValue::from_str("#666"));
+    js_set(&y_axis_left, "axisLabel", &y_label_left);
     let y_split_left = js_sys::Object::new();
-    js_sys::Reflect::set(&y_split_left, &JsValue::from_str("show"), &JsValue::FALSE).unwrap();
-    js_sys::Reflect::set(&y_axis_left, &JsValue::from_str("splitLine"), &y_split_left).unwrap();
+    js_set(&y_split_left, "show", &JsValue::FALSE);
+    js_set(&y_axis_left, "splitLine", &y_split_left);
     y_axis_arr.push(&y_axis_left);
 
     // Right Y-Axis (rate - DPS/HPS average)
     let y_axis_right = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &y_axis_right,
-        &JsValue::from_str("type"),
-        &JsValue::from_str("value"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &y_axis_right,
-        &JsValue::from_str("name"),
-        &JsValue::from_str(y_axis_name),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &y_axis_right,
-        &JsValue::from_str("position"),
-        &JsValue::from_str("right"),
-    )
-    .unwrap();
+    js_set(&y_axis_right, "type", &JsValue::from_str("value"));
+    js_set(&y_axis_right, "name", &JsValue::from_str(y_axis_name));
+    js_set(&y_axis_right, "position", &JsValue::from_str("right"));
     let y_label_right = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &y_label_right,
-        &JsValue::from_str("color"),
-        &JsValue::from_str(color),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &y_axis_right,
-        &JsValue::from_str("axisLabel"),
-        &y_label_right,
-    )
-    .unwrap();
+    js_set(&y_label_right, "color", &JsValue::from_str(color));
+    js_set(&y_axis_right, "axisLabel", &y_label_right);
     let y_split_right = js_sys::Object::new();
-    js_sys::Reflect::set(&y_split_right, &JsValue::from_str("show"), &JsValue::FALSE).unwrap();
-    js_sys::Reflect::set(
-        &y_axis_right,
-        &JsValue::from_str("splitLine"),
-        &y_split_right,
-    )
-    .unwrap();
+    js_set(&y_split_right, "show", &JsValue::FALSE);
+    js_set(&y_axis_right, "splitLine", &y_split_right);
     y_axis_arr.push(&y_axis_right);
 
-    js_sys::Reflect::set(&obj, &JsValue::from_str("yAxis"), &y_axis_arr).unwrap();
+    js_set(&obj, "yAxis", &y_axis_arr);
 
     // Tooltip
     let tooltip = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &tooltip,
-        &JsValue::from_str("trigger"),
-        &JsValue::from_str("axis"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("tooltip"), &tooltip).unwrap();
+    js_set(&tooltip, "trigger", &JsValue::from_str("axis"));
+    js_set(&obj, "tooltip", &tooltip);
 
     // Build time spine: fill ALL seconds within the data range with values (0 if no data)
     // This ensures continuous average calculation even when no events occur
@@ -339,58 +244,23 @@ fn build_time_series_option(
 
     // Series 1: Raw data (thin line with colored fill)
     let series = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &series,
-        &JsValue::from_str("type"),
-        &JsValue::from_str("line"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &series,
-        &JsValue::from_str("name"),
-        &JsValue::from_str("Burst"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&series, &JsValue::from_str("smooth"), &JsValue::FALSE).unwrap(); // No smoothing for raw data
-    js_sys::Reflect::set(
-        &series,
-        &JsValue::from_str("symbol"),
-        &JsValue::from_str("none"),
-    )
-    .unwrap();
+    js_set(&series, "type", &JsValue::from_str("line"));
+    js_set(&series, "name", &JsValue::from_str("Burst"));
+    js_set(&series, "smooth", &JsValue::FALSE); // No smoothing for raw data
+    js_set(&series, "symbol", &JsValue::from_str("none"));
     // Use left Y-axis (index 0) for burst data
-    js_sys::Reflect::set(
-        &series,
-        &JsValue::from_str("yAxisIndex"),
-        &JsValue::from_f64(0.0),
-    )
-    .unwrap();
+    js_set(&series, "yAxisIndex", &JsValue::from_f64(0.0));
 
     // Thin line style for raw data
     let line_style = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &line_style,
-        &JsValue::from_str("color"),
-        &JsValue::from_str(color),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &line_style,
-        &JsValue::from_str("width"),
-        &JsValue::from_f64(1.0),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&series, &JsValue::from_str("lineStyle"), &line_style).unwrap();
+    js_set(&line_style, "color", &JsValue::from_str(color));
+    js_set(&line_style, "width", &JsValue::from_f64(1.0));
+    js_set(&series, "lineStyle", &line_style);
 
     // Area style with matching fill color (higher opacity)
     let area_style = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &area_style,
-        &JsValue::from_str("color"),
-        &JsValue::from_str(fill_color),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&series, &JsValue::from_str("areaStyle"), &area_style).unwrap();
+    js_set(&area_style, "color", &JsValue::from_str(fill_color));
+    js_set(&series, "areaStyle", &area_style);
 
     // Data points from dense array
     let data_arr = js_sys::Array::new();
@@ -400,7 +270,7 @@ fn build_time_series_option(
         pair.push(&JsValue::from_f64(*y));
         data_arr.push(&pair);
     }
-    js_sys::Reflect::set(&series, &JsValue::from_str("data"), &data_arr).unwrap();
+    js_set(&series, "data", &data_arr);
 
     // Mark areas for effect windows (on raw data series) - vertically stacked per effect
     // Always set markArea (even if empty) to ensure ECharts clears previous highlights
@@ -442,102 +312,41 @@ fn build_time_series_option(
             for window in merged {
                 let region = js_sys::Array::new();
                 let start = js_sys::Object::new();
-                js_sys::Reflect::set(
-                    &start,
-                    &JsValue::from_str("xAxis"),
-                    &JsValue::from_f64(window.start_secs as f64),
-                )
-                .unwrap();
+                js_set(&start, "xAxis", &JsValue::from_f64(window.start_secs as f64));
                 // Use yAxis values to bound within chart grid (index 0 = left/burst axis)
-                js_sys::Reflect::set(
-                    &start,
-                    &JsValue::from_str("yAxis"),
-                    &JsValue::from_f64(y_top),
-                )
-                .unwrap();
+                js_set(&start, "yAxis", &JsValue::from_f64(y_top));
                 // Set per-region itemStyle for individual colors
                 let region_style = js_sys::Object::new();
-                js_sys::Reflect::set(
-                    &region_style,
-                    &JsValue::from_str("color"),
-                    &JsValue::from_str(win_color),
-                )
-                .unwrap();
-                js_sys::Reflect::set(&start, &JsValue::from_str("itemStyle"), &region_style)
-                    .unwrap();
+                js_set(&region_style, "color", &JsValue::from_str(win_color));
+                js_set(&start, "itemStyle", &region_style);
                 let end = js_sys::Object::new();
-                js_sys::Reflect::set(
-                    &end,
-                    &JsValue::from_str("xAxis"),
-                    &JsValue::from_f64(window.end_secs as f64),
-                )
-                .unwrap();
-                js_sys::Reflect::set(
-                    &end,
-                    &JsValue::from_str("yAxis"),
-                    &JsValue::from_f64(y_bottom),
-                )
-                .unwrap();
+                js_set(&end, "xAxis", &JsValue::from_f64(window.end_secs as f64));
+                js_set(&end, "yAxis", &JsValue::from_f64(y_bottom));
                 region.push(&start);
                 region.push(&end);
                 mark_data.push(&region);
             }
         }
     }
-    js_sys::Reflect::set(&mark_area, &JsValue::from_str("data"), &mark_data).unwrap();
-    js_sys::Reflect::set(&series, &JsValue::from_str("markArea"), &mark_area).unwrap();
+    js_set(&mark_area, "data", &mark_data);
+    js_set(&series, "markArea", &mark_area);
 
     series_arr.push(&series);
 
     // Series 2: Moving average (thicker line, no fill)
     let avg_series = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &avg_series,
-        &JsValue::from_str("type"),
-        &JsValue::from_str("line"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &avg_series,
-        &JsValue::from_str("name"),
-        &JsValue::from_str("Average"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&avg_series, &JsValue::from_str("smooth"), &JsValue::TRUE).unwrap();
-    js_sys::Reflect::set(
-        &avg_series,
-        &JsValue::from_str("symbol"),
-        &JsValue::from_str("none"),
-    )
-    .unwrap();
+    js_set(&avg_series, "type", &JsValue::from_str("line"));
+    js_set(&avg_series, "name", &JsValue::from_str("Average"));
+    js_set(&avg_series, "smooth", &JsValue::TRUE);
+    js_set(&avg_series, "symbol", &JsValue::from_str("none"));
     // Use right Y-axis (index 1) for average/rate data
-    js_sys::Reflect::set(
-        &avg_series,
-        &JsValue::from_str("yAxisIndex"),
-        &JsValue::from_f64(1.0),
-    )
-    .unwrap();
+    js_set(&avg_series, "yAxisIndex", &JsValue::from_f64(1.0));
 
     // Thicker line style for average
     let avg_line_style = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &avg_line_style,
-        &JsValue::from_str("color"),
-        &JsValue::from_str(color),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &avg_line_style,
-        &JsValue::from_str("width"),
-        &JsValue::from_f64(2.5),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &avg_series,
-        &JsValue::from_str("lineStyle"),
-        &avg_line_style,
-    )
-    .unwrap();
+    js_set(&avg_line_style, "color", &JsValue::from_str(color));
+    js_set(&avg_line_style, "width", &JsValue::from_f64(2.5));
+    js_set(&avg_series, "lineStyle", &avg_line_style);
 
     // Average data points
     let avg_arr = js_sys::Array::new();
@@ -547,13 +356,13 @@ fn build_time_series_option(
         pair.push(&JsValue::from_f64(y));
         avg_arr.push(&pair);
     }
-    js_sys::Reflect::set(&avg_series, &JsValue::from_str("data"), &avg_arr).unwrap();
+    js_set(&avg_series, "data", &avg_arr);
 
     series_arr.push(&avg_series);
-    js_sys::Reflect::set(&obj, &JsValue::from_str("series"), &series_arr).unwrap();
+    js_set(&obj, "series", &series_arr);
 
     // Animation
-    js_sys::Reflect::set(&obj, &JsValue::from_str("animation"), &JsValue::FALSE).unwrap();
+    js_set(&obj, "animation", &JsValue::FALSE);
 
     obj.into()
 }
