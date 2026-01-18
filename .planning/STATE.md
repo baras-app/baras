@@ -68,6 +68,8 @@ Recent decisions affecting current work:
 - save() returns Result, handler.rs uses fire-and-forget logging (03-03)
 - SessionDateMissing is a distinct ReaderError variant for programming invariants (03-03)
 - Use ok_or with string error for simple Option unwrap replacement (04-03)
+- Mutex poison recovery instead of error return for transient state (04-01)
+- warn level for Mutex poison recovery (successfully recovered) (04-01)
 
 ### Pending Todos
 
