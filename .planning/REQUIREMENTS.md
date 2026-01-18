@@ -15,8 +15,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Error Handling (Backend)
 
-- [ ] **ERR-04**: All `.unwrap()` calls in `app/src-tauri/` return errors to frontend
-- [ ] **ERR-05**: Tauri commands return `Result<T, String>` for frontend display
+- [x] **ERR-04**: All `.unwrap()` calls in `app/src-tauri/` return errors to frontend ✓
+- [x] **ERR-05**: Tauri commands return `Result<T, String>` for frontend display ✓
 
 ### Error Handling (Frontend)
 
@@ -69,8 +69,8 @@ Which phases cover which requirements.
 | ERR-03 | Phase 2: Core Error Types | Complete |
 | ERR-01 | Phase 3: Core Error Handling | Complete |
 | ERR-02 | Phase 3: Core Error Handling | Complete |
-| ERR-04 | Phase 4: Backend Error Handling | Pending |
-| ERR-05 | Phase 4: Backend Error Handling | Pending |
+| ERR-04 | Phase 4: Backend Error Handling | Complete |
+| ERR-05 | Phase 4: Backend Error Handling | Complete |
 | ERR-06 | Phase 5: Frontend Error Handling | Pending |
 | ERR-07 | Phase 5: Frontend Error Handling | Pending |
 | ERR-08 | Phase 5: Frontend Error Handling | Pending |
@@ -88,4 +88,4 @@ Which phases cover which requirements.
 
 ---
 *Requirements defined: 2026-01-17*
-*Last updated: 2026-01-18 — Phase 3 complete*
+*Last updated: 2026-01-18 — Phase 4 complete*

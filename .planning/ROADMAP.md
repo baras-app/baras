@@ -13,7 +13,7 @@ This roadmap transforms BARAS from a panic-prone application into one with grace
 - [x] **Phase 1: Logging Foundation** - Tracing infrastructure for all subsequent work ✓
 - [x] **Phase 2: Core Error Types** - Custom error types per module ✓
 - [x] **Phase 3: Core Error Handling** - Migrate unwrap/expect in core crate ✓
-- [ ] **Phase 4: Backend Error Handling** - Tauri commands return errors to frontend
+- [x] **Phase 4: Backend Error Handling** - Tauri commands return errors to frontend ✓
 - [ ] **Phase 5: Frontend Error Handling** - UI displays errors gracefully
 - [ ] **Phase 6: Logging Migration** - Replace all eprintln with tracing macros
 - [ ] **Phase 7: Clone Cleanup** - Reduce unnecessary clones in hot paths
@@ -78,9 +78,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Mutex poison recovery in updater.rs (3 unwraps)
-- [ ] 04-02-PLAN.md — Dev fallback paths in effects.rs + service/mod.rs (8 unwraps)
-- [ ] 04-03-PLAN.md — Tray icon fallback in tray.rs (1 unwrap)
+- [x] 04-01-PLAN.md — Mutex poison recovery in updater.rs (3 unwraps) ✓
+- [x] 04-02-PLAN.md — Dev fallback paths in effects.rs + service/mod.rs (8 unwraps) ✓
+- [x] 04-03-PLAN.md — Tray icon fallback in tray.rs (1 unwrap) ✓
 
 ### Phase 5: Frontend Error Handling
 **Goal**: UI displays errors gracefully instead of freezing
@@ -136,7 +136,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 | 1. Logging Foundation | 2/2 | Complete ✓ | 2026-01-17 |
 | 2. Core Error Types | 3/3 | Complete ✓ | 2026-01-17 |
 | 3. Core Error Handling | 3/3 | Complete ✓ | 2026-01-17 |
-| 4. Backend Error Handling | 0/3 | Planned | - |
+| 4. Backend Error Handling | 3/3 | Complete ✓ | 2026-01-18 |
 | 5. Frontend Error Handling | 0/TBD | Not started | - |
 | 6. Logging Migration | 0/TBD | Not started | - |
 | 7. Clone Cleanup | 0/TBD | Not started | - |
