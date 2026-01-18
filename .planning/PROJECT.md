@@ -8,7 +8,22 @@ A combat log parser for Star Wars: The Old Republic with real-time overlays, his
 
 Fast, reliable combat analysis that doesn't crash when something unexpected happens.
 
-## Current State (v1.0 shipped)
+## Current Milestone: v1.1 UX Polish
+
+**Goal:** Eliminate confusion and friction in the UI — empty states, unclear controls, buried features, and workflow inconsistencies.
+
+**Target features:**
+- Helpful waiting states (replace "Unknown Session" with guidance)
+- Overlay hydration with last encounter data on startup
+- Redesigned live/historical indicator with explicit status and "Resume Live" action
+- Profile system fixes (visibility toggle decoupling, raid frame re-render)
+- Overlay customization improvements (fixed save header, live preview, descriptions)
+- Effects/Encounter builder clarity (tooltips, visual hierarchy, drag-drop reordering)
+- Historical session display cleanup (end time, duration, hide noise)
+- Single instance enforcement
+- Platform fixes (SVG font fallback, hotkey clarity)
+
+## Previous State (v1.0 shipped)
 
 **Shipped 2026-01-18:**
 - Panic-free production code (core, backend, frontend)
@@ -37,7 +52,20 @@ Fast, reliable combat analysis that doesn't crash when something unexpected happ
 
 ### Active
 
-(None — planning next milestone)
+- [ ] Empty/waiting states show helpful guidance instead of error-like displays
+- [ ] Overlays hydrate with last encounter data on startup
+- [ ] Live/Historical mode clearly indicated with explicit status and Resume Live action
+- [ ] Profile switching decoupled from visibility toggle
+- [ ] Raid frames re-render correctly on profile switch
+- [ ] Move mode never persists across app restart
+- [ ] Overlay customization has fixed save header and live preview
+- [ ] Effects/Encounter builder has tooltips and better visual hierarchy
+- [ ] Drag-drop reordering for stats lists
+- [ ] Historical session shows end time and duration, hides Area/Class/Discipline
+- [ ] Single instance enforcement via Tauri plugin
+- [ ] Parsely upload accessible from session page
+- [ ] SVG font fallback for Windows
+- [ ] Hotkey platform limitations clearly explained
 
 ### Out of Scope
 
@@ -68,4 +96,4 @@ Fast, reliable combat analysis that doesn't crash when something unexpected happ
 - Overlay test `format_number` has precision mismatch
 
 ---
-*Last updated: 2026-01-18 after v1.0 milestone*
+*Last updated: 2026-01-18 after starting v1.1 milestone*
