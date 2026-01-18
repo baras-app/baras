@@ -12,7 +12,7 @@ This milestone adds macOS platform support by fixing the overlay renderer implem
 
 ## Phases
 
-- [ ] **Phase 14: CGContext Fix** - Fix compilation errors to unblock macOS builds
+- [x] **Phase 14: CGContext Fix** - Fix compilation errors to unblock macOS builds
 - [ ] **Phase 15: objc2 Migration** - Migrate from deprecated cocoa/objc crates to objc2 ecosystem
 - [ ] **Phase 16: Cleanup** - Remove deprecated dependencies after migration verified
 
@@ -28,7 +28,7 @@ This milestone adds macOS platform support by fixing the overlay renderer implem
 **Plans**: 1 plan
 
 Plans:
-- [ ] 14-01-PLAN.md - Fix CGContext type mismatches and API calls
+- [x] 14-01-PLAN.md - Fix CGContext type mismatches and API calls
 
 ### Phase 15: objc2 Migration
 **Goal**: Overlay uses modern, memory-safe Objective-C bindings
@@ -63,7 +63,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 14. CGContext Fix | 0/1 | Planned | - |
+| 14. CGContext Fix | 1/1 | Complete | 2026-01-18 |
 | 15. objc2 Migration | 0/3 | Not started | - |
 | 16. Cleanup | 0/1 | Not started | - |
 

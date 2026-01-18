@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-01-18)
 
 **Core value:** Fast, reliable combat analysis that doesn't crash when something unexpected happens.
-**Current focus:** v1.2 macOS Support - Phase 14 (CGContext Fix)
+**Current focus:** v1.2 macOS Support - Phase 15 (objc2 Migration)
 
 ## Current Position
 
 Milestone: v1.2 macOS Support
-Phase: 14 of 16 (CGContext Fix)
-Plan: 1 of 1 complete
-Status: Phase complete
-Last activity: 2026-01-18 - Completed 14-01-PLAN.md (CGContext Fix)
+Phase: 15 of 16 (objc2 Migration)
+Plan: Ready to plan
+Status: Ready to plan Phase 15
+Last activity: 2026-01-18 - Phase 14 (CGContext Fix) complete and verified
 
 Progress: [######################........] 34/38 plans (v1.0 + v1.1 complete, v1.2 in progress)
 
@@ -61,5 +61,5 @@ Recent:
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Completed 14-01-PLAN.md (CGContext Fix)
+Stopped at: Phase 14 complete, ready to plan Phase 15
 Resume file: None

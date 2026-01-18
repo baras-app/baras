@@ -9,7 +9,7 @@ Requirements for macOS platform support. Each maps to roadmap phases.
 
 ### macOS Overlay
 
-- [ ] **MAC-01**: Fix CGContext compilation errors (type mismatches, missing API)
+- [x] **MAC-01**: Fix CGContext compilation errors (type mismatches, missing API)
 - [ ] **MAC-02**: Migrate from deprecated `cocoa` crate to `objc2-app-kit`/`objc2-foundation`
 - [ ] **MAC-03**: Migrate custom NSView subclass from `ClassDecl` to `define_class!` macro
 - [ ] **MAC-04**: Add `setReleasedWhenClosed(false)` for proper window memory management
@@ -45,7 +45,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MAC-01 | Phase 14 | Pending |
+| MAC-01 | Phase 14 | Complete |
 | MAC-02 | Phase 15 | Pending |
 | MAC-03 | Phase 15 | Pending |
 | MAC-04 | Phase 15 | Pending |
