@@ -829,9 +829,8 @@ pub fn App() -> Element {
                                                     }
                                                     Ok(_) => {
                                                         // Refresh profile list and set as active
-                                                        if let Some(names) = api::list_profiles().await {
-                                                            profile_names.set(names);
-                                                        }
+                                                        let names = api::get_profile_names().await;
+                                                        profile_names.set(names);
                                                         active_profile.set(Some(name));
                                                     }
                                                 }
