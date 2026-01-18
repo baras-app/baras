@@ -107,7 +107,7 @@ fn get_overlay_view_class() -> &'static Class {
 
                 // Create CGContext from our pixel buffer (BGRA format)
                 let ctx = CGContext::create_bitmap_context(
-                    Some(pixel_ptr as *mut u8),
+                    Some(pixel_ptr), // Already *mut c_void, no cast needed
                     width as usize,
                     height as usize,
                     8,
@@ -116,18 +116,18 @@ fn get_overlay_view_class() -> &'static Class {
                     kCGImageAlphaPremultipliedFirst, // BGRA
                 );
 
-                if let Some(ctx) = ctx {
-                    let image = ctx.create_image();
-                    if let Some(image) = image {
-                        // Get current graphics context
-                        let ns_ctx: id = msg_send![class!(NSGraphicsContext), currentContext];
-                        let cg_ctx: *mut c_void = msg_send![ns_ctx, CGContext];
+                // create_image returns Option<CGImage>
+                if let Some(image) = ctx.create_image() {
+                    // Get current graphics context
+                    let ns_ctx: id = msg_send![class!(NSGraphicsContext), currentContext];
+                    if ns_ctx != nil {
+                        let cg_ctx_ptr: *mut c_void = msg_send![ns_ctx, CGContext];
 
-                        if !cg_ctx.is_null() {
-                            let cg_ctx =
-                                core_graphics::context::CGContextRef::from_existing_context_ptr(
-                                    cg_ctx,
-                                );
+                        if !cg_ctx_ptr.is_null() {
+                            let cg_ctx = CGContext::from_existing_context_ptr(
+                                cg_ctx_ptr as *mut core_graphics::sys::CGContext,
+                            );
+
                             cg_ctx.draw_image(
                                 core_graphics::geometry::CGRect::new(
                                     &core_graphics::geometry::CGPoint::new(0.0, 0.0),
