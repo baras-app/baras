@@ -18,6 +18,7 @@ use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::combat_log::CombatLog;
 use crate::components::history_panel::EncounterSummary;
 use crate::components::phase_timeline::PhaseTimelineFilter;
+use crate::utils::js_set;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sort Types for Ability Table
@@ -193,143 +194,57 @@ fn build_donut_option(title: &str, data: &[(String, f64)], color: &str) -> JsVal
 
     // Title
     let title_obj = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &title_obj,
-        &JsValue::from_str("text"),
-        &JsValue::from_str(title),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &title_obj,
-        &JsValue::from_str("left"),
-        &JsValue::from_str("center"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &title_obj,
-        &JsValue::from_str("top"),
-        &JsValue::from_str("5"),
-    )
-    .unwrap();
+    js_set(&title_obj, "text", &JsValue::from_str(title));
+    js_set(&title_obj, "left", &JsValue::from_str("center"));
+    js_set(&title_obj, "top", &JsValue::from_str("5"));
     let title_style = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &title_style,
-        &JsValue::from_str("color"),
-        &JsValue::from_str("#e0e0e0"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &title_style,
-        &JsValue::from_str("fontSize"),
-        &JsValue::from_f64(13.0),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &title_style,
-        &JsValue::from_str("fontWeight"),
-        &JsValue::from_str("600"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&title_obj, &JsValue::from_str("textStyle"), &title_style).unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("title"), &title_obj).unwrap();
+    js_set(&title_style, "color", &JsValue::from_str("#e0e0e0"));
+    js_set(&title_style, "fontSize", &JsValue::from_f64(13.0));
+    js_set(&title_style, "fontWeight", &JsValue::from_str("600"));
+    js_set(&title_obj, "textStyle", &title_style);
+    js_set(&obj, "title", &title_obj);
 
     // Tooltip
     let tooltip = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &tooltip,
-        &JsValue::from_str("trigger"),
-        &JsValue::from_str("item"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &tooltip,
-        &JsValue::from_str("formatter"),
-        &JsValue::from_str("{b}: {c} ({d}%)"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&obj, &JsValue::from_str("tooltip"), &tooltip).unwrap();
+    js_set(&tooltip, "trigger", &JsValue::from_str("item"));
+    js_set(&tooltip, "formatter", &JsValue::from_str("{b}: {c} ({d}%)"));
+    js_set(&obj, "tooltip", &tooltip);
 
     // Series (donut)
     let series_arr = js_sys::Array::new();
     let series = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &series,
-        &JsValue::from_str("type"),
-        &JsValue::from_str("pie"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&series, &JsValue::from_str("radius"), &{
-        let arr = js_sys::Array::new();
-        arr.push(&JsValue::from_str("35%"));
-        arr.push(&JsValue::from_str("65%"));
-        arr.into()
-    })
-    .unwrap();
-    js_sys::Reflect::set(&series, &JsValue::from_str("center"), &{
-        let arr = js_sys::Array::new();
-        arr.push(&JsValue::from_str("50%"));
-        arr.push(&JsValue::from_str("55%"));
-        arr.into()
-    })
-    .unwrap();
+    js_set(&series, "type", &JsValue::from_str("pie"));
+    let radius_arr = js_sys::Array::new();
+    radius_arr.push(&JsValue::from_str("35%"));
+    radius_arr.push(&JsValue::from_str("65%"));
+    js_set(&series, "radius", &radius_arr);
+    let center_arr = js_sys::Array::new();
+    center_arr.push(&JsValue::from_str("50%"));
+    center_arr.push(&JsValue::from_str("55%"));
+    js_set(&series, "center", &center_arr);
 
     // Label formatting
     let label = js_sys::Object::new();
-    js_sys::Reflect::set(&label, &JsValue::from_str("show"), &JsValue::TRUE).unwrap();
-    js_sys::Reflect::set(
-        &label,
-        &JsValue::from_str("formatter"),
-        &JsValue::from_str("{b}"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &label,
-        &JsValue::from_str("color"),
-        &JsValue::from_str("#ccc"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &label,
-        &JsValue::from_str("fontSize"),
-        &JsValue::from_f64(10.0),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&series, &JsValue::from_str("label"), &label).unwrap();
+    js_set(&label, "show", &JsValue::TRUE);
+    js_set(&label, "formatter", &JsValue::from_str("{b}"));
+    js_set(&label, "color", &JsValue::from_str("#ccc"));
+    js_set(&label, "fontSize", &JsValue::from_f64(10.0));
+    js_set(&series, "label", &label);
 
     // Emphasis
     let emphasis = js_sys::Object::new();
     let emph_label = js_sys::Object::new();
-    js_sys::Reflect::set(&emph_label, &JsValue::from_str("show"), &JsValue::TRUE).unwrap();
-    js_sys::Reflect::set(
-        &emph_label,
-        &JsValue::from_str("fontSize"),
-        &JsValue::from_f64(12.0),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &emph_label,
-        &JsValue::from_str("fontWeight"),
-        &JsValue::from_str("bold"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&emphasis, &JsValue::from_str("label"), &emph_label).unwrap();
-    js_sys::Reflect::set(&series, &JsValue::from_str("emphasis"), &emphasis).unwrap();
+    js_set(&emph_label, "show", &JsValue::TRUE);
+    js_set(&emph_label, "fontSize", &JsValue::from_f64(12.0));
+    js_set(&emph_label, "fontWeight", &JsValue::from_str("bold"));
+    js_set(&emphasis, "label", &emph_label);
+    js_set(&series, "emphasis", &emphasis);
 
     // Item style with base color
     let item_style = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &item_style,
-        &JsValue::from_str("borderColor"),
-        &JsValue::from_str("#1a1a1a"),
-    )
-    .unwrap();
-    js_sys::Reflect::set(
-        &item_style,
-        &JsValue::from_str("borderWidth"),
-        &JsValue::from_f64(2.0),
-    )
-    .unwrap();
-    js_sys::Reflect::set(&series, &JsValue::from_str("itemStyle"), &item_style).unwrap();
+    js_set(&item_style, "borderColor", &JsValue::from_str("#1a1a1a"));
+    js_set(&item_style, "borderWidth", &JsValue::from_f64(2.0));
+    js_set(&series, "itemStyle", &item_style);
 
     // Color palette based on base color with variations
     let colors = generate_color_palette(color, data.len());
@@ -337,28 +252,23 @@ fn build_donut_option(title: &str, data: &[(String, f64)], color: &str) -> JsVal
     for c in colors {
         color_arr.push(&JsValue::from_str(&c));
     }
-    js_sys::Reflect::set(&obj, &JsValue::from_str("color"), &color_arr).unwrap();
+    js_set(&obj, "color", &color_arr);
 
     // Data
     let data_arr = js_sys::Array::new();
     for (name, value) in data {
         let item = js_sys::Object::new();
-        js_sys::Reflect::set(&item, &JsValue::from_str("name"), &JsValue::from_str(name)).unwrap();
-        js_sys::Reflect::set(
-            &item,
-            &JsValue::from_str("value"),
-            &JsValue::from_f64(*value),
-        )
-        .unwrap();
+        js_set(&item, "name", &JsValue::from_str(name));
+        js_set(&item, "value", &JsValue::from_f64(*value));
         data_arr.push(&item);
     }
-    js_sys::Reflect::set(&series, &JsValue::from_str("data"), &data_arr).unwrap();
+    js_set(&series, "data", &data_arr);
 
     series_arr.push(&series);
-    js_sys::Reflect::set(&obj, &JsValue::from_str("series"), &series_arr).unwrap();
+    js_set(&obj, "series", &series_arr);
 
     // No animation for faster renders
-    js_sys::Reflect::set(&obj, &JsValue::from_str("animation"), &JsValue::FALSE).unwrap();
+    js_set(&obj, "animation", &JsValue::FALSE);
 
     obj.into()
 }
