@@ -1,32 +1,29 @@
 //! macOS platform implementation for overlay windows
 //!
-//! Uses Cocoa/AppKit for transparent, always-on-top overlay windows
+//! Uses objc2-app-kit for transparent, always-on-top overlay windows
 //! with click-through support.
 
 use std::cell::Cell;
 use std::ffi::c_void;
 
-// Keep cocoa imports for now (will be removed in Plan 15-03)
-use cocoa::appkit::{
-    NSApp, NSApplication, NSApplicationActivationPolicyAccessory, NSBackingStoreBuffered,
-    NSColor, NSEvent, NSEventMask, NSEventType, NSScreen, NSView, NSWindow,
-    NSWindowCollectionBehavior, NSWindowStyleMask,
+// objc2 core
+use objc2::rc::Retained;
+use objc2::{define_class, msg_send, DeclaredClass};
+
+// objc2-foundation types
+use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
+
+// objc2-app-kit types
+use objc2_app_kit::{
+    NSApplication, NSApplicationActivationPolicy, NSBackingStoreType, NSColor, NSEvent,
+    NSEventMask, NSEventType, NSGraphicsContext, NSScreen, NSView, NSWindow,
+    NSWindowCollectionBehavior, NSWindowLevel, NSWindowStyleMask,
 };
-use cocoa::base::{id, nil, NO, YES};
-use cocoa::foundation::{NSArray, NSDate, NSString};
 
-// New objc2 foundation types (replace cocoa::foundation geometry)
-use objc2_foundation::{NSPoint, NSRect, NSSize};
-
-// Keep core-graphics
+// Keep core-graphics for CGContext operations
 use core_graphics::base::kCGImageAlphaPremultipliedFirst;
 use core_graphics::color_space::CGColorSpace;
 use core_graphics::context::CGContext;
-
-// objc2 for define_class! and msg_send!
-use objc2::rc::Retained;
-use objc2::{define_class, msg_send};
-use objc2_app_kit::NSGraphicsContext;
 
 use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
 use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
@@ -36,50 +33,36 @@ use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORN
 // ─────────────────────────────────────────────────────────────────────────────
 
 pub fn get_all_monitors() -> Vec<MonitorInfo> {
-    unsafe {
-        let screens = NSScreen::screens(nil);
-        let count = NSArray::count(screens) as usize;
-        let main_screen = NSScreen::mainScreen(nil);
-        let main_frame = NSScreen::frame(main_screen);
+    let screens = NSScreen::screens();
+    let Some(main_screen) = NSScreen::mainScreen() else {
+        return Vec::new();
+    };
+    let main_frame = main_screen.frame();
 
-        (0..count)
-            .map(|i| {
-                let screen: id = msg_send![screens, objectAtIndex: i];
-                let frame = NSScreen::frame(screen);
-                let name: id = msg_send![screen, localizedName];
-                let name_str = nsstring_to_string(name);
+    screens
+        .iter()
+        .enumerate()
+        .map(|(i, screen)| {
+            let frame = screen.frame();
+            let name = screen
+                .localizedName()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("Display {}", i + 1));
 
-                // macOS origin is bottom-left, convert to top-left
-                let y = main_frame.size.height - frame.origin.y - frame.size.height;
+            // macOS origin is bottom-left, convert to top-left
+            let y = main_frame.size.height - frame.origin.y - frame.size.height;
 
-                MonitorInfo {
-                    id: format!("screen-{}", i),
-                    name: name_str,
-                    x: frame.origin.x as i32,
-                    y: y as i32,
-                    width: frame.size.width as u32,
-                    height: frame.size.height as u32,
-                    is_primary: i == 0,
-                }
-            })
-            .collect()
-    }
-}
-
-fn nsstring_to_string(nsstring: id) -> String {
-    if nsstring == nil {
-        return String::new();
-    }
-    unsafe {
-        let cstr: *const i8 = msg_send![nsstring, UTF8String];
-        if cstr.is_null() {
-            String::new()
-        } else {
-            std::ffi::CStr::from_ptr(cstr)
-                .to_string_lossy()
-                .into_owned()
-        }
-    }
+            MonitorInfo {
+                id: format!("screen-{}", i),
+                name,
+                x: frame.origin.x as i32,
+                y: y as i32,
+                width: frame.size.width as u32,
+                height: frame.size.height as u32,
+                is_primary: i == 0,
+            }
+        })
+        .collect()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
