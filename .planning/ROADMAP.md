@@ -31,7 +31,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md`
 **Milestone Goal:** Eliminate confusion and friction in the UI - empty states, unclear controls, buried features, and workflow inconsistencies.
 
 - [x] **Phase 8: Platform Foundation** - Infrastructure fixes that enable cleaner UX
-- [ ] **Phase 9: Session Page Polish** - Empty states, historical display, Parsely access
+- [x] **Phase 9: Session Page Polish** - Empty states, historical display, Parsely access
 - [ ] **Phase 10: Navigation Redesign** - Live/historical indicator with Resume Live action
 - [ ] **Phase 11: Profile System Fixes** - Visibility toggle decoupling and re-render fixes
 - [ ] **Phase 12: Overlay Improvements** - Move mode, save button, live preview, descriptions
@@ -67,8 +67,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md - Backend enhancements (SessionInfo fields, watcher fix)
-- [ ] 09-02-PLAN.md - Frontend session page polish (empty states, display, indicators, upload)
+- [x] 09-01-PLAN.md - Backend enhancements (SessionInfo fields, watcher fix)
+- [x] 09-02-PLAN.md - Frontend session page polish (empty states, display, indicators, upload)
 
 ### Phase 10: Navigation Redesign
 **Goal**: User always knows current mode (live vs historical) and can resume live easily
@@ -137,7 +137,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 1-7 | v1.0 | 23/23 | Complete | 2026-01-18 |
 | 8. Platform Foundation | v1.1 | 2/2 | Complete | 2026-01-18 |
-| 9. Session Page Polish | v1.1 | 0/2 | Not started | - |
+| 9. Session Page Polish | v1.1 | 2/2 | Complete | 2026-01-18 |
 | 10. Navigation Redesign | v1.1 | 0/? | Not started | - |
 | 11. Profile System Fixes | v1.1 | 0/? | Not started | - |
 | 12. Overlay Improvements | v1.1 | 0/? | Not started | - |
@@ -145,4 +145,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 9 planned*
+*Last updated: 2026-01-18 - Phase 9 complete*

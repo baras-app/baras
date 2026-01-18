@@ -9,7 +9,7 @@ Requirements for UX Polish milestone. Eliminate confusion and friction in the UI
 
 ### Empty States
 
-- [ ] **EMPTY-01**: User sees helpful "Waiting for combat data..." message instead of "Unknown Session"
+- [x] **EMPTY-01**: User sees helpful "Waiting for combat data..." message instead of "Unknown Session"
 - [ ] **EMPTY-02**: Overlays display last encounter data on startup instead of appearing blank
 
 ### Navigation & Status
@@ -17,7 +17,7 @@ Requirements for UX Polish milestone. Eliminate confusion and friction in the UI
 - [ ] **NAV-01**: Live mode shows green arrow indicator in central top bar position
 - [ ] **NAV-02**: Historical mode shows pause/stop icon with history indicator
 - [ ] **NAV-03**: "Resume Live" button prominently visible when in historical mode
-- [ ] **NAV-04**: Parsely upload button on session page (not buried in file explorer)
+- [x] **NAV-04**: Parsely upload button on session page (not buried in file explorer)
 
 ### Profile System
 
@@ -45,9 +45,9 @@ Requirements for UX Polish milestone. Eliminate confusion and friction in the UI
 
 ### Session Display
 
-- [ ] **SESS-01**: Historical session shows end time and total duration
-- [ ] **SESS-02**: Historical session hides Area, Class, and Discipline (noisy/misleading)
-- [ ] **SESS-03**: Session type icons distinguish live vs historical
+- [x] **SESS-01**: Historical session shows end time and total duration
+- [x] **SESS-02**: Historical session hides Area, Class, and Discipline (noisy/misleading)
+- [x] **SESS-03**: Session type icons distinguish live vs historical
 
 ### Platform & Infrastructure
 
@@ -83,12 +83,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EMPTY-01 | Phase 9 | Pending |
+| EMPTY-01 | Phase 9 | Complete |
 | EMPTY-02 | Phase 12 | Pending |
 | NAV-01 | Phase 10 | Pending |
 | NAV-02 | Phase 10 | Pending |
 | NAV-03 | Phase 10 | Pending |
-| NAV-04 | Phase 9 | Pending |
+| NAV-04 | Phase 9 | Complete |
 | PROF-01 | Phase 11 | Pending |
 | PROF-02 | Phase 11 | Pending |
 | PROF-03 | Phase 11 | Pending |
@@ -104,9 +104,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EDIT-04 | Phase 13 | Pending |
 | EDIT-05 | Phase 13 | Pending |
 | EDIT-06 | Phase 13 | Pending |
-| SESS-01 | Phase 9 | Pending |
-| SESS-02 | Phase 9 | Pending |
-| SESS-03 | Phase 9 | Pending |
+| SESS-01 | Phase 9 | Complete |
+| SESS-02 | Phase 9 | Complete |
+| SESS-03 | Phase 9 | Complete |
 | PLAT-01 | Phase 8 | Complete |
 | PLAT-02 | Phase 8 | Complete |
 | PLAT-03 | Phase 8 | Complete |
@@ -120,4 +120,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-18 after roadmap creation*
+*Last updated: 2026-01-18 - Phase 9 requirements complete*
