@@ -628,17 +628,13 @@ pub fn App() -> Element {
                             // Session toolbar: header + upload button
                             div { class: "session-toolbar",
                                 if live_tailing {
-                                    h3 { class: "session-header",
-                                        span { class: "session-indicator live",
-                                            i { class: "fa-solid fa-play" }
-                                        }
+                                    h3 { class: "session-header live",
+                                        i { class: "fa-solid fa-circle-play" }
                                         " Live Session"
                                     }
                                 } else {
-                                    h3 { class: "session-header",
-                                        span { class: "session-indicator historical",
-                                            i { class: "fa-solid fa-pause" }
-                                        }
+                                    h3 { class: "session-header historical",
+                                        i { class: "fa-solid fa-circle-pause" }
                                         " Historical Session"
                                     }
                                 }
@@ -680,25 +676,17 @@ pub fn App() -> Element {
                             }
 
                             div { class: "session-grid",
-                                // Player name (always shown)
+                                // Player name - only show if present and non-empty
                                 if let Some(ref name) = info.player_name {
-                                    div { class: "session-item",
-                                        span { class: "label", "Player" }
-                                        span { class: "value", "{name}" }
-                                    }
-                                }
-
-                                // Area, Class, Discipline only for live sessions
-                                if live_tailing {
-                                    if let Some(ref area) = info.area_name {
+                                    if !name.is_empty() {
                                         div { class: "session-item",
-                                            span { class: "label", "Area" }
-                                            span { class: "value", "{area}" }
+                                            span { class: "label", "Player" }
+                                            span { class: "value", "{name}" }
                                         }
                                     }
                                 }
 
-                                // Started time (always shown)
+                                // Started time - only show if present
                                 if let Some(ref start) = info.session_start {
                                     div { class: "session-item",
                                         span { class: "label", "Started" }
@@ -706,18 +694,30 @@ pub fn App() -> Element {
                                     }
                                 }
 
-                                // Class and Discipline only for live sessions
+                                // Area, Class, Discipline only for live sessions with actual values
                                 if live_tailing {
+                                    if let Some(ref area) = info.area_name {
+                                        if !area.is_empty() {
+                                            div { class: "session-item",
+                                                span { class: "label", "Area" }
+                                                span { class: "value", "{area}" }
+                                            }
+                                        }
+                                    }
                                     if let Some(ref class_name) = info.player_class {
-                                        div { class: "session-item",
-                                            span { class: "label", "Class" }
-                                            span { class: "value", "{class_name}" }
+                                        if !class_name.is_empty() {
+                                            div { class: "session-item",
+                                                span { class: "label", "Class" }
+                                                span { class: "value", "{class_name}" }
+                                            }
                                         }
                                     }
                                     if let Some(ref disc) = info.player_discipline {
-                                        div { class: "session-item",
-                                            span { class: "label", "Discipline" }
-                                            span { class: "value", "{disc}" }
+                                        if !disc.is_empty() {
+                                            div { class: "session-item",
+                                                span { class: "label", "Discipline" }
+                                                span { class: "value", "{disc}" }
+                                            }
                                         }
                                     }
                                 }
@@ -738,7 +738,7 @@ pub fn App() -> Element {
                                     }
                                 }
 
-                                // Combat status (always shown)
+                                // Combat status - always shown
                                 div { class: "session-item",
                                     span { class: "label", "Combat" }
                                     span {

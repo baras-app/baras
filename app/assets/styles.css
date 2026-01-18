@@ -1088,31 +1088,18 @@ button:active {
 .session-header {
   display: flex;
   align-items: center;
+  gap: 0.4em;
   margin: 0;
   font-size: clamp(0.9rem, 2vh, 1.2rem);
   color: var(--swtor-blue);
 }
 
-/* Session indicators */
-.session-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.2em;
-  height: 1.2em;
-  border-radius: 50%;
-  margin-right: 0.5em;
-  font-size: 0.7em;
+.session-header.live i {
+  color: var(--color-success);
 }
 
-.session-indicator.live {
-  background: var(--color-success);
-  color: var(--bg-dark);
-}
-
-.session-indicator.historical {
-  background: var(--color-warning);
-  color: var(--bg-dark);
+.session-header.historical i {
+  color: var(--color-warning);
 }
 
 /* Historical session panel tint */

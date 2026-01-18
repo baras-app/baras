@@ -24,7 +24,7 @@ impl LogFileMetaData {
     pub fn display_name(&self) -> String {
         match &self.character_name {
             Some(name) => format!("{} Session {}", name, self.session_number),
-            None => format!("Unknown Session {}", self.session_number),
+            None => "Waiting for player...".to_string(),
         }
     }
 
