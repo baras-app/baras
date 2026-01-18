@@ -5,19 +5,29 @@
 
 use std::ffi::c_void;
 
+// Keep cocoa imports for now (will be removed in Plan 15-03)
 use cocoa::appkit::{
     NSApp, NSApplication, NSApplicationActivationPolicyAccessory, NSBackingStoreBuffered,
     NSColor, NSEvent, NSEventMask, NSEventType, NSScreen, NSView, NSWindow,
     NSWindowCollectionBehavior, NSWindowStyleMask,
 };
 use cocoa::base::{id, nil, NO, YES};
-use cocoa::foundation::{NSArray, NSDate, NSPoint, NSRect, NSSize, NSString};
+use cocoa::foundation::{NSArray, NSDate, NSString};
+
+// New objc2 foundation types (replace cocoa::foundation geometry)
+use objc2_foundation::{NSPoint, NSRect, NSSize};
+
+// Keep core-graphics
 use core_graphics::base::kCGImageAlphaPremultipliedFirst;
 use core_graphics::color_space::CGColorSpace;
 use core_graphics::context::CGContext;
+
+// Keep old objc for ClassDecl (will be migrated in Plan 15-02)
 use objc::declare::ClassDecl;
 use objc::runtime::{Class, Object, Sel, BOOL};
-use objc::{class, msg_send, sel, sel_impl};
+
+// New objc2 for msg_send! - use both during transition
+use objc2::{class, msg_send, sel};
 
 use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
 use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
@@ -460,7 +470,7 @@ impl OverlayPlatform for MacOSOverlay {
         }
 
         unsafe {
-            let _: () = msg_send![self.view, setNeedsDisplay: YES];
+            let _: () = msg_send![self.view, setNeedsDisplay: true];
         }
     }
 
@@ -470,10 +480,10 @@ impl OverlayPlatform for MacOSOverlay {
             loop {
                 let event: id = msg_send![
                     NSApp(),
-                    nextEventMatchingMask: NSEventMask::NSAnyEventMask
-                    untilDate: nil
-                    inMode: NSString::alloc(nil).init_str("kCFRunLoopDefaultMode")
-                    dequeue: YES
+                    nextEventMatchingMask: NSEventMask::NSAnyEventMask,
+                    untilDate: nil,
+                    inMode: NSString::alloc(nil).init_str("kCFRunLoopDefaultMode"),
+                    dequeue: true
                 ];
 
                 if event == nil {
