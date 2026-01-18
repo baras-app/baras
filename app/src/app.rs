@@ -428,7 +428,13 @@ pub fn App() -> Element {
                         {
                             let current_meta = log_files().iter().find(|f| f.path == current_file).cloned();
                             let display = current_meta.as_ref()
-                                .map(|f| f.character_name.clone().unwrap_or_else(|| f.display_name.clone()))
+                                .map(|f| {
+                                    f.character_name.clone().unwrap_or_else(|| {
+                                        // Show different text for historical vs live when no character
+                                        if live_tailing { "Waiting for player...".to_string() }
+                                        else { "Loading file...".to_string() }
+                                    })
+                                })
                                 .unwrap_or_else(|| "None".to_string());
                             let date = current_meta.as_ref().map(|f| f.date.clone()).unwrap_or_default();
                             let is_latest = log_files().first().map(|f| f.path == current_file).unwrap_or(false);
