@@ -26,64 +26,74 @@ pub fn check_hp_phase_transitions(
     entity_name: &str,
     timestamp: NaiveDateTime,
 ) -> Vec<GameSignal> {
-    let Some(enc) = cache.current_encounter() else {
-        return Vec::new();
-    };
-    let Some(def_idx) = enc.active_boss_idx() else {
-        return Vec::new();
-    };
+    // First pass: find matching phase using immutable borrow
+    let match_data = {
+        let Some(enc) = cache.current_encounter() else {
+            return Vec::new();
+        };
+        let Some(def_idx) = enc.active_boss_idx() else {
+            return Vec::new();
+        };
 
-    let def = &enc.boss_definitions()[def_idx];
-    let counter_defs = def.counters.clone();
-    let current_phase = enc.current_phase.clone();
-    let previous_phase = enc.previous_phase.clone();
+        let def = &enc.boss_definitions()[def_idx];
 
-    for phase in &def.phases {
-        if current_phase.as_ref() == Some(&phase.id) {
-            continue;
-        }
-
-        if let Some(ref required) = phase.preceded_by {
-            let last_phase = current_phase.as_ref().or(previous_phase.as_ref());
-            if last_phase != Some(required) {
+        let mut found = None;
+        for phase in &def.phases {
+            if enc.current_phase.as_ref() == Some(&phase.id) {
                 continue;
             }
-        }
 
-        if let Some(ref cond) = phase.counter_condition {
-            if !enc.check_counter_condition(cond) {
-                continue;
+            if let Some(ref required) = phase.preceded_by {
+                let last_phase = enc.current_phase.as_ref().or(enc.previous_phase.as_ref());
+                if last_phase != Some(required) {
+                    continue;
+                }
+            }
+
+            if let Some(ref cond) = phase.counter_condition {
+                if !enc.check_counter_condition(cond) {
+                    continue;
+                }
+            }
+
+            if check_hp_trigger(
+                &phase.start_trigger,
+                &def.entities,
+                old_hp,
+                new_hp,
+                npc_id,
+                entity_name,
+            ) {
+                // Capture data needed for mutation and signal construction
+                found = Some((
+                    enc.current_phase.clone(), // old_phase for signal
+                    phase.id.clone(),          // new_phase_id
+                    def.id.clone(),            // boss_id
+                    phase.resets_counters.clone(),
+                    def.counters.clone(),
+                ));
+                break;
             }
         }
+        found
+    };
 
-        if check_hp_trigger(
-            &phase.start_trigger,
-            &def.entities,
-            old_hp,
-            new_hp,
-            npc_id,
-            entity_name,
-        ) {
-            let old_phase = enc.current_phase.clone();
-            let new_phase_id = phase.id.clone();
-            let boss_id = def.id.clone();
-            let resets = phase.resets_counters.clone();
+    // Second pass: mutate if we found a match
+    if let Some((old_phase, new_phase_id, boss_id, resets, counter_defs)) = match_data {
+        let Some(enc) = cache.current_encounter_mut() else {
+            tracing::error!("BUG: encounter disappeared mid-function in check_hp_phase_transitions");
+            return Vec::new();
+        };
+        enc.set_phase(&new_phase_id, timestamp);
+        enc.reset_counters_to_initial(&resets, &counter_defs);
+        enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
 
-            let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!("BUG: encounter disappeared mid-function in check_hp_phase_transitions");
-                return Vec::new();
-            };
-            enc.set_phase(&new_phase_id, timestamp);
-            enc.reset_counters_to_initial(&resets, &counter_defs);
-            enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
-
-            return vec![GameSignal::PhaseChanged {
-                boss_id,
-                old_phase,
-                new_phase: new_phase_id,
-                timestamp,
-            }];
-        }
+        return vec![GameSignal::PhaseChanged {
+            boss_id,
+            old_phase,
+            new_phase: new_phase_id,
+            timestamp,
+        }];
     }
 
     Vec::new()
@@ -95,61 +105,71 @@ pub fn check_ability_phase_transitions(
     cache: &mut SessionCache,
     current_signals: &[GameSignal],
 ) -> Vec<GameSignal> {
-    let Some(enc) = cache.current_encounter() else {
-        return Vec::new();
-    };
-    let Some(def_idx) = enc.active_boss_idx() else {
-        return Vec::new();
-    };
+    // First pass: find matching phase using immutable borrow
+    let match_data = {
+        let Some(enc) = cache.current_encounter() else {
+            return Vec::new();
+        };
+        let Some(def_idx) = enc.active_boss_idx() else {
+            return Vec::new();
+        };
 
-    let def = &enc.boss_definitions()[def_idx];
-    let counter_defs = def.counters.clone();
-    let current_phase = enc.current_phase.clone();
-    let previous_phase = enc.previous_phase.clone();
+        let def = &enc.boss_definitions()[def_idx];
 
-    for phase in &def.phases {
-        if current_phase.as_ref() == Some(&phase.id) {
-            continue;
-        }
-
-        if let Some(ref required) = phase.preceded_by {
-            let last_phase = current_phase.as_ref().or(previous_phase.as_ref());
-            if last_phase != Some(required) {
+        let mut found = None;
+        for phase in &def.phases {
+            if enc.current_phase.as_ref() == Some(&phase.id) {
                 continue;
             }
-        }
 
-        if let Some(ref cond) = phase.counter_condition {
-            if !enc.check_counter_condition(cond) {
-                continue;
+            if let Some(ref required) = phase.preceded_by {
+                let last_phase = enc.current_phase.as_ref().or(enc.previous_phase.as_ref());
+                if last_phase != Some(required) {
+                    continue;
+                }
+            }
+
+            if let Some(ref cond) = phase.counter_condition {
+                if !enc.check_counter_condition(cond) {
+                    continue;
+                }
+            }
+
+            let trigger_matched = check_ability_trigger(&phase.start_trigger, event)
+                || check_signal_phase_trigger(&phase.start_trigger, &def.entities, current_signals);
+
+            if trigger_matched {
+                // Capture data needed for mutation and signal construction
+                found = Some((
+                    enc.current_phase.clone(), // old_phase for signal
+                    phase.id.clone(),          // new_phase_id
+                    def.id.clone(),            // boss_id
+                    phase.resets_counters.clone(),
+                    def.counters.clone(),
+                ));
+                break;
             }
         }
+        found
+    };
 
-        let trigger_matched = check_ability_trigger(&phase.start_trigger, event)
-            || check_signal_phase_trigger(&phase.start_trigger, &def.entities, current_signals);
+    // Second pass: mutate if we found a match
+    if let Some((old_phase, new_phase_id, boss_id, resets, counter_defs)) = match_data {
+        let Some(enc) = cache.current_encounter_mut() else {
+            tracing::error!("BUG: encounter disappeared mid-function in check_ability_phase_transitions");
+            return Vec::new();
+        };
+        enc.set_phase(&new_phase_id, event.timestamp);
+        enc.reset_counters_to_initial(&resets, &counter_defs);
+        enc.challenge_tracker
+            .set_phase(&new_phase_id, event.timestamp);
 
-        if trigger_matched {
-            let old_phase = enc.current_phase.clone();
-            let new_phase_id = phase.id.clone();
-            let boss_id = def.id.clone();
-            let resets = phase.resets_counters.clone();
-
-            let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!("BUG: encounter disappeared mid-function in check_ability_phase_transitions");
-                return Vec::new();
-            };
-            enc.set_phase(&new_phase_id, event.timestamp);
-            enc.reset_counters_to_initial(&resets, &counter_defs);
-            enc.challenge_tracker
-                .set_phase(&new_phase_id, event.timestamp);
-
-            return vec![GameSignal::PhaseChanged {
-                boss_id,
-                old_phase,
-                new_phase: new_phase_id,
-                timestamp: event.timestamp,
-            }];
-        }
+        return vec![GameSignal::PhaseChanged {
+            boss_id,
+            old_phase,
+            new_phase: new_phase_id,
+            timestamp: event.timestamp,
+        }];
     }
 
     Vec::new()
@@ -161,66 +181,70 @@ pub fn check_entity_phase_transitions(
     current_signals: &[GameSignal],
     timestamp: NaiveDateTime,
 ) -> Vec<GameSignal> {
-    let Some(enc) = cache.current_encounter() else {
-        return Vec::new();
-    };
-    let Some(def_idx) = enc.active_boss_idx() else {
-        return Vec::new();
-    };
+    // First pass: find matching phase using immutable borrow
+    let match_data = {
+        let Some(enc) = cache.current_encounter() else {
+            return Vec::new();
+        };
+        let Some(def_idx) = enc.active_boss_idx() else {
+            return Vec::new();
+        };
 
-    let def = &enc.boss_definitions()[def_idx];
-    let phases: Vec<_> = def.phases.clone();
-    let counter_defs = def.counters.clone();
-    let boss_id = def.id.clone();
-    let entities = def.entities.clone();
-    let current_phase = enc.current_phase.clone();
-    let previous_phase = enc.previous_phase.clone();
+        let def = &enc.boss_definitions()[def_idx];
 
-    let mut signals = Vec::new();
-
-    for phase in &phases {
-        if current_phase.as_ref() == Some(&phase.id) {
-            continue;
-        }
-
-        if let Some(ref required) = phase.preceded_by {
-            let last_phase = current_phase.as_ref().or(previous_phase.as_ref());
-            if last_phase != Some(required) {
+        let mut found = None;
+        for phase in &def.phases {
+            if enc.current_phase.as_ref() == Some(&phase.id) {
                 continue;
             }
-        }
 
-        if let Some(ref cond) = phase.counter_condition {
-            if !enc.check_counter_condition(cond) {
-                continue;
+            if let Some(ref required) = phase.preceded_by {
+                let last_phase = enc.current_phase.as_ref().or(enc.previous_phase.as_ref());
+                if last_phase != Some(required) {
+                    continue;
+                }
+            }
+
+            if let Some(ref cond) = phase.counter_condition {
+                if !enc.check_counter_condition(cond) {
+                    continue;
+                }
+            }
+
+            if check_signal_phase_trigger(&phase.start_trigger, &def.entities, current_signals) {
+                // Capture data needed for mutation and signal construction
+                found = Some((
+                    enc.current_phase.clone(), // old_phase for signal
+                    phase.id.clone(),          // new_phase_id
+                    def.id.clone(),            // boss_id
+                    phase.resets_counters.clone(),
+                    def.counters.clone(),
+                ));
+                break; // Only one phase transition per event
             }
         }
+        found
+    };
 
-        if check_signal_phase_trigger(&phase.start_trigger, &entities, current_signals) {
-            let old_phase = enc.current_phase.clone();
-            let new_phase_id = phase.id.clone();
-            let resets = phase.resets_counters.clone();
+    // Second pass: mutate if we found a match
+    if let Some((old_phase, new_phase_id, boss_id, resets, counter_defs)) = match_data {
+        let Some(enc) = cache.current_encounter_mut() else {
+            tracing::error!("BUG: encounter disappeared mid-function in check_entity_phase_transitions");
+            return Vec::new();
+        };
+        enc.set_phase(&new_phase_id, timestamp);
+        enc.reset_counters_to_initial(&resets, &counter_defs);
+        enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
 
-            let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!("BUG: encounter disappeared mid-function in check_entity_phase_transitions");
-                return signals;
-            };
-            enc.set_phase(&new_phase_id, timestamp);
-            enc.reset_counters_to_initial(&resets, &counter_defs);
-            enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
-
-            signals.push(GameSignal::PhaseChanged {
-                boss_id: boss_id.clone(),
-                old_phase,
-                new_phase: new_phase_id,
-                timestamp,
-            });
-
-            break; // Only one phase transition per event
-        }
+        return vec![GameSignal::PhaseChanged {
+            boss_id,
+            old_phase,
+            new_phase: new_phase_id,
+            timestamp,
+        }];
     }
 
-    signals
+    Vec::new()
 }
 
 /// Check for phase transitions based on combat time (TimeElapsed triggers).
@@ -228,73 +252,84 @@ pub fn check_time_phase_transitions(
     cache: &mut SessionCache,
     timestamp: NaiveDateTime,
 ) -> Vec<GameSignal> {
-    let Some(enc) = cache.current_encounter_mut() else {
-        return Vec::new();
+    // First: update combat time (requires mutable borrow)
+    let (old_time, new_time) = {
+        let Some(enc) = cache.current_encounter_mut() else {
+            return Vec::new();
+        };
+        if enc.active_boss_idx().is_none() {
+            return Vec::new();
+        }
+        enc.update_combat_time(timestamp)
     };
-    if enc.active_boss_idx().is_none() {
-        return Vec::new();
-    }
-
-    let (old_time, new_time) = enc.update_combat_time(timestamp);
 
     if new_time <= old_time {
         return Vec::new();
     }
 
-    // Need to reborrow after mutation
-    let Some(enc) = cache.current_encounter() else {
-        tracing::error!("BUG: encounter disappeared after update_combat_time in check_time_phase_transitions");
-        return Vec::new();
-    };
-    let Some(def_idx) = enc.active_boss_idx() else {
-        tracing::error!("BUG: no active boss after update_combat_time in check_time_phase_transitions");
-        return Vec::new();
-    };
+    // Second pass: find matching phase using immutable borrow
+    let match_data = {
+        let Some(enc) = cache.current_encounter() else {
+            tracing::error!("BUG: encounter disappeared after update_combat_time in check_time_phase_transitions");
+            return Vec::new();
+        };
+        let Some(def_idx) = enc.active_boss_idx() else {
+            tracing::error!("BUG: no active boss after update_combat_time in check_time_phase_transitions");
+            return Vec::new();
+        };
 
-    let phases: Vec<_> = enc.boss_definitions()[def_idx].phases.clone();
-    let counter_defs = enc.boss_definitions()[def_idx].counters.clone();
-    let boss_id = enc.boss_definitions()[def_idx].id.clone();
-    let current_phase = enc.current_phase.clone();
-    let previous_phase = enc.previous_phase.clone();
+        let def = &enc.boss_definitions()[def_idx];
 
-    for phase in &phases {
-        if current_phase.as_ref() == Some(&phase.id) {
-            continue;
-        }
-
-        if let Some(ref required) = phase.preceded_by {
-            let last_phase = current_phase.as_ref().or(previous_phase.as_ref());
-            if last_phase != Some(required) {
+        let mut found = None;
+        for phase in &def.phases {
+            if enc.current_phase.as_ref() == Some(&phase.id) {
                 continue;
             }
-        }
 
-        if let Some(ref cond) = phase.counter_condition {
-            if !enc.check_counter_condition(cond) {
-                continue;
+            if let Some(ref required) = phase.preceded_by {
+                let last_phase = enc.current_phase.as_ref().or(enc.previous_phase.as_ref());
+                if last_phase != Some(required) {
+                    continue;
+                }
+            }
+
+            if let Some(ref cond) = phase.counter_condition {
+                if !enc.check_counter_condition(cond) {
+                    continue;
+                }
+            }
+
+            if check_time_trigger(&phase.start_trigger, old_time, new_time) {
+                // Capture data needed for mutation and signal construction
+                found = Some((
+                    enc.current_phase.clone(), // old_phase for signal
+                    phase.id.clone(),          // new_phase_id
+                    def.id.clone(),            // boss_id
+                    phase.resets_counters.clone(),
+                    def.counters.clone(),
+                ));
+                break;
             }
         }
+        found
+    };
 
-        if check_time_trigger(&phase.start_trigger, old_time, new_time) {
-            let old_phase = enc.current_phase.clone();
-            let new_phase_id = phase.id.clone();
-            let resets = phase.resets_counters.clone();
+    // Third pass: mutate if we found a match
+    if let Some((old_phase, new_phase_id, boss_id, resets, counter_defs)) = match_data {
+        let Some(enc) = cache.current_encounter_mut() else {
+            tracing::error!("BUG: encounter disappeared mid-function in check_time_phase_transitions");
+            return Vec::new();
+        };
+        enc.set_phase(&new_phase_id, timestamp);
+        enc.reset_counters_to_initial(&resets, &counter_defs);
+        enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
 
-            let Some(enc) = cache.current_encounter_mut() else {
-                tracing::error!("BUG: encounter disappeared mid-function in check_time_phase_transitions");
-                return Vec::new();
-            };
-            enc.set_phase(&new_phase_id, timestamp);
-            enc.reset_counters_to_initial(&resets, &counter_defs);
-            enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
-
-            return vec![GameSignal::PhaseChanged {
-                boss_id,
-                old_phase,
-                new_phase: new_phase_id,
-                timestamp,
-            }];
-        }
+        return vec![GameSignal::PhaseChanged {
+            boss_id,
+            old_phase,
+            new_phase: new_phase_id,
+            timestamp,
+        }];
     }
 
     Vec::new()
