@@ -425,12 +425,16 @@ pub fn EffectEditorPanel() -> Element {
             if loading() {
                 div { class: "effect-loading", "Loading effects..." }
             } else if filtered_effects().is_empty() && draft_effect().is_none() {
-                div { class: "effect-empty",
-                    if effects().is_empty() {
-                        "No effect definitions found"
-                    } else {
-                        "No effects match your search"
+                if effects().is_empty() {
+                    div { class: "empty-state-guidance",
+                        div { class: "empty-state-icon",
+                            i { class: "fa-solid fa-sparkles" }
+                        }
+                        p { "No effects defined yet" }
+                        p { class: "hint", "Click \"+ New Effect\" above to create your first effect" }
                     }
+                } else {
+                    div { class: "effect-empty", "No effects match your search" }
                 }
             } else {
                 div { class: "effect-list",
@@ -664,83 +668,99 @@ fn EffectEditForm(
                 div { class: "effect-edit-grid",
                     // ═══ LEFT COLUMN: Main Effect Settings ═══════════════════════════
                     div { class: "effect-edit-left",
-                        // Effect ID (read-only) - hidden for drafts
-                        if !is_draft {
-                            div { class: "form-row-hz",
-                                label { "Effect ID" }
-                                code { class: "effect-id-display", "{effect.id}" }
+                        // ─── Identity Card ───────────────────────────────────────────
+                        div { class: "form-card",
+                            div { class: "form-card-header",
+                                i { class: "fa-solid fa-tag" }
+                                span { "Identity" }
                             }
-                        }
-
-                        // Name
-                        div { class: "form-row-hz",
-                            label { "Name" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline",
-                                style: "width: 200px;",
-                                value: "{draft().name}",
-                                oninput: move |e| {
-                                    let mut d = draft();
-                                    d.name = e.value();
-                                    draft.set(d);
+                            div { class: "form-card-content",
+                                // Effect ID (read-only) - hidden for drafts
+                                if !is_draft {
+                                    div { class: "form-row-hz",
+                                        label { "Effect ID" }
+                                        code { class: "effect-id-display", "{effect.id}" }
+                                    }
                                 }
-                            }
-                        }
 
-                        // Display Text
-                        div { class: "form-row-hz",
-                            label { "Display Text" }
-                            input {
-                                r#type: "text",
-                                class: "input-inline",
-                                style: "width: 200px;",
-                                placeholder: "{draft().name}",
-                                value: "{draft().display_text.clone().unwrap_or_default()}",
-                                oninput: move |e| {
-                                    let mut d = draft();
-                                    d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
-                                    draft.set(d);
+                                // Name
+                                div { class: "form-row-hz",
+                                    label { "Name" }
+                                    input {
+                                        r#type: "text",
+                                        class: "input-inline",
+                                        style: "width: 200px;",
+                                        value: "{draft().name}",
+                                        oninput: move |e| {
+                                            let mut d = draft();
+                                            d.name = e.value();
+                                            draft.set(d);
+                                        }
+                                    }
                                 }
-                            }
-                        }
 
-                        // Display Target (prominent position - determines which overlay shows this effect)
-                        div { class: "form-row-hz",
-                            label { class: "flex items-center",
-                                "Display Target"
-                                span {
-                                    class: "help-icon",
-                                    title: "Sets which overlay displays this effect when triggered",
-                                    "?"
+                                // Display Text
+                                div { class: "form-row-hz",
+                                    label { "Display Text" }
+                                    input {
+                                        r#type: "text",
+                                        class: "input-inline",
+                                        style: "width: 200px;",
+                                        placeholder: "{draft().name}",
+                                        value: "{draft().display_text.clone().unwrap_or_default()}",
+                                        oninput: move |e| {
+                                            let mut d = draft();
+                                            d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
+                                            draft.set(d);
+                                        }
+                                    }
                                 }
-                            }
-                            select {
-                                class: "select-inline",
-                                value: "{draft().display_target.label()}",
-                                onchange: move |e| {
-                                    let mut d = draft();
-                                    d.display_target = match e.value().as_str() {
-                                        "None" => DisplayTarget::None,
-                                        "Raid Frames" => DisplayTarget::RaidFrames,
-                                        "Effects A" => DisplayTarget::EffectsA,
-                                        "Effects B" => DisplayTarget::EffectsB,
-                                        "Cooldowns" => DisplayTarget::Cooldowns,
-                                        "DOT Tracker" => DisplayTarget::DotTracker,
-                                        "Effects Overlay" => DisplayTarget::EffectsOverlay,
-                                        _ => d.display_target,
-                                    };
-                                    draft.set(d);
-                                },
-                                for target in DisplayTarget::all() {
-                                    option {
-                                        value: "{target.label()}",
-                                        "{target.label()}"
+
+                                // Display Target (prominent position - determines which overlay shows this effect)
+                                div { class: "form-row-hz",
+                                    label { class: "flex items-center",
+                                        "Display Target"
+                                        span {
+                                            class: "help-icon",
+                                            title: "Sets which overlay displays this effect when triggered",
+                                            "?"
+                                        }
+                                    }
+                                    select {
+                                        class: "select-inline",
+                                        value: "{draft().display_target.label()}",
+                                        onchange: move |e| {
+                                            let mut d = draft();
+                                            d.display_target = match e.value().as_str() {
+                                                "None" => DisplayTarget::None,
+                                                "Raid Frames" => DisplayTarget::RaidFrames,
+                                                "Effects A" => DisplayTarget::EffectsA,
+                                                "Effects B" => DisplayTarget::EffectsB,
+                                                "Cooldowns" => DisplayTarget::Cooldowns,
+                                                "DOT Tracker" => DisplayTarget::DotTracker,
+                                                "Effects Overlay" => DisplayTarget::EffectsOverlay,
+                                                _ => d.display_target,
+                                            };
+                                            draft.set(d);
+                                        },
+                                        for target in DisplayTarget::all() {
+                                            option {
+                                                value: "{target.label()}",
+                                                "{target.label()}"
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
 
+                        // ─── Trigger Card ────────────────────────────────────────────
+                        div { class: "form-card",
+                            div { class: "form-card-header",
+                                i { class: "fa-solid fa-bolt" }
+                                span { "Trigger" }
+                            }
+                            div { class: "form-card-content",
                         // Trigger Type and When
                         div { class: "form-row-hz",
                             label { class: "flex items-center",
@@ -844,58 +864,6 @@ fn EffectEditForm(
                             }
                         }
 
-                        // Duration and Show at
-                        div { class: "form-row-hz",
-                            label { class: "flex items-center",
-                                "Duration"
-                                span {
-                                    class: "help-icon",
-                                    title: "How long the effect displays (seconds). Set to 0 for effects that track via game events",
-                                    "?"
-                                }
-                            }
-                            input {
-                                r#type: "number",
-                                class: "input-inline",
-                                style: "width: 70px;",
-                                step: "any",
-                                min: "0",
-                                value: "{draft().duration_secs.unwrap_or(0.0)}",
-                                oninput: move |e| {
-                                    let mut d = draft();
-                                    d.duration_secs = e.value().parse::<f32>().ok().filter(|&v| v > 0.0);
-                                    draft.set(d);
-                                }
-                            }
-                            span { class: "text-muted", "sec" }
-                            label { class: "flex items-center",
-                                "Show at"
-                                span {
-                                    class: "help-icon",
-                                    title: "Only display the effect when this many seconds remain",
-                                    "?"
-                                }
-                            }
-                            input {
-                                r#type: "number",
-                                class: "input-inline",
-                                style: "width: 50px;",
-                                step: "any",
-                                min: "0",
-                                max: "{draft().duration_secs.unwrap_or(999.0)}",
-                                value: "{draft().show_at_secs}",
-                                oninput: move |e| {
-                                    if let Ok(val) = e.value().parse::<f32>() {
-                                        let mut d = draft();
-                                        let max_val = d.duration_secs.unwrap_or(f32::MAX);
-                                        d.show_at_secs = val.min(max_val).max(0.0);
-                                        draft.set(d);
-                                    }
-                                }
-                            }
-                            span { class: "text-sm text-secondary", "sec remaining" }
-                        }
-
                         // Effects or Trigger Abilities (based on trigger type)
                         div { class: "form-row-hz", style: "align-items: flex-start;",
                             if trigger_type() == EffectTriggerType::EffectBased {
@@ -929,6 +897,69 @@ fn EffectEditForm(
                                     let mut d = draft();
                                     d.refresh_abilities = ids;
                                     draft.set(d);
+                                }
+                            }
+                        }
+                            }
+                        }
+
+                        // ─── Timing Card ─────────────────────────────────────────────
+                        div { class: "form-card",
+                            div { class: "form-card-header",
+                                i { class: "fa-solid fa-clock" }
+                                span { "Timing" }
+                            }
+                            div { class: "form-card-content",
+                                // Duration and Show at
+                                div { class: "form-row-hz",
+                                    label { class: "flex items-center",
+                                        "Duration"
+                                        span {
+                                            class: "help-icon",
+                                            title: "How long the effect displays (seconds). Set to 0 for effects that track via game events",
+                                            "?"
+                                        }
+                                    }
+                                    input {
+                                        r#type: "number",
+                                        class: "input-inline",
+                                        style: "width: 70px;",
+                                        step: "any",
+                                        min: "0",
+                                        value: "{draft().duration_secs.unwrap_or(0.0)}",
+                                        oninput: move |e| {
+                                            let mut d = draft();
+                                            d.duration_secs = e.value().parse::<f32>().ok().filter(|&v| v > 0.0);
+                                            draft.set(d);
+                                        }
+                                    }
+                                    span { class: "text-muted", "sec" }
+                                    label { class: "flex items-center",
+                                        "Show at"
+                                        span {
+                                            class: "help-icon",
+                                            title: "Only display the effect when this many seconds remain",
+                                            "?"
+                                        }
+                                    }
+                                    input {
+                                        r#type: "number",
+                                        class: "input-inline",
+                                        style: "width: 50px;",
+                                        step: "any",
+                                        min: "0",
+                                        max: "{draft().duration_secs.unwrap_or(999.0)}",
+                                        value: "{draft().show_at_secs}",
+                                        oninput: move |e| {
+                                            if let Ok(val) = e.value().parse::<f32>() {
+                                                let mut d = draft();
+                                                let max_val = d.duration_secs.unwrap_or(f32::MAX);
+                                                d.show_at_secs = val.min(max_val).max(0.0);
+                                                draft.set(d);
+                                            }
+                                        }
+                                    }
+                                    span { class: "text-sm text-secondary", "sec remaining" }
                                 }
                             }
                         }
