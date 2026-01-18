@@ -13,6 +13,7 @@ mod audio;
 mod commands;
 #[cfg(not(target_os = "linux"))]
 mod hotkeys;
+mod logging;
 pub mod overlay;
 mod router;
 pub mod service;
@@ -23,19 +24,12 @@ mod updater;
 
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
-use tracing_subscriber::filter::EnvFilter;
 
 use audio::create_audio_channel;
 use overlay::{OverlayManager, OverlayState, SharedOverlayState};
 use router::spawn_overlay_router;
 use service::{CombatService, OverlayUpdate, ServiceHandle};
 use tauri::Manager;
-
-#[cfg(debug_assertions)]
-const DEFAULT_LOG_LEVEL: tracing::Level = tracing::Level::DEBUG;
-
-#[cfg(not(debug_assertions))]
-const DEFAULT_LOG_LEVEL: tracing::Level = tracing::Level::INFO;
 
 /// Auto-show all enabled overlays on startup (if overlays_visible is true)
 fn spawn_auto_show_overlays(overlay_state: SharedOverlayState, service_handle: ServiceHandle) {
@@ -57,19 +51,8 @@ fn spawn_auto_show_overlays(overlay_state: SharedOverlayState, service_handle: S
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize tracing subscriber FIRST
-    let filter = EnvFilter::builder()
-        .with_default_directive(DEFAULT_LOG_LEVEL.into())
-        .from_env_lossy();
-
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .with_target(true)
-        .with_thread_ids(false)
-        .with_file(false)
-        .init();
-
-    tracing::info!("BARAS starting up");
+    // Initialize logging FIRST - guard must outlive app for buffered log flushing
+    let _logging_guard = logging::init();
 
     // Create shared overlay state
     let overlay_state = Arc::new(Mutex::new(OverlayState::default()));
