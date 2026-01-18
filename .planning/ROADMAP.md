@@ -25,10 +25,10 @@ This milestone adds macOS platform support by fixing the overlay renderer implem
 **Success Criteria** (what must be TRUE):
   1. `cargo build --target aarch64-apple-darwin -p overlay` compiles without errors
   2. CGContext bitmap rendering code uses correct type signatures
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 14-01: Fix CGContext type mismatches and API calls
+- [ ] 14-01-PLAN.md - Fix CGContext type mismatches and API calls
 
 ### Phase 15: objc2 Migration
 **Goal**: Overlay uses modern, memory-safe Objective-C bindings
@@ -63,7 +63,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 14. CGContext Fix | 0/1 | Not started | - |
+| 14. CGContext Fix | 0/1 | Planned | - |
 | 15. objc2 Migration | 0/3 | Not started | - |
 | 16. Cleanup | 0/1 | Not started | - |
 
