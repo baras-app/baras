@@ -1516,16 +1516,19 @@ pub fn App() -> Element {
                                                             let p = path_for_upload.clone();
                                                             upload_status.set(Some((p.clone(), true, "Uploading...".to_string())));
                                                             spawn(async move {
-                                                                if let Some(resp) = api::upload_to_parsely(&p).await {
-                                                                    if resp.success {
-                                                                        let link = resp.link.unwrap_or_default();
-                                                                        upload_status.set(Some((p, true, link)));
-                                                                    } else {
-                                                                        let err = resp.error.unwrap_or_else(|| "Upload failed".to_string());
-                                                                        upload_status.set(Some((p, false, err)));
+                                                                match api::upload_to_parsely(&p).await {
+                                                                    Ok(resp) => {
+                                                                        if resp.success {
+                                                                            let link = resp.link.unwrap_or_default();
+                                                                            upload_status.set(Some((p, true, link)));
+                                                                        } else {
+                                                                            let err = resp.error.unwrap_or_else(|| "Upload failed".to_string());
+                                                                            upload_status.set(Some((p, false, err)));
+                                                                        }
                                                                     }
-                                                                } else {
-                                                                    upload_status.set(Some((p, false, "Upload failed".to_string())));
+                                                                    Err(e) => {
+                                                                        upload_status.set(Some((p, false, e)));
+                                                                    }
                                                                 }
                                                             });
                                                         },

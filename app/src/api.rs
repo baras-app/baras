@@ -426,14 +426,14 @@ pub async fn duplicate_encounter_timer(
     timer_id: &str,
     boss_id: &str,
     file_path: &str,
-) -> Option<BossTimerDefinition> {
+) -> Result<BossTimerDefinition, String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "timerId", &JsValue::from_str(timer_id));
     js_set(&obj, "bossId", &JsValue::from_str(boss_id));
     js_set(&obj, "filePath", &JsValue::from_str(file_path));
 
-    let result = invoke("duplicate_encounter_timer", obj.into()).await;
-    from_js(result)
+    let result = try_invoke("duplicate_encounter_timer", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse timer response".to_string())
 }
 
 /// Get area index for lazy-loading timer editor
@@ -445,17 +445,17 @@ pub async fn get_area_index() -> Option<Vec<AreaListItem>> {
 use crate::types::{BossEditItem, NewAreaRequest};
 
 /// Create a new boss in an area file
-pub async fn create_boss(boss: &BossEditItem) -> Option<BossEditItem> {
+pub async fn create_boss(boss: &BossEditItem) -> Result<BossEditItem, String> {
     let args = build_args("boss", boss);
-    let result = invoke("create_boss", args).await;
-    from_js(result)
+    let result = try_invoke("create_boss", args).await?;
+    from_js(result).ok_or_else(|| "Failed to parse boss response".to_string())
 }
 
 /// Create a new area file
-pub async fn create_area(area: &NewAreaRequest) -> Option<String> {
+pub async fn create_area(area: &NewAreaRequest) -> Result<String, String> {
     let args = build_args("area", area);
-    let result = invoke("create_area", args).await;
-    from_js(result)
+    let result = try_invoke("create_area", args).await?;
+    from_js(result).ok_or_else(|| "Failed to parse area response".to_string())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -487,10 +487,10 @@ pub async fn delete_effect_definition(effect_id: &str) -> Result<(), String> {
 }
 
 /// Duplicate an effect
-pub async fn duplicate_effect_definition(effect_id: &str) -> Option<EffectListItem> {
+pub async fn duplicate_effect_definition(effect_id: &str) -> Result<EffectListItem, String> {
     let args = build_args("effectId", effect_id);
-    let result = invoke("duplicate_effect_definition", args).await;
-    from_js(result)
+    let result = try_invoke("duplicate_effect_definition", args).await?;
+    from_js(result).ok_or_else(|| "Failed to parse effect response".to_string())
 }
 
 /// Create a new effect
@@ -523,9 +523,9 @@ pub struct ParselyUploadResponse {
 }
 
 /// Upload a log file to Parsely.io
-pub async fn upload_to_parsely(path: &str) -> Option<ParselyUploadResponse> {
-    let result = invoke("upload_to_parsely", build_args("path", &path)).await;
-    from_js(result)
+pub async fn upload_to_parsely(path: &str) -> Result<ParselyUploadResponse, String> {
+    let result = try_invoke("upload_to_parsely", build_args("path", &path)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse upload response".to_string())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -544,12 +544,8 @@ pub async fn pick_audio_file() -> Option<String> {
 
 /// Install available update (downloads, installs, restarts app)
 pub async fn install_update() -> Result<(), String> {
-    let result = invoke("install_update", JsValue::NULL).await;
-    if let Some(err) = result.as_string() {
-        Err(err)
-    } else {
-        Ok(())
-    }
+    try_invoke("install_update", JsValue::NULL).await?;
+    Ok(())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

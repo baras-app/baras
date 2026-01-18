@@ -347,14 +347,17 @@ pub fn EncounterEditorPanel() -> Element {
                                         on_create: move |new_boss| {
                                             let fp = file_path.clone();
                                             spawn(async move {
-                                                if api::create_boss(&new_boss).await.is_some() {
-                                                    // Reload area to get fresh BossWithPath
-                                                    if let Some(b) = api::fetch_area_bosses(&fp).await {
-                                                        bosses.set(b);
+                                                match api::create_boss(&new_boss).await {
+                                                    Ok(_) => {
+                                                        // Reload area to get fresh BossWithPath
+                                                        if let Some(b) = api::fetch_area_bosses(&fp).await {
+                                                            bosses.set(b);
+                                                        }
+                                                        status_message.set(Some(("Boss created".to_string(), false)));
                                                     }
-                                                    status_message.set(Some(("Boss created".to_string(), false)));
-                                                } else {
-                                                    status_message.set(Some(("Failed to create".to_string(), true)));
+                                                    Err(e) => {
+                                                        status_message.set(Some((e, true)));
+                                                    }
                                                 }
                                             });
                                             show_new_boss.set(false);
@@ -437,13 +440,16 @@ pub fn EncounterEditorPanel() -> Element {
             new_forms::NewAreaForm {
                 on_create: move |new_area| {
                     spawn(async move {
-                        if let Some(_) = api::create_area(&new_area).await {
-                            if let Some(a) = api::get_area_index().await {
-                                areas.set(a);
+                        match api::create_area(&new_area).await {
+                            Ok(_) => {
+                                if let Some(a) = api::get_area_index().await {
+                                    areas.set(a);
+                                }
+                                status_message.set(Some(("Area created".to_string(), false)));
                             }
-                            status_message.set(Some(("Area created".to_string(), false)));
-                        } else {
-                            status_message.set(Some(("Failed to create".to_string(), true)));
+                            Err(e) => {
+                                status_message.set(Some((e, true)));
+                            }
                         }
                     });
                     show_new_area.set(false);

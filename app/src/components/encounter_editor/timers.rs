@@ -344,15 +344,16 @@ fn TimerEditForm(
             let boss_id = bwp.boss.id.clone();
             let file_path = bwp.file_path.clone();
             spawn(async move {
-                if let Some(new_timer) =
-                    api::duplicate_encounter_timer(&t.id, &boss_id, &file_path).await
-                {
-                    let mut current = ts;
-                    current.push(new_timer);
-                    on_change.call(current);
-                    on_status.call(("Duplicated".to_string(), false));
-                } else {
-                    on_status.call(("Failed to duplicate".to_string(), true));
+                match api::duplicate_encounter_timer(&t.id, &boss_id, &file_path).await {
+                    Ok(new_timer) => {
+                        let mut current = ts;
+                        current.push(new_timer);
+                        on_change.call(current);
+                        on_status.call(("Duplicated".to_string(), false));
+                    }
+                    Err(e) => {
+                        on_status.call((e, true));
+                    }
                 }
             });
         }

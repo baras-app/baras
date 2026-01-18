@@ -388,17 +388,20 @@ pub fn EffectEditorPanel() -> Element {
 
     let on_duplicate = move |effect: EffectListItem| {
         spawn(async move {
-            if let Some(new_effect) = api::duplicate_effect_definition(&effect.id).await {
-                let new_id = new_effect.id.clone();
-                let mut current = effects();
-                current.push(new_effect);
-                effects.set(current);
-                expanded_effect.set(Some(new_id));
-                save_status.set("Duplicated".to_string());
-                status_is_error.set(false);
-            } else {
-                save_status.set("Failed to duplicate".to_string());
-                status_is_error.set(true);
+            match api::duplicate_effect_definition(&effect.id).await {
+                Ok(new_effect) => {
+                    let new_id = new_effect.id.clone();
+                    let mut current = effects();
+                    current.push(new_effect);
+                    effects.set(current);
+                    expanded_effect.set(Some(new_id));
+                    save_status.set("Duplicated".to_string());
+                    status_is_error.set(false);
+                }
+                Err(e) => {
+                    save_status.set(e);
+                    status_is_error.set(true);
+                }
             }
         });
     };
