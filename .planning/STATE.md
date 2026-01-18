@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-18)
 
 ## Current Position
 
-Phase: 11 of 13 (Profile System Fixes)
-Plan: 1 of 1 complete in current phase
+Phase: 13 of 13 (Editor Polish)
+Plan: 2 of 2 complete in current phase
 Status: Phase complete
-Last activity: 2026-01-18 - Completed 11-01-PLAN.md (Profile System Fixes)
+Last activity: 2026-01-18 - Completed 13-02-PLAN.md (Editor Polish Cleanup)
 
-Progress: [###############.......] 31/32+ plans (~97% v1.0-v1.1)
+Progress: [######################] 33/33 plans (~100% v1.0-v1.1)
 
 ## Performance Metrics
 
@@ -25,8 +25,8 @@ Progress: [###############.......] 31/32+ plans (~97% v1.0-v1.1)
 - Commits: 87
 - Files modified: 124
 
-**v1.1 UX Polish (in progress):**
-- Plans completed: 8 (Phase 8: 2, Phase 9: 2, Phase 11: 1, Phase 12: 3)
+**v1.1 UX Polish (complete):**
+- Plans completed: 10 (Phase 8: 2, Phase 9: 2, Phase 11: 1, Phase 12: 3, Phase 13: 2)
 - Phase 10 deferred (out of order execution)
 
 ## Accumulated Context
@@ -50,6 +50,10 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full v1.0 decision history.
 - 300ms debounce for live preview (balances responsiveness with performance)
 - Restore original settings on close via refresh_overlay_settings
 
+**Phase 13 Decisions:**
+- Removed file path from timer edit form entirely (no replacement needed)
+- Move scroll reset outside spawn block for synchronous execution on encounter change
+
 ### Pending Todos
 
 None.
@@ -63,5 +67,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Phase 11 complete (Profile System Fixes)
+Stopped at: Phase 13 complete (Editor Polish)
 Resume file: None
