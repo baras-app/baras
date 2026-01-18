@@ -354,10 +354,10 @@ impl CombatService {
             .unwrap_or_else(|| {
                 // Dev fallback: relative to project root
                 PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                    .parent()
-                    .unwrap()
-                    .parent()
-                    .unwrap()
+                    .ancestors()
+                    .nth(2)
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or_else(|| PathBuf::from("."))
                     .join("core/definitions/sounds")
             });
         let audio_settings = Arc::new(tokio::sync::RwLock::new(
@@ -467,10 +467,10 @@ impl CombatService {
             .unwrap_or_else(|| {
                 // Dev fallback: relative to project root
                 PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                    .parent()
-                    .unwrap()
-                    .parent()
-                    .unwrap()
+                    .ancestors()
+                    .nth(2)
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or_else(|| PathBuf::from("."))
                     .join("icons")
             });
 
