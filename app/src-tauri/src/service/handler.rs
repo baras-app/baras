@@ -350,7 +350,7 @@ impl ServiceHandle {
     }
 
     /// Trigger immediate raid frame refresh
-    async fn refresh_raid_frames(&self) {
+    pub async fn refresh_raid_frames(&self) {
         let _ = self.cmd_tx.send(ServiceCommand::RefreshRaidFrames).await;
     }
 

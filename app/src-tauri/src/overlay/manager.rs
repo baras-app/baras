@@ -771,12 +771,20 @@ impl OverlayManager {
         };
 
         // Only respawn raid if global visibility is on
-        if globally_visible
+        let raid_respawned = if globally_visible
             && (raid_was_running || raid_enabled)
             && let Ok(result) = Self::spawn(OverlayType::Raid, settings)
             && let Ok(mut s) = state.lock()
         {
             s.insert(result.handle);
+            true
+        } else {
+            false
+        };
+
+        // Send current raid frame data to the newly spawned overlay
+        if raid_respawned {
+            service.refresh_raid_frames().await;
         }
 
         // Update config for all running overlays
