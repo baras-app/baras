@@ -43,38 +43,35 @@ x11rb = { version = "0.13", features = ["randr", "shape", "shm"] }
 # Platform: Windows
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [
-    "Win32_Foundation",
-    "Win32_Graphics_Gdi",
-    "Win32_UI_WindowsAndMessaging",
-    "Win32_UI_Input_KeyboardAndMouse",
-    "Win32_System_LibraryLoader",
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_System_LibraryLoader",
 ] }
 
 # Platform: macOS
 [target.'cfg(target_os = "macos")'.dependencies]
-# Deprecated - will be removed in Phase 16
-cocoa = "0.26"
-objc = "0.2"
 # Keep core-graphics for CGContext operations
 core-graphics = "0.24"
 
 # New objc2 ecosystem
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = [
-    "NSArray",
-    "NSDate",
-    "NSGeometry",
-    "NSObject",
-    "NSString",
+  "NSArray",
+  "NSDate",
+  "NSGeometry",
+  "NSObject",
+  "NSString",
 ] }
 objc2-app-kit = { version = "0.3", default-features = false, features = [
-    "NSApplication",
-    "NSColor",
-    "NSEvent",
-    "NSGraphicsContext",
-    "NSResponder",
-    "NSRunningApplication",
-    "NSScreen",
-    "NSView",
-    "NSWindow",
+  "NSApplication",
+  "NSColor",
+  "NSEvent",
+  "NSGraphicsContext",
+  "NSResponder",
+  "NSRunningApplication",
+  "NSScreen",
+  "NSView",
+  "NSWindow",
 ] }
