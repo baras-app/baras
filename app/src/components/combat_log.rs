@@ -267,7 +267,6 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         rows.set(data);
                     }
                 });
-            }
         }
     });
 

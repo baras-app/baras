@@ -8,6 +8,8 @@
 //! - Providing clean historical mode support (phases work without Timer/Effect managers)
 //! - Centralizing all combat state in one place
 
+use std::sync::Arc;
+
 use arrow::array::ArrowNativeTypeOp;
 use chrono::NaiveDateTime;
 use hashbrown::{HashMap, HashSet};
@@ -66,8 +68,8 @@ pub struct CombatEncounter {
     pub area_name: Option<String>,
 
     // ─── Boss Definitions (loaded on area enter) ────────────────────────────
-    /// Boss definitions for current area
-    boss_definitions: Vec<BossEncounterDefinition>,
+    /// Boss definitions for current area (Arc for zero-copy sharing)
+    boss_definitions: Arc<Vec<BossEncounterDefinition>>,
     /// Index into boss_definitions for active boss (if detected)
     active_boss_idx: Option<usize>,
 
@@ -127,7 +129,7 @@ impl CombatEncounter {
             area_name: None,
 
             // Boss definitions
-            boss_definitions: Vec::new(),
+            boss_definitions: Arc::new(Vec::new()),
             active_boss_idx: None,
 
             // Boss state
@@ -170,8 +172,8 @@ impl CombatEncounter {
     // Boss Definitions
     // ═══════════════════════════════════════════════════════════════════════
 
-    /// Load boss definitions for the current area
-    pub fn load_boss_definitions(&mut self, definitions: Vec<BossEncounterDefinition>) {
+    /// Load boss definitions for the current area (takes Arc for zero-copy sharing)
+    pub fn load_boss_definitions(&mut self, definitions: Arc<Vec<BossEncounterDefinition>>) {
         self.boss_definitions = definitions;
         self.active_boss_idx = None;
     }
@@ -179,6 +181,11 @@ impl CombatEncounter {
     /// Get the currently loaded boss definitions
     pub fn boss_definitions(&self) -> &[BossEncounterDefinition] {
         &self.boss_definitions
+    }
+
+    /// Get the Arc to boss definitions (for cheap cloning in hot paths)
+    pub fn boss_definitions_arc(&self) -> Arc<Vec<BossEncounterDefinition>> {
+        Arc::clone(&self.boss_definitions)
     }
 
     /// Get the active boss definition (if a boss is detected)

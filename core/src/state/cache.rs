@@ -122,8 +122,8 @@ impl SessionCache {
         };
         encounter.set_area(area_id, area_name);
 
-        // Copy boss definitions into the new encounter
-        encounter.load_boss_definitions(self.boss_definitions.to_vec());
+        // Share boss definitions with the new encounter (Arc clone is cheap)
+        encounter.load_boss_definitions(Arc::clone(&self.boss_definitions));
 
         self.next_encounter_id += 1;
         self.encounters.push_back(encounter);
@@ -213,9 +213,9 @@ impl SessionCache {
         let definitions = Arc::new(definitions);
         self.boss_definitions = Arc::clone(&definitions);
 
-        // Update current encounter with the definitions (clone from Arc)
+        // Share definitions with current encounter (Arc clone is cheap)
         if let Some(enc) = self.current_encounter_mut() {
-            enc.load_boss_definitions(definitions.to_vec());
+            enc.load_boss_definitions(definitions);
         }
     }
 
