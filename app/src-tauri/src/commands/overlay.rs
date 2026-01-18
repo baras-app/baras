@@ -5,7 +5,8 @@
 use serde::Serialize;
 use tauri::State;
 
-use crate::overlay::{MetricType, OverlayManager, OverlayType, SharedOverlayState};
+use baras_core::context::OverlaySettings;
+use crate::overlay::{MetricType, OverlayCommand, OverlayManager, OverlayType, SharedOverlayState};
 use crate::service::ServiceHandle;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,6 +201,29 @@ pub async fn refresh_overlay_settings(
     service: State<'_, ServiceHandle>,
 ) -> Result<bool, String> {
     OverlayManager::refresh_settings(&state, &service).await
+}
+
+/// Preview overlay settings without persisting to disk.
+/// Used for live preview while user is editing settings.
+#[tauri::command]
+pub async fn preview_overlay_settings(
+    settings: OverlaySettings,
+    overlay_state: State<'_, SharedOverlayState>,
+) -> Result<bool, String> {
+    let overlays: Vec<_> = {
+        let s = overlay_state.lock().map_err(|e| e.to_string())?;
+        s.all_overlays()
+            .into_iter()
+            .map(|(k, tx)| (k, tx.clone()))
+            .collect()
+    };
+
+    for (kind, tx) in overlays {
+        let config_update = OverlayManager::create_config_update(kind, &settings);
+        let _ = tx.send(OverlayCommand::UpdateConfig(config_update)).await;
+    }
+
+    Ok(true)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -164,6 +164,7 @@ pub fn run() {
             commands::toggle_raid_rearrange,
             commands::get_overlay_status,
             commands::refresh_overlay_settings,
+            commands::preview_overlay_settings,
             commands::clear_raid_registry,
             commands::swap_raid_slots,
             commands::remove_raid_slot,
