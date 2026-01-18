@@ -18,6 +18,7 @@ use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::combat_log::CombatLog;
 use crate::components::history_panel::EncounterSummary;
 use crate::components::phase_timeline::PhaseTimelineFilter;
+use crate::components::{use_toast, ToastSeverity};
 use crate::utils::js_set;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1114,10 +1115,13 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                 onchange: move |e| {
                                     let checked = e.checked();
                                     show_only_bosses.set(checked);
+                                    let mut toast = use_toast();
                                     spawn(async move {
                                         if let Some(mut cfg) = api::get_config().await {
                                             cfg.show_only_bosses = checked;
-                                            api::update_config(&cfg).await;
+                                            if let Err(err) = api::update_config(&cfg).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                            }
                                         }
                                     });
                                 }

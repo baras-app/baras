@@ -11,6 +11,7 @@ use super::encounter_editor::InlineNameCreator;
 use super::encounter_editor::triggers::{
     AbilitySelectorEditor, EffectSelectorEditor, EntityFilterDropdown,
 };
+use super::{use_toast, ToastSeverity};
 use crate::api;
 use crate::types::{
     AbilitySelector, AlertTrigger, AudioConfig, DisplayTarget, EffectListItem, EffectSelector,
@@ -252,11 +253,14 @@ fn PlayerStatsBar() -> Element {
     let save_config = move || {
         let new_alacrity = alacrity();
         let new_latency = latency();
+        let mut toast = use_toast();
         spawn(async move {
             if let Some(mut config) = api::get_config().await {
                 config.alacrity_percent = new_alacrity;
                 config.latency_ms = new_latency;
-                api::update_config(&config).await;
+                if let Err(err) = api::update_config(&config).await {
+                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                }
             }
         });
     };

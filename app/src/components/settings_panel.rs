@@ -7,6 +7,7 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 
 use crate::api;
+use crate::components::{use_toast, ToastSeverity};
 use crate::types::{
     AlertsOverlayConfig, BossHealthConfig, ChallengeLayout, CooldownTrackerConfig,
     DotTrackerConfig, EffectsAConfig, EffectsBConfig, MAX_PROFILES, MetricType,
@@ -100,13 +101,13 @@ pub fn SettingsPanel(
                 config.overlay_settings.positions = existing_positions;
                 config.overlay_settings.enabled = existing_enabled;
 
-                if api::update_config(&config).await {
+                if let Err(err) = api::update_config(&config).await {
+                    save_status.set(format!("Failed to save: {}", err));
+                } else {
                     api::refresh_overlay_settings().await;
                     settings.set(new_settings);
                     has_changes.set(false);
                     save_status.set("Settings saved!".to_string());
-                } else {
-                    save_status.set("Failed to save".to_string());
                 }
             }
         }
@@ -167,8 +168,11 @@ pub fn SettingsPanel(
                                                         let pname = profile_name.clone();
                                                         move |_| {
                                                             let pname = pname.clone();
+                                                            let mut toast = use_toast();
                                                             spawn(async move {
-                                                                if api::load_profile(&pname).await {
+                                                                if let Err(err) = api::load_profile(&pname).await {
+                                                                    toast.show(format!("Failed to load profile: {}", err), ToastSeverity::Normal);
+                                                                } else {
                                                                     active_profile.set(Some(pname.clone()));
                                                                     profile_status.set(format!("Loaded '{}'", pname));
                                                                     if let Some(config) = api::get_config().await {
@@ -200,8 +204,11 @@ pub fn SettingsPanel(
                                                         let pname = profile_name.clone();
                                                         move |_| {
                                                             let pname = pname.clone();
+                                                            let mut toast = use_toast();
                                                             spawn(async move {
-                                                                if api::save_profile(&pname).await {
+                                                                if let Err(err) = api::save_profile(&pname).await {
+                                                                    toast.show(format!("Failed to save profile: {}", err), ToastSeverity::Normal);
+                                                                } else {
                                                                     active_profile.set(Some(pname.clone()));
                                                                     profile_status.set(format!("Saved '{}'", pname));
                                                                 }
@@ -217,8 +224,11 @@ pub fn SettingsPanel(
                                                         let pname = profile_name.clone();
                                                         move |_| {
                                                             let pname = pname.clone();
+                                                            let mut toast = use_toast();
                                                             spawn(async move {
-                                                                if api::delete_profile(&pname).await {
+                                                                if let Err(err) = api::delete_profile(&pname).await {
+                                                                    toast.show(format!("Failed to delete profile: {}", err), ToastSeverity::Normal);
+                                                                } else {
                                                                     profile_names.set(api::get_profile_names().await);
                                                                     active_profile.set(api::get_active_profile().await);
                                                                     profile_status.set(format!("Deleted '{}'", pname));
@@ -252,8 +262,11 @@ pub fn SettingsPanel(
                             onclick: move |_| {
                                 let name = new_profile_name().trim().to_string();
                                 if name.is_empty() { return; }
+                                let mut toast = use_toast();
                                 spawn(async move {
-                                    if api::save_profile(&name).await {
+                                    if let Err(err) = api::save_profile(&name).await {
+                                        toast.show(format!("Failed to create profile: {}", err), ToastSeverity::Normal);
+                                    } else {
                                         profile_names.set(api::get_profile_names().await);
                                         active_profile.set(Some(name.clone()));
                                         new_profile_name.set(String::new());

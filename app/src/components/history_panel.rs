@@ -10,6 +10,7 @@ use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
+use crate::components::{use_toast, ToastSeverity};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Types (mirrors backend)
@@ -203,10 +204,13 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                             onchange: move |e| {
                                 let checked = e.checked();
                                 show_only_bosses.set(checked);
+                                let mut toast = use_toast();
                                 spawn(async move {
                                     if let Some(mut cfg) = api::get_config().await {
                                         cfg.show_only_bosses = checked;
-                                        api::update_config(&cfg).await;
+                                        if let Err(err) = api::update_config(&cfg).await {
+                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                        }
                                     }
                                 });
                             }

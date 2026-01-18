@@ -8,8 +8,8 @@ use web_sys::console;
 
 use crate::api;
 use crate::components::{
-    use_toast_provider, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel, HistoryPanel,
-    SettingsPanel, ToastFrame,
+    use_toast, use_toast_provider, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
+    HistoryPanel, SettingsPanel, ToastFrame, ToastSeverity,
 };
 use crate::types::{
     LogFileInfo, MetricType, OverlaySettings, OverlayStatus, OverlayType, SessionInfo, UpdateInfo,
@@ -422,9 +422,13 @@ pub fn App() -> Element {
                             class: "btn-header-resume",
                             title: "Resume live tailing",
                             onclick: move |_| {
+                                let mut toast = use_toast();
                                 spawn(async move {
-                                    api::resume_live_tailing().await;
-                                    is_live_tailing.set(true);
+                                    if let Err(err) = api::resume_live_tailing().await {
+                                        toast.show(format!("Failed to resume live tailing: {}", err), ToastSeverity::Normal);
+                                    } else {
+                                        is_live_tailing.set(true);
+                                    }
                                 });
                             },
                             i { class: "fa-solid fa-play" }
@@ -454,20 +458,25 @@ pub fn App() -> Element {
                             value: active_profile().unwrap_or_default(),
                             onchange: move |e| {
                                 let selected = e.value();
+                                let mut toast = use_toast();
                                 spawn(async move {
-                                    if !selected.is_empty() && api::load_profile(&selected).await {
-                                        active_profile.set(Some(selected));
-                                        if let Some(cfg) = api::get_config().await {
-                                            overlay_settings.set(cfg.overlay_settings);
-                                        }
-                                        api::refresh_overlay_settings().await;
-                                        if let Some(status) = api::get_overlay_status().await {
-                                            apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
-                                                &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                &mut challenges_enabled, &mut alerts_enabled,
-                                                &mut effects_a_enabled, &mut effects_b_enabled,
-                                                &mut cooldowns_enabled, &mut dot_tracker_enabled,
-                                                &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
+                                    if !selected.is_empty() {
+                                        if let Err(err) = api::load_profile(&selected).await {
+                                            toast.show(format!("Failed to load profile: {}", err), ToastSeverity::Normal);
+                                        } else {
+                                            active_profile.set(Some(selected));
+                                            if let Some(cfg) = api::get_config().await {
+                                                overlay_settings.set(cfg.overlay_settings);
+                                            }
+                                            api::refresh_overlay_settings().await;
+                                            if let Some(status) = api::get_overlay_status().await {
+                                                apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
+                                                    &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
+                                                    &mut challenges_enabled, &mut alerts_enabled,
+                                                    &mut effects_a_enabled, &mut effects_b_enabled,
+                                                    &mut cooldowns_enabled, &mut dot_tracker_enabled,
+                                                    &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
+                                            }
                                         }
                                     }
                                 });
@@ -665,20 +674,25 @@ pub fn App() -> Element {
                                         value: active_profile().unwrap_or_default(),
                                         onchange: move |e| {
                                             let selected = e.value();
+                                            let mut toast = use_toast();
                                             spawn(async move {
-                                                if !selected.is_empty() && api::load_profile(&selected).await {
-                                                    active_profile.set(Some(selected));
-                                                    if let Some(cfg) = api::get_config().await {
-                                                        overlay_settings.set(cfg.overlay_settings);
-                                                    }
-                                                    api::refresh_overlay_settings().await;
-                                                    if let Some(status) = api::get_overlay_status().await {
-                                                        apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
-                                                            &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                            &mut challenges_enabled, &mut alerts_enabled,
-                                                            &mut effects_a_enabled, &mut effects_b_enabled,
-                                                            &mut cooldowns_enabled, &mut dot_tracker_enabled,
-                                                            &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
+                                                if !selected.is_empty() {
+                                                    if let Err(err) = api::load_profile(&selected).await {
+                                                        toast.show(format!("Failed to load profile: {}", err), ToastSeverity::Normal);
+                                                    } else {
+                                                        active_profile.set(Some(selected));
+                                                        if let Some(cfg) = api::get_config().await {
+                                                            overlay_settings.set(cfg.overlay_settings);
+                                                        }
+                                                        api::refresh_overlay_settings().await;
+                                                        if let Some(status) = api::get_overlay_status().await {
+                                                            apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
+                                                                &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
+                                                                &mut challenges_enabled, &mut alerts_enabled,
+                                                                &mut effects_a_enabled, &mut effects_b_enabled,
+                                                                &mut cooldowns_enabled, &mut dot_tracker_enabled,
+                                                                &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
+                                                        }
                                                     }
                                                 }
                                             });
@@ -694,7 +708,12 @@ pub fn App() -> Element {
                                             onclick: move |_| {
                                                 if let Some(ref name) = active_profile() {
                                                     let n = name.clone();
-                                                    spawn(async move { api::save_profile(&n).await; });
+                                                    let mut toast = use_toast();
+                                                    spawn(async move {
+                                                        if let Err(err) = api::save_profile(&n).await {
+                                                            toast.show(format!("Failed to save profile: {}", err), ToastSeverity::Normal);
+                                                        }
+                                                    });
                                                 }
                                             },
                                             i { class: "fa-solid fa-floppy-disk" }
@@ -885,10 +904,13 @@ pub fn App() -> Element {
                                     checked: overlay_settings().hide_during_conversations,
                                     onchange: move |e| {
                                         let enabled = e.checked();
+                                        let mut toast = use_toast();
                                         spawn(async move {
                                             if let Some(mut cfg) = api::get_config().await {
                                                 cfg.overlay_settings.hide_during_conversations = enabled;
-                                                let _ = api::update_config(&cfg).await;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                }
                                             }
                                         });
                                     },
@@ -970,22 +992,28 @@ pub fn App() -> Element {
                                     }
                                     button {
                                         class: "btn btn-browse",
-                                        onclick: move |_| { spawn(async move {
-                                            if let Some(path) = api::pick_directory("Select Log Directory").await {
-                                                log_directory.set(path.clone());
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.log_directory = path;
-                                                    api::update_config(&cfg).await;
-                                                    // Restart watcher and rebuild index for new directory
-                                                    api::restart_watcher().await;
-                                                    api::refresh_log_index().await;
-                                                    is_watching.set(true);
-                                                    // Now fetch updated stats
-                                                    log_dir_size.set(api::get_log_directory_size().await);
-                                                    log_file_count.set(api::get_log_file_count().await);
+                                        onclick: move |_| {
+                                            let mut toast = use_toast();
+                                            spawn(async move {
+                                                if let Some(path) = api::pick_directory("Select Log Directory").await {
+                                                    log_directory.set(path.clone());
+                                                    if let Some(mut cfg) = api::get_config().await {
+                                                        cfg.log_directory = path;
+                                                        if let Err(err) = api::update_config(&cfg).await {
+                                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                        } else {
+                                                            // Restart watcher and rebuild index for new directory
+                                                            api::restart_watcher().await;
+                                                            api::refresh_log_index().await;
+                                                            is_watching.set(true);
+                                                            // Now fetch updated stats
+                                                            log_dir_size.set(api::get_log_directory_size().await);
+                                                            log_file_count.set(api::get_log_file_count().await);
+                                                        }
+                                                    }
                                                 }
-                                            }
-                                        }); },
+                                            });
+                                        },
                                         i { class: "fa-solid fa-folder-open" }
                                         " Browse"
                                     }
@@ -1016,10 +1044,13 @@ pub fn App() -> Element {
                                         onchange: move |e| {
                                             let checked = e.checked();
                                             auto_delete_empty.set(checked);
+                                            let mut toast = use_toast();
                                             spawn(async move {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.auto_delete_empty_files = checked;
-                                                    api::update_config(&cfg).await;
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                    }
                                                 }
                                             });
                                         }
@@ -1034,10 +1065,13 @@ pub fn App() -> Element {
                                         onchange: move |e| {
                                             let checked = e.checked();
                                             auto_delete_old.set(checked);
+                                            let mut toast = use_toast();
                                             spawn(async move {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.auto_delete_old_files = checked;
-                                                    api::update_config(&cfg).await;
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                    }
                                                 }
                                             });
                                         }
@@ -1055,10 +1089,13 @@ pub fn App() -> Element {
                                             if let Ok(days) = e.value().parse::<u32>() {
                                                 let days = days.clamp(1, 365);
                                                 retention_days.set(days);
+                                                let mut toast = use_toast();
                                                 spawn(async move {
                                                     if let Some(mut cfg) = api::get_config().await {
                                                         cfg.log_retention_days = days;
-                                                        api::update_config(&cfg).await;
+                                                        if let Err(err) = api::update_config(&cfg).await {
+                                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                        }
                                                     }
                                                 });
                                             }
@@ -1101,10 +1138,13 @@ pub fn App() -> Element {
                                         onchange: move |e| {
                                             let checked = e.checked();
                                             minimize_to_tray.set(checked);
+                                            let mut toast = use_toast();
                                             spawn(async move {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.minimize_to_tray = checked;
-                                                    api::update_config(&cfg).await;
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                    }
                                                 }
                                             });
                                         }
@@ -1142,12 +1182,15 @@ pub fn App() -> Element {
                                         class: "btn btn-save",
                                         onclick: move |_| {
                                             let v = hotkey_visibility(); let m = hotkey_move_mode(); let r = hotkey_rearrange();
+                                            let mut toast = use_toast();
                                             spawn(async move {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.hotkeys.toggle_visibility = if v.is_empty() { None } else { Some(v) };
                                                     cfg.hotkeys.toggle_move_mode = if m.is_empty() { None } else { Some(m) };
                                                     cfg.hotkeys.toggle_rearrange_mode = if r.is_empty() { None } else { Some(r) };
-                                                    if api::update_config(&cfg).await {
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save hotkeys: {}", err), ToastSeverity::Normal);
+                                                    } else {
                                                         hotkey_save_status.set("Saved! Restart to apply.".to_string());
                                                     }
                                                 }
@@ -1171,10 +1214,13 @@ pub fn App() -> Element {
                                         onchange: move |e| {
                                             let checked = e.checked();
                                             audio_enabled.set(checked);
+                                            let mut toast = use_toast();
                                             spawn(async move {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.audio.enabled = checked;
-                                                    api::update_config(&cfg).await;
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                    }
                                                 }
                                             });
                                         }
@@ -1192,10 +1238,13 @@ pub fn App() -> Element {
                                         oninput: move |e| {
                                             if let Ok(val) = e.value().parse::<u8>() {
                                                 audio_volume.set(val);
+                                                let mut toast = use_toast();
                                                 spawn(async move {
                                                     if let Some(mut cfg) = api::get_config().await {
                                                         cfg.audio.volume = val;
-                                                        api::update_config(&cfg).await;
+                                                        if let Err(err) = api::update_config(&cfg).await {
+                                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                        }
                                                     }
                                                 });
                                             }
@@ -1213,10 +1262,13 @@ pub fn App() -> Element {
                                         onchange: move |e| {
                                             let checked = e.checked();
                                             audio_countdown_enabled.set(checked);
+                                            let mut toast = use_toast();
                                             spawn(async move {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.audio.countdown_enabled = checked;
-                                                    api::update_config(&cfg).await;
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                    }
                                                 }
                                             });
                                         }
@@ -1232,10 +1284,13 @@ pub fn App() -> Element {
                                         onchange: move |e| {
                                             let checked = e.checked();
                                             audio_alerts_enabled.set(checked);
+                                            let mut toast = use_toast();
                                             spawn(async move {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.audio.alerts_enabled = checked;
-                                                    api::update_config(&cfg).await;
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                    }
                                                 }
                                             });
                                         }
@@ -1282,12 +1337,15 @@ pub fn App() -> Element {
                                             let u = parsely_username();
                                             let p = parsely_password();
                                             let g = parsely_guild();
+                                            let mut toast = use_toast();
                                             spawn(async move {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.parsely.username = u;
                                                     cfg.parsely.password = p;
                                                     cfg.parsely.guild = g;
-                                                    if api::update_config(&cfg).await {
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save Parsely settings: {}", err), ToastSeverity::Normal);
+                                                    } else {
                                                         parsely_save_status.set("Saved!".to_string());
                                                     }
                                                 }
@@ -1333,10 +1391,13 @@ pub fn App() -> Element {
                                     onchange: move |e| {
                                         let checked = e.checked();
                                         hide_small_log_files.set(checked);
+                                        let mut toast = use_toast();
                                         spawn(async move {
                                             if let Some(mut cfg) = api::get_config().await {
                                                 cfg.hide_small_log_files = checked;
-                                                api::update_config(&cfg).await;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                }
                                             }
                                         });
                                     },
@@ -1434,13 +1495,14 @@ pub fn App() -> Element {
                                                         disabled: is_empty,
                                                         onclick: move |_| {
                                                             let p = path.clone();
-                                                            console::log_1(&format!("[DEBUG] Opening file: {}", p).into());
+                                                            let mut toast = use_toast();
                                                             file_browser_open.set(false);
                                                             spawn(async move {
-                                                                console::log_1(&"[DEBUG] spawn started".into());
-                                                                let result = api::open_historical_file(&p).await;
-                                                                console::log_1(&format!("[DEBUG] API returned: {}", result).into());
-                                                                is_live_tailing.set(false);
+                                                                if let Err(err) = api::open_historical_file(&p).await {
+                                                                    toast.show(format!("Failed to open log file: {}", err), ToastSeverity::Normal);
+                                                                } else {
+                                                                    is_live_tailing.set(false);
+                                                                }
                                                             });
                                                         },
                                                         i { class: "fa-solid fa-eye" }
