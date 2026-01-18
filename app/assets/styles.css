@@ -1331,8 +1331,16 @@ button:active {
   box-shadow:
     0 4px 30px rgba(0, 0, 0, 0.6),
     0 0 20px var(--blue-alpha-10);
-  overflow-y: auto;
   border: 1px solid var(--blue-alpha-20);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollable content area within settings panel */
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0; /* Required for flex overflow */
 }
 
 /* Floating version of settings panel */
@@ -1740,14 +1748,16 @@ details[open] .collapsible-summary::before {
   background: var(--color-success-bg-hover);
 }
 
-/* Settings footer */
+/* Settings footer - fixed at bottom */
 .settings-footer {
   display: flex;
   align-items: center;
   gap: 1em;
   margin-top: 1em;
   padding-top: 1em;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--blue-alpha-15);
+  flex-shrink: 0;
+  background: inherit;
 }
 
 .btn-save {
@@ -1768,6 +1778,27 @@ details[open] .collapsible-summary::before {
   color: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* Unsaved changes indicator */
+.btn-save.btn-unsaved {
+  background: linear-gradient(180deg,
+      rgba(180, 140, 50, 0.3) 0%,
+      rgba(140, 100, 30, 0.4) 100%);
+  border-color: rgba(200, 160, 60, 0.6);
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+.btn-save.btn-unsaved:hover {
+  background: linear-gradient(180deg,
+      rgba(200, 160, 60, 0.4) 0%,
+      rgba(160, 120, 40, 0.5) 100%);
+  border-color: rgba(220, 180, 80, 0.8);
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
 }
 
 .save-status {

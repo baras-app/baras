@@ -317,6 +317,11 @@ pub fn SettingsPanel(
             }
 
             // ─────────────────────────────────────────────────────────────────
+            // Scrollable content wrapper
+            // ─────────────────────────────────────────────────────────────────
+            div { class: "settings-content",
+
+            // ─────────────────────────────────────────────────────────────────
             // Tabs for overlay types
             // ─────────────────────────────────────────────────────────────────
             div { class: "settings-tabs",
@@ -1770,15 +1775,17 @@ pub fn SettingsPanel(
                 }
             }
 
+            } // End settings-content
+
             // ─────────────────────────────────────────────────────────────────
             // Save button
             // ─────────────────────────────────────────────────────────────────
             div { class: "settings-footer",
                 button {
-                    class: if has_changes() { "btn btn-save" } else { "btn btn-save btn-disabled" },
+                    class: if has_changes() { "btn btn-save btn-unsaved" } else { "btn btn-save" },
                     disabled: !has_changes(),
                     onclick: save_to_backend,
-                    "Save Settings"
+                    if has_changes() { "Save Changes *" } else { "Save" }
                 }
                 if !save_status().is_empty() {
                     span { class: "save-status", "{save_status()}" }
