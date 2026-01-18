@@ -14,7 +14,7 @@ baras-core = { path = "../core" }
 
 # Rendering (cross-platform)
 tiny-skia = "0.11"
-cosmic-text = "0.15"
+cosmic-text = "0.16"
 fontdb = "0.23"      # Shared font database (re-export from cosmic-text)
 sys-locale = "0.3"   # System locale detection
 
