@@ -125,10 +125,12 @@ Plans:
   2. timers/manager.rs clone count reduced by 50%+
   3. effects/tracker.rs clone count reduced by 50%+
   4. No functional regressions (existing tests pass)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: TBD
+- [ ] 07-01-PLAN.md — Borrow checker restructuring in phase.rs (35 -> ~17 clones)
+- [ ] 07-02-PLAN.md — HashMap key and tracking vector optimization in manager.rs (36 -> ~18 clones)
+- [ ] 07-03-PLAN.md — EffectKey and definition field optimization in tracker.rs (28 -> ~14 clones)
 
 ## Progress
 
@@ -145,7 +147,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 | 4. Backend Error Handling | 3/3 | Complete ✓ | 2026-01-18 |
 | 5. Frontend Error Handling | 4/4 | Complete ✓ | 2026-01-18 |
 | 6. Logging Migration | 4/4 | Complete ✓ | 2026-01-18 |
-| 7. Clone Cleanup | 0/TBD | Not started | - |
+| 7. Clone Cleanup | 0/3 | Not started | - |
 
 ---
 *Roadmap created: 2026-01-17*
