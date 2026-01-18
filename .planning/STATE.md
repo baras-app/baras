@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-01-18)
 
 Milestone: v1.2 macOS Support
 Phase: 15 of 16 (objc2 Migration)
-Plan: Ready to plan
-Status: Ready to plan Phase 15
-Last activity: 2026-01-18 - Phase 14 (CGContext Fix) complete and verified
+Plan: 01 of 03
+Status: In progress
+Last activity: 2026-01-18 - Completed 15-01-PLAN.md (objc2 dependencies + msg_send! migration)
 
-Progress: [######################........] 34/38 plans (v1.0 + v1.1 complete, v1.2 in progress)
+Progress: [#######################.......] 35/38 plans (v1.0 + v1.1 complete, v1.2 in progress)
 
 ## Performance Metrics
 
@@ -31,8 +31,9 @@ Progress: [######################........] 34/38 plans (v1.0 + v1.1 complete, v1
 - Phase 10 deferred to v1.3
 
 **v1.2 macOS Support:**
-- Plans completed: 1/5 (estimated)
+- Plans completed: 2/5 (estimated)
 - Phases: 14, 15, 16
+- Phase 15 Plan 01: 2 min
 
 ## Accumulated Context
 
@@ -46,6 +47,9 @@ Recent:
 - Single file scope: all work in `overlay/src/platform/macos.rs`
 - CGContext::create_bitmap_context returns CGContext directly (not Option)
 - CGContext::from_existing_context_ptr requires sys::CGContext pointer type
+- Keep cocoa/objc crates temporarily for gradual migration
+- Use default-features = false with explicit feature flags for objc2 crates
+- msg_send! uses comma-separated arguments with Rust bool (true/false)
 
 ### Pending Todos
 
@@ -61,5 +65,6 @@ Recent:
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Phase 14 complete, ready to plan Phase 15
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None
+Next: 15-02-PLAN.md (define_class! migration)
