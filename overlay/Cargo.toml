@@ -23,6 +23,7 @@ tokio = { version = "1.48", features = ["sync", "rt", "macros"] }
 
 # Logging
 tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 # Icon loading
 png = "0.17"
