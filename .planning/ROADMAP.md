@@ -1,53 +1,72 @@
-# Roadmap: BARAS
+# Roadmap: BARAS v1.2 macOS Support
+
+## Overview
+
+This milestone adds macOS platform support by fixing the overlay renderer implementation. The work progresses from fixing immediate compilation errors, through a full migration from deprecated `cocoa`/`objc` crates to the modern `objc2` ecosystem, to final cleanup of deprecated dependencies.
 
 ## Milestones
 
-- v1.0 Tech Debt Cleanup - Phases 1-7 (shipped 2026-01-18)
-- v1.1 UX Polish - Phases 8-13 (shipped 2026-01-18, Phase 10 deferred)
+- v1.0 Tech Debt Cleanup (shipped 2026-01-18) - see `.planning/milestones/v1.0-ROADMAP.md`
+- v1.1 UX Polish (shipped 2026-01-18) - see `.planning/milestones/v1.1-ROADMAP.md`
+- **v1.2 macOS Support** - Phases 14-16 (in progress)
 
 ## Phases
 
-<details>
-<summary>v1.0 Tech Debt Cleanup (Phases 1-7) - SHIPPED 2026-01-18</summary>
+- [ ] **Phase 14: CGContext Fix** - Fix compilation errors to unblock macOS builds
+- [ ] **Phase 15: objc2 Migration** - Migrate from deprecated cocoa/objc crates to objc2 ecosystem
+- [ ] **Phase 16: Cleanup** - Remove deprecated dependencies after migration verified
 
-See: `.planning/milestones/v1.0-ROADMAP.md`
+## Phase Details
 
-- [x] Phase 1: Logging Foundation (2 plans)
-- [x] Phase 2: Core Error Types (3 plans)
-- [x] Phase 3: Core Error Handling (3 plans)
-- [x] Phase 4: Backend Error Handling (3 plans)
-- [x] Phase 5: Frontend Error Handling (4 plans)
-- [x] Phase 6: Logging Migration (4 plans)
-- [x] Phase 7: Clone Cleanup (3 plans)
+### Phase 14: CGContext Fix
+**Goal**: macOS overlay builds successfully
+**Depends on**: Nothing (independent fix)
+**Requirements**: MAC-01
+**Success Criteria** (what must be TRUE):
+  1. `cargo build --target aarch64-apple-darwin -p overlay` compiles without errors
+  2. CGContext bitmap rendering code uses correct type signatures
+**Plans**: TBD
 
-</details>
+Plans:
+- [ ] 14-01: Fix CGContext type mismatches and API calls
 
-<details>
-<summary>v1.1 UX Polish (Phases 8-13) - SHIPPED 2026-01-18</summary>
+### Phase 15: objc2 Migration
+**Goal**: Overlay uses modern, memory-safe Objective-C bindings
+**Depends on**: Phase 14
+**Requirements**: MAC-02, MAC-03, MAC-04, MAC-05
+**Success Criteria** (what must be TRUE):
+  1. All NSWindow/NSView/NSApplication code uses objc2-app-kit types
+  2. BarasOverlayView uses define_class! macro with struct ivars
+  3. Window creation includes setReleasedWhenClosed(false) for proper memory management
+  4. All Objective-C objects use Retained<T> smart pointers (no raw id pointers)
+**Plans**: TBD
 
-See: `.planning/milestones/v1.1-ROADMAP.md`
+Plans:
+- [ ] 15-01: Add objc2 dependencies and migrate msg_send! calls
+- [ ] 15-02: Migrate BarasOverlayView to define_class! macro
+- [ ] 15-03: Migrate window/app management to objc2-app-kit
 
-- [x] Phase 8: Platform Foundation (2 plans)
-- [x] Phase 9: Session Page Polish (2 plans)
-- [ ] Phase 10: Navigation Redesign (deferred to v1.2)
-- [x] Phase 11: Profile System Fixes (1 plan)
-- [x] Phase 12: Overlay Improvements (3 plans)
-- [x] Phase 13: Editor Polish (2 plans)
+### Phase 16: Cleanup
+**Goal**: Clean dependency tree with no deprecated crates
+**Depends on**: Phase 15
+**Requirements**: MAC-06
+**Success Criteria** (what must be TRUE):
+  1. `cocoa` and `objc` crates removed from Cargo.toml
+  2. macOS overlay still builds and functions correctly
+  3. CI passes on macOS target
+**Plans**: TBD
 
-</details>
+Plans:
+- [ ] 16-01: Remove deprecated dependencies and verify
 
 ## Progress
 
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 1-7 | v1.0 | 23/23 | Complete | 2026-01-18 |
-| 8. Platform Foundation | v1.1 | 2/2 | Complete | 2026-01-18 |
-| 9. Session Page Polish | v1.1 | 2/2 | Complete | 2026-01-18 |
-| 10. Navigation Redesign | v1.1 | 0/? | Deferred | - |
-| 11. Profile System Fixes | v1.1 | 1/1 | Complete | 2026-01-18 |
-| 12. Overlay Improvements | v1.1 | 3/3 | Complete | 2026-01-18 |
-| 13. Editor Polish | v1.1 | 2/2 | Complete | 2026-01-18 |
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 14. CGContext Fix | 0/1 | Not started | - |
+| 15. objc2 Migration | 0/3 | Not started | - |
+| 16. Cleanup | 0/1 | Not started | - |
 
 ---
-*Roadmap created: 2026-01-18*
-*Last updated: 2026-01-18 - v1.1 milestone complete*
+*Created: 2026-01-18*
+*Milestone: v1.2 macOS Support*

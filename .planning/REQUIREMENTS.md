@@ -45,18 +45,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MAC-01 | TBD | Pending |
-| MAC-02 | TBD | Pending |
-| MAC-03 | TBD | Pending |
-| MAC-04 | TBD | Pending |
-| MAC-05 | TBD | Pending |
-| MAC-06 | TBD | Pending |
+| MAC-01 | Phase 14 | Pending |
+| MAC-02 | Phase 15 | Pending |
+| MAC-03 | Phase 15 | Pending |
+| MAC-04 | Phase 15 | Pending |
+| MAC-05 | Phase 15 | Pending |
+| MAC-06 | Phase 16 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 6 total
-- Mapped to phases: 0
-- Unmapped: 6
+- Mapped to phases: 6
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-18 after initial definition*
+*Last updated: 2026-01-18 after roadmap creation*
