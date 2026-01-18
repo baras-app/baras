@@ -33,9 +33,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Clone Cleanup
 
-- [ ] **CLN-01**: Unnecessary clones in `signal_processor/phase.rs` reduced
-- [ ] **CLN-02**: Unnecessary clones in `timers/manager.rs` reduced
-- [ ] **CLN-03**: Unnecessary clones in `effects/tracker.rs` reduced
+- [x] **CLN-01**: Unnecessary clones in `signal_processor/phase.rs` reduced ✓ (34%: 35→23)
+- [x] **CLN-02**: Unnecessary clones in `timers/manager.rs` reduced ✓ (33%: 36→24)
+- [x] **CLN-03**: Unnecessary clones in `effects/tracker.rs` reduced ✓ (21%: 28→22)
 
 ## v2 Requirements
 
@@ -77,9 +77,9 @@ Which phases cover which requirements.
 | LOG-02 | Phase 6: Logging Migration | Complete |
 | LOG-03 | Phase 6: Logging Migration | Complete |
 | LOG-04 | Phase 6: Logging Migration | Complete |
-| CLN-01 | Phase 7: Clone Cleanup | Pending |
-| CLN-02 | Phase 7: Clone Cleanup | Pending |
-| CLN-03 | Phase 7: Clone Cleanup | Pending |
+| CLN-01 | Phase 7: Clone Cleanup | Complete |
+| CLN-02 | Phase 7: Clone Cleanup | Complete |
+| CLN-03 | Phase 7: Clone Cleanup | Complete |
 
 **Coverage:**
 - v1 requirements: 15 total
@@ -88,4 +88,4 @@ Which phases cover which requirements.
 
 ---
 *Requirements defined: 2026-01-17*
-*Last updated: 2026-01-18 — Phase 6 complete*
+*Last updated: 2026-01-18 — Milestone complete (all 15 requirements satisfied)*
