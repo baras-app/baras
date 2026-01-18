@@ -108,10 +108,13 @@ Plans:
   2. Caught errors are logged at error level with context
   3. Diagnostic information uses debug/trace level appropriately
   4. Log output includes spans/context for traceability
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md — File-based logging with size rotation (logging.rs module)
+- [ ] 06-02-PLAN.md — Migrate core crate eprintln! (timers, context, dsl)
+- [ ] 06-03-PLAN.md — Migrate app/src-tauri eprintln! (service, commands, hotkeys)
+- [ ] 06-04-PLAN.md — Migrate overlay crate eprintln! (platform, icons, main)
 
 ### Phase 7: Clone Cleanup
 **Goal**: Hot paths use references instead of unnecessary clones
@@ -141,7 +144,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 | 3. Core Error Handling | 3/3 | Complete ✓ | 2026-01-17 |
 | 4. Backend Error Handling | 3/3 | Complete ✓ | 2026-01-18 |
 | 5. Frontend Error Handling | 0/4 | Planned | - |
-| 6. Logging Migration | 0/TBD | Not started | - |
+| 6. Logging Migration | 0/4 | Planned | - |
 | 7. Clone Cleanup | 0/TBD | Not started | - |
 
 ---
