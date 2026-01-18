@@ -34,7 +34,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 9: Session Page Polish** - Empty states, historical display, Parsely access
 - [ ] **Phase 10: Navigation Redesign** - Live/historical indicator with Resume Live action
 - [ ] **Phase 11: Profile System Fixes** - Visibility toggle decoupling and re-render fixes
-- [ ] **Phase 12: Overlay Improvements** - Move mode, save button, live preview, descriptions
+- [x] **Phase 12: Overlay Improvements** - Move mode, save button, live preview, descriptions
 - [ ] **Phase 13: Editor Polish** - Tooltips, hierarchy, drag-drop, scroll behavior
 
 ## Phase Details
@@ -109,9 +109,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 12-01-PLAN.md - Backend startup fixes (move mode reset, startup data display)
-- [ ] 12-02-PLAN.md - Settings panel fixes (fixed save button, live preview)
-- [ ] 12-03-PLAN.md - UI polish (button tooltips, Customize button clarity)
+- [x] 12-01-PLAN.md - Backend startup fixes (move mode reset, startup data display)
+- [x] 12-02-PLAN.md - Settings panel fixes (fixed save button, live preview)
+- [x] 12-03-PLAN.md - UI polish (button tooltips, Customize button clarity)
 
 ### Phase 13: Editor Polish
 **Goal**: Effects and Encounter Builder are clear and efficient to use
@@ -141,9 +141,9 @@ Plans:
 | 9. Session Page Polish | v1.1 | 2/2 | Complete | 2026-01-18 |
 | 10. Navigation Redesign | v1.1 | 0/? | Not started | - |
 | 11. Profile System Fixes | v1.1 | 0/? | Not started | - |
-| 12. Overlay Improvements | v1.1 | 0/3 | Planned | - |
+| 12. Overlay Improvements | v1.1 | 3/3 | Complete | 2026-01-18 |
 | 13. Editor Polish | v1.1 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 12 planned*
+*Last updated: 2026-01-18 - Phase 12 complete*

@@ -10,7 +10,7 @@ Requirements for UX Polish milestone. Eliminate confusion and friction in the UI
 ### Empty States
 
 - [x] **EMPTY-01**: User sees helpful "Waiting for combat data..." message instead of "Unknown Session"
-- [ ] **EMPTY-02**: Overlays display last encounter data on startup instead of appearing blank
+- [x] **EMPTY-02**: Overlays display last encounter data on startup instead of appearing blank
 
 ### Navigation & Status
 
@@ -27,12 +27,12 @@ Requirements for UX Polish milestone. Eliminate confusion and friction in the UI
 
 ### Overlay System
 
-- [ ] **OVLY-01**: Move mode always resets to false on application startup
-- [ ] **OVLY-02**: Save button in fixed header position (visible without scrolling)
-- [ ] **OVLY-03**: Customization changes preview live before saving
-- [ ] **OVLY-04**: Overlay buttons have brief descriptions of what they do
-- [ ] **OVLY-05**: REARRANGE FRAMES and CLEAR FRAMES grouped with Raid Frames section
-- [ ] **OVLY-06**: CUSTOMIZE button clearly indicates it opens settings
+- [x] **OVLY-01**: Move mode always resets to false on application startup
+- [x] **OVLY-02**: Save button in fixed header position (visible without scrolling)
+- [x] **OVLY-03**: Customization changes preview live before saving
+- [x] **OVLY-04**: Overlay buttons have brief descriptions of what they do
+- [ ] **OVLY-05**: REARRANGE FRAMES and CLEAR FRAMES grouped with Raid Frames section (descoped)
+- [x] **OVLY-06**: CUSTOMIZE button clearly indicates it opens settings
 
 ### Effects & Encounter Builder
 
@@ -84,7 +84,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | EMPTY-01 | Phase 9 | Complete |
-| EMPTY-02 | Phase 12 | Pending |
+| EMPTY-02 | Phase 12 | Complete |
 | NAV-01 | Phase 10 | Pending |
 | NAV-02 | Phase 10 | Pending |
 | NAV-03 | Phase 10 | Pending |
@@ -92,12 +92,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROF-01 | Phase 11 | Pending |
 | PROF-02 | Phase 11 | Pending |
 | PROF-03 | Phase 11 | Pending |
-| OVLY-01 | Phase 12 | Pending |
-| OVLY-02 | Phase 12 | Pending |
-| OVLY-03 | Phase 12 | Pending |
-| OVLY-04 | Phase 12 | Pending |
-| OVLY-05 | Phase 12 | Pending |
-| OVLY-06 | Phase 12 | Pending |
+| OVLY-01 | Phase 12 | Complete |
+| OVLY-02 | Phase 12 | Complete |
+| OVLY-03 | Phase 12 | Complete |
+| OVLY-04 | Phase 12 | Complete |
+| OVLY-05 | Phase 12 | Descoped |
+| OVLY-06 | Phase 12 | Complete |
 | EDIT-01 | Phase 13 | Pending |
 | EDIT-02 | Phase 13 | Pending |
 | EDIT-03 | Phase 13 | Pending |
@@ -120,4 +120,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 9 requirements complete*
+*Last updated: 2026-01-18 - Phase 12 requirements complete*

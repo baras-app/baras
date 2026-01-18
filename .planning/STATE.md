@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-18)
 
 **Core value:** Fast, reliable combat analysis that doesn't crash when something unexpected happens.
-**Current focus:** v1.1 UX Polish - Overlay Improvements
+**Current focus:** v1.1 UX Polish - Editor Polish
 
 ## Current Position
 
-Phase: 12 of 13 (Overlay Improvements)
-Plan: 2 of ? in current phase
-Status: In progress
-Last activity: 2026-01-18 - Completed 12-02-PLAN.md (Settings Panel Preview)
+Phase: 13 of 13 (Editor Polish)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-01-18 - Completed Phase 12 Overlay Improvements
 
-Progress: [############..........] 30/31+ plans (~97% v1.0-v1.1)
+Progress: [##############........] 30/32+ plans (~94% v1.0-v1.1)
 
 ## Performance Metrics
 
@@ -24,6 +24,10 @@ Progress: [############..........] 30/31+ plans (~97% v1.0-v1.1)
 - Total execution time: 91 min
 - Commits: 87
 - Files modified: 124
+
+**v1.1 UX Polish (in progress):**
+- Plans completed: 7 (Phase 8: 2, Phase 9: 2, Phase 12: 3)
+- Phases 10-11 deferred (out of order execution)
 
 ## Accumulated Context
 
@@ -54,5 +58,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Completed 12-02-PLAN.md
+Stopped at: Phase 12 complete, ready for Phase 13
 Resume file: None
