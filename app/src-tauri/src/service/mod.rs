@@ -1549,155 +1549,179 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         };
     let player_entity_id = player_info.id;
 
-    // Get encounter info
-    let encounter = cache.last_combat_encounter()?;
-    let encounter_count = cache
-        .encounters()
-        .filter(|e| e.state != EncounterState::NotStarted)
-        .map(|e| e.id + 1)
-        .max()
-        .unwrap_or(0) as usize;
-    let encounter_time_secs = encounter.duration_seconds().unwrap_or(0) as u64;
+    // Try live encounter first, fall back to historical summary for initial hydration
+    if let Some(encounter) = cache.last_combat_encounter() {
+        // Live encounter path - full data including challenges and phase info
+        let encounter_count = cache
+            .encounters()
+            .filter(|e| e.state != EncounterState::NotStarted)
+            .map(|e| e.id + 1)
+            .max()
+            .unwrap_or(0) as usize;
+        let encounter_time_secs = encounter.duration_seconds().unwrap_or(0) as u64;
 
-    // Classify the encounter to get phase type and boss info
-    let (encounter_type, boss_info) = classify_encounter(encounter, &cache.current_area);
+        // Classify the encounter to get phase type and boss info
+        let (encounter_type, boss_info) = classify_encounter(encounter, &cache.current_area);
 
-    // Generate encounter name - if there's a boss use that, otherwise use phase type
-    let encounter_name = if let Some(boss) = boss_info {
-        Some(boss.boss.to_string())
-    } else {
-        // Use phase type for trash/non-boss encounters
-        Some(format!("{:?}", encounter_type))
-    };
+        // Generate encounter name - if there's a boss use that, otherwise use phase type
+        let encounter_name = if let Some(boss) = boss_info {
+            Some(boss.boss.to_string())
+        } else {
+            // Use phase type for trash/non-boss encounters
+            Some(format!("{:?}", encounter_type))
+        };
 
-    // Get difficulty from area info, fallback to phase type name for non-instanced content
-    let difficulty = if !cache.current_area.difficulty_name.is_empty() {
-        Some(cache.current_area.difficulty_name.clone())
-    } else {
-        Some(format!("{:?}", encounter_type))
-    };
+        // Get difficulty from area info, fallback to phase type name for non-instanced content
+        let difficulty = if !cache.current_area.difficulty_name.is_empty() {
+            Some(cache.current_area.difficulty_name.clone())
+        } else {
+            Some(format!("{:?}", encounter_type))
+        };
 
-    // Calculate metrics for all players (use session-level discipline registry)
-    let entity_metrics = encounter.calculate_entity_metrics(&cache.player_disciplines)?;
-    let metrics: Vec<PlayerMetrics> = entity_metrics
-        .into_iter()
-        .filter(|m| m.entity_type != EntityType::Npc)
-        .map(|m| m.to_player_metrics())
-        .collect();
-
-    // Build challenge data from encounter's tracker (persists with encounter, not boss state)
-    let challenges = if encounter.challenge_tracker.is_active() {
-        let boss_name = encounter.active_boss_idx().and_then(|idx| {
-            encounter
-                .boss_definitions()
-                .get(idx)
-                .map(|def| def.name.clone())
-        });
-        let overall_duration = encounter.combat_time_secs.max(1.0);
-        let current_time = chrono::Local::now().naive_local();
-
-        let entries: Vec<ChallengeEntry> = encounter
-            .challenge_tracker
-            .snapshot_live(current_time)
+        // Calculate metrics for all players (use session-level discipline registry)
+        let entity_metrics = encounter.calculate_entity_metrics(&cache.player_disciplines)?;
+        let metrics: Vec<PlayerMetrics> = entity_metrics
             .into_iter()
-            .map(|val| {
-                // Use the challenge's own duration (phase-scoped or total)
-                let challenge_duration = val.duration_secs.max(1.0);
-
-                // Build per-player breakdown, sorted by value descending
-                let mut by_player: Vec<PlayerContribution> = val
-                    .by_player
-                    .iter()
-                    .filter_map(|(&entity_id, &value)| {
-                        // Resolve player name from encounter
-                        let name = encounter
-                            .players
-                            .get(&entity_id)
-                            .map(|p| resolve(p.name).to_string())
-                            .unwrap_or_else(|| format!("Player {}", entity_id));
-
-                        let percent = if val.value > 0 {
-                            (value as f32 / val.value as f32) * 100.0
-                        } else {
-                            0.0
-                        };
-
-                        Some(PlayerContribution {
-                            entity_id,
-                            name,
-                            value,
-                            percent,
-                            per_second: if value > 0 {
-                                Some(value as f32 / challenge_duration)
-                            } else {
-                                None
-                            },
-                        })
-                    })
-                    .collect();
-
-                // Sort by value descending (top contributors first)
-                by_player.sort_by(|a, b| b.value.cmp(&a.value));
-
-                ChallengeEntry {
-                    name: val.name,
-                    value: val.value,
-                    event_count: val.event_count,
-                    per_second: if val.value > 0 {
-                        Some(val.value as f32 / challenge_duration)
-                    } else {
-                        None
-                    },
-                    by_player,
-                    duration_secs: challenge_duration,
-                    // Display settings from challenge definition
-                    enabled: val.enabled,
-                    color: val.color.map(|c| Color::from_rgba8(c[0], c[1], c[2], c[3])),
-                    columns: val.columns,
-                }
-            })
+            .filter(|m| m.entity_type != EntityType::Npc)
+            .map(|m| m.to_player_metrics())
             .collect();
 
-        Some(ChallengeData {
-            entries,
-            boss_name,
-            duration_secs: overall_duration,
-            phase_durations: encounter.challenge_tracker.phase_durations().clone(),
+        // Build challenge data from encounter's tracker (persists with encounter, not boss state)
+        let challenges = if encounter.challenge_tracker.is_active() {
+            let boss_name = encounter.active_boss_idx().and_then(|idx| {
+                encounter
+                    .boss_definitions()
+                    .get(idx)
+                    .map(|def| def.name.clone())
+            });
+            let overall_duration = encounter.combat_time_secs.max(1.0);
+            let current_time = chrono::Local::now().naive_local();
+
+            let entries: Vec<ChallengeEntry> = encounter
+                .challenge_tracker
+                .snapshot_live(current_time)
+                .into_iter()
+                .map(|val| {
+                    // Use the challenge's own duration (phase-scoped or total)
+                    let challenge_duration = val.duration_secs.max(1.0);
+
+                    // Build per-player breakdown, sorted by value descending
+                    let mut by_player: Vec<PlayerContribution> = val
+                        .by_player
+                        .iter()
+                        .filter_map(|(&entity_id, &value)| {
+                            // Resolve player name from encounter
+                            let name = encounter
+                                .players
+                                .get(&entity_id)
+                                .map(|p| resolve(p.name).to_string())
+                                .unwrap_or_else(|| format!("Player {}", entity_id));
+
+                            let percent = if val.value > 0 {
+                                (value as f32 / val.value as f32) * 100.0
+                            } else {
+                                0.0
+                            };
+
+                            Some(PlayerContribution {
+                                entity_id,
+                                name,
+                                value,
+                                percent,
+                                per_second: if value > 0 {
+                                    Some(value as f32 / challenge_duration)
+                                } else {
+                                    None
+                                },
+                            })
+                        })
+                        .collect();
+
+                    // Sort by value descending (top contributors first)
+                    by_player.sort_by(|a, b| b.value.cmp(&a.value));
+
+                    ChallengeEntry {
+                        name: val.name,
+                        value: val.value,
+                        event_count: val.event_count,
+                        per_second: if val.value > 0 {
+                            Some(val.value as f32 / challenge_duration)
+                        } else {
+                            None
+                        },
+                        by_player,
+                        duration_secs: challenge_duration,
+                        // Display settings from challenge definition
+                        enabled: val.enabled,
+                        color: val.color.map(|c| Color::from_rgba8(c[0], c[1], c[2], c[3])),
+                        columns: val.columns,
+                    }
+                })
+                .collect();
+
+            Some(ChallengeData {
+                entries,
+                boss_name,
+                duration_secs: overall_duration,
+                phase_durations: encounter.challenge_tracker.phase_durations().clone(),
+            })
+        } else {
+            None
+        };
+
+        // Get phase info from encounter's boss state
+        // Look up the phase display name from the boss definition
+        let current_phase = encounter.current_phase.as_ref().and_then(|phase_id| {
+            encounter.active_boss_definition().and_then(|def| {
+                def.phases
+                    .iter()
+                    .find(|p| &p.id == phase_id)
+                    .map(|p| p.name.clone())
+            })
+        });
+        let phase_time_secs = encounter
+            .phase_started_at
+            .map(|start| {
+                let now = chrono::Local::now().naive_local();
+                (now - start).num_milliseconds() as f32 / 1000.0
+            })
+            .unwrap_or(0.0);
+
+        Some(CombatData {
+            metrics,
+            player_entity_id,
+            encounter_time_secs,
+            encounter_count,
+            class_discipline,
+            encounter_name,
+            difficulty,
+            challenges,
+            current_phase,
+            phase_time_secs,
+        })
+    } else if let Some(summary) = cache.encounter_history.summaries().last() {
+        // Fallback to historical summary for initial hydration when no live encounter exists
+        let encounter_count = cache.encounter_history.summaries().len();
+        let encounter_time_secs = summary.duration_seconds.max(0) as u64;
+        let encounter_name = Some(summary.display_name.clone());
+        let difficulty = summary.difficulty.clone();
+        let metrics = summary.player_metrics.clone();
+
+        Some(CombatData {
+            metrics,
+            player_entity_id,
+            encounter_time_secs,
+            encounter_count,
+            class_discipline,
+            encounter_name,
+            difficulty,
+            challenges: None,
+            current_phase: None,
+            phase_time_secs: 0.0,
         })
     } else {
         None
-    };
-
-    // Get phase info from encounter's boss state
-    // Look up the phase display name from the boss definition
-    let current_phase = encounter.current_phase.as_ref().and_then(|phase_id| {
-        encounter.active_boss_definition().and_then(|def| {
-            def.phases
-                .iter()
-                .find(|p| &p.id == phase_id)
-                .map(|p| p.name.clone())
-        })
-    });
-    let phase_time_secs = encounter
-        .phase_started_at
-        .map(|start| {
-            let now = chrono::Local::now().naive_local();
-            (now - start).num_milliseconds() as f32 / 1000.0
-        })
-        .unwrap_or(0.0);
-
-    Some(CombatData {
-        metrics,
-        player_entity_id,
-        encounter_time_secs,
-        encounter_count,
-        class_discipline,
-        encounter_name,
-        difficulty,
-        challenges,
-        current_phase,
-        phase_time_secs,
-    })
+    }
 }
 
 /// Build raid frame data from the effect tracker and registry
