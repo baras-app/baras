@@ -388,11 +388,9 @@ impl OverlayManager {
         // Sync move mode
         Self::sync_move_mode(&tx, current_move_mode).await;
 
-        // Send initial data if tailing
-        if service.is_tailing().await {
-            let combat_data = service.current_combat_data().await;
-            Self::send_initial_data(kind, &tx, combat_data.as_ref()).await;
-        }
+        // Send initial data from cache if available (regardless of tailing state)
+        let combat_data = service.current_combat_data().await;
+        Self::send_initial_data(kind, &tx, combat_data.as_ref()).await;
 
         // Save position if needed
         if needs_monitor_save {
@@ -456,12 +454,8 @@ impl OverlayManager {
 
         let enabled_keys = config.overlay_settings.enabled_types();
 
-        // Get combat data once for all overlays
-        let combat_data = if service.is_tailing().await {
-            service.current_combat_data().await
-        } else {
-            None
-        };
+        // Get combat data once for all overlays (always try, regardless of tailing state)
+        let combat_data = service.current_combat_data().await;
 
         let mut shown_metric_types = Vec::new();
         let mut needs_monitor_save = Vec::new();
@@ -601,12 +595,8 @@ impl OverlayManager {
 
         let enabled_keys = config.overlay_settings.enabled_types();
 
-        // Get combat data once for all overlays
-        let combat_data = if service.is_tailing().await {
-            service.current_combat_data().await
-        } else {
-            None
-        };
+        // Get combat data once for all overlays (always try, regardless of tailing state)
+        let combat_data = service.current_combat_data().await;
 
         for key in &enabled_keys {
             let kind = match key.as_str() {
