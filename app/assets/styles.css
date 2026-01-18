@@ -460,7 +460,6 @@ select optgroup {
   color: var(--swtor-blue-dim);
 }
 
-.btn-header-resume,
 .btn-header-restart {
   background: transparent;
   border: none;
@@ -474,17 +473,33 @@ select optgroup {
   justify-content: center;
 }
 
-.btn-header-resume:hover,
 .btn-header-restart:hover {
   color: var(--swtor-blue);
 }
 
-.btn-header-resume {
-  color: #d4a850;
+/* Resume Live button - prominent green button */
+.btn-resume-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.3em 0.7em;
+  font-size: 0.8em;
+  font-weight: 500;
+  background: var(--color-success);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--bg-dark);
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.btn-header-resume:hover {
-  color: #e8c060;
+.btn-resume-live:hover {
+  background: #6fc48f;
+  box-shadow: 0 0 8px rgba(90, 170, 122, 0.4);
+}
+
+.btn-resume-live i {
+  font-size: 0.9em;
 }
 
 .btn-header-files {

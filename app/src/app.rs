@@ -418,10 +418,10 @@ pub fn App() -> Element {
                             }
                         }
                     }
-                    // Resume button when paused
+                    // Resume Live button when viewing historical
                     if !live_tailing {
                         button {
-                            class: "btn-header-resume",
+                            class: "btn-resume-live",
                             title: "Resume live tailing",
                             onclick: move |_| {
                                 let mut toast = use_toast();
@@ -434,6 +434,7 @@ pub fn App() -> Element {
                                 });
                             },
                             i { class: "fa-solid fa-play" }
+                            " Resume Live"
                         }
                     }
                     // Restart watcher button
