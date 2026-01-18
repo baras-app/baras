@@ -874,8 +874,6 @@ fn TimerEditForm(
                 }
             }
 
-            // File info (from context)
-            div { class: "mt-sm text-xs text-muted", "File: {boss_with_path.file_path}" }
         }
     }
 }
