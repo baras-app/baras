@@ -8,33 +8,28 @@ A combat log parser for Star Wars: The Old Republic with real-time overlays, his
 
 Fast, reliable combat analysis that doesn't crash when something unexpected happens.
 
-## Current Milestone: v1.1 UX Polish
-
-**Goal:** Eliminate confusion and friction in the UI — empty states, unclear controls, buried features, and workflow inconsistencies.
-
-**Target features:**
-- Helpful waiting states (replace "Unknown Session" with guidance)
-- Overlay hydration with last encounter data on startup
-- Redesigned live/historical indicator with explicit status and "Resume Live" action
-- Profile system fixes (visibility toggle decoupling, raid frame re-render)
-- Overlay customization improvements (fixed save header, live preview, descriptions)
-- Effects/Encounter builder clarity (tooltips, visual hierarchy, drag-drop reordering)
-- Historical session display cleanup (end time, duration, hide noise)
-- Single instance enforcement
-- Platform fixes (SVG font fallback, hotkey clarity)
-
-## Previous State (v1.0 shipped)
+## Current State (v1.1 shipped)
 
 **Shipped 2026-01-18:**
+- Polished UX with helpful empty states and waiting messages
+- Overlay improvements: move mode reset, fixed save button, live preview, tooltips
+- Profile system fixes: raid frame re-render, always-visible selector
+- Editor polish: form tooltips, card sections, empty state guidance
+- Session page: end time/duration for historical, Parsely upload button
+- Platform fixes: single instance, Windows font, hotkey warnings
+
+**Codebase:**
+- ~46,000 LOC Rust
+- Tech stack: Tauri 2.x, Dioxus 0.7.2, tiny-skia overlay rendering
+- Platforms: Windows, Linux (Wayland/X11)
+
+## Previous Milestones
+
+**v1.0 Tech Debt Cleanup (2026-01-18):**
 - Panic-free production code (core, backend, frontend)
 - Structured logging via `tracing` with file rotation
 - Toast notification system for error feedback
 - ~30% clone reduction in hot paths
-
-**Codebase:**
-- 69,752 LOC Rust
-- Tech stack: Tauri 2.x, Dioxus 0.7.2, tiny-skia overlay rendering
-- Platforms: Windows, Linux (Wayland/X11)
 
 ## Requirements
 
@@ -49,23 +44,23 @@ Fast, reliable combat analysis that doesn't crash when something unexpected happ
 - ✓ Panic-free production code — v1.0
 - ✓ Structured logging infrastructure — v1.0
 - ✓ UI error feedback (toast notifications) — v1.0
+- ✓ Empty/waiting states show helpful guidance — v1.1
+- ✓ Overlays hydrate with last encounter data on startup — v1.1
+- ✓ Profile switching decoupled from visibility toggle — v1.1
+- ✓ Raid frames re-render correctly on profile switch — v1.1
+- ✓ Move mode resets on app startup — v1.1
+- ✓ Overlay customization: fixed save header, live preview, tooltips — v1.1
+- ✓ Effects/Encounter builder: tooltips, card sections, empty state guidance — v1.1
+- ✓ Historical session: end time, duration, cleaner display — v1.1
+- ✓ Single instance enforcement — v1.1
+- ✓ Parsely upload on session page — v1.1
+- ✓ Windows font rendering fixed — v1.1
+- ✓ Hotkey platform limitations explained — v1.1
 
 ### Active
 
-- [ ] Empty/waiting states show helpful guidance instead of error-like displays
-- [ ] Overlays hydrate with last encounter data on startup
-- [ ] Live/Historical mode clearly indicated with explicit status and Resume Live action
-- [ ] Profile switching decoupled from visibility toggle
-- [ ] Raid frames re-render correctly on profile switch
-- [ ] Move mode never persists across app restart
-- [ ] Overlay customization has fixed save header and live preview
-- [ ] Effects/Encounter builder has tooltips and better visual hierarchy
-- [ ] Drag-drop reordering for stats lists
-- [ ] Historical session shows end time and duration, hides Area/Class/Discipline
-- [ ] Single instance enforcement via Tauri plugin
-- [ ] Parsely upload accessible from session page
-- [ ] SVG font fallback for Windows
-- [ ] Hotkey platform limitations clearly explained
+- [ ] Live/Historical mode indicator with explicit status and Resume Live action (NAV-01, NAV-02, NAV-03)
+- [ ] Drag-drop reordering for stats lists (EDIT-05)
 
 ### Out of Scope
 
@@ -96,4 +91,4 @@ Fast, reliable combat analysis that doesn't crash when something unexpected happ
 - Overlay test `format_number` has precision mismatch
 
 ---
-*Last updated: 2026-01-18 after starting v1.1 milestone*
+*Last updated: 2026-01-18 after v1.1 milestone*

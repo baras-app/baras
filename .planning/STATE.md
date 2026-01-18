@@ -5,16 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-01-18)
 
 **Core value:** Fast, reliable combat analysis that doesn't crash when something unexpected happens.
-**Current focus:** v1.1 UX Polish - Editor Polish
+**Current focus:** Planning next milestone (v1.2)
 
 ## Current Position
 
-Phase: 13 of 13 (Editor Polish)
-Plan: 2 of 2 complete in current phase
-Status: Phase complete
-Last activity: 2026-01-18 - Completed 13-02-PLAN.md (Editor Polish Cleanup)
+Milestone: v1.1 UX Polish complete
+Status: Ready for next milestone
+Last activity: 2026-01-18 - Completed v1.1 milestone
 
-Progress: [######################] 33/33 plans (~100% v1.0-v1.1)
+Progress: [######################] 33/33 plans (v1.0 + v1.1 complete)
 
 ## Performance Metrics
 
@@ -25,41 +24,20 @@ Progress: [######################] 33/33 plans (~100% v1.0-v1.1)
 - Commits: 87
 - Files modified: 124
 
-**v1.1 UX Polish (complete):**
+**v1.1 UX Polish:**
 - Plans completed: 10 (Phase 8: 2, Phase 9: 2, Phase 11: 1, Phase 12: 3, Phase 13: 2)
-- Phase 10 deferred (out of order execution)
+- Phase 10 deferred to v1.2
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-See `.planning/milestones/v1.0-ROADMAP.md` for full v1.0 decision history.
-
-**Phase 11 Decisions:**
-- Made refresh_raid_frames public for cross-module access
-- Used RefreshRaidFrames command (proven code path) to resend data after overlay respawn
-- Empty profile state shows "Default" label with "Save as Profile" button
-
-**Phase 12 Decisions:**
-- Renamed "Customize" to "Settings" for conventional clarity
-- Non-metric overlays only get tooltips (metrics are self-explanatory)
-- Functional tone for tooltips (e.g., "Shows boss health bars and cast timers")
-- Removed is_tailing gate for overlay startup data (always try cache)
-- Reset move_mode and rearrange_mode on profile switch
-- 300ms debounce for live preview (balances responsiveness with performance)
-- Restore original settings on close via refresh_overlay_settings
-
-**Phase 13 Decisions:**
-- Tooltip pattern: help-icon span with native title attribute
-- Card sections: Identity, Trigger, Timing groupings for effect editor
-- Empty state: fa-sparkles icon with guidance text
-- Removed file path from timer edit form entirely (no replacement needed)
-- Move scroll reset outside spawn block for synchronous execution on encounter change
+See `.planning/milestones/v1.0-ROADMAP.md` for v1.0 decisions.
+See `.planning/milestones/v1.1-ROADMAP.md` for v1.1 decisions.
 
 ### Pending Todos
 
-None.
+- Phase 10 (Navigation Redesign) deferred — NAV-01, NAV-02, NAV-03
 
 ### Blockers/Concerns
 
@@ -70,5 +48,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Phase 13 complete (Editor Polish)
+Stopped at: v1.1 milestone complete
 Resume file: None
