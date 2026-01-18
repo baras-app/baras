@@ -9,8 +9,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Error Handling (Core)
 
-- [ ] **ERR-01**: All `.unwrap()` calls in `core/` replaced with proper Result handling
-- [ ] **ERR-02**: All `.expect()` calls in `core/` replaced with proper Result handling
+- [x] **ERR-01**: All `.unwrap()` calls in `core/` replaced with proper Result handling ✓
+- [x] **ERR-02**: All `.expect()` calls in `core/` replaced with proper Result handling ✓
 - [x] **ERR-03**: Custom error types defined per module with `thiserror` ✓
 
 ### Error Handling (Backend)
@@ -67,8 +67,8 @@ Which phases cover which requirements.
 |-------------|-------|--------|
 | LOG-01 | Phase 1: Logging Foundation | Complete |
 | ERR-03 | Phase 2: Core Error Types | Complete |
-| ERR-01 | Phase 3: Core Error Handling | Pending |
-| ERR-02 | Phase 3: Core Error Handling | Pending |
+| ERR-01 | Phase 3: Core Error Handling | Complete |
+| ERR-02 | Phase 3: Core Error Handling | Complete |
 | ERR-04 | Phase 4: Backend Error Handling | Pending |
 | ERR-05 | Phase 4: Backend Error Handling | Pending |
 | ERR-06 | Phase 5: Frontend Error Handling | Pending |
@@ -88,4 +88,4 @@ Which phases cover which requirements.
 
 ---
 *Requirements defined: 2026-01-17*
-*Last updated: 2026-01-17 — Phase 2 complete*
+*Last updated: 2026-01-18 — Phase 3 complete*

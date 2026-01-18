@@ -12,7 +12,7 @@ This roadmap transforms BARAS from a panic-prone application into one with grace
 
 - [x] **Phase 1: Logging Foundation** - Tracing infrastructure for all subsequent work ✓
 - [x] **Phase 2: Core Error Types** - Custom error types per module ✓
-- [ ] **Phase 3: Core Error Handling** - Migrate unwrap/expect in core crate
+- [x] **Phase 3: Core Error Handling** - Migrate unwrap/expect in core crate ✓
 - [ ] **Phase 4: Backend Error Handling** - Tauri commands return errors to frontend
 - [ ] **Phase 5: Frontend Error Handling** - UI displays errors gracefully
 - [ ] **Phase 6: Logging Migration** - Replace all eprintln with tracing macros
@@ -62,9 +62,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md - Refactor simple helpers (effects, timers, storage, shielding)
-- [ ] 03-02-PLAN.md - Convert signal processor invariants to defensive returns
-- [ ] 03-03-PLAN.md - Convert public API expects (config, reader)
+- [x] 03-01-PLAN.md - Refactor simple helpers (effects, timers, storage, shielding) ✓
+- [x] 03-02-PLAN.md - Convert signal processor invariants to defensive returns ✓
+- [x] 03-03-PLAN.md - Convert public API expects (config, reader) ✓
 
 ### Phase 4: Backend Error Handling
 **Goal**: Tauri backend returns errors to frontend instead of panicking
@@ -133,7 +133,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 |-------|----------------|--------|-----------|
 | 1. Logging Foundation | 2/2 | Complete ✓ | 2026-01-17 |
 | 2. Core Error Types | 3/3 | Complete ✓ | 2026-01-17 |
-| 3. Core Error Handling | 0/3 | Ready | - |
+| 3. Core Error Handling | 3/3 | Complete ✓ | 2026-01-17 |
 | 4. Backend Error Handling | 0/TBD | Not started | - |
 | 5. Frontend Error Handling | 0/TBD | Not started | - |
 | 6. Logging Migration | 0/TBD | Not started | - |
