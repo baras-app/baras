@@ -39,12 +39,12 @@ Plans:
   2. BarasOverlayView uses define_class! macro with struct ivars
   3. Window creation includes setReleasedWhenClosed(false) for proper memory management
   4. All Objective-C objects use Retained<T> smart pointers (no raw id pointers)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 15-01: Add objc2 dependencies and migrate msg_send! calls
-- [ ] 15-02: Migrate BarasOverlayView to define_class! macro
-- [ ] 15-03: Migrate window/app management to objc2-app-kit
+- [ ] 15-01-PLAN.md - Add objc2 dependencies and migrate msg_send! calls
+- [ ] 15-02-PLAN.md - Migrate BarasOverlayView to define_class! macro
+- [ ] 15-03-PLAN.md - Migrate window/app management to objc2-app-kit
 
 ### Phase 16: Cleanup
 **Goal**: Clean dependency tree with no deprecated crates
@@ -64,7 +64,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 14. CGContext Fix | 1/1 | Complete | 2026-01-18 |
-| 15. objc2 Migration | 0/3 | Not started | - |
+| 15. objc2 Migration | 0/3 | Planned | - |
 | 16. Cleanup | 0/1 | Not started | - |
 
 ---
