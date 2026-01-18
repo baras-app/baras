@@ -86,15 +86,14 @@ Plans:
 ### Phase 11: Profile System Fixes
 **Goal**: Profile switching works reliably without side effects
 **Depends on**: Phase 10
-**Requirements**: PROF-01, PROF-02, PROF-03
+**Requirements**: PROF-02, PROF-03 (PROF-01 already implemented)
 **Success Criteria** (what must be TRUE):
-  1. Switching profile does not change overlay visibility state
-  2. Raid frames render correctly after profile switch (no stale/broken state)
-  3. Profile selector is visible by default in overlay settings (not collapsed)
-**Plans**: TBD
+  1. Raid frames render correctly after profile switch (no stale/broken state)
+  2. Profile selector is visible by default in overlay settings (not collapsed)
+**Plans**: 1 plan
 
 Plans:
-- [ ] 11-01: TBD
+- [ ] 11-01-PLAN.md - Raid frame re-render fix + profile selector visibility
 
 ### Phase 12: Overlay Improvements
 **Goal**: Overlay customization is intuitive with clear controls and immediate feedback
@@ -140,10 +139,10 @@ Plans:
 | 8. Platform Foundation | v1.1 | 2/2 | Complete | 2026-01-18 |
 | 9. Session Page Polish | v1.1 | 2/2 | Complete | 2026-01-18 |
 | 10. Navigation Redesign | v1.1 | 0/? | Not started | - |
-| 11. Profile System Fixes | v1.1 | 0/? | Not started | - |
+| 11. Profile System Fixes | v1.1 | 0/1 | Planned | - |
 | 12. Overlay Improvements | v1.1 | 3/3 | Complete | 2026-01-18 |
 | 13. Editor Polish | v1.1 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 12 complete*
+*Last updated: 2026-01-18 - Phase 11 planned*
