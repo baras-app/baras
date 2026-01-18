@@ -14,7 +14,8 @@ Replace all `eprintln!` calls with structured tracing macros. Configure file-bas
 ## Implementation Decisions
 
 ### Log file strategy
-- Location: Config directory (`~/.config/baras/logs` on Linux, `%APPDATA%/baras/logs` on Windows)
+- Location: Config directory (`~/.config/baras/baras.log` on Linux, `%APPDATA%/baras/baras.log` on Windows)
+- No subdirectory — single file since we only keep one
 - Rotation: Size-based, rotate when file exceeds 10 MB
 - Retention: Keep only the latest log file (delete old rotations)
 - No date-based rotation — purely size-based
