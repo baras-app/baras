@@ -227,77 +227,6 @@ impl EffectTriggerType {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Player Stats Bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Inline bar for alacrity and latency settings
-#[component]
-fn PlayerStatsBar() -> Element {
-    let mut alacrity = use_signal(|| 0.0f32);
-    let mut latency = use_signal(|| 0u16);
-    let mut loaded = use_signal(|| false);
-
-    // Load from config on mount
-    use_effect(move || {
-        if !loaded() {
-            spawn(async move {
-                if let Some(config) = api::get_config().await {
-                    alacrity.set(config.alacrity_percent);
-                    latency.set(config.latency_ms);
-                    loaded.set(true);
-                }
-            });
-        }
-    });
-
-    let save_config = move || {
-        let new_alacrity = alacrity();
-        let new_latency = latency();
-        let mut toast = use_toast();
-        spawn(async move {
-            if let Some(mut config) = api::get_config().await {
-                config.alacrity_percent = new_alacrity;
-                config.latency_ms = new_latency;
-                if let Err(err) = api::update_config(&config).await {
-                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                }
-            }
-        });
-    };
-
-    rsx! {
-        div { class: "player-stats-bar",
-            div { class: "stat-input",
-                label { "Alacrity %" }
-                input {
-                    r#type: "text",
-                    value: "{alacrity():.1}",
-                    onchange: move |e| {
-                        if let Ok(val) = e.value().parse::<f32>() {
-                            alacrity.set(val.clamp(0.0, 30.0));
-                            save_config();
-                        }
-                    }
-                }
-            }
-            div { class: "stat-input",
-                label { "Latency (ms)" }
-                input {
-                    r#type: "text",
-                    value: "{latency()}",
-                    onchange: move |e| {
-                        if let Ok(val) = e.value().parse::<u16>() {
-                            latency.set(val.clamp(0, 500));
-                            save_config();
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Main Panel
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -480,9 +409,6 @@ pub fn EffectEditorPanel() -> Element {
                     }
                 }
             }
-
-            // Player stats for duration calculations
-            PlayerStatsBar {}
 
             // Search bar
             div { class: "effect-search-bar",
