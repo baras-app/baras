@@ -216,7 +216,7 @@ select optgroup {
 
 .app-header h1 {
   margin: 0;
-  font-family: "StarJedi", sans-serif;
+  font-family: "StarJedi", "Segoe UI", Arial, sans-serif;
   font-size: clamp(1.2rem, 4vh, 2.5rem);
   line-height: 1.1;
   letter-spacing: 0.05em;

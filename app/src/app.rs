@@ -4,7 +4,6 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
-use web_sys::console;
 
 use crate::api;
 use crate::components::{
@@ -252,11 +251,13 @@ pub fn App() -> Element {
     });
 
     // Listen for update failures
+    let mut update_failed_toast = use_toast();
     use_future(move || async move {
         let closure = Closure::new(move |event: JsValue| {
             if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Some(msg) = payload.as_string() {
-                    console::error_1(&format!("Update failed: {}", msg).into());
+                && let Some(msg) = payload.as_string()
+            {
+                update_failed_toast.show(format!("Update failed: {}", msg), ToastSeverity::Critical);
             }
             // Reset installing state so user can retry
             let _ = update_installing.try_write().map(|mut w| *w = false);
@@ -320,7 +321,7 @@ pub fn App() -> Element {
         link { rel: "stylesheet", href: CSS }
         link { rel: "stylesheet", href: DATA_EXPLORER_CSS }
         link { rel: "stylesheet", href: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" }
-        style { "@font-face {{ font-family: 'StarJedi'; src: url('{FONT}') format('truetype'); }}" }
+        style { "@font-face {{ font-family: 'StarJedi'; src: url('{FONT}') format('truetype'); font-display: block; font-weight: normal; font-style: normal; }}" }
 
         main { class: "container",
             // Header
@@ -337,9 +338,10 @@ pub fn App() -> Element {
                                 disabled: update_installing(),
                                 onclick: move |_| {
                                     update_installing.set(true);
+                                    let mut toast = use_toast();
                                     spawn(async move {
                                         if let Err(e) = api::install_update().await {
-                                            console::error_1(&format!("Update failed: {}", e).into());
+                                            toast.show(format!("Update failed: {}", e), ToastSeverity::Critical);
                                             update_installing.set(false);
                                         }
                                         // On success, app will restart automatically
