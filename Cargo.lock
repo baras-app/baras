@@ -183,6 +183,7 @@ dependencies = [
  "dioxus",
  "dioxus-logger",
  "dirs",
+ "getrandom 0.3.4",
  "gloo-timers",
  "js-sys",
  "serde",

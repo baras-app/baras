@@ -16,9 +16,6 @@ use crate::utils::js_set;
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
-    async fn invoke(cmd: &str, args: JsValue) -> JsValue;
-
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"], js_name = "listen")]
     pub async fn tauri_listen(event: &str, handler: &Closure<dyn FnMut(JsValue)>) -> JsValue;
 
@@ -44,19 +41,21 @@ fn build_args<T: Serialize + ?Sized>(key: &str, value: &T) -> JsValue {
     obj.into()
 }
 
-/// Deserialize a JsValue into a type, returning None on failure
+/// Deserialize a JsValue into a type, returning None on failure (no console logging)
 fn from_js<T: serde::de::DeserializeOwned>(value: JsValue) -> Option<T> {
-    match serde_wasm_bindgen::from_value(value) {
-        Ok(v) => Some(v),
-        Err(e) => {
-            web_sys::console::error_1(&format!("[API] Deserialization error: {:?}", e).into());
-            None
-        }
-    }
+    serde_wasm_bindgen::from_value(value).ok()
 }
 
-/// Invoke a Tauri command that may return an error, catching the rejection
-/// Returns Ok(JsValue) on success, Err(String) on failure
+/// Invoke a Tauri command, catching any errors silently.
+/// Returns JsValue on success, JsValue::NULL on failure.
+/// Use this for read operations where errors can be safely ignored.
+async fn invoke(cmd: &str, args: JsValue) -> JsValue {
+    try_invoke(cmd, args).await.unwrap_or(JsValue::NULL)
+}
+
+/// Invoke a Tauri command that may return an error, catching the rejection.
+/// Returns Ok(JsValue) on success, Err(String) on failure.
+/// Use this for mutations or when you need to handle/display errors.
 async fn try_invoke(cmd: &str, args: JsValue) -> Result<JsValue, String> {
     use js_sys::Promise;
     use wasm_bindgen_futures::JsFuture;

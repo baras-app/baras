@@ -217,15 +217,8 @@ pub fn EncounterEditorPanel() -> Element {
         expanded_boss.set(None);
 
         spawn(async move {
-            match api::fetch_area_bosses(&file_path).await {
-                Some(b) => {
-                    bosses.set(b);
-                }
-                None => {
-                    web_sys::console::error_1(
-                        &"[UI] fetch_area_bosses returned None - deserialization failed!".into(),
-                    );
-                }
+            if let Some(b) = api::fetch_area_bosses(&file_path).await {
+                bosses.set(b);
             }
             loading_bosses.set(false);
         });

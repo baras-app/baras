@@ -5,12 +5,10 @@
 use crate::types::Color;
 use wasm_bindgen::JsValue;
 
-/// Set a property on a JS object. Logs error and continues on failure.
+/// Set a property on a JS object. Silently ignores failures.
 /// Use this instead of js_sys::Reflect::set().unwrap() to prevent panics.
 pub fn js_set(obj: &JsValue, key: &str, value: &JsValue) {
-    if let Err(e) = js_sys::Reflect::set(obj, &JsValue::from_str(key), value) {
-        web_sys::console::error_1(&format!("Failed to set JS property '{}': {:?}", key, e).into());
-    }
+    let _ = js_sys::Reflect::set(obj, &JsValue::from_str(key), value);
 }
 
 /// Parse a hex color string (e.g., "#ff0000") to RGBA bytes
