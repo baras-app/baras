@@ -313,6 +313,12 @@ pub fn App() -> Element {
     let current_file = active_file();
     let session = session_info();
 
+    // Check if we have a valid player name (for session tab empty state logic)
+    let has_player = session.as_ref()
+        .and_then(|s| s.player_name.as_ref())
+        .is_some_and(|n| !n.is_empty());
+    let show_empty_state = !has_player;
+
     // ─────────────────────────────────────────────────────────────────────────
     // Render
     // ─────────────────────────────────────────────────────────────────────────
@@ -605,13 +611,8 @@ pub fn App() -> Element {
                 // Session Tab
                 // ─────────────────────────────────────────────────────────────
                 if active_tab() == "session" {
-                    // Check if we have a valid player name
-                    let has_player = session.as_ref()
-                        .and_then(|s| s.player_name.as_ref())
-                        .is_some_and(|n| !n.is_empty());
-
                     // Empty states: show when no player data yet
-                    if !has_player {
+                    if show_empty_state {
                         if watching {
                             // Log file detected but no character data yet
                             div { class: "session-empty",
