@@ -36,12 +36,12 @@ Requirements for UX Polish milestone. Eliminate confusion and friction in the UI
 
 ### Effects & Encounter Builder
 
-- [ ] **EDIT-01**: Form fields have tooltips explaining their purpose (Display Target, Trigger, etc.)
-- [ ] **EDIT-02**: Better visual grouping/hierarchy separating form sections
-- [ ] **EDIT-03**: Empty state shows guidance for creating first entry
-- [ ] **EDIT-04**: New effects/timers appear at top of list (not bottom)
-- [ ] **EDIT-05**: Stats reordering uses drag-and-drop instead of up/down buttons
-- [ ] **EDIT-06**: Raw file path removed from Encounter Builder
+- [x] **EDIT-01**: Form fields have tooltips explaining their purpose (Display Target, Trigger, etc.)
+- [x] **EDIT-02**: Better visual grouping/hierarchy separating form sections
+- [x] **EDIT-03**: Empty state shows guidance for creating first entry
+- [x] **EDIT-04**: New effects/timers appear at top of list (not bottom)
+- [ ] **EDIT-05**: Stats reordering uses drag-and-drop instead of up/down buttons (descoped)
+- [x] **EDIT-06**: Raw file path removed from Encounter Builder
 
 ### Session Display
 
@@ -58,7 +58,7 @@ Requirements for UX Polish milestone. Eliminate confusion and friction in the UI
 
 ### Data Explorer
 
-- [ ] **DATA-01**: Combat log table resets scroll position when new encounter selected
+- [x] **DATA-01**: Combat log table resets scroll position when new encounter selected
 
 ## v2 Requirements
 
@@ -98,12 +98,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OVLY-04 | Phase 12 | Complete |
 | OVLY-05 | Phase 12 | Descoped |
 | OVLY-06 | Phase 12 | Complete |
-| EDIT-01 | Phase 13 | Pending |
-| EDIT-02 | Phase 13 | Pending |
-| EDIT-03 | Phase 13 | Pending |
-| EDIT-04 | Phase 13 | Pending |
-| EDIT-05 | Phase 13 | Pending |
-| EDIT-06 | Phase 13 | Pending |
+| EDIT-01 | Phase 13 | Complete |
+| EDIT-02 | Phase 13 | Complete |
+| EDIT-03 | Phase 13 | Complete |
+| EDIT-04 | Phase 13 | Complete |
+| EDIT-05 | Phase 13 | Descoped |
+| EDIT-06 | Phase 13 | Complete |
 | SESS-01 | Phase 9 | Complete |
 | SESS-02 | Phase 9 | Complete |
 | SESS-03 | Phase 9 | Complete |
@@ -111,7 +111,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLAT-02 | Phase 8 | Complete |
 | PLAT-03 | Phase 8 | Complete |
 | PLAT-04 | Phase 8 | Complete |
-| DATA-01 | Phase 13 | Pending |
+| DATA-01 | Phase 13 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 29 total
@@ -120,4 +120,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 11 requirements complete*
+*Last updated: 2026-01-18 - Phase 13 requirements complete*

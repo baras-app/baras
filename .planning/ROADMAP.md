@@ -35,7 +35,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md`
 - [ ] **Phase 10: Navigation Redesign** - Live/historical indicator with Resume Live action
 - [x] **Phase 11: Profile System Fixes** - Visibility toggle decoupling and re-render fixes
 - [x] **Phase 12: Overlay Improvements** - Move mode, save button, live preview, descriptions
-- [ ] **Phase 13: Editor Polish** - Tooltips, hierarchy, scroll behavior
+- [x] **Phase 13: Editor Polish** - Tooltips, hierarchy, scroll behavior
 
 ## Phase Details
 
@@ -126,8 +126,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — Effects editor tooltips, card sections, empty state guidance
-- [ ] 13-02-PLAN.md — Encounter Builder file path removal, combat log scroll reset
+- [x] 13-01-PLAN.md — Effects editor tooltips, card sections, empty state guidance
+- [x] 13-02-PLAN.md — Encounter Builder file path removal, combat log scroll reset
 
 ## Progress
 
@@ -141,8 +141,8 @@ Plans:
 | 10. Navigation Redesign | v1.1 | 0/? | Not started | - |
 | 11. Profile System Fixes | v1.1 | 1/1 | Complete | 2026-01-18 |
 | 12. Overlay Improvements | v1.1 | 3/3 | Complete | 2026-01-18 |
-| 13. Editor Polish | v1.1 | 0/2 | Planned | - |
+| 13. Editor Polish | v1.1 | 2/2 | Complete | 2026-01-18 |
 
 ---
 *Roadmap created: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 13 planned*
+*Last updated: 2026-01-18 - Phase 13 complete*
