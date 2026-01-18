@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-17)
 
 **Core value:** Users never see a frozen UI from a panic. Errors are caught, logged, and communicated gracefully.
-**Current focus:** Phase 6 - Logging Migration
+**Current focus:** Phase 6 Complete - Ready for Phase 7
 
 ## Current Position
 
-Phase: 6 of 7 (Logging Migration)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-01-18 - Completed 06-03-PLAN.md
+Phase: 6 of 7 (Logging Migration) - COMPLETE
+Plan: 4 of 4 in phase 6
+Status: Phase complete
+Last activity: 2026-01-18 - Completed 06-04-PLAN.md
 
-Progress: [█████████░] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19
-- Average duration: 3.0 min
-- Total execution time: 58 min
+- Total plans completed: 20
+- Average duration: 3.1 min
+- Total execution time: 63 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [█████████░] 95%
 | 03-core-error-handling | 3 | 12 min | 4 min |
 | 04-backend-error-handling | 3 | 3 min | 1 min |
 | 05-frontend-error-handling | 4 | 18 min | 4.5 min |
-| 06-logging-migration | 3 | 12 min | 4 min |
+| 06-logging-migration | 4 | 17 min | 4.25 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-04 (6 min), 05-HT (0 min), 06-01 (4 min), 06-02 (4 min), 06-03 (4 min)
+- Last 5 plans: 06-01 (4 min), 06-02 (4 min), 06-03 (4 min), 06-04 (5 min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -91,6 +91,10 @@ Recent decisions affecting current work:
 - INFO level for parse timing and icon cache loaded (user-visible operations) (06-03)
 - DEBUG level for worker paths, definition loading, encounter details (developer diagnostics) (06-03)
 - Remove [PARSE], [ICONS], [EFFECTS], [ENCOUNTERS], [HOTKEY] prefixes - tracing targets replace them (06-03)
+- Windows overlay_log! macro wraps tracing::debug! with format! (06-04)
+- DEBUG level for Wayland position/state changes and output enumeration (06-04)
+- WARN level for degraded scenarios (saved monitor not found) (06-04)
+- ERROR level for rebind failures (missing compositor/layer_shell) (06-04)
 
 ### Pending Todos
 
@@ -102,6 +106,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-18T01:13Z
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-01-18T01:15Z
+Stopped at: Completed 06-04-PLAN.md (Phase 6 complete)
 Resume file: None
