@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-17)
 
 **Core value:** Users never see a frozen UI from a panic. Errors are caught, logged, and communicated gracefully.
-**Current focus:** Phase 6 Complete - Ready for Phase 7
+**Current focus:** Phase 7 - Clone Cleanup
 
 ## Current Position
 
-Phase: 6 of 7 (Logging Migration) - COMPLETE
-Plan: 4 of 4 in phase 6
-Status: Phase complete
-Last activity: 2026-01-18 - Completed 06-04-PLAN.md
+Phase: 7 of 7 (Clone Cleanup)
+Plan: 1 of 3 in phase 7
+Status: In progress
+Last activity: 2026-01-18 - Completed 07-01-PLAN.md
 
-Progress: [██████████] 100%
+Progress: [█████████░] 90% (21/23 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 20
-- Average duration: 3.1 min
-- Total execution time: 63 min
+- Total plans completed: 21
+- Average duration: 3.2 min
+- Total execution time: 69 min
 
 **By Phase:**
 
@@ -33,9 +33,10 @@ Progress: [██████████] 100%
 | 04-backend-error-handling | 3 | 3 min | 1 min |
 | 05-frontend-error-handling | 4 | 18 min | 4.5 min |
 | 06-logging-migration | 4 | 17 min | 4.25 min |
+| 07-clone-cleanup | 1 | 6 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-01 (4 min), 06-02 (4 min), 06-03 (4 min), 06-04 (5 min)
+- Last 5 plans: 06-02 (4 min), 06-03 (4 min), 06-04 (5 min), 07-01 (6 min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - DEBUG level for Wayland position/state changes and output enumeration (06-04)
 - WARN level for degraded scenarios (saved monitor not found) (06-04)
 - ERROR level for rebind failures (missing compositor/layer_shell) (06-04)
+- Two-pass borrow pattern: immutable pass finds match, captures minimal data, mutable pass applies changes (07-01)
+- Clone-on-match-only: defer clones to hot path (match found) rather than cold path (every call) (07-01)
+- GameSignal String field clones are necessary (owned data required by enum) (07-01)
 
 ### Pending Todos
 
@@ -102,10 +106,10 @@ None yet.
 
 ### Blockers/Concerns
 
-None yet.
+- Pre-existing clippy warnings (30+) across codebase should be addressed in future cleanup
 
 ## Session Continuity
 
-Last session: 2026-01-18T01:15Z
-Stopped at: Completed 06-04-PLAN.md (Phase 6 complete)
+Last session: 2026-01-18T07:28Z
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None
