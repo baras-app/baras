@@ -4,6 +4,7 @@
 //! personal stats, and raid frame settings.
 
 use dioxus::prelude::*;
+use gloo_timers::callback::Timeout;
 use std::collections::HashMap;
 
 use crate::api;
@@ -34,6 +35,9 @@ pub fn SettingsPanel(
     let mut draft_settings = use_signal(|| settings());
     let mut has_changes = use_signal(|| false);
     let mut save_status = use_signal(String::new);
+
+    // Debounce handle for live preview
+    let mut preview_timeout: Signal<Option<Timeout>> = use_signal(|| None);
 
     // Profile UI state
     let mut new_profile_name = use_signal(String::new);
@@ -113,11 +117,24 @@ pub fn SettingsPanel(
         }
     };
 
-    // Update draft settings helper
+    // Update draft settings helper with debounced live preview
     let mut update_draft = move |new_settings: OverlaySettings| {
-        draft_settings.set(new_settings);
+        draft_settings.set(new_settings.clone());
         has_changes.set(true);
         save_status.set(String::new());
+
+        // Cancel any pending preview
+        if let Some(handle) = preview_timeout.take() {
+            handle.cancel();
+        }
+
+        // Schedule a debounced preview (300ms delay)
+        let timeout = Timeout::new(300, move || {
+            spawn(async move {
+                api::preview_overlay_settings(&new_settings).await;
+            });
+        });
+        preview_timeout.set(Some(timeout));
     };
 
     rsx! {
@@ -129,7 +146,19 @@ pub fn SettingsPanel(
                 h3 { "Overlay Settings" }
                 button {
                     class: "btn btn-close",
-                    onclick: move |_| on_close.call(()),
+                    onclick: move |_| {
+                        // Cancel any pending preview
+                        if let Some(handle) = preview_timeout.take() {
+                            handle.cancel();
+                        }
+                        // Restore original settings if there were changes
+                        if has_changes() {
+                            spawn(async move {
+                                api::refresh_overlay_settings().await;
+                            });
+                        }
+                        on_close.call(());
+                    },
                     onmousedown: move |e| e.stop_propagation(),
                     "X"
                 }

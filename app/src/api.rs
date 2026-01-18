@@ -180,6 +180,12 @@ pub async fn refresh_overlay_settings() -> bool {
     result.as_bool().unwrap_or(false)
 }
 
+/// Preview overlay settings without persisting (for live preview)
+pub async fn preview_overlay_settings(settings: &crate::types::OverlaySettings) -> bool {
+    let result = invoke("preview_overlay_settings", build_args("settings", settings)).await;
+    result.as_bool().unwrap_or(false)
+}
+
 /// Clear all players from raid registry
 pub async fn clear_raid_registry() {
     let _ = invoke("clear_raid_registry", JsValue::NULL).await;
