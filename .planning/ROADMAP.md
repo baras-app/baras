@@ -35,7 +35,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md`
 - [ ] **Phase 10: Navigation Redesign** - Live/historical indicator with Resume Live action
 - [x] **Phase 11: Profile System Fixes** - Visibility toggle decoupling and re-render fixes
 - [x] **Phase 12: Overlay Improvements** - Move mode, save button, live preview, descriptions
-- [ ] **Phase 13: Editor Polish** - Tooltips, hierarchy, drag-drop, scroll behavior
+- [ ] **Phase 13: Editor Polish** - Tooltips, hierarchy, scroll behavior
 
 ## Phase Details
 
@@ -115,19 +115,19 @@ Plans:
 ### Phase 13: Editor Polish
 **Goal**: Effects and Encounter Builder are clear and efficient to use
 **Depends on**: Phase 12
-**Requirements**: EDIT-01, EDIT-02, EDIT-03, EDIT-04, EDIT-05, EDIT-06, DATA-01
+**Requirements**: EDIT-01, EDIT-02, EDIT-03, EDIT-06, DATA-01 (EDIT-04 already complete, EDIT-05 descoped)
 **Success Criteria** (what must be TRUE):
   1. Form fields have tooltips explaining their purpose (Display Target, Trigger, etc.)
   2. Form sections have clear visual hierarchy and grouping
   3. Empty state shows guidance for creating first entry
-  4. New effects/timers appear at top of list (most recent visible)
-  5. Stats reordering uses drag-and-drop (not tedious up/down buttons)
-  6. Raw file path removed from Encounter Builder (cleaner UI)
-  7. Combat log table resets scroll position when new encounter selected
-**Plans**: TBD
+  4. New effects/timers appear at top of list (already implemented - EDIT-04 verified)
+  5. Raw file path removed from Encounter Builder (cleaner UI)
+  6. Combat log table resets scroll position when new encounter selected
+**Plans**: 2 plans
 
 Plans:
-- [ ] 13-01: TBD
+- [ ] 13-01-PLAN.md — Effects editor tooltips, card sections, empty state guidance
+- [ ] 13-02-PLAN.md — Encounter Builder file path removal, combat log scroll reset
 
 ## Progress
 
@@ -141,8 +141,8 @@ Plans:
 | 10. Navigation Redesign | v1.1 | 0/? | Not started | - |
 | 11. Profile System Fixes | v1.1 | 1/1 | Complete | 2026-01-18 |
 | 12. Overlay Improvements | v1.1 | 3/3 | Complete | 2026-01-18 |
-| 13. Editor Polish | v1.1 | 0/? | Not started | - |
+| 13. Editor Polish | v1.1 | 0/2 | Planned | - |
 
 ---
 *Roadmap created: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 11 complete*
+*Last updated: 2026-01-18 - Phase 13 planned*
