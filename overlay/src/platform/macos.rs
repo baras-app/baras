@@ -185,7 +185,7 @@ impl BarasOverlayView {
 // ─────────────────────────────────────────────────────────────────────────────
 
 pub struct MacOSOverlay {
-    window: id,
+    window: Retained<NSWindow>,
     view: Retained<BarasOverlayView>,
     width: u32,
     height: u32,
