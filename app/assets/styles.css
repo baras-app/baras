@@ -407,10 +407,18 @@ select optgroup {
   cursor: not-allowed;
 }
 
+/* Header session wrapper (indicator box + resume button stacked) */
+.header-session-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3em;
+}
+
 /* Header session indicator (always visible) */
 .header-session-indicator {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5em;
   padding: 0.3em 0.6em;
   background: rgba(0, 0, 0, 0.3);
@@ -418,13 +426,6 @@ select optgroup {
   border: 1px solid rgba(80, 80, 90, 0.3);
   font-size: 0.8em;
   max-width: 240px;
-}
-
-.session-info-column {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2em;
-  min-width: 0;
 }
 
 .header-session-indicator .status-dot {
@@ -484,26 +485,25 @@ select optgroup {
   color: var(--swtor-blue);
 }
 
-/* Resume Live button - compact green button for header */
+/* Resume Live button - dark green bg with light green text */
 .btn-resume-live {
   display: inline-flex;
   align-items: center;
   gap: 0.3em;
-  padding: 0.15em 0.5em;
+  padding: 0.2em 0.6em;
   font-size: 0.75em;
   font-weight: 500;
-  background: var(--color-success);
-  border: none;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
   border-radius: var(--radius-sm);
-  color: var(--bg-dark);
+  color: var(--color-success);
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
 }
 
 .btn-resume-live:hover {
-  background: #6fc48f;
-  box-shadow: 0 0 6px rgba(90, 170, 122, 0.4);
+  background: var(--color-success-bg-hover);
 }
 
 .btn-resume-live i {

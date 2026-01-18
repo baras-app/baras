@@ -394,17 +394,17 @@ pub fn App() -> Element {
                         i { class: "fa-solid fa-circle-question" }
                     }
                 }
-                // Session indicator (always visible)
-                div { class: "header-session-indicator",
-                    // Watcher status dot
-                    span {
-                        class: if !live_tailing { "status-dot paused" }
-                            else if watching { "status-dot watching" }
-                            else { "status-dot not-watching" },
-                        title: if !live_tailing { "Paused" } else if watching { "Watching" } else { "Not watching" }
-                    }
-                    // Session info column (name + resume button stacked)
-                    div { class: "session-info-column",
+                // Session indicator wrapper (box + resume button below)
+                div { class: "header-session-wrapper",
+                    // Session indicator box
+                    div { class: "header-session-indicator",
+                        // Watcher status dot
+                        span {
+                            class: if !live_tailing { "status-dot paused" }
+                                else if watching { "status-dot watching" }
+                                else { "status-dot not-watching" },
+                            title: if !live_tailing { "Paused" } else if watching { "Watching" } else { "Not watching" }
+                        }
                         // Viewing indicator
                         {
                             let current_meta = log_files().iter().find(|f| f.path == current_file).cloned();
@@ -426,37 +426,37 @@ pub fn App() -> Element {
                                 }
                             }
                         }
-                        // Resume Live button when viewing historical
-                        if !live_tailing {
-                            button {
-                                class: "btn-resume-live",
-                                title: "Resume live tailing",
-                                onclick: move |_| {
-                                    let mut toast = use_toast();
-                                    spawn(async move {
-                                        if let Err(err) = api::resume_live_tailing().await {
-                                            toast.show(format!("Failed to resume live tailing: {}", err), ToastSeverity::Normal);
-                                        } else {
-                                            is_live_tailing.set(true);
-                                        }
-                                    });
-                                },
-                                "Resume Live "
-                                i { class: "fa-solid fa-play" }
-                            }
+                        // Restart watcher button
+                        button {
+                            class: "btn-header-restart",
+                            title: "Restart watcher",
+                            onclick: move |_| {
+                                spawn(async move {
+                                    api::restart_watcher().await;
+                                    is_live_tailing.set(true);
+                                });
+                            },
+                            i { class: "fa-solid fa-rotate" }
                         }
                     }
-                    // Restart watcher button
-                    button {
-                        class: "btn-header-restart",
-                        title: "Restart watcher",
-                        onclick: move |_| {
-                            spawn(async move {
-                                api::restart_watcher().await;
-                                is_live_tailing.set(true);
-                            });
-                        },
-                        i { class: "fa-solid fa-rotate" }
+                    // Resume Live button underneath the box
+                    if !live_tailing {
+                        button {
+                            class: "btn-resume-live",
+                            title: "Resume live tailing",
+                            onclick: move |_| {
+                                let mut toast = use_toast();
+                                spawn(async move {
+                                    if let Err(err) = api::resume_live_tailing().await {
+                                        toast.show(format!("Failed to resume live tailing: {}", err), ToastSeverity::Normal);
+                                    } else {
+                                        is_live_tailing.set(true);
+                                    }
+                                });
+                            },
+                            "Resume Live "
+                            i { class: "fa-solid fa-play" }
+                        }
                     }
                 }
 
