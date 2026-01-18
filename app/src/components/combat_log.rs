@@ -88,12 +88,16 @@ fn row_class(row: &CombatLogRow) -> String {
 
 #[component]
 pub fn CombatLog(props: CombatLogProps) -> Element {
-    // Mirror time_range prop into a signal for reactivity
+    // Mirror props into signals for reactivity
     let mut time_range_signal = use_signal(|| props.time_range.clone());
+    let mut encounter_idx_signal = use_signal(|| props.encounter_idx);
 
-    // Update signal when props change (runs on every render with new props)
+    // Update signals when props change (runs on every render with new props)
     if *time_range_signal.read() != props.time_range {
         time_range_signal.set(props.time_range.clone());
+    }
+    if *encounter_idx_signal.read() != props.encounter_idx {
+        encounter_idx_signal.set(props.encounter_idx);
     }
 
     // Filter state - initialize search from props if provided (e.g., death tracker)
@@ -115,24 +119,22 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     // Debounced search
     let mut search_debounce = use_signal(String::new);
 
-    // Load source/target names on mount
-    use_effect({
-        let idx = props.encounter_idx;
-        move || {
-            spawn(async move {
-                if let Some(sources) = api::query_source_names(Some(idx)).await {
-                    source_names.set(sources);
-                }
-                if let Some(targets) = api::query_target_names(Some(idx)).await {
-                    target_names.set(targets);
-                }
-            });
-        }
+    // Load source/target names when encounter changes
+    use_effect(move || {
+        let idx = *encounter_idx_signal.read();
+        spawn(async move {
+            if let Some(sources) = api::query_source_names(Some(idx)).await {
+                source_names.set(sources);
+            }
+            if let Some(targets) = api::query_target_names(Some(idx)).await {
+                target_names.set(targets);
+            }
+        });
     });
 
-    // Load data when filters or time range change
+    // Load data when filters, time range, or encounter change
     use_effect(move || {
-        let idx = props.encounter_idx;
+        let idx = *encounter_idx_signal.read();
         let tr = time_range_signal.read().clone();
         let source = source_filter.read().clone();
         let target = target_filter.read().clone();
@@ -143,9 +145,15 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
             Some(search)
         };
 
-        // Reset scroll position synchronously before async load
+        // Reset scroll position - both signal and DOM element
         scroll_top.set(0.0);
         loaded_offset.set(0);
+        if let Some(window) = web_sys::window()
+            && let Some(doc) = window.document()
+            && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
+        {
+            elem.set_scroll_top(0);
+        }
 
         spawn(async move {
 
@@ -210,43 +218,42 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
 
     // Load more data when scrolling beyond current buffer
     // Must read signals INSIDE the effect for Dioxus to track them as dependencies
-    use_effect({
-        let idx = props.encounter_idx;
-        move || {
-            // Read scroll signals inside effect so Dioxus tracks them
-            let total = *total_count.read() as usize;
-            let scroll = *scroll_top.read();
-            let height = *container_height.read();
+    use_effect(move || {
+        // Read scroll signals inside effect so Dioxus tracks them
+        let idx = *encounter_idx_signal.read();
+        let total = *total_count.read() as usize;
+        let scroll = *scroll_top.read();
+        let height = *container_height.read();
 
-            let start_idx = ((scroll / ROW_HEIGHT) as usize).saturating_sub(OVERSCAN);
-            let visible_count = ((height / ROW_HEIGHT) as usize) + OVERSCAN * 2;
-            let end_idx = (start_idx + visible_count).min(total);
+        let start_idx = ((scroll / ROW_HEIGHT) as usize).saturating_sub(OVERSCAN);
+        let visible_count = ((height / ROW_HEIGHT) as usize) + OVERSCAN * 2;
+        let end_idx = (start_idx + visible_count).min(total);
 
-            let offset = *loaded_offset.read() as usize;
-            let rows_len = rows.read().len();
-            let need_load = start_idx < offset || end_idx > offset + rows_len;
+        let offset = *loaded_offset.read() as usize;
+        let rows_len = rows.read().len();
+        let need_load = start_idx < offset || end_idx > offset + rows_len;
 
-            if need_load && rows_len > 0 {
-                let tr = time_range_signal.read().clone();
-                let source = source_filter.read().clone();
-                let target = target_filter.read().clone();
-                let search = search_debounce.read().clone();
-                let new_offset = start_idx.saturating_sub(OVERSCAN) as u64;
+        if need_load && rows_len > 0 {
+            let tr = time_range_signal.read().clone();
+            let source = source_filter.read().clone();
+            let target = target_filter.read().clone();
+            let search = search_debounce.read().clone();
+            let new_offset = start_idx.saturating_sub(OVERSCAN) as u64;
 
-                spawn(async move {
-                    let search_opt = if search.is_empty() {
-                        None
-                    } else {
-                        Some(search)
-                    };
-                    let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
-                        None
-                    } else {
-                        Some(&tr)
-                    };
+            spawn(async move {
+                let search_opt = if search.is_empty() {
+                    None
+                } else {
+                    Some(search)
+                };
+                let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
+                    None
+                } else {
+                    Some(&tr)
+                };
 
-                    if let Some(data) = api::query_combat_log(
-                        Some(idx),
+                if let Some(data) = api::query_combat_log(
+                    Some(idx),
                         new_offset,
                         PAGE_SIZE,
                         source.as_deref(),
