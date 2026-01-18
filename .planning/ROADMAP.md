@@ -48,10 +48,11 @@ See: `.planning/milestones/v1.0-ROADMAP.md`
   2. BARAS header renders correctly on Windows without missing glyphs
   3. Hotkey settings page explains Wayland/Linux limitations before user gets confused
   4. Alacrity/Latency fields have tooltips and are not buried at bottom of form
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md - Single instance enforcement + hotkey limitation docs
+- [ ] 08-02-PLAN.md - Windows font fix + Alacrity/Latency relocation
 
 ### Phase 9: Session Page Polish
 **Goal**: Session page shows helpful states and relevant information without noise
@@ -134,7 +135,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-7 | v1.0 | 23/23 | Complete | 2026-01-18 |
-| 8. Platform Foundation | v1.1 | 0/? | Not started | - |
+| 8. Platform Foundation | v1.1 | 0/2 | Planned | - |
 | 9. Session Page Polish | v1.1 | 0/? | Not started | - |
 | 10. Navigation Redesign | v1.1 | 0/? | Not started | - |
 | 11. Profile System Fixes | v1.1 | 0/? | Not started | - |
