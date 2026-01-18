@@ -99,18 +99,19 @@ Plans:
 ### Phase 12: Overlay Improvements
 **Goal**: Overlay customization is intuitive with clear controls and immediate feedback
 **Depends on**: Phase 11
-**Requirements**: OVLY-01, OVLY-02, OVLY-03, OVLY-04, OVLY-05, OVLY-06, EMPTY-02
+**Requirements**: OVLY-01, OVLY-02, OVLY-03, OVLY-04, OVLY-06, EMPTY-02
 **Success Criteria** (what must be TRUE):
   1. Move mode is always off when app starts (never persists from previous session)
   2. Save button visible without scrolling (fixed header position)
   3. Customization changes preview live before user commits
   4. Overlay buttons have brief descriptions explaining what they do
-  5. REARRANGE FRAMES and CLEAR FRAMES buttons grouped with Raid Frames section
-  6. Overlays display last encounter data on startup (not blank)
-**Plans**: TBD
+  5. Overlays display last encounter data on startup (not blank)
+**Plans**: 3 plans
 
 Plans:
-- [ ] 12-01: TBD
+- [ ] 12-01-PLAN.md - Backend startup fixes (move mode reset, startup data display)
+- [ ] 12-02-PLAN.md - Settings panel fixes (fixed save button, live preview)
+- [ ] 12-03-PLAN.md - UI polish (button tooltips, Customize button clarity)
 
 ### Phase 13: Editor Polish
 **Goal**: Effects and Encounter Builder are clear and efficient to use
@@ -140,9 +141,9 @@ Plans:
 | 9. Session Page Polish | v1.1 | 2/2 | Complete | 2026-01-18 |
 | 10. Navigation Redesign | v1.1 | 0/? | Not started | - |
 | 11. Profile System Fixes | v1.1 | 0/? | Not started | - |
-| 12. Overlay Improvements | v1.1 | 0/? | Not started | - |
+| 12. Overlay Improvements | v1.1 | 0/3 | Planned | - |
 | 13. Editor Polish | v1.1 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 9 complete*
+*Last updated: 2026-01-18 - Phase 12 planned*
