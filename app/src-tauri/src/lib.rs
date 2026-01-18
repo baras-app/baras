@@ -57,7 +57,22 @@ pub fn run() {
     // Create shared overlay state
     let overlay_state = Arc::new(Mutex::new(OverlayState::default()));
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // Single instance plugin - must be registered FIRST to catch duplicate launches early
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // Focus existing window when second instance attempts to launch
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }));
+    }
+
+    builder
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
