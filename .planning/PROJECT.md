@@ -8,6 +8,15 @@ A combat log parser for Star Wars: The Old Republic with real-time overlays, his
 
 Fast, reliable combat analysis that doesn't crash when something unexpected happens.
 
+## Current Milestone: v1.2 macOS Support
+
+**Goal:** Add macOS platform support by fixing the overlay renderer implementation.
+
+**Target features:**
+- Migrate overlay/src/platform/macos.rs from deprecated `cocoa` crate to `objc2` ecosystem
+- Fix compilation errors in CGContext/bitmap rendering code
+- CI passes on macOS target
+
 ## Current State (v1.1 shipped)
 
 **Shipped 2026-01-18:**
@@ -59,12 +68,12 @@ Fast, reliable combat analysis that doesn't crash when something unexpected happ
 
 ### Active
 
-- [ ] Live/Historical mode indicator with explicit status and Resume Live action (NAV-01, NAV-02, NAV-03)
-- [ ] Drag-drop reordering for stats lists (EDIT-05)
+- [ ] macOS overlay support via objc2 ecosystem (MAC-01, MAC-02, MAC-03)
+- [ ] Live/Historical mode indicator with explicit status and Resume Live action (NAV-01, NAV-02, NAV-03) — deferred to v1.3
+- [ ] Drag-drop reordering for stats lists (EDIT-05) — deferred to v1.3
 
 ### Out of Scope
 
-- MacOS support — platform complexity, low demand
 - Mobile app — desktop focus
 
 ## Constraints
@@ -91,4 +100,4 @@ Fast, reliable combat analysis that doesn't crash when something unexpected happ
 - Overlay test `format_number` has precision mismatch
 
 ---
-*Last updated: 2026-01-18 after v1.1 milestone*
+*Last updated: 2026-01-18 after starting v1.2 milestone*
