@@ -3,6 +3,7 @@
 //! Uses Cocoa/AppKit for transparent, always-on-top overlay windows
 //! with click-through support.
 
+use std::cell::Cell;
 use std::ffi::c_void;
 
 // Keep cocoa imports for now (will be removed in Plan 15-03)
@@ -22,12 +23,10 @@ use core_graphics::base::kCGImageAlphaPremultipliedFirst;
 use core_graphics::color_space::CGColorSpace;
 use core_graphics::context::CGContext;
 
-// Keep old objc for ClassDecl (will be migrated in Plan 15-02)
-use objc::declare::ClassDecl;
-use objc::runtime::{Class, Object, Sel, BOOL};
-
-// New objc2 for msg_send! - use both during transition
-use objc2::{class, msg_send, sel};
+// objc2 for define_class! and msg_send!
+use objc2::rc::Retained;
+use objc2::{define_class, msg_send};
+use objc2_app_kit::NSGraphicsContext;
 
 use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
 use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
@@ -87,53 +86,71 @@ fn nsstring_to_string(nsstring: id) -> String {
 // Custom NSView for rendering
 // ─────────────────────────────────────────────────────────────────────────────
 
-static mut OVERLAY_VIEW_CLASS: Option<&'static Class> = None;
+/// Instance variables for BarasOverlayView.
+/// Uses Cell<T> for interior mutability since objc2 methods take &self.
+#[derive(Default)]
+struct BarasOverlayViewIvars {
+    pixel_data: Cell<*mut c_void>,
+    buffer_width: Cell<u32>,
+    buffer_height: Cell<u32>,
+}
 
-fn get_overlay_view_class() -> &'static Class {
-    unsafe {
-        if let Some(cls) = OVERLAY_VIEW_CLASS {
-            return cls;
-        }
+// SAFETY: BarasOverlayView is only used on the main thread (AppKit requirement)
+// and pixel_data pointer is only accessed during drawRect: which is single-threaded.
+// The raw pointer points to MacOSOverlay's bgra_buffer which lives for the overlay lifetime.
+unsafe impl Send for BarasOverlayViewIvars {}
+unsafe impl Sync for BarasOverlayViewIvars {}
 
-        let superclass = class!(NSView);
-        let mut decl = ClassDecl::new("BarasOverlayView", superclass).unwrap();
+define_class!(
+    // SAFETY: NSView permits subclassing for custom drawing.
+    // We override drawRect: and isOpaque, both designed to be overridden.
+    // We do not implement Drop - cleanup happens via Objective-C mechanisms.
+    #[unsafe(super(objc2_app_kit::NSView))]
+    #[thread_kind = MainThreadOnly]
+    #[name = "BarasOverlayView"]
+    #[ivars = BarasOverlayViewIvars]
+    pub struct BarasOverlayView;
 
-        decl.add_ivar::<*mut c_void>("pixelData");
-        decl.add_ivar::<u32>("bufferWidth");
-        decl.add_ivar::<u32>("bufferHeight");
+    impl BarasOverlayView {
+        /// Draw the overlay content from the pixel buffer.
+        /// NSRect implements Encode trait - validated at compile time by objc2.
+        #[unsafe(method(drawRect:))]
+        fn draw_rect(&self, _dirty_rect: NSRect) {
+            let ivars = self.ivars();
+            let pixel_ptr = ivars.pixel_data.get();
+            let width = ivars.buffer_width.get();
+            let height = ivars.buffer_height.get();
 
-        extern "C" fn draw_rect(this: &Object, _sel: Sel, _dirty_rect: NSRect) {
+            if pixel_ptr.is_null() || width == 0 || height == 0 {
+                return;
+            }
+
             unsafe {
-                let pixel_ptr: *mut c_void = *this.get_ivar("pixelData");
-                let width: u32 = *this.get_ivar("bufferWidth");
-                let height: u32 = *this.get_ivar("bufferHeight");
-
-                if pixel_ptr.is_null() || width == 0 || height == 0 {
-                    return;
-                }
-
-                let bounds: NSRect = msg_send![this, bounds];
+                let bounds: NSRect = msg_send![self, bounds];
                 let color_space = CGColorSpace::create_device_rgb();
 
                 // Create CGContext from our pixel buffer (BGRA format)
                 let ctx = CGContext::create_bitmap_context(
-                    Some(pixel_ptr), // Already *mut c_void, no cast needed
+                    Some(pixel_ptr),
                     width as usize,
                     height as usize,
                     8,
                     (width * 4) as usize,
                     &color_space,
-                    kCGImageAlphaPremultipliedFirst, // BGRA
+                    kCGImageAlphaPremultipliedFirst,
                 );
 
                 // create_image returns Option<CGImage>
                 if let Some(image) = ctx.create_image() {
-                    // Get current graphics context
-                    let ns_ctx: id = msg_send![class!(NSGraphicsContext), currentContext];
-                    if ns_ctx != nil {
-                        let cg_ctx_ptr: *mut c_void = msg_send![ns_ctx, CGContext];
+                    // Get current graphics context using objc2-app-kit
+                    // NSGraphicsContext::currentContext() returns Option<Retained<NSGraphicsContext>>
+                    if let Some(ns_ctx) = NSGraphicsContext::currentContext() {
+                        // Bridge to core-graphics CGContext:
+                        // NSGraphicsContext.CGContext returns the underlying CGContextRef
+                        let cg_ctx_ptr: *mut c_void = msg_send![&*ns_ctx, CGContext];
 
                         if !cg_ctx_ptr.is_null() {
+                            // core-graphics CGContext wraps the raw CGContextRef
                             let cg_ctx = CGContext::from_existing_context_ptr(
                                 cg_ctx_ptr as *mut core_graphics::sys::CGContext,
                             );
@@ -154,22 +171,29 @@ fn get_overlay_view_class() -> &'static Class {
             }
         }
 
-        extern "C" fn is_opaque(_this: &Object, _sel: Sel) -> BOOL {
-            NO
+        /// Report that the view is not opaque to enable transparency.
+        #[unsafe(method(isOpaque))]
+        fn is_opaque(&self) -> bool {
+            false
         }
+    }
+);
 
-        decl.add_method(
-            sel!(drawRect:),
-            draw_rect as extern "C" fn(&Object, Sel, NSRect),
-        );
-        decl.add_method(
-            sel!(isOpaque),
-            is_opaque as extern "C" fn(&Object, Sel) -> BOOL,
-        );
+impl BarasOverlayView {
+    /// Create a new BarasOverlayView with the given frame.
+    fn new(frame: NSRect) -> Retained<Self> {
+        let this = Self::alloc();
+        let ivars = BarasOverlayViewIvars::default();
+        // SAFETY: Calling NSView's initWithFrame: designated initializer
+        unsafe { msg_send![super(this.set_ivars(ivars)), initWithFrame: frame] }
+    }
 
-        let cls = decl.register();
-        OVERLAY_VIEW_CLASS = Some(cls);
-        cls
+    /// Update the pixel buffer pointer and dimensions.
+    fn set_pixel_data(&self, data: *mut c_void, width: u32, height: u32) {
+        let ivars = self.ivars();
+        ivars.pixel_data.set(data);
+        ivars.buffer_width.set(width);
+        ivars.buffer_height.set(height);
     }
 }
 
@@ -179,7 +203,7 @@ fn get_overlay_view_class() -> &'static Class {
 
 pub struct MacOSOverlay {
     window: id,
-    view: id,
+    view: Retained<BarasOverlayView>,
     width: u32,
     height: u32,
     x: i32,
@@ -224,12 +248,11 @@ impl MacOSOverlay {
     }
 
     fn update_view_buffer(&mut self) {
-        unsafe {
-            let view = self.view;
-            (*view).set_ivar("pixelData", self.bgra_buffer.as_mut_ptr() as *mut c_void);
-            (*view).set_ivar("bufferWidth", self.width);
-            (*view).set_ivar("bufferHeight", self.height);
-        }
+        self.view.set_pixel_data(
+            self.bgra_buffer.as_mut_ptr() as *mut c_void,
+            self.width,
+            self.height,
+        );
     }
 
     fn is_in_resize_corner(&self, x: f64, y: f64) -> bool {
@@ -286,16 +309,11 @@ impl OverlayPlatform for MacOSOverlay {
                     | NSWindowCollectionBehavior::NSWindowCollectionBehaviorIgnoresCycle,
             );
 
-            // Create custom view
-            let view_class = get_overlay_view_class();
-            let view: id = msg_send![view_class, alloc];
-            let view: id = msg_send![view, initWithFrame: rect];
+            // Create custom view using define_class!
+            let view = BarasOverlayView::new(rect);
 
-            if view == nil {
-                return Err(PlatformError::Other("Failed to create NSView".into()));
-            }
-
-            window.setContentView_(view);
+            // Set content view using msg_send! to bridge Retained<BarasOverlayView> to cocoa's id
+            let _: () = msg_send![window, setContentView: &*view];
             window.makeKeyAndOrderFront_(nil);
 
             let size = (config.width * config.height * 4) as usize;
@@ -399,7 +417,7 @@ impl OverlayPlatform for MacOSOverlay {
                 NSPoint::new(0.0, 0.0),
                 NSSize::new(width as f64, height as f64),
             );
-            let _: () = msg_send![self.view, setFrame: view_rect];
+            let _: () = msg_send![&*self.view, setFrame: view_rect];
         }
 
         self.update_view_buffer();
@@ -470,7 +488,7 @@ impl OverlayPlatform for MacOSOverlay {
         }
 
         unsafe {
-            let _: () = msg_send![self.view, setNeedsDisplay: true];
+            let _: () = msg_send![&*self.view, setNeedsDisplay: true];
         }
     }
 
