@@ -791,9 +791,10 @@ pub fn App() -> Element {
                         div { class: "overlays-top-bar",
                             button {
                                 class: "btn btn-customize",
+                                title: "Open overlay appearance and behavior settings",
                                 onclick: move |_| settings_open.set(!settings_open()),
                                 i { class: "fa-solid fa-screwdriver-wrench" }
-                                span { " Customize" }
+                                span { " Settings" }
                             }
                             if !profile_names().is_empty() {
                                 div { class: "profile-selector",
