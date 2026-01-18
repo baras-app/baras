@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use tracing;
+
 use super::{AreaConfig, AreaType, BossConfig, BossEncounterDefinition};
 
 /// Boss definition with its source file path for saving back
@@ -170,7 +172,7 @@ fn load_bosses_with_paths_recursive(
                     }
                 }
                 Err(e) => {
-                    eprintln!("Warning: {}", e);
+                    tracing::warn!(error = %e, "Failed to load boss file with paths");
                 }
             }
         }
@@ -195,12 +197,12 @@ fn load_bosses_recursive(
             match load_bosses_from_file(&path) {
                 Ok(file_bosses) => {
                     for boss in &file_bosses {
-                        eprintln!("Loaded boss: {} (area: {})", boss.name, boss.area_name);
+                        tracing::info!(boss = %boss.name, area = %boss.area_name, "Loaded boss definition");
                     }
                     bosses.extend(file_bosses);
                 }
                 Err(e) => {
-                    eprintln!("Warning: {}", e);
+                    tracing::warn!(error = %e, "Failed to load boss file");
                 }
             }
         }
@@ -303,10 +305,10 @@ pub fn load_bosses_with_custom(
     {
         match load_bosses_from_file(&custom_path) {
             Ok(custom_bosses) => {
-                eprintln!(
-                    "Merging {} custom bosses from {}",
-                    custom_bosses.len(),
-                    custom_path.display()
+                tracing::info!(
+                    count = custom_bosses.len(),
+                    path = %custom_path.display(),
+                    "Merging custom boss definitions"
                 );
                 bosses = merge_boss_lists(bosses, custom_bosses);
 
@@ -316,10 +318,10 @@ pub fn load_bosses_with_custom(
                 }
             }
             Err(e) => {
-                eprintln!(
-                    "Warning: Failed to load custom file {}: {}",
-                    custom_path.display(),
-                    e
+                tracing::warn!(
+                    path = %custom_path.display(),
+                    error = %e,
+                    "Failed to load custom boss file"
                 );
             }
         }

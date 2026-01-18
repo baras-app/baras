@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use chrono::NaiveDateTime;
 use tokio::sync::RwLock;
+use tracing;
 
 use crate::combat_log::{CombatEvent, Reader};
 use crate::context::{AppConfig, parse_log_filename};
@@ -152,10 +153,7 @@ impl ParsingSession {
                 if let Some(loader) = &self.definition_loader {
                     if let Some(bosses) = loader(area_id) {
                         self.load_boss_definitions(bosses);
-                        eprintln!(
-                            "[PARSER] Sync loaded boss definitions for area_id={}",
-                            area_id
-                        );
+                        tracing::info!(area_id, "Sync loaded boss definitions for area");
                     }
                     self.loaded_area_id = area_id;
                 }
@@ -228,15 +226,16 @@ impl ParsingSession {
         let path = dir.join(&filename);
 
         if let Err(e) = writer.write_to_file(&path) {
-            eprintln!(
-                "[PARQUET] Failed to write encounter {}: {}",
-                self.encounter_idx, e
+            tracing::error!(
+                encounter_idx = self.encounter_idx,
+                error = %e,
+                "Failed to write encounter parquet"
             );
         } else {
-            eprintln!(
-                "[PARQUET] Wrote encounter {} ({} events)",
-                self.encounter_idx,
-                writer.len()
+            tracing::info!(
+                encounter_idx = self.encounter_idx,
+                event_count = writer.len(),
+                "Wrote encounter parquet"
             );
         }
 
