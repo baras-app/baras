@@ -155,6 +155,7 @@ dependencies = [
  "pulldown-cmark",
  "reqwest",
  "rodio",
+ "rolling-file",
  "serde",
  "serde_json",
  "tauri",
@@ -167,6 +168,7 @@ dependencies = [
  "tokio",
  "toml 0.9.10+spec-1.1.0",
  "tracing",
+ "tracing-appender",
  "tracing-subscriber",
  "tts",
  "zip 2.4.2",
@@ -747,6 +749,7 @@ dependencies = [
  "phf 0.13.1",
  "rayon",
  "serde",
+ "thiserror 2.0.17",
  "tokio",
  "toml 0.9.10+spec-1.1.0",
  "tracing",
@@ -769,6 +772,7 @@ dependencies = [
  "tiny-skia",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",
@@ -5192,7 +5196,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6663,6 +6667,15 @@ dependencies = [
  "lewton",
  "symphonia",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "rolling-file"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8395b4f860856b740f20a296ea2cd4d823e81a2658cf05ef61be22916026a906"
+dependencies = [
+ "chrono",
 ]
 
 [[package]]
@@ -8432,6 +8445,18 @@ dependencies = [
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-appender"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "786d480bce6247ab75f005b14ae1624ad978d3029d9113f0a22fa1ac773faeaf"
+dependencies = [
+ "crossbeam-channel",
+ "thiserror 2.0.17",
+ "time",
+ "tracing-subscriber",
 ]
 
 [[package]]
