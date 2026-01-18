@@ -13,7 +13,7 @@ This milestone adds macOS platform support by fixing the overlay renderer implem
 ## Phases
 
 - [x] **Phase 14: CGContext Fix** - Fix compilation errors to unblock macOS builds
-- [ ] **Phase 15: objc2 Migration** - Migrate from deprecated cocoa/objc crates to objc2 ecosystem
+- [x] **Phase 15: objc2 Migration** - Migrate from deprecated cocoa/objc crates to objc2 ecosystem
 - [ ] **Phase 16: Cleanup** - Remove deprecated dependencies after migration verified
 
 ## Phase Details
@@ -42,9 +42,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 15-01-PLAN.md - Add objc2 dependencies and migrate msg_send! calls
-- [ ] 15-02-PLAN.md - Migrate BarasOverlayView to define_class! macro
-- [ ] 15-03-PLAN.md - Migrate window/app management to objc2-app-kit
+- [x] 15-01-PLAN.md - Add objc2 dependencies and migrate msg_send! calls
+- [x] 15-02-PLAN.md - Migrate BarasOverlayView to define_class! macro
+- [x] 15-03-PLAN.md - Migrate window/app management to objc2-app-kit
 
 ### Phase 16: Cleanup
 **Goal**: Clean dependency tree with no deprecated crates
@@ -64,7 +64,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 14. CGContext Fix | 1/1 | Complete | 2026-01-18 |
-| 15. objc2 Migration | 0/3 | Planned | - |
+| 15. objc2 Migration | 3/3 | Complete | 2026-01-18 |
 | 16. Cleanup | 0/1 | Planned | - |
 
 ---

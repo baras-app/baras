@@ -10,10 +10,10 @@ Requirements for macOS platform support. Each maps to roadmap phases.
 ### macOS Overlay
 
 - [x] **MAC-01**: Fix CGContext compilation errors (type mismatches, missing API)
-- [ ] **MAC-02**: Migrate from deprecated `cocoa` crate to `objc2-app-kit`/`objc2-foundation`
-- [ ] **MAC-03**: Migrate custom NSView subclass from `ClassDecl` to `define_class!` macro
-- [ ] **MAC-04**: Add `setReleasedWhenClosed(false)` for proper window memory management
-- [ ] **MAC-05**: Use `Retained<T>` smart pointers for Objective-C object ownership
+- [x] **MAC-02**: Migrate from deprecated `cocoa` crate to `objc2-app-kit`/`objc2-foundation`
+- [x] **MAC-03**: Migrate custom NSView subclass from `ClassDecl` to `define_class!` macro
+- [x] **MAC-04**: Add `setReleasedWhenClosed(false)` for proper window memory management
+- [x] **MAC-05**: Use `Retained<T>` smart pointers for Objective-C object ownership
 - [ ] **MAC-06**: Remove deprecated `cocoa` and `objc` crate dependencies after migration
 
 ## v1.3 Requirements
@@ -46,10 +46,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | MAC-01 | Phase 14 | Complete |
-| MAC-02 | Phase 15 | Pending |
-| MAC-03 | Phase 15 | Pending |
-| MAC-04 | Phase 15 | Pending |
-| MAC-05 | Phase 15 | Pending |
+| MAC-02 | Phase 15 | Complete |
+| MAC-03 | Phase 15 | Complete |
+| MAC-04 | Phase 15 | Complete |
+| MAC-05 | Phase 15 | Complete |
 | MAC-06 | Phase 16 | Pending |
 
 **Coverage:**
