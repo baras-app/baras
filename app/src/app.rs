@@ -311,12 +311,13 @@ pub fn App() -> Element {
     let watching = is_watching();
     let live_tailing = is_live_tailing();
     let current_file = active_file();
-    let session = session_info();
 
-    // Check if we have a valid player name (for session tab empty state logic)
-    let has_player = session.as_ref()
-        .and_then(|s| s.player_name.as_ref())
-        .is_some_and(|n| !n.is_empty());
+    // Session state for the session tab
+    let session = session_info();
+    let has_player = session
+        .as_ref()
+        .map(|s| s.player_name.as_ref().is_some_and(|n| !n.is_empty()))
+        .unwrap_or(false);
     let show_empty_state = !has_player;
 
     // ─────────────────────────────────────────────────────────────────────────
