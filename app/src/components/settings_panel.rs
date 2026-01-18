@@ -4,7 +4,7 @@
 //! personal stats, and raid frame settings.
 
 use dioxus::prelude::*;
-use gloo_timers::callback::Timeout;
+use gloo_timers::future::TimeoutFuture;
 use std::collections::HashMap;
 
 use crate::api;
@@ -36,12 +36,13 @@ pub fn SettingsPanel(
     let mut has_changes = use_signal(|| false);
     let mut save_status = use_signal(String::new);
 
-    // Debounce handle for live preview
-    let mut preview_timeout: Signal<Option<Timeout>> = use_signal(|| None);
+    // Debounce counter for live preview - each request gets an ID
+    let mut preview_request_id: Signal<u32> = use_signal(|| 0);
 
     // Profile UI state
     let mut new_profile_name = use_signal(String::new);
     let mut profile_status = use_signal(String::new);
+    let mut toast = use_toast();
 
     let current_settings = draft_settings();
     let tab = selected_tab();
@@ -123,18 +124,18 @@ pub fn SettingsPanel(
         has_changes.set(true);
         save_status.set(String::new());
 
-        // Cancel any pending preview
-        if let Some(handle) = preview_timeout.take() {
-            handle.cancel();
-        }
+        // Increment request ID to cancel any pending preview
+        let request_id = preview_request_id() + 1;
+        preview_request_id.set(request_id);
 
         // Schedule a debounced preview (300ms delay)
-        let timeout = Timeout::new(300, move || {
-            spawn(async move {
+        spawn(async move {
+            TimeoutFuture::new(300).await;
+            // Only execute if this is still the latest request
+            if preview_request_id() == request_id {
                 api::preview_overlay_settings(&new_settings).await;
-            });
+            }
         });
-        preview_timeout.set(Some(timeout));
     };
 
     rsx! {
@@ -147,17 +148,16 @@ pub fn SettingsPanel(
                 button {
                     class: "btn btn-close",
                     onclick: move |_| {
-                        // Cancel any pending preview
-                        if let Some(handle) = preview_timeout.take() {
-                            handle.cancel();
-                        }
-                        // Restore original settings if there were changes
-                        if has_changes() {
-                            spawn(async move {
+                        // Cancel any pending preview by incrementing the ID
+                        preview_request_id.set(preview_request_id() + 1);
+                        let needs_revert = has_changes();
+                        async move {
+                            // Restore original settings if there were changes
+                            if needs_revert {
                                 api::refresh_overlay_settings().await;
-                            });
+                            }
+                            on_close.call(());
                         }
-                        on_close.call(());
                     },
                     onmousedown: move |e| e.stop_propagation(),
                     "X"
@@ -197,7 +197,6 @@ pub fn SettingsPanel(
                                                         let pname = profile_name.clone();
                                                         move |_| {
                                                             let pname = pname.clone();
-                                                            let mut toast = use_toast();
                                                             spawn(async move {
                                                                 if let Err(err) = api::load_profile(&pname).await {
                                                                     toast.show(format!("Failed to load profile: {}", err), ToastSeverity::Normal);
@@ -233,7 +232,6 @@ pub fn SettingsPanel(
                                                         let pname = profile_name.clone();
                                                         move |_| {
                                                             let pname = pname.clone();
-                                                            let mut toast = use_toast();
                                                             spawn(async move {
                                                                 if let Err(err) = api::save_profile(&pname).await {
                                                                     toast.show(format!("Failed to save profile: {}", err), ToastSeverity::Normal);
@@ -253,7 +251,6 @@ pub fn SettingsPanel(
                                                         let pname = profile_name.clone();
                                                         move |_| {
                                                             let pname = pname.clone();
-                                                            let mut toast = use_toast();
                                                             spawn(async move {
                                                                 if let Err(err) = api::delete_profile(&pname).await {
                                                                     toast.show(format!("Failed to delete profile: {}", err), ToastSeverity::Normal);
@@ -291,7 +288,6 @@ pub fn SettingsPanel(
                             onclick: move |_| {
                                 let name = new_profile_name().trim().to_string();
                                 if name.is_empty() { return; }
-                                let mut toast = use_toast();
                                 spawn(async move {
                                     if let Err(err) = api::save_profile(&name).await {
                                         toast.show(format!("Failed to create profile: {}", err), ToastSeverity::Normal);
@@ -1408,12 +1404,12 @@ pub fn SettingsPanel(
                                 input {
                                     r#type: "range",
                                     min: "8",
-                                    max: "24",
+                                    max: "36",
                                     value: "{current_settings.raid_overlay.effect_size as i32}",
                                     oninput: move |e| {
                                         if let Ok(val) = e.value().parse::<f32>() {
                                             let mut new_settings = draft_settings();
-                                            new_settings.raid_overlay.effect_size = val.clamp(8.0, 24.0);
+                                            new_settings.raid_overlay.effect_size = val.clamp(8.0, 36.0);
                                             update_draft(new_settings);
                                         }
                                     }

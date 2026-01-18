@@ -1098,6 +1098,20 @@ button:active {
   color: var(--text-disabled);
 }
 
+.session-empty.alert i {
+  color: var(--swtor-orange);
+}
+
+.session-empty .settings-link {
+  color: var(--swtor-blue);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.session-empty .settings-link:hover {
+  color: var(--swtor-light-blue);
+}
+
 /* Session toolbar */
 .session-toolbar {
   display: flex;
@@ -1754,7 +1768,7 @@ details[open] .collapsible-summary::before {
   align-items: center;
   gap: 1em;
   margin-top: 1em;
-  padding-top: 1em;
+  padding: 1em 0 0 1em;
   border-top: 1px solid var(--blue-alpha-15);
   flex-shrink: 0;
   background: inherit;

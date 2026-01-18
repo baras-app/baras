@@ -74,9 +74,13 @@ impl AppConfigExt for AppConfig {
     }
 
     fn save_profile(&mut self, name: String) -> Result<(), &'static str> {
+        // Clone settings but reset visibility to default (visibility is independent of profiles)
+        let mut settings_to_save = self.overlay_settings.clone();
+        settings_to_save.overlays_visible = true;
+
         // Check if profile already exists (update case)
         if let Some(profile) = self.profiles.iter_mut().find(|p| p.name == name) {
-            profile.settings = self.overlay_settings.clone();
+            profile.settings = settings_to_save;
             self.active_profile_name = Some(name);
             return Ok(());
         }
@@ -86,10 +90,7 @@ impl AppConfigExt for AppConfig {
             return Err("Maximum number of profiles reached (12)");
         }
 
-        self.profiles.push(OverlayProfile::new(
-            name.clone(),
-            self.overlay_settings.clone(),
-        ));
+        self.profiles.push(OverlayProfile::new(name.clone(), settings_to_save));
         self.active_profile_name = Some(name);
         Ok(())
     }
@@ -100,7 +101,12 @@ impl AppConfigExt for AppConfig {
             .iter()
             .find(|p| p.name == name)
             .ok_or("Profile not found")?;
+
+        // Preserve visibility state - it's independent of profiles
+        let was_visible = self.overlay_settings.overlays_visible;
         self.overlay_settings = profile.settings.clone();
+        self.overlay_settings.overlays_visible = was_visible;
+
         self.active_profile_name = Some(name.to_string());
         Ok(())
     }

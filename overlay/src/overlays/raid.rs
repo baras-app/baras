@@ -352,7 +352,7 @@ impl Default for RaidGridLayout {
 
 /// Effect size bounds (in pixels before scaling)
 pub const EFFECT_SIZE_MIN: f32 = 8.0;
-pub const EFFECT_SIZE_MAX: f32 = 24.0;
+pub const EFFECT_SIZE_MAX: f32 = 36.0;
 pub const EFFECT_SIZE_DEFAULT: f32 = 14.0;
 
 /// Effect vertical offset bounds (relative to frame top)

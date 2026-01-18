@@ -627,6 +627,20 @@ pub fn App() -> Element {
                                 p { "Loading file..." }
                                 p { class: "hint", "Reading historical session data" }
                             }
+                        } else if log_files().is_empty() {
+                            // No log files found - prompt user to configure directory
+                            div { class: "session-empty alert",
+                                i { class: "fa-solid fa-triangle-exclamation" }
+                                p { "No log files found" }
+                                p { class: "hint",
+                                    "Choose a log directory in "
+                                    span {
+                                        class: "settings-link",
+                                        onclick: move |_| general_settings_open.set(true),
+                                        "settings"
+                                    }
+                                }
+                            }
                         } else if watching {
                             // Live: Log file detected but no character data yet
                             div { class: "session-empty",
@@ -635,11 +649,11 @@ pub fn App() -> Element {
                                 p { class: "hint", "Log file detected, waiting for character login" }
                             }
                         } else {
-                            // No log file being watched
+                            // Not watching - watcher may have stopped
                             div { class: "session-empty",
                                 i { class: "fa-solid fa-inbox" }
                                 p { "No Active Session" }
-                                p { class: "hint", "No combat logs found in directory" }
+                                p { class: "hint", "File watcher is not running" }
                             }
                         }
                     }

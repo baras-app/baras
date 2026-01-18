@@ -729,6 +729,7 @@ impl OverlayManager {
     ) -> Result<bool, String> {
         let config = service.config().await;
         let settings = &config.overlay_settings;
+        let globally_visible = settings.overlays_visible;
 
         // Handle each overlay type
         for overlay_type in Self::all_overlay_types() {
@@ -746,8 +747,8 @@ impl OverlayManager {
                 {
                     let _ = handle.tx.try_send(OverlayCommand::Shutdown);
                 }
-            } else if !running && enabled {
-                // Start if not running but enabled
+            } else if !running && enabled && globally_visible {
+                // Start if not running but enabled (only if global visibility is on)
                 if let Ok(result) = Self::spawn(overlay_type, settings)
                     && let Ok(mut s) = state.lock()
                 {
@@ -769,7 +770,9 @@ impl OverlayManager {
             was_running
         };
 
-        if (raid_was_running || raid_enabled)
+        // Only respawn raid if global visibility is on
+        if globally_visible
+            && (raid_was_running || raid_enabled)
             && let Ok(result) = Self::spawn(OverlayType::Raid, settings)
             && let Ok(mut s) = state.lock()
         {
