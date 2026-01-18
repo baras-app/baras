@@ -536,6 +536,7 @@ fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(true)
+        .with_writer(std::io::stderr)
         .init();
 
     let args: Vec<String> = std::env::args().collect();

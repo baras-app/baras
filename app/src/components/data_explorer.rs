@@ -548,14 +548,14 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     });
 
     // Load encounter list on mount
-    use_effect(move || {
-        spawn(async move {
-            if let Some(list) = api::get_encounter_history().await {
-                encounters.set(list);
-            }
-        });
-    });
 
+  use_effect(move || {
+      spawn(async move {
+          if let Some(list) = api::get_encounter_history().await {
+              let _ = encounters.try_write().map(|mut w| *w = list);  // ← safe
+          }
+      });
+  });
     // Store unlisten handle for cleanup (Tauri returns an unlisten function)
     let mut unlisten_handle = use_signal(|| None::<js_sys::Function>);
 

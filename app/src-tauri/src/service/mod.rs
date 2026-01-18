@@ -85,7 +85,11 @@ struct ParseWorkerOutput {
 }
 
 /// Fallback to streaming parse if subprocess fails.
-async fn fallback_streaming_parse(reader: &Reader, session: &Arc<RwLock<ParsingSession>>) {
+async fn fallback_streaming_parse(
+    reader: &Reader,
+    session: &Arc<RwLock<ParsingSession>>,
+    encounters_dir: PathBuf,
+) {
     let timer = std::time::Instant::now();
     let mut session_guard = session.write().await;
     let session_date = session_guard.game_session_date.unwrap_or_default();
@@ -95,6 +99,11 @@ async fn fallback_streaming_parse(reader: &Reader, session: &Arc<RwLock<ParsingS
 
     if let Ok((end_pos, event_count)) = result {
         session_guard.current_byte = Some(end_pos);
+
+        // Enable live parquet writing so Data Explorer can query encounters
+        // Start from encounter 0 since fallback doesn't write parquet files
+        session_guard.enable_live_parquet(encounters_dir, 0);
+
         session_guard.finalize_session();
         session_guard.sync_timer_context();
 
@@ -1106,7 +1115,7 @@ impl CombatService {
                     }
                     Err(e) => {
                         error!(error = %e, "Subprocess output parse failed");
-                        fallback_streaming_parse(&reader, &session).await;
+                        fallback_streaming_parse(&reader, &session, encounters_dir.clone()).await;
                     }
                 }
             }
@@ -1116,12 +1125,12 @@ impl CombatService {
                     "Subprocess failed"
                 );
                 // Fallback to streaming parse in main process
-                fallback_streaming_parse(&reader, &session).await;
+                fallback_streaming_parse(&reader, &session, encounters_dir.clone()).await;
             }
             Err(e) => {
                 error!(error = %e, "Failed to spawn subprocess");
                 // Fallback to streaming parse in main process
-                fallback_streaming_parse(&reader, &session).await;
+                fallback_streaming_parse(&reader, &session, encounters_dir.clone()).await;
             }
         }
 
