@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-18)
 ## Current Position
 
 Phase: 12 of 13 (Overlay Improvements)
-Plan: 3 of ? in current phase (12-01 also complete)
+Plan: 2 of ? in current phase
 Status: In progress
-Last activity: 2026-01-18 - Completed 12-01-PLAN.md (Overlay Startup Behavior)
+Last activity: 2026-01-18 - Completed 12-02-PLAN.md (Settings Panel Preview)
 
-Progress: [############..........] 29/30+ plans (~97% v1.0-v1.1)
+Progress: [############..........] 30/31+ plans (~97% v1.0-v1.1)
 
 ## Performance Metrics
 
@@ -38,6 +38,8 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full v1.0 decision history.
 - Functional tone for tooltips (e.g., "Shows boss health bars and cast timers")
 - Removed is_tailing gate for overlay startup data (always try cache)
 - Reset move_mode and rearrange_mode on profile switch
+- 300ms debounce for live preview (balances responsiveness with performance)
+- Restore original settings on close via refresh_overlay_settings
 
 ### Pending Todos
 
@@ -52,5 +54,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Completed 12-01-PLAN.md
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
