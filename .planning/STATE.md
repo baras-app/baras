@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 6 of 7 (Logging Migration)
-Plan: 2 of 4 in current phase
+Plan: 1 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-17 - Completed 06-02-PLAN.md
+Last activity: 2026-01-18 - Completed 06-01-PLAN.md
 
-Progress: [████████░░] 81%
+Progress: [████████░░] 89%
 
 ## Performance Metrics
 
@@ -32,10 +32,10 @@ Progress: [████████░░] 81%
 | 03-core-error-handling | 3 | 12 min | 4 min |
 | 04-backend-error-handling | 3 | 3 min | 1 min |
 | 05-frontend-error-handling | 4 | 18 min | 4.5 min |
-| 06-logging-migration | 2 | 4 min | 2 min |
+| 06-logging-migration | 1 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-02 (5 min), 05-03 (5 min), 05-04 (6 min), 06-01 (0 min), 06-02 (4 min)
+- Last 5 plans: 05-02 (5 min), 05-03 (5 min), 05-04 (6 min), 05-HT (0 min), 06-01 (4 min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -85,10 +85,9 @@ Recent decisions affecting current work:
 - Profile operations (load/save/delete) show toast on error (05-04)
 - let mut toast = use_toast(); before spawn for error handling (05-04)
 - All mutation APIs must use try_invoke to prevent UI freeze on error (05-HT)
-- debug level for timer preferences (internal state) (06-02)
-- info level for DSL loading per CONTEXT.md mapping (06-02)
-- warn level for duplicate timer IDs and broken chain references (06-02)
-- error level for parquet write failures (06-02)
+- Single shared filter for both file and stdout layers (simplifies type composition) (06-01)
+- Log to config dir root (baras.log) not logs subdirectory per CONTEXT.md (06-01)
+- eprintln for pre-init errors since tracing not yet available (06-01)
 
 ### Pending Todos
 
@@ -100,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-17T02:34Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-01-18T01:11Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
