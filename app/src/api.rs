@@ -94,9 +94,9 @@ pub async fn get_config() -> Option<AppConfig> {
 }
 
 /// Update the application configuration
-pub async fn update_config(config: &AppConfig) -> bool {
-    let _result = invoke("update_config", build_args("config", config)).await;
-    true
+pub async fn update_config(config: &AppConfig) -> Result<(), String> {
+    try_invoke("update_config", build_args("config", config)).await?;
+    Ok(())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,15 +262,15 @@ pub async fn refresh_file_sizes() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Open a historical log file (pauses live tailing)
-pub async fn open_historical_file(path: &str) -> bool {
-    let _result = invoke("open_historical_file", build_args("path", &path)).await;
-    true
+pub async fn open_historical_file(path: &str) -> Result<(), String> {
+    try_invoke("open_historical_file", build_args("path", &path)).await?;
+    Ok(())
 }
 
 /// Resume live tailing mode
-pub async fn resume_live_tailing() -> bool {
-    let _result = invoke("resume_live_tailing", JsValue::NULL).await;
-    true
+pub async fn resume_live_tailing() -> Result<(), String> {
+    try_invoke("resume_live_tailing", JsValue::NULL).await?;
+    Ok(())
 }
 
 /// Check if in live tailing mode
@@ -296,21 +296,21 @@ pub async fn get_active_profile() -> Option<String> {
 }
 
 /// Save current settings to a profile
-pub async fn save_profile(name: &str) -> bool {
-    let _result = invoke("save_profile", build_args("name", &name)).await;
-    true
+pub async fn save_profile(name: &str) -> Result<(), String> {
+    try_invoke("save_profile", build_args("name", &name)).await?;
+    Ok(())
 }
 
 /// Load a profile by name
-pub async fn load_profile(name: &str) -> bool {
-    let _result = invoke("load_profile", build_args("name", &name)).await;
-    true
+pub async fn load_profile(name: &str) -> Result<(), String> {
+    try_invoke("load_profile", build_args("name", &name)).await?;
+    Ok(())
 }
 
 /// Delete a profile by name
-pub async fn delete_profile(name: &str) -> bool {
-    let _result = invoke("delete_profile", build_args("name", &name)).await;
-    true
+pub async fn delete_profile(name: &str) -> Result<(), String> {
+    try_invoke("delete_profile", build_args("name", &name)).await?;
+    Ok(())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
