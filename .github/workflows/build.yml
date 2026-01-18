@@ -137,7 +137,7 @@ jobs:
 
   build-macos:
     if: ${{ inputs.build_macos }}
-    runs-on: macos-15-intel
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
@@ -160,7 +160,7 @@ jobs:
         run: |
           cargo build --release --package baras-parse-worker
           mkdir -p app/src-tauri/binaries
-          cp target/release/baras-parse-worker app/src-tauri/binaries/baras-parse-worker-x86_64-apple-darwin
+          cp target/release/baras-parse-worker app/src-tauri/binaries/baras-parse-worker-aarch64-apple-darwin
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
