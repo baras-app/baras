@@ -1160,7 +1160,11 @@ pub fn App() -> Element {
 
                             div { class: "settings-section",
                                 h4 { "Global Hotkeys" }
-                                p { class: "hint", "Format: Ctrl+Shift+Key (Windows only)" }
+                                p { class: "hint", "Format: Ctrl+Shift+Key" }
+                                p { class: "hint hint-warning",
+                                    i { class: "fa-solid fa-triangle-exclamation" }
+                                    " Global hotkeys are Windows-only. Linux and Wayland do not support global hotkeys due to security restrictions."
+                                }
                                 p { class: "hint hint-warning",
                                     i { class: "fa-solid fa-triangle-exclamation" }
                                     " Restart app after changes."
