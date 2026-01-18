@@ -64,10 +64,11 @@ Plans:
   3. Historical session hides Area, Class, and Discipline (reduces noise)
   4. User can distinguish live vs historical sessions via clear icon/badge
   5. User can upload to Parsely directly from session page (not hunting in file explorer)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: TBD
+- [ ] 09-01-PLAN.md - Backend enhancements (SessionInfo fields, watcher fix)
+- [ ] 09-02-PLAN.md - Frontend session page polish (empty states, display, indicators, upload)
 
 ### Phase 10: Navigation Redesign
 **Goal**: User always knows current mode (live vs historical) and can resume live easily
@@ -136,7 +137,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 1-7 | v1.0 | 23/23 | Complete | 2026-01-18 |
 | 8. Platform Foundation | v1.1 | 2/2 | Complete | 2026-01-18 |
-| 9. Session Page Polish | v1.1 | 0/? | Not started | - |
+| 9. Session Page Polish | v1.1 | 0/2 | Not started | - |
 | 10. Navigation Redesign | v1.1 | 0/? | Not started | - |
 | 11. Profile System Fixes | v1.1 | 0/? | Not started | - |
 | 12. Overlay Improvements | v1.1 | 0/? | Not started | - |
@@ -144,4 +145,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 8 complete*
+*Last updated: 2026-01-18 - Phase 9 planned*
