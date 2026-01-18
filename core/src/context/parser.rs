@@ -301,10 +301,13 @@ impl ParsingSession {
     /// Process counter triggers from timer events (expires and starts).
     /// Must be called after dispatch_signals when timer manager may have timer events.
     fn process_timer_counter_triggers(&mut self, timestamp: chrono::NaiveDateTime) {
-        // Get timer IDs from timer manager
+        // Get timer IDs from timer manager (clone to release lock before further processing)
         let (expired_ids, started_ids) = if let Some(timer_mgr) = &self.timer_manager {
             if let Ok(timer_mgr) = timer_mgr.lock() {
-                (timer_mgr.expired_timer_ids(), timer_mgr.started_timer_ids())
+                (
+                    timer_mgr.expired_timer_ids().to_vec(),
+                    timer_mgr.started_timer_ids().to_vec(),
+                )
             } else {
                 return;
             }

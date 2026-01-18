@@ -412,20 +412,19 @@ impl EffectTracker {
 
         // Fire alerts for effects whose base duration ended
         for def_id in base_ended_def_ids {
-            if let Some(def) = self.definitions.effects.get(&def_id) {
-                if def.alert_on == AlertTrigger::OnExpire {
-                    if let Some(text) = &def.alert_text {
-                        self.fired_alerts.push(FiredAlert {
-                            id: def.id.clone(),
-                            name: def.name.clone(),
-                            text: text.clone(),
-                            color: def.color,
-                            timestamp: current_time,
-                            audio_enabled: false,
-                            audio_file: None,
-                        });
-                    }
-                }
+            if let Some(def) = self.definitions.effects.get(&def_id)
+                && def.alert_on == AlertTrigger::OnExpire
+                && let Some(text) = &def.alert_text
+            {
+                self.fired_alerts.push(FiredAlert {
+                    id: def_id,
+                    name: def.name.clone(),
+                    text: text.clone(),
+                    color: def.color,
+                    timestamp: current_time,
+                    audio_enabled: false,
+                    audio_file: None,
+                });
             }
         }
 
@@ -501,10 +500,7 @@ impl EffectTracker {
         let mut pending_alerts: Vec<FiredAlert> = Vec::new();
 
         for def in matching_defs {
-            let key = EffectKey {
-                definition_id: def.id.clone(),
-                target_entity_id: target_id,
-            };
+            let key = EffectKey::new(&def.id, target_id);
 
             let duration = self.effective_duration(def);
 
@@ -521,18 +517,18 @@ impl EffectTracker {
                 should_register = true;
 
                 // Collect alert for effect refresh if configured
-                if def.alert_on == AlertTrigger::OnApply {
-                    if let Some(text) = &def.alert_text {
-                        pending_alerts.push(FiredAlert {
-                            id: def.id.clone(),
-                            name: def.name.clone(),
-                            text: text.clone(),
-                            color: def.color,
-                            timestamp,
-                            audio_enabled: false,
-                            audio_file: None,
-                        });
-                    }
+                if def.alert_on == AlertTrigger::OnApply
+                    && let Some(text) = &def.alert_text
+                {
+                    pending_alerts.push(FiredAlert {
+                        id: def.id.clone(),
+                        name: def.name.clone(),
+                        text: text.clone(),
+                        color: def.color,
+                        timestamp,
+                        audio_enabled: false,
+                        audio_file: None,
+                    });
                 }
             } else {
                 // Create new effect
@@ -570,18 +566,18 @@ impl EffectTracker {
                 should_register = true;
 
                 // Collect alert for effect start if configured
-                if def.alert_on == AlertTrigger::OnApply {
-                    if let Some(text) = &def.alert_text {
-                        pending_alerts.push(FiredAlert {
-                            id: def.id.clone(),
-                            name: def.name.clone(),
-                            text: text.clone(),
-                            color: def.color,
-                            timestamp,
-                            audio_enabled: false,
-                            audio_file: None,
-                        });
-                    }
+                if def.alert_on == AlertTrigger::OnApply
+                    && let Some(text) = &def.alert_text
+                {
+                    pending_alerts.push(FiredAlert {
+                        id: def.id.clone(),
+                        name: def.name.clone(),
+                        text: text.clone(),
+                        color: def.color,
+                        timestamp,
+                        audio_enabled: false,
+                        audio_file: None,
+                    });
                 }
             }
         }
@@ -746,10 +742,7 @@ impl EffectTracker {
         // Refresh effects on all collected targets
         for target_id in collecting.targets {
             for (def_id, duration) in &refreshable_def_ids {
-                let key = EffectKey {
-                    definition_id: def_id.clone(),
-                    target_entity_id: target_id,
-                };
+                let key = EffectKey::new(def_id, target_id);
                 if let Some(effect) = self.active_effects.get_mut(&key) {
                     effect.refresh(collecting.anchor_timestamp, *duration);
                 }
@@ -838,10 +831,7 @@ impl EffectTracker {
                 target_name
             };
 
-            let key = EffectKey {
-                definition_id: def.id.clone(),
-                target_entity_id: effect_target_id,
-            };
+            let key = EffectKey::new(&def.id, effect_target_id);
 
             let duration = self.effective_duration(def);
 
@@ -920,10 +910,7 @@ impl EffectTracker {
         let is_from_local = local_player_id == Some(source_id);
 
         for def in matching_defs {
-            let key = EffectKey {
-                definition_id: def.id.clone(),
-                target_entity_id: target_id,
-            };
+            let key = EffectKey::new(&def.id, target_id);
 
             if def.is_effect_applied_trigger() {
                 // Mark existing effect as removed (normal behavior)
@@ -999,10 +986,7 @@ impl EffectTracker {
             .collect();
 
         for def in matching_defs {
-            let key = EffectKey {
-                definition_id: def.id.clone(),
-                target_entity_id: target_id,
-            };
+            let key = EffectKey::new(&def.id, target_id);
 
             // Calculate duration before borrowing active_effects mutably
             let duration = if def.is_refreshed_on_modify {
