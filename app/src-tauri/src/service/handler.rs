@@ -210,11 +210,63 @@ impl ServiceHandle {
         let cache = session.session_cache.as_ref()?;
 
         // Extract session start time from active file name
-        let session_start = session.active_file.as_ref().and_then(|path| {
+        let start_datetime = session.active_file.as_ref().and_then(|path| {
             let filename = path.file_name()?.to_str()?;
             let (_, datetime) = baras_core::context::parse_log_filename(filename)?;
-            Some(datetime.format("%b %d, %l:%M %p").to_string())
+            Some(datetime)
         });
+        let session_start = start_datetime.map(|dt| dt.format("%b %d, %l:%M %p").to_string());
+
+        // For historical sessions, calculate end time and duration
+        let is_live = self.shared.is_live_tailing.load(Ordering::SeqCst);
+        let (session_end, duration_formatted) = if !is_live {
+            // Try to get end time from last encounter (ISO 8601 format)
+            let last_end_time = cache
+                .encounter_history
+                .summaries()
+                .iter()
+                .rev()
+                .find_map(|s| s.end_time.as_ref())
+                .and_then(|iso| chrono::NaiveDateTime::parse_from_str(iso, "%+").ok());
+
+            // Fallback to file modification time if no encounters
+            let end_naive = last_end_time.or_else(|| {
+                session.active_file.as_ref().and_then(|path| {
+                    path.metadata()
+                        .ok()
+                        .and_then(|m| m.modified().ok())
+                        .map(|st| {
+                            chrono::DateTime::<chrono::Local>::from(st).naive_local()
+                        })
+                })
+            });
+
+            let session_end = end_naive.map(|dt| dt.format("%b %d, %l:%M %p").to_string());
+
+            // Calculate duration if we have both start and end
+            let duration_formatted = match (start_datetime, end_naive) {
+                (Some(start), Some(end)) => {
+                    let duration = end.signed_duration_since(start);
+                    let total_mins = duration.num_minutes();
+                    if total_mins < 60 {
+                        Some(format!("{}m", total_mins.max(1)))
+                    } else {
+                        let hours = total_mins / 60;
+                        let mins = total_mins % 60;
+                        if mins == 0 {
+                            Some(format!("{}h", hours))
+                        } else {
+                            Some(format!("{}h {}m", hours, mins))
+                        }
+                    }
+                }
+                _ => None,
+            };
+
+            (session_end, duration_formatted)
+        } else {
+            (None, None)
+        };
 
         Some(SessionInfo {
             player_name: if cache.player_initialized {
@@ -245,6 +297,8 @@ impl ServiceHandle {
                 .max()
                 .unwrap_or(0) as usize,
             session_start,
+            session_end,
+            duration_formatted,
         })
     }
 

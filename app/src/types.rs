@@ -55,7 +55,12 @@ pub struct SessionInfo {
     pub area_name: Option<String>,
     pub in_combat: bool,
     pub encounter_count: usize,
+    /// Session start time formatted as "Jan 18, 3:45 PM"
     pub session_start: Option<String>,
+    /// Session end time for historical sessions (formatted as "Jan 18, 3:45 PM")
+    pub session_end: Option<String>,
+    /// Duration formatted as short form (e.g., "47m" or "1h 23m")
+    pub duration_formatted: Option<String>,
 }
 
 /// Overlay status response from backend
