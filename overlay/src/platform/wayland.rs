@@ -645,17 +645,17 @@ impl WaylandOverlay {
             .map(|(output, info)| (output.clone(), info.clone()));
 
         let Some((new_output, new_info)) = new_output_info else {
-            eprintln!("Rebind failed: output {} not found", output_name);
+            tracing::error!(output = output_name, "Rebind failed: output not found");
             return;
         };
 
-        eprintln!(
-            "Rebinding to output {} at ({}, {}) size {}x{}",
-            new_info.id(),
-            new_info.x,
-            new_info.y,
-            new_info.logical_width(),
-            new_info.logical_height()
+        tracing::debug!(
+            output = %new_info.id(),
+            x = new_info.x,
+            y = new_info.y,
+            width = new_info.logical_width(),
+            height = new_info.logical_height(),
+            "Rebinding to output"
         );
 
         // Calculate absolute position before destroying old surface
@@ -671,9 +671,14 @@ impl WaylandOverlay {
         let clamped_x = new_rel_x.clamp(0, max_x);
         let clamped_y = new_rel_y.clamp(0, max_y);
 
-        eprintln!(
-            "  Absolute ({}, {}) -> relative ({}, {}) -> clamped ({}, {})",
-            abs_x, abs_y, new_rel_x, new_rel_y, clamped_x, clamped_y
+        tracing::debug!(
+            abs_x,
+            abs_y,
+            rel_x = new_rel_x,
+            rel_y = new_rel_y,
+            clamped_x,
+            clamped_y,
+            "Rebind position conversion"
         );
 
         // Destroy old surface and layer surface
@@ -686,11 +691,11 @@ impl WaylandOverlay {
 
         // Get compositor and layer_shell for creating new surface
         let Some(compositor) = &self.state.compositor else {
-            eprintln!("Rebind failed: no compositor");
+            tracing::error!("Rebind failed: no compositor");
             return;
         };
         let Some(layer_shell) = &self.state.layer_shell else {
-            eprintln!("Rebind failed: no layer_shell");
+            tracing::error!("Rebind failed: no layer_shell");
             return;
         };
 
@@ -754,10 +759,7 @@ impl WaylandOverlay {
         }
         let _ = self.connection.flush();
 
-        eprintln!(
-            "Rebind complete, new bounds: {:?}",
-            self.state.bound_output_bounds
-        );
+        tracing::debug!(?self.state.bound_output_bounds, "Rebind complete");
     }
 }
 
@@ -850,20 +852,17 @@ impl OverlayPlatform for WaylandOverlay {
         let _ = event_queue.roundtrip(&mut state);
 
         // Debug: print all outputs and their state
-        eprintln!(
-            "Looking for target_monitor_id: {:?}",
-            config.target_monitor_id
-        );
+        tracing::debug!(?config.target_monitor_id, "Looking for target monitor");
         for (_, info) in &state.outputs {
-            eprintln!(
-                "  Available: {} at ({}, {}) size {}x{} wl_done={} xdg_done={}",
-                info.id(),
-                info.x,
-                info.y,
-                info.logical_width(),
-                info.logical_height(),
-                info.wl_done,
-                info.xdg_done
+            tracing::debug!(
+                output = %info.id(),
+                x = info.x,
+                y = info.y,
+                width = info.logical_width(),
+                height = info.logical_height(),
+                wl_done = info.wl_done,
+                xdg_done = info.xdg_done,
+                "Available output"
             );
         }
 
@@ -879,13 +878,13 @@ impl OverlayPlatform for WaylandOverlay {
                 .iter()
                 .find(|(_, info)| info.is_ready() && info.id() == *target_id)
             {
-                eprintln!(
-                    "Binding to saved output {} at ({}, {}) size {}x{}",
-                    info.id(),
-                    info.x,
-                    info.y,
-                    info.logical_width(),
-                    info.logical_height()
+                tracing::debug!(
+                    output = %info.id(),
+                    x = info.x,
+                    y = info.y,
+                    width = info.logical_width(),
+                    height = info.logical_height(),
+                    "Binding to saved output"
                 );
 
                 // Position is already relative to this monitor, just clamp it
@@ -893,29 +892,29 @@ impl OverlayPlatform for WaylandOverlay {
                 let max_y = (info.logical_height() - config.height as i32).max(0);
                 let clamped_x = config.x.clamp(0, max_x);
                 let clamped_y = config.y.clamp(0, max_y);
-                eprintln!(
-                    "  Position ({}, {}) -> clamped ({}, {})",
-                    config.x, config.y, clamped_x, clamped_y
+                tracing::debug!(
+                    input_x = config.x,
+                    input_y = config.y,
+                    clamped_x,
+                    clamped_y,
+                    "Position clamping"
                 );
 
                 let bounds = Some((info.x, info.y, info.logical_width(), info.logical_height()));
                 (Some(output.clone()), clamped_x, clamped_y, bounds)
             } else {
                 // Saved monitor not found, let compositor decide
-                eprintln!(
-                    "Saved monitor {} not found, letting compositor choose",
-                    target_id
-                );
+                tracing::warn!(target_id, "Saved monitor not found, letting compositor choose");
                 (None, config.x.max(0), config.y.max(0), None)
             }
         } else {
             // No saved monitor_id - let compositor choose (will be active/focused output)
             // The wl_surface::Enter event will tell us which output we ended up on
-            eprintln!("No saved monitor_id, letting compositor choose active output");
-            eprintln!("  Using position ({}, {}) as margins", config.x, config.y);
+            tracing::debug!("No monitor_id, compositor chooses output");
+            tracing::debug!(x = config.x, y = config.y, "Using position as margins");
             (None, config.x.max(0), config.y.max(0), None)
         };
-        eprintln!("Final bound_output_bounds: {:?}", bound_output_bounds);
+        tracing::debug!(?bound_output_bounds, "Final output bounds");
 
         // Store bound output info for clamping
         state.bound_output_bounds = bound_output_bounds;
@@ -957,9 +956,12 @@ impl OverlayPlatform for WaylandOverlay {
         layer_surface.set_keyboard_interactivity(KeyboardInteractivity::None);
         layer_surface.set_size(config.width, config.height);
         surface.commit();
-        eprintln!(
-            "Layer surface configured: margin=({}, {}), size={}x{}",
-            margin_x, margin_y, config.width, config.height
+        tracing::debug!(
+            margin_x,
+            margin_y,
+            width = config.width,
+            height = config.height,
+            "Layer surface configured"
         );
 
         // window_x/window_y are stored as output-relative for internal use
@@ -1325,13 +1327,13 @@ impl Dispatch<WlSurface, ()> for WaylandState {
                 && info.logical_width() > 0
                 && info.logical_height() > 0
             {
-                eprintln!(
-                    "Surface entered output: {} at ({}, {}) size {}x{}",
-                    info.id(),
-                    info.x,
-                    info.y,
-                    info.logical_width(),
-                    info.logical_height()
+                tracing::debug!(
+                    output = %info.id(),
+                    x = info.x,
+                    y = info.y,
+                    width = info.logical_width(),
+                    height = info.logical_height(),
+                    "Surface entered output"
                 );
                 state.bound_output_bounds =
                     Some((info.x, info.y, info.logical_width(), info.logical_height()));
@@ -1401,17 +1403,17 @@ impl Dispatch<WlOutput, u32> for WaylandState {
                 if info.xdg_logical_width > 0 {
                     info.xdg_done = true;
                 }
-                eprintln!(
-                    "Output {}: {} at ({}, {}) size {}x{} (physical {}x{}, scale {})",
-                    data,
-                    info.id(),
-                    info.x,
-                    info.y,
-                    info.logical_width(),
-                    info.logical_height(),
-                    info.physical_width,
-                    info.physical_height,
-                    info.scale
+                tracing::debug!(
+                    global_name = data,
+                    output = %info.id(),
+                    x = info.x,
+                    y = info.y,
+                    logical_width = info.logical_width(),
+                    logical_height = info.logical_height(),
+                    physical_width = info.physical_width,
+                    physical_height = info.physical_height,
+                    scale = info.scale,
+                    "Output info complete"
                 );
             }
             _ => {}

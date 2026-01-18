@@ -4,10 +4,10 @@
 //! with click-through support.
 #![allow(clippy::too_many_arguments)]
 
-// Debug logging macro - prints to stderr with [WIN-OVERLAY] prefix
+// Debug logging macro - uses tracing for structured logging
 macro_rules! overlay_log {
     ($($arg:tt)*) => {
-        eprintln!("[WIN-OVERLAY] {}", format!($($arg)*));
+        tracing::debug!(target: "win_overlay", "{}", format!($($arg)*));
     };
 }
 

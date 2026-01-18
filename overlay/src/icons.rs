@@ -43,10 +43,7 @@ impl IconCache {
     /// * `max_cache_size` - Maximum number of icons to cache
     pub fn new(csv_path: &Path, zip_path: &Path, max_cache_size: usize) -> Result<Self, String> {
         let ability_to_icon = load_icon_csv(csv_path)?;
-        eprintln!(
-            "[ICONS] Loaded {} ability->icon mappings from CSV",
-            ability_to_icon.len()
-        );
+        tracing::debug!(count = ability_to_icon.len(), "Loaded ability->icon mappings from CSV");
 
         // Build list of ZIP paths to check
         let mut zip_paths = vec![zip_path.to_string_lossy().to_string()];
@@ -55,7 +52,7 @@ impl IconCache {
         if let Some(parent) = zip_path.parent() {
             let zip2_path = parent.join("icons2.zip");
             if zip2_path.exists() {
-                eprintln!("[ICONS] Found secondary ZIP: {:?}", zip2_path);
+                tracing::debug!(path = ?zip2_path, "Found secondary icon ZIP");
                 zip_paths.push(zip2_path.to_string_lossy().to_string());
             }
         }
@@ -78,14 +75,11 @@ impl IconCache {
         let icon_name = match self.ability_to_icon.get(&ability_id) {
             Some(name) => name,
             None => {
-                eprintln!("[ICONS] No CSV mapping for ability_id={}", ability_id);
+                tracing::debug!(ability_id, "No CSV mapping for ability");
                 return None;
             }
         };
-        match self.get_icon_by_name(icon_name) {
-            Some(data) => Some(data),
-            None => None,
-        }
+        self.get_icon_by_name(icon_name)
     }
 
     /// Get icon data by name (loads from ZIP if not cached)
