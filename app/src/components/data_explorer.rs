@@ -1703,10 +1703,10 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
                                                 }
                                                 // Ability rows (only shown when Ability breakdown is enabled)
                                                 if show_ability_col {
-                                                    for ability in abilities.iter() {
-                                                        tr { key: "{ability.ability_id}", class: if stats.target.is_some() { "ability-row indented" } else { "ability-row" },
+                                                    for (idx, ability) in abilities.iter().enumerate() {
+                                                        tr { key: "{stats.target.as_deref().unwrap_or(\"\")}-{idx}-{ability.ability_id}", class: if stats.target.is_some() { "ability-row indented" } else { "ability-row" },
                                                             td { class: "ability-name-cell",
-                                                                AbilityIcon { key: "{ability.ability_id}", ability_id: ability.ability_id }
+                                                                AbilityIcon { ability_id: ability.ability_id }
                                                                 "{ability.ability_name}"
                                                             }
                                                             td { class: "num", "{format_number(ability.total_value)}" }
