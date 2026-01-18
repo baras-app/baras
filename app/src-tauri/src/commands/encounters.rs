@@ -21,6 +21,7 @@ use baras_core::boss::{
 use baras_core::timers::{TimerPreferences, boss_timer_key};
 
 use crate::service::ServiceHandle;
+use tracing::debug;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Core Types
@@ -187,17 +188,16 @@ fn generate_dsl_id(boss_id: &str, name: &str) -> String {
 /// Load bosses from a single file with custom overlays merged.
 fn load_file_with_custom(file_path: &Path) -> Result<Vec<BossWithPath>, String> {
     let user_dir = get_user_encounters_dir();
-    eprintln!("[ENCOUNTERS] load_file_with_custom: {:?}", file_path);
-    eprintln!("[ENCOUNTERS] user_dir: {:?}", user_dir);
+    debug!(file_path = ?file_path, user_dir = ?user_dir, "load_file_with_custom");
 
     let mut bosses = load_bosses_with_custom(file_path, user_dir.as_deref())?;
-    eprintln!("[ENCOUNTERS] Loaded {} boss definitions", bosses.len());
+    debug!(count = bosses.len(), "Loaded boss definitions");
     for boss in &bosses {
-        eprintln!(
-            "[ENCOUNTERS]   - {} ({}) with {} timers",
-            boss.name,
-            boss.id,
-            boss.timers.len()
+        debug!(
+            name = %boss.name,
+            id = %boss.id,
+            timer_count = boss.timers.len(),
+            "Boss loaded"
         );
     }
 
@@ -365,15 +365,14 @@ fn save_timer_preferences(prefs: &TimerPreferences) -> Result<(), String> {
 pub async fn fetch_area_bosses(file_path: String) -> Result<Vec<BossWithPathResponse>, String> {
     let path = PathBuf::from(&file_path);
 
-    eprintln!("[ENCOUNTERS] fetch_area_bosses called for: {}", file_path);
-    eprintln!("[ENCOUNTERS] Path exists: {}", path.exists());
+    debug!(file_path = %file_path, path_exists = path.exists(), "fetch_area_bosses called");
 
     if !path.exists() {
         return Err(format!("File not found: {}", file_path));
     }
 
     let mut bosses = load_file_with_custom(&path)?;
-    eprintln!("[ENCOUNTERS] Loaded {} bosses", bosses.len());
+    debug!(count = bosses.len(), "Loaded bosses for area");
 
     let prefs = load_timer_preferences();
 

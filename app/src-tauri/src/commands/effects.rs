@@ -20,6 +20,7 @@ use baras_core::effects::{
 use baras_types::AbilitySelector;
 
 use crate::service::ServiceHandle;
+use tracing::warn;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types for Frontend
@@ -245,9 +246,10 @@ fn load_all_effects(app_handle: &AppHandle) -> Vec<(EffectDefinition, bool)> {
             } else {
                 // Version mismatch - delete user file
                 if let Some(path) = get_user_effects_path() {
-                    eprintln!(
-                        "[EFFECTS] User effects version mismatch (file={}, expected={}), deleting",
-                        version, EFFECTS_DSL_VERSION
+                    warn!(
+                        file_version = version,
+                        expected_version = EFFECTS_DSL_VERSION,
+                        "User effects version mismatch, deleting file"
                     );
                     let _ = std::fs::remove_file(path);
                 }

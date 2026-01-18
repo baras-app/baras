@@ -7,6 +7,7 @@
 
 use crate::overlay::{OverlayCommand, OverlayManager, OverlayType, SharedOverlayState};
 use crate::service::ServiceHandle;
+use tracing::{error, info, warn};
 
 /// Register global hotkeys from config
 pub fn spawn_register_hotkeys(
@@ -42,12 +43,12 @@ pub fn spawn_register_hotkeys(
                         }
                     })
                 {
-                    eprintln!("[HOTKEY] Failed to register visibility hotkey: {}", e);
+                    error!(error = %e, hotkey = %key_str, "Failed to register visibility hotkey");
                 } else {
-                    eprintln!("[HOTKEY] Registered visibility hotkey: {}", key_str);
+                    info!(hotkey = %key_str, "Registered visibility hotkey");
                 }
             } else {
-                eprintln!("[HOTKEY] Invalid visibility hotkey format: {}", key_str);
+                warn!(hotkey = %key_str, "Invalid visibility hotkey format");
             }
         }
 
@@ -68,12 +69,12 @@ pub fn spawn_register_hotkeys(
                         }
                     })
                 {
-                    eprintln!("[HOTKEY] Failed to register move mode hotkey: {}", e);
+                    error!(error = %e, hotkey = %key_str, "Failed to register move mode hotkey");
                 } else {
-                    eprintln!("[HOTKEY] Registered move mode hotkey: {}", key_str);
+                    info!(hotkey = %key_str, "Registered move mode hotkey");
                 }
             } else {
-                eprintln!("[HOTKEY] Invalid move mode hotkey format: {}", key_str);
+                warn!(hotkey = %key_str, "Invalid move mode hotkey format");
             }
         }
 
@@ -94,12 +95,12 @@ pub fn spawn_register_hotkeys(
                         }
                     })
                 {
-                    eprintln!("[HOTKEY] Failed to register rearrange mode hotkey: {}", e);
+                    error!(error = %e, hotkey = %key_str, "Failed to register rearrange mode hotkey");
                 } else {
-                    eprintln!("[HOTKEY] Registered rearrange mode hotkey: {}", key_str);
+                    info!(hotkey = %key_str, "Registered rearrange mode hotkey");
                 }
             } else {
-                eprintln!("[HOTKEY] Invalid rearrange mode hotkey format: {}", key_str);
+                warn!(hotkey = %key_str, "Invalid rearrange mode hotkey format");
             }
         }
     });
