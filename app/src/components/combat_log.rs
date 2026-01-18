@@ -143,10 +143,11 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
             Some(search)
         };
 
+        // Reset scroll position synchronously before async load
+        scroll_top.set(0.0);
+        loaded_offset.set(0);
+
         spawn(async move {
-            // Reset scroll position
-            scroll_top.set(0.0);
-            loaded_offset.set(0);
 
             let tr_opt = if tr.start == 0.0 && tr.end == 0.0 {
                 None
