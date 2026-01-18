@@ -91,10 +91,13 @@ Plans:
   2. Failed backend operations display error feedback in UI
   3. Error states show actionable information (not blank/frozen screens)
   4. User can recover from errors without reloading application
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md — Toast notification system (component + CSS + provider)
+- [ ] 05-02-PLAN.md — JS interop helper for api.rs (~60 unwraps)
+- [ ] 05-03-PLAN.md — ECharts JS interop cleanup (~95 unwraps in charts + data explorer)
+- [ ] 05-04-PLAN.md — API Result conversion + toast wiring
 
 ### Phase 6: Logging Migration
 **Goal**: All diagnostic output uses structured tracing instead of eprintln
@@ -137,7 +140,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 | 2. Core Error Types | 3/3 | Complete ✓ | 2026-01-17 |
 | 3. Core Error Handling | 3/3 | Complete ✓ | 2026-01-17 |
 | 4. Backend Error Handling | 3/3 | Complete ✓ | 2026-01-18 |
-| 5. Frontend Error Handling | 0/TBD | Not started | - |
+| 5. Frontend Error Handling | 0/4 | Planned | - |
 | 6. Logging Migration | 0/TBD | Not started | - |
 | 7. Clone Cleanup | 0/TBD | Not started | - |
 
