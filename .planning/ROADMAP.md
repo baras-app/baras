@@ -30,7 +30,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Milestone Goal:** Eliminate confusion and friction in the UI - empty states, unclear controls, buried features, and workflow inconsistencies.
 
-- [ ] **Phase 8: Platform Foundation** - Infrastructure fixes that enable cleaner UX
+- [x] **Phase 8: Platform Foundation** - Infrastructure fixes that enable cleaner UX
 - [ ] **Phase 9: Session Page Polish** - Empty states, historical display, Parsely access
 - [ ] **Phase 10: Navigation Redesign** - Live/historical indicator with Resume Live action
 - [ ] **Phase 11: Profile System Fixes** - Visibility toggle decoupling and re-render fixes
@@ -51,8 +51,8 @@ See: `.planning/milestones/v1.0-ROADMAP.md`
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md - Single instance enforcement + hotkey limitation docs
-- [ ] 08-02-PLAN.md - Windows font fix + Alacrity/Latency relocation
+- [x] 08-01-PLAN.md - Single instance enforcement + hotkey limitation docs
+- [x] 08-02-PLAN.md - Windows font fix + Alacrity/Latency relocation
 
 ### Phase 9: Session Page Polish
 **Goal**: Session page shows helpful states and relevant information without noise
@@ -135,7 +135,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-7 | v1.0 | 23/23 | Complete | 2026-01-18 |
-| 8. Platform Foundation | v1.1 | 0/2 | Planned | - |
+| 8. Platform Foundation | v1.1 | 2/2 | Complete | 2026-01-18 |
 | 9. Session Page Polish | v1.1 | 0/? | Not started | - |
 | 10. Navigation Redesign | v1.1 | 0/? | Not started | - |
 | 11. Profile System Fixes | v1.1 | 0/? | Not started | - |
@@ -144,4 +144,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-01-18*
-*Last updated: 2026-01-18*
+*Last updated: 2026-01-18 - Phase 8 complete*

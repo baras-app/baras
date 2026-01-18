@@ -51,10 +51,10 @@ Requirements for UX Polish milestone. Eliminate confusion and friction in the UI
 
 ### Platform & Infrastructure
 
-- [ ] **PLAT-01**: Single instance enforcement prevents multiple app instances
-- [ ] **PLAT-02**: SVG font fallback for Windows (BARAS header)
-- [ ] **PLAT-03**: Hotkey settings explain Wayland/Linux limitations clearly
-- [ ] **PLAT-04**: Alacrity/Latency fields have explanatory tooltips and more prominent placement
+- [x] **PLAT-01**: Single instance enforcement prevents multiple app instances
+- [x] **PLAT-02**: SVG font fallback for Windows (BARAS header)
+- [x] **PLAT-03**: Hotkey settings explain Wayland/Linux limitations clearly
+- [x] **PLAT-04**: Alacrity/Latency fields have explanatory tooltips and more prominent placement
 
 ### Data Explorer
 
@@ -107,10 +107,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SESS-01 | Phase 9 | Pending |
 | SESS-02 | Phase 9 | Pending |
 | SESS-03 | Phase 9 | Pending |
-| PLAT-01 | Phase 8 | Pending |
-| PLAT-02 | Phase 8 | Pending |
-| PLAT-03 | Phase 8 | Pending |
-| PLAT-04 | Phase 8 | Pending |
+| PLAT-01 | Phase 8 | Complete |
+| PLAT-02 | Phase 8 | Complete |
+| PLAT-03 | Phase 8 | Complete |
+| PLAT-04 | Phase 8 | Complete |
 | DATA-01 | Phase 13 | Pending |
 
 **Coverage:**
