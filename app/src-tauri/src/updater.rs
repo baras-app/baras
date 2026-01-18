@@ -26,7 +26,7 @@ pub fn spawn_update_check(app: AppHandle) {
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
 
         if let Err(e) = check_for_update(&app).await {
-            eprintln!("Update check failed: {e}");
+            tracing::error!(error = %e, "Update check failed");
         }
     });
 }
@@ -43,7 +43,10 @@ async fn check_for_update(app: &AppHandle) -> Result<(), Box<dyn std::error::Err
 
         // Cache the update for later installation
         if let Some(state) = app.try_state::<PendingUpdate>() {
-            *state.0.lock().unwrap() = Some(update);
+            *state.0.lock().unwrap_or_else(|poisoned| {
+                tracing::warn!("PendingUpdate mutex poisoned, recovering");
+                poisoned.into_inner()
+            }) = Some(update);
         }
 
         // Emit event to frontend
@@ -59,7 +62,16 @@ pub async fn install_update(app: AppHandle) -> Result<(), String> {
     // Take the cached update (removes it from state)
     let update = app
         .try_state::<PendingUpdate>()
-        .and_then(|state| state.0.lock().unwrap().take())
+        .and_then(|state| {
+            state
+                .0
+                .lock()
+                .unwrap_or_else(|poisoned| {
+                    tracing::warn!("PendingUpdate mutex poisoned, recovering");
+                    poisoned.into_inner()
+                })
+                .take()
+        })
         .ok_or("No pending update available")?;
 
     // Download and install
@@ -108,7 +120,10 @@ pub async fn check_update(app: AppHandle) -> Result<Option<UpdateAvailable>, Str
 
         // Cache the update for later installation
         if let Some(state) = app.try_state::<PendingUpdate>() {
-            *state.0.lock().unwrap() = Some(u);
+            *state.0.lock().unwrap_or_else(|poisoned| {
+                tracing::warn!("PendingUpdate mutex poisoned, recovering");
+                poisoned.into_inner()
+            }) = Some(u);
         }
 
         info
