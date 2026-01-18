@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-18)
 
 ## Current Position
 
-Phase: 13 of 13 (Editor Polish)
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-01-18 - Completed Phase 12 Overlay Improvements
+Phase: 11 of 13 (Profile System Fixes)
+Plan: 1 of 1 complete in current phase
+Status: Phase complete
+Last activity: 2026-01-18 - Completed 11-01-PLAN.md (Profile System Fixes)
 
-Progress: [##############........] 30/32+ plans (~94% v1.0-v1.1)
+Progress: [###############.......] 31/32+ plans (~97% v1.0-v1.1)
 
 ## Performance Metrics
 
@@ -26,8 +26,8 @@ Progress: [##############........] 30/32+ plans (~94% v1.0-v1.1)
 - Files modified: 124
 
 **v1.1 UX Polish (in progress):**
-- Plans completed: 7 (Phase 8: 2, Phase 9: 2, Phase 12: 3)
-- Phases 10-11 deferred (out of order execution)
+- Plans completed: 8 (Phase 8: 2, Phase 9: 2, Phase 11: 1, Phase 12: 3)
+- Phase 10 deferred (out of order execution)
 
 ## Accumulated Context
 
@@ -35,6 +35,11 @@ Progress: [##############........] 30/32+ plans (~94% v1.0-v1.1)
 
 Decisions are logged in PROJECT.md Key Decisions table.
 See `.planning/milestones/v1.0-ROADMAP.md` for full v1.0 decision history.
+
+**Phase 11 Decisions:**
+- Made refresh_raid_frames public for cross-module access
+- Used RefreshRaidFrames command (proven code path) to resend data after overlay respawn
+- Empty profile state shows "Default" label with "Save as Profile" button
 
 **Phase 12 Decisions:**
 - Renamed "Customize" to "Settings" for conventional clarity
@@ -58,5 +63,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Phase 12 complete, ready for Phase 13
+Stopped at: Phase 11 complete (Profile System Fixes)
 Resume file: None
