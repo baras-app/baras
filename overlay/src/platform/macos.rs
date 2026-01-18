@@ -246,14 +246,18 @@ impl MacOSOverlay {
 
 impl OverlayPlatform for MacOSOverlay {
     fn new(config: OverlayConfig) -> Result<Self, PlatformError> {
+        // objc2-app-kit operations require running on the main thread
+        // For overlay use cases, we're always on the main thread during init
+
         unsafe {
-            // Initialize app if needed
-            let app = NSApp();
-            app.setActivationPolicy_(NSApplicationActivationPolicyAccessory);
+            // Initialize app if needed - use objc2-app-kit
+            let app = NSApplication::sharedApplication();
+            app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
 
             // Get main screen height for coordinate conversion
-            let main_screen = NSScreen::mainScreen(nil);
-            let main_frame = NSScreen::frame(main_screen);
+            let main_screen = NSScreen::mainScreen()
+                .ok_or_else(|| PlatformError::Other("No main screen".into()))?;
+            let main_frame = main_screen.frame();
             let main_screen_height = main_frame.size.height;
 
             // Convert position from top-left to bottom-left origin
@@ -264,40 +268,43 @@ impl OverlayPlatform for MacOSOverlay {
                 NSSize::new(config.width as f64, config.height as f64),
             );
 
-            // Create borderless window
-            let window = NSWindow::alloc(nil).initWithContentRect_styleMask_backing_defer_(
-                rect,
-                NSWindowStyleMask::NSBorderlessWindowMask,
-                NSBackingStoreBuffered,
-                NO,
-            );
+            // Create borderless window using objc2-app-kit
+            let window: Retained<NSWindow> = {
+                let alloc = NSWindow::alloc();
+                NSWindow::initWithContentRect_styleMask_backing_defer(
+                    alloc,
+                    rect,
+                    NSWindowStyleMask::Borderless,
+                    NSBackingStoreType::Buffered,
+                    false,
+                )
+            };
 
-            if window == nil {
-                return Err(PlatformError::Other("Failed to create NSWindow".into()));
-            }
+            // CRITICAL: Prevent window from being released when closed (MAC-04)
+            // This is required for correct memory management when not using a window controller
+            window.setReleasedWhenClosed(false);
 
             // Configure window for overlay behavior
-            window.setLevel_(
-                cocoa::appkit::NSMainMenuWindowLevel as i64 + 1, // Above most windows
-            );
-            window.setBackgroundColor_(NSColor::clearColor(nil));
-            window.setOpaque_(NO);
-            window.setHasShadow_(NO);
-            window.setIgnoresMouseEvents_(if config.click_through { YES } else { NO });
+            // NSMainMenuWindowLevel (24) + 1 = 25
+            window.setLevel(NSWindowLevel(25));
+            window.setBackgroundColor(Some(&NSColor::clearColor()));
+            window.setOpaque(false);
+            window.setHasShadow(false);
+            window.setIgnoresMouseEvents(config.click_through);
 
             // Prevent window from being hidden when app is deactivated
-            window.setCollectionBehavior_(
-                NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-                    | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
-                    | NSWindowCollectionBehavior::NSWindowCollectionBehaviorIgnoresCycle,
+            window.setCollectionBehavior(
+                NSWindowCollectionBehavior::CanJoinAllSpaces
+                    | NSWindowCollectionBehavior::Stationary
+                    | NSWindowCollectionBehavior::IgnoresCycle,
             );
 
-            // Create custom view using define_class!
+            // Create custom view using our define_class! defined view
             let view = BarasOverlayView::new(rect);
 
-            // Set content view using msg_send! to bridge Retained<BarasOverlayView> to cocoa's id
-            let _: () = msg_send![window, setContentView: &*view];
-            window.makeKeyAndOrderFront_(nil);
+            // Set view as window's content
+            window.setContentView(Some(&view));
+            window.makeKeyAndOrderFront(None);
 
             let size = (config.width * config.height * 4) as usize;
             let mut overlay = MacOSOverlay {
