@@ -127,6 +127,8 @@ pub enum ServiceCommand {
     StartWatcher,
     Shutdown,
     FileDetected(PathBuf),
+    /// File was modified - re-check character data for files missing it
+    FileModified(PathBuf),
     FileRemoved(PathBuf),
     DirectoryChanged,
     /// Reload timer/boss definitions from disk and update active session
@@ -662,6 +664,9 @@ impl CombatService {
                 ServiceCommand::FileDetected(path) => {
                     self.file_detected(path).await;
                 }
+                ServiceCommand::FileModified(path) => {
+                    self.file_modified(path).await;
+                }
                 ServiceCommand::FileRemoved(path) => {
                     self.file_removed(path).await;
                 }
@@ -774,6 +779,26 @@ impl CombatService {
         if should_switch {
             // Method calls stop_tailing at beginning so won't create duplicate tasks
             self.start_tailing(path).await;
+        }
+    }
+
+    /// Handle file modification - re-check character data for files that were missing it
+    async fn file_modified(&mut self, path: PathBuf) {
+        let updated = {
+            let mut index = self.shared.directory_index.write().await;
+            // Check if this specific file needs character re-extraction
+            if index.is_missing_character(&path) {
+                // Re-run character extraction since file may now have content
+                index.refresh_missing_characters()
+            } else {
+                0
+            }
+        };
+
+        if updated > 0 {
+            debug!(updated, "Re-read character names from modified files");
+            // Notify frontend that file list changed (display names may have updated)
+            let _ = self.app_handle.emit("log-files-changed", ());
         }
     }
 

@@ -7,6 +7,8 @@ use tokio::time::{Instant, sleep};
 
 pub enum DirectoryEvent {
     NewFile(PathBuf),
+    /// File was modified (grew in size) - useful for re-checking character on empty files
+    FileModified(PathBuf),
     FileRemoved(PathBuf),
     DirectoryIndexed {
         file_count: usize,
@@ -65,6 +67,16 @@ impl DirectoryWatcher {
                 for path in event.paths {
                     if is_combat_log(&path) {
                         return Some(self.handle_new_file(path).await);
+                    }
+                }
+            }
+            EventKind::Modify(_) => {
+                // File was modified - emit event so service can re-check character
+                // on files that were previously empty or missing character data
+                for path in event.paths {
+                    if is_combat_log(&path) {
+                        tracing::debug!(path = %path.display(), "Log file modified");
+                        return Some(DirectoryEvent::FileModified(path));
                     }
                 }
             }

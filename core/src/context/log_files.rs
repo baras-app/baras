@@ -242,6 +242,47 @@ impl DirectoryIndex {
             }
         }
     }
+
+    /// Check if a specific file is missing character data
+    pub fn is_missing_character(&self, path: &Path) -> bool {
+        self.entries
+            .get(path)
+            .map(|e| e.character_name.is_none())
+            .unwrap_or(false)
+    }
+
+    /// Re-attempt character extraction for files missing character data.
+    /// Returns the number of files updated with character names.
+    /// Should be called periodically when a session is waiting for character login.
+    pub fn refresh_missing_characters(&mut self) -> usize {
+        let mut updated = 0;
+        for entry in self.entries.values_mut() {
+            // Only retry if character_name is None and file now has content
+            if entry.character_name.is_none() {
+                // Check current file size
+                if let Ok(metadata) = fs::metadata(&entry.path) {
+                    let current_size = metadata.len();
+                    // File grew or was previously empty
+                    if current_size > 0 && (entry.is_empty || current_size > entry.file_size) {
+                        entry.file_size = current_size;
+                        entry.is_empty = false;
+                        // Try to extract character name now that file has content
+                        if let Ok(Some(name)) = extract_character_name(&entry.path, entry.created_at)
+                        {
+                            tracing::debug!(
+                                path = %entry.path.display(),
+                                character = %name,
+                                "Re-read character name from file"
+                            );
+                            entry.character_name = Some(name);
+                            updated += 1;
+                        }
+                    }
+                }
+            }
+        }
+        updated
+    }
 }
 
 pub fn parse_log_filename(filename: &str) -> Option<(NaiveDate, NaiveDateTime)> {
