@@ -433,11 +433,12 @@ impl EntityMatcher {
 /// - `[P]` = Phase only
 /// - `[C]` = Counter only
 /// - `[TPC]` = All systems
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Trigger {
     // ─── Combat State [TPC] ────────────────────────────────────────────────
     /// Combat starts. [TPC]
+    #[default]
     CombatStart,
 
     /// Combat ends. [C only]
@@ -613,11 +614,6 @@ impl Trigger {
     }
 }
 
-impl Default for Trigger {
-    fn default() -> Self {
-        Self::CombatStart
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Default Color Constants

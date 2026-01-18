@@ -402,9 +402,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for signal in &signals {
             timer_manager.handle_signal(signal, encounter);
             // Accumulate IDs after each signal (vectors are cleared per-signal)
-            expired_timer_ids.extend(timer_manager.expired_timer_ids());
-            cancelled_timer_ids.extend(timer_manager.cancelled_timer_ids());
-            started_timer_ids.extend(timer_manager.started_timer_ids());
+            expired_timer_ids.extend(timer_manager.expired_timer_ids().iter().cloned());
+            cancelled_timer_ids.extend(timer_manager.cancelled_timer_ids().iter().cloned());
+            started_timer_ids.extend(timer_manager.started_timer_ids().iter().cloned());
         }
 
         // Log new/restarted timers
