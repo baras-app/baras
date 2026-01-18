@@ -1172,6 +1172,39 @@ button:active {
   font-size: 1.1em;
 }
 
+.btn-session-upload:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.session-upload-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.btn-session-upload-result {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--swtor-blue);
+  color: var(--swtor-blue);
+  border-radius: var(--radius-sm);
+  padding: 0.3em 0.5em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-session-upload-result:hover {
+  background: var(--blue-alpha-20);
+}
+
+.upload-error {
+  color: var(--swtor-red);
+  cursor: help;
+}
+
 /* Active file display */
 .active-file {
   margin-top: 0.5vh;

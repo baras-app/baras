@@ -680,36 +680,67 @@ pub fn App() -> Element {
 
                                 // Parsely upload button
                                 if !current_file.is_empty() {
-                                    button {
-                                        class: "btn btn-session-upload",
-                                        title: "Upload to Parsely",
-                                        onclick: {
-                                            let path = current_file.clone();
-                                            move |_| {
-                                                let p = path.clone();
-                                                let mut toast = use_toast();
-                                                spawn(async move {
-                                                    match api::upload_to_parsely(&p).await {
-                                                        Ok(resp) if resp.success => {
-                                                            if let Some(link) = resp.link {
-                                                                toast.show(format!("Uploaded! {}", link), ToastSeverity::Normal);
-                                                            } else {
-                                                                toast.show("Upload successful".to_string(), ToastSeverity::Normal);
+                                    {
+                                        let path = current_file.clone();
+                                        let is_uploading = upload_status().as_ref().map(|(p, _, msg)| p == &path && msg == "Uploading...").unwrap_or(false);
+                                        rsx! {
+                                            div { class: "session-upload-group",
+                                                button {
+                                                    class: "btn btn-session-upload",
+                                                    title: "Upload to Parsely",
+                                                    disabled: is_uploading,
+                                                    onclick: move |_| {
+                                                        let p = path.clone();
+                                                        upload_status.set(Some((p.clone(), true, "Uploading...".to_string())));
+                                                        spawn(async move {
+                                                            match api::upload_to_parsely(&p).await {
+                                                                Ok(resp) if resp.success => {
+                                                                    let link = resp.link.unwrap_or_default();
+                                                                    upload_status.set(Some((p, true, link)));
+                                                                }
+                                                                Ok(resp) => {
+                                                                    let err = resp.error.unwrap_or_else(|| "Upload failed".to_string());
+                                                                    upload_status.set(Some((p, false, err)));
+                                                                }
+                                                                Err(e) => {
+                                                                    upload_status.set(Some((p, false, e)));
+                                                                }
+                                                            }
+                                                        });
+                                                    },
+                                                    if is_uploading {
+                                                        i { class: "fa-solid fa-spinner fa-spin" }
+                                                        " Uploading..."
+                                                    } else {
+                                                        i { class: "fa-solid fa-cloud-arrow-up" }
+                                                        " Parsely"
+                                                    }
+                                                }
+                                                // Show upload result inline
+                                                if let Some((ref p, success, ref msg)) = upload_status() {
+                                                    if p == &path && msg != "Uploading..." {
+                                                        if success {
+                                                            button {
+                                                                class: "btn btn-session-upload-result",
+                                                                title: "Open in browser",
+                                                                onclick: {
+                                                                    let url = msg.clone();
+                                                                    move |_| {
+                                                                        let u = url.clone();
+                                                                        spawn(async move { api::open_url(&u).await; });
+                                                                    }
+                                                                },
+                                                                i { class: "fa-solid fa-external-link-alt" }
+                                                            }
+                                                        } else {
+                                                            span { class: "upload-error", title: "{msg}",
+                                                                i { class: "fa-solid fa-triangle-exclamation" }
                                                             }
                                                         }
-                                                        Ok(resp) => {
-                                                            let err = resp.error.unwrap_or_else(|| "Upload failed".to_string());
-                                                            toast.show(format!("Upload failed: {}", err), ToastSeverity::Normal);
-                                                        }
-                                                        Err(e) => {
-                                                            toast.show(format!("Upload error: {}", e), ToastSeverity::Critical);
-                                                        }
                                                     }
-                                                });
+                                                }
                                             }
-                                        },
-                                        i { class: "fa-solid fa-cloud-arrow-up" }
-                                        " Parsely"
+                                        }
                                     }
                                 }
                             }
