@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 7 of 7 (Clone Cleanup)
-Plan: 1 of 3 in phase 7
+Plan: 2 of 3 in phase 7
 Status: In progress
-Last activity: 2026-01-18 - Completed 07-01-PLAN.md
+Last activity: 2026-01-18 - Completed 07-02-PLAN.md
 
-Progress: [█████████░] 90% (21/23 plans)
+Progress: [██████████] 95% (22/23 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
-- Average duration: 3.2 min
-- Total execution time: 69 min
+- Total plans completed: 22
+- Average duration: 3.3 min
+- Total execution time: 76 min
 
 **By Phase:**
 
@@ -33,10 +33,10 @@ Progress: [█████████░] 90% (21/23 plans)
 | 04-backend-error-handling | 3 | 3 min | 1 min |
 | 05-frontend-error-handling | 4 | 18 min | 4.5 min |
 | 06-logging-migration | 4 | 17 min | 4.25 min |
-| 07-clone-cleanup | 1 | 6 min | 6 min |
+| 07-clone-cleanup | 2 | 13 min | 6.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-02 (4 min), 06-03 (4 min), 06-04 (5 min), 07-01 (6 min)
+- Last 5 plans: 06-03 (4 min), 06-04 (5 min), 07-01 (6 min), 07-02 (7 min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -99,6 +99,9 @@ Recent decisions affecting current work:
 - Two-pass borrow pattern: immutable pass finds match, captures minimal data, mutable pass applies changes (07-01)
 - Clone-on-match-only: defer clones to hot path (match found) rather than cold path (every call) (07-01)
 - GameSignal String field clones are necessary (owned data required by enum) (07-01)
+- Return &[String] from timer ID accessors - callers iterate, rarely need ownership (07-02)
+- Move definition_id into tracking vectors after HashMap remove - avoids clone (07-02)
+- Use std::mem::take for FiredAlert fields when timer not chained (07-02)
 
 ### Pending Todos
 
@@ -107,9 +110,10 @@ None yet.
 ### Blockers/Concerns
 
 - Pre-existing clippy warnings (30+) across codebase should be addressed in future cleanup
+- Overlay example new_overlays.rs has pre-existing compilation errors (stale API)
 
 ## Session Continuity
 
-Last session: 2026-01-18T07:28Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-01-18T07:30Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None
