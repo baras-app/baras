@@ -601,13 +601,18 @@ pub fn App() -> Element {
                 // Session Tab
                 // ─────────────────────────────────────────────────────────────
                 if active_tab() == "session" {
-                    // Empty states: No session + not watching, or no session + watching
-                    if session.is_none() {
+                    // Check if we have a valid player name
+                    let has_player = session.as_ref()
+                        .and_then(|s| s.player_name.as_ref())
+                        .is_some_and(|n| !n.is_empty());
+
+                    // Empty states: show when no player data yet
+                    if !has_player {
                         if watching {
                             // Log file detected but no character data yet
                             div { class: "session-empty",
                                 i { class: "fa-solid fa-hourglass-half" }
-                                p { "Waiting for character..." }
+                                p { "Waiting for player..." }
                                 p { class: "hint", "Log file detected, waiting for character login" }
                             }
                         } else {
@@ -620,8 +625,9 @@ pub fn App() -> Element {
                         }
                     }
 
-                    // Session panel with info
+                    // Session panel with info - only show when we have player data
                     if let Some(ref info) = session {
+                    if has_player {
                         section {
                             class: if live_tailing { "session-panel" } else { "session-panel historical" },
 
@@ -748,6 +754,7 @@ pub fn App() -> Element {
                                 }
                             }
                         }
+                    }
                     }
 
                     // Player stats for GCD/timing calculations
