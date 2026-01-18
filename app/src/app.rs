@@ -619,8 +619,15 @@ pub fn App() -> Element {
                 if active_tab() == "session" {
                     // Empty states: show when no player data yet
                     if show_empty_state {
-                        if watching {
-                            // Log file detected but no character data yet
+                        if !live_tailing {
+                            // Loading a historical file
+                            div { class: "session-empty",
+                                i { class: "fa-solid fa-spinner fa-spin" }
+                                p { "Loading file..." }
+                                p { class: "hint", "Reading historical session data" }
+                            }
+                        } else if watching {
+                            // Live: Log file detected but no character data yet
                             div { class: "session-empty",
                                 i { class: "fa-solid fa-hourglass-half" }
                                 p { "Waiting for player..." }
