@@ -15,7 +15,7 @@ This roadmap transforms BARAS from a panic-prone application into one with grace
 - [x] **Phase 3: Core Error Handling** - Migrate unwrap/expect in core crate ✓
 - [x] **Phase 4: Backend Error Handling** - Tauri commands return errors to frontend ✓
 - [x] **Phase 5: Frontend Error Handling** - UI displays errors gracefully ✓
-- [ ] **Phase 6: Logging Migration** - Replace all eprintln with tracing macros
+- [x] **Phase 6: Logging Migration** - Replace all eprintln with tracing macros ✓
 - [ ] **Phase 7: Clone Cleanup** - Reduce unnecessary clones in hot paths
 
 ## Phase Details
@@ -111,10 +111,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — File-based logging with size rotation (logging.rs module)
-- [ ] 06-02-PLAN.md — Migrate core crate eprintln! (timers, context, dsl)
-- [ ] 06-03-PLAN.md — Migrate app/src-tauri eprintln! (service, commands, hotkeys)
-- [ ] 06-04-PLAN.md — Migrate overlay crate eprintln! (platform, icons, main)
+- [x] 06-01-PLAN.md — File-based logging with size rotation (logging.rs module) ✓
+- [x] 06-02-PLAN.md — Migrate core crate eprintln! (timers, context, dsl) ✓
+- [x] 06-03-PLAN.md — Migrate app/src-tauri eprintln! (service, commands, hotkeys) ✓
+- [x] 06-04-PLAN.md — Migrate overlay crate eprintln! (platform, icons, main) ✓
 
 ### Phase 7: Clone Cleanup
 **Goal**: Hot paths use references instead of unnecessary clones
@@ -144,7 +144,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 | 3. Core Error Handling | 3/3 | Complete ✓ | 2026-01-17 |
 | 4. Backend Error Handling | 3/3 | Complete ✓ | 2026-01-18 |
 | 5. Frontend Error Handling | 4/4 | Complete ✓ | 2026-01-18 |
-| 6. Logging Migration | 0/4 | Planned | - |
+| 6. Logging Migration | 4/4 | Complete ✓ | 2026-01-18 |
 | 7. Clone Cleanup | 0/TBD | Not started | - |
 
 ---

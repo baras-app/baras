@@ -27,9 +27,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Logging
 
 - [x] **LOG-01**: `tracing` crate integrated with appropriate subscriber ✓
-- [ ] **LOG-02**: All `eprintln!` calls migrated to `tracing` macros
-- [ ] **LOG-03**: Error-level logging for all caught errors
-- [ ] **LOG-04**: Debug-level logging for diagnostic info
+- [x] **LOG-02**: All `eprintln!` calls migrated to `tracing` macros ✓
+- [x] **LOG-03**: Error-level logging for all caught errors ✓
+- [x] **LOG-04**: Debug-level logging for diagnostic info ✓
 
 ### Clone Cleanup
 
@@ -74,9 +74,9 @@ Which phases cover which requirements.
 | ERR-06 | Phase 5: Frontend Error Handling | Complete |
 | ERR-07 | Phase 5: Frontend Error Handling | Complete |
 | ERR-08 | Phase 5: Frontend Error Handling | Complete |
-| LOG-02 | Phase 6: Logging Migration | Pending |
-| LOG-03 | Phase 6: Logging Migration | Pending |
-| LOG-04 | Phase 6: Logging Migration | Pending |
+| LOG-02 | Phase 6: Logging Migration | Complete |
+| LOG-03 | Phase 6: Logging Migration | Complete |
+| LOG-04 | Phase 6: Logging Migration | Complete |
 | CLN-01 | Phase 7: Clone Cleanup | Pending |
 | CLN-02 | Phase 7: Clone Cleanup | Pending |
 | CLN-03 | Phase 7: Clone Cleanup | Pending |
@@ -88,4 +88,4 @@ Which phases cover which requirements.
 
 ---
 *Requirements defined: 2026-01-17*
-*Last updated: 2026-01-18 — Phase 5 complete*
+*Last updated: 2026-01-18 — Phase 6 complete*
