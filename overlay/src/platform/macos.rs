@@ -373,11 +373,9 @@ impl OverlayPlatform for MacOSOverlay {
         self.y = cy;
         self.position_dirty = true;
 
-        unsafe {
-            let macos_y = self.convert_y(cy, self.height);
-            let point = NSPoint::new(cx as f64, macos_y);
-            self.window.setFrameOrigin_(point);
-        }
+        let macos_y = self.convert_y(cy, self.height);
+        let point = NSPoint::new(cx as f64, macos_y);
+        self.window.setFrameOrigin(point);
     }
 
     fn set_size(&mut self, width: u32, height: u32) {
@@ -394,31 +392,26 @@ impl OverlayPlatform for MacOSOverlay {
         self.pixel_data.resize(size, 0);
         self.bgra_buffer.resize(size, 0);
 
-        unsafe {
-            let macos_y = self.convert_y(self.y, height);
-            let rect = NSRect::new(
-                NSPoint::new(self.x as f64, macos_y),
-                NSSize::new(width as f64, height as f64),
-            );
-            self.window.setFrame_display_(rect, YES);
+        let macos_y = self.convert_y(self.y, height);
+        let rect = NSRect::new(
+            NSPoint::new(self.x as f64, macos_y),
+            NSSize::new(width as f64, height as f64),
+        );
+        self.window.setFrame_display(rect, true);
 
-            // Update view frame
-            let view_rect = NSRect::new(
-                NSPoint::new(0.0, 0.0),
-                NSSize::new(width as f64, height as f64),
-            );
-            let _: () = msg_send![&*self.view, setFrame: view_rect];
-        }
+        // Update view frame
+        let view_rect = NSRect::new(
+            NSPoint::new(0.0, 0.0),
+            NSSize::new(width as f64, height as f64),
+        );
+        self.view.setFrame(view_rect);
 
         self.update_view_buffer();
     }
 
     fn set_click_through(&mut self, enabled: bool) {
         self.click_through = enabled;
-        unsafe {
-            self.window
-                .setIgnoresMouseEvents_(if enabled { YES } else { NO });
-        }
+        self.window.setIgnoresMouseEvents(enabled);
 
         if enabled {
             self.is_dragging = false;
@@ -477,9 +470,7 @@ impl OverlayPlatform for MacOSOverlay {
             }
         }
 
-        unsafe {
-            let _: () = msg_send![&*self.view, setNeedsDisplay: true];
-        }
+        self.view.setNeedsDisplay(true);
     }
 
     fn poll_events(&mut self) -> bool {
@@ -593,8 +584,6 @@ impl OverlayPlatform for MacOSOverlay {
 
 impl Drop for MacOSOverlay {
     fn drop(&mut self) {
-        unsafe {
-            self.window.close();
-        }
+        self.window.close();
     }
 }
