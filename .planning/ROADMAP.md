@@ -54,10 +54,10 @@ Plans:
   1. `cocoa` and `objc` crates removed from Cargo.toml
   2. macOS overlay still builds and functions correctly
   3. CI passes on macOS target
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 16-01: Remove deprecated dependencies and verify
+- [ ] 16-01-PLAN.md - Remove deprecated cocoa/objc dependencies and verify build
 
 ## Progress
 
@@ -65,7 +65,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 14. CGContext Fix | 1/1 | Complete | 2026-01-18 |
 | 15. objc2 Migration | 0/3 | Planned | - |
-| 16. Cleanup | 0/1 | Not started | - |
+| 16. Cleanup | 0/1 | Planned | - |
 
 ---
 *Created: 2026-01-18*
