@@ -1050,6 +1050,105 @@ button:active {
   font-size: clamp(0.7rem, 1.6vh, 1rem);
 }
 
+/* Session empty states */
+.session-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2em 1em;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.session-empty i {
+  font-size: 2em;
+  margin-bottom: 0.5em;
+  color: var(--text-disabled);
+}
+
+.session-empty p {
+  margin: 0.3em 0;
+}
+
+.session-empty .hint {
+  font-size: 0.85em;
+  color: var(--text-disabled);
+}
+
+/* Session toolbar */
+.session-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5em;
+}
+
+/* Session header with indicator */
+.session-header {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-size: clamp(0.9rem, 2vh, 1.2rem);
+  color: var(--swtor-blue);
+}
+
+/* Session indicators */
+.session-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 50%;
+  margin-right: 0.5em;
+  font-size: 0.7em;
+}
+
+.session-indicator.live {
+  background: var(--color-success);
+  color: var(--bg-dark);
+}
+
+.session-indicator.historical {
+  background: var(--color-warning);
+  color: var(--bg-dark);
+}
+
+/* Historical session panel tint */
+.session-panel.historical {
+  background: linear-gradient(
+    135deg,
+    rgba(212, 168, 80, 0.05) 0%,
+    var(--bg-mid) 100%
+  );
+  border-color: rgba(212, 168, 80, 0.3);
+}
+
+/* Parsely upload button */
+.btn-session-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.4em 0.8em;
+  font-size: 0.85em;
+  background: var(--blue-alpha-8);
+  border: 1px solid var(--blue-alpha-20);
+  border-radius: var(--radius-md);
+  color: var(--swtor-blue);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-session-upload:hover {
+  background: var(--blue-alpha-20);
+  border-color: var(--swtor-blue);
+}
+
+.btn-session-upload i {
+  font-size: 1.1em;
+}
+
 /* Active file display */
 .active-file {
   margin-top: 0.5vh;

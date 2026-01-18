@@ -601,46 +601,144 @@ pub fn App() -> Element {
                 // Session Tab
                 // ─────────────────────────────────────────────────────────────
                 if active_tab() == "session" {
-                    if let Some(ref info) = session {
-                        section { class: "session-panel",
-                        if is_live_tailing() {
-                            h3 {"Live Session"}
+                    // Empty states: No session + not watching, or no session + watching
+                    if session.is_none() {
+                        if watching {
+                            // Log file detected but no character data yet
+                            div { class: "session-empty",
+                                i { class: "fa-solid fa-hourglass-half" }
+                                p { "Waiting for character..." }
+                                p { class: "hint", "Log file detected, waiting for character login" }
+                            }
                         } else {
-                            h3 { "Historical Session" }
+                            // No log file being watched
+                            div { class: "session-empty",
+                                i { class: "fa-solid fa-inbox" }
+                                p { "No Active Session" }
+                                p { class: "hint", "No combat logs found in directory" }
+                            }
                         }
+                    }
+
+                    // Session panel with info
+                    if let Some(ref info) = session {
+                        section {
+                            class: if live_tailing { "session-panel" } else { "session-panel historical" },
+
+                            // Session toolbar: header + upload button
+                            div { class: "session-toolbar",
+                                if live_tailing {
+                                    h3 { class: "session-header",
+                                        span { class: "session-indicator live",
+                                            i { class: "fa-solid fa-play" }
+                                        }
+                                        " Live Session"
+                                    }
+                                } else {
+                                    h3 { class: "session-header",
+                                        span { class: "session-indicator historical",
+                                            i { class: "fa-solid fa-pause" }
+                                        }
+                                        " Historical Session"
+                                    }
+                                }
+
+                                // Parsely upload button
+                                if !current_file.is_empty() {
+                                    button {
+                                        class: "btn btn-session-upload",
+                                        title: "Upload to Parsely",
+                                        onclick: {
+                                            let path = current_file.clone();
+                                            move |_| {
+                                                let p = path.clone();
+                                                let mut toast = use_toast();
+                                                spawn(async move {
+                                                    match api::upload_to_parsely(&p).await {
+                                                        Ok(resp) if resp.success => {
+                                                            if let Some(link) = resp.link {
+                                                                toast.show(format!("Uploaded! {}", link), ToastSeverity::Normal);
+                                                            } else {
+                                                                toast.show("Upload successful".to_string(), ToastSeverity::Normal);
+                                                            }
+                                                        }
+                                                        Ok(resp) => {
+                                                            let err = resp.error.unwrap_or_else(|| "Upload failed".to_string());
+                                                            toast.show(format!("Upload failed: {}", err), ToastSeverity::Normal);
+                                                        }
+                                                        Err(e) => {
+                                                            toast.show(format!("Upload error: {}", e), ToastSeverity::Critical);
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                        },
+                                        i { class: "fa-solid fa-cloud-arrow-up" }
+                                        " Parsely"
+                                    }
+                                }
+                            }
+
                             div { class: "session-grid",
-                                // Row 1: Player - Area - Session Start
+                                // Player name (always shown)
                                 if let Some(ref name) = info.player_name {
                                     div { class: "session-item",
                                         span { class: "label", "Player" }
                                         span { class: "value", "{name}" }
                                     }
                                 }
-                                if let Some(ref area) = info.area_name {
-                                    div { class: "session-item",
-                                        span { class: "label", "Area" }
-                                        span { class: "value", "{area}" }
+
+                                // Area, Class, Discipline only for live sessions
+                                if live_tailing {
+                                    if let Some(ref area) = info.area_name {
+                                        div { class: "session-item",
+                                            span { class: "label", "Area" }
+                                            span { class: "value", "{area}" }
+                                        }
                                     }
                                 }
+
+                                // Started time (always shown)
                                 if let Some(ref start) = info.session_start {
                                     div { class: "session-item",
                                         span { class: "label", "Started" }
                                         span { class: "value", "{start}" }
                                     }
                                 }
-                                // Row 2: Class - Discipline - Combat
-                                if let Some(ref class_name) = info.player_class {
-                                    div { class: "session-item",
-                                        span { class: "label", "Class" }
-                                        span { class: "value", "{class_name}" }
+
+                                // Class and Discipline only for live sessions
+                                if live_tailing {
+                                    if let Some(ref class_name) = info.player_class {
+                                        div { class: "session-item",
+                                            span { class: "label", "Class" }
+                                            span { class: "value", "{class_name}" }
+                                        }
+                                    }
+                                    if let Some(ref disc) = info.player_discipline {
+                                        div { class: "session-item",
+                                            span { class: "label", "Discipline" }
+                                            span { class: "value", "{disc}" }
+                                        }
                                     }
                                 }
-                                if let Some(ref disc) = info.player_discipline {
-                                    div { class: "session-item",
-                                        span { class: "label", "Discipline" }
-                                        span { class: "value", "{disc}" }
+
+                                // Ended and Duration for historical sessions only
+                                if !live_tailing {
+                                    if let Some(ref end) = info.session_end {
+                                        div { class: "session-item",
+                                            span { class: "label", "Ended" }
+                                            span { class: "value", "{end}" }
+                                        }
+                                    }
+                                    if let Some(ref duration) = info.duration_formatted {
+                                        div { class: "session-item",
+                                            span { class: "label", "Duration" }
+                                            span { class: "value", "{duration}" }
+                                        }
                                     }
                                 }
+
+                                // Combat status (always shown)
                                 div { class: "session-item",
                                     span { class: "label", "Combat" }
                                     span {
