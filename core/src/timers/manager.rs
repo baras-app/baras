@@ -3,6 +3,8 @@
 //! Manages boss mechanic and ability cooldown timers.
 //! Reacts to signals to start, refresh, and expire timers.
 
+use tracing;
+
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
@@ -125,10 +127,7 @@ impl TimerManager {
         path: &std::path::Path,
     ) -> Result<(), super::PreferencesError> {
         self.preferences = TimerPreferences::load(path)?;
-        eprintln!(
-            "TimerManager: loaded {} timer preferences",
-            self.preferences.timers.len()
-        );
+        tracing::debug!(count = self.preferences.timers.len(), "Loaded timer preferences");
         Ok(())
     }
 
@@ -164,9 +163,11 @@ impl TimerManager {
         for def in definitions {
             if def.enabled {
                 if let Some(existing) = self.definitions.get(&def.id) {
-                    eprintln!(
-                        "[TIMER WARNING] Duplicate timer ID '{}' found! First: '{}', Duplicate: '{}'. Keeping first.",
-                        def.id, existing.name, def.name
+                    tracing::warn!(
+                        timer_id = %def.id,
+                        first_name = %existing.name,
+                        duplicate_name = %def.name,
+                        "Duplicate timer ID, keeping first"
                     );
                     duplicate_count += 1;
                     continue;
@@ -175,16 +176,13 @@ impl TimerManager {
             }
         }
         if duplicate_count > 0 {
-            eprintln!(
-                "TimerManager: loaded {} enabled definitions ({} duplicates skipped)",
-                self.definitions.len(),
-                duplicate_count
+            tracing::info!(
+                count = self.definitions.len(),
+                duplicates_skipped = duplicate_count,
+                "Loaded enabled timer definitions"
             );
         } else {
-            eprintln!(
-                "TimerManager: loaded {} enabled definitions",
-                self.definitions.len()
-            );
+            tracing::info!(count = self.definitions.len(), "Loaded enabled timer definitions");
         }
 
         // Validate timer chain references
@@ -217,15 +215,13 @@ impl TimerManager {
 
                     // Check for duplicate ID - warn and skip instead of silent overwrite
                     if let Some(existing) = self.definitions.get(&timer_def.id) {
-                        eprintln!(
-                            "[TIMER WARNING] Duplicate timer ID '{}' found! \
-                            First: '{}' ({}), Duplicate: '{}' ({}). \
-                            Keeping first, ignoring duplicate.",
-                            timer_def.id,
-                            existing.name,
-                            existing.boss.as_deref().unwrap_or("unknown"),
-                            timer_def.name,
-                            boss.name
+                        tracing::warn!(
+                            timer_id = %timer_def.id,
+                            first_name = %existing.name,
+                            first_boss = %existing.boss.as_deref().unwrap_or("unknown"),
+                            duplicate_name = %timer_def.name,
+                            duplicate_boss = %boss.name,
+                            "Duplicate timer ID, keeping first"
                         );
                         duplicate_count += 1;
                         continue;
@@ -239,14 +235,17 @@ impl TimerManager {
         }
 
         if duplicate_count > 0 {
-            eprintln!(
-                "TimerManager: extracted {} timers from {} bosses ({} DUPLICATES SKIPPED)",
-                timer_count, boss_count, duplicate_count
+            tracing::info!(
+                timer_count,
+                boss_count,
+                duplicates_skipped = duplicate_count,
+                "Extracted timers from boss definitions"
             );
         } else {
-            eprintln!(
-                "TimerManager: extracted {} timers from {} boss definitions",
-                timer_count, boss_count
+            tracing::info!(
+                timer_count,
+                boss_count,
+                "Extracted timers from boss definitions"
             );
         }
 
@@ -279,14 +278,15 @@ impl TimerManager {
         }
 
         if !broken_chains.is_empty() {
-            eprintln!(
-                "[TIMER WARNING] {} broken timer chain reference(s) found:",
-                broken_chains.len()
+            tracing::warn!(
+                count = broken_chains.len(),
+                "Broken timer chain references found"
             );
             for (timer_id, missing_ref) in &broken_chains {
-                eprintln!(
-                    "  - Timer '{}' chains to '{}' which does not exist",
-                    timer_id, missing_ref
+                tracing::warn!(
+                    timer_id = %timer_id,
+                    chains_to = %missing_ref,
+                    "Timer chains to non-existent target"
                 );
             }
         }

@@ -14,6 +14,8 @@
 //! - Boss HP thresholds
 //! - Other timers expiring (chaining)
 
+use tracing;
+
 mod active;
 mod definition;
 mod error;
@@ -64,15 +66,15 @@ pub fn load_timers_from_dir(dir: &Path) -> Result<Vec<TimerDefinition>, String> 
             // Recurse into subdirectories
             match load_timers_from_dir(&path) {
                 Ok(timers) => all_timers.extend(timers),
-                Err(e) => eprintln!("Warning: {}", e),
+                Err(e) => tracing::warn!(error = %e, "Failed to load timers from subdirectory"),
             }
         } else if path.extension().is_some_and(|ext| ext == "toml") {
             match load_timers_from_file(&path) {
                 Ok(timers) => {
-                    eprintln!("Loaded {} timers from {:?}", timers.len(), path.file_name());
+                    tracing::info!(count = timers.len(), path = ?path.file_name(), "Loaded timer definitions");
                     all_timers.extend(timers);
                 }
-                Err(e) => eprintln!("Warning: {}", e),
+                Err(e) => tracing::warn!(error = %e, "Failed to load timer file"),
             }
         }
     }
