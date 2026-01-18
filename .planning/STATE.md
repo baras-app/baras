@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-17)
 
 **Core value:** Users never see a frozen UI from a panic. Errors are caught, logged, and communicated gracefully.
-**Current focus:** Phase 3 - Core Error Handling
+**Current focus:** Phase 3 - Core Error Handling (COMPLETE)
 
 ## Current Position
 
-Phase: 3 of 7 (Core Error Handling)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-01-17 - Completed 03-02-PLAN.md (signal processor invariant unwraps)
+Phase: 3 of 7 (Core Error Handling) - COMPLETE
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-01-18 - Completed 03-03-PLAN.md (public API expect conversion)
 
-Progress: [████░░░░░░] 39%
+Progress: [█████░░░░░] 44%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: 3.0 min
-- Total execution time: 21 min
+- Total plans completed: 8
+- Average duration: 3.1 min
+- Total execution time: 25 min
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [████░░░░░░] 39%
 |-------|-------|-------|----------|
 | 01-logging-foundation | 2 | 7 min | 3.5 min |
 | 02-core-error-types | 3 | 6 min | 2 min |
-| 03-core-error-handling | 2 | 8 min | 4 min |
+| 03-core-error-handling | 3 | 12 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (2 min), 02-02 (2 min), 02-03 (2 min), 03-01 (4 min), 03-02 (4 min)
+- Last 5 plans: 02-02 (2 min), 02-03 (2 min), 03-01 (4 min), 03-02 (4 min), 03-03 (4 min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -64,6 +64,8 @@ Recent decisions affecting current work:
 - Use Option::map().unwrap_or(false) for filter predicates (03-01)
 - BUG-level tracing::error! for invariant violations in signal_processor (03-02)
 - continue for loop invariant failures, return for function-level failures (03-02)
+- save() returns Result, handler.rs uses fire-and-forget logging (03-03)
+- SessionDateMissing is a distinct ReaderError variant for programming invariants (03-03)
 
 ### Pending Todos
 
@@ -76,5 +78,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-18T00:00Z
-Stopped at: Completed 03-02-PLAN.md
+Stopped at: Completed 03-03-PLAN.md (Phase 3 complete)
 Resume file: None
