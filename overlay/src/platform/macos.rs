@@ -8,7 +8,7 @@ use std::ffi::c_void;
 
 // objc2 core
 use objc2::rc::Retained;
-use objc2::{define_class, msg_send, DeclaredClass};
+use objc2::{define_class, msg_send, DeclaredClass, MainThreadOnly};
 
 // objc2-foundation types
 use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
@@ -16,8 +16,8 @@ use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
 // objc2-app-kit types
 use objc2_app_kit::{
     NSApplication, NSApplicationActivationPolicy, NSBackingStoreType, NSColor, NSEvent,
-    NSEventMask, NSEventType, NSGraphicsContext, NSScreen, NSView, NSWindow,
-    NSWindowCollectionBehavior, NSWindowLevel, NSWindowStyleMask,
+    NSEventMask, NSEventType, NSGraphicsContext, NSScreen, NSWindow,
+    NSWindowCollectionBehavior, NSWindowStyleMask,
 };
 
 // Keep core-graphics for CGContext operations
@@ -286,7 +286,7 @@ impl OverlayPlatform for MacOSOverlay {
 
             // Configure window for overlay behavior
             // NSMainMenuWindowLevel (24) + 1 = 25
-            window.setLevel(NSWindowLevel(25));
+            window.setLevel(25);
             window.setBackgroundColor(Some(&NSColor::clearColor()));
             window.setOpaque(false);
             window.setHasShadow(false);
