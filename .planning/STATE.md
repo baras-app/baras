@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-18)
 
 **Core value:** Fast, reliable combat analysis that doesn't crash when something unexpected happens.
-**Current focus:** v1.1 UX Polish - Session Page Polish
+**Current focus:** v1.1 UX Polish - Overlay Improvements
 
 ## Current Position
 
-Phase: 10 of 13 (Navigation Redesign)
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-01-18 - Completed Phase 9 Session Page Polish
+Phase: 12 of 13 (Overlay Improvements)
+Plan: 3 of ? in current phase
+Status: In progress
+Last activity: 2026-01-18 - Completed 12-03-PLAN.md (Overlay Button Tooltips)
 
-Progress: [############..........] 27/29+ plans (~93% v1.0-v1.1)
+Progress: [############..........] 28/30+ plans (~93% v1.0-v1.1)
 
 ## Performance Metrics
 
@@ -32,6 +32,11 @@ Progress: [############..........] 27/29+ plans (~93% v1.0-v1.1)
 Decisions are logged in PROJECT.md Key Decisions table.
 See `.planning/milestones/v1.0-ROADMAP.md` for full v1.0 decision history.
 
+**Phase 12 Decisions:**
+- Renamed "Customize" to "Settings" for conventional clarity
+- Non-metric overlays only get tooltips (metrics are self-explanatory)
+- Functional tone for tooltips (e.g., "Shows boss health bars and cast timers")
+
 ### Pending Todos
 
 None.
@@ -45,5 +50,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Phase 9 complete, ready for Phase 10
+Stopped at: Completed 12-03-PLAN.md
 Resume file: None
