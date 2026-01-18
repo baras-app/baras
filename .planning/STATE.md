@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 6 of 7 (Logging Migration)
-Plan: 1 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-18 - Completed 06-01-PLAN.md
+Last activity: 2026-01-18 - Completed 06-03-PLAN.md
 
-Progress: [████████░░] 89%
+Progress: [█████████░] 95%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 19
 - Average duration: 3.0 min
-- Total execution time: 50 min
+- Total execution time: 58 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [████████░░] 89%
 | 03-core-error-handling | 3 | 12 min | 4 min |
 | 04-backend-error-handling | 3 | 3 min | 1 min |
 | 05-frontend-error-handling | 4 | 18 min | 4.5 min |
-| 06-logging-migration | 1 | 4 min | 4 min |
+| 06-logging-migration | 3 | 12 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-02 (5 min), 05-03 (5 min), 05-04 (6 min), 05-HT (0 min), 06-01 (4 min)
+- Last 5 plans: 05-04 (6 min), 05-HT (0 min), 06-01 (4 min), 06-02 (4 min), 06-03 (4 min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -88,6 +88,9 @@ Recent decisions affecting current work:
 - Single shared filter for both file and stdout layers (simplifies type composition) (06-01)
 - Log to config dir root (baras.log) not logs subdirectory per CONTEXT.md (06-01)
 - eprintln for pre-init errors since tracing not yet available (06-01)
+- INFO level for parse timing and icon cache loaded (user-visible operations) (06-03)
+- DEBUG level for worker paths, definition loading, encounter details (developer diagnostics) (06-03)
+- Remove [PARSE], [ICONS], [EFFECTS], [ENCOUNTERS], [HOTKEY] prefixes - tracing targets replace them (06-03)
 
 ### Pending Todos
 
@@ -99,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-18T01:11Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-01-18T01:13Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None
