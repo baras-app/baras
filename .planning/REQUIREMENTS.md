@@ -20,9 +20,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Error Handling (Frontend)
 
-- [ ] **ERR-06**: All JS interop `.unwrap()` calls in `app/src/` use fallible helpers
-- [ ] **ERR-07**: UI displays error feedback when backend operations fail
-- [ ] **ERR-08**: Error state prevents frozen UI (graceful degradation)
+- [x] **ERR-06**: All JS interop `.unwrap()` calls in `app/src/` use fallible helpers ✓
+- [x] **ERR-07**: UI displays error feedback when backend operations fail ✓
+- [x] **ERR-08**: Error state prevents frozen UI (graceful degradation) ✓
 
 ### Logging
 
@@ -71,9 +71,9 @@ Which phases cover which requirements.
 | ERR-02 | Phase 3: Core Error Handling | Complete |
 | ERR-04 | Phase 4: Backend Error Handling | Complete |
 | ERR-05 | Phase 4: Backend Error Handling | Complete |
-| ERR-06 | Phase 5: Frontend Error Handling | Pending |
-| ERR-07 | Phase 5: Frontend Error Handling | Pending |
-| ERR-08 | Phase 5: Frontend Error Handling | Pending |
+| ERR-06 | Phase 5: Frontend Error Handling | Complete |
+| ERR-07 | Phase 5: Frontend Error Handling | Complete |
+| ERR-08 | Phase 5: Frontend Error Handling | Complete |
 | LOG-02 | Phase 6: Logging Migration | Pending |
 | LOG-03 | Phase 6: Logging Migration | Pending |
 | LOG-04 | Phase 6: Logging Migration | Pending |
@@ -88,4 +88,4 @@ Which phases cover which requirements.
 
 ---
 *Requirements defined: 2026-01-17*
-*Last updated: 2026-01-18 — Phase 4 complete*
+*Last updated: 2026-01-18 — Phase 5 complete*

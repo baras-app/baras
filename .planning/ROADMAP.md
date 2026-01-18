@@ -14,7 +14,7 @@ This roadmap transforms BARAS from a panic-prone application into one with grace
 - [x] **Phase 2: Core Error Types** - Custom error types per module ✓
 - [x] **Phase 3: Core Error Handling** - Migrate unwrap/expect in core crate ✓
 - [x] **Phase 4: Backend Error Handling** - Tauri commands return errors to frontend ✓
-- [ ] **Phase 5: Frontend Error Handling** - UI displays errors gracefully
+- [x] **Phase 5: Frontend Error Handling** - UI displays errors gracefully ✓
 - [ ] **Phase 6: Logging Migration** - Replace all eprintln with tracing macros
 - [ ] **Phase 7: Clone Cleanup** - Reduce unnecessary clones in hot paths
 
@@ -94,10 +94,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Toast notification system (component + CSS + provider)
-- [ ] 05-02-PLAN.md — JS interop helper for api.rs (~60 unwraps)
-- [ ] 05-03-PLAN.md — ECharts JS interop cleanup (~95 unwraps in charts + data explorer)
-- [ ] 05-04-PLAN.md — API Result conversion + toast wiring
+- [x] 05-01-PLAN.md — Toast notification system (component + CSS + provider) ✓
+- [x] 05-02-PLAN.md — JS interop helper for api.rs (~111 unwraps) ✓
+- [x] 05-03-PLAN.md — ECharts JS interop cleanup (~100 unwraps in charts + data explorer) ✓
+- [x] 05-04-PLAN.md — API Result conversion + toast wiring ✓
 
 ### Phase 6: Logging Migration
 **Goal**: All diagnostic output uses structured tracing instead of eprintln
@@ -143,7 +143,7 @@ Note: Phase 6 (Logging Migration) depends only on Phase 1, so could theoreticall
 | 2. Core Error Types | 3/3 | Complete ✓ | 2026-01-17 |
 | 3. Core Error Handling | 3/3 | Complete ✓ | 2026-01-17 |
 | 4. Backend Error Handling | 3/3 | Complete ✓ | 2026-01-18 |
-| 5. Frontend Error Handling | 0/4 | Planned | - |
+| 5. Frontend Error Handling | 4/4 | Complete ✓ | 2026-01-18 |
 | 6. Logging Migration | 0/4 | Planned | - |
 | 7. Clone Cleanup | 0/TBD | Not started | - |
 

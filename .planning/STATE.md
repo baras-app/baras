@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-01-17)
 
 **Core value:** Users never see a frozen UI from a panic. Errors are caught, logged, and communicated gracefully.
-**Current focus:** Phase 5 Complete - Ready for Phase 6
+**Current focus:** Phase 6 - Logging Migration
 
 ## Current Position
 
-Phase: 5 of 7 (Frontend Error Handling) - COMPLETE
-Plan: 4 of 4 in phase 5
-Status: Phase complete
-Last activity: 2026-01-18 - Completed 05-04-PLAN.md
+Phase: 6 of 7 (Logging Migration)
+Plan: 0 of 4 in current phase
+Status: Ready to plan
+Last activity: 2026-01-18 - Phase 5 verified complete
 
 Progress: [████████░░] 76%
 
@@ -83,6 +83,7 @@ Recent decisions affecting current work:
 - Fire-and-forget config saves now show toast on error (05-04)
 - Profile operations (load/save/delete) show toast on error (05-04)
 - let mut toast = use_toast(); before spawn for error handling (05-04)
+- All mutation APIs must use try_invoke to prevent UI freeze on error (05-HT)
 
 ### Pending Todos
 
