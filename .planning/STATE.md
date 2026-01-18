@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-01-18)
 
 Milestone: v1.2 macOS Support
 Phase: 14 of 16 (CGContext Fix)
-Plan: Ready to plan Phase 14
-Status: Ready to plan
-Last activity: 2026-01-18 - Roadmap created for v1.2
+Plan: 1 of 1 complete
+Status: Phase complete
+Last activity: 2026-01-18 - Completed 14-01-PLAN.md (CGContext Fix)
 
-Progress: [######################........] 33/38 plans (v1.0 + v1.1 complete, v1.2 starting)
+Progress: [######################........] 34/38 plans (v1.0 + v1.1 complete, v1.2 in progress)
 
 ## Performance Metrics
 
@@ -31,7 +31,7 @@ Progress: [######################........] 33/38 plans (v1.0 + v1.1 complete, v1
 - Phase 10 deferred to v1.3
 
 **v1.2 macOS Support:**
-- Plans completed: 0/5 (estimated)
+- Plans completed: 1/5 (estimated)
 - Phases: 14, 15, 16
 
 ## Accumulated Context
@@ -44,6 +44,8 @@ See `.planning/milestones/v1.1-ROADMAP.md` for v1.1 decisions.
 Recent:
 - Keep `core-graphics` crate for CGContext (no objc2-core-graphics migration needed)
 - Single file scope: all work in `overlay/src/platform/macos.rs`
+- CGContext::create_bitmap_context returns CGContext directly (not Option)
+- CGContext::from_existing_context_ptr requires sys::CGContext pointer type
 
 ### Pending Todos
 
@@ -59,5 +61,5 @@ Recent:
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: Roadmap created for v1.2 macOS Support
+Stopped at: Completed 14-01-PLAN.md (CGContext Fix)
 Resume file: None
