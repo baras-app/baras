@@ -904,6 +904,7 @@ pub fn App() -> Element {
                         div { class: "overlay-grid",
                             button {
                                 class: if personal_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                title: "Shows your personal combat statistics",
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::Personal, personal_on).await {
                                         personal_enabled.set(!personal_on);
@@ -913,6 +914,7 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: if raid_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                title: "Displays party/raid member health bars with effect tracking",
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::Raid, raid_on).await {
                                         raid_enabled.set(!raid_on);
@@ -923,6 +925,7 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: if boss_health_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                title: "Shows boss health bars and cast timers",
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::BossHealth, boss_health_on).await {
                                         boss_health_enabled.set(!boss_health_on);
@@ -932,6 +935,7 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: if timers_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                title: "Displays encounter-specific timers and phase markers",
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::Timers, timers_on).await {
                                         timers_enabled.set(!timers_on);
@@ -941,6 +945,7 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: if challenges_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                title: "Tracks raid challenge objectives and progress",
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::Challenges, challenges_on).await {
                                         challenges_enabled.set(!challenges_on);
@@ -950,6 +955,7 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: if alerts_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                title: "Shows combat alerts and notifications",
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::Alerts, alerts_on).await {
                                         alerts_enabled.set(!alerts_on);
@@ -964,6 +970,7 @@ pub fn App() -> Element {
                         div { class: "overlay-grid",
                             button {
                                 class: if effects_a_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                title: "Displays tracked buffs and effects (Group A)",
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::EffectsA, effects_a_on).await {
                                         effects_a_enabled.set(!effects_a_on);
@@ -973,6 +980,7 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: if effects_b_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                title: "Displays tracked buffs and effects (Group B)",
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::EffectsB, effects_b_on).await {
                                         effects_b_enabled.set(!effects_b_on);
@@ -982,6 +990,7 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: if cooldowns_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                title: "Tracks ability cooldowns",
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::Cooldowns, cooldowns_on).await {
                                         cooldowns_enabled.set(!cooldowns_on);
@@ -991,6 +1000,7 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: if dot_tracker_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                title: "Tracks damage-over-time effects on targets",
                                 onclick: move |_| { spawn(async move {
                                     if api::toggle_overlay(OverlayType::DotTracker, dot_tracker_on).await {
                                         dot_tracker_enabled.set(!dot_tracker_on);
