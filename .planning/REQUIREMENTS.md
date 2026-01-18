@@ -21,9 +21,9 @@ Requirements for UX Polish milestone. Eliminate confusion and friction in the UI
 
 ### Profile System
 
-- [ ] **PROF-01**: Profile switching does not toggle overlay visibility
-- [ ] **PROF-02**: Raid frames re-render correctly after profile switch
-- [ ] **PROF-03**: Profile selector more visible in overlay settings (not collapsed by default)
+- [x] **PROF-01**: Profile switching does not toggle overlay visibility
+- [x] **PROF-02**: Raid frames re-render correctly after profile switch
+- [x] **PROF-03**: Profile selector more visible in overlay settings (not collapsed by default)
 
 ### Overlay System
 
@@ -89,9 +89,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NAV-02 | Phase 10 | Pending |
 | NAV-03 | Phase 10 | Pending |
 | NAV-04 | Phase 9 | Complete |
-| PROF-01 | Phase 11 | Pending |
-| PROF-02 | Phase 11 | Pending |
-| PROF-03 | Phase 11 | Pending |
+| PROF-01 | Phase 11 | Complete |
+| PROF-02 | Phase 11 | Complete |
+| PROF-03 | Phase 11 | Complete |
 | OVLY-01 | Phase 12 | Complete |
 | OVLY-02 | Phase 12 | Complete |
 | OVLY-03 | Phase 12 | Complete |
@@ -120,4 +120,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 12 requirements complete*
+*Last updated: 2026-01-18 - Phase 11 requirements complete*

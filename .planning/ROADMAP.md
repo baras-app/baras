@@ -33,7 +33,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 8: Platform Foundation** - Infrastructure fixes that enable cleaner UX
 - [x] **Phase 9: Session Page Polish** - Empty states, historical display, Parsely access
 - [ ] **Phase 10: Navigation Redesign** - Live/historical indicator with Resume Live action
-- [ ] **Phase 11: Profile System Fixes** - Visibility toggle decoupling and re-render fixes
+- [x] **Phase 11: Profile System Fixes** - Visibility toggle decoupling and re-render fixes
 - [x] **Phase 12: Overlay Improvements** - Move mode, save button, live preview, descriptions
 - [ ] **Phase 13: Editor Polish** - Tooltips, hierarchy, drag-drop, scroll behavior
 
@@ -93,7 +93,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 11-01-PLAN.md - Raid frame re-render fix + profile selector visibility
+- [x] 11-01-PLAN.md - Raid frame re-render fix + profile selector visibility
 
 ### Phase 12: Overlay Improvements
 **Goal**: Overlay customization is intuitive with clear controls and immediate feedback
@@ -139,10 +139,10 @@ Plans:
 | 8. Platform Foundation | v1.1 | 2/2 | Complete | 2026-01-18 |
 | 9. Session Page Polish | v1.1 | 2/2 | Complete | 2026-01-18 |
 | 10. Navigation Redesign | v1.1 | 0/? | Not started | - |
-| 11. Profile System Fixes | v1.1 | 0/1 | Planned | - |
+| 11. Profile System Fixes | v1.1 | 1/1 | Complete | 2026-01-18 |
 | 12. Overlay Improvements | v1.1 | 3/3 | Complete | 2026-01-18 |
 | 13. Editor Polish | v1.1 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-01-18*
-*Last updated: 2026-01-18 - Phase 11 planned*
+*Last updated: 2026-01-18 - Phase 11 complete*
