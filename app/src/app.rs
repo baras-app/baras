@@ -397,44 +397,47 @@ pub fn App() -> Element {
                             else { "status-dot not-watching" },
                         title: if !live_tailing { "Paused" } else if watching { "Watching" } else { "Not watching" }
                     }
-                    // Viewing indicator
-                    {
-                        let current_meta = log_files().iter().find(|f| f.path == current_file).cloned();
-                        let display = current_meta.as_ref()
-                            .map(|f| f.character_name.clone().unwrap_or_else(|| f.display_name.clone()))
-                            .unwrap_or_else(|| "None".to_string());
-                        let date = current_meta.as_ref().map(|f| f.date.clone()).unwrap_or_default();
-                        let is_latest = log_files().first().map(|f| f.path == current_file).unwrap_or(false);
-                        rsx! {
-                            span {
-                                class: if is_latest { "session-file latest" } else { "session-file" },
-                                title: if is_latest { format!("Viewing latest: {} - {}", display, date) } else { format!("Viewing: {} - {}", display, date) },
-                                if is_latest {
-                                    i { class: "fa-solid fa-clock" }
-                                } else {
-                                    i { class: "fa-solid fa-file-lines" }
+                    // Session info column (name + resume button stacked)
+                    div { class: "session-info-column",
+                        // Viewing indicator
+                        {
+                            let current_meta = log_files().iter().find(|f| f.path == current_file).cloned();
+                            let display = current_meta.as_ref()
+                                .map(|f| f.character_name.clone().unwrap_or_else(|| f.display_name.clone()))
+                                .unwrap_or_else(|| "None".to_string());
+                            let date = current_meta.as_ref().map(|f| f.date.clone()).unwrap_or_default();
+                            let is_latest = log_files().first().map(|f| f.path == current_file).unwrap_or(false);
+                            rsx! {
+                                span {
+                                    class: if is_latest { "session-file latest" } else { "session-file" },
+                                    title: if is_latest { format!("Viewing latest: {} - {}", display, date) } else { format!("Viewing: {} - {}", display, date) },
+                                    if is_latest {
+                                        i { class: "fa-solid fa-clock" }
+                                    } else {
+                                        i { class: "fa-solid fa-file-lines" }
+                                    }
+                                    " {display}"
                                 }
-                                " {display}"
                             }
                         }
-                    }
-                    // Resume Live button when viewing historical
-                    if !live_tailing {
-                        button {
-                            class: "btn-resume-live",
-                            title: "Resume live tailing",
-                            onclick: move |_| {
-                                let mut toast = use_toast();
-                                spawn(async move {
-                                    if let Err(err) = api::resume_live_tailing().await {
-                                        toast.show(format!("Failed to resume live tailing: {}", err), ToastSeverity::Normal);
-                                    } else {
-                                        is_live_tailing.set(true);
-                                    }
-                                });
-                            },
-                            i { class: "fa-solid fa-play" }
-                            " Resume Live"
+                        // Resume Live button when viewing historical
+                        if !live_tailing {
+                            button {
+                                class: "btn-resume-live",
+                                title: "Resume live tailing",
+                                onclick: move |_| {
+                                    let mut toast = use_toast();
+                                    spawn(async move {
+                                        if let Err(err) = api::resume_live_tailing().await {
+                                            toast.show(format!("Failed to resume live tailing: {}", err), ToastSeverity::Normal);
+                                        } else {
+                                            is_live_tailing.set(true);
+                                        }
+                                    });
+                                },
+                                "Resume Live "
+                                i { class: "fa-solid fa-play" }
+                            }
                         }
                     }
                     // Restart watcher button
