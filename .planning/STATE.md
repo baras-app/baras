@@ -51,6 +51,9 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full v1.0 decision history.
 - Restore original settings on close via refresh_overlay_settings
 
 **Phase 13 Decisions:**
+- Tooltip pattern: help-icon span with native title attribute
+- Card sections: Identity, Trigger, Timing groupings for effect editor
+- Empty state: fa-sparkles icon with guidance text
 - Removed file path from timer edit form entirely (no replacement needed)
 - Move scroll reset outside spawn block for synchronous execution on encounter change
 
