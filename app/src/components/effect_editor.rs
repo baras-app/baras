@@ -707,7 +707,14 @@ fn EffectEditForm(
 
                         // Display Target (prominent position - determines which overlay shows this effect)
                         div { class: "form-row-hz",
-                            label { "Display Target" }
+                            label { class: "flex items-center",
+                                "Display Target"
+                                span {
+                                    class: "help-icon",
+                                    title: "Sets which overlay displays this effect when triggered",
+                                    "?"
+                                }
+                            }
                             select {
                                 class: "select-inline",
                                 value: "{draft().display_target.label()}",
@@ -736,7 +743,14 @@ fn EffectEditForm(
 
                         // Trigger Type and When
                         div { class: "form-row-hz",
-                            label { "Trigger" }
+                            label { class: "flex items-center",
+                                "Trigger"
+                                span {
+                                    class: "help-icon",
+                                    title: "How this effect activates: Effect-based tracks game buffs/debuffs, Ability-based tracks when abilities are cast",
+                                    "?"
+                                }
+                            }
                             select {
                                 class: "select-inline",
                                 value: "{trigger_type().label()}",
@@ -792,7 +806,14 @@ fn EffectEditForm(
 
                         // Source and Target filters
                         div { class: "form-row-hz",
-                            label { "Source" }
+                            label { class: "flex items-center",
+                                "Source"
+                                span {
+                                    class: "help-icon",
+                                    title: "Who must cast/apply for this effect to trigger (e.g., Local Player = you, Any = anyone)",
+                                    "?"
+                                }
+                            }
                             EntityFilterDropdown {
                                 label: "",
                                 value: get_trigger_filters(&draft().trigger).0.clone(),
@@ -803,7 +824,14 @@ fn EffectEditForm(
                                     draft.set(d);
                                 }
                             }
-                            label { "Target" }
+                            label { class: "flex items-center",
+                                "Target"
+                                span {
+                                    class: "help-icon",
+                                    title: "Who must receive this effect for it to trigger (e.g., Any = track on anyone, Local Player = only on you)",
+                                    "?"
+                                }
+                            }
                             EntityFilterDropdown {
                                 label: "",
                                 value: get_trigger_filters(&draft().trigger).1.clone(),
@@ -818,7 +846,14 @@ fn EffectEditForm(
 
                         // Duration and Show at
                         div { class: "form-row-hz",
-                            label { "Duration" }
+                            label { class: "flex items-center",
+                                "Duration"
+                                span {
+                                    class: "help-icon",
+                                    title: "How long the effect displays (seconds). Set to 0 for effects that track via game events",
+                                    "?"
+                                }
+                            }
                             input {
                                 r#type: "number",
                                 class: "input-inline",
@@ -833,7 +868,14 @@ fn EffectEditForm(
                                 }
                             }
                             span { class: "text-muted", "sec" }
-                            label { "Show at" }
+                            label { class: "flex items-center",
+                                "Show at"
+                                span {
+                                    class: "help-icon",
+                                    title: "Only display the effect when this many seconds remain",
+                                    "?"
+                                }
+                            }
                             input {
                                 r#type: "number",
                                 class: "input-inline",
@@ -1024,11 +1066,12 @@ fn EffectEditForm(
 
                         // Hide for Cooldowns - they always ignore effect removed events
                         if draft().display_target != DisplayTarget::Cooldowns {
-                            label { class: "flex items-center gap-xs text-sm",
+                            label {
+                                class: "flex items-center gap-xs text-sm",
+                                title: "Use the duration timer instead of tracking when the game removes the effect",
                                 input {
                                     r#type: "checkbox",
                                     checked: draft().ignore_effect_removed,
-                                    title: "Ignore game EffectRemoved - only expire via duration timer",
                                     onchange: move |e| {
                                         let mut d = draft();
                                         d.ignore_effect_removed = e.checked();
@@ -1039,7 +1082,9 @@ fn EffectEditForm(
                             }
                         }
 
-                        label { class: "flex items-center gap-xs text-sm",
+                        label {
+                            class: "flex items-center gap-xs text-sm",
+                            title: "Reset timer when effect stacks change",
                             input {
                                 r#type: "checkbox",
                                 checked: draft().is_refreshed_on_modify,
@@ -1052,7 +1097,9 @@ fn EffectEditForm(
                             "Refresh Duration When Charges Modified"
                         }
 
-                        label { class: "flex items-center gap-xs text-sm",
+                        label {
+                            class: "flex items-center gap-xs text-sm",
+                            title: "Keep showing effect after player dies",
                             input {
                                 r#type: "checkbox",
                                 checked: draft().persist_past_death,
@@ -1065,7 +1112,9 @@ fn EffectEditForm(
                             "Persist Past Death"
                         }
 
-                        label { class: "flex items-center gap-xs text-sm",
+                        label {
+                            class: "flex items-center gap-xs text-sm",
+                            title: "Continue tracking this effect between combat encounters",
                             input {
                                 r#type: "checkbox",
                                 checked: draft().track_outside_combat,
@@ -1094,7 +1143,14 @@ fn EffectEditForm(
                         }
 
                         div { class: "form-row-hz",
-                            label { "Alert On" }
+                            label { class: "flex items-center",
+                                "Alert On"
+                                span {
+                                    class: "help-icon",
+                                    title: "When to show alert text: on effect start, on effect end, or never",
+                                    "?"
+                                }
+                            }
                             select {
                                 class: "select-inline",
                                 value: "{draft().alert_on.label()}",
