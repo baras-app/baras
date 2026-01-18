@@ -810,8 +810,38 @@ pub fn App() -> Element {
                                 i { class: "fa-solid fa-screwdriver-wrench" }
                                 span { " Settings" }
                             }
-                            if !profile_names().is_empty() {
-                                div { class: "profile-selector",
+                            div { class: "profile-selector",
+                                if profile_names().is_empty() {
+                                    // Empty state: no profiles exist
+                                    span { class: "profile-label", "Profile:" }
+                                    span { class: "profile-current", "Default" }
+                                    button {
+                                        class: "profile-save-btn",
+                                        title: "Save current settings as a profile",
+                                        onclick: move |_| {
+                                            let mut toast = use_toast();
+                                            spawn(async move {
+                                                // Generate a unique profile name
+                                                let name = "Profile 1".to_string();
+                                                match api::save_profile(&name).await {
+                                                    Err(err) => {
+                                                        toast.show(format!("Failed to create profile: {}", err), ToastSeverity::Normal);
+                                                    }
+                                                    Ok(_) => {
+                                                        // Refresh profile list and set as active
+                                                        if let Some(names) = api::list_profiles().await {
+                                                            profile_names.set(names);
+                                                        }
+                                                        active_profile.set(Some(name));
+                                                    }
+                                                }
+                                            });
+                                        },
+                                        i { class: "fa-solid fa-plus" }
+                                        span { " Save as Profile" }
+                                    }
+                                } else {
+                                    // Profiles exist: show dropdown
                                     span { class: "profile-label", "Profiles:" }
                                     select {
                                         class: "profile-dropdown",
