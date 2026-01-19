@@ -172,6 +172,16 @@ jobs:
           projectPath: app
           tauriScript: cargo tauri
 
+      - name: Debug - List bundle output
+        run: |
+          echo "=== target/release/bundle ==="
+          find target/release/bundle -type f -name "*.dmg" 2>/dev/null || echo "No .dmg files found"
+          find target/release/bundle -type d -name "*.app" 2>/dev/null || echo "No .app directories found"
+          echo "=== Full bundle tree ==="
+          ls -laR target/release/bundle/ 2>/dev/null || echo "Bundle directory not found"
+          echo "=== Check app/target ==="
+          ls -laR app/target/release/bundle/ 2>/dev/null || echo "app/target not found"
+
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
