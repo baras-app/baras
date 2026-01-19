@@ -72,7 +72,7 @@ pub fn get_all_monitors() -> Vec<MonitorInfo> {
 /// Instance variables for BarasOverlayView.
 /// Uses Cell<T> for interior mutability since objc2 methods take &self.
 #[derive(Default)]
-struct BarasOverlayViewIvars {
+pub struct BarasOverlayViewIvars {
     pixel_data: Cell<*mut c_void>,
     buffer_width: Cell<u32>,
     buffer_height: Cell<u32>,
@@ -223,11 +223,6 @@ impl MacOSOverlay {
     fn convert_y(&self, y: i32, height: u32) -> f64 {
         // Convert top-left origin to bottom-left origin
         self.main_screen_height - y as f64 - height as f64
-    }
-
-    fn convert_y_back(&self, y: f64, height: u32) -> i32 {
-        // Convert bottom-left origin to top-left origin
-        (self.main_screen_height - y - height as f64) as i32
     }
 
     fn update_view_buffer(&mut self) {
@@ -478,113 +473,111 @@ impl OverlayPlatform for MacOSOverlay {
         // SAFETY: poll_events is called from the main thread event loop
         let mtm = unsafe { MainThreadMarker::new_unchecked() };
 
-        unsafe {
-            let app = NSApplication::sharedApplication(mtm);
+        let app = NSApplication::sharedApplication(mtm);
 
-            loop {
-                // Create run loop mode string
-                let mode = NSString::from_str("kCFRunLoopDefaultMode");
+        loop {
+            // Create run loop mode string
+            let mode = NSString::from_str("kCFRunLoopDefaultMode");
 
-                let event = app.nextEventMatchingMask_untilDate_inMode_dequeue(
-                    NSEventMask::Any,
-                    None, // No timeout - non-blocking
-                    &mode,
-                    true,
-                );
+            let event = app.nextEventMatchingMask_untilDate_inMode_dequeue(
+                NSEventMask::Any,
+                None, // No timeout - non-blocking
+                &mode,
+                true,
+            );
 
-                let Some(event) = event else {
-                    break;
-                };
+            let Some(event) = event else {
+                break;
+            };
 
-                let event_type = event.r#type();
+            let event_type = event.r#type();
 
-                // Handle events for our window when interactive
-                if !self.click_through {
-                    if let Some(event_window) = event.window(mtm) {
-                        // Compare window identity
-                        if std::ptr::eq(
-                            event_window.as_ref() as *const NSWindow,
-                            self.window.as_ref() as *const NSWindow,
-                        ) {
-                            match event_type {
-                                NSEventType::LeftMouseDown => {
-                                    let loc = event.locationInWindow();
-                                    // Convert from bottom-left to top-left within window
-                                    let x = loc.x;
-                                    let y = self.height as f64 - loc.y;
+            // Handle events for our window when interactive
+            if !self.click_through {
+                if let Some(event_window) = event.window(mtm) {
+                    // Compare window identity
+                    if std::ptr::eq(
+                        event_window.as_ref() as *const NSWindow,
+                        self.window.as_ref() as *const NSWindow,
+                    ) {
+                        match event_type {
+                            NSEventType::LeftMouseDown => {
+                                let loc = event.locationInWindow();
+                                // Convert from bottom-left to top-left within window
+                                let x = loc.x;
+                                let y = self.height as f64 - loc.y;
 
-                                    if self.drag_enabled {
-                                        if self.is_in_resize_corner(x, y) {
-                                            self.is_resizing = true;
-                                            self.pending_width = self.width;
-                                            self.pending_height = self.height;
-                                            self.resize_start_x = loc.x;
-                                            self.resize_start_y = loc.y;
-                                        } else {
-                                            self.is_dragging = true;
-                                            let mouse_loc = NSEvent::mouseLocation();
-                                            self.drag_start_x = mouse_loc.x;
-                                            self.drag_start_y = mouse_loc.y;
-                                            self.drag_start_win_x = self.x;
-                                            self.drag_start_win_y = self.y;
-                                        }
+                                if self.drag_enabled {
+                                    if self.is_in_resize_corner(x, y) {
+                                        self.is_resizing = true;
+                                        self.pending_width = self.width;
+                                        self.pending_height = self.height;
+                                        self.resize_start_x = loc.x;
+                                        self.resize_start_y = loc.y;
                                     } else {
-                                        self.pending_click = Some((x as f32, y as f32));
-                                    }
-                                }
-                                NSEventType::LeftMouseUp => {
-                                    self.is_dragging = false;
-                                    self.is_resizing = false;
-                                }
-                                NSEventType::MouseMoved | NSEventType::LeftMouseDragged => {
-                                    let loc = event.locationInWindow();
-                                    let x = loc.x;
-                                    let y = self.height as f64 - loc.y;
-
-                                    if !self.is_resizing {
-                                        self.in_resize_corner = self.is_in_resize_corner(x, y);
-                                    }
-
-                                    if self.is_dragging {
+                                        self.is_dragging = true;
                                         let mouse_loc = NSEvent::mouseLocation();
-                                        let dx = mouse_loc.x - self.drag_start_x;
-                                        let dy = self.drag_start_y - mouse_loc.y; // Flip Y
-                                        self.set_position(
-                                            self.drag_start_win_x + dx as i32,
-                                            self.drag_start_win_y + dy as i32,
-                                        );
-                                    } else if self.is_resizing {
-                                        let dx = loc.x - self.resize_start_x;
-                                        let dy = self.resize_start_y - loc.y; // Flip Y
-
-                                        let new_w = (self.pending_width as i32 + dx as i32)
-                                            .clamp(MIN_OVERLAY_SIZE as i32, MAX_OVERLAY_WIDTH as i32)
-                                            as u32;
-                                        let new_h = (self.pending_height as i32 + dy as i32)
-                                            .clamp(MIN_OVERLAY_SIZE as i32, MAX_OVERLAY_HEIGHT as i32)
-                                            as u32;
-
-                                        if new_w != self.width || new_h != self.height {
-                                            self.set_size(new_w, new_h);
-                                            self.resize_start_x = loc.x;
-                                            self.resize_start_y = loc.y;
-                                        }
+                                        self.drag_start_x = mouse_loc.x;
+                                        self.drag_start_y = mouse_loc.y;
+                                        self.drag_start_win_x = self.x;
+                                        self.drag_start_win_y = self.y;
                                     }
+                                } else {
+                                    self.pending_click = Some((x as f32, y as f32));
                                 }
-                                NSEventType::MouseExited => {
-                                    if !self.is_resizing {
-                                        self.in_resize_corner = false;
-                                    }
-                                }
-                                _ => {}
                             }
+                            NSEventType::LeftMouseUp => {
+                                self.is_dragging = false;
+                                self.is_resizing = false;
+                            }
+                            NSEventType::MouseMoved | NSEventType::LeftMouseDragged => {
+                                let loc = event.locationInWindow();
+                                let x = loc.x;
+                                let y = self.height as f64 - loc.y;
+
+                                if !self.is_resizing {
+                                    self.in_resize_corner = self.is_in_resize_corner(x, y);
+                                }
+
+                                if self.is_dragging {
+                                    let mouse_loc = NSEvent::mouseLocation();
+                                    let dx = mouse_loc.x - self.drag_start_x;
+                                    let dy = self.drag_start_y - mouse_loc.y; // Flip Y
+                                    self.set_position(
+                                        self.drag_start_win_x + dx as i32,
+                                        self.drag_start_win_y + dy as i32,
+                                    );
+                                } else if self.is_resizing {
+                                    let dx = loc.x - self.resize_start_x;
+                                    let dy = self.resize_start_y - loc.y; // Flip Y
+
+                                    let new_w = (self.pending_width as i32 + dx as i32)
+                                        .clamp(MIN_OVERLAY_SIZE as i32, MAX_OVERLAY_WIDTH as i32)
+                                        as u32;
+                                    let new_h = (self.pending_height as i32 + dy as i32)
+                                        .clamp(MIN_OVERLAY_SIZE as i32, MAX_OVERLAY_HEIGHT as i32)
+                                        as u32;
+
+                                    if new_w != self.width || new_h != self.height {
+                                        self.set_size(new_w, new_h);
+                                        self.resize_start_x = loc.x;
+                                        self.resize_start_y = loc.y;
+                                    }
+                                }
+                            }
+                            NSEventType::MouseExited => {
+                                if !self.is_resizing {
+                                    self.in_resize_corner = false;
+                                }
+                            }
+                            _ => {}
                         }
                     }
                 }
-
-                // Forward event to app
-                app.sendEvent(&event);
             }
+
+            // Forward event to app
+            app.sendEvent(&event);
         }
         self.running
     }
