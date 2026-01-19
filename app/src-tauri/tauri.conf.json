@@ -36,7 +36,9 @@
     "targets": [
       "appimage",
       "deb",
-      "nsis"
+      "nsis",
+      "dmg",
+      "app"
     ],
     "externalBin": [
       "binaries/baras-parse-worker"
