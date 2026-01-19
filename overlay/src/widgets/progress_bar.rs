@@ -42,6 +42,8 @@ pub struct ProgressBar {
     /// Optional custom color for the secondary (right) portion of split bars
     /// If None, uses a lightened version of fill_color
     pub split_color: Option<Color>,
+    /// Optional offset for label text start position (for icon space)
+    pub label_offset: f32,
 }
 
 impl ProgressBar {
@@ -56,7 +58,14 @@ impl ProgressBar {
             right_text: None,
             split_progress: None,
             split_color: None,
+            label_offset: 0.0,
         }
+    }
+
+    /// Set offset for label text (to make room for icon)
+    pub fn with_label_offset(mut self, offset: f32) -> Self {
+        self.label_offset = offset;
+        self
     }
 
     pub fn with_fill_color(mut self, color: Color) -> Self {
@@ -217,15 +226,17 @@ impl ProgressBar {
             (width - text_padding * 2.0, x, x)
         };
 
-        // Draw label on the left (truncated to fit)
+        // Draw label on the left (truncated to fit, with optional offset for icon)
+        let label_start = x + text_padding + self.label_offset;
+        let available_for_label = name_width - text_padding * 2.0 - self.label_offset;
         let display_label = self.truncate_label_to_width(
             frame,
-            name_width - text_padding * 2.0,
+            available_for_label.max(0.0),
             effective_font_size,
         );
         frame.draw_text(
             &display_label,
-            x + text_padding,
+            label_start,
             text_y,
             effective_font_size,
             self.text_color,

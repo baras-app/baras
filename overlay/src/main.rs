@@ -60,6 +60,8 @@ mod examples {
                 split_value: Some(9000),
                 total_split_value: Some(1_800_000),
                 split_color: None,
+                class_icon: None,
+                role: None,
             },
             MetricEntry {
                 name: "Player 2".to_string(),
@@ -70,6 +72,8 @@ mod examples {
                 split_value: Some(7500),
                 total_split_value: Some(1_400_000),
                 split_color: None,
+                class_icon: None,
+                role: None,
             },
             MetricEntry {
                 name: "Player 3".to_string(),
@@ -80,6 +84,8 @@ mod examples {
                 split_value: None,
                 total_split_value: None,
                 split_color: None,
+                class_icon: None,
+                role: None,
             },
             MetricEntry {
                 name: "Player 4".to_string(),
@@ -90,6 +96,8 @@ mod examples {
                 split_value: None,
                 total_split_value: None,
                 split_color: None,
+                class_icon: None,
+                role: None,
             },
         ];
 
@@ -172,6 +180,8 @@ mod examples {
                 split_value: None,
                 total_split_value: None,
                 split_color: None,
+                class_icon: None,
+                role: None,
             })
             .collect();
 
@@ -272,6 +282,8 @@ mod examples {
                 split_value: None,
                 total_split_value: None,
                 split_color: None,
+                class_icon: None,
+                role: None,
             })
             .collect();
 

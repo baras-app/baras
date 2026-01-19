@@ -28,6 +28,7 @@
 //! └─────────────────────────────────────────────────────┘
 //! ```
 
+pub mod class_icons;
 pub mod frame;
 pub mod icons;
 pub mod manager;
@@ -107,6 +108,7 @@ pub use platform::{
 pub use renderer::Renderer;
 pub use utils::{color_from_rgba, format_number, format_time, truncate_name};
 pub use widgets::{Footer, Header, LabeledValue, ProgressBar, colors};
+pub use class_icons::{ClassIcon, Role, get_class_icon, get_tinted_class_icon, get_white_class_icon};
 
 // Re-export tiny_skia Color for external use
 pub use tiny_skia::Color;

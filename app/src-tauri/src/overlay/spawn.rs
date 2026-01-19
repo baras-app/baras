@@ -459,6 +459,7 @@ pub fn create_metric_overlay(
     show_empty_bars: bool,
     stack_from_bottom: bool,
     scaling_factor: f32,
+    show_class_icons: bool,
 ) -> Result<OverlayHandle, String> {
     // Position is already relative to the monitor - pass directly
     // On Wayland: used as layer-shell margins
@@ -486,6 +487,7 @@ pub fn create_metric_overlay(
             show_empty_bars,
             stack_from_bottom,
             scaling_factor,
+            show_class_icons,
         )
         .map_err(|e| format!("Failed to create {} overlay: {}", title, e))
     };

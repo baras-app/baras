@@ -99,24 +99,28 @@ pub fn create_entries_for_type(
         .iter()
         .map(|m| {
             let v = extract_values(m, overlay_type);
-            (m.name.clone(), v)
+            let class_icon = m.class_icon.clone();
+            (m.name.clone(), v, class_icon)
         })
         .collect();
 
     // Sort by rate value descending (highest first)
     values.sort_by(|a, b| b.1.rate.cmp(&a.1.rate));
 
-    let max_value = values.iter().map(|(_, v)| v.rate).max().unwrap_or(1);
+    let max_value = values.iter().map(|(_, v, _)| v.rate).max().unwrap_or(1);
 
     values
         .into_iter()
-        .map(|(name, v)| {
+        .map(|(name, v, class_icon)| {
             let mut entry = MetricEntry::new(&name, v.rate, max_value).with_total(v.total);
             if let (Some(sr), Some(st)) = (v.split_rate, v.split_total) {
                 entry = entry.with_split(sr, st);
                 if let Some(color) = v.split_color {
                     entry = entry.with_split_color(color);
                 }
+            }
+            if let Some(icon) = class_icon {
+                entry = entry.with_icon(icon);
             }
             entry
         })
