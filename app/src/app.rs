@@ -1675,11 +1675,17 @@ pub fn App() -> Element {
                                             format!("{}kb", file.file_size / 1024)
                                         };
                                         let is_empty = file.is_empty;
+                                        let is_current = path == current_file;
                                         let upload_st = upload_status();
                                         let is_uploading = upload_st.as_ref().map(|(p, _, _)| p == &path).unwrap_or(false);
                                         rsx! {
                                             div {
-                                                class: if is_empty { "file-item empty" } else { "file-item" },
+                                                class: match (is_empty, is_current) {
+                                                    (true, true) => "file-item empty current",
+                                                    (true, false) => "file-item empty",
+                                                    (false, true) => "file-item current",
+                                                    (false, false) => "file-item",
+                                                },
                                                 div { class: "file-info",
                                                     span { class: "file-date", "{date}" }
                                                     div { class: "file-meta",
