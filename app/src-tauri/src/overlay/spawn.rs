@@ -21,6 +21,15 @@ use tokio::sync::mpsc::{self, Sender};
 #[cfg(target_os = "macos")]
 use std::ptr;
 
+/// Wrapper for raw pointer that implements Send.
+/// SAFETY: Only used for macOS overlay dispatch where all actual access
+/// happens on the main thread via exec_sync.
+#[cfg(target_os = "macos")]
+struct SendPtr<T>(*mut T);
+
+#[cfg(target_os = "macos")]
+unsafe impl<T> Send for SendPtr<T> {}
+
 use baras_core::context::{
     AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig,
     OverlayPositionConfig, PersonalOverlayConfig, TimerOverlayConfig,
@@ -218,16 +227,16 @@ where
 
     let handle = thread::spawn(move || {
         // Create the overlay on the main thread via GCD
-        // Returns a raw pointer since we can't move the overlay between threads
-        let overlay_ptr: *mut O = dispatch::Queue::main().exec_sync(move || {
+        // Returns a raw pointer wrapped in SendPtr since we can't move the overlay between threads
+        let SendPtr(overlay_ptr) = dispatch::Queue::main().exec_sync(move || {
             match create_overlay() {
                 Ok(o) => {
                     let _ = confirm_tx.send(Ok(()));
-                    Box::into_raw(Box::new(o))
+                    SendPtr(Box::into_raw(Box::new(o)))
                 }
                 Err(e) => {
                     let _ = confirm_tx.send(Err(e));
-                    ptr::null_mut()
+                    SendPtr(ptr::null_mut())
                 }
             }
         });
