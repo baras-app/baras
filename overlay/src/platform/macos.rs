@@ -287,6 +287,7 @@ impl OverlayPlatform for MacOSOverlay {
             window.setOpaque(false);
             window.setHasShadow(false);
             window.setIgnoresMouseEvents(config.click_through);
+            window.setAcceptsMouseMovedEvents(true);
 
             // Prevent window from being hidden when app is deactivated
             window.setCollectionBehavior(
