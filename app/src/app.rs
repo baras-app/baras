@@ -7,8 +7,8 @@ use wasm_bindgen_futures::spawn_local;
 
 use crate::api;
 use crate::components::{
-    use_toast, use_toast_provider, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    HistoryPanel, SettingsPanel, ToastFrame, ToastSeverity,
+    DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel, HistoryPanel, HotkeyInput,
+    SettingsPanel, ToastFrame, ToastSeverity, use_toast, use_toast_provider,
 };
 use crate::types::{
     LogFileInfo, MetricType, OverlaySettings, OverlayStatus, OverlayType, SessionInfo, UpdateInfo,
@@ -242,8 +242,9 @@ pub fn App() -> Element {
     use_future(move || async move {
         let closure = Closure::new(move |event: JsValue| {
             if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-                && let Ok(info) = serde_wasm_bindgen::from_value::<UpdateInfo>(payload) {
-                    let _ = update_available.try_write().map(|mut w| *w = Some(info));
+                && let Ok(info) = serde_wasm_bindgen::from_value::<UpdateInfo>(payload)
+            {
+                let _ = update_available.try_write().map(|mut w| *w = Some(info));
             }
         });
         api::tauri_listen("update-available", &closure).await;
@@ -257,7 +258,8 @@ pub fn App() -> Element {
             if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
                 && let Some(msg) = payload.as_string()
             {
-                update_failed_toast.show(format!("Update failed: {}", msg), ToastSeverity::Critical);
+                update_failed_toast
+                    .show(format!("Update failed: {}", msg), ToastSeverity::Critical);
             }
             // Reset installing state so user can retry
             let _ = update_installing.try_write().map(|mut w| *w = false);
@@ -1194,6 +1196,7 @@ pub fn App() -> Element {
                                 button { class: "btn btn-close", onclick: move |_| general_settings_open.set(false), "X" }
                             }
 
+                            div { class: "settings-content",
                             div { class: "settings-section",
                                 h4 { "Log Directory" }
                                 p { class: "hint", "Select the directory containing your SWTOR combat logs." }
@@ -1369,10 +1372,10 @@ pub fn App() -> Element {
 
                             div { class: "settings-section",
                                 h4 { "Global Hotkeys" }
-                                p { class: "hint", "Format: Ctrl+Shift+Key" }
+                                p { class: "hint", "Click to capture a key combination. Backspace to clear." }
                                 p { class: "hint hint-warning",
                                     i { class: "fa-solid fa-triangle-exclamation" }
-                                    " Global hotkeys are Windows-only. Linux and Wayland do not support global hotkeys due to security restrictions."
+                                    " Global hotkeys are not supported on Linux Wayland"
                                 }
                                 p { class: "hint hint-warning",
                                     i { class: "fa-solid fa-triangle-exclamation" }
@@ -1381,18 +1384,24 @@ pub fn App() -> Element {
                                 div { class: "hotkey-grid",
                                     div { class: "setting-row",
                                         label { "Show/Hide" }
-                                        input { r#type: "text", class: "hotkey-input", placeholder: "e.g., Ctrl+Shift+O",
-                                            value: hotkey_visibility, oninput: move |e| hotkey_visibility.set(e.value()) }
+                                        HotkeyInput {
+                                            value: hotkey_visibility(),
+                                            on_change: move |v| hotkey_visibility.set(v),
+                                        }
                                     }
                                     div { class: "setting-row",
                                         label { "Move Mode" }
-                                        input { r#type: "text", class: "hotkey-input", placeholder: "e.g., Ctrl+Shift+M",
-                                            value: hotkey_move_mode, oninput: move |e| hotkey_move_mode.set(e.value()) }
+                                        HotkeyInput {
+                                            value: hotkey_move_mode(),
+                                            on_change: move |v| hotkey_move_mode.set(v),
+                                        }
                                     }
                                     div { class: "setting-row",
                                         label { "Rearrange" }
-                                        input { r#type: "text", class: "hotkey-input", placeholder: "e.g., Ctrl+Shift+R",
-                                            value: hotkey_rearrange, oninput: move |e| hotkey_rearrange.set(e.value()) }
+                                        HotkeyInput {
+                                            value: hotkey_rearrange(),
+                                            on_change: move |v| hotkey_rearrange.set(v),
+                                        }
                                     }
                                 }
                                 div { class: "settings-footer",
@@ -1574,6 +1583,7 @@ pub fn App() -> Element {
                                     span { class: "save-status", "{parsely_save_status}" }
                                 }
                             }
+                            } // settings-content
                         }
                     }
                 }
@@ -1853,7 +1863,10 @@ fn PlayerStatsBar() -> Element {
                 config.alacrity_percent = new_alacrity;
                 config.latency_ms = new_latency;
                 if let Err(err) = api::update_config(&config).await {
-                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                    toast.show(
+                        format!("Failed to save settings: {}", err),
+                        ToastSeverity::Normal,
+                    );
                 }
             }
         });

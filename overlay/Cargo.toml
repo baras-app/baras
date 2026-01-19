@@ -54,6 +54,8 @@ windows = { version = "0.58", features = [
 [target.'cfg(target_os = "macos")'.dependencies]
 # Keep core-graphics for CGContext operations
 core-graphics = "0.24"
+# GCD for main thread dispatch
+dispatch = "0.2"
 
 # New objc2 ecosystem
 objc2 = "0.6"

@@ -8,11 +8,18 @@
 //! The Win32 message queue is tied to the creating thread, so SetWindowLongPtrW,
 //! PeekMessageW, and other window operations fail when called from a different thread.
 //!
+//! On macOS, AppKit requires all window operations on the main thread. We use
+//! GCD (dispatch crate) to run overlay operations on the main queue while keeping
+//! our thread structure for command processing.
+//!
 //! To handle this, overlays are created INSIDE the spawned thread via a factory
 //! function, not passed as pre-created objects.
 
 use std::thread::{self, JoinHandle};
 use tokio::sync::mpsc::{self, Sender};
+
+#[cfg(target_os = "macos")]
+use std::ptr;
 
 use baras_core::context::{
     AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig,
@@ -50,6 +57,7 @@ use super::types::{MetricType, OverlayType};
 /// - Render scheduling based on interaction state
 /// - Resize corner state tracking
 /// - Registry action forwarding (for raid overlay)
+#[cfg(not(target_os = "macos"))]
 pub fn spawn_overlay_with_factory<O, F>(
     create_overlay: F,
     kind: OverlayType,
@@ -174,6 +182,217 @@ where
             let sleep_ms = if is_interactive { 16 } else { 100 };
             thread::sleep(std::time::Duration::from_millis(sleep_ms));
         }
+    });
+
+    // Wait for confirmation from the spawned thread
+    match confirm_rx.recv() {
+        Ok(Ok(())) => Ok((tx, handle)),
+        Ok(Err(e)) => Err(e),
+        Err(_) => Err("Overlay thread exited before confirming creation".to_string()),
+    }
+}
+
+/// macOS-specific overlay spawning using GCD for main thread dispatch.
+///
+/// AppKit requires all window operations on the main thread. This version:
+/// 1. Creates the overlay on the main thread via dispatch
+/// 2. Keeps a background thread for timing and the JoinHandle abstraction
+/// 3. Dispatches all overlay operations (poll_events, render, etc.) to main queue
+///
+/// Uses raw pointers to manage the overlay across thread boundaries safely,
+/// since all actual access happens on the main thread via exec_sync.
+#[cfg(target_os = "macos")]
+pub fn spawn_overlay_with_factory<O, F>(
+    create_overlay: F,
+    kind: OverlayType,
+    registry_action_tx: Option<std::sync::mpsc::Sender<RaidRegistryAction>>,
+) -> Result<(Sender<OverlayCommand>, JoinHandle<()>), String>
+where
+    O: Overlay,
+    F: FnOnce() -> Result<O, String> + Send + 'static,
+{
+    let (tx, mut rx) = mpsc::channel::<OverlayCommand>(32);
+
+    // Use a oneshot channel to get creation result back from spawned thread
+    let (confirm_tx, confirm_rx) = std::sync::mpsc::channel::<Result<(), String>>();
+
+    let handle = thread::spawn(move || {
+        // Create the overlay on the main thread via GCD
+        // Returns a raw pointer since we can't move the overlay between threads
+        let overlay_ptr: *mut O = dispatch::Queue::main().exec_sync(move || {
+            match create_overlay() {
+                Ok(o) => {
+                    let _ = confirm_tx.send(Ok(()));
+                    Box::into_raw(Box::new(o))
+                }
+                Err(e) => {
+                    let _ = confirm_tx.send(Err(e));
+                    ptr::null_mut()
+                }
+            }
+        });
+
+        if overlay_ptr.is_null() {
+            return;
+        }
+
+        let mut needs_render = true;
+        let mut was_in_resize_corner = false;
+        let mut was_resizing = false;
+
+        loop {
+            // Process all pending commands - dispatch each to main thread
+            while let Ok(cmd) = rx.try_recv() {
+                match cmd {
+                    OverlayCommand::SetMoveMode(enabled) => {
+                        dispatch::Queue::main().exec_sync(|| {
+                            // SAFETY: overlay_ptr is valid and we're on main thread
+                            let overlay = unsafe { &mut *overlay_ptr };
+                            overlay.set_move_mode(enabled);
+                        });
+                        needs_render = true;
+                    }
+                    OverlayCommand::SetRearrangeMode(enabled) => {
+                        dispatch::Queue::main().exec_sync(|| {
+                            let overlay = unsafe { &mut *overlay_ptr };
+                            overlay.set_rearrange_mode(enabled);
+                        });
+                        needs_render = true;
+                    }
+                    OverlayCommand::UpdateData(data) => {
+                        let updated = dispatch::Queue::main().exec_sync(|| {
+                            let overlay = unsafe { &mut *overlay_ptr };
+                            overlay.update_data(data)
+                        });
+                        if updated {
+                            needs_render = true;
+                        }
+                    }
+                    OverlayCommand::UpdateConfig(config) => {
+                        dispatch::Queue::main().exec_sync(|| {
+                            let overlay = unsafe { &mut *overlay_ptr };
+                            overlay.update_config(config);
+                        });
+                        needs_render = true;
+                    }
+                    OverlayCommand::SetPosition(x, y) => {
+                        dispatch::Queue::main().exec_sync(|| {
+                            let overlay = unsafe { &mut *overlay_ptr };
+                            overlay.frame_mut().window_mut().set_position(x, y);
+                        });
+                        needs_render = true;
+                    }
+                    OverlayCommand::GetPosition(response_tx) => {
+                        let event = dispatch::Queue::main().exec_sync(|| {
+                            let overlay = unsafe { &*overlay_ptr };
+                            let pos = overlay.position();
+                            let current_monitor = overlay.frame().window().current_monitor();
+                            let (monitor_id, monitor_x, monitor_y) = current_monitor
+                                .map(|m| (Some(m.id), m.x, m.y))
+                                .unwrap_or((None, 0, 0));
+                            PositionEvent {
+                                kind,
+                                x: pos.x,
+                                y: pos.y,
+                                width: pos.width,
+                                height: pos.height,
+                                monitor_id,
+                                monitor_x,
+                                monitor_y,
+                            }
+                        });
+                        let _ = response_tx.send(event);
+                    }
+                    OverlayCommand::Shutdown => {
+                        // Clean up overlay on main thread before returning
+                        dispatch::Queue::main().exec_sync(|| {
+                            let _ = unsafe { Box::from_raw(overlay_ptr) };
+                        });
+                        return;
+                    }
+                }
+            }
+
+            // Poll window events on main thread (returns false if window should close)
+            let should_continue = dispatch::Queue::main().exec_sync(|| {
+                let overlay = unsafe { &mut *overlay_ptr };
+                overlay.poll_events()
+            });
+
+            if !should_continue {
+                break;
+            }
+
+            // Forward any pending registry actions to the service
+            if let Some(ref tx) = registry_action_tx {
+                let actions = dispatch::Queue::main().exec_sync(|| {
+                    let overlay = unsafe { &mut *overlay_ptr };
+                    overlay.take_pending_registry_actions()
+                });
+                for action in actions {
+                    let _ = tx.send(action);
+                }
+            }
+
+            // Check if overlay's internal state requires a render
+            let overlay_needs_render = dispatch::Queue::main().exec_sync(|| {
+                let overlay = unsafe { &mut *overlay_ptr };
+                overlay.needs_render()
+            });
+            if overlay_needs_render {
+                needs_render = true;
+            }
+
+            // Check for pending resize
+            let has_pending_size = dispatch::Queue::main().exec_sync(|| {
+                let overlay = unsafe { &*overlay_ptr };
+                overlay.frame().window().pending_size().is_some()
+            });
+            if has_pending_size {
+                needs_render = true;
+            }
+
+            // Clear position dirty flag
+            dispatch::Queue::main().exec_sync(|| {
+                let overlay = unsafe { &mut *overlay_ptr };
+                let _ = overlay.take_position_dirty();
+            });
+
+            // Check if resize corner state changed
+            let (in_resize_corner, is_resizing) = dispatch::Queue::main().exec_sync(|| {
+                let overlay = unsafe { &*overlay_ptr };
+                (overlay.in_resize_corner(), overlay.is_resizing())
+            });
+            if in_resize_corner != was_in_resize_corner || is_resizing != was_resizing {
+                needs_render = true;
+                was_in_resize_corner = in_resize_corner;
+                was_resizing = is_resizing;
+            }
+
+            let is_interactive = dispatch::Queue::main().exec_sync(|| {
+                let overlay = unsafe { &*overlay_ptr };
+                overlay.is_interactive()
+            });
+
+            if needs_render {
+                dispatch::Queue::main().exec_sync(|| {
+                    let overlay = unsafe { &mut *overlay_ptr };
+                    overlay.render();
+                });
+                needs_render = false;
+            }
+
+            // Sleep on background thread (doesn't block main thread)
+            // 100ms = 10 polls/sec when locked
+            // 16ms = 60 FPS when interactive
+            let sleep_ms = if is_interactive { 16 } else { 100 };
+            thread::sleep(std::time::Duration::from_millis(sleep_ms));
+        }
+
+        // Clean up overlay on main thread
+        dispatch::Queue::main().exec_sync(|| {
+            let _ = unsafe { Box::from_raw(overlay_ptr) };
+        });
     });
 
     // Wait for confirmation from the spawned thread

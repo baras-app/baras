@@ -7,11 +7,10 @@
 //! - `service/` - Combat service (background log processing)
 //! - `overlay/` - Overlay management (OverlayManager, spawn, state)
 //! - `router` - Routes service updates to overlay threads
-//! - `hotkeys` - Global hotkey registration (Windows/macOS only)
+//! - `hotkeys` - Global hotkey registration (not supported on Wayland)
 
 mod audio;
 mod commands;
-#[cfg(not(target_os = "linux"))]
 mod hotkeys;
 mod logging;
 pub mod overlay;
@@ -111,8 +110,7 @@ pub fn run() {
                 // Auto-show enabled overlays on startup
                 spawn_auto_show_overlays(overlay_state.clone(), handle.clone());
 
-                // Register global hotkeys (not supported on Linux/Wayland)
-                #[cfg(not(target_os = "linux"))]
+                // Register global hotkeys (not supported on Wayland)
                 hotkeys::spawn_register_hotkeys(
                     app.handle().clone(),
                     overlay_state.clone(),

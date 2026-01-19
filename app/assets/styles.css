@@ -1686,6 +1686,10 @@ details[open] .collapsible-summary::before {
 
 .hotkey-input {
   flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
   padding: 0.5em 0.75em;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--border-medium);
@@ -1693,6 +1697,9 @@ details[open] .collapsible-summary::before {
   color: #f6f6f6;
   font-family: monospace;
   font-size: 0.9em;
+  cursor: pointer;
+  user-select: none;
+  min-height: 2.2em;
 }
 
 .hotkey-input:focus {
@@ -1701,9 +1708,46 @@ details[open] .collapsible-summary::before {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.hotkey-input::placeholder {
+.hotkey-input--empty .hotkey-display {
   color: var(--text-disabled);
   font-style: italic;
+}
+
+.hotkey-input--capturing {
+  border-color: #e0a030;
+  background: rgba(224, 160, 48, 0.15);
+  animation: hotkey-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes hotkey-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 160, 48, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(224, 160, 48, 0); }
+}
+
+.hotkey-display {
+  flex: 1;
+}
+
+.hotkey-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4em;
+  height: 1.4em;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hotkey-clear:hover {
+  background: rgba(255, 100, 100, 0.3);
+  color: #ff6666;
 }
 
 /* Selected stats - ordered list */
