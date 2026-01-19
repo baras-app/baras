@@ -57,6 +57,9 @@ mod examples {
                 max_value: 15000,
                 total_value: 2_500_000,
                 color: colors::dps_bar_fill(),
+                split_value: Some(9000),
+                total_split_value: Some(1_800_000),
+                split_color: None,
             },
             MetricEntry {
                 name: "Player 2".to_string(),
@@ -64,6 +67,9 @@ mod examples {
                 max_value: 15000,
                 total_value: 1_800_000,
                 color: colors::dps_bar_fill(),
+                split_value: Some(7500),
+                total_split_value: Some(1_400_000),
+                split_color: None,
             },
             MetricEntry {
                 name: "Player 3".to_string(),
@@ -71,6 +77,9 @@ mod examples {
                 max_value: 15000,
                 total_value: 1_200_000,
                 color: colors::hps_bar_fill(),
+                split_value: None,
+                total_split_value: None,
+                split_color: None,
             },
             MetricEntry {
                 name: "Player 4".to_string(),
@@ -78,6 +87,9 @@ mod examples {
                 max_value: 15000,
                 total_value: 800_000,
                 color: colors::tank_bar_fill(),
+                split_value: None,
+                total_split_value: None,
+                split_color: None,
             },
         ];
 
@@ -157,6 +169,9 @@ mod examples {
                 max_value,
                 total_value: value * 180,
                 color: *color,
+                split_value: None,
+                total_split_value: None,
+                split_color: None,
             })
             .collect();
 
@@ -254,6 +269,9 @@ mod examples {
                 max_value,
                 total_value: *value * 180, // ~3 min encounter
                 color: *color,
+                split_value: None,
+                total_split_value: None,
+                split_color: None,
             })
             .collect();
 

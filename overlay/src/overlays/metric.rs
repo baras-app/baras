@@ -23,6 +23,12 @@ pub struct MetricEntry {
     /// Cumulative total (e.g., total damage dealt)
     pub total_value: i64,
     pub color: Color,
+    /// Optional primary portion of value (for split bar rendering)
+    pub split_value: Option<i64>,
+    /// Optional primary portion of total (for split bar rendering)
+    pub total_split_value: Option<i64>,
+    /// Optional custom color for secondary portion of split bar
+    pub split_color: Option<Color>,
 }
 
 impl MetricEntry {
@@ -33,12 +39,28 @@ impl MetricEntry {
             max_value,
             total_value: 0,
             color: colors::dps_bar_fill(),
+            split_value: None,
+            total_split_value: None,
+            split_color: None,
         }
     }
 
     /// Set the cumulative total value
     pub fn with_total(mut self, total: i64) -> Self {
         self.total_value = total;
+        self
+    }
+
+    /// Set primary portion values for split bar rendering
+    pub fn with_split(mut self, split_rate: i64, split_total: i64) -> Self {
+        self.split_value = Some(split_rate);
+        self.total_split_value = Some(split_total);
+        self
+    }
+
+    /// Set custom color for secondary portion of split bar
+    pub fn with_split_color(mut self, color: Color) -> Self {
+        self.split_color = Some(color);
         self
     }
 
@@ -290,6 +312,17 @@ impl MetricOverlay {
                 .with_fill_color(fill_color)
                 .with_bg_color(colors::dps_bar_bg())
                 .with_text_color(font_color);
+
+            // Add split visualization if split data is available
+            if let Some(split_val) = entry.split_value {
+                if entry.value > 0 {
+                    let split_fraction = (split_val as f32 / entry.value as f32).clamp(0.0, 1.0);
+                    bar = bar.with_split(split_fraction);
+                    if let Some(color) = entry.split_color {
+                        bar = bar.with_split_color(color);
+                    }
+                }
+            }
 
             // Add text based on show_total and show_per_second settings
             // Per-second is always rightmost when enabled, total goes center or right

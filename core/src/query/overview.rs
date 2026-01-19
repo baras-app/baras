@@ -155,8 +155,7 @@ impl EncounterQuery<'_> {
                 COALESCE(t.damage_taken_total, 0) as damage_taken_total,
                 COALESCE(t.absorbed_total, 0) as absorbed_total,
                 COALESCE(h.healing_total, 0) as healing_total,
-                COALESCE(h.healing_effective, 0) as healing_effective,
-                COALESCE(h.healing_effective * 100.0 / NULLIF(h.healing_total, 0), 0) as healing_pct
+                COALESCE(h.healing_effective, 0) as healing_effective
             FROM participants p
             LEFT JOIN damage_dealt d ON p.name = d.name
             LEFT JOIN damage_taken t ON p.name = t.name
@@ -177,11 +176,18 @@ impl EncounterQuery<'_> {
             let absorbed_totals = col_f64(batch, 5)?;
             let healing_totals = col_f64(batch, 6)?;
             let healing_effectives = col_f64(batch, 7)?;
-            let healing_pcts = col_f64(batch, 8)?;
 
             for i in 0..batch.num_rows() {
                 let name = names[i].clone();
                 let shield_total = shielding_given.get(&name).copied().unwrap_or(0.0);
+                // Include shielding in healing totals (shields are pre-emptive healing)
+                let healing_total = healing_totals[i] + shield_total;
+                let healing_effective = healing_effectives[i] + shield_total;
+                let healing_pct = if healing_total > 0.0 {
+                    healing_effective * 100.0 / healing_total
+                } else {
+                    0.0
+                };
                 results.push(RaidOverviewRow {
                     name,
                     entity_type: entity_types[i].clone(),
@@ -198,11 +204,11 @@ impl EncounterQuery<'_> {
                     aps: absorbed_totals[i] * 1000.0 / duration_ms as f64,
                     shielding_given_total: shield_total,
                     sps: shield_total * 1000.0 / duration_ms as f64,
-                    healing_total: healing_totals[i],
-                    hps: healing_totals[i] * 1000.0 / duration_ms as f64,
-                    healing_effective: healing_effectives[i],
-                    ehps: healing_effectives[i] * 1000.0 / duration_ms as f64,
-                    healing_pct: healing_pcts[i],
+                    healing_total,
+                    hps: healing_total * 1000.0 / duration_ms as f64,
+                    healing_effective,
+                    ehps: healing_effective * 1000.0 / duration_ms as f64,
+                    healing_pct,
                 });
             }
         }

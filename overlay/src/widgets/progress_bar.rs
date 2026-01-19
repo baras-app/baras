@@ -5,6 +5,19 @@ use tiny_skia::Color;
 use crate::frame::OverlayFrame;
 use crate::widgets::colors;
 
+/// Lighten a color by blending it toward white
+/// `amount` is 0.0 (no change) to 1.0 (full white)
+fn lighten_color(color: Color, amount: f32) -> Color {
+    let amount = amount.clamp(0.0, 1.0);
+    Color::from_rgba(
+        color.red() + (1.0 - color.red()) * amount,
+        color.green() + (1.0 - color.green()) * amount,
+        color.blue() + (1.0 - color.blue()) * amount,
+        color.alpha(),
+    )
+    .unwrap_or(color)
+}
+
 /// A horizontal progress bar with label and optional center/right text
 ///
 /// Layout options:
@@ -23,6 +36,12 @@ pub struct ProgressBar {
     pub center_text: Option<String>,
     /// Optional text displayed on right (e.g., per-second rate)
     pub right_text: Option<String>,
+    /// Optional split progress for boss/add visualization (0.0-1.0 relative to total progress)
+    /// When set, draws primary portion first, then secondary portion
+    pub split_progress: Option<f32>,
+    /// Optional custom color for the secondary (right) portion of split bars
+    /// If None, uses a lightened version of fill_color
+    pub split_color: Option<Color>,
 }
 
 impl ProgressBar {
@@ -35,6 +54,8 @@ impl ProgressBar {
             text_color: colors::white(),
             center_text: None,
             right_text: None,
+            split_progress: None,
+            split_color: None,
         }
     }
 
@@ -62,6 +83,19 @@ impl ProgressBar {
     /// Set right text (e.g., per-second rate)
     pub fn with_right_text(mut self, text: impl Into<String>) -> Self {
         self.right_text = Some(text.into());
+        self
+    }
+
+    /// Set split progress for boss/add visualization
+    /// The value represents the primary portion as a fraction of total progress (0.0-1.0)
+    pub fn with_split(mut self, primary_fraction: f32) -> Self {
+        self.split_progress = Some(primary_fraction.clamp(0.0, 1.0));
+        self
+    }
+
+    /// Set custom color for the secondary (right) portion of split bars
+    pub fn with_split_color(mut self, color: Color) -> Self {
+        self.split_color = Some(color);
         self
     }
 
@@ -129,10 +163,25 @@ impl ProgressBar {
         // Draw background
         frame.fill_rounded_rect(x, y, width, height, radius, self.bg_color);
 
-        // Draw fill
+        // Draw fill (with optional split for primary/secondary visualization)
         let fill_width = width * self.progress;
         if fill_width > 0.0 {
-            frame.fill_rounded_rect(x, y, fill_width, height, radius, self.fill_color);
+            if let Some(primary_fraction) = self.split_progress {
+                // Split bar: draw full fill as secondary color, then primary on top
+                let secondary_color = self
+                    .split_color
+                    .unwrap_or_else(|| lighten_color(self.fill_color, 0.4));
+                frame.fill_rounded_rect(x, y, fill_width, height, radius, secondary_color);
+
+                // Draw primary segment on top (covers left portion)
+                let primary_width = fill_width * primary_fraction;
+                if primary_width > 0.0 {
+                    frame.fill_rounded_rect(x, y, primary_width, height, radius, self.fill_color);
+                }
+            } else {
+                // Normal single-color fill
+                frame.fill_rounded_rect(x, y, fill_width, height, radius, self.fill_color);
+            }
         }
 
         let text_padding = 4.0 * frame.scale_factor();
