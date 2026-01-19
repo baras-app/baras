@@ -576,15 +576,14 @@ impl OverlayPlatform for MacOSOverlay {
     }
 
     fn commit(&mut self) {
-        // Convert RGBA to BGRA (Core Graphics expects BGRA with premultiplied alpha)
+        // Convert RGBA to BGRA (tiny-skia already produces premultiplied alpha,
+        // so we just need to swap channels - no additional premultiplication!)
         for (i, chunk) in self.pixel_data.chunks(4).enumerate() {
             let offset = i * 4;
             if chunk.len() == 4 && offset + 3 < self.bgra_buffer.len() {
-                let a = chunk[3] as u32;
-                // Premultiply alpha
-                self.bgra_buffer[offset] = ((chunk[2] as u32 * a) / 255) as u8; // B
-                self.bgra_buffer[offset + 1] = ((chunk[1] as u32 * a) / 255) as u8; // G
-                self.bgra_buffer[offset + 2] = ((chunk[0] as u32 * a) / 255) as u8; // R
+                self.bgra_buffer[offset] = chunk[2]; // B
+                self.bgra_buffer[offset + 1] = chunk[1]; // G
+                self.bgra_buffer[offset + 2] = chunk[0]; // R
                 self.bgra_buffer[offset + 3] = chunk[3]; // A
             }
         }
