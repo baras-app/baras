@@ -670,7 +670,7 @@ pub struct OverlayAppearanceConfig {
     pub show_header: bool,
     #[serde(default = "default_true")]
     pub show_footer: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub show_class_icons: bool,
     #[serde(default = "default_font_color")]
     pub font_color: Color,
@@ -703,7 +703,7 @@ impl Default for OverlayAppearanceConfig {
         Self {
             show_header: true,
             show_footer: true,
-            show_class_icons: false,
+            show_class_icons: true,
             font_color: overlay_colors::WHITE,
             bar_color: overlay_colors::DPS,
             max_entries: 16,
@@ -1405,7 +1405,7 @@ pub struct OverlaySettings {
     pub metric_scaling_factor: f32,
     #[serde(default = "default_opacity")]
     pub personal_opacity: u8,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub class_icons_enabled: bool,
     #[serde(default)]
     pub default_appearances: HashMap<String, OverlayAppearanceConfig>,
@@ -1467,7 +1467,7 @@ impl Default for OverlaySettings {
             metric_stack_from_bottom: false,
             metric_scaling_factor: 1.0,
             personal_opacity: 180,
-            class_icons_enabled: false,
+            class_icons_enabled: true,
             default_appearances: HashMap::new(),
             raid_overlay: RaidOverlaySettings::default(),
             raid_opacity: 180,

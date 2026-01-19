@@ -23,6 +23,16 @@ pub struct MetricEntry {
     /// Cumulative total (e.g., total damage dealt)
     pub total_value: i64,
     pub color: Color,
+    /// Optional primary portion of value (for split bar rendering)
+    pub split_value: Option<i64>,
+    /// Optional primary portion of total (for split bar rendering)
+    pub total_split_value: Option<i64>,
+    /// Optional custom color for secondary portion of split bar
+    pub split_color: Option<Color>,
+    /// Optional class icon name (e.g., "assassin", "guardian")
+    pub class_icon: Option<String>,
+    /// Optional role for icon tinting
+    pub role: Option<crate::class_icons::Role>,
 }
 
 impl MetricEntry {
@@ -33,6 +43,11 @@ impl MetricEntry {
             max_value,
             total_value: 0,
             color: colors::dps_bar_fill(),
+            split_value: None,
+            total_split_value: None,
+            split_color: None,
+            class_icon: None,
+            role: None,
         }
     }
 
@@ -42,8 +57,34 @@ impl MetricEntry {
         self
     }
 
+    /// Set primary portion values for split bar rendering
+    pub fn with_split(mut self, split_rate: i64, split_total: i64) -> Self {
+        self.split_value = Some(split_rate);
+        self.total_split_value = Some(split_total);
+        self
+    }
+
+    /// Set custom color for secondary portion of split bar
+    pub fn with_split_color(mut self, color: Color) -> Self {
+        self.split_color = Some(color);
+        self
+    }
+
     pub fn with_color(mut self, color: Color) -> Self {
         self.color = color;
+        self
+    }
+
+    /// Set class icon for display
+    pub fn with_icon(mut self, icon: String) -> Self {
+        self.class_icon = Some(icon);
+        self
+    }
+
+    /// Set class icon and role for icon display
+    pub fn with_class_icon(mut self, icon: String, role: crate::class_icons::Role) -> Self {
+        self.class_icon = Some(icon);
+        self.role = Some(role);
         self
     }
 }
@@ -72,6 +113,7 @@ pub struct MetricOverlay {
     show_empty_bars: bool,
     stack_from_bottom: bool,
     scaling_factor: f32,
+    show_class_icons: bool,
 }
 
 impl MetricOverlay {
@@ -84,6 +126,7 @@ impl MetricOverlay {
         show_empty_bars: bool,
         stack_from_bottom: bool,
         scaling_factor: f32,
+        show_class_icons: bool,
     ) -> Result<Self, PlatformError> {
         let mut frame = OverlayFrame::new(config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_background_alpha(background_alpha);
@@ -97,6 +140,7 @@ impl MetricOverlay {
             show_empty_bars,
             stack_from_bottom,
             scaling_factor: scaling_factor.clamp(1.0, 2.0),
+            show_class_icons,
         })
     }
 
@@ -123,6 +167,11 @@ impl MetricOverlay {
     /// Update scaling factor (clamped to 1.0-2.0)
     pub fn set_scaling_factor(&mut self, factor: f32) {
         self.scaling_factor = factor.clamp(1.0, 2.0);
+    }
+
+    /// Update show class icons setting
+    pub fn set_show_class_icons(&mut self, show: bool) {
+        self.show_class_icons = show;
     }
 
     /// Update the metric entries
@@ -163,6 +212,7 @@ impl MetricOverlay {
         // Get display options
         let show_total = self.appearance.show_total;
         let show_per_second = self.appearance.show_per_second;
+        let show_class_icons = self.show_class_icons;
 
         // Filter and limit entries to max_entries
         let max_entries = self.appearance.max_entries as usize;
@@ -271,6 +321,10 @@ impl MetricOverlay {
         let rate_sum: i64 = visible_entries.iter().map(|e| e.value).sum();
         let total_sum: i64 = visible_entries.iter().map(|e| e.total_value).sum();
 
+        // Icon rendering setup
+        let icon_size = bar_height - 4.0 * self.frame.scale_factor(); // Slightly smaller than bar
+        let icon_padding = 2.0 * self.frame.scale_factor();
+
         for entry in &visible_entries {
             // Determine fill color (use entry color if custom, otherwise config bar_color)
             let fill_color = if entry.color != colors::dps_bar_fill() {
@@ -278,6 +332,9 @@ impl MetricOverlay {
             } else {
                 bar_color
             };
+
+            // Check if we have an icon to show
+            let has_icon = show_class_icons && entry.class_icon.is_some();
 
             let display_name = truncate_name(&entry.name, MAX_NAME_CHARS);
             let progress = if max_val > 0.0 {
@@ -290,6 +347,22 @@ impl MetricOverlay {
                 .with_fill_color(fill_color)
                 .with_bg_color(colors::dps_bar_bg())
                 .with_text_color(font_color);
+
+            // Add label offset to make room for icon
+            if has_icon {
+                bar = bar.with_label_offset(icon_size + icon_padding);
+            }
+
+            // Add split visualization if split data is available
+            if let Some(split_val) = entry.split_value {
+                if entry.value > 0 {
+                    let split_fraction = (split_val as f32 / entry.value as f32).clamp(0.0, 1.0);
+                    bar = bar.with_split(split_fraction);
+                    if let Some(color) = entry.split_color {
+                        bar = bar.with_split_color(color);
+                    }
+                }
+            }
 
             // Add text based on show_total and show_per_second settings
             // Per-second is always rightmost when enabled, total goes center or right
@@ -316,6 +389,26 @@ impl MetricOverlay {
                 text_font_size,
                 bar_radius,
             );
+
+            // Draw class icon on top of bar if enabled and available
+            if has_icon {
+                if let Some(icon_name) = &entry.class_icon {
+                    if let Some(icon) = crate::class_icons::get_white_class_icon(icon_name) {
+                        let icon_x = padding + icon_padding;
+                        let icon_y = y + icon_padding;
+
+                        self.frame.draw_image(
+                            &icon.rgba,
+                            icon.width,
+                            icon.height,
+                            icon_x,
+                            icon_y,
+                            icon_size,
+                            icon_size,
+                        );
+                    }
+                }
+            }
 
             y += bar_height + effective_spacing;
         }
@@ -361,7 +454,7 @@ impl Overlay for MetricOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Metric(appearance, alpha, show_empty, stack_bottom, scale) =
+        if let OverlayConfigUpdate::Metric(appearance, alpha, show_empty, stack_bottom, scale, show_icons) =
             config
         {
             self.set_appearance(appearance);
@@ -369,6 +462,7 @@ impl Overlay for MetricOverlay {
             self.set_show_empty_bars(show_empty);
             self.set_stack_from_bottom(stack_bottom);
             self.set_scaling_factor(scale);
+            self.set_show_class_icons(show_icons);
         }
     }
 

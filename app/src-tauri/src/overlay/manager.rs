@@ -53,6 +53,7 @@ impl OverlayManager {
                     settings.metric_show_empty_bars,
                     settings.metric_stack_from_bottom,
                     settings.metric_scaling_factor,
+                    settings.class_icons_enabled,
                 )?
             }
             OverlayType::Personal => {
@@ -252,6 +253,7 @@ impl OverlayManager {
                     settings.metric_show_empty_bars,
                     settings.metric_stack_from_bottom,
                     settings.metric_scaling_factor,
+                    settings.class_icons_enabled,
                 )
             }
             OverlayType::Personal => {

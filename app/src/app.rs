@@ -849,7 +849,7 @@ pub fn App() -> Element {
                                     span { class: "profile-label", "Profile:" }
                                     span { class: "profile-current", "Default" }
                                     button {
-                                        class: "profile-save-btn",
+                                        class: "btn-create-profile",
                                         title: "Save current settings as a profile",
                                         onclick: move |_| {
                                             let mut toast = use_toast();
@@ -870,7 +870,7 @@ pub fn App() -> Element {
                                             });
                                         },
                                         i { class: "fa-solid fa-plus" }
-                                        span { " Save as Profile" }
+                                        " Save as Profile"
                                     }
                                 } else {
                                     // Profiles exist: show dropdown

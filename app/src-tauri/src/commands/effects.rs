@@ -43,6 +43,7 @@ pub struct EffectListItem {
     pub refresh_abilities: Vec<AbilitySelector>,
     pub duration_secs: Option<f32>,
     pub is_refreshed_on_modify: bool,
+    pub default_charges: Option<u8>,
     pub color: Option<[u8; 4]>,
     pub show_at_secs: f32,
 
@@ -85,6 +86,7 @@ impl EffectListItem {
             refresh_abilities: def.refresh_abilities.clone(),
             duration_secs: def.duration_secs,
             is_refreshed_on_modify: def.is_refreshed_on_modify,
+            default_charges: def.default_charges,
             color: def.color,
             show_at_secs: def.show_at_secs,
             display_target: def.display_target,
@@ -114,6 +116,7 @@ impl EffectListItem {
             refresh_abilities: self.refresh_abilities.clone(),
             duration_secs: self.duration_secs,
             is_refreshed_on_modify: self.is_refreshed_on_modify,
+            default_charges: self.default_charges,
             color: self.color,
             show_at_secs: self.show_at_secs,
             persist_past_death: self.persist_past_death,

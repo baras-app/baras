@@ -82,6 +82,7 @@ pub fn SettingsPanel(
                 config.overlay_settings.metric_show_empty_bars = new_settings.metric_show_empty_bars;
                 config.overlay_settings.metric_stack_from_bottom = new_settings.metric_stack_from_bottom;
                 config.overlay_settings.metric_scaling_factor = new_settings.metric_scaling_factor;
+                config.overlay_settings.class_icons_enabled = new_settings.class_icons_enabled;
                 config.overlay_settings.personal_opacity = new_settings.personal_opacity;
                 config.overlay_settings.raid_overlay = new_settings.raid_overlay.clone();
                 config.overlay_settings.raid_opacity = new_settings.raid_opacity;
@@ -416,6 +417,19 @@ pub fn SettingsPanel(
                                     onchange: move |e: Event<FormData>| {
                                         let mut new_settings = draft_settings();
                                         new_settings.metric_stack_from_bottom = e.checked();
+                                        update_draft(new_settings);
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Show Class Icons" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: current_settings.class_icons_enabled,
+                                    onchange: move |e: Event<FormData>| {
+                                        let mut new_settings = draft_settings();
+                                        new_settings.class_icons_enabled = e.checked();
                                         update_draft(new_settings);
                                     }
                                 }
