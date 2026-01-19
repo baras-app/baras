@@ -2166,6 +2166,16 @@ details[open] .collapsible-summary::before {
   color: var(--text-muted);
 }
 
+/* Override .profile-current when used inline in profile selector */
+.profile-selector .profile-current {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.85em;
+}
+
 .profile-label {
   font-size: 0.85em;
   color: #777;
@@ -2230,6 +2240,37 @@ details[open] .collapsible-summary::before {
 .profile-save-btn:active {
   background: #4a4a4a;
   transform: scale(0.95);
+}
+
+/* Create profile button (empty state with text) */
+.btn-create-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.4em 0.8em;
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  border: 1px solid #5a5a5a;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-create-profile:hover {
+  background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%);
+  border-color: #6a8aba;
+  color: #8ab4f8;
+}
+
+.btn-create-profile:active {
+  background: #3a3a3a;
+  transform: scale(0.98);
+}
+
+.btn-create-profile i {
+  font-size: 0.9em;
 }
 
 /* Compact profile list for settings panel */
