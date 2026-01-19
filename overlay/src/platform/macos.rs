@@ -8,7 +8,7 @@ use std::ffi::c_void;
 
 // objc2 core
 use objc2::rc::Retained;
-use objc2::{define_class, msg_send, DeclaredClass, MainThreadOnly};
+use objc2::{define_class, msg_send, DeclaredClass, MainThreadMarker, MainThreadOnly};
 
 // objc2-foundation types
 use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
@@ -33,8 +33,11 @@ use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORN
 // ─────────────────────────────────────────────────────────────────────────────
 
 pub fn get_all_monitors() -> Vec<MonitorInfo> {
-    let screens = NSScreen::screens();
-    let Some(main_screen) = NSScreen::mainScreen() else {
+    // SAFETY: This function is called from the main thread during overlay operations
+    let mtm = unsafe { MainThreadMarker::new_unchecked() };
+
+    let screens = NSScreen::screens(mtm);
+    let Some(main_screen) = NSScreen::mainScreen(mtm) else {
         return Vec::new();
     };
     let main_frame = main_screen.frame();
@@ -44,10 +47,7 @@ pub fn get_all_monitors() -> Vec<MonitorInfo> {
         .enumerate()
         .map(|(i, screen)| {
             let frame = screen.frame();
-            let name = screen
-                .localizedName()
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| format!("Display {}", i + 1));
+            let name = screen.localizedName().to_string();
 
             // macOS origin is bottom-left, convert to top-left
             let y = main_frame.size.height - frame.origin.y - frame.size.height;
@@ -164,8 +164,8 @@ define_class!(
 
 impl BarasOverlayView {
     /// Create a new BarasOverlayView with the given frame.
-    fn new(frame: NSRect) -> Retained<Self> {
-        let this = Self::alloc();
+    fn new(frame: NSRect, mtm: MainThreadMarker) -> Retained<Self> {
+        let this = Self::alloc(mtm);
         let ivars = BarasOverlayViewIvars::default();
         // SAFETY: Calling NSView's initWithFrame: designated initializer
         unsafe { msg_send![super(this.set_ivars(ivars)), initWithFrame: frame] }
@@ -246,16 +246,17 @@ impl MacOSOverlay {
 
 impl OverlayPlatform for MacOSOverlay {
     fn new(config: OverlayConfig) -> Result<Self, PlatformError> {
-        // objc2-app-kit operations require running on the main thread
-        // For overlay use cases, we're always on the main thread during init
+        // SAFETY: objc2-app-kit operations require running on the main thread.
+        // For overlay use cases, we're always on the main thread during init.
+        let mtm = unsafe { MainThreadMarker::new_unchecked() };
 
         unsafe {
             // Initialize app if needed - use objc2-app-kit
-            let app = NSApplication::sharedApplication();
+            let app = NSApplication::sharedApplication(mtm);
             app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
 
             // Get main screen height for coordinate conversion
-            let main_screen = NSScreen::mainScreen()
+            let main_screen = NSScreen::mainScreen(mtm)
                 .ok_or_else(|| PlatformError::Other("No main screen".into()))?;
             let main_frame = main_screen.frame();
             let main_screen_height = main_frame.size.height;
@@ -270,7 +271,7 @@ impl OverlayPlatform for MacOSOverlay {
 
             // Create borderless window using objc2-app-kit
             let window: Retained<NSWindow> = {
-                let alloc = NSWindow::alloc();
+                let alloc = NSWindow::alloc(mtm);
                 NSWindow::initWithContentRect_styleMask_backing_defer(
                     alloc,
                     rect,
@@ -300,7 +301,7 @@ impl OverlayPlatform for MacOSOverlay {
             );
 
             // Create custom view using our define_class! defined view
-            let view = BarasOverlayView::new(rect);
+            let view = BarasOverlayView::new(rect, mtm);
 
             // Set view as window's content
             window.setContentView(Some(&view));
@@ -474,8 +475,11 @@ impl OverlayPlatform for MacOSOverlay {
     }
 
     fn poll_events(&mut self) -> bool {
+        // SAFETY: poll_events is called from the main thread event loop
+        let mtm = unsafe { MainThreadMarker::new_unchecked() };
+
         unsafe {
-            let app = NSApplication::sharedApplication();
+            let app = NSApplication::sharedApplication(mtm);
 
             loop {
                 // Create run loop mode string
@@ -496,7 +500,7 @@ impl OverlayPlatform for MacOSOverlay {
 
                 // Handle events for our window when interactive
                 if !self.click_through {
-                    if let Some(event_window) = event.window() {
+                    if let Some(event_window) = event.window(mtm) {
                         // Compare window identity
                         if std::ptr::eq(
                             event_window.as_ref() as *const NSWindow,
