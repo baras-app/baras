@@ -27,7 +27,6 @@ use std::ptr;
 /// dereferenced from multiple threads - all access is serialized through
 /// the main queue.
 #[cfg(target_os = "macos")]
-#[derive(Clone, Copy)]
 struct SendPtr<T>(*mut T);
 
 #[cfg(target_os = "macos")]
@@ -40,6 +39,17 @@ impl<T> SendPtr<T> {
         self.0.is_null()
     }
 }
+
+// Manual Copy/Clone impl to avoid T: Copy bound from derive
+#[cfg(target_os = "macos")]
+impl<T> Clone for SendPtr<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl<T> Copy for SendPtr<T> {}
 
 #[cfg(target_os = "macos")]
 unsafe impl<T> Send for SendPtr<T> {}
