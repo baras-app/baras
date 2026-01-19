@@ -143,8 +143,64 @@ jobs:
           releaseDraft: false
           prerelease: false
 
+  build-macos:
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          cache-on-failure: true
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install Dioxus and Tauri CLIs
+        run: cargo binstall dioxus-cli tauri-cli --no-confirm --force
+
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Build parse-worker sidecar
+        run: |
+          cargo build --release --package baras-parse-worker
+          mkdir -p app/src-tauri/binaries
+          cp target/release/baras-parse-worker app/src-tauri/binaries/baras-parse-worker-aarch64-apple-darwin
+
+      - name: Read changelog
+        id: changelog
+        run: |
+          # Read changelog, skip the "# What's New" header
+          BODY=$(tail -n +3 app/src-tauri/CHANGELOG.md)
+          # Handle multiline for GitHub Actions
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Build and release Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: app
+          tauriScript: cargo tauri
+          tagName: v${{ inputs.version }}
+          releaseName: "BARAS v${{ inputs.version }}"
+          releaseBody: ${{ steps.changelog.outputs.body }}
+          releaseDraft: false
+          prerelease: false
+
   update-manifest:
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -164,6 +220,7 @@ jobs:
           # Download signatures
           LINUX_SIG=$(curl -sL "https://github.com/baras-app/baras/releases/download/v${VERSION}/BARAS_${VERSION}_amd64.AppImage.sig")
           WINDOWS_SIG=$(curl -sL "https://github.com/baras-app/baras/releases/download/v${VERSION}/BARAS_${VERSION}_x64-setup.exe.sig")
+          MACOS_SIG=$(curl -sL "https://github.com/baras-app/baras/releases/download/v${VERSION}/BARAS_${VERSION}_aarch64.dmg.sig")
 
           # Generate latest.json
           cat > latest.json << EOF
@@ -179,6 +236,10 @@ jobs:
               "windows-x86_64": {
                 "signature": "${WINDOWS_SIG}",
                 "url": "https://github.com/baras-app/baras/releases/download/v${VERSION}/BARAS_${VERSION}_x64-setup.exe"
+              },
+              "darwin-aarch64": {
+                "signature": "${MACOS_SIG}",
+                "url": "https://github.com/baras-app/baras/releases/download/v${VERSION}/BARAS_${VERSION}_aarch64.dmg"
               }
             }
           }
