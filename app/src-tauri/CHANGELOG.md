@@ -4,11 +4,11 @@
 
 - macOS support (experimental)
 - X11 support for Linux
-- Class icons on metrics overlays
-- Split-value metrics overlays (e.g., DPS + HPS combined)
-- Toast notifications for errors and feedback
-- Single instance enforcement
-- File-based logging with automatic rotation
+
+## Under the hood
+
+- Application error logs + major stability improvements
+- Parsing time significantly reduced for larger files
 
 ## Improvements
 
@@ -17,21 +17,30 @@
 - Overlay settings live preview
 - Overlay button tooltips
 - Effect editor card-based UI with tooltips
-- Hotkey limitation warning for Linux/Wayland
-- PlayerStatsBar moved to session page
-- Improved Windows font rendering for StarJedi
+- Alacrity/latency parameters moved to the session page
+
+## Overlays
+
+- Overlay customization previews are now visible immediately without saving
+- Class icons can now be displayed on metrics overlays
+- Effective damage visually shows boss/non-boss DPS splits
+- Raw healing visually shows total/effective HPS splits
+- Effective healing now shows shielding
 
 ## Bugfixes
 
-- Shelleigh is now counted to boss DPS in huntmaster
+- The application can now only have one instance open at at time
+- Changing overlay profiles no longer changes overlay visibility
+- Raid frames properly re-render after profiles are changed
+- Timers now load on the first encounter when application is restarted within an area
+- Overlays now display the latest combat encounter automatically when a file is opened
+- Data explorer race conditions and formatting fixed
+- Combat log scroll resets when new encounter selected
+
+## Timers/Definitions
+
+- Shelleigh is now counted to boss DPS in Huntmaster
 - XR-53 digestive enzyme and Revan force bond no longer contribute to player DPS
 - Corruptor Zero timer for first gravity field added
 - Vorgath boss encounter is now properly detected on story mode
-- Timers will load correctly if the application is restarted/refreshed
 - Revanite Commanders now appear on boss healthbar
-- Raid frames re-render after profile switch
-- Combat log scroll resets on encounter change
-- Data explorer race conditions and formatting fixed
-- Encounter context properly resets on restart
-- Overlay startup data no longer gated behind tailing mode
-- Move mode resets on profile switch
