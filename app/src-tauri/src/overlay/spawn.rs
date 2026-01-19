@@ -260,7 +260,7 @@ where
             while let Ok(cmd) = rx.try_recv() {
                 match cmd {
                     OverlayCommand::SetMoveMode(enabled) => {
-                        dispatch::Queue::main().exec_sync(|| {
+                        dispatch::Queue::main().exec_sync(move || {
                             // SAFETY: overlay_ptr is valid and we're on main thread
                             let overlay = unsafe { &mut *overlay_ptr.0 };
                             overlay.set_move_mode(enabled);
@@ -268,14 +268,14 @@ where
                         needs_render = true;
                     }
                     OverlayCommand::SetRearrangeMode(enabled) => {
-                        dispatch::Queue::main().exec_sync(|| {
+                        dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.0 };
                             overlay.set_rearrange_mode(enabled);
                         });
                         needs_render = true;
                     }
                     OverlayCommand::UpdateData(data) => {
-                        let updated = dispatch::Queue::main().exec_sync(|| {
+                        let updated = dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.0 };
                             overlay.update_data(data)
                         });
@@ -284,21 +284,21 @@ where
                         }
                     }
                     OverlayCommand::UpdateConfig(config) => {
-                        dispatch::Queue::main().exec_sync(|| {
+                        dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.0 };
                             overlay.update_config(config);
                         });
                         needs_render = true;
                     }
                     OverlayCommand::SetPosition(x, y) => {
-                        dispatch::Queue::main().exec_sync(|| {
+                        dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.0 };
                             overlay.frame_mut().window_mut().set_position(x, y);
                         });
                         needs_render = true;
                     }
                     OverlayCommand::GetPosition(response_tx) => {
-                        let event = dispatch::Queue::main().exec_sync(|| {
+                        let event = dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &*overlay_ptr.0 };
                             let pos = overlay.position();
                             let current_monitor = overlay.frame().window().current_monitor();
@@ -320,7 +320,7 @@ where
                     }
                     OverlayCommand::Shutdown => {
                         // Clean up overlay on main thread before returning
-                        dispatch::Queue::main().exec_sync(|| {
+                        dispatch::Queue::main().exec_sync(move || {
                             let _ = unsafe { Box::from_raw(overlay_ptr.0) };
                         });
                         return;
@@ -329,7 +329,7 @@ where
             }
 
             // Poll window events on main thread (returns false if window should close)
-            let should_continue = dispatch::Queue::main().exec_sync(|| {
+            let should_continue = dispatch::Queue::main().exec_sync(move || {
                 let overlay = unsafe { &mut *overlay_ptr.0 };
                 overlay.poll_events()
             });
@@ -340,7 +340,7 @@ where
 
             // Forward any pending registry actions to the service
             if let Some(ref tx) = registry_action_tx {
-                let actions = dispatch::Queue::main().exec_sync(|| {
+                let actions = dispatch::Queue::main().exec_sync(move || {
                     let overlay = unsafe { &mut *overlay_ptr.0 };
                     overlay.take_pending_registry_actions()
                 });
@@ -350,7 +350,7 @@ where
             }
 
             // Check if overlay's internal state requires a render
-            let overlay_needs_render = dispatch::Queue::main().exec_sync(|| {
+            let overlay_needs_render = dispatch::Queue::main().exec_sync(move || {
                 let overlay = unsafe { &mut *overlay_ptr.0 };
                 overlay.needs_render()
             });
@@ -359,7 +359,7 @@ where
             }
 
             // Check for pending resize
-            let has_pending_size = dispatch::Queue::main().exec_sync(|| {
+            let has_pending_size = dispatch::Queue::main().exec_sync(move || {
                 let overlay = unsafe { &*overlay_ptr.0 };
                 overlay.frame().window().pending_size().is_some()
             });
@@ -368,13 +368,13 @@ where
             }
 
             // Clear position dirty flag
-            dispatch::Queue::main().exec_sync(|| {
+            dispatch::Queue::main().exec_sync(move || {
                 let overlay = unsafe { &mut *overlay_ptr.0 };
                 let _ = overlay.take_position_dirty();
             });
 
             // Check if resize corner state changed
-            let (in_resize_corner, is_resizing) = dispatch::Queue::main().exec_sync(|| {
+            let (in_resize_corner, is_resizing) = dispatch::Queue::main().exec_sync(move || {
                 let overlay = unsafe { &*overlay_ptr.0 };
                 (overlay.in_resize_corner(), overlay.is_resizing())
             });
@@ -384,13 +384,13 @@ where
                 was_resizing = is_resizing;
             }
 
-            let is_interactive = dispatch::Queue::main().exec_sync(|| {
+            let is_interactive = dispatch::Queue::main().exec_sync(move || {
                 let overlay = unsafe { &*overlay_ptr.0 };
                 overlay.is_interactive()
             });
 
             if needs_render {
-                dispatch::Queue::main().exec_sync(|| {
+                dispatch::Queue::main().exec_sync(move || {
                     let overlay = unsafe { &mut *overlay_ptr.0 };
                     overlay.render();
                 });
@@ -405,7 +405,7 @@ where
         }
 
         // Clean up overlay on main thread
-        dispatch::Queue::main().exec_sync(|| {
+        dispatch::Queue::main().exec_sync(move || {
             let _ = unsafe { Box::from_raw(overlay_ptr.0) };
         });
     });
