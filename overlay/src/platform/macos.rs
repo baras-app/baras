@@ -488,21 +488,14 @@ impl OverlayPlatform for MacOSOverlay {
             return;
         }
 
-        self.width = width;
-        self.height = height;
-        self.pending_width = width;
-        self.pending_height = height;
-
-        let size = (width * height * 4) as usize;
-        self.pixel_data.resize(size, 0);
-        self.bgra_buffer.resize(size, 0);
-
+        // During resize, only update window frame - defer buffer resize to reduce tearing
+        // The actual buffer resize happens when resize completes (is_resizing becomes false)
         let macos_y = self.convert_y(self.y, height);
         let rect = NSRect::new(
             NSPoint::new(self.x as f64, macos_y),
             NSSize::new(width as f64, height as f64),
         );
-        self.window.setFrame_display(rect, true);
+        self.window.setFrame_display(rect, false); // false = don't redisplay yet
 
         // Update view frame
         let view_rect = NSRect::new(
@@ -510,6 +503,26 @@ impl OverlayPlatform for MacOSOverlay {
             NSSize::new(width as f64, height as f64),
         );
         self.view.setFrame(view_rect);
+
+        self.pending_width = width;
+        self.pending_height = height;
+    }
+
+    /// Finalize resize by updating buffers - called when resize completes
+    fn finalize_size(&mut self) {
+        let width = self.pending_width;
+        let height = self.pending_height;
+
+        if width == self.width && height == self.height {
+            return;
+        }
+
+        self.width = width;
+        self.height = height;
+
+        let size = (width * height * 4) as usize;
+        self.pixel_data.resize(size, 0);
+        self.bgra_buffer.resize(size, 0);
 
         self.update_view_buffer();
     }
@@ -612,7 +625,11 @@ impl OverlayPlatform for MacOSOverlay {
             // Handle mouse up
             if self.view.take_mouse_up() {
                 self.is_dragging = false;
-                self.is_resizing = false;
+                if self.is_resizing {
+                    self.is_resizing = false;
+                    // Finalize the resize - update buffers now that resize is complete
+                    self.finalize_size();
+                }
             }
 
             // Handle mouse dragged
