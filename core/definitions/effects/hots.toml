@@ -43,6 +43,7 @@ trigger = { type = "effect_applied", effects = [
 ], source = "local_player", target = "group_members" }
 refresh_abilities = [985226842996736]
 duration_secs = 180.0
+default_charges = 7
 color = [255, 126, 66, 255]
 display_target = "raid_frames"
 
@@ -65,6 +66,7 @@ trigger = { type = "effect_applied", effects = [
 ], source = "local_player", target = "group_members" }
 refresh_abilities = [999516199190528]
 duration_secs = 180.0
+default_charges = 7
 color = [255, 126, 66, 255]
 display_target = "raid_frames"
 

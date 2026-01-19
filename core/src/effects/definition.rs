@@ -99,6 +99,10 @@ pub struct EffectDefinition {
     #[serde(default)]
     pub is_refreshed_on_modify: bool,
 
+    /// Default charges when creating via late registration (ability activation)
+    #[serde(default)]
+    pub default_charges: Option<u8>,
+
     // ─── Duration ───────────────────────────────────────────────────────────
     /// Expected duration in seconds (None = indefinite/unknown)
     pub duration_secs: Option<f32>,

@@ -12,7 +12,7 @@ use chrono::NaiveDateTime;
 use crate::combat_log::EntityType;
 use crate::context::IStr;
 use crate::dsl::EntityDefinition;
-use crate::dsl::EntityFilterMatching;
+use crate::dsl::{EntityFilter, EntityFilterMatching};
 use crate::encounter::CombatEncounter;
 use crate::signal_processor::{GameSignal, SignalHandler};
 
@@ -601,15 +601,23 @@ impl EffectTracker {
     }
 
     /// Refresh any tracked effects that have this action in their refresh_abilities.
+    /// For raid frame effects, also creates the effect if it doesn't exist yet
+    /// (handles late registration when initial application was missed).
     fn refresh_effects_by_action(
         &mut self,
         action_id: i64,
         action_name: IStr,
+        source_id: i64,
+        source_name: IStr,
         target_id: i64,
-        _target_name: IStr,
-        _target_entity_type: &EntityType,
         timestamp: NaiveDateTime,
+        encounter: Option<&CombatEncounter>,
     ) {
+        // Skip when not in live mode
+        if !self.live_mode {
+            return;
+        }
+
         // For AoE abilities (target_id == 0), we can't reliably detect which targets
         // were actually hit. Damage events from ongoing DOTs on other targets look
         // identical to first ticks from the new cast. Rather than risk false refreshes
@@ -621,20 +629,119 @@ impl EffectTracker {
 
         // Single-target case: refresh effect on specific target
         let action_name_str = crate::context::resolve(action_name);
-        let refreshable_def_ids: Vec<_> = self
+
+        // Collect matching definitions with all info needed for creation
+        struct RefreshableEffect {
+            id: String,
+            name: String,
+            display_text: String,
+            duration: Option<Duration>,
+            color: [u8; 4],
+            display_target: DisplayTarget,
+            icon_ability_id: u64,
+            show_at_secs: f32,
+            show_icon: bool,
+            display_source: bool,
+            cooldown_ready_secs: f32,
+            audio: crate::dsl::AudioConfig,
+            alert_text: Option<String>,
+            alert_on_expire: bool,
+            default_charges: Option<u8>,
+        }
+
+        let refreshable_defs: Vec<_> = self
             .definitions
             .enabled()
             .filter(|def| def.can_refresh_with(action_id as u64, Some(action_name_str)))
-            .map(|def| (def.id.clone(), self.effective_duration(def)))
+            // Only match definitions where source is local_player or any
+            // (this function is only called for local player abilities)
+            .filter(|def| matches!(
+                def.source_filter(),
+                EntityFilter::LocalPlayer | EntityFilter::Any
+            ))
+            .map(|def| RefreshableEffect {
+                id: def.id.clone(),
+                name: def.name.clone(),
+                display_text: def.display_text().to_string(),
+                duration: self.effective_duration(def),
+                color: def.effective_color(),
+                display_target: def.display_target,
+                icon_ability_id: def.icon_ability_id.unwrap_or(action_id as u64),
+                show_at_secs: def.show_at_secs,
+                show_icon: def.show_icon,
+                display_source: def.display_source,
+                cooldown_ready_secs: def.cooldown_ready_secs,
+                audio: def.audio.clone(),
+                alert_text: def.alert_text.clone(),
+                alert_on_expire: def.alert_on == AlertTrigger::OnExpire,
+                default_charges: def.default_charges,
+            })
             .collect();
 
-        for (def_id, duration) in refreshable_def_ids {
+        for def in refreshable_defs {
             let key = EffectKey {
-                definition_id: def_id,
+                definition_id: def.id.clone(),
                 target_entity_id: target_id,
             };
+
             if let Some(effect) = self.active_effects.get_mut(&key) {
-                effect.refresh(timestamp, duration);
+                // Existing effect - refresh duration
+                effect.refresh(timestamp, def.duration);
+
+                // Re-register for raid frames (in case user cleared the slot)
+                if def.display_target == DisplayTarget::RaidFrames {
+                    let target_name = encounter
+                        .and_then(|e| e.players.get(&target_id))
+                        .map(|p| p.name)
+                        .unwrap_or_else(|| crate::context::intern(""));
+                    self.new_targets.push(NewTargetInfo {
+                        entity_id: target_id,
+                        name: target_name,
+                    });
+                }
+            } else if def.display_target == DisplayTarget::RaidFrames {
+                // Raid frame effect doesn't exist - create it (late registration)
+                // Look up target name from encounter, fall back to empty
+                let target_name = encounter
+                    .and_then(|e| e.players.get(&target_id))
+                    .map(|p| p.name)
+                    .unwrap_or_else(|| crate::context::intern(""));
+
+                let mut effect = ActiveEffect::new(
+                    def.id.clone(),
+                    action_id as u64,
+                    def.name,
+                    def.display_text,
+                    source_id,
+                    source_name,
+                    target_id,
+                    target_name,
+                    true, // is_from_local - this function is only called for local player
+                    timestamp,
+                    def.duration,
+                    def.color,
+                    def.display_target,
+                    def.icon_ability_id,
+                    def.show_at_secs,
+                    def.show_icon,
+                    def.display_source,
+                    def.cooldown_ready_secs,
+                    &def.audio,
+                    def.alert_text,
+                    def.alert_on_expire,
+                );
+
+                if let Some(charges) = def.default_charges {
+                    effect.set_stacks(charges);
+                }
+
+                self.active_effects.insert(key, effect);
+
+                // Queue target for raid frame registration
+                self.new_targets.push(NewTargetInfo {
+                    entity_id: target_id,
+                    name: target_name,
+                });
             }
         }
     }
@@ -1239,10 +1346,11 @@ impl SignalHandler for EffectTracker {
                     self.refresh_effects_by_action(
                         *ability_id,
                         *ability_name,
+                        *source_id,
+                        *source_name,
                         resolved_target,
-                        *target_name,
-                        target_entity_type,
                         *timestamp,
+                        encounter,
                     );
 
                     // For AoE abilities ([=] target), set up pending state for damage correlation
