@@ -266,6 +266,11 @@ pub trait OverlayPlatform: Sized {
     /// Resize the overlay
     fn set_size(&mut self, width: u32, height: u32);
 
+    /// Finalize resize after drag completes (updates buffers)
+    /// Default is no-op since most platforms update buffers in set_size.
+    /// macOS defers buffer updates to reduce tearing during live resize.
+    fn finalize_size(&mut self) {}
+
     /// Enable or disable click-through mode
     fn set_click_through(&mut self, enabled: bool);
 

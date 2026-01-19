@@ -160,9 +160,7 @@ impl OverlayFrame {
 
         let width = self.window.width() as f32;
         let height = self.window.height() as f32;
-        let indicator_size = self.scaled(12.0).max(12.0);
-        let corner_x = width - indicator_size - 4.0;
-        let corner_y = height - indicator_size - 4.0;
+        let indicator_size = self.scaled(16.0).max(16.0);
 
         let highlight = if self.window.is_resizing() {
             colors::white()
@@ -170,23 +168,14 @@ impl OverlayFrame {
             colors::resize_indicator()
         };
 
-        // Draw diagonal grip lines
-        for i in 0..3 {
-            let offset = i as f32 * 4.0;
-            self.window.fill_rect(
-                corner_x + offset,
-                corner_y + indicator_size - 2.0,
-                indicator_size - offset,
-                2.0,
-                highlight,
-            );
-            self.window.fill_rect(
-                corner_x + indicator_size - 2.0,
-                corner_y + offset,
-                2.0,
-                indicator_size - offset,
-                highlight,
-            );
+        // Draw filled triangle in bottom-right corner using scanlines
+        // Triangle goes from top-right to bottom-left to bottom-right
+        let num_lines = indicator_size as i32;
+        for i in 0..num_lines {
+            let line_width = (i + 1) as f32;
+            let y = height - indicator_size + i as f32;
+            let x = width - line_width;
+            self.window.fill_rect(x, y, line_width, 1.0, highlight);
         }
     }
 
