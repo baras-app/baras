@@ -610,8 +610,8 @@ impl EffectTracker {
         source_id: i64,
         source_name: IStr,
         target_id: i64,
+        target_name: IStr,
         timestamp: NaiveDateTime,
-        encounter: Option<&CombatEncounter>,
     ) {
         // Skip when not in live mode
         if !self.live_mode {
@@ -690,10 +690,6 @@ impl EffectTracker {
 
                 // Re-register for raid frames (in case user cleared the slot)
                 if def.display_target == DisplayTarget::RaidFrames {
-                    let target_name = encounter
-                        .and_then(|e| e.players.get(&target_id))
-                        .map(|p| p.name)
-                        .unwrap_or_else(|| crate::context::intern(""));
                     self.new_targets.push(NewTargetInfo {
                         entity_id: target_id,
                         name: target_name,
@@ -701,12 +697,6 @@ impl EffectTracker {
                 }
             } else if def.display_target == DisplayTarget::RaidFrames {
                 // Raid frame effect doesn't exist - create it (late registration)
-                // Look up target name from encounter, fall back to empty
-                let target_name = encounter
-                    .and_then(|e| e.players.get(&target_id))
-                    .map(|p| p.name)
-                    .unwrap_or_else(|| crate::context::intern(""));
-
                 let mut effect = ActiveEffect::new(
                     def.id.clone(),
                     action_id as u64,
@@ -1332,15 +1322,25 @@ impl SignalHandler for EffectTracker {
                 let local_player_id = self.local_player_id;
                 if local_player_id == Some(*source_id) {
                     let is_self_or_empty = *target_id == 0 || *target_id == *source_id;
-                    let resolved_target = if is_self_or_empty {
+                    let (resolved_target, resolved_target_name) = if is_self_or_empty {
                         // Query encounter for caster's current target, fall back to cached target,
                         // finally default to self (game casts on caster when no target)
-                        encounter
+                        let target = encounter
                             .and_then(|e| e.get_current_target(*source_id))
                             .or_else(|| self.current_targets.get(source_id).copied())
-                            .unwrap_or(*source_id)
+                            .unwrap_or(*source_id);
+                        // Resolve name: if targeting self use source_name, otherwise look up
+                        let name = if target == *source_id {
+                            *source_name
+                        } else {
+                            encounter
+                                .and_then(|e| e.players.get(&target))
+                                .map(|p| p.name)
+                                .unwrap_or_else(|| crate::context::intern(""))
+                        };
+                        (target, name)
                     } else {
-                        *target_id
+                        (*target_id, *target_name)
                     };
 
                     self.refresh_effects_by_action(
@@ -1349,8 +1349,8 @@ impl SignalHandler for EffectTracker {
                         *source_id,
                         *source_name,
                         resolved_target,
+                        resolved_target_name,
                         *timestamp,
-                        encounter,
                     );
 
                     // For AoE abilities ([=] target), set up pending state for damage correlation
