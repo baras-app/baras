@@ -12,20 +12,59 @@ The **Battle Analysis and Raid Assessment System** (BARAS) is the ultimate compa
 
 ### Windows
 
-1. Download the latest release from the [Releases page](https://github.com/baras-app/baras/releases)
+1. Download the `.exe` file from the [Releases page](https://github.com/baras-app/baras/releases)
 2. Run the `.exe`
+
+### macOS
+
+  1. Download the `.dmg` file from the [Releases page](https://github.com/baras-app/baras/releases)
+  2. Open the `.dmg` and drag **BARAS.app** to your `Applications` folder
+  3. **Important - First Run Setup:**
+
+     BARAS is not signed with an Apple Developer certificate, so macOS will block it by default.
+
+     Open **Terminal** (search "Terminal" in Spotlight) and run the command:
+     ```bash
+     xattr -cr /Applications/BARAS.app
+   This removes the quarantine flag so all components of the app can run.
+
+  4. Grant File Access:
+
+  4. BARAS needs permission to read your SWTOR combat logs (usually in ~/Documents).
+
+  4. If no data appears after after selecting your log folder:
+    - Go to System Settings → Privacy & Security → Files and Folders
+    - Find BARAS and enable Documents Folder access
+
+  Or, if you really trust this application, grant Full Disk Access if the above doesn't work.
+  5. Launch BARAS and select your combat log directory
 
 ### Linux
 
-1. Download the latest AppImage from the [Releases page](https://github.com/baras-app/baras/releases)
-2. Make executable: `chmod +x baras`
-3. Run the AppImage
+  1. Download the `.AppImage` file from the [Releases page](https://github.com/baras-app/baras/releases)
 
-#### NVIDIA on Linux
+  2. Make the AppImage executable:
+     ```bash
+     chmod +x BARAS_*.AppImage
 
-If you are running a NVIDIA graphics card you must run the application with the following environment flag:
+  3. Run the application:
+  ./BARAS_*.AppImage
 
-`WEBKIT_DISABLE_DMABUF_RENDERER=1`
+  3. Or double-click the file if your file manager supports AppImages.
+
+  NVIDIA Graphics Cards
+
+  If you have an NVIDIA GPU and the app crashes or shows a blank window, run with:
+
+  WEBKIT_DISABLE_DMABUF_RENDERER=1 ./BARAS_*.AppImage
+
+  To make this permanent, create a launcher script or add the variable to your .bashrc:
+
+  export WEBKIT_DISABLE_DMABUF_RENDERER=1
+
+  Optional: Desktop Integration
+
+  To add BARAS to your application menu, use a tool like https://github.com/TheAssassin/AppImageLauncher or https://flathub.org/apps/it.mijorus.gearlever.
 
 ## Features
 
@@ -58,8 +97,9 @@ If you are running a NVIDIA graphics card you must run the application with the 
 
 | Platform      | Status                                        |
 | ------------- | --------------------------------------------- |
-| Windows 10/11 | Fully supported                               |
-| Linux         | X11, Wayland DEs that support zwlr layershell |
+| Windows 10/11 | Native |
+| Linux         | X11, Wayland Native |
+| MacOS         | Native (experimental) | 
 
 ## Quick Start
 
