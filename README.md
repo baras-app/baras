@@ -52,17 +52,17 @@ The **Battle Analysis and Raid Assessment System** (BARAS) is the ultimate compa
 
   3. Or double-click the file if your file manager supports AppImages.
 
-  NVIDIA Graphics Cards
+  #### NVIDIA Graphics Cards
 
   If you have an NVIDIA GPU and the app crashes or shows a blank window, run with:
 
-  WEBKIT_DISABLE_DMABUF_RENDERER=1 ./BARAS_*.AppImage
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1 ./BARAS_*.AppImage`
 
   To make this permanent, create a launcher script or add the variable to your .bashrc:
 
-  export WEBKIT_DISABLE_DMABUF_RENDERER=1
+  `export WEBKIT_DISABLE_DMABUF_RENDERER=1`
 
-  Optional: Desktop Integration
+  #### Optional: Desktop Integration
 
   To add BARAS to your application menu, use a tool like https://github.com/TheAssassin/AppImageLauncher or https://flathub.org/apps/it.mijorus.gearlever.
 
