@@ -622,10 +622,10 @@ impl CombatEncounter {
             if player.current_target_id != 0 {
                 return Some(player.current_target_id);
             }
-        } else if let Some(npc) = self.npcs.get(&entity_id) {
-            if npc.current_target_id != 0 {
-                return Some(npc.current_target_id);
-            }
+        } else if let Some(npc) = self.npcs.get(&entity_id)
+            && npc.current_target_id != 0
+        {
+            return Some(npc.current_target_id);
         }
         None
     }
@@ -838,7 +838,8 @@ impl CombatEncounter {
                     total_healing: acc.healing_done + acc.shielding_given,
                     total_healing_effective: acc.healing_effective + acc.shielding_given,
                     hps: ((acc.healing_done + acc.shielding_given) * 1000 / duration_ms) as i32,
-                    ehps: ((acc.healing_effective + acc.shielding_given) * 1000 / duration_ms) as i32,
+                    ehps: ((acc.healing_effective + acc.shielding_given) * 1000 / duration_ms)
+                        as i32,
                     heal_crit_pct,
                     effective_heal_pct,
                     abs: (acc.shielding_given * 1000 / duration_ms) as i32,

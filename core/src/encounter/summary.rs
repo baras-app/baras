@@ -133,15 +133,15 @@ pub fn classify_encounter(
     };
 
     // 2. Check for training dummy (overrides all other classification)
-    if let Some(info) = boss_info {
-        if info.content_type == ContentType::TrainingDummy {
-            return (PhaseType::DummyParse, Some(info));
-        }
+    if let Some(info) = boss_info
+        && info.content_type == ContentType::TrainingDummy
+    {
+        return (PhaseType::DummyParse, Some(info));
     }
-    if let Some(def) = encounter.active_boss_definition() {
-        if def.area_type == crate::dsl::AreaType::TrainingDummy {
-            return (PhaseType::DummyParse, boss_info);
-        }
+    if let Some(def) = encounter.active_boss_definition()
+        && def.area_type == crate::dsl::AreaType::TrainingDummy
+    {
+        return (PhaseType::DummyParse, boss_info);
     }
 
     // 3. Check PvP area
