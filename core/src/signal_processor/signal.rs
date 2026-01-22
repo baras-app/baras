@@ -70,9 +70,13 @@ pub enum GameSignal {
         source_id: i64,
         source_entity_type: EntityType,
         source_name: IStr,
+        /// NPC class/template ID of source (0 for players/companions)
+        source_npc_id: i64,
         target_id: i64,
         target_entity_type: EntityType,
         target_name: IStr,
+        /// NPC class/template ID of target (0 for players/companions)
+        target_npc_id: i64,
         timestamp: NaiveDateTime,
     },
     /// Effect charges/stacks changed (ModifyCharges event)
@@ -118,20 +122,23 @@ pub enum GameSignal {
         target_id: i64,
         target_entity_type: EntityType,
         target_name: IStr,
+        /// NPC class/template ID of target (0 for players/companions)
+        target_npc_id: i64,
         timestamp: NaiveDateTime,
     },
 
     /// Entity changed their target (TARGETSET effect)
     TargetChanged {
         source_id: i64,
+        source_entity_type: EntityType,
         /// NPC class/template ID of source (for timer triggers when NPC targets player)
         source_npc_id: i64,
         source_name: IStr,
         target_id: i64,
+        target_entity_type: EntityType,
         target_name: IStr,
         /// NPC class/template ID (for boss detection)
         target_npc_id: i64,
-        target_entity_type: EntityType,
         timestamp: NaiveDateTime,
     },
 

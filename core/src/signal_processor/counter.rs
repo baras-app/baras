@@ -286,7 +286,9 @@ pub fn check_counter_trigger(
             true
         }
         Trigger::EffectRemoved {
-            effects, target, ..
+            effects,
+            source,
+            target,
         } => {
             if event.effect.type_id != effect_type_id::REMOVEEFFECT {
                 return false;
@@ -295,6 +297,23 @@ pub fn check_counter_trigger(
             let eff_name = crate::context::resolve(event.effect.effect_name);
             if !effects.is_empty() && !effects.iter().any(|s| s.matches(eff_id, Some(eff_name))) {
                 return false;
+            }
+            // Check source filter if specified (use roster-based matching for localization)
+            if !source.is_any() {
+                if source.is_local_player() {
+                    if event.source_entity.entity_type != EntityType::Player {
+                        return false;
+                    }
+                } else {
+                    let source_name = crate::context::resolve(event.source_entity.name);
+                    if !source.matches_source_target(
+                        entities,
+                        event.source_entity.class_id,
+                        source_name,
+                    ) {
+                        return false;
+                    }
+                }
             }
             // Check target filter if specified (use roster-based matching for localization)
             if !target.is_any() {
@@ -408,6 +427,7 @@ pub fn check_counter_trigger(
                     source_npc_id,
                     source_name,
                     target_name,
+                    target_npc_id,
                     ..
                 } = sig
                 {
@@ -428,9 +448,8 @@ pub fn check_counter_trigger(
                         }
                     }
                     if !target.is_any() {
-                        // Target NPC ID is not available in DamageTaken signal, use 0
                         let target_name_str = crate::context::resolve(*target_name);
-                        if !target.matches_source_target(entities, 0, target_name_str) {
+                        if !target.matches_source_target(entities, *target_npc_id, target_name_str) {
                             return false;
                         }
                     }

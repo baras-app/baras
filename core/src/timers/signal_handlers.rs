@@ -129,9 +129,6 @@ pub(super) fn handle_effect_applied(
 }
 
 /// Handle effect removed
-///
-/// Note: EffectRemoved signals don't include NPC IDs in the game log,
-/// so npc_id params will typically be 0.
 pub(super) fn handle_effect_removed(
     manager: &mut TimerManager,
     encounter: Option<&CombatEncounter>,
@@ -440,6 +437,7 @@ pub(super) fn handle_damage_taken(
     target_id: i64,
     target_type: EntityType,
     target_name: IStr,
+    target_npc_id: i64,
     timestamp: NaiveDateTime,
 ) {
     let ability_id = ability_id as u64;
@@ -461,7 +459,7 @@ pub(super) fn handle_damage_taken(
                     target_id,
                     target_type,
                     target_name,
-                    0,
+                    target_npc_id,
                 )
         })
         .cloned()

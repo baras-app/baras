@@ -901,13 +901,13 @@ impl SignalHandler for TimerManager {
                 source_id,
                 source_entity_type,
                 source_name,
+                source_npc_id,
                 target_id,
                 target_entity_type,
                 target_name,
+                target_npc_id,
                 timestamp,
-                ..
             } => {
-                // EffectRemoved doesn't include npc_ids in the game log, pass 0
                 signal_handlers::handle_effect_removed(
                     self,
                     encounter,
@@ -916,11 +916,11 @@ impl SignalHandler for TimerManager {
                     *source_id,
                     *source_entity_type,
                     *source_name,
-                    0,
+                    *source_npc_id,
                     *target_id,
                     *target_entity_type,
                     *target_name,
-                    0,
+                    *target_npc_id,
                     *timestamp,
                 );
             }
@@ -1017,6 +1017,7 @@ impl SignalHandler for TimerManager {
                 target_id,
                 target_entity_type,
                 target_name,
+                target_npc_id,
                 timestamp,
             } => {
                 signal_handlers::handle_damage_taken(
@@ -1031,6 +1032,7 @@ impl SignalHandler for TimerManager {
                     *target_id,
                     *target_entity_type,
                     *target_name,
+                    *target_npc_id,
                     *timestamp,
                 );
             }

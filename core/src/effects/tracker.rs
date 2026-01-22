@@ -616,6 +616,7 @@ impl EffectTracker {
         target_id: i64,
         target_name: IStr,
         timestamp: NaiveDateTime,
+        encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
         // Skip when not in live mode
         if !self.live_mode {
@@ -630,6 +631,12 @@ impl EffectTracker {
         if target_id == 0 {
             return;
         }
+
+        // Check if target is a player (only players should be registered on raid frames)
+        // Note: This also allows companions since they wouldn't be in npcs map
+        let is_npc = encounter
+            .map(|e| e.npcs.contains_key(&target_id))
+            .unwrap_or(false);
 
         // Single-target case: refresh effect on specific target
         let action_name_str = crate::context::resolve(action_name);
@@ -695,7 +702,8 @@ impl EffectTracker {
                 effect.refresh(timestamp, def.duration);
 
                 // Re-register for raid frames (in case user cleared the slot)
-                if def.display_target == DisplayTarget::RaidFrames {
+                // Only register non-NPC entities (players/companions)
+                if def.display_target == DisplayTarget::RaidFrames && !is_npc {
                     self.new_targets.push(NewTargetInfo {
                         entity_id: target_id,
                         name: target_name,
@@ -733,11 +741,13 @@ impl EffectTracker {
 
                 self.active_effects.insert(key, effect);
 
-                // Queue target for raid frame registration
-                self.new_targets.push(NewTargetInfo {
-                    entity_id: target_id,
-                    name: target_name,
-                });
+                // Queue target for raid frame registration (only non-NPCs)
+                if !is_npc {
+                    self.new_targets.push(NewTargetInfo {
+                        entity_id: target_id,
+                        name: target_name,
+                    });
+                }
             }
         }
     }
@@ -864,7 +874,7 @@ impl EffectTracker {
         source_npc_id: i64,
         target_id: i64,
         target_name: IStr,
-        _target_entity_type: EntityType,
+        target_entity_type: EntityType,
         timestamp: NaiveDateTime,
         encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
@@ -923,16 +933,19 @@ impl EffectTracker {
 
             // For procs, the effect is typically shown on the caster (source)
             // Use target from definition's target filter, or default to source
-            let effect_target_id = if def.target_filter().is_local_player() {
-                local_player_id.unwrap_or(source_id)
-            } else {
-                target_id
-            };
-            let effect_target_name = if effect_target_id == source_id {
-                source_name
-            } else {
-                target_name
-            };
+            let (effect_target_id, effect_target_name, effect_target_type) =
+                if def.target_filter().is_local_player() {
+                    // Local player is always EntityType::Player
+                    (
+                        local_player_id.unwrap_or(source_id),
+                        source_name,
+                        EntityType::Player,
+                    )
+                } else if target_id == source_id {
+                    (source_id, source_name, source_entity_type)
+                } else {
+                    (target_id, target_name, target_entity_type)
+                };
 
             let key = EffectKey::new(&def.id, effect_target_id);
 
@@ -943,7 +956,13 @@ impl EffectTracker {
                 existing.refresh(timestamp, duration);
 
                 // Re-register target in raid registry if they were removed
-                if existing.is_from_local_player {
+                // Only register Player/Companion entities on raid frames
+                if existing.is_from_local_player
+                    && matches!(
+                        effect_target_type,
+                        EntityType::Player | EntityType::Companion
+                    )
+                {
                     self.new_targets.push(NewTargetInfo {
                         entity_id: effect_target_id,
                         name: effect_target_name,
@@ -987,11 +1006,15 @@ impl EffectTracker {
         effect_id: i64,
         effect_name: IStr,
         source_id: i64,
+        source_entity_type: EntityType,
         source_name: IStr,
+        source_npc_id: i64,
         target_id: i64,
+        target_entity_type: EntityType,
         target_name: IStr,
+        target_npc_id: i64,
         timestamp: NaiveDateTime,
-        _encounter: Option<&crate::encounter::CombatEncounter>,
+        encounter: Option<&crate::encounter::CombatEncounter>,
     ) {
         self.current_game_time = Some(timestamp);
         let local_player_id = self.local_player_id;
@@ -1000,6 +1023,20 @@ impl EffectTracker {
         if !self.live_mode {
             return;
         }
+
+        // Build entity info for filter matching
+        let source_info = EntityInfo {
+            id: source_id,
+            npc_id: source_npc_id,
+            entity_type: source_entity_type,
+            name: source_name,
+        };
+        let target_info = EntityInfo {
+            id: target_id,
+            npc_id: target_npc_id,
+            entity_type: target_entity_type,
+            name: target_name,
+        };
 
         // Resolve effect name for matching
         let effect_name_str = crate::context::resolve(effect_name);
@@ -1034,7 +1071,9 @@ impl EffectTracker {
                         effect.mark_removed();
                     }
                 }
-            } else if def.is_effect_removed_trigger() {
+            } else if def.is_effect_removed_trigger()
+                && self.matches_filters(def, source_info, target_info, encounter)
+            {
                 // Create new effect when the game effect is removed (cooldown tracking)
                 let duration = self.effective_duration(def);
                 let display_text = def.display_text().to_string();
@@ -1244,19 +1283,26 @@ impl SignalHandler for EffectTracker {
                 effect_id,
                 effect_name,
                 source_id,
+                source_entity_type,
                 source_name,
+                source_npc_id,
                 target_id,
+                target_entity_type,
                 target_name,
+                target_npc_id,
                 timestamp,
-                ..
             } => {
                 self.handle_effect_removed(
                     *effect_id,
                     *effect_name,
                     *source_id,
+                    *source_entity_type,
                     *source_name,
+                    *source_npc_id,
                     *target_id,
+                    *target_entity_type,
                     *target_name,
+                    *target_npc_id,
                     *timestamp,
                     encounter,
                 );
@@ -1360,6 +1406,7 @@ impl SignalHandler for EffectTracker {
                         resolved_target,
                         resolved_target_name,
                         *timestamp,
+                        encounter,
                     );
 
                     // For AoE abilities ([=] target), set up pending state for damage correlation
