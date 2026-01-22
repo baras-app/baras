@@ -228,15 +228,25 @@ impl EventProcessor {
                 timestamp: event.timestamp,
             });
         } else if event.effect.effect_id == effect_id::REVIVED {
+            // Check if local player was revived (before getting mutable ref)
+            let is_local_player_revive = cache.player_initialized
+                && event.source_entity.log_id == cache.player.id;
+
             if let Some(enc) = cache.current_encounter_mut() {
-                // Don't process revives after a wipe has been detected
+                // Don't process revives after a definitive wipe (all players dead)
                 // This prevents post-wipe UI revives from resetting is_dead flags
-                if !enc.all_players_dead && !enc.local_player_died {
+                // But DO process revives if only local player died - they can be battle-rezzed
+                if !enc.all_players_dead {
                     enc.set_entity_alive(
                         event.source_entity.log_id,
                         &event.source_entity.entity_type,
                     );
                     enc.check_all_players_dead();
+
+                    // Reset local_player_died if local player was revived during combat
+                    if is_local_player_revive {
+                        enc.local_player_died = false;
+                    }
                 }
             }
             signals.push(GameSignal::EntityRevived {
