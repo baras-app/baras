@@ -199,8 +199,6 @@ pub enum SessionEvent {
 struct CombatSignalHandler {
     shared: Arc<SharedState>,
     trigger_tx: mpsc::Sender<MetricsTrigger>,
-    /// Channel for area load requests (event-driven, not polled)
-    area_load_tx: std::sync::mpsc::Sender<i64>,
     /// Channel for frontend session updates (event-driven, not polled)
     session_event_tx: std::sync::mpsc::Sender<SessionEvent>,
     /// Channel for overlay updates (to clear overlays on combat end)
@@ -213,14 +211,12 @@ impl CombatSignalHandler {
     fn new(
         shared: Arc<SharedState>,
         trigger_tx: mpsc::Sender<MetricsTrigger>,
-        area_load_tx: std::sync::mpsc::Sender<i64>,
         session_event_tx: std::sync::mpsc::Sender<SessionEvent>,
         overlay_tx: mpsc::Sender<OverlayUpdate>,
     ) -> Self {
         Self {
             shared,
             trigger_tx,
-            area_load_tx,
             session_event_tx,
             overlay_tx,
             local_player_id: None,
@@ -289,13 +285,12 @@ impl SignalHandler for CombatSignalHandler {
                 }
             }
             GameSignal::AreaEntered { area_id, .. } => {
-                // Send area ID through channel for event-driven loading
+                // Note: Boss definitions are loaded synchronously in process_event via definition_loader
                 let current = self.shared.current_area_id.load(Ordering::SeqCst);
                 if *area_id != current && *area_id != 0 {
                     self.shared
                         .current_area_id
                         .store(*area_id, Ordering::SeqCst);
-                    let _ = self.area_load_tx.send(*area_id);
                     let _ = self.session_event_tx.send(SessionEvent::AreaChanged);
                 }
             }
@@ -320,7 +315,6 @@ pub struct CombatService {
     directory_handle: Option<tokio::task::JoinHandle<()>>,
     metrics_handle: Option<tokio::task::JoinHandle<()>>,
     effects_handle: Option<tokio::task::JoinHandle<()>>,
-    area_loader_handle: Option<tokio::task::JoinHandle<()>>,
     /// Effect definitions loaded at startup for overlay tracking
     definitions: DefinitionSet,
     /// Area index for lazy loading encounter definitions (area_id -> file path)
@@ -397,7 +391,6 @@ impl CombatService {
             directory_handle: None,
             metrics_handle: None,
             effects_handle: None,
-            area_loader_handle: None,
             definitions,
             area_index,
             loaded_area_id: 0,
@@ -921,8 +914,6 @@ impl CombatService {
 
         // Create trigger channel for signal-driven metrics updates (tokio channel - no spawn_blocking needed)
         let (trigger_tx, mut trigger_rx) = mpsc::channel::<MetricsTrigger>(8);
-        // Create channel for event-driven area loading (replaces polling)
-        let (area_load_tx, area_load_rx) = std::sync::mpsc::channel::<i64>();
         // Create channel for frontend session events (replaces polling)
         let (session_event_tx, session_event_rx) = std::sync::mpsc::channel::<SessionEvent>();
 
@@ -956,11 +947,9 @@ impl CombatService {
         self.shared.current_area_id.store(0, Ordering::SeqCst);
 
         // Add signal handler that triggers metrics on combat state changes
-        let area_load_tx_clone = area_load_tx.clone();
         let handler = CombatSignalHandler::new(
             self.shared.clone(),
             trigger_tx.clone(),
-            area_load_tx,
             session_event_tx,
             self.overlay_tx.clone(),
         );
@@ -1140,6 +1129,13 @@ impl CombatService {
                             parse_result.encounter_count as u32,
                         );
 
+                        // Load boss definitions for initial area (before releasing lock)
+                        if parse_result.area.area_id != 0 {
+                            if let Some(bosses) = self.load_area_definitions(parse_result.area.area_id) {
+                                session_guard.load_boss_definitions(bosses);
+                            }
+                        }
+
                         session_guard.finalize_session();
                         session_guard.sync_timer_context();
                         drop(session_guard);
@@ -1150,11 +1146,6 @@ impl CombatService {
                             elapsed_ms = parse_result.elapsed_ms,
                             "Subprocess parse completed"
                         );
-
-                        // Trigger boss definition loading for initial area (if known)
-                        if parse_result.area.area_id != 0 {
-                            let _ = area_load_tx_clone.send(parse_result.area.area_id);
-                        }
 
                         // Notify frontend to refresh session info
                         let _ = self.app_handle.emit("session-updated", "FileLoaded");
@@ -1456,71 +1447,14 @@ impl CombatService {
             }
         });
 
-        // Spawn area loader task for lazy loading timer/boss definitions
-        // Now event-driven via channel instead of polling
-        let shared = self.shared.clone();
-        let area_index = self.area_index.clone();
-        let is_live = self.shared.is_live_tailing.load(Ordering::SeqCst);
-        let user_encounters_dir =
-            dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
-        let area_loader_handle = if is_live {
-            Some(tokio::spawn(async move {
-                let mut loaded_area_id: i64 = 0;
-
-                // Wait for area IDs via channel (event-driven, no polling)
-                loop {
-                    let area_id = match tokio::task::spawn_blocking({
-                        let rx_recv = area_load_rx.recv();
-                        move || rx_recv
-                    })
-                    .await
-                    {
-                        Ok(Ok(id)) => id,
-                        Ok(Err(_)) => break, // Channel closed
-                        Err(_) => break,     // Task cancelled
-                    };
-
-                    // Skip if already loaded this area
-                    if area_id == loaded_area_id {
-                        continue;
-                    }
-
-                    // Load definitions for this area (with custom overlay merging)
-                    if let Some(entry) = area_index.get(&area_id) {
-                        use baras_core::boss::load_bosses_with_custom;
-
-                        if let Ok(bosses) = load_bosses_with_custom(
-                            &entry.file_path,
-                            user_encounters_dir.as_deref(),
-                        ) {
-                            if let Some(session_arc) = &*shared.session.read().await {
-                                let mut session = session_arc.write().await;
-                                session.load_boss_definitions(bosses);
-                            }
-                            loaded_area_id = area_id;
-                        }
-                    }
-                }
-            }))
-        } else {
-            None
-        };
-
         self.tail_handle = Some(tail_handle);
         self.metrics_handle = Some(metrics_handle);
         self.effects_handle = Some(effects_handle);
-        self.area_loader_handle = area_loader_handle;
     }
 
     async fn stop_tailing(&mut self) {
         // Reset combat state
         self.shared.in_combat.store(false, Ordering::SeqCst);
-
-        // Cancel area loader task
-        // Note: Don't await - the task uses sync recv() which can't be interrupted
-        if let Some(handle) = self.area_loader_handle.take() {
-            handle.abort();
-        }
 
         // Cancel effects task
         if let Some(handle) = self.effects_handle.take() {
