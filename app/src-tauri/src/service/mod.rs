@@ -254,9 +254,8 @@ impl SignalHandler for CombatSignalHandler {
                     self.local_player_id = Some(*entity_id);
                 }
                 // Update raid registry with discipline info for role icons
-                if let Ok(mut registry) = self.shared.raid_registry.lock() {
-                    registry.update_discipline(*entity_id, *class_id, *discipline_id);
-                }
+                let mut registry = self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner());
+                registry.update_discipline(*entity_id, *class_id, *discipline_id);
                 // Notify frontend of player info change
                 let _ = self.session_event_tx.send(SessionEvent::PlayerInitialized);
             }
@@ -908,9 +907,7 @@ impl CombatService {
         let _ = self.overlay_tx.try_send(OverlayUpdate::ClearAllData);
 
         // Clear raid registry when switching files (new session = fresh state)
-        if let Ok(mut registry) = self.shared.raid_registry.lock() {
-            registry.clear();
-        }
+        self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).clear();
 
         // Create trigger channel for signal-driven metrics updates (tokio channel - no spawn_blocking needed)
         let (trigger_tx, mut trigger_rx) = mpsc::channel::<MetricsTrigger>(8);
@@ -1697,14 +1694,16 @@ async fn build_raid_frame_data(
 
     // Get effect tracker (Live mode only)
     let effect_tracker = session.effect_tracker()?;
-    let Ok(mut tracker) = effect_tracker.lock() else {
-        return None;
-    };
+    let mut tracker = effect_tracker.lock().unwrap_or_else(|poisoned| {
+        tracing::warn!("Effect tracker mutex was poisoned, recovering");
+        poisoned.into_inner()
+    });
 
-    // Lock registry
-    let Ok(mut registry) = shared.raid_registry.lock() else {
-        return None;
-    };
+    // Lock registry (recover from poison to keep raid frames working)
+    let mut registry = shared.raid_registry.lock().unwrap_or_else(|poisoned| {
+        tracing::warn!("Raid registry mutex was poisoned, recovering");
+        poisoned.into_inner()
+    });
 
     // Early out: skip building data if no effects AND no registered players
     // We need to keep sending updates while effects exist OR players are registered
@@ -1818,7 +1817,7 @@ async fn build_timer_data_with_audio(
 
     // Get active timers from timer manager (Live mode only, mutable for countdown checking)
     let timer_mgr = session.timer_manager()?;
-    let mut timer_mgr = timer_mgr.lock().ok()?;
+    let mut timer_mgr = timer_mgr.lock().unwrap_or_else(|p| p.into_inner());
 
     // Always take alerts (even after combat ends, timer expirations need to play)
     let mut alerts = timer_mgr.take_fired_alerts();
@@ -1829,9 +1828,8 @@ async fn build_timer_data_with_audio(
 
     // Also get alerts from effect tracker (effect start/end alerts)
     if let Some(effect_tracker) = session.effect_tracker() {
-        if let Ok(mut tracker) = effect_tracker.lock() {
-            alerts.extend(tracker.take_fired_alerts());
-        }
+        let mut tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
+        alerts.extend(tracker.take_fired_alerts());
     }
 
     // If not in combat, return only alerts (no countdown checks)
@@ -1904,13 +1902,7 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
             text_alerts,
         };
     };
-    let Ok(mut tracker) = effect_tracker.lock() else {
-        return EffectAudioResult {
-            countdowns,
-            alerts,
-            text_alerts,
-        };
-    };
+    let mut tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
 
     for effect in tracker.active_effects_mut() {
         // Check for text alert on expiration (independent of audio settings)
@@ -2011,7 +2003,7 @@ async fn build_effects_a_data(
     let session = session.read().await;
 
     let effect_tracker = session.effect_tracker()?;
-    let tracker = effect_tracker.lock().ok()?;
+    let tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
 
     if !tracker.has_active_effects() {
         return None;
@@ -2069,7 +2061,7 @@ async fn build_effects_b_data(
     let session = session.read().await;
 
     let effect_tracker = session.effect_tracker()?;
-    let tracker = effect_tracker.lock().ok()?;
+    let tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
 
     if !tracker.has_active_effects() {
         return None;
@@ -2127,7 +2119,7 @@ async fn build_cooldowns_data(
     let session = session.read().await;
 
     let effect_tracker = session.effect_tracker()?;
-    let tracker = effect_tracker.lock().ok()?;
+    let tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
 
     if !tracker.has_active_effects() {
         return None;
@@ -2208,7 +2200,7 @@ async fn build_dot_tracker_data(
     let session = session.read().await;
 
     let effect_tracker = session.effect_tracker()?;
-    let tracker = effect_tracker.lock().ok()?;
+    let tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
 
     if !tracker.has_active_effects() {
         return None;

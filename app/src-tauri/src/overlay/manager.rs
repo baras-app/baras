@@ -141,12 +141,12 @@ impl OverlayManager {
         combat_data: Option<&CombatData>,
     ) {
         let Some(data) = combat_data else { return };
-        if data.metrics.is_empty() {
-            return;
-        }
 
         match kind {
             OverlayType::Metric(metric_type) => {
+                if data.metrics.is_empty() {
+                    return;
+                }
                 let entries = create_entries_for_type(metric_type, &data.metrics);
                 let _ = tx
                     .send(OverlayCommand::UpdateData(OverlayData::Metrics(entries)))
@@ -159,10 +159,18 @@ impl OverlayManager {
                         .await;
                 }
             }
+            OverlayType::Challenges => {
+                if let Some(challenges) = &data.challenges {
+                    let _ = tx
+                        .send(OverlayCommand::UpdateData(OverlayData::Challenges(
+                            challenges.clone(),
+                        )))
+                        .await;
+                }
+            }
             OverlayType::Raid
             | OverlayType::BossHealth
             | OverlayType::Timers
-            | OverlayType::Challenges
             | OverlayType::Alerts
             | OverlayType::EffectsA
             | OverlayType::EffectsB

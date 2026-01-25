@@ -29,7 +29,11 @@ fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
     let Some(idx) = enc.active_boss_idx() else {
         return EMPTY;
     };
-    enc.boss_definitions()[idx].entities.as_slice()
+    // Use get() to avoid panic if index is stale after boss definitions reload
+    enc.boss_definitions()
+        .get(idx)
+        .map(|def| def.entities.as_slice())
+        .unwrap_or(EMPTY)
 }
 
 /// Get the set of boss entity IDs from the current encounter.

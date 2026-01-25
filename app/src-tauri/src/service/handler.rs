@@ -167,10 +167,8 @@ impl ServiceHandle {
         }
 
         // Update raid registry max slots if grid size changed
-        if new_slots != old_slots
-            && let Ok(mut registry) = self.shared.raid_registry.lock()
-        {
-            registry.set_max_slots(new_slots);
+        if new_slots != old_slots {
+            self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).set_max_slots(new_slots);
         }
 
         // Update effect tracker alacrity/latency if changed
@@ -178,13 +176,12 @@ impl ServiceHandle {
             if let Some(session) = self.shared.session.read().await.as_ref() {
                 let session = session.read().await;
                 if let Some(tracker) = session.effect_tracker() {
-                    if let Ok(mut tracker) = tracker.lock() {
-                        if alacrity_changed {
-                            tracker.set_alacrity(new_alacrity);
-                        }
-                        if latency_changed {
-                            tracker.set_latency(new_latency);
-                        }
+                    let mut tracker = tracker.lock().unwrap_or_else(|p| p.into_inner());
+                    if alacrity_changed {
+                        tracker.set_alacrity(new_alacrity);
+                    }
+                    if latency_changed {
+                        tracker.set_latency(new_latency);
                     }
                 }
             }
@@ -326,25 +323,19 @@ impl ServiceHandle {
 
     /// Swap two slots in the raid registry
     pub async fn swap_raid_slots(&self, slot_a: u8, slot_b: u8) {
-        if let Ok(mut registry) = self.shared.raid_registry.lock() {
-            registry.swap_slots(slot_a, slot_b);
-        }
+        self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).swap_slots(slot_a, slot_b);
         self.refresh_raid_frames().await;
     }
 
     /// Remove a slot from the raid registry
     pub async fn remove_raid_slot(&self, slot: u8) {
-        if let Ok(mut registry) = self.shared.raid_registry.lock() {
-            registry.remove_slot(slot);
-        }
+        self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).remove_slot(slot);
         self.refresh_raid_frames().await;
     }
 
     /// Clear all raid registry slots
     pub async fn clear_raid_registry(&self) {
-        if let Ok(mut registry) = self.shared.raid_registry.lock() {
-            registry.clear();
-        }
+        self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).clear();
         self.refresh_raid_frames().await;
     }
 

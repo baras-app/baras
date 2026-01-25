@@ -285,16 +285,20 @@ impl ParsingSession {
 
         // Forward to effect tracker (Live mode only)
         if let Some(tracker) = &self.effect_tracker {
-            if let Ok(mut tracker) = tracker.lock() {
-                tracker.handle_signals_with_player(signals, encounter, local_player_id);
-            }
+            let mut tracker = tracker.lock().unwrap_or_else(|poisoned| {
+                tracing::warn!("Effect tracker mutex was poisoned during signal dispatch, recovering");
+                poisoned.into_inner()
+            });
+            tracker.handle_signals_with_player(signals, encounter, local_player_id);
         }
 
         // Forward to timer manager (Live mode only)
         if let Some(timer_mgr) = &self.timer_manager {
-            if let Ok(mut timer_mgr) = timer_mgr.lock() {
-                timer_mgr.handle_signals(signals, encounter);
-            }
+            let mut timer_mgr = timer_mgr.lock().unwrap_or_else(|poisoned| {
+                tracing::warn!("Timer manager mutex was poisoned during signal dispatch, recovering");
+                poisoned.into_inner()
+            });
+            timer_mgr.handle_signals(signals, encounter);
         }
     }
 
@@ -302,18 +306,15 @@ impl ParsingSession {
     /// Must be called after dispatch_signals when timer manager may have timer events.
     fn process_timer_counter_triggers(&mut self, timestamp: chrono::NaiveDateTime) {
         // Get timer IDs from timer manager (clone to release lock before further processing)
-        let (expired_ids, started_ids) = if let Some(timer_mgr) = &self.timer_manager {
-            if let Ok(timer_mgr) = timer_mgr.lock() {
-                (
-                    timer_mgr.expired_timer_ids().to_vec(),
-                    timer_mgr.started_timer_ids().to_vec(),
-                )
-            } else {
-                return;
-            }
-        } else {
+        let Some(timer_mgr) = &self.timer_manager else {
             return;
         };
+        let timer_mgr = timer_mgr.lock().unwrap_or_else(|p| p.into_inner());
+        let (expired_ids, started_ids) = (
+            timer_mgr.expired_timer_ids().to_vec(),
+            timer_mgr.started_timer_ids().to_vec(),
+        );
+        drop(timer_mgr); // Release lock before further processing
 
         if expired_ids.is_empty() && started_ids.is_empty() {
             return;
@@ -358,20 +359,16 @@ impl ParsingSession {
 
         // Tick effect tracker
         if let Some(tracker) = &self.effect_tracker {
-            if let Ok(mut tracker) = tracker.lock() {
-                tracker.tick();
-            }
+            tracker.lock().unwrap_or_else(|p| p.into_inner()).tick();
         }
 
         // Tick timer manager
         if let Some(timer_mgr) = &self.timer_manager {
-            if let Ok(mut timer_mgr) = timer_mgr.lock() {
-                let encounter = self
-                    .session_cache
-                    .as_ref()
-                    .and_then(|c| c.current_encounter());
-                timer_mgr.tick(encounter);
-            }
+            let encounter = self
+                .session_cache
+                .as_ref()
+                .and_then(|c| c.current_encounter());
+            timer_mgr.lock().unwrap_or_else(|p| p.into_inner()).tick(encounter);
         }
     }
 
