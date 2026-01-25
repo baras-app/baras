@@ -232,6 +232,11 @@ name = "Burn"
 counter_condition = { counter_id = "fs_defensive_systems_ct", operator = "eq", value = 4 }
 trigger = { type = "phase_ended", phase_id = "fs_shield" }
 
+[[boss.phases]]
+id = "fs_soft_enrage"
+name = "Soft Enrage"
+trigger = { type = "counter_reaches", counter_id = "fs_defensive_systems_ct", operator = "eq", value = 5 }
+
 # -- Challenges --
 [[boss.challenge]]
 id = "fs_shield_dps"
@@ -297,6 +302,17 @@ trigger = { type = "ability_cast", abilities = [2876653130743808] }
 duration_secs = 10
 color = [224, 25, 24, 255]
 difficulties = ["veteran", "master"]
+cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
+
+[[boss.timer]]
+id = "fs_densive_systems"
+name = "Defensive Systems"
+trigger = { type = "effect_applied", effects = [2876717555253248] }
+color = [224, 25, 24, 255]
+can_refresh = false
+difficulties = ["veteran", "master"]
+duration_secs = 25
+
 
 [[boss.timer]]
 id = "fs_storm_cleave"
@@ -305,6 +321,8 @@ trigger = { type = "ability_cast", abilities = [2876687490482176] }
 duration_secs = 10
 color = [117, 33, 224, 255]
 difficulties = ["veteran", "master"]
+cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
+
 
 [[boss.timer]]
 id = "fs_targeted_missile"
@@ -313,6 +331,17 @@ trigger = { type = "ability_cast", abilities = [2876648835776512] }
 duration_secs = 16
 color = [224, 24, 164, 255]
 difficulties = ["veteran", "master"]
+cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
+
+[[boss.timer]]
+id = "fs_incinerate_armor_ps"
+name = "Incinerate Armor Phase Start"
+display_text = "Incinerate Armor"
+trigger = { type = "phase_ended", phase_id = "fs_shield" }
+duration_secs = 26
+color = [219, 94, 32, 255]
+difficulties = ["master"]
+cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
 [[boss.timer]]
 id = "fs_incinerate_armor"
@@ -321,6 +350,7 @@ trigger = { type = "ability_cast", abilities = [2876661720678400] }
 duration_secs = 46
 color = [219, 94, 32, 255]
 difficulties = ["master"]
+cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
 [[boss.timer]]
 id = "fs_incinerate_armor_vm"
@@ -329,6 +359,7 @@ trigger = { type = "ability_cast", abilities = [2876661720678400] }
 duration_secs = 49
 color = [219, 94, 32, 255]
 difficulties = ["veteran"]
+cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
 [[boss.timer]]
 id = "fs_double_destruction"
@@ -337,6 +368,7 @@ trigger = { type = "ability_cast", abilities = [2876691785449472] }
 duration_secs = 20
 color = [23, 197, 209, 255]
 difficulties = ["master"]
+cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
 [[boss.timer]]
 id = "fs_double_destruction_vm"
@@ -345,6 +377,8 @@ trigger = { type = "ability_cast", abilities = [2876691785449472] }
 duration_secs = 30
 color = [23, 197, 209, 255]
 difficulties = ["veteran"]
+cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
+
 
 # -- Alerts --
 # ═══════════════════════════════════════════════════════════════════════════════
