@@ -518,6 +518,11 @@ impl CombatEncounter {
         if self.all_players_dead {
             return;
         }
+        // Only check during active combat - deaths during NotStarted are pre-combat
+        // and shouldn't affect the upcoming encounter
+        if self.state != EncounterState::InCombat {
+            return;
+        }
         // Only consider players seen during actual combat (after enter_combat_time)
         // This filters out players who were tracked pre-combat but left/switched characters
         let dominated_players: Vec<_> = self
