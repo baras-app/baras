@@ -1116,12 +1116,12 @@ pub enum ChallengeLayout {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ChallengeColumns {
-    /// Show total value and percent (default)
-    #[default]
+    /// Show total value and percent
     TotalPercent,
     /// Show total value and per-second rate
     TotalPerSecond,
-    /// Show per-second rate and percent
+    /// Show per-second rate and percent (default)
+    #[default]
     PerSecondPercent,
     /// Show only total value
     TotalOnly,
