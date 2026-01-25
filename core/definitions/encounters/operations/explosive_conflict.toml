@@ -296,6 +296,16 @@ color = [219, 28, 29, 255]
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
+id = "fs_double_destruction_ps"
+name = "Double Destruction Phase Start"
+display_text = "Double Destruction"
+trigger = { type = "phase_entered", phase_id = "fs_tanks" }
+duration_secs = 15
+color = [219, 28, 29, 255]
+difficulties = ["veteran", "master"]
+cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
+
+[[boss.timer]]
 id = "fs_firebrand_cleave"
 name = "Firebrand Cleave"
 trigger = { type = "ability_cast", abilities = [2876653130743808] }
@@ -312,7 +322,6 @@ color = [224, 25, 24, 255]
 can_refresh = false
 difficulties = ["veteran", "master"]
 duration_secs = 25
-
 
 [[boss.timer]]
 id = "fs_storm_cleave"
