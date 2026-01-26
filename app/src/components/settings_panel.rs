@@ -90,8 +90,10 @@ pub fn SettingsPanel(
                 config.overlay_settings.raid_opacity = new_settings.raid_opacity;
                 config.overlay_settings.boss_health = new_settings.boss_health.clone();
                 config.overlay_settings.boss_health_opacity = new_settings.boss_health_opacity;
-                config.overlay_settings.timer_overlay = new_settings.timer_overlay.clone();
-                config.overlay_settings.timer_opacity = new_settings.timer_opacity;
+                config.overlay_settings.timers_a_overlay = new_settings.timers_a_overlay.clone();
+                config.overlay_settings.timers_a_opacity = new_settings.timers_a_opacity;
+                config.overlay_settings.timers_b_overlay = new_settings.timers_b_overlay.clone();
+                config.overlay_settings.timers_b_opacity = new_settings.timers_b_opacity;
                 config.overlay_settings.effects_overlay = new_settings.effects_overlay.clone();
                 config.overlay_settings.effects_opacity = new_settings.effects_opacity;
                 config.overlay_settings.challenge_overlay = new_settings.challenge_overlay.clone();
@@ -504,16 +506,16 @@ pub fn SettingsPanel(
                     }
                 }
             } else if tab == "timers" {
-                // Timer Settings
+                // Timers A Settings
                 div { class: "settings-section",
-                    h4 { "Appearance" }
+                    h4 { "Timers A Appearance" }
 
                     OpacitySlider {
                         label: "Background Opacity",
-                        value: current_settings.timer_opacity,
+                        value: current_settings.timers_a_opacity,
                         on_change: move |val| {
                             let mut new_settings = draft_settings();
-                            new_settings.timer_opacity = val;
+                            new_settings.timers_a_opacity = val;
                             update_draft(new_settings);
                         },
                     }
@@ -522,12 +524,12 @@ pub fn SettingsPanel(
                         label { "Font Color" }
                         input {
                             r#type: "color",
-                            value: "{color_to_hex(&current_settings.timer_overlay.font_color)}",
+                            value: "{color_to_hex(&current_settings.timers_a_overlay.font_color)}",
                             class: "color-picker",
                             oninput: move |e: Event<FormData>| {
                                 if let Some(color) = parse_hex_color(&e.value()) {
                                     let mut new_settings = draft_settings();
-                                    new_settings.timer_overlay.font_color = color;
+                                    new_settings.timers_a_overlay.font_color = color;
                                     update_draft(new_settings);
                                 }
                             }
@@ -539,8 +541,53 @@ pub fn SettingsPanel(
                             class: "btn btn-reset",
                             onclick: move |_| {
                                 let mut new_settings = draft_settings();
-                                new_settings.timer_overlay = TimerOverlayConfig::default();
-                                new_settings.timer_opacity = 180;
+                                new_settings.timers_a_overlay = TimerOverlayConfig::default();
+                                new_settings.timers_a_opacity = 180;
+                                update_draft(new_settings);
+                            },
+                            i { class: "fa-solid fa-rotate-left" }
+                            span { " Reset Style" }
+                        }
+                    }
+                }
+
+                // Timers B Settings
+                div { class: "settings-section",
+                    h4 { "Timers B Appearance" }
+
+                    OpacitySlider {
+                        label: "Background Opacity",
+                        value: current_settings.timers_b_opacity,
+                        on_change: move |val| {
+                            let mut new_settings = draft_settings();
+                            new_settings.timers_b_opacity = val;
+                            update_draft(new_settings);
+                        },
+                    }
+
+                    div { class: "setting-row",
+                        label { "Font Color" }
+                        input {
+                            r#type: "color",
+                            value: "{color_to_hex(&current_settings.timers_b_overlay.font_color)}",
+                            class: "color-picker",
+                            oninput: move |e: Event<FormData>| {
+                                if let Some(color) = parse_hex_color(&e.value()) {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.timers_b_overlay.font_color = color;
+                                    update_draft(new_settings);
+                                }
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row reset-row",
+                        button {
+                            class: "btn btn-reset",
+                            onclick: move |_| {
+                                let mut new_settings = draft_settings();
+                                new_settings.timers_b_overlay = TimerOverlayConfig::default();
+                                new_settings.timers_b_opacity = 180;
                                 update_draft(new_settings);
                             },
                             i { class: "fa-solid fa-rotate-left" }

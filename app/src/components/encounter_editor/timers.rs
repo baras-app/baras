@@ -6,7 +6,9 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{AudioConfig, BossTimerDefinition, BossWithPath, EncounterItem, Trigger};
+use crate::types::{
+    AudioConfig, BossTimerDefinition, BossWithPath, EncounterItem, TimerDisplayTarget, Trigger,
+};
 use crate::utils::parse_hex_color;
 
 use super::InlineNameCreator;
@@ -44,6 +46,7 @@ fn default_timer(name: String) -> BossTimerDefinition {
         alert_at_secs: None,
         show_on_raid_frames: false,
         show_at_secs: 0.0,
+        display_target: TimerDisplayTarget::TimersA,
         audio: AudioConfig::default(),
     }
 }
@@ -657,6 +660,43 @@ fn TimerEditForm(
                                 }
                             }
                             span { class: "text-sm text-secondary", "sec remaining (0 = always)" }
+                        }
+                    }
+
+                    // ─── Display Target (only for countdown timers) ──────────────
+                    if !draft().is_alert {
+                        div { class: "form-row-hz",
+                            label { "Display Target" }
+                            select {
+                                class: "select",
+                                style: "width: 120px;",
+                                onchange: move |e| {
+                                    let mut d = draft();
+                                    d.display_target = match e.value().as_str() {
+                                        "timers_b" => TimerDisplayTarget::TimersB,
+                                        "none" => TimerDisplayTarget::None,
+                                        _ => TimerDisplayTarget::TimersA,
+                                    };
+                                    draft.set(d);
+                                },
+                                for target in TimerDisplayTarget::all() {
+                                    {
+                                        let value = match target {
+                                            TimerDisplayTarget::TimersA => "timers_a",
+                                            TimerDisplayTarget::TimersB => "timers_b",
+                                            TimerDisplayTarget::None => "none",
+                                        };
+                                        let is_selected = draft().display_target == *target;
+                                        rsx! {
+                                            option {
+                                                value: "{value}",
+                                                selected: is_selected,
+                                                "{target.label()}"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 

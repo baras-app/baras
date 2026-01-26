@@ -273,6 +273,33 @@ fn default_enabled() -> bool {
     true
 }
 
+/// Which overlay should display this timer
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TimerDisplayTarget {
+    /// Show on Timers A overlay (default for backward compatibility)
+    #[default]
+    TimersA,
+    /// Show on Timers B overlay
+    TimersB,
+    /// No overlay display (alerts only)
+    None,
+}
+
+impl TimerDisplayTarget {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::TimersA => "Timers A",
+            Self::TimersB => "Timers B",
+            Self::None => "None",
+        }
+    }
+
+    pub fn all() -> &'static [TimerDisplayTarget] {
+        &[Self::TimersA, Self::TimersB, Self::None]
+    }
+}
+
 /// Timer definition (mirrors baras_core::dsl::BossTimerDefinition)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BossTimerDefinition {
@@ -311,6 +338,8 @@ pub struct BossTimerDefinition {
     pub show_on_raid_frames: bool,
     #[serde(default)]
     pub show_at_secs: f32,
+    #[serde(default)]
+    pub display_target: TimerDisplayTarget,
     #[serde(default)]
     pub audio: AudioConfig,
 }
