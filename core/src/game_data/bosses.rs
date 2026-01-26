@@ -9,10 +9,14 @@ use std::sync::LazyLock;
 use super::flashpoint_bosses::FLASHPOINT_BOSS_DATA;
 use super::lair_bosses::LAIR_BOSS_DATA;
 use super::raid_bosses::RAID_BOSS_DATA;
+use super::world_bosses::WORLD_BOSS_DATA;
 
 /// Lazy-initialized lookup table combining all boss data
 static BOSS_LOOKUP: LazyLock<HashMap<i64, BossInfo>> = LazyLock::new(|| {
-    let total = RAID_BOSS_DATA.len() + LAIR_BOSS_DATA.len() + FLASHPOINT_BOSS_DATA.len();
+    let total = RAID_BOSS_DATA.len()
+        + LAIR_BOSS_DATA.len()
+        + FLASHPOINT_BOSS_DATA.len()
+        + WORLD_BOSS_DATA.len();
     let mut map = HashMap::with_capacity(total);
     for (id, info) in RAID_BOSS_DATA.iter() {
         map.insert(*id, info.clone());
@@ -21,6 +25,9 @@ static BOSS_LOOKUP: LazyLock<HashMap<i64, BossInfo>> = LazyLock::new(|| {
         map.insert(*id, info.clone());
     }
     for (id, info) in FLASHPOINT_BOSS_DATA.iter() {
+        map.insert(*id, info.clone());
+    }
+    for (id, info) in WORLD_BOSS_DATA.iter() {
         map.insert(*id, info.clone());
     }
     map
@@ -40,6 +47,12 @@ static AREA_CONTENT_LOOKUP: LazyLock<HashMap<&'static str, ContentType>> = LazyL
     }
     for (_, info) in FLASHPOINT_BOSS_DATA.iter() {
         map.insert(info.operation, info.content_type);
+    }
+    for (_, info) in WORLD_BOSS_DATA.iter() {
+        // Skip training dummy - "Parsing" isn't a real area
+        if info.content_type != ContentType::TrainingDummy {
+            map.insert(info.operation, info.content_type);
+        }
     }
     map
 });

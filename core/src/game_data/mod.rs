@@ -10,6 +10,7 @@ mod raid_bosses;
 mod raids;
 mod shield_absorbs;
 mod shield_effects;
+mod world_bosses;
 
 pub use boss_registry::{
     clear_boss_registry, is_registered_boss, lookup_registered_name, register_hp_overlay_entity,
