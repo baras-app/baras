@@ -22,6 +22,22 @@ ids = [3458114393210880, 3367555007774720, 3458122983145472, 3458110098243584]
 is_boss = true
 is_kill_target = true
 
+[[boss.phases]]
+id = "sparky_p2"
+name = "Phase 2"
+trigger = { type = "boss_hp_below", hp_percent = 90.1, selector = ["Sparky"] }
+
+[[boss.phases]]
+id = "sparky_p3"
+name = "Phase 3"
+trigger = { type = "boss_hp_below", hp_percent = 60.1, selector = ["Sparky"] }
+
+[[boss.phases]]
+id = "sparky_burn"
+name = "Burn"
+trigger = { type = "boss_hp_below", hp_percent = 25.1, selector = ["Sparky"] }
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Quartermaster Bulo
 # ═══════════════════════════════════════════════════════════════════════════════
