@@ -1520,7 +1520,15 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 
         // Generate encounter name with pull count
         // Priority: definition name > hardcoded boss name > phase type
-        let encounter_name = if let Some(def) = encounter.active_boss_definition() {
+        // If encounter is finalized (PostCombat), use the name from history to avoid off-by-one
+        let encounter_name = if matches!(encounter.state, EncounterState::PostCombat { .. }) {
+            // Encounter already finalized - use the display_name from history
+            cache
+                .encounter_history
+                .summaries()
+                .last()
+                .map(|s| s.display_name.clone())
+        } else if let Some(def) = encounter.active_boss_definition() {
             // Definition is active - use definition name with pull count
             let pull_count = cache.encounter_history.peek_pull_count(&def.name);
             Some(format!("{} - {}", def.name, pull_count))
