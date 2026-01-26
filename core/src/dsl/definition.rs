@@ -295,6 +295,10 @@ pub struct BossTimerDefinition {
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_f32")]
     pub show_at_secs: f32,
 
+    /// Which overlay should display this timer (defaults to TimersA)
+    #[serde(default)]
+    pub display_target: crate::timers::TimerDisplayTarget,
+
     // ─── Audio ───────────────────────────────────────────────────────────────
     /// Audio configuration (alerts, countdown, custom sounds)
     #[serde(default)]
@@ -334,6 +338,7 @@ impl BossTimerDefinition {
             color: self.color,
             show_on_raid_frames: self.show_on_raid_frames,
             show_at_secs: self.show_at_secs,
+            display_target: self.display_target,
             alert_at_secs: self.alert_at_secs,
             alert_text: self.alert_text.clone(),
             audio: self.audio.clone(),

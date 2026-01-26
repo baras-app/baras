@@ -28,7 +28,7 @@ mod signal_handlers;
 mod manager_tests;
 
 pub use active::{ActiveTimer, TimerKey};
-pub use definition::{TimerConfig, TimerDefinition, TimerTrigger};
+pub use definition::{TimerConfig, TimerDefinition, TimerDisplayTarget, TimerTrigger};
 pub use error::TimerError;
 pub use manager::{FiredAlert, TimerManager};
 pub use preferences::{

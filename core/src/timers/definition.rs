@@ -14,6 +14,23 @@ use crate::game_data::Difficulty;
 // Re-export Trigger as TimerTrigger for backward compatibility during migration
 pub use crate::dsl::Trigger as TimerTrigger;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Timer Display Target
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Which overlay should display this timer
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TimerDisplayTarget {
+    /// Show on Timers A overlay (default for backward compatibility)
+    #[default]
+    TimersA,
+    /// Show on Timers B overlay
+    TimersB,
+    /// No overlay display (alerts only)
+    None,
+}
+
 /// Definition of a timer (loaded from config)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimerDefinition {
@@ -62,6 +79,10 @@ pub struct TimerDefinition {
     /// Show on raid frames instead of timer bar overlay?
     #[serde(default)]
     pub show_on_raid_frames: bool,
+
+    /// Which overlay should display this timer (defaults to TimersA)
+    #[serde(default)]
+    pub display_target: TimerDisplayTarget,
 
     // ─── Alerts ─────────────────────────────────────────────────────────────
     /// Alert when this many seconds remain (None = no alert)
