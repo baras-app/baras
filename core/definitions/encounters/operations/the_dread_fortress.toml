@@ -760,7 +760,15 @@ phases = ["kebus"]
 [[boss.timer]]
 id = "brontes_reaches_active"
 name = "Reaches Active"
-trigger = { type = "any_of", conditions = [
+trigger = { type = "counter_reaches", counter_id = "brontes_hand_deaths_p1", value = 2 }
+duration_secs = 23.0
+color = [32, 220, 220, 255]
+difficulties = ["veteran", "master"]
+
+[[boss.counter]]
+id = "brontes_hand_deaths_p1"
+name = "Phase 1 Hand Deaths"
+increment_on = { type = "any_of", conditions = [
   { type = "entity_death", selector = [
     3275625527771136,
   ] },
@@ -768,9 +776,6 @@ trigger = { type = "any_of", conditions = [
     3277721471811584,
   ] },
 ] }
-duration_secs = 23.0
-color = [32, 220, 220, 255]
-difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "brontes_hands_finger_spawn"
