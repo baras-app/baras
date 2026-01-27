@@ -5320,17 +5320,14 @@ details[open] .collapsible-summary::before {
 /* ─── Unsaved Changes Indicator ──────────────────────────────────────────────── */
 .unsaved-indicator {
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  background: var(--swtor-orange, #f0ad4e);
-  border-radius: 50%;
-  margin-left: 6px;
-  animation: pulse-subtle 2s ease-in-out infinite;
+  font-size: 0.75rem;
+  color: var(--swtor-orange, #f0ad4e);
+  margin-left: 8px;
+  font-style: italic;
 }
 
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+.unsaved-indicator::before {
+  content: "unsaved changes";
 }
 
 /* ─── Color Swatch ───────────────────────────────────────────────────────────── */
