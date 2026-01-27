@@ -222,11 +222,13 @@ fn PhaseEditForm(
     // Clone values needed for closures and display
     let phase_id_display = phase.id.clone();
     let phase_for_delete = phase.clone();
-
-    let mut draft = use_signal(|| phase.clone());
+    let phase_for_draft = phase.clone();
     let original = phase.clone();
 
-    let has_changes = use_memo(move || draft() != original);
+    let mut draft = use_signal(|| phase_for_draft);
+    let mut just_saved = use_signal(|| false);
+
+    let has_changes = use_memo(move || !just_saved() && draft() != original);
 
     // Notify parent when dirty state changes
     use_effect(move || {
@@ -236,11 +238,12 @@ fn PhaseEditForm(
     // Get phase IDs for preceded_by dropdown (exclude self)
     let phase_ids: Vec<String> = all_phases
         .iter()
-        .filter(|p| p.id != phase.id)
+        .filter(|p| p.id != phase_id_display)
         .map(|p| p.id.clone())
         .collect();
 
     let handle_save = move |_| {
+        just_saved.set(true);
         let updated = draft();
         on_save.call(updated);
     };

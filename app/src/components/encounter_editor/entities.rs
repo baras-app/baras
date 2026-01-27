@@ -253,10 +253,13 @@ fn EntityEditForm(
     #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
     let original_name = entity.name.clone();
-    let mut draft = use_signal(|| entity.clone());
+    let entity_for_draft = entity.clone();
+    let entity_for_delete = entity.clone();
     let original = entity.clone();
+    let mut draft = use_signal(|| entity_for_draft);
+    let mut just_saved = use_signal(|| false);
 
-    let has_changes = use_memo(move || draft() != original);
+    let has_changes = use_memo(move || !just_saved() && draft() != original);
 
     // Notify parent when dirty state changes
     use_effect(move || {
@@ -266,13 +269,14 @@ fn EntityEditForm(
     let handle_save = {
         let orig_name = original_name.clone();
         move |_| {
+            just_saved.set(true);
             let updated = draft();
             on_save.call((updated, orig_name.clone()));
         }
     };
 
     let handle_delete = move |_| {
-        on_delete.call(entity.clone());
+        on_delete.call(entity_for_delete.clone());
     };
 
     rsx! {

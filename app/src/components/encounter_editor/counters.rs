@@ -227,11 +227,13 @@ fn CounterEditForm(
     // Clone values needed for closures and display
     let counter_id_display = counter.id.clone();
     let counter_for_delete = counter.clone();
-
-    let mut draft = use_signal(|| counter.clone());
+    let counter_for_draft = counter.clone();
     let original = counter.clone();
 
-    let has_changes = use_memo(move || draft() != original);
+    let mut draft = use_signal(|| counter_for_draft);
+    let mut just_saved = use_signal(|| false);
+
+    let has_changes = use_memo(move || !just_saved() && draft() != original);
 
     // Notify parent when dirty state changes
     use_effect(move || {
@@ -239,6 +241,7 @@ fn CounterEditForm(
     });
 
     let handle_save = move |_| {
+        just_saved.set(true);
         let updated = draft();
         on_save.call(updated);
     };

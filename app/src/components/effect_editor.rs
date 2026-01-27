@@ -625,10 +625,16 @@ fn EffectEditForm(
     on_duplicate: EventHandler<()>,
     #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
-    let mut draft = use_signal(|| effect.clone());
+    let effect_for_draft = effect.clone();
+    let effect_for_trigger = effect.clone();
+    let effect_original = effect.clone();
+    let mut draft = use_signal(|| effect_for_draft);
     let mut confirm_delete = use_signal(|| false);
-    let mut trigger_type = use_signal(|| EffectTriggerType::from_effect(&effect));
+    let mut trigger_type = use_signal(|| EffectTriggerType::from_effect(&effect_for_trigger));
     let mut icon_preview_url = use_signal(|| None::<String>);
+
+    // Track if form was just saved (resets dirty state)
+    let mut just_saved = use_signal(|| false);
 
     // Load icon preview - use explicit icon_ability_id, or fall back to trigger ID
     use_effect(move || {
@@ -662,9 +668,13 @@ fn EffectEditForm(
         }
     });
 
-    let effect_original = effect.clone();
-    // For drafts, always enable save; for existing effects, only when changed
-    let has_changes = use_memo(move || is_draft || draft() != effect_original);
+    // For drafts, always enable save; for existing effects, only when changed and not just saved
+    let has_changes = use_memo(move || {
+        if just_saved() {
+            return false;
+        }
+        is_draft || draft() != effect_original
+    });
 
     // Notify parent when dirty state changes
     use_effect(move || {
@@ -1336,7 +1346,10 @@ fn EffectEditForm(
                     button {
                         class: "btn-save",
                         disabled: !has_changes(),
-                        onclick: move |_| on_save.call(draft()),
+                        onclick: move |_| {
+                            just_saved.set(true);
+                            on_save.call(draft());
+                        },
                         "Save"
                     }
 

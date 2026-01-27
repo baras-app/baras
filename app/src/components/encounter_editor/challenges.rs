@@ -235,11 +235,13 @@ fn ChallengeEditForm(
     // Clone values needed for closures and display
     let challenge_id_display = challenge.id.clone();
     let challenge_for_delete = challenge.clone();
-
-    let mut draft = use_signal(|| challenge.clone());
+    let challenge_for_draft = challenge.clone();
     let original = challenge.clone();
 
-    let has_changes = use_memo(move || draft() != original);
+    let mut draft = use_signal(|| challenge_for_draft);
+    let mut just_saved = use_signal(|| false);
+
+    let has_changes = use_memo(move || !just_saved() && draft() != original);
 
     // Notify parent when dirty state changes
     use_effect(move || {
@@ -247,6 +249,7 @@ fn ChallengeEditForm(
     });
 
     let handle_save = move |_| {
+        just_saved.set(true);
         let updated = draft();
         on_save.call(updated);
     };

@@ -277,12 +277,16 @@ fn TimerEditForm(
     on_collapse: EventHandler<()>,
     #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
-    let timer_original = timer.clone();
     let timer_display = timer.clone();
-    let mut draft = use_signal(|| timer.clone());
+    let timer_for_draft = timer.clone();
+    let timer_for_delete = timer.clone();
+    let timer_id = timer.id.clone();
+    let timer_original = timer.clone();
+    let mut draft = use_signal(|| timer_for_draft);
     let mut confirm_delete = use_signal(|| false);
+    let mut just_saved = use_signal(|| false);
 
-    let has_changes = use_memo(move || draft() != timer_original);
+    let has_changes = use_memo(move || !just_saved() && draft() != timer_original);
 
     // Notify parent when dirty state changes
     use_effect(move || {
@@ -300,6 +304,7 @@ fn TimerEditForm(
         let timers = all_timers.clone();
         let bwp = boss_with_path.clone();
         move |_| {
+            just_saved.set(true);
             let updated = draft();
             let mut current = timers.clone();
             if let Some(idx) = current.iter().position(|t| t.id == updated.id) {
@@ -320,7 +325,7 @@ fn TimerEditForm(
 
     // Delete handler
     let handle_delete = {
-        let timer_del = timer.clone();
+        let timer_del = timer_for_delete.clone();
         let timers = all_timers.clone();
         let bwp = boss_with_path.clone();
         move |_| {
@@ -349,7 +354,7 @@ fn TimerEditForm(
 
     // Duplicate handler
     let handle_duplicate = {
-        let timer_dup = timer.clone();
+        let timer_dup = timer_display.clone();
         let timers = all_timers.clone();
         let bwp = boss_with_path.clone();
         move |_| {
@@ -376,7 +381,7 @@ fn TimerEditForm(
     // Get other timer IDs for chains_to dropdown
     let other_timer_ids: Vec<String> = all_timers
         .iter()
-        .filter(|t| t.id != timer.id)
+        .filter(|t| t.id != timer_id)
         .map(|t| t.id.clone())
         .collect();
 
