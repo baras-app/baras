@@ -169,11 +169,27 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
     let bosses_only = show_only_bosses();
 
     // Filter encounters if boss-only mode is enabled
+    // When filtering, propagate is_phase_start to the next visible encounter
+    // so phase boundaries aren't lost when trash encounters are hidden
     let filtered_history: Vec<_> = if bosses_only {
+        let mut pending_phase_start = false;
         history
             .iter()
-            .filter(|e| e.boss_name.is_some())
-            .cloned()
+            .filter_map(|e| {
+                if e.is_phase_start {
+                    pending_phase_start = true;
+                }
+                if e.boss_name.is_some() {
+                    let mut enc = e.clone();
+                    if pending_phase_start {
+                        enc.is_phase_start = true;
+                        pending_phase_start = false;
+                    }
+                    Some(enc)
+                } else {
+                    None
+                }
+            })
             .collect()
     } else {
         history.clone()

@@ -943,13 +943,29 @@ pub fn DataExplorerPanel(props: DataExplorerProps) -> Element {
     };
 
     // Memoized filtered history - only recomputes when encounters or filter changes
+    // When filtering for boss-only, propagate is_phase_start to the next visible
+    // encounter so phase boundaries aren't lost when trash encounters are hidden
     let filtered_history = use_memo(move || {
         let history = encounters();
         let bosses_only = show_only_bosses();
         if bosses_only {
+            let mut pending_phase_start = false;
             history
                 .into_iter()
-                .filter(|e| e.boss_name.is_some())
+                .filter_map(|mut e| {
+                    if e.is_phase_start {
+                        pending_phase_start = true;
+                    }
+                    if e.boss_name.is_some() {
+                        if pending_phase_start {
+                            e.is_phase_start = true;
+                            pending_phase_start = false;
+                        }
+                        Some(e)
+                    } else {
+                        None
+                    }
+                })
                 .collect()
         } else {
             history

@@ -44,7 +44,9 @@ pub struct EncounterHistory {
     summaries: Vec<EncounterSummary>,
     boss_pull_counts: HashMap<String, u32>,
     trash_pull_count: u32,
-    current_area_name: Option<String>,
+    /// Generation counter from AreaInfo, used to detect phase boundaries
+    /// (including re-entering the same area).
+    current_generation: Option<u64>,
 }
 
 impl EncounterHistory {
@@ -64,28 +66,19 @@ impl EncounterHistory {
         self.summaries.clear();
         self.boss_pull_counts.clear();
         self.trash_pull_count = 0;
-        self.current_area_name = None;
+        self.current_generation = None;
     }
 
     /// Check if area changed and update tracking.
-    /// Falls back to checking the last encounter's area when current_area_name is None
-    /// (e.g., after app restart mid-raid).
-    pub fn check_area_change(&mut self, area_name: &str) -> bool {
-        // First check in-memory state, then fall back to last encounter in history
-        let previous_area = self
-            .current_area_name
-            .as_ref()
-            .or_else(|| self.summaries.last().map(|s| &s.area_name));
-
-        let changed = previous_area.is_none_or(|prev| prev != area_name);
+    /// Uses the area generation counter so re-entering the same area
+    /// (e.g., running the same flashpoint twice) is detected as a new phase.
+    pub fn check_area_change(&mut self, generation: u64) -> bool {
+        let changed = self.current_generation != Some(generation);
         if changed {
-            self.current_area_name = Some(area_name.to_string());
+            self.current_generation = Some(generation);
             // Reset pull counts on area change
             self.trash_pull_count = 0;
             self.boss_pull_counts.clear();
-        } else if self.current_area_name.is_none() {
-            // Restore in-memory state from history
-            self.current_area_name = Some(area_name.to_string());
         }
         changed
     }
@@ -225,7 +218,7 @@ pub fn create_encounter_summary(
     );
 
     // Check if this is a new phase (area change)
-    let is_phase_start = history.check_area_change(&area.area_name);
+    let is_phase_start = history.check_area_change(area.generation);
 
     // Classify using area info
     let (encounter_type, boss_info) = classify_encounter(encounter, area);

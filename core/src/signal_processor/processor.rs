@@ -154,6 +154,9 @@ impl EventProcessor {
             cache.current_area.difficulty_id = 0;
             cache.current_area.difficulty_name.clear();
         }
+        if area_changed {
+            cache.current_area.generation += 1;
+        }
         cache.current_area.entered_at = Some(event.timestamp);
     }
 
