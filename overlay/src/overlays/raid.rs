@@ -136,6 +136,12 @@ impl RaidEffect {
         self
     }
 
+    /// Set the icon data (RGBA pixels)
+    pub fn with_icon(mut self, icon: std::sync::Arc<(u32, u32, Vec<u8>)>) -> Self {
+        self.icon = Some(icon);
+        self
+    }
+
     /// Check if the effect has expired
     pub fn is_expired(&self) -> bool {
         self.expires_at.is_some_and(|exp| exp <= Instant::now())

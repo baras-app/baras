@@ -698,7 +698,7 @@ impl CombatService {
                 ServiceCommand::RefreshRaidFrames => {
                     // Immediately send updated raid frame data to overlay
                     // Pass true to bypass early-out gates (ensures clear is reflected)
-                    let data = build_raid_frame_data(&self.shared, true)
+                    let data = build_raid_frame_data(&self.shared, true, self.icon_cache.as_ref())
                         .await
                         .unwrap_or_else(|| baras_overlay::RaidFrameData { frames: vec![] });
                     let _ = self
@@ -1289,7 +1289,7 @@ impl CombatService {
                 // Raid frames: send whenever there are effects (or always in rearrange mode)
                 if raid_active {
                     let rearranging = shared.rearrange_mode.load(Ordering::Relaxed);
-                    if let Some(data) = build_raid_frame_data(&shared, rearranging).await {
+                    if let Some(data) = build_raid_frame_data(&shared, rearranging, icon_cache.as_ref()).await {
                         let effect_count: usize = data.frames.iter().map(|f| f.effects.len()).sum();
                         // Always send in rearrange mode, otherwise only when effects exist/changed
                         if rearranging || effect_count > 0 || last_raid_effect_count > 0 {
@@ -1706,6 +1706,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 async fn build_raid_frame_data(
     shared: &Arc<SharedState>,
     rearranging: bool,
+    icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
 ) -> Option<RaidFrameData> {
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
@@ -1763,7 +1764,7 @@ async fn build_raid_frame_data(
             effects_by_target
                 .entry(target_id)
                 .or_default()
-                .push(convert_to_raid_effect(effect));
+                .push(convert_to_raid_effect(effect, icon_cache));
         }
     }
 
@@ -2000,7 +2001,10 @@ async fn process_effect_audio(shared: &std::sync::Arc<SharedState>) -> EffectAud
 /// Uses the pre-computed lag compensation from ActiveEffect.
 /// The applied_instant is already backdated to game event time in ActiveEffect::new() and refresh(),
 /// so we just add the duration to get the expiry.
-fn convert_to_raid_effect(effect: &ActiveEffect) -> RaidEffect {
+fn convert_to_raid_effect(
+    effect: &ActiveEffect,
+    icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
+) -> RaidEffect {
     // Effects on raid frames are typically HoTs/shields (is_buff defaults to true in RaidEffect::new())
     let mut raid_effect = RaidEffect::new(effect.game_effect_id, effect.name.clone())
         .with_charges(effect.stacks)
@@ -2011,6 +2015,14 @@ fn convert_to_raid_effect(effect: &ActiveEffect) -> RaidEffect {
     if let Some(dur) = effect.duration {
         let expires_at = effect.applied_instant + dur;
         raid_effect = raid_effect.with_duration(dur).with_expiry(expires_at);
+    }
+
+    // Load icon if cache available
+    if let Some(cache) = icon_cache {
+        if let Some(data) = cache.get_icon(effect.icon_ability_id) {
+            raid_effect =
+                raid_effect.with_icon(std::sync::Arc::new((data.width, data.height, data.rgba)));
+        }
     }
 
     raid_effect
