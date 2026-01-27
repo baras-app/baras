@@ -38,6 +38,7 @@ pub fn App() -> Element {
     let mut raid_enabled = use_signal(|| false);
     let mut boss_health_enabled = use_signal(|| false);
     let mut timers_enabled = use_signal(|| false);
+    let mut timers_b_enabled = use_signal(|| false);
     let mut challenges_enabled = use_signal(|| false);
     let mut alerts_enabled = use_signal(|| false);
     let mut effects_a_enabled = use_signal(|| false);
@@ -171,6 +172,7 @@ pub fn App() -> Element {
                 &mut raid_enabled,
                 &mut boss_health_enabled,
                 &mut timers_enabled,
+                &mut timers_b_enabled,
                 &mut challenges_enabled,
                 &mut alerts_enabled,
                 &mut effects_a_enabled,
@@ -289,6 +291,7 @@ pub fn App() -> Element {
     let raid_on = raid_enabled();
     let boss_health_on = boss_health_enabled();
     let timers_on = timers_enabled();
+    let timers_b_on = timers_b_enabled();
     let challenges_on = challenges_enabled();
     let alerts_on = alerts_enabled();
     let effects_a_on = effects_a_enabled();
@@ -300,6 +303,7 @@ pub fn App() -> Element {
         || raid_on
         || boss_health_on
         || timers_on
+        || timers_b_on
         || challenges_on
         || alerts_on
         || effects_a_on
@@ -493,7 +497,7 @@ pub fn App() -> Element {
                                             if let Some(status) = api::get_overlay_status().await {
                                                 apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
                                                     &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                    &mut challenges_enabled, &mut alerts_enabled,
+                                                    &mut timers_b_enabled, &mut challenges_enabled, &mut alerts_enabled,
                                                     &mut effects_a_enabled, &mut effects_b_enabled,
                                                     &mut cooldowns_enabled, &mut dot_tracker_enabled,
                                                     &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
@@ -894,7 +898,7 @@ pub fn App() -> Element {
                                                         if let Some(status) = api::get_overlay_status().await {
                                                             apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
                                                                 &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                                &mut challenges_enabled, &mut alerts_enabled,
+                                                                &mut timers_b_enabled, &mut challenges_enabled, &mut alerts_enabled,
                                                                 &mut effects_a_enabled, &mut effects_b_enabled,
                                                                 &mut cooldowns_enabled, &mut dot_tracker_enabled,
                                                                 &mut overlays_visible, &mut move_mode, &mut rearrange_mode);
@@ -1924,6 +1928,7 @@ fn apply_status(
     raid_enabled: &mut Signal<bool>,
     boss_health_enabled: &mut Signal<bool>,
     timers_enabled: &mut Signal<bool>,
+    timers_b_enabled: &mut Signal<bool>,
     challenges_enabled: &mut Signal<bool>,
     alerts_enabled: &mut Signal<bool>,
     effects_a_enabled: &mut Signal<bool>,
@@ -1943,6 +1948,7 @@ fn apply_status(
     raid_enabled.set(status.raid_enabled);
     boss_health_enabled.set(status.boss_health_enabled);
     timers_enabled.set(status.timers_enabled);
+    timers_b_enabled.set(status.timers_b_enabled);
     challenges_enabled.set(status.challenges_enabled);
     alerts_enabled.set(status.alerts_enabled);
     effects_a_enabled.set(status.effects_a_enabled);
