@@ -134,6 +134,7 @@ fn CounterRow(
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
+    let mut is_dirty = use_signal(|| false);
     let trigger_label = counter.increment_on.label();
 
     rsx! {
@@ -144,6 +145,9 @@ fn CounterRow(
                 onclick: move |_| on_toggle.call(()),
                 span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
                 span { class: "font-medium", "{counter.name}" }
+                if expanded && is_dirty() {
+                    span { class: "unsaved-indicator", title: "Unsaved changes" }
+                }
                 span { class: "tag", "{trigger_label}" }
                 if counter.decrement_on.is_some() {
                     span { class: "tag tag-info", "↓ Decrement" }
@@ -162,6 +166,7 @@ fn CounterRow(
                             CounterEditForm {
                                 counter: counter.clone(),
                                 encounter_data: encounter_data,
+                                on_dirty: move |dirty: bool| is_dirty.set(dirty),
                                 on_save: move |updated: CounterDefinition| {
                                     on_status.call(("Saving...".to_string(), false));
                                     let boss_id = bwp_for_save.boss.id.clone();
@@ -217,6 +222,7 @@ fn CounterEditForm(
     encounter_data: EncounterData,
     on_save: EventHandler<CounterDefinition>,
     on_delete: EventHandler<CounterDefinition>,
+    #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
     // Clone values needed for closures and display
     let counter_id_display = counter.id.clone();
@@ -226,6 +232,11 @@ fn CounterEditForm(
     let original = counter.clone();
 
     let has_changes = use_memo(move || draft() != original);
+
+    // Notify parent when dirty state changes
+    use_effect(move || {
+        on_dirty.call(has_changes());
+    });
 
     let handle_save = move |_| {
         let updated = draft();

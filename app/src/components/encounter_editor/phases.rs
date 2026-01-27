@@ -130,6 +130,7 @@ fn PhaseRow(
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
+    let mut is_dirty = use_signal(|| false);
     let trigger_label = phase.start_trigger.label();
 
     rsx! {
@@ -140,6 +141,9 @@ fn PhaseRow(
                 onclick: move |_| on_toggle.call(()),
                 span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
                 span { class: "font-medium", "{phase.name}" }
+                if expanded && is_dirty() {
+                    span { class: "unsaved-indicator", title: "Unsaved changes" }
+                }
                 span { class: "text-xs text-mono text-muted", "{phase.id}" }
                 span { class: "tag", "{trigger_label}" }
             }
@@ -156,6 +160,7 @@ fn PhaseRow(
                                 phase: phase.clone(),
                                 all_phases: all_phases,
                                 encounter_data: encounter_data,
+                                on_dirty: move |dirty: bool| is_dirty.set(dirty),
                                 on_save: move |updated: PhaseDefinition| {
                                     on_status.call(("Saving...".to_string(), false));
                                     let boss_id = bwp_for_save.boss.id.clone();
@@ -212,6 +217,7 @@ fn PhaseEditForm(
     encounter_data: EncounterData,
     on_save: EventHandler<PhaseDefinition>,
     on_delete: EventHandler<PhaseDefinition>,
+    #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
     // Clone values needed for closures and display
     let phase_id_display = phase.id.clone();
@@ -221,6 +227,11 @@ fn PhaseEditForm(
     let original = phase.clone();
 
     let has_changes = use_memo(move || draft() != original);
+
+    // Notify parent when dirty state changes
+    use_effect(move || {
+        on_dirty.call(has_changes());
+    });
 
     // Get phase IDs for preceded_by dropdown (exclude self)
     let phase_ids: Vec<String> = all_phases

@@ -128,6 +128,7 @@ fn EntityRow(
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
+    let mut is_dirty = use_signal(|| false);
     let id_count = entity.ids.len();
 
     // Extract context for API calls
@@ -142,6 +143,9 @@ fn EntityRow(
                 onclick: move |_| on_toggle.call(()),
                 span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
                 span { class: "font-medium", "{entity.name}" }
+                if expanded && is_dirty() {
+                    span { class: "unsaved-indicator", title: "Unsaved changes" }
+                }
                 span { class: "text-xs text-muted text-mono", "{id_count} IDs" }
                 if entity.is_boss {
                     span { class: "tag tag-danger", "Boss" }
@@ -180,6 +184,7 @@ fn EntityRow(
                         div { class: "list-item-body",
                             EntityEditForm {
                                 entity: entity.clone(),
+                                on_dirty: move |dirty: bool| is_dirty.set(dirty),
                                 on_save: move |(updated, original_name): (EntityDefinition, String)| {
                                     let all = all_entities_for_save.clone();
                                     let boss_id = boss_id_save.clone();
@@ -245,12 +250,18 @@ fn EntityEditForm(
     entity: EntityDefinition,
     on_save: EventHandler<(EntityDefinition, String)>,
     on_delete: EventHandler<EntityDefinition>,
+    #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
     let original_name = entity.name.clone();
     let mut draft = use_signal(|| entity.clone());
     let original = entity.clone();
 
     let has_changes = use_memo(move || draft() != original);
+
+    // Notify parent when dirty state changes
+    use_effect(move || {
+        on_dirty.call(has_changes());
+    });
 
     let handle_save = {
         let orig_name = original_name.clone();

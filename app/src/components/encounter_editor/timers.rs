@@ -150,6 +150,7 @@ fn TimerRow(
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
+    let mut is_dirty = use_signal(|| false);
     let color_hex = format!(
         "#{:02x}{:02x}{:02x}",
         timer.color[0], timer.color[1], timer.color[2]
@@ -176,6 +177,9 @@ fn TimerRow(
                         style: "background: {color_hex};"
                     }
                     span { class: "font-medium text-primary truncate", "{timer.name}" }
+                    if expanded && is_dirty() {
+                        span { class: "unsaved-indicator", title: "Unsaved changes" }
+                    }
                     span { class: "text-xs text-mono text-muted truncate", "{timer.id}" }
                     span { class: "tag", "{timer.trigger.label()}" }
                     if timer.is_alert {
@@ -251,6 +255,7 @@ fn TimerRow(
                     on_change: on_change,
                     on_status: on_status,
                     on_collapse: on_collapse,
+                    on_dirty: move |dirty: bool| is_dirty.set(dirty),
                 }
             }
         }
@@ -270,6 +275,7 @@ fn TimerEditForm(
     on_change: EventHandler<Vec<BossTimerDefinition>>,
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
+    #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
     let timer_original = timer.clone();
     let timer_display = timer.clone();
@@ -277,6 +283,11 @@ fn TimerEditForm(
     let mut confirm_delete = use_signal(|| false);
 
     let has_changes = use_memo(move || draft() != timer_original);
+
+    // Notify parent when dirty state changes
+    use_effect(move || {
+        on_dirty.call(has_changes());
+    });
     let color_hex = format!(
         "#{:02x}{:02x}{:02x}",
         draft().color[0],

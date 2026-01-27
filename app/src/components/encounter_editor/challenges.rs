@@ -135,6 +135,7 @@ fn ChallengeRow(
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
+    let mut is_dirty = use_signal(|| false);
     let metric_label = challenge.metric.label();
     let condition_count = challenge.conditions.len();
 
@@ -150,6 +151,9 @@ fn ChallengeRow(
                 onclick: move |_| on_toggle.call(()),
                 span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
                 span { class: "font-medium", "{challenge.name}" }
+                if expanded && is_dirty() {
+                    span { class: "unsaved-indicator", title: "Unsaved changes" }
+                }
                 span { class: "tag", "{metric_label}" }
                 if condition_count > 0 {
                     span { class: "tag tag-secondary", "{condition_count} conditions" }
@@ -169,6 +173,7 @@ fn ChallengeRow(
                             ChallengeEditForm {
                                 challenge: challenge.clone(),
                                 encounter_data: encounter_data,
+                                on_dirty: move |dirty: bool| is_dirty.set(dirty),
                                 on_save: move |updated: ChallengeDefinition| {
                                     let boss_id = boss_id_save.clone();
                                     let file_path = file_path_save.clone();
@@ -225,6 +230,7 @@ fn ChallengeEditForm(
     encounter_data: EncounterData,
     on_save: EventHandler<ChallengeDefinition>,
     on_delete: EventHandler<ChallengeDefinition>,
+    #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
     // Clone values needed for closures and display
     let challenge_id_display = challenge.id.clone();
@@ -234,6 +240,11 @@ fn ChallengeEditForm(
     let original = challenge.clone();
 
     let has_changes = use_memo(move || draft() != original);
+
+    // Notify parent when dirty state changes
+    use_effect(move || {
+        on_dirty.call(has_changes());
+    });
 
     let handle_save = move |_| {
         let updated = draft();
