@@ -515,6 +515,7 @@ fn EffectRow(
     on_duplicate: EventHandler<()>,
     #[props(default)] on_cancel: EventHandler<()>,
 ) -> Element {
+    let mut is_dirty = use_signal(|| false);
     let color = effect.color.unwrap_or([128, 128, 128, 255]);
     let color_hex = format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]);
 
@@ -540,6 +541,9 @@ fn EffectRow(
                     }
 
                     span { class: "effect-name", "{effect.name}" }
+                    if expanded && is_dirty() {
+                        span { class: "unsaved-indicator", title: "Unsaved changes" }
+                    }
                     if is_draft {
                         span { class: "effect-new-badge", "(New)" }
                     }
@@ -601,6 +605,7 @@ fn EffectRow(
                     on_save: on_save,
                     on_delete: on_delete,
                     on_duplicate: on_duplicate,
+                    on_dirty: move |dirty: bool| is_dirty.set(dirty),
                 }
             }
         }
@@ -618,6 +623,7 @@ fn EffectEditForm(
     on_save: EventHandler<EffectListItem>,
     on_delete: EventHandler<()>,
     on_duplicate: EventHandler<()>,
+    #[props(default)] on_dirty: EventHandler<bool>,
 ) -> Element {
     let mut draft = use_signal(|| effect.clone());
     let mut confirm_delete = use_signal(|| false);
@@ -659,6 +665,11 @@ fn EffectEditForm(
     let effect_original = effect.clone();
     // For drafts, always enable save; for existing effects, only when changed
     let has_changes = use_memo(move || is_draft || draft() != effect_original);
+
+    // Notify parent when dirty state changes
+    use_effect(move || {
+        on_dirty.call(has_changes());
+    });
 
     let color = draft().color.unwrap_or([128, 128, 128, 255]);
     let color_hex = format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]);
