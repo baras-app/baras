@@ -6,6 +6,9 @@ use crate::encounter::summary::{create_encounter_summary, EncounterHistory};
 use crate::encounter::{CombatEncounter, EncounterState, OverlayHealthEntry, ProcessingMode};
 use crate::game_data::{clear_boss_registry, register_hp_overlay_entity, Difficulty};
 use crate::state::info::AreaInfo;
+use crate::state::ipc::{
+    ParseWorkerOutput, WorkerAreaInfo, WorkerPlayerDiscipline, WorkerPlayerInfo,
+};
 use hashbrown::HashMap;
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
@@ -275,5 +278,91 @@ impl SessionCache {
     /// Get the currently active boss encounter definition (if any).
     pub fn active_boss_definition(&self) -> Option<&BossEncounterDefinition> {
         self.current_encounter()?.active_boss_definition()
+    }
+
+    // --- IPC Methods ---
+
+    /// Create a ParseWorkerOutput from current cache state.
+    ///
+    /// Used by parse-worker to serialize state for the main app.
+    pub fn to_worker_output(
+        &self,
+        end_pos: u64,
+        line_count: u64,
+        event_count: usize,
+    ) -> ParseWorkerOutput {
+        ParseWorkerOutput {
+            end_pos,
+            line_count,
+            event_count,
+            encounter_count: self.encounter_history.summaries().len(),
+            encounters: self.encounter_history.summaries().to_vec(),
+            player: WorkerPlayerInfo::from_player(&self.player),
+            area: WorkerAreaInfo::from_area(&self.current_area),
+            player_disciplines: self
+                .player_disciplines
+                .values()
+                .map(WorkerPlayerDiscipline::from_player)
+                .collect(),
+            elapsed_ms: 0, // Filled in by caller
+        }
+    }
+
+    /// Restore cache state from ParseWorkerOutput.
+    ///
+    /// Used by the app to import state from parse-worker subprocess.
+    ///
+    /// Restores:
+    /// - player info
+    /// - area info  
+    /// - player_disciplines
+    /// - encounter_history
+    ///
+    /// Does NOT handle:
+    /// - byte/line position (caller must set session.current_byte and session.current_line)
+    /// - encounter creation (caller handles based on filesystem state)
+    /// - boss definition loading (caller handles based on area_id)
+    ///
+    /// Returns the number of area generations (phase boundaries) for restore_generation().
+    pub fn restore_from_worker_output(&mut self, output: &ParseWorkerOutput) -> u64 {
+        // Import player info
+        let has_player = output.player.apply_to(&mut self.player);
+        if has_player {
+            self.player_initialized = true;
+        }
+
+        // Import area info
+        output.area.apply_to(&mut self.current_area);
+
+        // Import player disciplines
+        for disc in &output.player_disciplines {
+            self.player_disciplines
+                .insert(disc.entity_id, disc.to_player_info());
+        }
+
+        // Count generations before consuming encounters
+        let generation_count = output
+            .encounters
+            .iter()
+            .filter(|e| e.is_phase_start)
+            .count() as u64;
+
+        // Import encounter summaries
+        for summary in &output.encounters {
+            self.encounter_history.add(summary.clone());
+        }
+
+        // Restore generation counter to prevent raid splitting
+        if generation_count > 0 {
+            self.encounter_history.restore_generation(generation_count);
+        }
+
+        // Rebuild pull counts from imported encounter names
+        self.encounter_history.rebuild_pull_counts();
+
+        // Restore area generation counter
+        self.current_area.generation = generation_count;
+
+        generation_count
     }
 }

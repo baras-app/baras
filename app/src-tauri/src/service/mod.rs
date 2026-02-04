@@ -40,51 +40,7 @@ use tracing::{debug, error, info, warn};
 // Parse Worker IPC
 // ─────────────────────────────────────────────────────────────────────────────
 
-use baras_core::encounter::summary::EncounterSummary;
-
-/// Player info from parse worker subprocess.
-#[derive(Debug, serde::Deserialize)]
-struct WorkerPlayerInfo {
-    name: String,
-    class_name: String,
-    discipline_name: String,
-    entity_id: i64,
-}
-
-/// Area info from parse worker subprocess.
-#[derive(Debug, serde::Deserialize)]
-struct WorkerAreaInfo {
-    area_name: String,
-    area_id: i64,
-    difficulty_id: i64,
-    difficulty_name: String,
-    entered_at_line: Option<u64>,
-}
-
-/// Player discipline entry from parse worker subprocess.
-#[derive(Debug, serde::Deserialize)]
-struct WorkerPlayerDiscipline {
-    entity_id: i64,
-    name: String,
-    class_id: i64,
-    class_name: String,
-    discipline_id: i64,
-    discipline_name: String,
-}
-
-/// Output from the parse worker subprocess (matches parse-worker JSON output).
-#[derive(Debug, serde::Deserialize)]
-struct ParseWorkerOutput {
-    end_pos: u64,
-    line_count: u64,
-    event_count: usize,
-    encounter_count: usize,
-    encounters: Vec<EncounterSummary>,
-    player: WorkerPlayerInfo,
-    area: WorkerAreaInfo,
-    player_disciplines: Vec<WorkerPlayerDiscipline>,
-    elapsed_ms: u128,
-}
+use baras_core::state::ParseWorkerOutput;
 
 /// Fallback to streaming parse if subprocess fails.
 /// Returns true if the session is in combat after parsing.
@@ -1146,58 +1102,23 @@ impl CombatService {
                 match json_result {
                     Ok(parse_result) => {
                         let mut session_guard = session.write().await;
+                        
+                        // CRITICAL: Restore byte/line positions for live-tailing to work
                         session_guard.current_byte = Some(parse_result.end_pos);
                         session_guard.current_line = Some(parse_result.line_count);
 
-                        // Import encounter summaries and session metadata from subprocess
+                        // Import session state from subprocess using shared IPC contract
                         if let Some(cache) = &mut session_guard.session_cache {
-                            // Count generation before consuming encounters
-                            let generation_count = parse_result.encounters.iter()
-                                .filter(|e| e.is_phase_start)
-                                .count() as u64;
+                            // Restore player, area, disciplines, and encounter history
+                            let generation_count = cache.restore_from_worker_output(&parse_result);
                             
-                            // Import all encounters
-                            for summary in parse_result.encounters {
-                                cache.encounter_history.add(summary);
-                            }
-                            
-                            // Restore encounter_history.current_generation to prevent raid splitting
-                            // Use restore_generation instead of check_area_change to avoid resetting pull counts
-                            if generation_count > 0 {
-                                cache.encounter_history.restore_generation(generation_count);
-                            }
-                            
-                            // Rebuild pull counts from imported encounter names
-                            // This ensures live encounters continue with correct numbering
-                            cache.encounter_history.rebuild_pull_counts();
-
-                            // Import player info (only mark initialized if we actually have player data)
-                            cache.player.name =
-                                baras_core::context::intern(&parse_result.player.name);
-                            cache.player.id = parse_result.player.entity_id;
-                            cache.player.class_name = parse_result.player.class_name.clone();
-                            cache.player.discipline_name =
-                                parse_result.player.discipline_name.clone();
-                            if !parse_result.player.name.is_empty() {
-                                cache.player_initialized = true;
-                            }
-
-                            // Import area info
                             debug!(
                                 area_id = parse_result.area.area_id,
                                 area_name = %parse_result.area.area_name,
                                 difficulty_id = parse_result.area.difficulty_id,
                                 generation = generation_count,
-                                "Importing area from subprocess"
+                                "Imported state from subprocess"
                             );
-                            cache.current_area.area_name = parse_result.area.area_name.clone();
-                            cache.current_area.area_id = parse_result.area.area_id;
-                            cache.current_area.difficulty_id = parse_result.area.difficulty_id;
-                            cache.current_area.difficulty_name =
-                                parse_result.area.difficulty_name.clone();
-                            cache.current_area.entered_at_line = parse_result.area.entered_at_line;
-                            // Restore generation counter to prevent raid splitting
-                            cache.current_area.generation = generation_count;
 
                             // Check if there's an incomplete encounter (parquet file exists but no summary)
                             // If so, we'll continue with that encounter ID instead of creating a new one
@@ -1243,27 +1164,6 @@ impl CombatService {
                                 
                                 // Create fresh encounter with correct area context
                                 cache.push_new_encounter();
-                            }
-
-                            // Import player disciplines from subprocess
-                            for disc in &parse_result.player_disciplines {
-                                use baras_core::encounter::entity_info::PlayerInfo;
-                                cache.player_disciplines.insert(
-                                    disc.entity_id,
-                                    PlayerInfo {
-                                        id: disc.entity_id,
-                                        name: baras_core::context::intern(&disc.name),
-                                        class_id: disc.class_id,
-                                        class_name: disc.class_name.clone(),
-                                        discipline_id: disc.discipline_id,
-                                        discipline_name: disc.discipline_name.clone(),
-                                        is_dead: false,
-                                        death_time: None,
-                                        received_revive_immunity: false,
-                                        current_target_id: 0,
-                                        last_seen_at: None,
-                                    },
-                                );
                             }
                         }
 

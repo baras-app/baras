@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AreaInfo {
     pub area_name: String,
     pub area_id: i64,

@@ -20,10 +20,9 @@ use arrow::record_batch::RecordBatch;
 use baras_core::combat_log::{CombatEvent, EntityType, LogParser};
 use baras_core::context::{parse_log_filename, resolve};
 use baras_core::dsl::{build_area_index, load_bosses_with_custom};
-use baras_core::encounter::summary::EncounterSummary;
 use baras_core::game_data::defense_type;
 use baras_core::signal_processor::{EventProcessor, GameSignal};
-use baras_core::state::SessionCache;
+use baras_core::state::{ParseWorkerOutput, SessionCache};
 use baras_core::storage::encounter_filename;
 use encoding_rs::WINDOWS_1252;
 use memchr::memchr_iter;
@@ -32,66 +31,10 @@ use parquet::arrow::ArrowWriter;
 use parquet::basic::Compression;
 use parquet::file::properties::WriterProperties;
 use rayon::prelude::*;
-use serde::Serialize;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 use tracing_subscriber::filter::EnvFilter;
-
-/// Player session info for main process.
-#[derive(Debug, Serialize)]
-struct PlayerInfo {
-    name: String,
-    class_name: String,
-    discipline_name: String,
-    entity_id: i64,
-}
-
-/// Player discipline entry for the registry (all players in session).
-#[derive(Debug, Serialize)]
-struct PlayerDisciplineEntry {
-    entity_id: i64,
-    name: String,
-    class_id: i64,
-    class_name: String,
-    discipline_id: i64,
-    discipline_name: String,
-}
-
-/// Area info for main process.
-#[derive(Debug, Serialize)]
-struct AreaInfoOutput {
-    area_name: String,
-    area_id: i64,
-    difficulty_id: i64,
-    difficulty_name: String,
-    entered_at_line: Option<u64>,
-}
-
-/// Output sent to main process via stdout.
-#[derive(Debug, Serialize)]
-struct ParseOutput {
-    /// Final byte position in the file (for tailing).
-    /// If there's an incomplete encounter, this is the byte position where it started.
-    /// Otherwise, this is the end of the file.
-    end_pos: u64,
-    /// Final line number parsed (for correct line numbering during tailing).
-    line_count: u64,
-    /// Number of events parsed.
-    event_count: usize,
-    /// Number of encounters written.
-    encounter_count: usize,
-    /// Encounter summaries for the main process.
-    encounters: Vec<EncounterSummary>,
-    /// Player info at end of file.
-    player: PlayerInfo,
-    /// Area info at end of file.
-    area: AreaInfoOutput,
-    /// Player disciplines for all players in session (for Data Explorer enrichment).
-    player_disciplines: Vec<PlayerDisciplineEntry>,
-    /// Elapsed time in milliseconds.
-    elapsed_ms: u128,
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fast Encounter Writer - writes directly to Arrow builders, no intermediate allocs
@@ -659,7 +602,7 @@ fn parse_file(
     output_dir: &Path,
     area_index: Option<baras_core::dsl::AreaIndex>,
     user_dir: Option<PathBuf>,
-) -> Result<ParseOutput, String> {
+) -> Result<ParseWorkerOutput, String> {
     // Extract session date from filename
     let date_stamp = file_path
         .file_name()
@@ -701,34 +644,37 @@ fn parse_file(
     let event_count = events.len();
 
     // Process events and write encounters (definitions loaded lazily on AreaEntered)
-    let (encounters, player, area, player_disciplines, incomplete_line) =
+    let (cache, incomplete_line) =
         process_and_write_encounters(events, output_dir, area_index, user_dir)?;
 
     // If there's an incomplete encounter, set end_pos to the byte position of its first line
-    // Otherwise, use the end of file
-    let final_end_pos = if let Some(line_num) = incomplete_line {
+    // and line_count to match that line number for correct tailing
+    let (final_end_pos, final_line_count) = if let Some(line_num) = incomplete_line {
         // line_num is 1-based, line_ranges is 0-based
         let line_idx = (line_num - 1) as usize;
-        if line_idx < line_ranges.len() {
+        let byte_pos = if line_idx < line_ranges.len() {
             line_ranges[line_idx].0 as u64
         } else {
             end_pos
-        }
+        };
+        // Reader uses current_line as the line number for the FIRST line it reads
+        // So we pass the line number of the incomplete encounter's first line
+        tracing::debug!(
+            incomplete_line = line_num,
+            byte_pos,
+            "Handing off to live parser at incomplete encounter start"
+        );
+        (byte_pos, line_num)
     } else {
-        end_pos
+        // No incomplete encounter - start at end of file
+        // Next line to be read would be line_count + 1, but reader increments after use
+        // So we pass total lines; next read will be parsed as line (total + 1) after increment
+        (end_pos, line_ranges.len() as u64)
     };
 
-    Ok(ParseOutput {
-        end_pos: final_end_pos,
-        line_count: line_ranges.len() as u64,
-        event_count,
-        encounter_count: encounters.len(),
-        encounters,
-        player,
-        area,
-        player_disciplines,
-        elapsed_ms: 0, // Filled in by caller
-    })
+    let mut output = cache.to_worker_output(final_end_pos, final_line_count, event_count);
+    output.elapsed_ms = 0; // Filled in by caller
+    Ok(output)
 }
 
 fn process_and_write_encounters(
@@ -738,10 +684,7 @@ fn process_and_write_encounters(
     user_dir: Option<PathBuf>,
 ) -> Result<
     (
-        Vec<EncounterSummary>,
-        PlayerInfo,
-        AreaInfoOutput,
-        Vec<PlayerDisciplineEntry>,
+        SessionCache,
         Option<u64>, // First line of incomplete encounter (if any)
     ),
     String,
@@ -843,42 +786,5 @@ fn process_and_write_encounters(
     drop(tx);
     let _ = writer_thread.join();
 
-    let encounter_summaries: Vec<EncounterSummary> = cache.encounter_history.summaries().to_vec();
-
-    let player = PlayerInfo {
-        name: resolve(cache.player.name).to_string(),
-        class_name: cache.player.class_name.clone(),
-        discipline_name: cache.player.discipline_name.clone(),
-        entity_id: cache.player.id,
-    };
-
-    let area = AreaInfoOutput {
-        area_name: cache.current_area.area_name.clone(),
-        area_id: cache.current_area.area_id,
-        difficulty_id: cache.current_area.difficulty_id,
-        difficulty_name: cache.current_area.difficulty_name.clone(),
-        entered_at_line: cache.current_area.entered_at_line,
-    };
-
-    // Extract player disciplines for all players in session
-    let player_disciplines: Vec<PlayerDisciplineEntry> = cache
-        .player_disciplines
-        .values()
-        .map(|p| PlayerDisciplineEntry {
-            entity_id: p.id,
-            name: resolve(p.name).to_string(),
-            class_id: p.class_id,
-            class_name: p.class_name.clone(),
-            discipline_id: p.discipline_id,
-            discipline_name: p.discipline_name.clone(),
-        })
-        .collect();
-
-    Ok((
-        encounter_summaries,
-        player,
-        area,
-        player_disciplines,
-        incomplete_encounter_first_line,
-    ))
+    Ok((cache, incomplete_encounter_first_line))
 }
