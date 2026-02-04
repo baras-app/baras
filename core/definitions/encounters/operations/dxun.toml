@@ -139,6 +139,27 @@ ids = [4245686841245696]
 is_boss = true
 triggers_encounter = true
 
+[[boss.timer]]
+id = "hold_pens_droid_1st"
+name = "Droid First"
+display_text = "Droid Returns"
+duration_secs = 13
+trigger = { type = "effect_removed", effects = [
+  4390573268008960,
+], source = { selector = [
+  "Czerka Pursuit Droid",
+] } }
+
+[[boss.timer]]
+id = "hold_pens_droid"
+name = "Droid Returns"
+duration_secs = 43.0
+trigger = { type = "effect_applied", effects = [
+  4389426511740928,
+], source = { selector = [
+  "Czerka Pursuit Droid",
+] } }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Lake add rush
