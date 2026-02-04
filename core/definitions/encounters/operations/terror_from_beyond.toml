@@ -293,7 +293,6 @@ trigger = { type = "ability_cast", abilities = [
 ], target = "local_player" }
 alert_text = "Vitality Extraction"
 difficulties = ["veteran", "master"]
-source = { specific = "Kel'sara" }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Operator IX
@@ -598,8 +597,11 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "kephess_nanites_1"
 name = "Corrupted Nanites"
-trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess"] }
+trigger = { type = "ability_cast", abilities = [
+  2977765250826240,
+], source = { selector = [
+  "Kephess",
+] } }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 0 }
 duration_secs = 15.0
 color = [49, 190, 28, 255]
@@ -609,8 +611,11 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "kephess_nanites_2_mm"
 name = "Corrupted Nanites"
-trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess"] }
+trigger = { type = "ability_cast", abilities = [
+  2977765250826240,
+], source = { selector = [
+  "Kephess",
+] } }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 1 }
 duration_secs = 15.0
 color = [39, 197, 29, 255]
@@ -620,8 +625,11 @@ difficulties = ["master"]
 [[boss.timer]]
 id = "kephess_nanites_2_vm"
 name = "Nanites + Jump"
-trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess"] }
+trigger = { type = "ability_cast", abilities = [
+  2977765250826240,
+], source = { selector = [
+  "Kephess",
+] } }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 1 }
 duration_secs = 15.0
 color = [220, 45, 32, 255]
@@ -631,8 +639,11 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "kephess_nanites_3"
 name = "Nanites + Jump"
-trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess"] }
+trigger = { type = "ability_cast", abilities = [
+  2977765250826240,
+], source = { selector = [
+  "Kephess",
+] } }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 2 }
 duration_secs = 15.0
 color = [220, 36, 26, 255]
@@ -642,8 +653,11 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "kephess_jump_1"
 name = "Jump"
-trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess"] }
+trigger = { type = "ability_cast", abilities = [
+  2977765250826240,
+], source = { selector = [
+  "Kephess",
+] } }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 0 }
 is_alert = true
 alert_text = "Jump!"
@@ -654,8 +668,11 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "kephess_jump_3"
 name = "Jump"
-trigger = { type = "ability_cast", abilities = [2977765250826240] }
-source = { selector = ["Kephess"] }
+trigger = { type = "ability_cast", abilities = [
+  2977765250826240,
+], source = { selector = [
+  "Kephess",
+] } }
 counter_condition = { counter_id = "nanites_count", operator = "eq", value = 2 }
 is_alert = true
 alert_text = "Jump!"
@@ -672,9 +689,13 @@ name = "The Terror From Beyond"
 difficulties = ["story", "veteran", "master"]
 has_victory_trigger = true
 victory_trigger = { type = "any_of", conditions = [
-  { type = "ability_cast", abilities = [3019211685232640] },
-  { type = "boss_hp_below", hp_percent = 4.0, selector = ["Terror (P2)"] }
-]}
+  { type = "ability_cast", abilities = [
+    3019211685232640,
+  ] },
+  { type = "boss_hp_below", hp_percent = 4.0, selector = [
+    "Terror (P2)",
+  ] },
+] }
 
 # ─── Phases ─────────────────────────────────────────────────────────────────────
 
@@ -883,3 +904,30 @@ trigger = { type = "any_of", conditions = [
 duration_secs = 30.0
 color = [20, 136, 30, 255]
 difficulties = ["veteran", "master"]
+
+# Dreadful Entity
+[[boss]]
+id = "dreadful"
+name = "Dreadful Entity"
+difficulties = ["master"]
+
+[[boss.entities]]
+name = "Dreadful Entity"
+ids = [3057806261354496]
+is_boss = true
+is_kill_target = true
+
+[[boss.timer]]
+id = "dreadful_awakening"
+name = "Dreadful Awakening"
+duration_secs = 35.0
+trigger = { type = "any_of", conditions = [
+  { type = "combat_start" },
+  { type = "ability_cast", abilities = [
+    3072834351923200,
+  ], source = { selector = [
+    "Dreadful Entity",
+  ] } },
+] }
+color = [20, 136, 30, 255]
+difficulties = ["master"]
