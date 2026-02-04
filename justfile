@@ -10,6 +10,7 @@ parse-50mb:
 
 # Tauri app commands
 dev:
+  cargo clean -p baras-parse-worker && \
   cargo build -p baras-parse-worker && \
   mkdir -p app/target/debug && \
   cp target/debug/baras-parse-worker app/target/debug/ && \
