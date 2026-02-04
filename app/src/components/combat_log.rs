@@ -55,11 +55,22 @@ pub struct CombatLogProps {
     pub state: Signal<CombatLogSessionState>,
 }
 
-/// Format time as M:SS.d
-fn format_time(secs: f32) -> String {
+/// Format time as M:SS.dd (relative to combat start)
+fn format_time_relative(secs: f32) -> String {
     let mins = (secs / 60.0) as u32;
     let s = secs % 60.0;
     format!("{mins}:{s:05.2}")
+}
+
+/// Format raw timestamp as HH:MM:SS.mmm (from log file)
+fn format_time_absolute(timestamp_ms: i64) -> String {
+    // Convert milliseconds to time components
+    let total_secs = timestamp_ms / 1000;
+    let millis = (timestamp_ms % 1000) as u32;
+    let secs = (total_secs % 60) as u32;
+    let mins = ((total_secs / 60) % 60) as u32;
+    let hours = ((total_secs / 3600) % 24) as u32;
+    format!("{hours:02}:{mins:02}:{secs:02}.{millis:03}")
 }
 
 /// Format a number with thousands separators.
@@ -228,6 +239,9 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
 
     // Show IDs toggle - NOW PERSISTED!
     let mut show_ids = use_signal(|| if should_restore { state.peek().show_ids } else { true });
+
+    // Time format toggle: false = M:SS.dd (relative), true = total seconds
+    let mut show_absolute_time = use_signal(|| false);
 
     // Find feature - searches all data via backend query
     let mut find_text = use_signal(String::new);
@@ -628,6 +642,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let sources_grouped = source_names.read().clone();
     let targets_grouped = target_names.read().clone();
     let show_ids_val = *show_ids.read();
+    let absolute_time = *show_absolute_time.read();
     let highlighted_row_idx = *highlighted_row.read();
     let find_match_count = find_matches.read().len();
     let find_idx = *find_current_idx.read();
@@ -803,6 +818,17 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                     "Show IDs"
                 }
 
+                // Time format toggle
+                label { class: "log-show-ids",
+                    title: "Show raw log timestamp (HH:MM:SS) instead of combat time",
+                    input {
+                        r#type: "checkbox",
+                        checked: absolute_time,
+                        onchange: move |e| show_absolute_time.set(e.checked()),
+                    }
+                    "Raw Time"
+                }
+
                 // Row count
                 span { class: "log-count", "{total} events" }
             }
@@ -855,6 +881,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
             div {
                 class: "log-table-container",
                 id: "combat-log-scroll",
+                tabindex: 0,
                 onscroll: move |_| {
                     if let Some(window) = web_sys::window()
                         && let Some(doc) = window.document()
@@ -863,6 +890,50 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                     {
                         scroll_top.set(html_elem.scroll_top() as f64);
                         container_height.set(html_elem.client_height() as f64);
+                    }
+                },
+                onkeydown: move |e| {
+                    let key = e.key();
+                    match key {
+                        Key::PageDown | Key::PageUp => {
+                            e.prevent_default();
+                            if let Some(window) = web_sys::window()
+                                && let Some(doc) = window.document()
+                                && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
+                                && let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>()
+                            {
+                                let container_h = html_elem.client_height() as f64;
+                                let current_scroll = html_elem.scroll_top() as f64;
+                                let page_amount = container_h - ROW_HEIGHT; // Leave one row overlap
+                                let new_scroll = if key == Key::PageDown {
+                                    current_scroll + page_amount
+                                } else {
+                                    (current_scroll - page_amount).max(0.0)
+                                };
+                                elem.set_scroll_top(new_scroll as i32);
+                            }
+                        }
+                        Key::Home => {
+                            e.prevent_default();
+                            if let Some(window) = web_sys::window()
+                                && let Some(doc) = window.document()
+                                && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
+                            {
+                                elem.set_scroll_top(0);
+                            }
+                        }
+                        Key::End => {
+                            e.prevent_default();
+                            if let Some(window) = web_sys::window()
+                                && let Some(doc) = window.document()
+                                && let Some(elem) = doc.get_element_by_id("combat-log-scroll")
+                                && let Some(html_elem) = elem.dyn_ref::<web_sys::HtmlElement>()
+                            {
+                                let scroll_height = html_elem.scroll_height();
+                                elem.set_scroll_top(scroll_height);
+                            }
+                        }
+                        _ => {}
                     }
                 },
                 // Header row (sticky)
@@ -1006,7 +1077,13 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                             div {
                                 key: "{row.row_idx}",
                                 class: "{row_class(&row, highlighted_row_idx)}",
-                                div { class: "log-cell log-time", style: "width: {col_time}px; min-width: {col_time}px;", "{format_time(row.time_secs)}" }
+                                div { class: "log-cell log-time", style: "width: {col_time}px; min-width: {col_time}px;",
+                                    if absolute_time {
+                                        "{format_time_absolute(row.timestamp_ms)}"
+                                    } else {
+                                        "{format_time_relative(row.time_secs)}"
+                                    }
+                                }
                                 div { class: "log-cell log-source", style: "width: {col_source}px; min-width: {col_source}px;",
                                     "{row.source_name}"
                                     if show_ids_val && row.source_class_id != 0 {

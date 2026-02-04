@@ -211,6 +211,8 @@ pub struct CombatLogRow {
     pub row_idx: u64,
     /// Combat time in seconds from start
     pub time_secs: f32,
+    /// Raw timestamp in milliseconds (from log file)
+    pub timestamp_ms: i64,
     /// Source entity name
     pub source_name: String,
     /// Source entity type (Player, Companion, NPC)

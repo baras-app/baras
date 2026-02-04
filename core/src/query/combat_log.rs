@@ -155,6 +155,7 @@ impl EncounterQuery<'_> {
             SELECT
                 line_number,
                 combat_time_secs,
+                timestamp,
                 source_name,
                 source_entity_type,
                 target_name,
@@ -187,31 +188,33 @@ impl EncounterQuery<'_> {
             let num_rows = batch.num_rows();
             let line_numbers = col_i64(batch, 0)?;
             let times = col_f32(batch, 1)?;
-            let source_names = col_strings(batch, 2)?;
-            let source_types = col_strings(batch, 3)?;
-            let target_names = col_strings(batch, 4)?;
-            let target_types = col_strings(batch, 5)?;
-            let effect_types = col_strings(batch, 6)?;
-            let ability_names = col_strings(batch, 7)?;
-            let ability_ids = col_i64(batch, 8)?;
-            let effect_names = col_strings(batch, 9)?;
-            let values = col_i32(batch, 10)?;
-            let absorbeds = col_i32(batch, 11)?;
-            let overheals = col_i32(batch, 12)?;
-            let threats = col_f32(batch, 13)?;
-            let is_crits = col_bool(batch, 14)?;
-            let damage_types = col_strings(batch, 15)?;
-            let defense_type_ids = col_i64(batch, 16)?;
+            let timestamps = col_timestamp_ms(batch, 2)?;
+            let source_names = col_strings(batch, 3)?;
+            let source_types = col_strings(batch, 4)?;
+            let target_names = col_strings(batch, 5)?;
+            let target_types = col_strings(batch, 6)?;
+            let effect_types = col_strings(batch, 7)?;
+            let ability_names = col_strings(batch, 8)?;
+            let ability_ids = col_i64(batch, 9)?;
+            let effect_names = col_strings(batch, 10)?;
+            let values = col_i32(batch, 11)?;
+            let absorbeds = col_i32(batch, 12)?;
+            let overheals = col_i32(batch, 13)?;
+            let threats = col_f32(batch, 14)?;
+            let is_crits = col_bool(batch, 15)?;
+            let damage_types = col_strings(batch, 16)?;
+            let defense_type_ids = col_i64(batch, 17)?;
 
-            let effect_ids = col_i64(batch, 17)?;
-            let effect_type_ids = col_i64(batch, 18)?;
-            let source_class_ids = col_i64(batch, 19)?;
-            let target_class_ids = col_i64(batch, 20)?;
+            let effect_ids = col_i64(batch, 18)?;
+            let effect_type_ids = col_i64(batch, 19)?;
+            let source_class_ids = col_i64(batch, 20)?;
+            let target_class_ids = col_i64(batch, 21)?;
 
             for i in 0..num_rows {
                 results.push(CombatLogRow {
                     row_idx: line_numbers[i] as u64,
                     time_secs: times[i],
+                    timestamp_ms: timestamps[i],
                     source_name: source_names[i].clone(),
                     source_type: source_types[i].clone(),
                     target_name: target_names[i].clone(),

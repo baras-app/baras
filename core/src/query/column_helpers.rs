@@ -1,6 +1,6 @@
 use datafusion::arrow::array::{
     Array, Float32Array, Float64Array, Int32Array, Int64Array, LargeStringArray, StringArray,
-    StringViewArray, UInt64Array,
+    StringViewArray, TimestampMillisecondArray, UInt64Array,
 };
 use datafusion::arrow::record_batch::RecordBatch;
 
@@ -110,6 +110,21 @@ pub fn col_bool(batch: &RecordBatch, idx: usize) -> Result<Vec<bool>, String> {
     }
     Err(format!(
         "col {idx}: expected bool, got {:?}",
+        col.data_type()
+    ))
+}
+
+pub fn col_timestamp_ms(batch: &RecordBatch, idx: usize) -> Result<Vec<i64>, String> {
+    let col = batch.column(idx);
+    if let Some(a) = col.as_any().downcast_ref::<TimestampMillisecondArray>() {
+        return Ok((0..a.len()).map(|i| a.value(i)).collect());
+    }
+    // Fall back to regular i64 if stored differently
+    if let Some(a) = col.as_any().downcast_ref::<Int64Array>() {
+        return Ok((0..a.len()).map(|i| a.value(i)).collect());
+    }
+    Err(format!(
+        "col {idx}: expected timestamp, got {:?}",
         col.data_type()
     ))
 }
