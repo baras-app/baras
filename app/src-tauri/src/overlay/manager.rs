@@ -819,8 +819,9 @@ impl OverlayManager {
             false
         };
 
-        // Send current raid frame data to the newly spawned overlay
+        // Update overlay status flag and send current data to newly spawned raid overlay
         if raid_respawned {
+            service.set_overlay_active("raid", true);
             service.refresh_raid_frames().await;
         }
 
