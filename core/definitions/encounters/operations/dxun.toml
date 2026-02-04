@@ -149,6 +149,7 @@ trigger = { type = "effect_removed", effects = [
 ], source = { selector = [
   "Czerka Pursuit Droid",
 ] } }
+difficulties = ["master"]
 
 [[boss.timer]]
 id = "hold_pens_droid"
@@ -159,13 +160,14 @@ trigger = { type = "effect_applied", effects = [
 ], source = { selector = [
   "Czerka Pursuit Droid",
 ] } }
+difficulties = ["master"]
 
 [[boss.timer]]
 id = "holding_pens_flare"
 name = "Flare Duration"
 duration_secs = 20.0
 trigger = { type = "ability_cast", abilities = [4250840802000896] }
-
+difficulties = ["story", "veteran", "master"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Lake add rush
@@ -192,6 +194,7 @@ id = "breach_flare"
 name = "Flare Duration"
 duration_secs = 20.0
 trigger = { type = "ability_cast", abilities = [4250840802000896] }
+difficulties = ["story", "veteran", "master"]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

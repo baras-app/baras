@@ -228,21 +228,21 @@ pub async fn query_combat_log_find(
         .await
 }
 
-/// Get distinct source names for combat log filter dropdown.
+/// Get distinct source names for combat log filter dropdown, grouped by entity type.
 #[tauri::command]
 pub async fn query_source_names(
     handle: State<'_, ServiceHandle>,
     encounter_idx: Option<u32>,
-) -> Result<Vec<String>, String> {
+) -> Result<baras_types::GroupedEntityNames, String> {
     handle.query_source_names(encounter_idx).await
 }
 
-/// Get distinct target names for combat log filter dropdown.
+/// Get distinct target names for combat log filter dropdown, grouped by entity type.
 #[tauri::command]
 pub async fn query_target_names(
     handle: State<'_, ServiceHandle>,
     encounter_idx: Option<u32>,
-) -> Result<Vec<String>, String> {
+) -> Result<baras_types::GroupedEntityNames, String> {
     handle.query_target_names(encounter_idx).await
 }
 

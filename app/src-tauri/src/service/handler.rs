@@ -976,11 +976,11 @@ impl ServiceHandle {
         result
     }
 
-    /// Get distinct source names for combat log filter dropdown.
+    /// Get distinct source names for combat log filter dropdown, grouped by entity type.
     pub async fn query_source_names(
         &self,
         encounter_idx: Option<u32>,
-    ) -> Result<Vec<String>, String> {
+    ) -> Result<baras_types::GroupedEntityNames, String> {
         let session_guard = self.shared.session.read().await;
         let session = session_guard.as_ref().ok_or("No active session")?;
         let session = session.read().await;
@@ -1009,11 +1009,11 @@ impl ServiceHandle {
             .await
     }
 
-    /// Get distinct target names for combat log filter dropdown.
+    /// Get distinct target names for combat log filter dropdown, grouped by entity type.
     pub async fn query_target_names(
         &self,
         encounter_idx: Option<u32>,
-    ) -> Result<Vec<String>, String> {
+    ) -> Result<baras_types::GroupedEntityNames, String> {
         let session_guard = self.shared.session.read().await;
         let session = session_guard.as_ref().ok_or("No active session")?;
         let session = session.read().await;

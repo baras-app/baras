@@ -5,7 +5,7 @@
 use dioxus::prelude::*;
 use wasm_bindgen::JsCast;
 
-use crate::api::{self, CombatLogFilters, CombatLogFindMatch, CombatLogRow, TimeRange};
+use crate::api::{self, CombatLogFilters, CombatLogFindMatch, CombatLogRow, GroupedEntityNames, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
 use crate::types::CombatLogSessionState;
 
@@ -121,6 +121,17 @@ fn readable_defense_type(id: i64) -> &'static str {
     }
 }
 
+/// Format damage type to a shorter display name.
+fn format_damage_type(dmg_type: &str) -> &str {
+    match dmg_type {
+        "kinetic" => "kinetic",
+        "energy" => "energy",
+        "internal" => "internal",
+        "elemental" => "elemental",
+        _ => dmg_type,
+    }
+}
+
 /// Get CSS class for row based on content.
 fn row_class(row: &CombatLogRow, highlighted_row_idx: Option<u64>) -> String {
     let mut classes = vec!["log-row"];
@@ -213,7 +224,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let mut filter_healing = use_signal(|| if should_restore { state.peek().filter_healing } else { true });
     let mut filter_actions = use_signal(|| if should_restore { state.peek().filter_actions } else { true });
     let mut filter_effects = use_signal(|| if should_restore { state.peek().filter_effects } else { true });
-    let mut filter_simplified = use_signal(|| if should_restore { state.peek().filter_simplified } else { false });
+    let mut filter_other = use_signal(|| if should_restore { state.peek().filter_other } else { true });
 
     // Show IDs toggle - NOW PERSISTED!
     let mut show_ids = use_signal(|| if should_restore { state.peek().show_ids } else { true });
@@ -229,8 +240,8 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     // Data state
     let mut rows = use_signal(Vec::<CombatLogRow>::new);
     let mut total_count = use_signal(|| 0u64);
-    let mut source_names = use_signal(Vec::<String>::new);
-    let mut target_names = use_signal(Vec::<String>::new);
+    let mut source_names = use_signal(GroupedEntityNames::default);
+    let mut target_names = use_signal(GroupedEntityNames::default);
 
     // Virtual scroll state - restore from saved state if same encounter
     let mut scroll_top = use_signal(|| {
@@ -248,8 +259,9 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let mut col_ability = use_signal(|| 280.0f64);
     let mut col_value = use_signal(|| 70.0f64);
     let mut col_abs = use_signal(|| 70.0f64);
-    let mut col_mit = use_signal(|| 60.0f64);
     let mut col_over = use_signal(|| 70.0f64);
+    let mut col_mit = use_signal(|| 60.0f64);
+    let mut col_dmg_type = use_signal(|| 65.0f64);
     let mut col_threat = use_signal(|| 70.0f64);
 
     // Column resize dragging state
@@ -289,7 +301,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
             filter_healing.set(true);
             filter_actions.set(true);
             filter_effects.set(true);
-            filter_simplified.set(false);
+            filter_other.set(true);
 
             // Clear data to trigger fresh load
             rows.set(vec![]);
@@ -330,10 +342,10 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         let healing = *filter_healing.read();
         let actions = *filter_actions.read();
         let effects = *filter_effects.read();
-        let simplified = *filter_simplified.read();
+        let other = *filter_other.read();
 
-        // If all are true and simplified is false, return None (no filtering)
-        if damage && healing && actions && effects && !simplified {
+        // If all are true, return None (no filtering needed)
+        if damage && healing && actions && effects && other {
             return None;
         }
 
@@ -342,7 +354,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
             healing,
             actions,
             effects,
-            simplified,
+            other,
         })
     };
 
@@ -514,7 +526,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         let healing = *filter_healing.read();
         let actions = *filter_actions.read();
         let effects = *filter_effects.read();
-        let simplified = *filter_simplified.read();
+        let other = *filter_other.read();
         let ids = *show_ids.read();
         
         if let Ok(mut s) = state.try_write() {
@@ -527,7 +539,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 filter_healing: healing,
                 filter_actions: actions,
                 filter_effects: effects,
-                filter_simplified: simplified,
+                filter_other: other,
                 show_ids: ids,
                 scroll_offset: scroll,
             };
@@ -613,8 +625,8 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
         vec![]
     };
 
-    let sources_list = source_names.read().clone();
-    let targets_list = target_names.read().clone();
+    let sources_grouped = source_names.read().clone();
+    let targets_grouped = target_names.read().clone();
     let show_ids_val = *show_ids.read();
     let highlighted_row_idx = *highlighted_row.read();
     let find_match_count = find_matches.read().len();
@@ -633,8 +645,21 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         source_filter.set(if val.is_empty() { None } else { Some(val) });
                     },
                     option { value: "", "All Sources" }
-                    for name in sources_list.iter() {
-                        option { value: "{name}", "{name}" }
+                    if !sources_grouped.friendly.is_empty() {
+                        optgroup { label: "Friendly",
+                            option { value: "__ALL_FRIENDLY__", "All Friendly" }
+                            for name in sources_grouped.friendly.iter() {
+                                option { value: "{name}", "{name}" }
+                            }
+                        }
+                    }
+                    if !sources_grouped.npcs.is_empty() {
+                        optgroup { label: "NPCs",
+                            option { value: "__ALL_NPCS__", "All NPCs" }
+                            for name in sources_grouped.npcs.iter() {
+                                option { value: "{name}", "{name}" }
+                            }
+                        }
                     }
                 }
 
@@ -647,8 +672,21 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         target_filter.set(if val.is_empty() { None } else { Some(val) });
                     },
                     option { value: "", "All Targets" }
-                    for name in targets_list.iter() {
-                        option { value: "{name}", "{name}" }
+                    if !targets_grouped.friendly.is_empty() {
+                        optgroup { label: "Friendly",
+                            option { value: "__ALL_FRIENDLY__", "All Friendly" }
+                            for name in targets_grouped.friendly.iter() {
+                                option { value: "{name}", "{name}" }
+                            }
+                        }
+                    }
+                    if !targets_grouped.npcs.is_empty() {
+                        optgroup { label: "NPCs",
+                            option { value: "__ALL_NPCS__", "All NPCs" }
+                            for name in targets_grouped.npcs.iter() {
+                                option { value: "{name}", "{name}" }
+                            }
+                        }
                     }
                 }
 
@@ -803,13 +841,13 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                     }
                     "Effects"
                 }
-                label { class: "log-filter-checkbox simplified",
+                label { class: "log-filter-checkbox other",
                     input {
                         r#type: "checkbox",
-                        checked: *filter_simplified.read(),
-                        onchange: move |e| filter_simplified.set(e.checked()),
+                        checked: *filter_other.read(),
+                        onchange: move |e| filter_other.set(e.checked()),
                     }
-                    "Simplified"
+                    "Other"
                 }
             }
 
@@ -842,9 +880,10 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                                 4 => col_ability.set(new_width),
                                 5 => col_value.set(new_width),
                                 6 => col_abs.set(new_width),
-                                7 => col_mit.set(new_width),
-                                8 => col_over.set(new_width),
-                                9 => col_threat.set(new_width),
+                                7 => col_over.set(new_width),
+                                8 => col_mit.set(new_width),
+                                9 => col_dmg_type.set(new_width),
+                                10 => col_threat.set(new_width),
                                 _ => {}
                             }
                         }
@@ -922,24 +961,34 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                             resize_start_width.set(*col_abs.read());
                         },
                     }
-                    div { class: "log-cell log-mitigation", style: "width: {col_mit}px; min-width: {col_mit}px;", "Mit" }
+                    div { class: "log-cell log-overheal log-overheal-header", style: "width: {col_over}px; min-width: {col_over}px;", title: "Overheal", "Over" }
                     div {
                         class: "log-resize-handle",
                         onmousedown: move |e| {
                             e.prevent_default();
                             resizing_col.set(Some(7));
                             resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_mit.read());
+                            resize_start_width.set(*col_over.read());
                         },
                     }
-                    div { class: "log-cell log-overheal log-overheal-header", style: "width: {col_over}px; min-width: {col_over}px;", title: "Overheal", "Over" }
+                    div { class: "log-cell log-mitigation", style: "width: {col_mit}px; min-width: {col_mit}px;", "Mit" }
                     div {
                         class: "log-resize-handle",
                         onmousedown: move |e| {
                             e.prevent_default();
                             resizing_col.set(Some(8));
                             resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_over.read());
+                            resize_start_width.set(*col_mit.read());
+                        },
+                    }
+                    div { class: "log-cell log-dmg-type", style: "width: {col_dmg_type}px; min-width: {col_dmg_type}px;", "Type" }
+                    div {
+                        class: "log-resize-handle",
+                        onmousedown: move |e| {
+                            e.prevent_default();
+                            resizing_col.set(Some(9));
+                            resize_start_x.set(e.client_coordinates().x);
+                            resize_start_width.set(*col_dmg_type.read());
                         },
                     }
                     div { class: "log-cell log-threat", style: "width: {col_threat}px; min-width: {col_threat}px;", "Threat" }
@@ -991,8 +1040,9 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                                     "{format_number(row.value)}"
                                 }
                                 div { class: "log-cell log-absorbed", style: "width: {col_abs}px; min-width: {col_abs}px;", "{format_number(row.absorbed)}" }
-                                div { class: "log-cell log-mitigation", style: "width: {col_mit}px; min-width: {col_mit}px;", "{readable_defense_type(row.defense_type_id)}" }
                                 div { class: "log-cell log-overheal", style: "width: {col_over}px; min-width: {col_over}px;", "{format_number(row.overheal)}" }
+                                div { class: "log-cell log-mitigation", style: "width: {col_mit}px; min-width: {col_mit}px;", "{readable_defense_type(row.defense_type_id)}" }
+                                div { class: "log-cell log-dmg-type", style: "width: {col_dmg_type}px; min-width: {col_dmg_type}px;", "{format_damage_type(&row.damage_type)}" }
                                 div { class: "log-cell log-threat", style: "width: {col_threat}px; min-width: {col_threat}px;",
                                     {
                                         let threat_str = if row.threat > 0.0 {

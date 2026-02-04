@@ -602,6 +602,22 @@ duration_secs = 60.0
 color = [140, 32, 219, 255]
 difficulties = ["master"]
 
+[[boss.timer]]
+id = "styrak_spines_1st"
+name = "Spines 1st"
+display_text = "Spines"
+trigger = { type = "npc_appears", selector = ["Kell Dragon 1st"] }
+duration_secs = 30.0
+difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "styrak_spines"
+name = "Spines"
+display_text = "Spines"
+trigger = { type = "effect_removed", effects = [3148979827113984] }
+cancel_trigger = { type = "entity_death", selector = ["Kell Dragon 1st"] }
+duration_secs = 60.0
+difficulties = ["veteran", "master"]
 
 # -- Dragon Phases
 

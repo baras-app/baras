@@ -31,9 +31,10 @@ fn build_search_clause(search: &str) -> String {
 fn build_event_filter_clause(filters: &CombatLogFilters) -> Option<String> {
     let mut conditions = Vec::new();
 
-    // If all filters are false (default), show everything
-    let any_enabled = filters.damage || filters.healing || filters.actions || filters.effects;
-    if !any_enabled && !filters.simplified {
+    // If all filters are enabled, no additional filtering needed
+    let all_enabled =
+        filters.damage && filters.healing && filters.actions && filters.effects && filters.other;
+    if all_enabled {
         return None;
     }
 
@@ -62,25 +63,24 @@ fn build_event_filter_clause(filters: &CombatLogFilters) -> Option<String> {
             effect_id::HEAL
         ));
     }
-
-    // Build the main OR clause
-    let mut clause = if conditions.is_empty() {
-        "1=1".to_string()
-    } else {
-        format!("({})", conditions.join(" OR "))
-    };
-
-    // Simplified mode: exclude Spend/Restore events
-    if filters.simplified {
-        clause = format!(
-            "{} AND effect_type_id NOT IN ({}, {})",
-            clause,
-            effect_type_id::SPEND,
-            effect_type_id::RESTORE
-        );
+    if filters.other {
+        // Other EVENT types not covered by actions (TargetSet, Death, EnterCombat, etc.)
+        conditions.push(format!(
+            "(effect_type_id = {} AND effect_id NOT IN ({}, {}, {}))",
+            effect_type_id::EVENT,
+            effect_id::ABILITYACTIVATE,
+            effect_id::ABILITYDEACTIVATE,
+            effect_id::ABILITYINTERRUPT
+        ));
     }
 
-    Some(clause)
+    // Build the main OR clause
+    if conditions.is_empty() {
+        // All filters are off - show nothing
+        Some("1=0".to_string())
+    } else {
+        Some(format!("({})", conditions.join(" OR ")))
+    }
 }
 
 impl EncounterQuery<'_> {
@@ -97,13 +97,41 @@ impl EncounterQuery<'_> {
         time_range: Option<&TimeRange>,
         event_filters: Option<&CombatLogFilters>,
     ) -> Result<Vec<CombatLogRow>, String> {
-        let mut where_clauses = vec!["combat_time_secs IS NOT NULL".to_string()];
+        // Always exclude Spend/Restore events (energy/resource changes)
+        let mut where_clauses = vec![
+            "combat_time_secs IS NOT NULL".to_string(),
+            format!(
+                "effect_type_id NOT IN ({}, {})",
+                effect_type_id::SPEND,
+                effect_type_id::RESTORE
+            ),
+        ];
 
         if let Some(source) = source_filter {
-            where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
+            match source {
+                "__ALL_FRIENDLY__" => {
+                    where_clauses.push("source_entity_type IN ('Player', 'Companion')".to_string());
+                }
+                "__ALL_NPCS__" => {
+                    where_clauses.push("source_entity_type = 'Npc'".to_string());
+                }
+                _ => {
+                    where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
+                }
+            }
         }
         if let Some(target) = target_filter {
-            where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
+            match target {
+                "__ALL_FRIENDLY__" => {
+                    where_clauses.push("target_entity_type IN ('Player', 'Companion')".to_string());
+                }
+                "__ALL_NPCS__" => {
+                    where_clauses.push("target_entity_type = 'Npc'".to_string());
+                }
+                _ => {
+                    where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
+                }
+            }
         }
         if let Some(search) = search_filter {
             if !search.is_empty() {
@@ -218,13 +246,41 @@ impl EncounterQuery<'_> {
         time_range: Option<&TimeRange>,
         event_filters: Option<&CombatLogFilters>,
     ) -> Result<u64, String> {
-        let mut where_clauses = vec!["combat_time_secs IS NOT NULL".to_string()];
+        // Always exclude Spend/Restore events (energy/resource changes)
+        let mut where_clauses = vec![
+            "combat_time_secs IS NOT NULL".to_string(),
+            format!(
+                "effect_type_id NOT IN ({}, {})",
+                effect_type_id::SPEND,
+                effect_type_id::RESTORE
+            ),
+        ];
 
         if let Some(source) = source_filter {
-            where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
+            match source {
+                "__ALL_FRIENDLY__" => {
+                    where_clauses.push("source_entity_type IN ('Player', 'Companion')".to_string());
+                }
+                "__ALL_NPCS__" => {
+                    where_clauses.push("source_entity_type = 'Npc'".to_string());
+                }
+                _ => {
+                    where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
+                }
+            }
         }
         if let Some(target) = target_filter {
-            where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
+            match target {
+                "__ALL_FRIENDLY__" => {
+                    where_clauses.push("target_entity_type IN ('Player', 'Companion')".to_string());
+                }
+                "__ALL_NPCS__" => {
+                    where_clauses.push("target_entity_type = 'Npc'".to_string());
+                }
+                _ => {
+                    where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
+                }
+            }
         }
         if let Some(search) = search_filter {
             if !search.is_empty() {
@@ -255,34 +311,52 @@ impl EncounterQuery<'_> {
         Ok(count)
     }
 
-    /// Get distinct source names for filter dropdown.
-    pub async fn query_source_names(&self) -> Result<Vec<String>, String> {
+    /// Get distinct source names for filter dropdown, grouped by entity type.
+    pub async fn query_source_names(&self) -> Result<GroupedEntityNames, String> {
         let batches = self
             .sql(
-                "SELECT DISTINCT source_name FROM events WHERE combat_time_secs IS NOT NULL ORDER BY source_name",
+                "SELECT DISTINCT source_name, source_entity_type FROM events WHERE combat_time_secs IS NOT NULL ORDER BY source_name",
             )
             .await?;
 
-        let mut results = Vec::new();
+        let mut friendly = Vec::new();
+        let mut npcs = Vec::new();
         for batch in &batches {
-            results.extend(col_strings(batch, 0)?);
+            let names = col_strings(batch, 0)?;
+            let types = col_strings(batch, 1)?;
+            for (name, entity_type) in names.into_iter().zip(types.into_iter()) {
+                match entity_type.as_str() {
+                    "Player" | "Companion" => friendly.push(name),
+                    "Npc" => npcs.push(name),
+                    _ => {} // Skip Empty, SelfReference
+                }
+            }
         }
-        Ok(results)
+        Ok(GroupedEntityNames { friendly, npcs })
     }
 
-    /// Get distinct target names for filter dropdown.
-    pub async fn query_target_names(&self) -> Result<Vec<String>, String> {
+    /// Get distinct target names for filter dropdown, grouped by entity type.
+    pub async fn query_target_names(&self) -> Result<GroupedEntityNames, String> {
         let batches = self
             .sql(
-                "SELECT DISTINCT target_name FROM events WHERE combat_time_secs IS NOT NULL ORDER BY target_name",
+                "SELECT DISTINCT target_name, target_entity_type FROM events WHERE combat_time_secs IS NOT NULL ORDER BY target_name",
             )
             .await?;
 
-        let mut results = Vec::new();
+        let mut friendly = Vec::new();
+        let mut npcs = Vec::new();
         for batch in &batches {
-            results.extend(col_strings(batch, 0)?);
+            let names = col_strings(batch, 0)?;
+            let types = col_strings(batch, 1)?;
+            for (name, entity_type) in names.into_iter().zip(types.into_iter()) {
+                match entity_type.as_str() {
+                    "Player" | "Companion" => friendly.push(name),
+                    "Npc" => npcs.push(name),
+                    _ => {} // Skip Empty, SelfReference
+                }
+            }
         }
-        Ok(results)
+        Ok(GroupedEntityNames { friendly, npcs })
     }
 
     /// Find all row positions matching search text (for Find feature).
@@ -302,13 +376,41 @@ impl EncounterQuery<'_> {
         }
 
         // Build base WHERE clause (same filters as main query)
-        let mut where_clauses = vec!["combat_time_secs IS NOT NULL".to_string()];
+        // Always exclude Spend/Restore events (energy/resource changes)
+        let mut where_clauses = vec![
+            "combat_time_secs IS NOT NULL".to_string(),
+            format!(
+                "effect_type_id NOT IN ({}, {})",
+                effect_type_id::SPEND,
+                effect_type_id::RESTORE
+            ),
+        ];
 
         if let Some(source) = source_filter {
-            where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
+            match source {
+                "__ALL_FRIENDLY__" => {
+                    where_clauses.push("source_entity_type IN ('Player', 'Companion')".to_string());
+                }
+                "__ALL_NPCS__" => {
+                    where_clauses.push("source_entity_type = 'Npc'".to_string());
+                }
+                _ => {
+                    where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
+                }
+            }
         }
         if let Some(target) = target_filter {
-            where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
+            match target {
+                "__ALL_FRIENDLY__" => {
+                    where_clauses.push("target_entity_type IN ('Player', 'Companion')".to_string());
+                }
+                "__ALL_NPCS__" => {
+                    where_clauses.push("target_entity_type = 'Npc'".to_string());
+                }
+                _ => {
+                    where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
+                }
+            }
         }
         if let Some(tr) = time_range {
             where_clauses.push(tr.sql_filter());

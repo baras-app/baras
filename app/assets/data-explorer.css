@@ -1041,7 +1041,8 @@
 }
 .log-header .log-time,
 .log-header .log-type,
-.log-header .log-mitigation {
+.log-header .log-mitigation,
+.log-header .log-dmg-type {
   text-align: center;
 }
 .log-header .log-ability {

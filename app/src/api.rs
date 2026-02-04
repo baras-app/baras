@@ -625,8 +625,8 @@ pub async fn install_update() -> Result<(), String> {
 // Re-export query types from shared types crate
 pub use baras_types::{
     AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow, DataTab,
-    EffectChartData, EffectWindow, EncounterTimeline, EntityBreakdown, PhaseSegment, PlayerDeath,
-    RaidOverviewRow, TimeRange, TimeSeriesPoint,
+    EffectChartData, EffectWindow, EncounterTimeline, EntityBreakdown, GroupedEntityNames,
+    PhaseSegment, PlayerDeath, RaidOverviewRow, TimeRange, TimeSeriesPoint,
 };
 
 /// Query ability breakdown for an encounter and data tab.
@@ -1039,8 +1039,8 @@ pub async fn query_combat_log_find(
     from_js(result)
 }
 
-/// Get distinct source names for combat log filter dropdown.
-pub async fn query_source_names(encounter_idx: Option<u32>) -> Option<Vec<String>> {
+/// Get distinct source names for combat log filter dropdown, grouped by entity type.
+pub async fn query_source_names(encounter_idx: Option<u32>) -> Option<GroupedEntityNames> {
     let obj = js_sys::Object::new();
     if let Some(idx) = encounter_idx {
         js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
@@ -1051,8 +1051,8 @@ pub async fn query_source_names(encounter_idx: Option<u32>) -> Option<Vec<String
     from_js(result)
 }
 
-/// Get distinct target names for combat log filter dropdown.
-pub async fn query_target_names(encounter_idx: Option<u32>) -> Option<Vec<String>> {
+/// Get distinct target names for combat log filter dropdown, grouped by entity type.
+pub async fn query_target_names(encounter_idx: Option<u32>) -> Option<GroupedEntityNames> {
     let obj = js_sys::Object::new();
     if let Some(idx) = encounter_idx {
         js_set(&obj, "encounterIdx", &JsValue::from_f64(idx as f64));
