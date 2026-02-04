@@ -1300,37 +1300,37 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                     // Data tab selector (Overview, Damage, Healing, Damage Taken, Healing Taken, Charts)
                     div { class: "data-tab-selector",
                         button {
-                            class: if matches!(*view_mode.read(), ViewMode::Overview) { "data-tab active" } else { "data-tab" },
+                            class: if matches!(view_mode(), ViewMode::Overview) { "data-tab active" } else { "data-tab" },
                             onclick: move |_| view_mode.set(ViewMode::Overview),
                             "Overview"
                         }
                         button {
-                            class: if matches!(*view_mode.read(), ViewMode::Charts) { "data-tab active" } else { "data-tab" },
+                            class: if matches!(view_mode(), ViewMode::Charts) { "data-tab active" } else { "data-tab" },
                             onclick: move |_| view_mode.set(ViewMode::Charts),
                             "Charts"
                         }
                         button {
-                            class: if matches!(*view_mode.read(), ViewMode::Detailed(DataTab::Damage)) { "data-tab active" } else { "data-tab" },
+                            class: if matches!(view_mode(), ViewMode::Detailed(DataTab::Damage)) { "data-tab active" } else { "data-tab" },
                             onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::Damage)),
                             "Damage"
                         }
                         button {
-                            class: if matches!(*view_mode.read(), ViewMode::Detailed(DataTab::Healing)) { "data-tab active" } else { "data-tab" },
+                            class: if matches!(view_mode(), ViewMode::Detailed(DataTab::Healing)) { "data-tab active" } else { "data-tab" },
                             onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::Healing)),
                             "Healing"
                         }
                         button {
-                            class: if matches!(*view_mode.read(), ViewMode::Detailed(DataTab::DamageTaken)) { "data-tab active" } else { "data-tab" },
+                            class: if matches!(view_mode(), ViewMode::Detailed(DataTab::DamageTaken)) { "data-tab active" } else { "data-tab" },
                             onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::DamageTaken)),
                             "Damage Taken"
                         }
                         button {
-                            class: if matches!(*view_mode.read(), ViewMode::Detailed(DataTab::HealingTaken)) { "data-tab active" } else { "data-tab" },
+                            class: if matches!(view_mode(), ViewMode::Detailed(DataTab::HealingTaken)) { "data-tab active" } else { "data-tab" },
                             onclick: move |_| view_mode.set(ViewMode::Detailed(DataTab::HealingTaken)),
                             "Healing Taken"
                         }
                         button {
-                            class: if matches!(*view_mode.read(), ViewMode::CombatLog) { "data-tab active" } else { "data-tab" },
+                            class: if matches!(view_mode(), ViewMode::CombatLog) { "data-tab active" } else { "data-tab" },
                             onclick: move |_| { death_search_text.set(None); view_mode.set(ViewMode::CombatLog); },
                             "Combat Log"
                         }
@@ -1354,7 +1354,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                     }
 
                     // Content area - Overview, Charts, Combat Log, or Detailed view
-                    if matches!(*view_mode.read(), ViewMode::CombatLog) {
+                    // Use view_mode() instead of *view_mode.read() to avoid holding borrow across onclick handlers
+                    if matches!(view_mode(), ViewMode::CombatLog) {
                         // Combat Log Panel
                         if let Some(enc_idx) = *selected_encounter.read() {
                             CombatLog {
@@ -1364,7 +1365,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 state: combat_log_state,
                             }
                         }
-                    } else if matches!(*view_mode.read(), ViewMode::Charts) {
+                    } else if matches!(view_mode(), ViewMode::Charts) {
                         // Charts Panel
                         if let Some(tl) = timeline.read().as_ref() {
                             ChartsPanel {
@@ -1374,7 +1375,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 time_range: time_range(),
                             }
                         }
-                    } else if matches!(*view_mode.read(), ViewMode::Overview) {
+                    } else if matches!(view_mode(), ViewMode::Overview) {
                         // Raid Overview - Donut Charts + Table
                         // Uses memoized overview_table_data - charts initialized via use_effect above
                         div { class: "overview-section",
@@ -1531,7 +1532,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 }
                             }
                         }
-                    } else if let ViewMode::Detailed(current_tab) = *view_mode.read() {
+                    } else if let ViewMode::Detailed(current_tab) = view_mode() {
                         // Two-column layout (Detailed breakdown)
                         div { class: "explorer-content",
                             // Entity breakdown (source filter for outgoing, target filter for incoming)
