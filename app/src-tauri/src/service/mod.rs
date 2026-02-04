@@ -1662,9 +1662,18 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
 
         // Generate encounter name with pull count
         // Priority: definition name > hardcoded boss name > phase type
-        // If encounter is finalized (PostCombat), use the name from history to avoid off-by-one
-        let encounter_name = if matches!(encounter.state, EncounterState::PostCombat { .. }) {
-            // Encounter already finalized - use the display_name from history
+        // 
+        // Important: PostCombat state alone doesn't mean the encounter is finalized.
+        // During the grace period, the encounter is PostCombat but hasn't been added
+        // to history yet (that happens when push_new_encounter() is called after
+        // the grace period expires). We detect this by checking last_combat_exit_time:
+        // - Some(_) = grace period active, encounter not yet in history
+        // - None = grace period expired, encounter has been finalized to history
+        let is_finalized = matches!(encounter.state, EncounterState::PostCombat { .. })
+            && cache.last_combat_exit_time.is_none();
+
+        let encounter_name = if is_finalized {
+            // Encounter finalized and in history - use the display_name from history
             cache
                 .encounter_history
                 .summaries()
