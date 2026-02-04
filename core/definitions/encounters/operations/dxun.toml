@@ -160,6 +160,12 @@ trigger = { type = "effect_applied", effects = [
   "Czerka Pursuit Droid",
 ] } }
 
+[[boss.timer]]
+id = "holding_pens_flare"
+name = "Flare Duration"
+duration_secs = 20.0
+trigger = { type = "ability_cast", abilities = [4250840802000896] }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Lake add rush
@@ -180,6 +186,13 @@ triggers_encounter = true
 name = "Warden Enforcer"
 ids = [4338552624119808]
 is_boss = true
+
+[[boss.timer]]
+id = "breach_flare"
+name = "Flare Duration"
+duration_secs = 20.0
+trigger = { type = "ability_cast", abilities = [4250840802000896] }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: trandos (Pack Leader)
