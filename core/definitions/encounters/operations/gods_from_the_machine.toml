@@ -22,13 +22,72 @@ ids = [4078419339902976, 4078427929837568, 4078415044935680, 4078423634870272]
 is_boss = true
 is_kill_target = true
 
+[[boss.phases]]
+id = "tyth_p1"
+name = "Phase 100% - 60%"
+start_trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "tyth_p2"
+name = "Phase 60% - 30%"
+start_trigger = { type = "boss_hp_below", hp_percent = 60.0, selector = [
+  "TYTH",
+] }
+
+[[boss.phases]]
+id = "tyth_burn"
+name = "Burn"
+start_trigger = { type = "boss_hp_below", hp_percent = 30.0, selector = [
+  "TYTH",
+] }
+
+[[boss.timer]]
+id = "tyth_inversion_1st"
+name = "Inversion 1st"
+display_text = "Inversion"
+trigger = { type = "combat_start" }
+duration_secs = 21.0
+
+[[boss.timer]]
+id = "tyh_inversion"
+name = "Inversion"
+trigger = { type = "ability_cast", abilities = [4071117895499776] }
+duration_secs = 37.0
+
+[[boss.timer]]
+id = "tyth_energy_wave"
+name = "Energy Wave"
+trigger = { type = "ability_cast", abilities = [4081339917664256] }
+duration_secs = 12.0
+
+[[boss.timer]]
+id = "tyth_sweep"
+name = "Sweep"
+trigger = { type = "ability_cast", abilities = [4080279060742144] }
+duration_secs = 6.0
+
+[[boss.timer]]
+id = "tyth_adds"
+name = "Adds"
+trigger = { type = "ability_cast", abilities = [4076168777039872] }
+duration_secs = 15.0
+chains_to = "tyth_adds_setup"
+
+[[boss.timer]]
+id = "tyth_adds_setup"
+name = "Adds Setup"
+trigger = { type = "manual" }
+duration_secs = 17.0
+
+
+#
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Aivela and Esne
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
 id = "aivela_esne"
-name = "Aivela and Esne"
+name = "AIVELA & ESNE"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
@@ -42,6 +101,45 @@ name = "Esne"
 ids = [4088538282852352, 4118826392223744]
 is_boss = true
 is_kill_target = true
+
+[[boss.entities]]
+name = "Nexus"
+ids = [4101564918661120]
+is_boss = true
+is_kill_target = true
+
+[[boss.phases]]
+id = "ae_nexus"
+name = "Codicies"
+start_trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "ae_main_1st"
+name = "Aivela & Esne"
+start_trigger = { type = "npc_appears", selector = ["Aivela", "Esne"] }
+
+[[boss.phases]]
+id = "ae_synergy_protocol"
+name = "Synergy Protocol"
+start_trigger = { type = "effect_applied", effects = [4111769760956750] }
+
+[[boss.phases]]
+id = "ae_main_2nd"
+name = "A & E Final"
+start_trigger = { type = "effect_removed", effects = [4112250797293824] }
+
+[[boss.timer]]
+id = "ae_synergy_protocol_1st"
+name = "Synergy Protocol 1st"
+display_text = "Synergy Protocol"
+trigger = { type = "phase_entered", phase_id = "ae_synergy_protocol" }
+
+[[boss.timer]]
+id = "ae_synergy_protocol"
+name = "Synergy Protocol"
+trigger = { type = "ability_cast", abilities = [4111769760956416] }
+duration_secs = 32.0
+cancel_trigger = { type = "phase_ended", phase_id = "ae_synergy_protocol" }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -64,6 +162,52 @@ ids = [
 ]
 is_boss = true
 is_kill_target = true
+
+[[boss.timer]]
+id = "nahut_discharge_1st"
+name = "Discharge 1st"
+display_text = "Discharge"
+duration_secs = 12.0
+trigger = { type = "ability_cast", abilities = [4133906022400000] }
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "nahut_discharge"
+name = "Discharge"
+duration_secs = 12.0
+trigger = { type = "damage_taken", abilities = [
+  4133906022400000,
+], target = "local_player" }
+
+[[boss.timer]]
+id = "nahut_slice"
+name = "Slice"
+duration_secs = 12.0
+trigger = { type = "ability_cast", abilities = [4137075708264448] }
+
+[[boss.timer]]
+id = "nahut_shockwave"
+name = "Shockwave"
+duration_secs = 25.0
+trigger = { type = "damage_taken", abilities = [
+  4133016964169728,
+], target = "local_player" }
+
+[[boss.timer]]
+id = "nahut_suppression"
+name = "Suppression"
+duration_secs = 16.0
+trigger = { type = "ability_cast", abilities = [4181850742325248] }
+
+[[boss.timer]]
+id = "nahut_suppression_cd"
+name = "Suppression Cooldown"
+display_text = "Suppression CD"
+duration_secs = 60.5
+trigger = { type = "ability_cast", abilities = [
+  4181850742325248,
+], source = "local_player" }
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: SCYVA
