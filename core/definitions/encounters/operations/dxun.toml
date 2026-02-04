@@ -746,6 +746,7 @@ alert_text = "Photogensis HP threshold"
 color = [53, 211, 214, 255]
 difficulties = ["veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "boss_hp_below"
@@ -766,6 +767,7 @@ color = [0, 250, 9, 255]
 difficulties = ["master"]
 enabled = true
 show_at_secs = 8.0
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -783,6 +785,7 @@ color = [0, 250, 1, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
 show_at_secs = 8.0
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -803,6 +806,7 @@ color = [0, 250, 250, 255]
 difficulties = ["veteran", "master"]
 enabled = true
 show_at_secs = 8.0
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -824,6 +828,7 @@ color = [5, 250, 250, 255]
 difficulties = ["veteran", "master"]
 enabled = true
 show_at_secs = 8.0
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -842,6 +847,7 @@ color = [0, 250, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
 show_at_secs = 30.0
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -863,6 +869,7 @@ color = [250, 0, 0, 255]
 difficulties = ["master"]
 enabled = true
 show_at_secs = 45.0
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -872,7 +879,8 @@ target = "any"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
+file = "Alarm.mp3"
+offset = 1
 countdown_start = 0
 
 [[boss.timer]]
@@ -882,6 +890,7 @@ duration_secs = 63.0
 color = [250, 0, 0, 255]
 difficulties = ["master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -891,7 +900,8 @@ target = "any"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
+file = "Alarm.mp3"
+offset = 1
 countdown_start = 0
 
 [[boss.timer]]
@@ -902,6 +912,7 @@ duration_secs = 60.0
 color = [200, 0, 250, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -911,8 +922,8 @@ target = "any"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_1st_mass_target"
@@ -922,6 +933,7 @@ duration_secs = 60.0
 color = [255, 128, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -929,8 +941,8 @@ timer_id = "apex_vanguard_1st_red_venom"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_1st_voltinator"
@@ -940,6 +952,7 @@ duration_secs = 60.0
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -948,7 +961,7 @@ timer_id = "apex_vanguard_1st_mass_target"
 [boss.timer.audio]
 enabled = false
 offset = 0
-countdown_start = 0
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_venom_or_target"
@@ -958,6 +971,7 @@ duration_secs = 60.0
 color = [255, 128, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -965,8 +979,8 @@ timer_id = "apex_vanguard_1st_voltinator"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_first_venom_or_target_part_2"
@@ -975,6 +989,7 @@ duration_secs = 30.0
 color = [255, 128, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "any_of"
@@ -990,16 +1005,18 @@ selector = ["Apex Vanguard"]
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_venom_or_volt_split"
 name = "Venom OR Volt Split"
+display_text = "Venom OR Voltinator"
 duration_secs = 60.0
 color = [200, 8, 250, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -1007,16 +1024,18 @@ timer_id = "apex_vanguard_first_venom_or_target_part_2"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_venom_or_volt_part_2"
 name = "Venom OR Volt Part 2"
+display_text = "Venom OR Voltinator"
 duration_secs = 30.0
 color = [200, 0, 250, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -1024,8 +1043,8 @@ timer_id = "apex_vanguard_venom_or_volt_split"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_target_or_volt_split"
@@ -1035,6 +1054,7 @@ duration_secs = 60.0
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -1042,8 +1062,8 @@ timer_id = "apex_vanguard_venom_or_volt_part_2"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_target_or_volt_part_2"
@@ -1053,6 +1073,7 @@ duration_secs = 30.0
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -1060,8 +1081,8 @@ timer_id = "apex_vanguard_target_or_volt_split"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_ultraviolence"
@@ -1071,6 +1092,7 @@ color = [250, 0, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
 show_at_secs = 45.0
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -1080,6 +1102,7 @@ target = "any"
 
 [boss.timer.audio]
 enabled = false
+file = "Alarm.mp3"
 offset = 0
 countdown_start = 0
 
@@ -1091,6 +1114,7 @@ duration_secs = 60.0
 color = [0, 250, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -1109,6 +1133,7 @@ color = [250, 250, 0, 255]
 difficulties = ["veteran", "master"]
 enabled = true
 show_at_secs = 15.0
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -1129,13 +1154,15 @@ duration_secs = 16.0
 color = [250, 250, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
+file = "Alarm.mp3"
+offset = 2
 countdown_start = 0
 
 [[boss.timer]]
@@ -1146,6 +1173,7 @@ color = [250, 250, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
 show_at_secs = 8.0
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -1161,7 +1189,8 @@ target = "any"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
+file = "Alarm.mp3"
+offset = 2
 countdown_start = 0
 
 [[boss.timer]]
@@ -1172,14 +1201,18 @@ duration_secs = 30.0
 color = [255, 128, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
-type = "combat_start"
+type = "ability_cast"
+abilities = [4330254747303936]
+source = "any"
+target = "any"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_voltinator_p3"
@@ -1189,6 +1222,7 @@ duration_secs = 30.0
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -1196,8 +1230,8 @@ timer_id = "apex_vanguard_target_lock_p3"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_red_venom_p4"
@@ -1207,6 +1241,7 @@ duration_secs = 60.0
 color = [200, 0, 250, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -1214,8 +1249,8 @@ timer_id = "apex_vanguard_voltinator_p3"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_target_and_venom"
@@ -1224,6 +1259,7 @@ duration_secs = 30.0
 color = [255, 128, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "any_of"
@@ -1239,8 +1275,8 @@ selector = ["Apex Vanguard"]
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_target_lock_p4"
@@ -1250,22 +1286,25 @@ duration_secs = 30.0
 color = [255, 128, 0, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
-countdown_start = 0
+offset = 3
+countdown_start = 5
 
 [[boss.timer]]
 id = "apex_vanguard_1st_flare"
 name = "1st Flare"
 duration_secs = 2.5
+is_alert = true
 color = [255, 0, 150, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "entity_death"
@@ -1273,6 +1312,7 @@ selector = [4297557161279488]
 
 [boss.timer.audio]
 enabled = false
+file = "Alert.mp3"
 offset = 0
 countdown_start = 0
 
@@ -1285,6 +1325,7 @@ color = [255, 0, 150, 255]
 difficulties = ["veteran", "master"]
 enabled = true
 show_at_secs = 10.0
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -1294,7 +1335,8 @@ target = "any"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
+file = "Alert.mp3"
+offset = 1
 countdown_start = 0
 
 [[boss.timer]]
@@ -1305,6 +1347,7 @@ color = [0, 50, 250, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
 can_be_refreshed = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -1314,7 +1357,8 @@ target = "any"
 
 [boss.timer.audio]
 enabled = false
-offset = 0
+file = "Alert.mp3"
+offset = 1
 countdown_start = 3
 
 [[boss.timer]]
@@ -1324,12 +1368,13 @@ duration_secs = 32.0
 color = [0, 150, 250, 255]
 difficulties = ["story", "veteran", "master"]
 enabled = true
+display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "effect_applied"
 effects = [4308938824613888]
 source = "any"
-target = "any_player"
+target = "local_player"
 
 [boss.timer.cancel_trigger]
 type = "effect_removed"
