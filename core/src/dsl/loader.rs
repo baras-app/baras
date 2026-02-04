@@ -99,18 +99,23 @@ fn build_area_index_recursive(dir: &Path, index: &mut AreaIndex) -> Result<(), S
 
         if path.is_dir() {
             build_area_index_recursive(&path, index)?;
-        } else if path.extension().is_some_and(|ext| ext == "toml")
-            && let Ok(Some(area)) = load_area_config(&path)
-            && area.area_id != 0
-        {
-            index.insert(
-                area.area_id,
-                AreaIndexEntry {
-                    name: area.name,
-                    area_id: area.area_id,
-                    file_path: path,
-                },
-            );
+        } else if path.extension().is_some_and(|ext| ext == "toml") {
+            match load_area_config(&path) {
+                Ok(Some(area)) if area.area_id != 0 => {
+                    index.insert(
+                        area.area_id,
+                        AreaIndexEntry {
+                            name: area.name,
+                            area_id: area.area_id,
+                            file_path: path,
+                        },
+                    );
+                }
+                Ok(_) => {} // No [area] section or area_id is 0, skip silently
+                Err(e) => {
+                    tracing::warn!(path = %path.display(), error = %e, "Failed to parse definition file");
+                }
+            }
         }
     }
 

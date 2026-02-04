@@ -404,17 +404,21 @@ impl CombatService {
         // Build index from bundled directory
         if let Some(ref path) = bundled_dir
             && path.exists()
-            && let Ok(area_index) = build_area_index(path)
         {
-            index.extend(area_index);
+            match build_area_index(path) {
+                Ok(area_index) => index.extend(area_index),
+                Err(e) => warn!(path = %path.display(), error = %e, "Failed to build bundled area index"),
+            }
         }
 
         // Build index from custom directory (can override bundled)
         if let Some(ref path) = custom_dir
             && path.exists()
-            && let Ok(area_index) = build_area_index(path)
         {
-            index.extend(area_index);
+            match build_area_index(path) {
+                Ok(area_index) => index.extend(area_index),
+                Err(e) => warn!(path = %path.display(), error = %e, "Failed to build custom area index"),
+            }
         }
 
         index
@@ -429,7 +433,18 @@ impl CombatService {
         // User custom directory for overlay files
         let user_dir = dirs::config_dir().map(|p| p.join("baras").join("encounters"));
 
-        load_bosses_with_custom(&entry.file_path, user_dir.as_deref()).ok()
+        match load_bosses_with_custom(&entry.file_path, user_dir.as_deref()) {
+            Ok(bosses) => Some(bosses),
+            Err(e) => {
+                warn!(
+                    area_id,
+                    path = %entry.file_path.display(),
+                    error = %e,
+                    "Failed to load boss definitions"
+                );
+                None
+            }
+        }
     }
 
     /// Get the path to the timer preferences file
