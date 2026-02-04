@@ -2100,7 +2100,7 @@ impl Default for CombatLogSessionState {
             filter_actions: true,
             filter_effects: true,
             filter_simplified: false,
-            show_ids: false,
+            show_ids: true,
             scroll_offset: 0.0,
         }
     }

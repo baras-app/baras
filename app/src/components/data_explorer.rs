@@ -1774,7 +1774,11 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                         tr { key: "{stats.target.as_deref().unwrap_or(\"\")}-{idx}-{ability.ability_id}", class: if stats.target.is_some() { "ability-row indented" } else { "ability-row" },
                                                             td { class: "ability-name-cell",
                                                                 AbilityIcon { ability_id: ability.ability_id }
-                                                                "{ability.ability_name}"
+                                                                if !ability.ability_name.is_empty() {
+                                                                    "{ability.ability_name}"
+                                                                } else {
+                                                                    "Ability #{ability.ability_id}"
+                                                                }
                                                             }
                                                             td { class: "num", "{format_number(ability.total_value)}" }
                                                             td { class: "num pct-cell",

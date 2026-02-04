@@ -216,7 +216,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let mut filter_simplified = use_signal(|| if should_restore { state.peek().filter_simplified } else { false });
 
     // Show IDs toggle - NOW PERSISTED!
-    let mut show_ids = use_signal(|| if should_restore { state.peek().show_ids } else { false });
+    let mut show_ids = use_signal(|| if should_restore { state.peek().show_ids } else { true });
 
     // Find feature - searches all data via backend query
     let mut find_text = use_signal(String::new);
