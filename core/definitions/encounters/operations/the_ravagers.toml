@@ -340,3 +340,210 @@ is_boss = true
 name = "Pearl"
 ids = [3374109127868416]
 is_boss = true
+
+[[boss.counters]]
+id = "coratanni_transition_tracker"
+name = "Transition Tracker"
+increment_on = { type = "any_of", conditions = [
+  { type = "entity_death", selector = ["Pearl"] },
+  { type = "boss_hp_below", hp_percent = 20.0, selector = ["Coratanni"] },
+] }
+initial_value = 0
+
+[[boss.phases]]
+id = "coratanni_main"
+name = "Coratanni"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "coratanni_transition"
+name = "Transition"
+trigger = { type = "counter_reaches", counter_id = "coratanni_transition_tracker", value = 2 }
+
+[[boss.phases]]
+id = "coratanni_ruugar"
+name = "Ruugar"
+trigger = { type = "npc_appears", selector = ["Ruugar"] }
+
+# ─── Coratanni Phase Timers ──────────────────────────────────────────────────
+
+[[boss.timer]]
+id = "coratanni_ricochet_1st"
+name = "Ricochet 1st"
+display_text = "Ricochet"
+trigger = { type = "combat_start" }
+duration_secs = 15.0
+color = [224, 32, 29, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_ricochet"
+name = "Ricochet"
+trigger = { type = "ability_cast", abilities = [3372880767221760] }
+duration_secs = 15.0
+color = [219, 29, 28, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_multi_charge_1st"
+name = "Multi Charge 1st"
+display_text = "Multi Charge"
+trigger = { type = "combat_start" }
+duration_secs = 25.0
+color = [177, 32, 219, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_cannon_shot_1st"
+name = "Cannon Shot 1st"
+display_text = "Cannon Shot"
+trigger = { type = "combat_start" }
+duration_secs = 35.0
+color = [128, 189, 39, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_cannon_shot"
+name = "Cannon Shot"
+trigger = { type = "ability_cast", abilities = [3374298106429440] }
+duration_secs = 20.0
+color = [128, 189, 39, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_split"
+name = "Split"
+trigger = { type = "effect_applied", effects = [3372876472254748] }
+is_alert = true
+alert_text = "Split"
+color = [214, 27, 27, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_phase_2_hp"
+name = "Phase 2 HP"
+trigger = { type = "boss_hp_below", hp_percent = 70.0, selector = ["Coratanni"] }
+is_alert = true
+alert_text = "Phase 2"
+color = [33, 224, 221, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_phase_3_hp"
+name = "Phase 3 HP"
+trigger = { type = "boss_hp_below", hp_percent = 20.0, selector = ["Coratanni"] }
+is_alert = true
+alert_text = "Phase 3"
+color = [29, 224, 223, 255]
+difficulties = ["veteran"]
+
+# ─── Ruugar Phase Timers ─────────────────────────────────────────────────────
+
+[[boss.timer]]
+id = "coratanni_jet_boost_1st"
+name = "Jet Boost 1st"
+display_text = "Jet Boost"
+trigger = { type = "phase_entered", phase_id = "coratanni_ruugar" }
+duration_secs = 15.0
+color = [224, 113, 33, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_grapple_1st"
+name = "Grapple 1st"
+display_text = "Grapple"
+trigger = { type = "phase_entered", phase_id = "coratanni_ruugar" }
+duration_secs = 15.0
+color = [13, 103, 51, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_death_mouse_1st"
+name = "Death Mouse 1st"
+display_text = "Death Mouse"
+trigger = { type = "phase_entered", phase_id = "coratanni_ruugar" }
+duration_secs = 22.0
+color = [28, 184, 20, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_cull_1st"
+name = "Cull 1st"
+display_text = "Cull"
+trigger = { type = "phase_entered", phase_id = "coratanni_ruugar" }
+duration_secs = 30.0
+color = [25, 114, 194, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_focus_hostage_1st"
+name = "Focus + Hostage 1st"
+display_text = "Focus + Hostage"
+trigger = { type = "phase_entered", phase_id = "coratanni_ruugar" }
+duration_secs = 40.0
+color = [224, 33, 29, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_jet_boost"
+name = "Jet Boost"
+trigger = { type = "ability_cast", abilities = [3378167871963136] }
+duration_secs = 15.6
+color = [224, 113, 33, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_grapple"
+name = "Grapple"
+trigger = { type = "ability_cast", abilities = [3378185051832320] }
+duration_secs = 30.0
+color = [13, 103, 51, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_cull"
+name = "Cull"
+trigger = { type = "ability_cast", abilities = [3438778450444288] }
+duration_secs = 20.0
+color = [25, 114, 194, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_death_mouse"
+name = "Death Mouse"
+trigger = { type = "ability_cast", abilities = [3438825695084544] }
+duration_secs = 20.0
+color = [28, 184, 20, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_focus"
+name = "Focus"
+trigger = { type = "ability_cast", abilities = [3438829990051840] }
+duration_secs = 40.0
+color = [141, 29, 224, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_hostage"
+name = "Hostage"
+trigger = { type = "ability_cast", abilities = [3438765565542400] }
+duration_secs = 60.0
+color = [219, 26, 24, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_aoe_knockback"
+name = "AoE Knockback"
+trigger = { type = "ability_cast", abilities = [3514734947074048] }
+duration_secs = 15.0
+color = [224, 113, 33, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "coratanni_cant_grapple"
+name = "Can't Grapple"
+trigger = { type = "ability_cast", abilities = [3441853647028224] }
+duration_secs = 5.0
+color = [32, 35, 219, 255]
+difficulties = ["veteran"]
