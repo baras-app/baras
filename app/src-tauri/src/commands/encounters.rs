@@ -972,3 +972,363 @@ pub async fn select_boss_notes(
 ) -> Result<(), String> {
     service.select_boss_notes(&boss_id).await
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Export / Import Commands
+// ═══════════════════════════════════════════════════════════════════════════════
+
+use baras_core::boss::BossConfig;
+
+/// Export response with TOML content and whether it came from a bundled area's custom overlay.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportResult {
+    pub toml: String,
+    pub is_bundled: bool,
+}
+
+/// Export user-customized encounter definition(s) as a TOML string.
+/// For bundled areas, exports only the `_custom.toml` overlay content.
+/// For user areas, exports the file as-is.
+/// Returns Err if there are no user customizations to export.
+#[tauri::command]
+pub async fn export_encounter_toml(
+    app_handle: AppHandle,
+    boss_id: Option<String>,
+    file_path: String,
+) -> Result<ExportResult, String> {
+    let path = PathBuf::from(&file_path);
+    if !path.exists() {
+        return Err(format!("File not found: {}", file_path));
+    }
+
+    let is_bundled = get_custom_path_if_bundled(&path, &app_handle).is_some();
+
+    let mut bosses = if let Some(custom_path) = get_custom_path_if_bundled(&path, &app_handle) {
+        // Bundled area — only export custom overlay content
+        if !custom_path.exists() {
+            return Err("No custom definitions to export".to_string());
+        }
+        load_bosses_from_file(&custom_path)?
+    } else {
+        // User area — export file directly
+        load_bosses_from_file(&path)?
+    };
+
+    if let Some(ref id) = boss_id {
+        bosses.retain(|b| b.id == *id);
+        if bosses.is_empty() {
+            return Err("No custom definitions to export for this boss".to_string());
+        }
+    }
+
+    if bosses.is_empty() {
+        return Err("No custom definitions to export".to_string());
+    }
+
+    let area = load_area_config(&path).ok().flatten();
+    let config = BossConfig { area, bosses };
+
+    let toml = toml::to_string(&config)
+        .map_err(|e| format!("Failed to serialize: {}", e))?;
+    Ok(ExportResult { toml, is_bundled })
+}
+
+/// Read a file's text content (for import flow — frontend needs file content after dialog).
+#[tauri::command]
+pub async fn read_import_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read {}: {}", path, e))
+}
+
+/// Write exported TOML content to a file path (chosen by save dialog on frontend).
+#[tauri::command]
+pub async fn save_export_file(path: String, content: String) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    if let Some(parent) = p.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create directory: {}", e))?;
+    }
+    std::fs::write(&p, content).map_err(|e| format!("Failed to write file: {}", e))
+}
+
+/// Preview item for import diff
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportItemDiff {
+    pub item_type: String,
+    pub name: String,
+    pub id: String,
+}
+
+/// Per-boss preview for import
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportBossPreview {
+    pub boss_id: String,
+    pub boss_name: String,
+    pub is_new_boss: bool,
+    pub items_to_replace: Vec<ImportItemDiff>,
+    pub items_to_add: Vec<ImportItemDiff>,
+    pub items_unchanged: usize,
+}
+
+/// Full import preview response
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportPreview {
+    pub source_area_name: Option<String>,
+    pub bosses: Vec<ImportBossPreview>,
+    pub is_new_area: bool,
+    pub errors: Vec<String>,
+}
+
+/// Preview an import — parse the TOML and compute diffs against the target area.
+#[tauri::command]
+pub async fn preview_import_encounter(
+    toml_content: String,
+    target_file_path: Option<String>,
+) -> Result<ImportPreview, String> {
+    let config: BossConfig = toml::from_str(&toml_content)
+        .map_err(|e| format!("Invalid TOML: {}", e))?;
+
+    let source_area_name = config.area.as_ref().map(|a| a.name.clone());
+
+    // Validate: must contain at least one boss
+    let mut errors = Vec::new();
+    if config.bosses.is_empty() {
+        errors.push("No boss definitions found in file".to_string());
+    }
+    for boss in &config.bosses {
+        if boss.id.is_empty() {
+            errors.push(format!("Boss missing ID: '{}'", boss.name));
+        }
+    }
+
+    // Check area_id mismatch when importing into an existing area
+    if let Some(ref tp) = target_file_path {
+        let target_path = PathBuf::from(tp);
+        if let Some(source_area) = config.area.as_ref() {
+            if let Ok(Some(target_area)) = load_area_config(&target_path) {
+                if source_area.area_id != 0
+                    && target_area.area_id != 0
+                    && source_area.area_id != target_area.area_id
+                {
+                    errors.push(format!(
+                        "Area mismatch: source is \"{}\" (ID {}) but target is \"{}\" (ID {})",
+                        source_area.name, source_area.area_id,
+                        target_area.name, target_area.area_id,
+                    ));
+                }
+            }
+        }
+    }
+
+    let is_new_area = target_file_path.is_none();
+
+    // Load existing bosses from target for diff computation
+    let existing_bosses: Vec<BossEncounterDefinition> = if let Some(ref tp) = target_file_path {
+        let path = PathBuf::from(tp);
+        if path.exists() {
+            load_file_with_custom(&path)?
+                .into_iter()
+                .map(|b| b.boss)
+                .collect()
+        } else {
+            Vec::new()
+        }
+    } else {
+        Vec::new()
+    };
+
+    let boss_previews: Vec<ImportBossPreview> = config
+        .bosses
+        .iter()
+        .map(|imported| {
+            let existing = existing_bosses.iter().find(|b| b.id == imported.id);
+            // Resolve display name: imported name → existing name → boss ID
+            let display_name = if !imported.name.is_empty() {
+                imported.name.clone()
+            } else if let Some(e) = existing {
+                if !e.name.is_empty() { e.name.clone() } else { imported.id.clone() }
+            } else {
+                imported.id.clone()
+            };
+
+            if let Some(existing) = existing {
+                // Existing boss — compute item-level diffs
+                let mut to_replace = Vec::new();
+                let mut to_add = Vec::new();
+                let mut unchanged = 0usize;
+
+                diff_items(&imported.timers, &existing.timers,
+                    |t| &t.id, |t| &t.name, "timer",
+                    &mut to_replace, &mut to_add, &mut unchanged);
+                diff_items(&imported.phases, &existing.phases,
+                    |p| &p.id, |p| &p.name, "phase",
+                    &mut to_replace, &mut to_add, &mut unchanged);
+                diff_items(&imported.counters, &existing.counters,
+                    |c| &c.id, |c| &c.name, "counter",
+                    &mut to_replace, &mut to_add, &mut unchanged);
+                diff_items(&imported.challenges, &existing.challenges,
+                    |c| &c.id, |c| &c.name, "challenge",
+                    &mut to_replace, &mut to_add, &mut unchanged);
+                diff_items(&imported.entities, &existing.entities,
+                    |e| &e.name, |e| &e.name, "entity",
+                    &mut to_replace, &mut to_add, &mut unchanged);
+
+                ImportBossPreview {
+                    boss_id: imported.id.clone(),
+                    boss_name: display_name,
+                    is_new_boss: false,
+                    items_to_replace: to_replace,
+                    items_to_add: to_add,
+                    items_unchanged: unchanged,
+                }
+            } else {
+                // New boss — all items are adds
+                let mut to_add = Vec::new();
+                for t in &imported.timers {
+                    to_add.push(ImportItemDiff { item_type: "timer".into(), name: t.name.clone(), id: t.id.clone() });
+                }
+                for p in &imported.phases {
+                    to_add.push(ImportItemDiff { item_type: "phase".into(), name: p.name.clone(), id: p.id.clone() });
+                }
+                for c in &imported.counters {
+                    to_add.push(ImportItemDiff { item_type: "counter".into(), name: c.name.clone(), id: c.id.clone() });
+                }
+                for c in &imported.challenges {
+                    to_add.push(ImportItemDiff { item_type: "challenge".into(), name: c.name.clone(), id: c.id.clone() });
+                }
+                for e in &imported.entities {
+                    to_add.push(ImportItemDiff { item_type: "entity".into(), name: e.name.clone(), id: e.name.clone() });
+                }
+
+                ImportBossPreview {
+                    boss_id: imported.id.clone(),
+                    boss_name: display_name,
+                    is_new_boss: true,
+                    items_to_replace: Vec::new(),
+                    items_to_add: to_add,
+                    items_unchanged: 0,
+                }
+            }
+        })
+        .collect();
+
+    Ok(ImportPreview {
+        source_area_name,
+        bosses: boss_previews,
+        is_new_area,
+        errors,
+    })
+}
+
+/// Diff helper: categorize imported items as replace/add/unchanged vs existing.
+fn diff_items<T>(
+    imported: &[T],
+    existing: &[T],
+    get_id: impl Fn(&T) -> &String,
+    get_name: impl Fn(&T) -> &String,
+    item_type: &str,
+    to_replace: &mut Vec<ImportItemDiff>,
+    to_add: &mut Vec<ImportItemDiff>,
+    unchanged: &mut usize,
+) {
+    for item in imported {
+        let id = get_id(item);
+        if existing.iter().any(|e| get_id(e) == id) {
+            to_replace.push(ImportItemDiff {
+                item_type: item_type.to_string(),
+                name: get_name(item).clone(),
+                id: id.clone(),
+            });
+        } else {
+            to_add.push(ImportItemDiff {
+                item_type: item_type.to_string(),
+                name: get_name(item).clone(),
+                id: id.clone(),
+            });
+        }
+    }
+    // Count existing items NOT in the import
+    for item in existing {
+        let id = get_id(item);
+        if !imported.iter().any(|i| get_id(i) == id) {
+            *unchanged += 1;
+        }
+    }
+}
+
+/// Execute an import — merge imported bosses into target area file.
+#[tauri::command]
+pub async fn import_encounter_toml(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    toml_content: String,
+    target_file_path: Option<String>,
+) -> Result<(), String> {
+    let config: BossConfig = toml::from_str(&toml_content)
+        .map_err(|e| format!("Invalid TOML: {}", e))?;
+
+    if config.bosses.is_empty() {
+        return Err("No boss definitions found".to_string());
+    }
+
+    match target_file_path {
+        None => {
+            // New area — write a new file in user encounters dir
+            let area = config.area.as_ref()
+                .ok_or("Import file has no [area] header — cannot create new area")?;
+            let user_dir = ensure_user_dir()?;
+            let filename: String = area.name
+                .to_lowercase()
+                .chars()
+                .map(|c| if c.is_alphanumeric() { c } else { '_' })
+                .collect::<String>()
+                .split('_')
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+                .join("_");
+            let file_path = user_dir.join(format!("{}.toml", filename));
+
+            let content = toml::to_string(&config)
+                .map_err(|e| format!("Failed to serialize: {}", e))?;
+            std::fs::write(&file_path, content)
+                .map_err(|e| format!("Failed to write file: {}", e))?;
+        }
+        Some(ref tp) => {
+            let file_path = PathBuf::from(tp);
+            let write_path = if let Some(custom_path) = get_custom_path_if_bundled(&file_path, &app_handle) {
+                // Bundled area → merge into _custom.toml
+                custom_path
+            } else {
+                file_path.clone()
+            };
+
+            // Load existing bosses from write target
+            let mut existing_bosses = if write_path.exists() {
+                load_bosses_from_file(&write_path).unwrap_or_default()
+            } else {
+                Vec::new()
+            };
+
+            // Merge each imported boss
+            for imported_boss in config.bosses {
+                if let Some(existing) = existing_bosses.iter_mut().find(|b| b.id == imported_boss.id) {
+                    merge_boss_definition(existing, imported_boss);
+                } else {
+                    existing_bosses.push(imported_boss);
+                }
+            }
+
+            if let Some(parent) = write_path.parent() {
+                std::fs::create_dir_all(parent).ok();
+            }
+            save_bosses_to_file(&existing_bosses, &write_path)?;
+        }
+    }
+
+    let _ = service.reload_timer_definitions().await;
+    Ok(())
+}

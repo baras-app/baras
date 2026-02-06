@@ -209,6 +209,12 @@ pub fn run() {
             commands::update_boss_notes,
             commands::get_area_bosses_for_notes,
             commands::select_boss_notes,
+            // Encounter export/import
+            commands::export_encounter_toml,
+            commands::save_export_file,
+            commands::read_import_file,
+            commands::preview_import_encounter,
+            commands::import_encounter_toml,
             // Effect editor commands
             commands::get_effect_definitions,
             commands::update_effect_definition,
@@ -216,6 +222,10 @@ pub fn run() {
             commands::delete_effect_definition,
             commands::duplicate_effect_definition,
             commands::get_icon_preview,
+            // Effect export/import
+            commands::export_effects_toml,
+            commands::preview_import_effects,
+            commands::import_effects_toml,
             // Parsely upload
             commands::upload_to_parsely,
             commands::upload_encounter_to_parsely,

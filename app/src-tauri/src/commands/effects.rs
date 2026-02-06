@@ -463,6 +463,147 @@ pub async fn duplicate_effect_definition(
     Ok(EffectListItem::from_definition(&new_effect, true))
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Export/Import Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EffectImportDiff {
+    pub id: String,
+    pub name: String,
+    pub display_target: DisplayTarget,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EffectImportPreview {
+    pub effects_to_replace: Vec<EffectImportDiff>,
+    pub effects_to_add: Vec<EffectImportDiff>,
+    pub effects_unchanged: usize,
+    pub errors: Vec<String>,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Export/Import Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Export user effect overrides as TOML
+#[tauri::command]
+pub async fn export_effects_toml() -> Result<String, String> {
+    let effects = load_user_effects_file()
+        .filter(|(v, _)| *v == EFFECTS_DSL_VERSION)
+        .map(|(_, effects)| effects)
+        .ok_or("No custom effect definitions to export")?;
+
+    if effects.is_empty() {
+        return Err("No custom effect definitions to export".to_string());
+    }
+
+    let config = DefinitionConfig {
+        version: EFFECTS_DSL_VERSION,
+        effects,
+    };
+
+    toml::to_string_pretty(&config)
+        .map_err(|e| format!("Failed to serialize effects: {}", e))
+}
+
+/// Preview effects import — parse TOML and diff against existing
+#[tauri::command]
+pub async fn preview_import_effects(
+    app_handle: AppHandle,
+    toml_content: String,
+) -> Result<EffectImportPreview, String> {
+    let config: DefinitionConfig = toml::from_str(&toml_content)
+        .map_err(|e| format!("Failed to parse TOML: {}", e))?;
+
+    let mut errors = Vec::new();
+
+    if config.version != EFFECTS_DSL_VERSION {
+        errors.push(format!(
+            "Version mismatch: file has version {}, expected {}",
+            config.version, EFFECTS_DSL_VERSION
+        ));
+    }
+
+    if config.effects.is_empty() {
+        errors.push("No effects found in file".to_string());
+    }
+
+    // Load current merged effects for diff
+    let current_effects = load_all_effects(&app_handle);
+    let current_ids: std::collections::HashSet<String> =
+        current_effects.iter().map(|(e, _)| e.id.clone()).collect();
+    let imported_ids: std::collections::HashSet<String> =
+        config.effects.iter().map(|e| e.id.clone()).collect();
+
+    let mut effects_to_replace = Vec::new();
+    let mut effects_to_add = Vec::new();
+
+    for effect in &config.effects {
+        let diff = EffectImportDiff {
+            id: effect.id.clone(),
+            name: effect.name.clone(),
+            display_target: effect.display_target,
+        };
+
+        if current_ids.contains(&effect.id) {
+            effects_to_replace.push(diff);
+        } else {
+            effects_to_add.push(diff);
+        }
+    }
+
+    let effects_unchanged = current_ids
+        .iter()
+        .filter(|id| !imported_ids.contains(*id))
+        .count();
+
+    Ok(EffectImportPreview {
+        effects_to_replace,
+        effects_to_add,
+        effects_unchanged,
+        errors,
+    })
+}
+
+/// Import effects from TOML, merging into user file
+#[tauri::command]
+pub async fn import_effects_toml(
+    service: State<'_, ServiceHandle>,
+    toml_content: String,
+) -> Result<(), String> {
+    let config: DefinitionConfig = toml::from_str(&toml_content)
+        .map_err(|e| format!("Failed to parse TOML: {}", e))?;
+
+    if config.version != EFFECTS_DSL_VERSION {
+        return Err(format!(
+            "Version mismatch: file has version {}, expected {}",
+            config.version, EFFECTS_DSL_VERSION
+        ));
+    }
+
+    // Load current user effects and merge
+    let mut user_effects: Vec<EffectDefinition> = load_user_effects_file()
+        .filter(|(v, _)| *v == EFFECTS_DSL_VERSION)
+        .map(|(_, e)| e)
+        .unwrap_or_default();
+
+    for imported in config.effects {
+        if let Some(existing) = user_effects.iter_mut().find(|e| e.id == imported.id) {
+            *existing = imported;
+        } else {
+            user_effects.push(imported);
+        }
+    }
+
+    save_user_effects(&user_effects)?;
+    let _ = service.reload_effect_definitions().await;
+
+    Ok(())
+}
+
 /// Generate an effect ID from name (snake_case, safe for TOML)
 fn generate_effect_id(name: &str) -> String {
     name.to_lowercase()

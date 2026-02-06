@@ -786,3 +786,65 @@ pub struct NewAreaRequest {
 fn default_area_type() -> String {
     "operation".to_string()
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Export/Import Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Export result from backend
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportResult {
+    pub toml: String,
+    pub is_bundled: bool,
+}
+
+/// Item-level diff entry for import preview
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportItemDiff {
+    pub item_type: String,
+    pub name: String,
+    pub id: String,
+}
+
+/// Per-boss preview for import
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportBossPreview {
+    pub boss_id: String,
+    pub boss_name: String,
+    pub is_new_boss: bool,
+    pub items_to_replace: Vec<ImportItemDiff>,
+    pub items_to_add: Vec<ImportItemDiff>,
+    pub items_unchanged: usize,
+}
+
+/// Full import preview response
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportPreview {
+    pub source_area_name: Option<String>,
+    pub bosses: Vec<ImportBossPreview>,
+    pub is_new_area: bool,
+    pub errors: Vec<String>,
+}
+
+/// Effect import diff entry
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EffectImportDiff {
+    pub id: String,
+    pub name: String,
+    pub display_target: DisplayTarget,
+}
+
+/// Effect import preview response
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EffectImportPreview {
+    pub effects_to_replace: Vec<EffectImportDiff>,
+    pub effects_to_add: Vec<EffectImportDiff>,
+    pub effects_unchanged: usize,
+    pub errors: Vec<String>,
+}

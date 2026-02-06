@@ -22,6 +22,9 @@ extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "dialog"], js_name = "open")]
     pub async fn open_dialog(options: JsValue) -> JsValue;
 
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "dialog"], js_name = "save")]
+    pub async fn save_dialog(options: JsValue) -> JsValue;
+
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "app"], js_name = "getVersion")]
     pub async fn get_version() -> JsValue;
 }
@@ -504,6 +507,108 @@ pub async fn create_area(area: &NewAreaRequest) -> Result<String, String> {
     from_js(result).ok_or_else(|| "Failed to parse area response".to_string())
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Encounter Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+use crate::types::{ExportResult, ImportPreview};
+
+/// Export encounter definition(s) — returns TOML content and whether source is bundled
+pub async fn export_encounter_toml(
+    boss_id: Option<&str>,
+    file_path: &str,
+) -> Result<ExportResult, String> {
+    let obj = js_sys::Object::new();
+    match boss_id {
+        Some(id) => js_set(&obj, "bossId", &JsValue::from_str(id)),
+        None => js_set(&obj, "bossId", &JsValue::NULL),
+    }
+    js_set(&obj, "filePath", &JsValue::from_str(file_path));
+    let result = try_invoke("export_encounter_toml", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse export result".to_string())
+}
+
+/// Save exported content to a file path
+pub async fn save_export_file(path: &str, content: &str) -> Result<(), String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "path", &JsValue::from_str(path));
+    js_set(&obj, "content", &JsValue::from_str(content));
+    try_invoke("save_export_file", obj.into()).await?;
+    Ok(())
+}
+
+/// Preview an import (parse + diff against target area)
+pub async fn preview_import_encounter(
+    toml_content: &str,
+    target_file_path: Option<&str>,
+) -> Result<ImportPreview, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "tomlContent", &JsValue::from_str(toml_content));
+    match target_file_path {
+        Some(p) => js_set(&obj, "targetFilePath", &JsValue::from_str(p)),
+        None => js_set(&obj, "targetFilePath", &JsValue::NULL),
+    }
+    let result = try_invoke("preview_import_encounter", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse import preview".to_string())
+}
+
+/// Execute an import (merge into target area)
+pub async fn import_encounter_toml(
+    toml_content: &str,
+    target_file_path: Option<&str>,
+) -> Result<(), String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "tomlContent", &JsValue::from_str(toml_content));
+    match target_file_path {
+        Some(p) => js_set(&obj, "targetFilePath", &JsValue::from_str(p)),
+        None => js_set(&obj, "targetFilePath", &JsValue::NULL),
+    }
+    try_invoke("import_encounter_toml", obj.into()).await?;
+    Ok(())
+}
+
+/// Open a native save dialog, returns the selected file path or None
+pub async fn save_file_dialog(default_name: &str) -> Option<String> {
+    let options = js_sys::Object::new();
+    js_set(&options, "defaultPath", &JsValue::from_str(default_name));
+
+    // Add .toml filter
+    let filter = js_sys::Object::new();
+    js_set(&filter, "name", &JsValue::from_str("TOML files"));
+    let exts = js_sys::Array::new();
+    exts.push(&JsValue::from_str("toml"));
+    js_set(&filter, "extensions", &exts);
+    let filters = js_sys::Array::new();
+    filters.push(&filter);
+    js_set(&options, "filters", &filters);
+
+    let result = save_dialog(options.into()).await;
+    result.as_string()
+}
+
+/// Open a native file dialog for .toml files, returns the file path or None
+pub async fn open_toml_file_dialog() -> Option<String> {
+    let options = js_sys::Object::new();
+
+    let filter = js_sys::Object::new();
+    js_set(&filter, "name", &JsValue::from_str("TOML files"));
+    let exts = js_sys::Array::new();
+    exts.push(&JsValue::from_str("toml"));
+    js_set(&filter, "extensions", &exts);
+    let filters = js_sys::Array::new();
+    filters.push(&filter);
+    js_set(&options, "filters", &filters);
+
+    let result = open_dialog(options.into()).await;
+    result.as_string()
+}
+
+/// Read a file's text content via backend
+pub async fn read_import_file(path: &str) -> Result<String, String> {
+    let result = try_invoke("read_import_file", build_args("path", &path)).await?;
+    result.as_string().ok_or_else(|| "Failed to read file".to_string())
+}
+
 /// Update boss notes
 pub async fn update_boss_notes(
     boss_id: &str,
@@ -562,6 +667,40 @@ pub async fn create_effect_definition(effect: &EffectListItem) -> Result<EffectL
     let args = build_args("effect", effect);
     let result = try_invoke("create_effect_definition", args).await?;
     from_js(result).ok_or_else(|| "Failed to deserialize created effect".to_string())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Effect Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+use crate::types::EffectImportPreview;
+
+/// Export user effect overrides as TOML string
+pub async fn export_effects_toml() -> Result<String, String> {
+    let result = try_invoke("export_effects_toml", JsValue::NULL).await?;
+    result
+        .as_string()
+        .ok_or_else(|| "Failed to get export content".to_string())
+}
+
+/// Preview effects import — parse TOML and diff against existing
+pub async fn preview_import_effects(toml_content: &str) -> Result<EffectImportPreview, String> {
+    let result = try_invoke(
+        "preview_import_effects",
+        build_args("tomlContent", &toml_content),
+    )
+    .await?;
+    from_js(result).ok_or_else(|| "Failed to parse import preview".to_string())
+}
+
+/// Import effects from TOML content, merging into user file
+pub async fn import_effects_toml(toml_content: &str) -> Result<(), String> {
+    try_invoke(
+        "import_effects_toml",
+        build_args("tomlContent", &toml_content),
+    )
+    .await?;
+    Ok(())
 }
 
 /// Get icon preview as base64 data URL for an ability ID.

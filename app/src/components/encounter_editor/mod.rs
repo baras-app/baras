@@ -163,7 +163,7 @@ pub fn NpcIdChipEditor(ids: Vec<i64>, on_change: EventHandler<Vec<i64>>) -> Elem
 }
 
 use crate::api;
-use crate::types::{AreaListItem, BossWithPath, UiSessionState};
+use crate::types::{AreaListItem, BossWithPath, ImportPreview, UiSessionState};
 
 pub use tabs::BossTabs;
 
@@ -223,6 +223,10 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     let mut show_new_area = use_signal(|| false);
     let mut show_new_boss = use_signal(|| false);
     let mut status_message = use_signal(|| None::<(String, bool)>);
+
+    // Import preview state
+    let mut import_preview = use_signal(|| None::<ImportPreview>);
+    let mut import_toml_content = use_signal(String::new);
 
     // Auto-dismiss toast after 3 seconds
     use_effect(move || {
@@ -375,10 +379,64 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                     // Area header
                     div { class: "flex items-center justify-between mb-md",
                         h2 { class: "text-primary", "{selected_area().map(|a| a.name).unwrap_or_default()}" }
-                        button {
-                            class: "btn btn-success btn-sm",
-                            onclick: move |_| show_new_boss.set(true),
-                            "+ New Boss"
+                        div { class: "flex gap-xs",
+                            button {
+                                class: "btn btn-sm",
+                                onclick: move |_| {
+                                    if let Some(area) = selected_area() {
+                                        let area_name = area.name.clone();
+                                        let file_path = area.file_path.clone();
+                                        spawn(async move {
+                                            match api::export_encounter_toml(None, &file_path).await {
+                                                Ok(result) => {
+                                                    let stem = area_name.to_lowercase().replace(' ', "_");
+                                                    let default_name = if result.is_bundled {
+                                                        format!("{}_custom.toml", stem)
+                                                    } else {
+                                                        format!("{}.toml", stem)
+                                                    };
+                                                    if let Some(save_path) = api::save_file_dialog(&default_name).await {
+                                                        match api::save_export_file(&save_path, &result.toml).await {
+                                                            Ok(()) => status_message.set(Some(("Area exported".to_string(), false))),
+                                                            Err(e) => status_message.set(Some((e, true))),
+                                                        }
+                                                    }
+                                                }
+                                                Err(e) => status_message.set(Some((e, true))),
+                                            }
+                                        });
+                                    }
+                                },
+                                "Export Area"
+                            }
+                            button {
+                                class: "btn btn-sm",
+                                onclick: move |_| {
+                                    let target_path = selected_area_path.read().clone();
+                                    spawn(async move {
+                                        if let Some(path) = api::open_toml_file_dialog().await {
+                                            match api::read_import_file(&path).await {
+                                                Ok(content) => {
+                                                    match api::preview_import_encounter(&content, target_path.as_deref()).await {
+                                                        Ok(preview) => {
+                                                            import_toml_content.set(content);
+                                                            import_preview.set(Some(preview));
+                                                        }
+                                                        Err(e) => status_message.set(Some((e, true))),
+                                                    }
+                                                }
+                                                Err(e) => status_message.set(Some((e, true))),
+                                            }
+                                        }
+                                    });
+                                },
+                                "Import"
+                            }
+                            button {
+                                class: "btn btn-success btn-sm",
+                                onclick: move |_| show_new_boss.set(true),
+                                "+ New Boss"
+                            }
                         }
                     }
 
@@ -455,6 +513,40 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                                             if entity_count > 0 {
                                                 span { class: "tag", "{entity_count} entities" }
                                             }
+                                            {
+                                                let export_boss_id = bwp.boss.id.clone();
+                                                let export_file_path = bwp.file_path.clone();
+                                                rsx! {
+                                                    button {
+                                                        class: "btn btn-ghost btn-sm",
+                                                        style: "margin-left: auto; padding: 2px 8px; font-size: 11px;",
+                                                        onclick: move |e| {
+                                                            e.stop_propagation();
+                                                            let bid = export_boss_id.clone();
+                                                            let fp = export_file_path.clone();
+                                                            spawn(async move {
+                                                                match api::export_encounter_toml(Some(&bid), &fp).await {
+                                                                    Ok(result) => {
+                                                                        let default_name = if result.is_bundled {
+                                                                            format!("{}_custom.toml", bid)
+                                                                        } else {
+                                                                            format!("{}.toml", bid)
+                                                                        };
+                                                                        if let Some(save_path) = api::save_file_dialog(&default_name).await {
+                                                                            match api::save_export_file(&save_path, &result.toml).await {
+                                                                                Ok(()) => status_message.set(Some(("Boss exported".to_string(), false))),
+                                                                                Err(e) => status_message.set(Some((e, true))),
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    Err(e) => status_message.set(Some((e, true))),
+                                                                }
+                                                            });
+                                                        },
+                                                        "Export"
+                                                    }
+                                                }
+                                            }
                                         }
 
                                         if is_expanded {
@@ -507,6 +599,41 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                     show_new_area.set(false);
                 },
                 on_cancel: move |_| show_new_area.set(false),
+            }
+        }
+
+        // Import preview modal
+        if let Some(preview) = import_preview() {
+            ImportPreviewModal {
+                preview: preview,
+                target_area_name: selected_area_name.read().clone(),
+                on_confirm: move |_| {
+                    let content = import_toml_content();
+                    let target = selected_area_path.read().clone();
+                    spawn(async move {
+                        match api::import_encounter_toml(&content, target.as_deref()).await {
+                            Ok(()) => {
+                                // Reload bosses and area index
+                                if let Some(ref path) = target {
+                                    if let Some(b) = api::fetch_area_bosses(path).await {
+                                        bosses.set(b);
+                                    }
+                                }
+                                if let Some(a) = api::get_area_index().await {
+                                    areas.set(a);
+                                }
+                                status_message.set(Some(("Import successful".to_string(), false)));
+                            }
+                            Err(e) => status_message.set(Some((e, true))),
+                        }
+                    });
+                    import_preview.set(None);
+                    import_toml_content.set(String::new());
+                },
+                on_cancel: move |_| {
+                    import_preview.set(None);
+                    import_toml_content.set(String::new());
+                },
             }
         }
 
@@ -574,6 +701,173 @@ fn AreaCategory(
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Import Preview Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Group items by type, returning (type_label, vec_of_names)
+fn group_by_type(items: &[crate::types::ImportItemDiff]) -> Vec<(String, Vec<String>)> {
+    let mut map: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
+    for item in items {
+        map.entry(item.item_type.clone()).or_default().push(item.name.clone());
+    }
+    map.into_iter().collect()
+}
+
+/// Pluralize an item type label: "timer" -> "timers" etc
+fn plural(item_type: &str, count: usize) -> String {
+    if count == 1 { item_type.to_string() } else { format!("{}s", item_type) }
+}
+
+#[component]
+fn ImportPreviewModal(
+    preview: ImportPreview,
+    target_area_name: Option<String>,
+    on_confirm: EventHandler<()>,
+    on_cancel: EventHandler<()>,
+) -> Element {
+    let has_errors = !preview.errors.is_empty();
+
+    rsx! {
+        div {
+            class: "modal-overlay",
+            onclick: move |_| on_cancel.call(()),
+
+            div {
+                class: "modal-content",
+                style: "max-width: 550px; max-height: 80vh; display: flex; flex-direction: column;",
+                onclick: move |e| e.stop_propagation(),
+
+                div { class: "modal-header",
+                    h3 { "Import Encounter Definition" }
+                }
+
+                // Scrollable body
+                div { style: "overflow-y: auto; flex: 1; padding: 0 16px;",
+
+                    // Source/target row
+                    div { style: "display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin-bottom: 12px;",
+                        if let Some(ref name) = preview.source_area_name {
+                            span { class: "text-xs text-muted", "Source" }
+                            span { class: "text-xs text-primary", "{name}" }
+                        }
+                        if preview.is_new_area {
+                            span { class: "text-xs text-muted", "Target" }
+                            span { class: "text-xs", style: "color: var(--color-warning);", "New area" }
+                        } else if let Some(ref name) = target_area_name {
+                            span { class: "text-xs text-muted", "Target" }
+                            span { class: "text-xs text-primary", "{name}" }
+                        }
+                    }
+
+                    // Validation errors
+                    if has_errors {
+                        div { class: "mb-sm",
+                            for err in &preview.errors {
+                                div { class: "text-xs",
+                                    style: "color: var(--color-error);",
+                                    "{err}"
+                                }
+                            }
+                        }
+                    }
+
+                    // Boss previews
+                    for boss in &preview.bosses {
+                        div { style: "border: 1px solid var(--color-border); border-radius: 4px; \
+                                      padding: 8px 10px; margin-bottom: 8px;",
+                            // Boss header
+                            div { class: "flex items-center gap-xs",
+                                style: "margin-bottom: 6px;",
+                                span { class: "font-medium text-primary text-sm", "{boss.boss_name}" }
+                                if boss.is_new_boss {
+                                    span { class: "tag",
+                                        style: "background: var(--color-success); color: #000; font-size: 10px; padding: 0 4px;",
+                                        "new"
+                                    }
+                                }
+                            }
+
+                            if boss.is_new_boss {
+                                // New boss — summarize by type
+                                {
+                                    let grouped = group_by_type(&boss.items_to_add);
+                                    rsx! {
+                                        div { class: "text-xs text-muted",
+                                            {grouped.iter().map(|(t, names)| format!("{} {}", names.len(), plural(t, names.len()))).collect::<Vec<_>>().join(", ")}
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Existing boss — show replace/add grouped by type
+                                if !boss.items_to_replace.is_empty() {
+                                    {
+                                        let grouped = group_by_type(&boss.items_to_replace);
+                                        rsx! {
+                                            for (item_type, names) in grouped {
+                                                div { class: "text-xs",
+                                                    style: "margin-bottom: 2px;",
+                                                    span { style: "color: var(--color-warning);", "Replace " }
+                                                    span { class: "text-muted",
+                                                        "{names.len()} {plural(&item_type, names.len())}: "
+                                                    }
+                                                    span { style: "color: var(--color-warning);",
+                                                        "{names.join(\", \")}"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if !boss.items_to_add.is_empty() {
+                                    {
+                                        let grouped = group_by_type(&boss.items_to_add);
+                                        rsx! {
+                                            for (item_type, names) in grouped {
+                                                div { class: "text-xs",
+                                                    style: "margin-bottom: 2px;",
+                                                    span { style: "color: var(--color-success);", "Add " }
+                                                    span { class: "text-muted",
+                                                        "{names.len()} {plural(&item_type, names.len())}: "
+                                                    }
+                                                    span { style: "color: var(--color-success);",
+                                                        "{names.join(\", \")}"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if boss.items_unchanged > 0 {
+                                    div { class: "text-xs text-muted",
+                                        style: "margin-top: 2px;",
+                                        "{boss.items_unchanged} unchanged"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Footer
+                div { class: "modal-footer",
+                    button {
+                        class: "btn btn-ghost",
+                        onclick: move |_| on_cancel.call(()),
+                        "Cancel"
+                    }
+                    button {
+                        class: "btn btn-success",
+                        disabled: has_errors,
+                        onclick: move |_| on_confirm.call(()),
+                        "Import"
                     }
                 }
             }

@@ -15,8 +15,8 @@ use super::encounter_editor::triggers::{
 use super::{ToastSeverity, use_toast};
 use crate::api;
 use crate::types::{
-    AbilitySelector, AlertTrigger, AudioConfig, DisplayTarget, EffectListItem, EffectSelector,
-    EntityFilter, Trigger, UiSessionState,
+    AbilitySelector, AlertTrigger, AudioConfig, DisplayTarget, EffectImportPreview,
+    EffectListItem, EffectSelector, EntityFilter, Trigger, UiSessionState,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -249,6 +249,9 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     let mut status_is_error = use_signal(|| false);
     // Draft for new effects - not yet saved to backend
     let mut draft_effect = use_signal(|| None::<EffectListItem>);
+    // Import state
+    let mut import_preview = use_signal(|| None::<EffectImportPreview>);
+    let mut import_toml_content = use_signal(|| None::<String>);
     
     // Extract persisted state fields
     let mut search_query = use_signal(|| props.state.read().effects_editor.search_query.clone());
@@ -438,6 +441,61 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                         }
                     }
                     span { class: "effect-count", "{filtered_effects().len()} effects" }
+                    button {
+                        class: "btn btn-sm",
+                        onclick: move |_| {
+                            spawn(async move {
+                                match api::export_effects_toml().await {
+                                    Ok(toml) => {
+                                        if let Some(path) = api::save_file_dialog("effects_custom.toml").await {
+                                            match api::save_export_file(&path, &toml).await {
+                                                Ok(()) => {
+                                                    save_status.set("Exported".to_string());
+                                                    status_is_error.set(false);
+                                                }
+                                                Err(e) => {
+                                                    save_status.set(e);
+                                                    status_is_error.set(true);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        save_status.set(e);
+                                        status_is_error.set(true);
+                                    }
+                                }
+                            });
+                        },
+                        "Export"
+                    }
+                    button {
+                        class: "btn btn-sm",
+                        onclick: move |_| {
+                            spawn(async move {
+                                let Some(path) = api::open_toml_file_dialog().await else { return };
+                                let content = match api::read_import_file(&path).await {
+                                    Ok(c) => c,
+                                    Err(e) => {
+                                        save_status.set(e);
+                                        status_is_error.set(true);
+                                        return;
+                                    }
+                                };
+                                match api::preview_import_effects(&content).await {
+                                    Ok(preview) => {
+                                        import_toml_content.set(Some(content));
+                                        import_preview.set(Some(preview));
+                                    }
+                                    Err(e) => {
+                                        save_status.set(e);
+                                        status_is_error.set(true);
+                                    }
+                                }
+                            });
+                        },
+                        "Import"
+                    }
                     InlineNameCreator {
                         button_label: "+ New Effect",
                         placeholder: "Effect name...",
@@ -529,6 +587,138 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            // Import preview modal
+            if let Some(preview) = import_preview() {
+                EffectImportPreviewModal {
+                    preview: preview,
+                    on_confirm: move |_| {
+                        let content = import_toml_content().unwrap_or_default();
+                        import_preview.set(None);
+                        import_toml_content.set(None);
+                        spawn(async move {
+                            match api::import_effects_toml(&content).await {
+                                Ok(()) => {
+                                    // Refresh the effects list
+                                    if let Some(e) = api::get_effect_definitions().await {
+                                        effects.set(e);
+                                    }
+                                    save_status.set("Imported".to_string());
+                                    status_is_error.set(false);
+                                }
+                                Err(e) => {
+                                    save_status.set(e);
+                                    status_is_error.set(true);
+                                }
+                            }
+                        });
+                    },
+                    on_cancel: move |_| {
+                        import_preview.set(None);
+                        import_toml_content.set(None);
+                    },
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Import Preview Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[component]
+fn EffectImportPreviewModal(
+    preview: EffectImportPreview,
+    on_confirm: EventHandler<()>,
+    on_cancel: EventHandler<()>,
+) -> Element {
+    let has_errors = !preview.errors.is_empty();
+    let replace_count = preview.effects_to_replace.len();
+    let add_count = preview.effects_to_add.len();
+
+    // Build combined rows: replacements first, then additions
+    let rows: Vec<(&str, &crate::types::EffectImportDiff)> = preview
+        .effects_to_replace
+        .iter()
+        .map(|e| ("replace", e))
+        .chain(preview.effects_to_add.iter().map(|e| ("add", e)))
+        .collect();
+
+    rsx! {
+        div { class: "modal-overlay", onclick: move |_| on_cancel.call(()),
+            div { class: "modal-content", style: "max-width: 600px;",
+                onclick: move |e| e.stop_propagation(),
+
+                div { class: "modal-header",
+                    h3 { "Import Effect Definitions" }
+                }
+
+                div { class: "modal-body", style: "max-height: 400px; overflow-y: auto; padding: 0;",
+                    // Errors
+                    for error in &preview.errors {
+                        div { style: "color: var(--color-error); padding: 4px 12px;",
+                            "{error}"
+                        }
+                    }
+
+                    if !rows.is_empty() {
+                        table { class: "import-table", style: "width: 100%; border-collapse: collapse;",
+                            thead {
+                                tr { style: "text-align: left; border-bottom: 1px solid var(--border-color);",
+                                    th { style: "padding: 4px 8px; width: 24px;" }
+                                    th { style: "padding: 4px 8px;", "Name" }
+                                    th { style: "padding: 4px 8px;", "ID" }
+                                    th { style: "padding: 4px 8px;", "Target" }
+                                }
+                            }
+                            tbody {
+                                for (action, effect) in &rows {
+                                    tr { style: "border-bottom: 1px solid var(--border-color-subtle, rgba(255,255,255,0.05));",
+                                        td { style: "padding: 3px 8px; width: 24px; text-align: center;",
+                                            if *action == "replace" {
+                                                span { style: "color: var(--color-warning);", "~" }
+                                            } else {
+                                                span { style: "color: var(--color-success);", "+" }
+                                            }
+                                        }
+                                        td { style: "padding: 3px 8px;", "{effect.name}" }
+                                        td { style: "padding: 3px 8px;",
+                                            code { class: "text-xs", "{effect.id}" }
+                                        }
+                                        td { style: "padding: 3px 8px;",
+                                            span { class: "effect-target-badge", "{effect.display_target.label()}" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                div { class: "modal-footer",
+                    div { class: "text-muted text-sm", style: "margin-right: auto;",
+                        "{replace_count} replace, {add_count} new"
+                        if preview.effects_unchanged > 0 {
+                            {
+                                let unchanged = preview.effects_unchanged;
+                                rsx! { ", {unchanged} unchanged" }
+                            }
+                        }
+                    }
+                    button {
+                        class: "btn",
+                        onclick: move |_| on_cancel.call(()),
+                        "Cancel"
+                    }
+                    button {
+                        class: "btn-save",
+                        disabled: has_errors,
+                        onclick: move |_| on_confirm.call(()),
+                        "Import"
                     }
                 }
             }
