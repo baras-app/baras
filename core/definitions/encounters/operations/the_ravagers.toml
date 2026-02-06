@@ -128,6 +128,159 @@ ids = [3468701487595520, 3371446248144896, 3468697192628224, 3468705782562816]
 is_boss = true
 is_kill_target = true
 
+[[boss.timer]]
+id = "bulo_shotgun_blast_1st"
+name = "Shotgun Blast 1st"
+display_text = "Shotgun Blast"
+trigger = { type = "combat_start" }
+duration_secs = 10.0
+color = [210, 24, 219, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_volley_1st"
+name = "Volley 1st"
+display_text = "Volley"
+trigger = { type = "combat_start" }
+duration_secs = 14.0
+color = [34, 29, 224, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_pirates_1st"
+name = "Pirates 1st"
+display_text = "Pirates"
+trigger = { type = "combat_start" }
+duration_secs = 20.0
+color = [38, 168, 25, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_carts_scatter_1st"
+name = "Carts + Scatter 1st"
+display_text = "Carts + Scatter"
+trigger = { type = "combat_start" }
+duration_secs = 30.0
+color = [224, 25, 24, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_relocate_barrage_1st"
+name = "Relocate + Barrage 1st"
+display_text = "Relocate + Barrage"
+trigger = { type = "combat_start" }
+duration_secs = 50.0
+color = [37, 224, 218, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_shotgun_blast"
+name = "Shotgun Blast"
+trigger = { type = "ability_cast", abilities = [3391714198814720] }
+duration_secs = 8.5
+color = [210, 24, 219, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_gcd"
+name = "GCD"
+trigger = { type = "ability_cast", abilities = [3396090770489344] }
+duration_secs = 4.0
+color = [29, 224, 221, 255]
+difficulties = ["veteran"]
+chains_to = "bulo_barrel_throw"
+
+[[boss.timer]]
+id = "bulo_barrel_throw"
+name = "Barrel Throw"
+trigger = { type = "manual" }
+duration_secs = 6.0
+color = [146, 33, 224, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_volley"
+name = "Volley"
+trigger = { type = "ability_cast", abilities = [3391752853520384] }
+duration_secs = 18.0
+color = [34, 29, 224, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_pirates"
+name = "Pirates"
+trigger = { type = "ability_cast", abilities = [3391757148487680] }
+duration_secs = 45.0
+color = [38, 168, 25, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_carts"
+name = "Carts"
+trigger = { type = "ability_cast", abilities = [3466880421462016] }
+duration_secs = 45.0
+color = [167, 179, 26, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_loadlifters"
+name = "Loadlifters"
+trigger = { type = "ability_cast", abilities = [3420554904207360] }
+duration_secs = 30.0
+color = [28, 78, 48, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_relocated"
+name = "Relocated"
+trigger = { type = "ability_cast", abilities = [3457169500405760] }
+duration_secs = 45.0
+color = [28, 219, 213, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_scatter_blaster_end"
+name = "Scatter Blaster END"
+trigger = { type = "ability_cast", abilities = [3391744263585792] }
+duration_secs = 11.0
+color = [224, 29, 29, 255]
+difficulties = ["veteran"]
+chains_to = "bulo_scatter_blaster"
+
+[[boss.timer]]
+id = "bulo_scatter_blaster"
+name = "Scatter Blaster"
+trigger = { type = "manual" }
+duration_secs = 29.0
+color = [219, 38, 28, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_barrage_carts_delay"
+name = "Barrage/Carts Delay"
+trigger = { type = "ability_cast", abilities = [3391744263585792] }
+duration_secs = 20.0
+color = [167, 179, 26, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "bulo_mass_barrage_end"
+name = "Mass Barrage END"
+trigger = { type = "ability_cast", abilities = [3417496887492608] }
+duration_secs = 13.0
+color = [224, 110, 29, 255]
+difficulties = ["veteran"]
+chains_to = "bulo_mass_barrage"
+
+[[boss.timer]]
+id = "bulo_mass_barrage"
+name = "Mass Barrage"
+trigger = { type = "manual" }
+duration_secs = 50.0
+color = [224, 110, 29, 255]
+difficulties = ["veteran"]
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Torque
 # ═══════════════════════════════════════════════════════════════════════════════
