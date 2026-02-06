@@ -143,6 +143,126 @@ ids = [3468714372497408, 3397005598523392, 3468718667464704, 3468710077530112]
 is_boss = true
 is_kill_target = true
 
+[[boss.timer]]
+id = "torque_laser_turret_1st"
+name = "Laser Turret 1st"
+display_text = "Laser Turret"
+trigger = { type = "combat_start" }
+duration_secs = 15.0
+color = [138, 98, 48, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_vents_knockback_1st"
+name = "Vents + Knockback 1st"
+display_text = "Vents + Knockback"
+trigger = { type = "combat_start" }
+duration_secs = 25.0
+color = [219, 32, 28, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_jump_to_console_1st"
+name = "Jump to Console 1st"
+display_text = "Jump to Console"
+trigger = { type = "combat_start" }
+duration_secs = 40.0
+color = [31, 153, 14, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_side_turrets_1st"
+name = "Side Turrets 1st"
+display_text = "Side Turrets"
+trigger = { type = "combat_start" }
+duration_secs = 50.0
+color = [25, 23, 214, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_magnetic_clamp"
+name = "Magnetic Clamp"
+trigger = { type = "ability_cast", abilities = [3430678142124032] }
+duration_secs = 30.0
+color = [33, 224, 219, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_cleanse"
+name = "Cleanse"
+trigger = { type = "ability_cast", abilities = [3430678142124032] }
+is_alert = true
+alert_text = "Cleanse"
+color = [28, 219, 215, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_flame_turret"
+name = "Flame Turret"
+trigger = { type = "ability_cast", abilities = [3406531835985920] }
+duration_secs = 15.0
+color = [219, 189, 32, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_laser_turret"
+name = "Laser Turret"
+trigger = { type = "ability_cast", abilities = [3406527541018624] }
+duration_secs = 15.0
+color = [138, 98, 48, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_tank_swap"
+name = "Tank Swap"
+trigger = { type = "ability_cast", abilities = [3409211895578624] }
+is_alert = true
+alert_text = "Tank Swap"
+color = [224, 29, 24, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_knockback"
+name = "Knockback"
+trigger = { type = "ability_cast", abilities = [3409211895578624] }
+duration_secs = 40.0
+color = [219, 105, 32, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_vents"
+name = "Vents"
+trigger = { type = "ability_cast", abilities = [3406488886312960] }
+duration_secs = 30.0
+color = [219, 29, 28, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_jump_to_console"
+name = "Jump to Console"
+trigger = { type = "ability_cast", abilities = [3412583444905984] }
+duration_secs = 45.0
+color = [31, 153, 14, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_side_turrets"
+name = "Side Turrets"
+trigger = { type = "ability_cast", abilities = [3513382032375808] }
+duration_secs = 60.0
+color = [40, 28, 219, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "torque_magnetic_hp"
+name = "Magnetic HP"
+trigger = { type = "boss_hp_below", hp_percent = 95.0, selector = ["Torque"] }
+is_alert = true
+alert_text = "Magnetic"
+color = [33, 221, 224, 255]
+difficulties = ["veteran"]
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Master & Blaster
 # ═══════════════════════════════════════════════════════════════════════════════
