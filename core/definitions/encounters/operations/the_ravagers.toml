@@ -49,7 +49,7 @@ trigger = { type = "any_of", conditions = [
 is_alert = true
 alert_text = "Brutalize"
 color = [224, 128, 24, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "sparky_shoulder_throw"
@@ -57,7 +57,7 @@ name = "Shoulder Throw"
 trigger = { type = "ability_cast", abilities = [3377850044383232] }
 duration_secs = 13.0
 color = [203, 204, 46, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "sparky_rampage_end"
@@ -65,7 +65,7 @@ name = "Rampage END"
 trigger = { type = "ability_cast", abilities = [3380452794564608] }
 duration_secs = 15.0
 color = [187, 29, 224, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "sparky_rampage_p2"
@@ -79,7 +79,7 @@ trigger = { type = "any_of", conditions = [
 ] }
 duration_secs = 36.0
 color = [187, 29, 224, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "sparky_rampage_p3"
@@ -94,7 +94,7 @@ trigger = { type = "any_of", conditions = [
 ] }
 duration_secs = 46.0
 color = [187, 29, 224, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "sparky_forceful_roar_adds"
@@ -102,7 +102,7 @@ name = "Forceful Roar (Adds)"
 trigger = { type = "ability_cast", abilities = [3380792096980992] }
 duration_secs = 40.5
 color = [34, 173, 19, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "sparky_roar_adds"
@@ -110,7 +110,7 @@ name = "Roar (Adds)"
 trigger = { type = "ability_cast", abilities = [3378502879412224] }
 duration_secs = 17.5
 color = [34, 173, 19, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -166,9 +166,152 @@ is_kill_target = true
 
 [[boss.entities]]
 name = "Master"
-ids = [3462181727240192]
+ids = [3391100018491392]
 is_boss = true
 is_kill_target = true
+
+[[boss.phases]]
+id = "master_blaster_main"
+name = "Blaster"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "master_blaster_master"
+name = "Master & Blaster"
+trigger = { type = "any_of", conditions = [
+  { type = "npc_appears", selector = ["Master"] },
+  { type = "effect_removed", effects = [3400759399940096] },
+] }
+
+[[boss.phases]]
+id = "master_blaster_rop"
+name = "Rain of Pain"
+trigger = { type = "ability_cast", abilities = [3400759399940096] }
+
+[[boss.phases]]
+id = "master_blaster_burn"
+name = "Burn"
+trigger = { type = "effect_removed", effects = [3391336241692965] }
+
+[[boss.timer]]
+id = "master_blaster_scatterblast_1st"
+name = "Scatterblast 1st"
+display_text = "Scatterblast"
+trigger = { type = "combat_start" }
+duration_secs = 6.0
+color = [219, 28, 28, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "master_blaster_ion_cutter"
+name = "Ion Cutter"
+trigger = { type = "ability_cast", abilities = [3397933311459328] }
+duration_secs = 12.0
+color = [33, 224, 219, 255]
+difficulties = ["veteran"]
+chains_to = "master_blaster_fire_wheel"
+
+[[boss.timer]]
+id = "master_blaster_fire_wheel"
+name = "Fire Wheel"
+trigger = { type = "manual" }
+duration_secs = 20.0
+color = [224, 131, 33, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "master_blaster_scatterblast_m"
+name = "Scatterblast"
+trigger = { type = "ability_cast", abilities = [3421916408840192] }
+duration_secs = 9.0
+color = [219, 28, 28, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "master_blaster_rain_of_pain_1st"
+name = "Rain of Pain 1st"
+display_text = "Rain of Pain"
+trigger = { type = "effect_removed", effects = [3413408078626816] }
+duration_secs = 59.0
+color = [224, 24, 191, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "master_blaster_scatterblast_p2_1st"
+name = "Scatterblast P2 1st"
+display_text = "Scatterblast"
+trigger = { type = "effect_removed", effects = [3413408078626816] }
+duration_secs = 13.0
+color = [219, 32, 34, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "master_blaster_1st_rop_dmg"
+name = "1st RoP DMG"
+display_text = "RoP DMG"
+trigger = { type = "ability_cast", abilities = [3400759399940096] }
+duration_secs = 11.6
+color = [224, 33, 187, 255]
+difficulties = ["veteran"]
+chains_to = "master_blaster_2nd_rop_dmg"
+
+[[boss.timer]]
+id = "master_blaster_2nd_rop_dmg"
+name = "2nd RoP DMG"
+display_text = "RoP DMG"
+trigger = { type = "manual" }
+duration_secs = 9.0
+color = [224, 33, 187, 255]
+difficulties = ["veteran"]
+chains_to = "master_blaster_3rd_rop_dmg"
+
+[[boss.timer]]
+id = "master_blaster_3rd_rop_dmg"
+name = "3rd RoP DMG"
+display_text = "RoP DMG"
+trigger = { type = "manual" }
+duration_secs = 9.0
+color = [224, 33, 187, 255]
+difficulties = ["veteran"]
+chains_to = "master_blaster_rop_shield_down"
+
+[[boss.timer]]
+id = "master_blaster_rop_shield_down"
+name = "RoP Shield Down"
+trigger = { type = "manual" }
+duration_secs = 6.0
+color = [224, 33, 187, 255]
+difficulties = ["veteran"]
+chains_to = "master_blaster_rain_of_pain"
+
+[[boss.timer]]
+id = "master_blaster_rain_of_pain"
+name = "Rain of Pain"
+trigger = { type = "manual" }
+duration_secs = 49.4
+color = [224, 33, 187, 255]
+difficulties = ["veteran"]
+
+[[boss.timer]]
+id = "master_blaster_scatterblast_p1"
+name = "Scatterblast P1"
+display_text = "Scatterblast"
+trigger = { type = "ability_cast", abilities = [3393552444817408] }
+duration_secs = 9.0
+color = [219, 28, 28, 255]
+difficulties = ["veteran"]
+phases = ["master_blaster_main"]
+
+[[boss.timer]]
+id = "master_blaster_scatterblast_p2"
+name = "Scatterblast P2"
+display_text = "Scatterblast"
+trigger = { type = "ability_cast", abilities = [3393552444817408] }
+duration_secs = 18.0
+color = [220, 42, 39, 255]
+difficulties = ["veteran"]
+phases = ["master_blaster_master"]
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 5: Coratanni
