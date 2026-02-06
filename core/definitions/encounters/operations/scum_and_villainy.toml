@@ -195,6 +195,55 @@ ids = [3264737785675776]
 is_boss = true
 is_kill_target = true
 
+[[boss.timer]]
+id = "hateful_entity_hateful_void"
+name = "Hateful Void"
+trigger = { type = "ability_cast", abilities = [3265820117434368] }
+duration_secs = 10.0
+color = [219, 28, 29, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "hateful_entity_hate_pulse"
+name = "Hate Pulse"
+trigger = { type = "ability_cast", abilities = [3265811527499776] }
+duration_secs = 15.0
+color = [39, 209, 200, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "hateful_entity_grapple"
+name = "Grapple"
+trigger = { type = "ability_cast", abilities = [3264750670577664] }
+duration_secs = 20.0
+color = [29, 184, 23, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "hateful_entity_dread_touch"
+name = "Dread Touch"
+trigger = { type = "ability_cast", abilities = [3265798642597888] }
+duration_secs = 10.0
+color = [219, 140, 37, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "hateful_entity_death_mark"
+name = "Death Mark"
+trigger = { type = "ability_cast", abilities = [3265764282859520] }
+duration_secs = 62.0
+color = [187, 199, 37, 255]
+difficulties = ["master"]
+
+[[boss.timer]]
+id = "hateful_entity_awakening"
+name = "Awakening"
+trigger = { type = "ability_cast", abilities = [3265794347630592] }
+duration_secs = 32.0
+color = [189, 54, 168, 255]
+difficulties = ["master"]
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Thrasher
 # ═══════════════════════════════════════════════════════════════════════════════
