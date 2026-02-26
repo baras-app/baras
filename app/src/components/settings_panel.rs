@@ -117,6 +117,8 @@ pub fn SettingsPanel(
                 config.overlay_settings.notes_opacity = new_settings.notes_opacity;
                 config.overlay_settings.combat_time = new_settings.combat_time.clone();
                 config.overlay_settings.combat_time_opacity = new_settings.combat_time_opacity;
+                config.overlay_settings.operation_timer = new_settings.operation_timer.clone();
+                config.overlay_settings.operation_timer_opacity = new_settings.operation_timer_opacity;
                 config.overlay_settings.positions = existing_positions;
                 config.overlay_settings.enabled = existing_enabled;
 
@@ -358,6 +360,7 @@ pub fn SettingsPanel(
                         TabButton { label: "Raid Frames", tab_key: "raid", selected_tab: selected_tab }
                         TabButton { label: "Alerts", tab_key: "alerts", selected_tab: selected_tab }
                         TabButton { label: "Combat Time", tab_key: "combat_time", selected_tab: selected_tab }
+                        TabButton { label: "Op Timer", tab_key: "operation_timer", selected_tab: selected_tab }
                     }
                 }
                 div { class: "tab-group",
@@ -1562,6 +1565,95 @@ pub fn SettingsPanel(
                                 let mut new_settings = draft_settings();
                                 new_settings.combat_time = Default::default();
                                 new_settings.combat_time_opacity = 180;
+                                update_draft(new_settings);
+                            },
+                            i { class: "fa-solid fa-rotate-left" }
+                            span { " Reset to Defaults" }
+                        }
+                    }
+                }
+            } else if tab == "operation_timer" {
+                // Operation Timer Overlay Settings
+                div { class: "settings-section",
+                    h4 { "Appearance" }
+
+                    OpacitySlider {
+                        label: "Background Opacity",
+                        value: current_settings.operation_timer_opacity,
+                        on_change: move |val| {
+                            let mut new_settings = draft_settings();
+                            new_settings.operation_timer_opacity = val;
+                            update_draft(new_settings);
+                        },
+                    }
+
+                    div { class: "setting-row",
+                        label { "Show Title" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.operation_timer.show_title,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.operation_timer.show_title = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row",
+                        label { "Dynamic Background" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.operation_timer.dynamic_background,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.operation_timer.dynamic_background = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row",
+                        label { "Font Scale" }
+                        input {
+                            r#type: "range",
+                            min: "50",
+                            max: "300",
+                            value: "{(current_settings.operation_timer.font_scale * 100.0) as i32}",
+                            oninput: move |e| {
+                                if let Ok(val) = e.value().parse::<f32>() {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.operation_timer.font_scale = (val / 100.0).clamp(0.5, 3.0);
+                                    update_draft(new_settings);
+                                }
+                            }
+                        }
+                        span { class: "value", "{(current_settings.operation_timer.font_scale * 100.0) as i32}%" }
+                    }
+
+                    div { class: "setting-row",
+                        label { "Font Color" }
+                        input {
+                            r#type: "color",
+                            value: "{color_to_hex(&current_settings.operation_timer.font_color)}",
+                            class: "color-picker",
+                            oninput: move |e: Event<FormData>| {
+                                if let Some(color) = parse_hex_color(&e.value()) {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.operation_timer.font_color = color;
+                                    update_draft(new_settings);
+                                }
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row reset-row",
+                        button {
+                            class: "btn btn-reset",
+                            onclick: move |_| {
+                                let mut new_settings = draft_settings();
+                                new_settings.operation_timer = Default::default();
+                                new_settings.operation_timer_opacity = 180;
                                 update_draft(new_settings);
                             },
                             i { class: "fa-solid fa-rotate-left" }

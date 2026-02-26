@@ -124,6 +124,94 @@ pub enum ServiceCommand {
     ReloadAreaDefinitions(i64),
     /// Start monitoring for the game process (triggered on first live event)
     StartProcessMonitor,
+    /// Manually start the operation timer
+    StartOperationTimer,
+    /// Stop the operation timer (manual only)
+    StopOperationTimer,
+    /// Reset the operation timer (clears all state)
+    ResetOperationTimer,
+    /// Update the operation name context (from area entered signal)
+    SetOperationTimerContext { operation_name: Option<String> },
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Operation Timer State
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Persistent timer state that tracks an entire operation run.
+/// Lives in the service layer, independent of overlay visibility.
+#[derive(Debug)]
+pub struct OperationTimerState {
+    /// When the timer was last started (None = stopped/not started)
+    started_at: Option<std::time::Instant>,
+    /// Accumulated seconds from previous start/stop cycles
+    accumulated_secs: u64,
+    /// Whether the user manually started (suppresses auto-start)
+    manually_started: bool,
+    /// Whether the user manually stopped (suppresses auto-start until reset)
+    manually_stopped: bool,
+    /// Current operation name (from AreaEntered signal)
+    operation_name: Option<String>,
+}
+
+impl Default for OperationTimerState {
+    fn default() -> Self {
+        Self {
+            started_at: None,
+            accumulated_secs: 0,
+            manually_started: false,
+            manually_stopped: false,
+            operation_name: None,
+        }
+    }
+}
+
+impl OperationTimerState {
+    /// Get total elapsed seconds including current running segment
+    pub fn elapsed_secs(&self) -> u64 {
+        self.accumulated_secs
+            + self
+                .started_at
+                .map(|s| s.elapsed().as_secs())
+                .unwrap_or(0)
+    }
+
+    /// Whether the timer is currently running
+    pub fn is_running(&self) -> bool {
+        self.started_at.is_some()
+    }
+
+    /// Start the timer (no-op if already running)
+    pub fn start(&mut self) {
+        if self.started_at.is_none() {
+            self.started_at = Some(std::time::Instant::now());
+        }
+    }
+
+    /// Stop the timer, accumulating elapsed time
+    pub fn stop(&mut self) {
+        if let Some(started) = self.started_at.take() {
+            self.accumulated_secs += started.elapsed().as_secs();
+        }
+        self.manually_stopped = true;
+    }
+
+    /// Reset all timer state
+    pub fn reset(&mut self) {
+        self.started_at = None;
+        self.accumulated_secs = 0;
+        self.manually_started = false;
+        self.manually_stopped = false;
+    }
+
+    /// Build overlay data from current state
+    pub fn to_overlay_data(&self) -> baras_overlay::OperationTimerData {
+        baras_overlay::OperationTimerData {
+            elapsed_secs: self.elapsed_secs(),
+            is_running: self.is_running(),
+            operation_name: self.operation_name.clone(),
+        }
+    }
 }
 
 /// Updates sent to the overlay system
@@ -153,6 +241,8 @@ pub enum OverlayUpdate {
     DotTrackerUpdated(DotTrackerData),
     /// Encounter notes (sent when entering an area with boss definitions)
     NotesUpdated(NotesData),
+    /// Operation timer update (persistent across encounters)
+    OperationTimerUpdated(baras_overlay::OperationTimerData),
     /// Clear all overlay data (sent when switching files)
     ClearAllData,
     /// Local player entered conversation - temporarily hide overlays
@@ -317,6 +407,17 @@ impl SignalHandler for CombatSignalHandler {
                     let _ = self.session_event_tx.send(SessionEvent::AreaChanged);
                     // Trigger area definition reload (will send notes or clear them)
                     let _ = self.cmd_tx.try_send(ServiceCommand::ReloadAreaDefinitions(*area_id));
+
+                    // Update operation timer context with operation name
+                    if baras_core::game_data::is_operation(*area_id) {
+                        let op_name = baras_core::game_data::get_operation_name(*area_id)
+                            .map(|s| s.to_string());
+                        let _ = self.cmd_tx.try_send(
+                            ServiceCommand::SetOperationTimerContext {
+                                operation_name: op_name,
+                            },
+                        );
+                    }
                 }
             }
             GameSignal::BossEncounterDetected {
@@ -336,6 +437,16 @@ impl SignalHandler for CombatSignalHandler {
                                 let _ = self.overlay_tx.try_send(OverlayUpdate::NotesUpdated(notes_data));
                             }
                         }
+                    }
+                }
+
+                // Auto-start operation timer on first boss pull in an operation
+                // Start directly (not via command channel) to avoid 1-second tick delay
+                let area_id = self.shared.current_area_id.load(Ordering::SeqCst);
+                if baras_core::game_data::is_operation(area_id) {
+                    let mut timer = self.shared.operation_timer.lock().unwrap();
+                    if !timer.is_running() && !timer.manually_stopped {
+                        timer.start();
                     }
                 }
             }
@@ -877,6 +988,10 @@ impl CombatService {
 
         self.start_watcher().await;
 
+        // Operation timer tick interval - 1 second precision
+        let mut op_timer_interval = tokio::time::interval(std::time::Duration::from_secs(1));
+        op_timer_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
         loop {
             tokio::select! {
                 cmd = self.cmd_rx.recv() => {
@@ -981,6 +1096,36 @@ impl CombatService {
                                 let _ = self.overlay_tx.try_send(OverlayUpdate::NotesUpdated(NotesData::default()));
                             }
                         }
+                        ServiceCommand::StartOperationTimer => {
+                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            timer.manually_started = true;
+                            timer.manually_stopped = false;
+                            timer.start();
+                            drop(timer);
+                            self.emit_operation_timer_tick();
+                        }
+                        ServiceCommand::StopOperationTimer => {
+                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            timer.stop();
+                            drop(timer);
+                            self.emit_operation_timer_tick();
+                            // Also send final state to overlay
+                            let data = self.shared.operation_timer.lock().unwrap().to_overlay_data();
+                            let _ = self.overlay_tx.try_send(OverlayUpdate::OperationTimerUpdated(data));
+                        }
+                        ServiceCommand::ResetOperationTimer => {
+                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            timer.reset();
+                            drop(timer);
+                            self.emit_operation_timer_tick();
+                            // Send cleared state to overlay
+                            let data = self.shared.operation_timer.lock().unwrap().to_overlay_data();
+                            let _ = self.overlay_tx.try_send(OverlayUpdate::OperationTimerUpdated(data));
+                        }
+                        ServiceCommand::SetOperationTimerContext { operation_name } => {
+                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            timer.operation_name = operation_name;
+                        }
                     }
                 }
                 // Fallback poll: check if the pending file has content.
@@ -994,6 +1139,15 @@ impl CombatService {
                     }
                 } => {
                     self.check_pending_file().await;
+                }
+                // Operation timer tick: emit current time every second while running
+                _ = op_timer_interval.tick() => {
+                    let is_running = self.shared.operation_timer.lock()
+                        .map(|t| t.is_running())
+                        .unwrap_or(false);
+                    if is_running {
+                        self.emit_operation_timer_tick();
+                    }
                 }
             }
         }
@@ -1066,6 +1220,24 @@ impl CombatService {
         
         // No notes found - send empty to clear the overlay
         let _ = self.overlay_tx.try_send(OverlayUpdate::NotesUpdated(NotesData::default()));
+    }
+
+    /// Emit the current operation timer state to the frontend via Tauri event
+    /// and to the overlay via the overlay update channel.
+    fn emit_operation_timer_tick(&self) {
+        let timer = self.shared.operation_timer.lock().unwrap();
+        let data = timer.to_overlay_data();
+        drop(timer);
+
+        // Send to frontend (session box UI)
+        let _ = self.app_handle.emit("operation-timer-tick", serde_json::json!({
+            "elapsed_secs": data.elapsed_secs,
+            "is_running": data.is_running,
+            "operation_name": data.operation_name,
+        }));
+
+        // Send to overlay
+        let _ = self.overlay_tx.try_send(OverlayUpdate::OperationTimerUpdated(data));
     }
 
     async fn on_directory_changed(&mut self) {

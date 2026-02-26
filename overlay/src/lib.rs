@@ -92,6 +92,10 @@ pub use overlays::{
     NotesConfig,
     NotesData,
     NotesOverlay,
+    // Operation timer overlay
+    OperationTimerConfig,
+    OperationTimerData,
+    OperationTimerOverlay,
     Overlay,
     OverlayConfigUpdate,
     OverlayData,

@@ -370,6 +370,23 @@ async fn process_overlay_update(
                     .await;
             }
         }
+        OverlayUpdate::OperationTimerUpdated(timer_data) => {
+            let tx = {
+                let state = match overlay_state.lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                state.get_operation_timer_tx().cloned()
+            };
+
+            if let Some(tx) = tx {
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(
+                        OverlayData::OperationTimer(timer_data),
+                    ))
+                    .await;
+            }
+        }
         OverlayUpdate::CombatStarted => {
             // Could show overlay or clear entries
         }
@@ -496,6 +513,14 @@ async fn process_overlay_update(
                 // Combat time overlay
                 if let Some(tx) = state.get_combat_time_tx() {
                     channels.push((tx.clone(), OverlayData::CombatTime(Default::default())));
+                }
+
+                // Operation timer overlay (clear display, timer state lives in service)
+                if let Some(tx) = state.get_operation_timer_tx() {
+                    channels.push((
+                        tx.clone(),
+                        OverlayData::OperationTimer(Default::default()),
+                    ));
                 }
 
                 channels

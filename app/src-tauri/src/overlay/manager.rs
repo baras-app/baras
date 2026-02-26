@@ -15,8 +15,8 @@ use super::spawn::{
     create_alerts_overlay, create_boss_health_overlay, create_challenges_overlay,
     create_combat_time_overlay, create_cooldowns_overlay, create_dot_tracker_overlay,
     create_effects_a_overlay, create_effects_b_overlay, create_metric_overlay,
-    create_notes_overlay, create_personal_overlay, create_raid_overlay, create_timers_a_overlay,
-    create_timers_b_overlay,
+    create_notes_overlay, create_operation_timer_overlay, create_personal_overlay,
+    create_raid_overlay, create_timers_a_overlay, create_timers_b_overlay,
 };
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
 use super::types::{MetricType, OverlayType};
@@ -117,6 +117,14 @@ impl OverlayManager {
                 let ct_config = settings.combat_time.clone();
                 create_combat_time_overlay(position, ct_config, settings.combat_time_opacity)?
             }
+            OverlayType::OperationTimer => {
+                let ot_config = settings.operation_timer.clone();
+                create_operation_timer_overlay(
+                    position,
+                    ot_config,
+                    settings.operation_timer_opacity,
+                )?
+            }
         };
 
         Ok(SpawnResult {
@@ -192,6 +200,9 @@ impl OverlayManager {
                         },
                     )))
                     .await;
+            }
+            OverlayType::OperationTimer => {
+                // Operation timer gets data via dedicated tick task, not initial combat data
             }
             OverlayType::Raid
             | OverlayType::BossHealth
@@ -409,6 +420,20 @@ impl OverlayManager {
                 };
                 OverlayConfigUpdate::CombatTime(ct_config, settings.combat_time_opacity, eu)
             }
+            OverlayType::OperationTimer => {
+                use baras_overlay::OperationTimerConfig;
+                let cfg = &settings.operation_timer;
+                let ot_config = OperationTimerConfig {
+                    show_title: cfg.show_title,
+                    font_scale: cfg.font_scale,
+                    font_color: cfg.font_color,
+                    dynamic_background: cfg.dynamic_background,
+                };
+                OverlayConfigUpdate::OperationTimer(
+                    ot_config,
+                    settings.operation_timer_opacity,
+                )
+            }
         }
     }
 
@@ -585,6 +610,7 @@ impl OverlayManager {
                 "dot_tracker" => OverlayType::DotTracker,
                 "notes" => OverlayType::Notes,
                 "combat_time" => OverlayType::CombatTime,
+                "operation_timer" => OverlayType::OperationTimer,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)
@@ -753,6 +779,7 @@ impl OverlayManager {
                 "dot_tracker" => OverlayType::DotTracker,
                 "notes" => OverlayType::Notes,
                 "combat_time" => OverlayType::CombatTime,
+                "operation_timer" => OverlayType::OperationTimer,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)
@@ -1011,6 +1038,7 @@ impl OverlayManager {
             OverlayType::DotTracker,
             OverlayType::Notes,
             OverlayType::CombatTime,
+            OverlayType::OperationTimer,
         ];
         for mt in MetricType::all() {
             types.push(OverlayType::Metric(*mt));

@@ -55,6 +55,11 @@ pub fn App() -> Element {
     let mut dot_tracker_enabled = use_signal(|| false);
     let mut notes_enabled = use_signal(|| false);
     let mut combat_time_enabled = use_signal(|| false);
+    let mut operation_timer_enabled = use_signal(|| false);
+    // Operation timer state from Tauri events
+    let mut op_timer_secs = use_signal(|| 0u64);
+    let mut op_timer_running = use_signal(|| false);
+    let mut op_timer_name = use_signal(|| None::<String>);
     let mut overlays_visible = use_signal(|| true);
     let mut move_mode = use_signal(|| false);
     let mut rearrange_mode = use_signal(|| false);
@@ -205,6 +210,7 @@ pub fn App() -> Element {
                 &mut dot_tracker_enabled,
                 &mut notes_enabled,
                 &mut combat_time_enabled,
+                &mut operation_timer_enabled,
                 &mut overlays_visible,
                 &mut move_mode,
                 &mut rearrange_mode,
@@ -411,6 +417,26 @@ pub fn App() -> Element {
         closure.forget();
     });
 
+    // Listen for operation timer tick events
+    use_future(move || async move {
+        let closure = Closure::new(move |event: JsValue| {
+            // event.payload has { elapsed_secs, is_running, operation_name }
+            if let Some(payload) = js_sys::Reflect::get(&event, &"payload".into()).ok() {
+                if let Some(secs) = js_sys::Reflect::get(&payload, &"elapsed_secs".into()).ok().and_then(|v| v.as_f64()) {
+                    op_timer_secs.set(secs as u64);
+                }
+                if let Some(running) = js_sys::Reflect::get(&payload, &"is_running".into()).ok().and_then(|v| v.as_bool()) {
+                    op_timer_running.set(running);
+                }
+                let name = js_sys::Reflect::get(&payload, &"operation_name".into()).ok()
+                    .and_then(|v| v.as_string());
+                op_timer_name.set(name);
+            }
+        });
+        api::tauri_listen("operation-timer-tick", &closure).await;
+        closure.forget();
+    });
+
     // Listen for auto-hidden toast events (from hotkey/tray show while auto-hidden)
     use_future(move || async move {
         let closure = Closure::new(move |_event: JsValue| {
@@ -453,6 +479,7 @@ pub fn App() -> Element {
     let dot_tracker_on = dot_tracker_enabled();
     let notes_on = notes_enabled();
     let combat_time_on = combat_time_enabled();
+    let operation_timer_on = operation_timer_enabled();
     let any_enabled = enabled_map.values().any(|&v| v)
         || personal_on
         || raid_on
@@ -466,7 +493,8 @@ pub fn App() -> Element {
         || cooldowns_on
         || dot_tracker_on
         || notes_on
-        || combat_time_on;
+        || combat_time_on
+        || operation_timer_on;
     let is_visible = overlays_visible();
     let is_move_mode = move_mode();
     let is_rearrange = rearrange_mode();
@@ -679,7 +707,7 @@ pub fn App() -> Element {
                                                 &mut timers_b_enabled, &mut challenges_enabled, &mut alerts_enabled,
                                                 &mut effects_a_enabled, &mut effects_b_enabled,
                                                 &mut cooldowns_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
-                                                &mut combat_time_enabled,
+                                                &mut combat_time_enabled, &mut operation_timer_enabled,
                                                 &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                                         }
                                     }
@@ -1047,10 +1075,64 @@ pub fn App() -> Element {
                                 }
                             }
 
-                            // ── Settings row: alacrity/latency + notes selector ──
+                            // ── Settings row: alacrity/latency + op timer + notes selector ──
                             div { class: "session-settings-row",
-                                // Left: player stats (alacrity / latency)
+                                // Player stats (alacrity / latency)
                                 PlayerStatsBar {}
+
+                                // Divider
+                                span { class: "session-settings-divider" }
+
+                                // Operation timer
+                                {
+                                    let secs = op_timer_secs();
+                                    let running = op_timer_running();
+                                    let timer_str = if secs >= 3600 {
+                                        format!("{}:{:02}:{:02}", secs / 3600, (secs % 3600) / 60, secs % 60)
+                                    } else {
+                                        format!("{}:{:02}", secs / 60, secs % 60)
+                                    };
+                                    rsx! {
+                                        div { class: "session-op-timer",
+                                            label { class: "op-timer-label", "Op Timer" }
+                                            span {
+                                                class: if running { "op-timer-display running" } else { "op-timer-display" },
+                                                "{timer_str}"
+                                            }
+                                            button {
+                                                class: "btn btn-op-timer",
+                                                title: if running { "Stop" } else if secs > 0 { "Resume" } else { "Start" },
+                                                onclick: move |_| {
+                                                    let is_running = running;
+                                                    spawn(async move {
+                                                        if is_running {
+                                                            api::stop_operation_timer().await;
+                                                        } else {
+                                                            api::start_operation_timer().await;
+                                                        }
+                                                    });
+                                                },
+                                                if running {
+                                                    i { class: "fa-solid fa-pause" }
+                                                } else {
+                                                    i { class: "fa-solid fa-play" }
+                                                }
+                                            }
+                                            if secs > 0 || running {
+                                                button {
+                                                    class: "btn btn-op-timer btn-op-timer-reset",
+                                                    title: "Reset",
+                                                    onclick: move |_| {
+                                                        spawn(async move {
+                                                            api::reset_operation_timer().await;
+                                                        });
+                                                    },
+                                                    i { class: "fa-solid fa-rotate-left" }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
 
                                 // Divider
                                 span { class: "session-settings-divider" }
@@ -1240,7 +1322,7 @@ pub fn App() -> Element {
                                                             &mut timers_b_enabled, &mut challenges_enabled, &mut alerts_enabled,
                                                             &mut effects_a_enabled, &mut effects_b_enabled,
                                                             &mut cooldowns_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
-                                                            &mut combat_time_enabled,
+                                                            &mut combat_time_enabled, &mut operation_timer_enabled,
                                                             &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                                                     }
                                                 }
@@ -1381,6 +1463,17 @@ pub fn App() -> Element {
                                             }
                                         }); },
                                         "Combat Time"
+                                    }
+                                    button {
+                                        class: if operation_timer_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                        title: "Displays a persistent timer for the entire operation run",
+                                        onclick: move |_| { spawn(async move {
+                                            if api::toggle_overlay(OverlayType::OperationTimer, operation_timer_on).await {
+                                                operation_timer_enabled.set(!operation_timer_on);
+                                                profile_dirty.set(true);
+                                            }
+                                        }); },
+                                        "Op Timer"
                                     }
                                 }
                             }
@@ -2438,6 +2531,7 @@ fn apply_status(
     dot_tracker_enabled: &mut Signal<bool>,
     notes_enabled: &mut Signal<bool>,
     combat_time_enabled: &mut Signal<bool>,
+    operation_timer_enabled: &mut Signal<bool>,
     overlays_visible: &mut Signal<bool>,
     move_mode: &mut Signal<bool>,
     rearrange_mode: &mut Signal<bool>,
@@ -2461,6 +2555,7 @@ fn apply_status(
     dot_tracker_enabled.set(status.dot_tracker_enabled);
     notes_enabled.set(status.notes_enabled);
     combat_time_enabled.set(status.combat_time_enabled);
+    operation_timer_enabled.set(status.operation_timer_enabled);
     overlays_visible.set(status.overlays_visible);
     move_mode.set(status.move_mode);
     rearrange_mode.set(status.rearrange_mode);

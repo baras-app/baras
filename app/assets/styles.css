@@ -1297,6 +1297,72 @@ button:active {
   50% { opacity: 0.7; }
 }
 
+/* ── Operation timer (session settings row) ── */
+.session-op-timer {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.3em 0.7em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.op-timer-label {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.op-timer-display {
+  font-size: 0.85em;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  min-width: 3.5em;
+  text-align: center;
+  padding: 0.2em 0.4em;
+  background: rgba(50, 50, 55, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  user-select: none;
+}
+
+.op-timer-display.running {
+  color: var(--swtor-gold);
+  border-color: var(--swtor-gold-dim);
+}
+
+.btn-op-timer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 0.7em;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-op-timer:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--swtor-blue-dim);
+}
+
+.btn-op-timer-reset {
+  color: var(--text-muted);
+}
+
+.btn-op-timer-reset:hover {
+  color: var(--swtor-red);
+  border-color: rgba(255, 74, 74, 0.3);
+}
+
 /* ── Player identity row ── */
 .session-identity {
   display: flex;

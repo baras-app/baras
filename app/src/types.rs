@@ -127,6 +127,10 @@ pub struct OverlayStatus {
     pub notes_enabled: bool,
     pub combat_time_running: bool,
     pub combat_time_enabled: bool,
+    #[serde(default)]
+    pub operation_timer_running: bool,
+    #[serde(default)]
+    pub operation_timer_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -262,6 +266,7 @@ pub enum OverlayType {
     DotTracker,
     Notes,
     CombatTime,
+    OperationTimer,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

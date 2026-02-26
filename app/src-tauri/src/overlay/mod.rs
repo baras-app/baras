@@ -38,7 +38,7 @@ pub use state::{OverlayCommand, OverlayHandle, OverlayState, PositionEvent};
 // Spawn functions
 pub use spawn::{
     create_boss_health_overlay, create_combat_time_overlay, create_metric_overlay,
-    create_personal_overlay, create_raid_overlay,
+    create_operation_timer_overlay, create_personal_overlay, create_raid_overlay,
 };
 
 // Manager

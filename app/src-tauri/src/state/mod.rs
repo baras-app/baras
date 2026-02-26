@@ -149,6 +149,9 @@ pub struct SharedState {
 
     /// Cache of area indexes for log files (persisted to disk)
     pub area_cache: RwLock<LogAreaCache>,
+
+    /// Operation timer state (persistent across encounters, lives in service layer)
+    pub operation_timer: Mutex<crate::service::OperationTimerState>,
 }
 
 impl SharedState {
@@ -178,6 +181,8 @@ impl SharedState {
             query_context: QueryContext::new(),
             // Area cache - loaded from disk later in service startup
             area_cache: RwLock::new(LogAreaCache::new()),
+            // Operation timer (defaults to stopped/empty)
+            operation_timer: Mutex::new(crate::service::OperationTimerState::default()),
         }
     }
 

@@ -1924,6 +1924,38 @@ impl Default for CombatTimeOverlayConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Operation Timer Overlay Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Configuration for the operation timer overlay (persistent timer across encounters)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OperationTimerOverlayConfig {
+    /// Whether to show the title (operation name or "Op Timer") and separator
+    #[serde(default = "default_true")]
+    pub show_title: bool,
+    /// Font scale multiplier (0.5 - 3.0, default 1.0)
+    #[serde(default = "default_scaling_factor")]
+    pub font_scale: f32,
+    /// Font color (RGBA)
+    #[serde(default = "default_font_color")]
+    pub font_color: Color,
+    /// When true, background shrinks to fit content
+    #[serde(default)]
+    pub dynamic_background: bool,
+}
+
+impl Default for OperationTimerOverlayConfig {
+    fn default() -> Self {
+        Self {
+            show_title: true,
+            font_scale: 1.0,
+            font_color: overlay_colors::WHITE,
+            dynamic_background: false,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Hotkey Settings
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2046,6 +2078,10 @@ pub struct OverlaySettings {
     pub combat_time: CombatTimeOverlayConfig,
     #[serde(default = "default_opacity")]
     pub combat_time_opacity: u8,
+    #[serde(default)]
+    pub operation_timer: OperationTimerOverlayConfig,
+    #[serde(default = "default_opacity")]
+    pub operation_timer_opacity: u8,
     /// Auto-hide overlays when local player is in a conversation
     #[serde(default)]
     pub hide_during_conversations: bool,
@@ -2097,6 +2133,8 @@ impl Default for OverlaySettings {
             notes_opacity: 180,
             combat_time: CombatTimeOverlayConfig::default(),
             combat_time_opacity: 180,
+            operation_timer: OperationTimerOverlayConfig::default(),
+            operation_timer_opacity: 180,
             hide_during_conversations: false,
             hide_when_not_live: false,
         }
@@ -2664,9 +2702,13 @@ impl CombatLogSortColumn {
             CombatLogSortColumn::Type => "effect_type_id",
             CombatLogSortColumn::Ability => "ability_name",
             CombatLogSortColumn::Effect => "effect_name",
-            CombatLogSortColumn::Value => "COALESCE(dmg_effective, 0) + COALESCE(heal_effective, 0)",
+            CombatLogSortColumn::Value => {
+                "COALESCE(dmg_effective, 0) + COALESCE(heal_effective, 0)"
+            }
             CombatLogSortColumn::Absorbed => "COALESCE(dmg_absorbed, 0)",
-            CombatLogSortColumn::Overheal => "GREATEST(COALESCE(heal_amount, 0) - COALESCE(heal_effective, 0), 0)",
+            CombatLogSortColumn::Overheal => {
+                "GREATEST(COALESCE(heal_amount, 0) - COALESCE(heal_effective, 0), 0)"
+            }
             CombatLogSortColumn::Threat => "COALESCE(threat, 0.0)",
         }
     }

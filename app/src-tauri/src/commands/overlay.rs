@@ -43,6 +43,8 @@ pub struct OverlayStatusResponse {
     pub notes_enabled: bool,
     pub combat_time_running: bool,
     pub combat_time_enabled: bool,
+    pub operation_timer_running: bool,
+    pub operation_timer_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -177,6 +179,7 @@ pub async fn get_overlay_status(
         dot_tracker_running,
         notes_running,
         combat_time_running,
+        operation_timer_running,
         move_mode,
         rearrange_mode,
     ) = {
@@ -196,6 +199,7 @@ pub async fn get_overlay_status(
             s.is_running(OverlayType::DotTracker),
             s.is_running(OverlayType::Notes),
             s.is_combat_time_running(),
+            s.is_operation_timer_running(),
             s.move_mode,
             s.rearrange_mode,
         )
@@ -222,6 +226,7 @@ pub async fn get_overlay_status(
     let dot_tracker_enabled = config.overlay_settings.is_enabled("dot_tracker");
     let notes_enabled = config.overlay_settings.is_enabled("notes");
     let combat_time_enabled = config.overlay_settings.is_enabled("combat_time");
+    let operation_timer_enabled = config.overlay_settings.is_enabled("operation_timer");
 
     Ok(OverlayStatusResponse {
         running: running_metric_types,
@@ -252,6 +257,8 @@ pub async fn get_overlay_status(
         notes_enabled,
         combat_time_running,
         combat_time_enabled,
+        operation_timer_running,
+        operation_timer_enabled,
         overlays_visible: config.overlay_settings.overlays_visible,
         move_mode,
         rearrange_mode,
@@ -295,6 +302,31 @@ pub async fn preview_overlay_settings(
     }
 
     Ok(true)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Operation Timer Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn start_operation_timer(
+    service: State<'_, ServiceHandle>,
+) -> Result<(), String> {
+    service.start_operation_timer().await
+}
+
+#[tauri::command]
+pub async fn stop_operation_timer(
+    service: State<'_, ServiceHandle>,
+) -> Result<(), String> {
+    service.stop_operation_timer().await
+}
+
+#[tauri::command]
+pub async fn reset_operation_timer(
+    service: State<'_, ServiceHandle>,
+) -> Result<(), String> {
+    service.reset_operation_timer().await
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -150,6 +150,8 @@ pub enum OverlayType {
     Notes,
     /// Standalone combat time display
     CombatTime,
+    /// Persistent operation timer (tracks entire raid run)
+    OperationTimer,
 }
 
 impl OverlayType {
@@ -170,6 +172,7 @@ impl OverlayType {
             OverlayType::DotTracker => "dot_tracker",
             OverlayType::Notes => "notes",
             OverlayType::CombatTime => "combat_time",
+            OverlayType::OperationTimer => "operation_timer",
         }
     }
 
@@ -190,6 +193,7 @@ impl OverlayType {
             OverlayType::DotTracker => "baras-dot-tracker".to_string(),
             OverlayType::Notes => "baras-notes".to_string(),
             OverlayType::CombatTime => "baras-combat-time".to_string(),
+            OverlayType::OperationTimer => "baras-operation-timer".to_string(),
         }
     }
 
@@ -210,6 +214,7 @@ impl OverlayType {
             OverlayType::DotTracker => (50, 650),
             OverlayType::Notes => (950, 550),
             OverlayType::CombatTime => (400, 100),
+            OverlayType::OperationTimer => (400, 160),
         }
     }
 }

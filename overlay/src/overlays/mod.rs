@@ -19,6 +19,7 @@ mod effects;
 mod effects_ab;
 mod metric;
 mod notes;
+mod operation_timer;
 mod personal;
 mod raid;
 mod timers;
@@ -30,6 +31,7 @@ pub use challenges::{ChallengeData, ChallengeEntry, ChallengeOverlay, PlayerCont
 pub use cooldowns::{CooldownConfig, CooldownData, CooldownEntry, CooldownOverlay};
 pub use dot_tracker::{DotEntry, DotTarget, DotTrackerConfig, DotTrackerData, DotTrackerOverlay};
 pub use notes::{NotesConfig, NotesData, NotesOverlay};
+pub use operation_timer::{OperationTimerConfig, OperationTimerData, OperationTimerOverlay};
 pub use effects::{EffectEntry, EffectsData, EffectsOverlay};
 pub use effects_ab::{
     EffectABEntry, EffectsABConfig, EffectsABData, EffectsABOverlay, EffectsLayout,
@@ -113,6 +115,8 @@ pub enum OverlayData {
     Notes(NotesData),
     /// Standalone combat time display
     CombatTime(CombatTimeData),
+    /// Operation timer (persistent across encounters)
+    OperationTimer(OperationTimerData),
 }
 
 /// Configuration updates that can be sent to overlays
@@ -151,6 +155,8 @@ pub enum OverlayConfigUpdate {
     Notes(NotesConfig, u8, bool),
     /// Config for combat time overlay (+ background alpha, european)
     CombatTime(CombatTimeConfig, u8, bool),
+    /// Config for operation timer overlay (+ background alpha)
+    OperationTimer(OperationTimerConfig, u8),
 }
 
 /// Position information for an overlay

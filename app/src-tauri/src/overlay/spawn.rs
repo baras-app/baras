@@ -64,14 +64,15 @@ use baras_core::context::{
 use baras_overlay::{
     AlertsOverlay, BossHealthOverlay, ChallengeOverlay, CombatTimeConfig, CombatTimeOverlay,
     CooldownConfig, CooldownOverlay, DotTrackerConfig, DotTrackerOverlay, EffectsABConfig,
-    EffectsABOverlay, MetricOverlay, NotesConfig, NotesOverlay, Overlay, OverlayConfig,
-    PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction,
-    TimerOverlay,
+    EffectsABOverlay, MetricOverlay, NotesConfig, NotesOverlay, OperationTimerConfig,
+    OperationTimerOverlay, Overlay, OverlayConfig, PersonalOverlay, RaidGridLayout, RaidOverlay,
+    RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
 };
 use baras_types::{
     CombatTimeOverlayConfig as TypesCombatTimeConfig, CooldownTrackerConfig,
     DotTrackerConfig as TypesDotTrackerConfig, EffectsAConfig as TypesEffectsAConfig,
     EffectsBConfig as TypesEffectsBConfig, NotesOverlayConfig as TypesNotesOverlayConfig,
+    OperationTimerOverlayConfig as TypesOperationTimerConfig,
 };
 
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
@@ -1021,6 +1022,46 @@ pub fn create_combat_time_overlay(
     let factory = move || {
         CombatTimeOverlay::new(config, overlay_config, background_alpha)
             .map_err(|e| format!("Failed to create combat time overlay: {}", e))
+    };
+
+    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
+
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
+}
+
+/// Create and spawn the operation timer overlay
+pub fn create_operation_timer_overlay(
+    position: OverlayPositionConfig,
+    ot_config: TypesOperationTimerConfig,
+    background_alpha: u8,
+) -> Result<OverlayHandle, String> {
+    let config = OverlayConfig {
+        x: position.x,
+        y: position.y,
+        width: position.width,
+        height: position.height,
+        namespace: "baras-operation-timer".to_string(),
+        click_through: true,
+        target_monitor_id: position.monitor_id.clone(),
+    };
+
+    let kind = OverlayType::OperationTimer;
+
+    let overlay_config = OperationTimerConfig {
+        show_title: ot_config.show_title,
+        font_scale: ot_config.font_scale,
+        font_color: ot_config.font_color,
+        dynamic_background: ot_config.dynamic_background,
+    };
+
+    let factory = move || {
+        OperationTimerOverlay::new(config, overlay_config, background_alpha)
+            .map_err(|e| format!("Failed to create operation timer overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;

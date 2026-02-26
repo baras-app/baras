@@ -129,6 +129,25 @@ pub async fn toggle_overlay(kind: OverlayType, currently_enabled: bool) -> bool 
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Operation Timer
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Start the operation timer manually
+pub async fn start_operation_timer() {
+    invoke("start_operation_timer", JsValue::NULL).await;
+}
+
+/// Stop the operation timer
+pub async fn stop_operation_timer() {
+    invoke("stop_operation_timer", JsValue::NULL).await;
+}
+
+/// Reset the operation timer
+pub async fn reset_operation_timer() {
+    invoke("reset_operation_timer", JsValue::NULL).await;
+}
+
 /// Show all enabled overlays
 pub async fn show_all_overlays() -> bool {
     let result = invoke("show_all_overlays", JsValue::NULL).await;

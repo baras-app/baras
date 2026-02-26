@@ -1499,4 +1499,54 @@ impl ServiceHandle {
 
         Ok(())
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Operation Timer
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Start the operation timer manually
+    pub async fn start_operation_timer(&self) -> Result<(), String> {
+        self.cmd_tx
+            .send(super::ServiceCommand::StartOperationTimer)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    /// Stop the operation timer
+    pub async fn stop_operation_timer(&self) -> Result<(), String> {
+        self.cmd_tx
+            .send(super::ServiceCommand::StopOperationTimer)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    /// Reset the operation timer
+    pub async fn reset_operation_timer(&self) -> Result<(), String> {
+        self.cmd_tx
+            .send(super::ServiceCommand::ResetOperationTimer)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    /// Get the current operation timer state
+    pub fn operation_timer_state(&self) -> super::OperationTimerState {
+        // Return a snapshot copy - can't return the actual state due to mutex
+        let timer = self.shared.operation_timer.lock().unwrap();
+        super::OperationTimerState {
+            started_at: timer.started_at,
+            accumulated_secs: timer.accumulated_secs,
+            manually_started: timer.manually_started,
+            manually_stopped: timer.manually_stopped,
+            operation_name: timer.operation_name.clone(),
+        }
+    }
+
+    /// Check if the operation timer is currently running
+    pub fn is_operation_timer_running(&self) -> bool {
+        self.shared
+            .operation_timer
+            .lock()
+            .map(|t| t.is_running())
+            .unwrap_or(false)
+    }
 }

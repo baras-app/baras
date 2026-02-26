@@ -222,6 +222,9 @@ pub fn run() {
             commands::clear_raid_registry,
             commands::swap_raid_slots,
             commands::remove_raid_slot,
+            commands::start_operation_timer,
+            commands::stop_operation_timer,
+            commands::reset_operation_timer,
             // Service commands
             commands::get_log_files,
             commands::start_tailing,
