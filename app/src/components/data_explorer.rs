@@ -1231,7 +1231,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     });
 
     // Memoized role icon lookup from overview data (player name -> role_icon)
-    let role_icon_lookup = use_memo(move || {
+    let _role_icon_lookup = use_memo(move || {
         overview_data
             .read()
             .iter()
@@ -1822,16 +1822,11 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                             }
                                                             if let Some(icon_name) = &row.class_icon {
                                                                 if let Some(icon_asset) = get_class_icon(icon_name) {
-                                                                    {
-                                                                        let class_css = icon_name.trim_end_matches(".png");
-                                                                        rsx! {
-                                                                            img {
-                                                                                class: "class-icon class-{class_css}",
-                                                                                src: *icon_asset,
-                                                                                title: "{row.discipline_name.as_deref().unwrap_or(\"\")}",
-                                                                                alt: ""
-                                                                            }
-                                                                        }
+                                                                    img {
+                                                                        class: "class-icon",
+                                                                        src: *icon_asset,
+                                                                        title: "{row.discipline_name.as_deref().unwrap_or(\"\")}",
+                                                                        alt: ""
                                                                     }
                                                                 }
                                                             }
@@ -1998,7 +1993,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                 let is_selected = selected_source.read().as_ref() == Some(&name);
                                                 let is_npc = entity.entity_type == "Npc";
                                                 let class_icon = class_icon_lookup().get(&name).cloned();
-                                                let role_icon = role_icon_lookup().get(&name).cloned();
                                                 let per_sec = entity.total_value / duration;
                                                 // Color class for entity value based on tab
                                                 let value_class = match mode {
@@ -2011,13 +2005,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                     }
                                                     _ => "entity-value",
                                                 };
-                                                // CSS class for role-based icon tinting
-                                                let icon_class = match role_icon.as_deref() {
-                                                    Some("icon_tank.png") => "entity-class-icon role-tank",
-                                                    Some("icon_heal.png") => "entity-class-icon role-healer",
-                                                    Some("icon_dps.png") => "entity-class-icon role-dps",
-                                                    _ => "entity-class-icon",
-                                                };
+                                                let icon_class = "entity-class-icon";
                                                 rsx! {
                                                     div {
                                                         class: if is_selected { "entity-row selected" } else if is_npc { "entity-row npc" } else { "entity-row" },

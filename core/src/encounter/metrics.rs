@@ -108,7 +108,7 @@ impl EntityMetrics {
             discipline: self.discipline,
             discipline_name: self.discipline_name.clone(),
             class_name: self.class_name.clone(),
-            class_icon: self.discipline.map(|d| d.class().icon_name().to_string()),
+            class_icon: self.discipline.map(|d| d.icon_name().to_string()),
             role_icon: self.discipline.map(|d| d.role().icon_name().to_string()),
 
             // Damage dealing

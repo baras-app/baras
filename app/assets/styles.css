@@ -3472,117 +3472,7 @@ details[open] .collapsible-summary::before {
   flex-shrink: 0;
 }
 
-/* Class icon colors using CSS filters - Official SWTOR GUI colors */
-/* Sith Warrior */
-.class-icon.class-juggernaut {
-  filter: brightness(0) saturate(100%) invert(15%) sepia(100%) saturate(5000%)
-    hue-rotate(350deg);
-}
-
-/* #D30000 */
-.class-icon.class-marauder {
-  filter: brightness(0) saturate(100%) invert(55%) sepia(100%) saturate(2000%)
-    hue-rotate(360deg);
-}
-
-/* #FF6323 */
-
-/* Sith Inquisitor */
-.class-icon.class-sorcerer {
-  filter: brightness(0) saturate(100%) invert(55%) sepia(100%) saturate(2000%)
-    hue-rotate(250deg);
-}
-
-/* #BD3CFF */
-.class-icon.class-assassin {
-  filter: brightness(0) saturate(100%) invert(35%) sepia(100%) saturate(2000%)
-    hue-rotate(300deg);
-}
-
-/* #DE2084 */
-
-/* Bounty Hunter */
-.class-icon.class-powertech {
-  filter: brightness(0) saturate(100%) invert(85%) sepia(50%) saturate(500%)
-    hue-rotate(350deg);
-}
-
-/* #FFDB8C */
-.class-icon.class-mercenary {
-  filter: brightness(0) saturate(100%) invert(25%) sepia(100%) saturate(2000%)
-    hue-rotate(90deg);
-}
-
-/* #007600 */
-
-/* Imperial Agent */
-.class-icon.class-operative {
-  filter: brightness(0) saturate(100%) invert(55%) sepia(100%) saturate(1000%)
-    hue-rotate(25deg);
-}
-
-/* #A6A200 */
-.class-icon.class-sniper {
-  filter: brightness(0) saturate(100%) invert(45%) sepia(30%) saturate(800%)
-    hue-rotate(320deg);
-}
-
-/* #B0625C */
-
-/* Jedi Consular */
-.class-icon.class-sage {
-  filter: brightness(0) saturate(100%) invert(80%) sepia(100%) saturate(1500%)
-    hue-rotate(10deg);
-}
-
-/* #FBE700 */
-.class-icon.class-shadow {
-  filter: brightness(0) saturate(100%) invert(70%) sepia(100%) saturate(2000%)
-    hue-rotate(80deg);
-}
-
-/* #00F331 */
-
-/* Jedi Knight */
-.class-icon.class-guardian {
-  filter: brightness(0) saturate(100%) invert(75%) sepia(100%) saturate(1500%)
-    hue-rotate(130deg);
-}
-
-/* #10FDE7 */
-.class-icon.class-sentinel {
-  filter: brightness(0) saturate(100%) invert(40%) sepia(100%) saturate(2000%)
-    hue-rotate(190deg);
-}
-
-/* #0086FE */
-
-/* Trooper */
-.class-icon.class-commando {
-  filter: brightness(0) saturate(100%) invert(65%) sepia(50%) saturate(600%)
-    hue-rotate(50deg);
-}
-
-/* #8FC255 */
-.class-icon.class-vanguard {
-  filter: brightness(0) invert(100%);
-}
-
-/* #FFFFFF */
-
-/* Smuggler */
-.class-icon.class-scoundrel {
-  filter: brightness(0) saturate(100%) invert(70%) sepia(40%) saturate(600%)
-    hue-rotate(15deg);
-}
-
-/* #BDB252 */
-.class-icon.class-gunslinger {
-  filter: brightness(0) saturate(100%) invert(75%) sepia(20%) saturate(400%)
-    hue-rotate(130deg);
-}
-
-/* #7EB7B5 */
+/* Discipline icons render with their original colors - no CSS tinting needed */
 
 /* Role icons */
 .player-name .role-icon {
@@ -6897,17 +6787,7 @@ details[open] .collapsible-summary::before {
   flex-shrink: 0;
 }
 
-.entity-class-icon.role-dps {
-  filter: brightness(0.5) sepia(1) hue-rotate(320deg) saturate(6) brightness(0.9);
-}
-
-.entity-class-icon.role-healer {
-  filter: brightness(0.7) sepia(1) hue-rotate(70deg) saturate(5) brightness(1.1);
-}
-
-.entity-class-icon.role-tank {
-  filter: brightness(0.5) sepia(1) hue-rotate(170deg) saturate(6) brightness(0.9);
-}
+/* Discipline icons render with their original colors - no role tinting needed */
 
 .entity-row .entity-value {
   font-size: 0.8em;

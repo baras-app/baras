@@ -2449,7 +2449,7 @@ async fn build_raid_frame_data(
                 .unwrap_or(PlayerRole::Dps);
 
             let class_icon = discipline
-                .map(|d| d.class().icon_name().to_string());
+                .map(|d| d.icon_name().to_string());
 
             frames.push(RaidFrame {
                 slot,

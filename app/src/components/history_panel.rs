@@ -723,16 +723,11 @@ fn EncounterDetail(
                                             }
                                             if let Some(icon_name) = &player.class_icon {
                                                 if let Some(icon_asset) = get_class_icon(icon_name) {
-                                                    {
-                                                        let class_css = icon_name.trim_end_matches(".png");
-                                                        rsx! {
-                                                            img {
-                                                                class: "class-icon class-{class_css}",
-                                                                src: *icon_asset,
-                                                                title: "{player.discipline_name.as_deref().unwrap_or(\"\")}",
-                                                                alt: ""
-                                                            }
-                                                        }
+                                                    img {
+                                                        class: "class-icon",
+                                                        src: *icon_asset,
+                                                        title: "{player.discipline_name.as_deref().unwrap_or(\"\")}",
+                                                        alt: ""
                                                     }
                                                 }
                                             }

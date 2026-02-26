@@ -290,6 +290,77 @@ impl Discipline {
         }
     }
 
+    /// Get the icon filename for this discipline (without path)
+    pub const fn icon_name(&self) -> &'static str {
+        use Discipline::*;
+        match self {
+            // Sorcerer
+            Lightning => "lightning.png",
+            Madness => "madness.png",
+            Corruption => "corruption.png",
+            // Assassin
+            Hatred => "hatred.png",
+            Darkness => "darkness.png",
+            Deception => "deception.png",
+            // Juggernaut
+            Vengeance => "vengeance.png",
+            Immortal => "immortal.png",
+            Rage => "rage.png",
+            // Marauder
+            Annihilation => "annihilation.png",
+            Carnage => "carnage.png",
+            Fury => "fury.png",
+            // Mercenary
+            Arsenal => "arsenal.png",
+            InnovativeOrdnance => "innovative-ordnance.png",
+            Bodyguard => "bodyguard.png",
+            // Powertech
+            ShieldTech => "shield-tech.png",
+            Pyrotech => "pyrotech.png",
+            AdvancedPrototype => "advanced-prototype.png",
+            // Operative
+            Concealment => "concealment.png",
+            Lethality => "lethality.png",
+            Medicine => "medicine.png",
+            // Sniper
+            Marksmanship => "marksmanship.png",
+            Engineering => "engineering.png",
+            Virulence => "virulence.png",
+            // Sage
+            Telekinetics => "telekinetics.png",
+            Seer => "seer.png",
+            Balance => "balance.png",
+            // Shadow
+            Infiltration => "infiltration.png",
+            KineticCombat => "kinetic-combat.png",
+            Serenity => "serenity.png",
+            // Guardian
+            Focus => "focus.png",
+            Vigilance => "vigilance.png",
+            Defense => "defense.png",
+            // Sentinel
+            Combat => "combat.png",
+            Watchman => "watchman.png",
+            Concentration => "concentration.png",
+            // Commando
+            Gunnery => "gunnery.png",
+            AssaultSpecialist => "assault-specialist.png",
+            CombatMedic => "combat-medic.png",
+            // Vanguard
+            Plasmatech => "plasmatech.png",
+            ShieldSpecialist => "shield-specialist.png",
+            Tactics => "tactics.png",
+            // Scoundrel
+            Scrapper => "scrapper.png",
+            Ruffian => "ruffian.png",
+            Sawbones => "sawbones.png",
+            // Gunslinger
+            Sharpshooter => "sharpshooter.png",
+            Saboteur => "saboteur.png",
+            DirtyFighting => "dirty-fighting.png",
+        }
+    }
+
     /// Get all disciplines in display order (grouped by class)
     pub fn all() -> &'static [Discipline] {
         use Discipline::*;

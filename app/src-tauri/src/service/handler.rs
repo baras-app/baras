@@ -652,7 +652,7 @@ impl ServiceHandle {
                 for p in cache.player_disciplines.values() {
                     if let Some(disc) = Discipline::from_guid(p.discipline_id) {
                         let name = resolve(p.name).to_string();
-                        let class_icon = disc.class().icon_name().to_string();
+                        let class_icon = disc.icon_name().to_string();
                         let role_icon = disc.role().icon_name().to_string();
                         let discipline_name = disc.name().to_string();
                         let class_name = format!("{:?}", disc.class());
