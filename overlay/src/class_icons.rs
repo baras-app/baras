@@ -104,11 +104,58 @@ fn get_icons() -> &'static HashMap<String, ClassIcon> {
     })
 }
 
-/// Get a class icon by name (e.g., "assassin", "guardian", or "assassin.png")
+/// Map discipline icon names to their parent class icon names.
+/// This allows the overlay to resolve discipline-based icon names (e.g., "lightning")
+/// to the corresponding class silhouette PNG (e.g., "sorcerer").
+fn discipline_to_class(name: &str) -> Option<&'static str> {
+    match name {
+        // Sorcerer
+        "lightning" | "madness" | "corruption" => Some("sorcerer"),
+        // Assassin
+        "hatred" | "darkness" | "deception" => Some("assassin"),
+        // Juggernaut
+        "vengeance" | "immortal" | "rage" => Some("juggernaut"),
+        // Marauder
+        "annihilation" | "carnage" | "fury" => Some("marauder"),
+        // Mercenary
+        "arsenal" | "innovative-ordnance" | "bodyguard" => Some("mercenary"),
+        // Powertech
+        "shield-tech" | "pyrotech" | "advanced-prototype" => Some("powertech"),
+        // Operative
+        "concealment" | "lethality" | "medicine" => Some("operative"),
+        // Sniper
+        "marksmanship" | "engineering" | "virulence" => Some("sniper"),
+        // Sage
+        "telekinetics" | "seer" | "balance" => Some("sage"),
+        // Shadow
+        "infiltration" | "kinetic-combat" | "serenity" => Some("shadow"),
+        // Guardian
+        "focus" | "vigilance" | "defense" => Some("guardian"),
+        // Sentinel
+        "combat" | "watchman" | "concentration" => Some("sentinel"),
+        // Commando
+        "gunnery" | "assault-specialist" | "combat-medic" => Some("commando"),
+        // Vanguard
+        "plasmatech" | "shield-specialist" | "tactics" => Some("vanguard"),
+        // Scoundrel
+        "scrapper" | "ruffian" | "sawbones" => Some("scoundrel"),
+        // Gunslinger
+        "sharpshooter" | "saboteur" | "dirty-fighting" => Some("gunslinger"),
+        _ => None,
+    }
+}
+
+/// Get a class icon by name. Accepts class names (e.g., "assassin", "assassin.png")
+/// or discipline names (e.g., "lightning", "lightning.png") which are resolved to
+/// their parent class icon.
 pub fn get_class_icon(name: &str) -> Option<&'static ClassIcon> {
     // Strip .png extension if present
     let key = name.strip_suffix(".png").unwrap_or(name);
-    get_icons().get(key)
+    let icons = get_icons();
+    // Try direct class name lookup first, then fall back to discipline-to-class mapping
+    icons
+        .get(key)
+        .or_else(|| discipline_to_class(key).and_then(|class_key| icons.get(class_key)))
 }
 
 /// Get decoded role icons (lazily initialized)
