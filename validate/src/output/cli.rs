@@ -13,7 +13,9 @@ use chrono::NaiveDateTime;
 pub enum OutputLevel {
     /// Only show summary at end
     Quiet,
-    /// Show timer events and alerts (default)
+    /// Show only timers and phases (default)
+    Timers,
+    /// Show all events: timers, phases, counters, alerts, deaths, challenges
     Normal,
     /// Show all events including non-timer signals
     Verbose,
@@ -21,7 +23,7 @@ pub enum OutputLevel {
 
 impl Default for OutputLevel {
     fn default() -> Self {
-        Self::Normal
+        Self::Timers
     }
 }
 
@@ -183,7 +185,7 @@ impl CliOutput {
         timer_id: &str,
     ) {
         self.timers_started += 1;
-        if self.level < OutputLevel::Normal || !self.should_output() {
+        if self.level < OutputLevel::Timers || !self.should_output() {
             return;
         }
 
@@ -201,7 +203,7 @@ impl CliOutput {
     /// Log timer expiration
     pub fn timer_expire(&mut self, time: NaiveDateTime, name: &str, timer_id: &str) {
         self.timers_expired += 1;
-        if self.level < OutputLevel::Normal || !self.should_output() {
+        if self.level < OutputLevel::Timers || !self.should_output() {
             return;
         }
 
@@ -215,7 +217,7 @@ impl CliOutput {
 
     /// Log timer cancellation
     pub fn timer_cancel(&mut self, time: NaiveDateTime, name: &str, timer_id: &str) {
-        if self.level < OutputLevel::Normal || !self.should_output() {
+        if self.level < OutputLevel::Timers || !self.should_output() {
             return;
         }
 
@@ -235,7 +237,7 @@ impl CliOutput {
         npc_id: i64,
         is_kill_target: bool,
     ) {
-        if self.level < OutputLevel::Normal || !self.should_output() {
+        if self.level < OutputLevel::Timers || !self.should_output() {
             return;
         }
 
@@ -260,7 +262,7 @@ impl CliOutput {
     /// Log alert fired
     pub fn alert(&mut self, time: NaiveDateTime, name: &str, text: &str) {
         self.alerts_fired += 1;
-        if self.level < OutputLevel::Normal || !self.should_output() {
+        if self.level < OutputLevel::Timers || !self.should_output() {
             return;
         }
 
@@ -304,7 +306,7 @@ impl CliOutput {
     /// Log counter change
     pub fn counter_change(&mut self, time: NaiveDateTime, counter_id: &str, old: u32, new: u32) {
         self.counter_changes += 1;
-        if self.level < OutputLevel::Normal || !self.should_output() {
+        if self.level < OutputLevel::Timers || !self.should_output() {
             return;
         }
 
@@ -324,7 +326,7 @@ impl CliOutput {
 
         // Print buffered combat start
         if let Some(start_time) = self.pending_combat_start.take() {
-            if self.level >= OutputLevel::Normal {
+            if self.level >= OutputLevel::Timers {
                 let label = self.bold(&self.green("═══ COMBAT START ═══"));
                 println!("\n{}\n", label);
             }
@@ -334,7 +336,7 @@ impl CliOutput {
             }
         }
 
-        if self.level < OutputLevel::Normal {
+        if self.level < OutputLevel::Timers {
             return;
         }
 
@@ -384,24 +386,24 @@ impl CliOutput {
             });
         }
 
-        if self.level < OutputLevel::Normal || !self.should_output() {
+        if self.level < OutputLevel::Timers || !self.should_output() {
             // Clear pending combat start if we're not outputting
             self.pending_combat_start = None;
             return;
         }
 
-        // Print phase table for this fight
+        // Print phase table for this fight (timers + phases level)
         if !self.phase_spans.is_empty() {
             self.print_phase_table();
         }
 
-        // Print boss HP for this fight
+        // Print boss HP at default level
         if !self.boss_hp.is_empty() {
             self.print_boss_hp_table();
         }
 
-        // Print challenges for this fight
-        if !challenges.is_empty() {
+        // Print challenges only with --full
+        if self.level >= OutputLevel::Normal && !challenges.is_empty() {
             self.print_challenge_table(challenges, duration_secs);
         }
 

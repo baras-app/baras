@@ -20,7 +20,8 @@ use chrono::NaiveDateTime;
 use clap::{Parser, ValueEnum};
 
 use baras_core::boss::{
-    BossEncounterDefinition, ChallengeContext, EntityInfo, load_bosses_with_paths,
+    BossEncounterDefinition, ChallengeContext, EntityInfo, load_bosses_from_dir,
+    load_bosses_with_custom,
 };
 use baras_core::combat_log::{CombatEvent, EntityType, LogParser};
 use baras_core::context::resolve;
@@ -94,7 +95,11 @@ struct Args {
     #[arg(short, long)]
     quiet: bool,
 
-    /// Verbose mode: show all signals including counters
+    /// Full mode: show all events (counters, alerts, deaths, challenges, boss HP)
+    #[arg(short, long)]
+    full: bool,
+
+    /// Verbose mode: show all events including non-timer signals
     #[arg(short, long)]
     verbose: bool,
 
@@ -178,8 +183,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         OutputLevel::Quiet
     } else if args.verbose {
         OutputLevel::Verbose
-    } else {
+    } else if args.full {
         OutputLevel::Normal
+    } else {
+        OutputLevel::Timers
     };
     let mut cli = CliOutput::new(output_level);
 
@@ -202,15 +209,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .transpose()?;
 
     // Load boss definitions
+    // Resolve bundled definitions path (installed app or dev source tree)
     let def_path = args.definitions.clone().unwrap_or_else(|| {
+        // Windows: installed app resources (NSIS currentUser install)
+        if let Some(local_data) = dirs::data_local_dir() {
+            let installed = local_data
+                .join("BARAS")
+                .join("definitions")
+                .join("encounters");
+            if installed.exists() {
+                return installed;
+            }
+        }
+        // Dev fallback: relative to source tree
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
             .join("core/definitions/encounters")
     });
 
-    let bosses_with_paths = load_bosses_with_paths(&def_path)?;
-    let bosses: Vec<&BossEncounterDefinition> = bosses_with_paths.iter().map(|b| &b.boss).collect();
+    // User custom definitions directory (overlays + standalone encounters)
+    let user_dir =
+        dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+
+    // Load bundled definitions, merging with user custom overlays per-file
+    let mut all_bosses: Vec<BossEncounterDefinition> = Vec::new();
+    walk_and_load_definitions(&def_path, user_dir.as_deref(), &mut all_bosses)?;
+
+    // Also load standalone user-created definitions (skip _custom overlays, those are already merged)
+    if let Some(ref ud) = user_dir {
+        if ud.exists() {
+            let user_standalone = load_bosses_from_dir(ud)?;
+            for boss in user_standalone {
+                if !all_bosses.iter().any(|b| b.id == boss.id) {
+                    all_bosses.push(boss);
+                }
+            }
+        }
+    }
+
+    let bosses: Vec<&BossEncounterDefinition> = all_bosses.iter().collect();
 
     // Find the requested boss
     let boss_def = bosses
@@ -714,6 +752,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             event_count,
             &challenge_tracker,
             &player_names,
+            output_level,
         );
     }
 
@@ -907,6 +946,7 @@ fn print_detailed_report(
     event_count: usize,
     challenges: &ChallengeTracker,
     player_names: &HashMap<i64, String>,
+    output_level: OutputLevel,
 ) {
     let log_name = args.log.file_name().unwrap_or_default().to_string_lossy();
 
@@ -949,9 +989,9 @@ fn print_detailed_report(
         }
     }
 
-    // Challenges
+    // Challenges (only with --full)
     let challenge_values = challenges.snapshot();
-    if !challenge_values.is_empty() {
+    if !challenge_values.is_empty() && output_level >= OutputLevel::Normal {
         println!();
         println!("CHALLENGES:");
         println!(
@@ -1079,5 +1119,46 @@ fn format_number(n: i64) -> String {
         format!("{:.1}K", n as f64 / 1_000.0)
     } else {
         n.to_string()
+    }
+}
+
+/// Recursively walk a definitions directory and load each TOML file,
+/// merging with user custom overlays (_custom.toml) when present.
+fn walk_and_load_definitions(
+    dir: &std::path::Path,
+    user_dir: Option<&std::path::Path>,
+    bosses: &mut Vec<BossEncounterDefinition>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if !dir.exists() {
+        return Err(format!("Definitions directory not found: {}", dir.display()).into());
+    }
+
+    walk_and_load_recursive(dir, user_dir, bosses);
+    Ok(())
+}
+
+fn walk_and_load_recursive(
+    dir: &std::path::Path,
+    user_dir: Option<&std::path::Path>,
+    bosses: &mut Vec<BossEncounterDefinition>,
+) {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(e) => {
+            eprintln!("Warning: failed to read directory {}: {}", dir.display(), e);
+            return;
+        }
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            walk_and_load_recursive(&path, user_dir, bosses);
+        } else if path.extension().is_some_and(|e| e == "toml") {
+            match load_bosses_with_custom(&path, user_dir) {
+                Ok(file_bosses) => bosses.extend(file_bosses),
+                Err(e) => eprintln!("Warning: failed to load {}: {}", path.display(), e),
+            }
+        }
     }
 }
