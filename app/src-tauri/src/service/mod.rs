@@ -389,8 +389,9 @@ impl CombatService {
         let (cmd_tx, cmd_rx) = mpsc::channel(32);
 
         let config = AppConfig::load();
-        let directory_index =
-            DirectoryIndex::build_index(&PathBuf::from(&config.log_directory)).unwrap_or_default();
+        // Start with an empty index — start_watcher() will quick-load the newest file
+        // then backfill the rest from a disk cache in the background.
+        let directory_index = DirectoryIndex::new();
 
         // Load effect definitions from builtin and user directories
         let definitions = Self::load_effect_definitions(&app_handle);
@@ -1284,14 +1285,13 @@ impl CombatService {
             return;
         }
 
-        // Build initial index
-        match directory_watcher::build_index(&dir) {
-            Ok((index, newest)) => {
+        // Phase 1: Quick-index only the newest file so the user can start working immediately
+        match directory_watcher::build_index_newest(&dir) {
+            Ok((quick_index, newest)) => {
                 {
                     let mut index_guard = self.shared.directory_index.write().await;
-                    *index_guard = index;
+                    *index_guard = quick_index;
                 }
-                // Notify frontend of rebuilt index
                 let _ = self.app_handle.emit("log-files-changed", ());
 
                 // Auto-load newest file if available
@@ -1300,10 +1300,38 @@ impl CombatService {
                 }
             }
             Err(e) => {
-                error!(directory = %dir.display(), error = %e, "Failed to build directory index - check folder permissions");
+                error!(directory = %dir.display(), error = %e, "Failed to quick-index newest file");
                 let _ = self.app_handle.emit("directory-error", e);
             }
         }
+
+        // Phase 2: Backfill the full index in the background using the disk cache.
+        // This avoids re-opening thousands of files on every startup.
+        let backfill_dir = dir.clone();
+        let backfill_shared = self.shared.clone();
+        let backfill_app_handle = self.app_handle.clone();
+        tokio::task::spawn_blocking(move || {
+            let cache_path = DirectoryIndex::default_cache_path()
+                .unwrap_or_else(|| PathBuf::from("directory_cache.json"));
+            match directory_watcher::build_index_cached(&backfill_dir, &cache_path) {
+                Ok((full_index, _)) => {
+                    let shared = backfill_shared;
+                    let app_handle = backfill_app_handle;
+                    // Use a blocking approach to write into the async RwLock since
+                    // we're on a spawn_blocking thread
+                    let rt = tokio::runtime::Handle::current();
+                    rt.block_on(async {
+                        let mut index_guard = shared.directory_index.write().await;
+                        index_guard.merge_from(full_index);
+                    });
+                    let _ = app_handle.emit("log-files-changed", ());
+                    info!("Background index backfill complete");
+                }
+                Err(e) => {
+                    error!(error = %e, "Background index backfill failed");
+                }
+            }
+        });
 
         let mut watcher = match DirectoryWatcher::new(&dir) {
             Ok(w) => w,
@@ -1485,7 +1513,13 @@ impl CombatService {
             cmd.env("BARAS_LOG_PATH", &log_path);
         }
 
-        let output = cmd.output();
+        // Run subprocess on a blocking thread so it doesn't stall the tokio runtime
+        let output = tokio::task::spawn_blocking(move || cmd.output()).await;
+        // Flatten: JoinError<io::Result<Output>> -> treat JoinError as spawn failure
+        let output = match output {
+            Ok(inner) => inner,
+            Err(e) => Err(std::io::Error::new(std::io::ErrorKind::Other, e)),
+        };
 
         match output {
             Ok(output) if output.status.success() => {
@@ -2111,7 +2145,9 @@ impl CombatService {
 
     async fn refresh_index(&mut self) {
         let log_dir = self.shared.config.read().await.log_directory.clone();
-        if let Ok(index) = DirectoryIndex::build_index(&PathBuf::from(&log_dir)) {
+        let cache_path = DirectoryIndex::default_cache_path()
+            .unwrap_or_else(|| PathBuf::from("directory_cache.json"));
+        if let Ok(index) = DirectoryIndex::build_index_cached(&PathBuf::from(&log_dir), &cache_path) {
             *self.shared.directory_index.write().await = index;
         }
     }

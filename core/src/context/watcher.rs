@@ -105,10 +105,20 @@ fn is_combat_log(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-pub fn build_index(dir: &Path) -> Result<(DirectoryIndex, Option<PathBuf>), String> {
-    let index = DirectoryIndex::build_index(dir)
-        .map_err(|e| format!("Failed to build file index: {}", e))?;
+/// Build the index using a disk cache. Only re-opens files that are new or changed.
+pub fn build_index_cached(
+    dir: &Path,
+    cache_path: &Path,
+) -> Result<(DirectoryIndex, Option<PathBuf>), String> {
+    let index = DirectoryIndex::build_index_cached(dir, cache_path)
+        .map_err(|e| format!("Failed to build cached file index: {}", e))?;
 
     let newest = index.newest_file().map(|f| f.path.clone());
     Ok((index, newest))
+}
+
+/// Quick-index only the newest file in the directory.
+pub fn build_index_newest(dir: &Path) -> Result<(DirectoryIndex, Option<PathBuf>), String> {
+    DirectoryIndex::build_index_newest(dir)
+        .map_err(|e| format!("Failed to quick-index newest file: {}", e))
 }

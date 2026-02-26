@@ -4,6 +4,7 @@ use crate::game_data::effect_type_id;
 use chrono::{NaiveDate, NaiveDateTime};
 use encoding_rs::WINDOWS_1252;
 use hashbrown::HashMap;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Result;
 use std::path::{Path, PathBuf};
@@ -38,6 +39,40 @@ impl LogFileMetaData {
     /// Day of week for display (e.g., "Sunday")
     pub fn day_of_week(&self) -> String {
         self.created_at.format("%A").to_string()
+    }
+}
+
+/// Serializable cache entry for persisting index data to disk.
+/// Avoids re-opening every log file on startup.
+#[derive(Serialize, Deserialize)]
+struct CachedEntry {
+    filename: String,
+    date: NaiveDate,
+    created_at: NaiveDateTime,
+    character_name: Option<String>,
+    file_size: u64,
+    last_event_time: Option<NaiveDateTime>,
+}
+
+/// On-disk cache format
+#[derive(Serialize, Deserialize, Default)]
+struct DirectoryCache {
+    entries: Vec<CachedEntry>,
+}
+
+impl DirectoryCache {
+    fn load(cache_path: &Path) -> Option<Self> {
+        let data = fs::read_to_string(cache_path).ok()?;
+        serde_json::from_str(&data).ok()
+    }
+
+    fn save(&self, cache_path: &Path) {
+        if let Some(parent) = cache_path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        if let Ok(data) = serde_json::to_string(self) {
+            let _ = fs::write(cache_path, data);
+        }
     }
 }
 
@@ -79,6 +114,160 @@ impl DirectoryIndex {
             }
         }
         Ok(index)
+    }
+
+    /// Build the index using a disk cache for previously-seen files.
+    /// Only re-opens files that are new or whose size has changed.
+    /// Saves the updated cache to disk when done.
+    pub fn build_index_cached(dir: &Path, cache_path: &Path) -> Result<Self> {
+        let mut index = Self::new();
+
+        if !dir.exists() {
+            return Ok(index);
+        }
+
+        // Load existing cache into a lookup map (filename -> cached entry)
+        let cached: HashMap<String, CachedEntry> = DirectoryCache::load(cache_path)
+            .unwrap_or_default()
+            .entries
+            .into_iter()
+            .map(|e| (e.filename.clone(), e))
+            .collect();
+
+        let mut files: Vec<_> = fs::read_dir(dir)?
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.path()
+                    .file_name()
+                    .and_then(|f| f.to_str())
+                    .map(|f| f.starts_with("combat_"))
+                    .unwrap_or(false)
+            })
+            .collect();
+        files.sort_by_key(|e| e.file_name());
+
+        for entry in &files {
+            let path = entry.path();
+            let filename = match path.file_name().and_then(|f| f.to_str()) {
+                Some(f) => f.to_string(),
+                None => continue,
+            };
+
+            // Try to use cached data if file size hasn't changed
+            if let Some(ce) = cached.get(&filename) {
+                let current_size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                if current_size == ce.file_size {
+                    // Cache hit - reconstruct entry without opening the file
+                    let session_number = index.compute_session_number(
+                        ce.character_name.as_deref().unwrap_or("Unknown"),
+                        ce.date,
+                    );
+                    let log_entry = LogFileMetaData {
+                        path: path.clone(),
+                        filename: ce.filename.clone(),
+                        date: ce.date,
+                        created_at: ce.created_at,
+                        character_name: ce.character_name.clone(),
+                        session_number,
+                        is_empty: ce.file_size == 0,
+                        file_size: ce.file_size,
+                        last_event_time: ce.last_event_time,
+                    };
+                    index.add_entry(log_entry);
+                    continue;
+                }
+            }
+
+            // Cache miss or size changed - do the full extraction
+            if let Some(log_file) = index.create_entry(&path) {
+                index.add_entry(log_file);
+            }
+        }
+
+        // Save updated cache
+        index.save_cache(cache_path);
+
+        Ok(index)
+    }
+
+    /// Quick-index only the newest file in the directory (by filename sort order).
+    /// Returns the index and the path of the newest file, if any.
+    pub fn build_index_newest(dir: &Path) -> Result<(Self, Option<PathBuf>)> {
+        let mut index = Self::new();
+
+        if !dir.exists() {
+            return Ok((index, None));
+        }
+
+        let mut files: Vec<_> = fs::read_dir(dir)?
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.path()
+                    .file_name()
+                    .and_then(|f| f.to_str())
+                    .map(|f| f.starts_with("combat_"))
+                    .unwrap_or(false)
+            })
+            .collect();
+
+        if files.is_empty() {
+            return Ok((index, None));
+        }
+
+        files.sort_by_key(|e| e.file_name());
+        let newest = files.last().unwrap();
+        let path = newest.path();
+
+        if let Some(log_file) = index.create_entry(&path) {
+            index.add_entry(log_file);
+        }
+
+        Ok((index, Some(path)))
+    }
+
+    /// Merge entries from another index into this one, replacing existing entries.
+    pub fn merge_from(&mut self, other: Self) {
+        // Reset session counts and recompute for the merged set
+        self.session_counts.clear();
+        self.entries.extend(other.entries);
+
+        // Recompute all session numbers after merge
+        // Collect entries sorted by created_at to get consistent numbering
+        let mut all_entries: Vec<LogFileMetaData> =
+            self.entries.drain().map(|(_, v)| v).collect();
+        all_entries.sort_by_key(|e| e.created_at);
+
+        for mut entry in all_entries {
+            entry.session_number = self.compute_session_number(
+                entry.character_name.as_deref().unwrap_or("Unknown"),
+                entry.date,
+            );
+            self.entries.insert(entry.path.clone(), entry);
+        }
+    }
+
+    /// Persist current index state to a JSON cache file.
+    pub fn save_cache(&self, cache_path: &Path) {
+        let entries: Vec<CachedEntry> = self
+            .entries
+            .values()
+            .map(|e| CachedEntry {
+                filename: e.filename.clone(),
+                date: e.date,
+                created_at: e.created_at,
+                character_name: e.character_name.clone(),
+                file_size: e.file_size,
+                last_event_time: e.last_event_time,
+            })
+            .collect();
+
+        let cache = DirectoryCache { entries };
+        cache.save(cache_path);
+    }
+
+    /// Default path for the directory index cache file.
+    pub fn default_cache_path() -> Option<PathBuf> {
+        dirs::config_dir().map(|p| p.join("baras").join("directory_cache.json"))
     }
 
     pub fn create_entry(&mut self, path: &Path) -> Option<LogFileMetaData> {
