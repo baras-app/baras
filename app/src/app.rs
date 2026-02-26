@@ -11,6 +11,7 @@ use crate::components::{
     HotkeyInput, ParselyUploadModal, SettingsPanel, ToastFrame, ToastSeverity, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
+use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::types::{
     CombatLogSessionState, DataExplorerState, EffectsEditorState, EncounterBuilderState,
     LogFileInfo, MainTab, MetricType, OverlaySettings, OverlayStatus, OverlayType,
@@ -273,6 +274,20 @@ pub fn App() -> Element {
         });
         api::tauri_listen("session-updated", &closure).await;
         closure.forget();
+    });
+
+    // Periodic refresh for live session duration (every 60 seconds)
+    use_future(move || async move {
+        loop {
+            gloo_timers::future::TimeoutFuture::new(60_000).await;
+            // Only refresh if live tailing (duration ticks for live sessions)
+            if is_live_tailing() {
+                spawn_local(async move {
+                    let info = api::get_session_info().await;
+                    let _ = session_info.try_write().map(|mut w| *w = info);
+                });
+            }
+        }
     });
 
     // Listen for Parsely upload completion (to update inline UI status)
@@ -870,29 +885,71 @@ pub fn App() -> Element {
                                 }
                             }
 
-                            // Session toolbar: header + upload button
+                            // ── Header row: status + time info + duration badge + combat icon + Parsely ──
                             div { class: "session-toolbar",
-                                if session_ended() || info.stale_session {
-                                    h3 { class: "session-header historical",
-                                        i { class: "fa-solid fa-clock" }
-                                        " Prior Session. Watching for next login..."
-                                    }
-                                } else if live_tailing {
-                                    h3 { class: "session-header live",
-                                        i { class: "fa-solid fa-circle-play" }
-                                        " Live Session"
-                                    }
-                                } else {
-                                    h3 { class: "session-header historical",
-                                        i { class: "fa-solid fa-circle-pause" }
-                                        " Historical Session"
+                                // Left: session status with inline time
+                                div { class: "session-header-left",
+                                    if session_ended() || info.stale_session {
+                                        h3 { class: "session-header historical",
+                                            i { class: "fa-solid fa-clock" }
+                                            " Prior Session"
+                                            if let Some(ref start) = info.session_start {
+                                                span { class: "session-time-inline",
+                                                    " — {start}"
+                                                }
+                                            }
+                                        }
+                                    } else if live_tailing {
+                                        h3 { class: "session-header live",
+                                            i { class: "fa-solid fa-circle-play" }
+                                            " Live Session"
+                                            if let Some(ref start_short) = info.session_start_short {
+                                                span { class: "session-time-inline",
+                                                    " — since {start_short}"
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        h3 { class: "session-header historical",
+                                            i { class: "fa-solid fa-circle-pause" }
+                                            " Historical"
+                                            // Show date range inline
+                                            if let (Some(start), Some(end)) = (&info.session_start, &info.session_end) {
+                                                span { class: "session-time-inline",
+                                                    " — {start} – {end}"
+                                                }
+                                            } else if let Some(ref start) = info.session_start {
+                                                span { class: "session-time-inline",
+                                                    " — {start}"
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
-                                // Right side: player stats + Parsely upload
+                                // Right: duration badge + combat icon + Parsely
                                 div { class: "session-toolbar-right",
-                                    // Player stats for effect duration calculations
-                                    PlayerStatsBar {}
+                                    // Duration badge (always shown)
+                                    if let Some(ref duration) = info.duration_formatted {
+                                        span { class: "session-duration-badge",
+                                            title: "Session duration",
+                                            i { class: "fa-solid fa-stopwatch" }
+                                            " {duration}"
+                                        }
+                                    }
+
+                                    // Combat status icon
+                                    if live_tailing && !session_ended() && !info.stale_session {
+                                        span {
+                                            class: if info.in_combat { "combat-indicator in-combat" } else { "combat-indicator" },
+                                            title: if info.in_combat { "In Combat" } else { "Out of Combat" },
+                                            if info.in_combat {
+                                                i { class: "fa-solid fa-burst" }
+                                            } else {
+                                                i { class: "fa-solid fa-shield-halved" }
+                                            }
+                                        }
+                                    }
 
                                     // Parsely upload button
                                     if !current_file.is_empty() {
@@ -907,7 +964,6 @@ pub fn App() -> Element {
                                                         onclick: {
                                                             let p = path.clone();
                                                             move |_| {
-                                                                // Extract filename from path
                                                                 let filename = p.split('/').last()
                                                                     .or_else(|| p.split('\\').last())
                                                                     .unwrap_or("combat.txt")
@@ -918,7 +974,6 @@ pub fn App() -> Element {
                                                         i { class: "fa-solid fa-cloud-arrow-up" }
                                                         " Parsely"
                                                     }
-                                                    // Show upload result inline
                                                     if let Some((success, ref msg)) = upload_result {
                                                         if success {
                                                             button {
@@ -938,121 +993,110 @@ pub fn App() -> Element {
                                                                 i { class: "fa-solid fa-triangle-exclamation" }
                                                             }
                                                         }
+                                                    }
                                                 }
                                             }
                                         }
                                     }
+                                }
+                            }
+
+                            // ── Player identity row: icons + name + class/discipline ──
+                            div { class: "session-identity",
+                                // Role icon
+                                if let Some(ref role_name) = info.role_icon {
+                                    if let Some(role_asset) = get_role_icon(role_name) {
+                                        img { class: "session-role-icon", src: *role_asset, title: "Role" }
+                                    }
+                                }
+                                // Discipline icon
+                                if let Some(ref icon_name) = info.class_icon {
+                                    if let Some(icon_asset) = get_class_icon(icon_name) {
+                                        img {
+                                            class: "session-class-icon",
+                                            src: *icon_asset,
+                                            title: "{info.player_discipline.as_deref().unwrap_or(\"\")}",
+                                        }
+                                    }
+                                }
+                                // Player name and class/discipline text
+                                div { class: "session-identity-text",
+                                    if let Some(ref name) = info.player_name {
+                                        span { class: "session-player-name", "{name}" }
+                                    }
+                                    {
+                                        let class_str = info.player_class.as_deref().unwrap_or("");
+                                        let disc_str = info.player_discipline.as_deref().unwrap_or("");
+                                        let detail = if !class_str.is_empty() && !disc_str.is_empty() {
+                                            format!("{class_str} — {disc_str}")
+                                        } else if !class_str.is_empty() {
+                                            class_str.to_string()
+                                        } else if !disc_str.is_empty() {
+                                            disc_str.to_string()
+                                        } else {
+                                            String::new()
+                                        };
+                                        if !detail.is_empty() {
+                                            rsx! {
+                                                span { class: "session-player-detail", "{detail}" }
+                                            }
+                                        } else {
+                                            rsx! {}
+                                        }
                                     }
                                 }
                             }
 
-                            div { class: "session-grid",
-                                // Player name - only show if present and non-empty
-                                if let Some(ref name) = info.player_name {
-                                    if !name.is_empty() {
-                                        div { class: "session-item",
-                                            span { class: "label", "Player" }
-                                            span { class: "value", "{name}" }
-                                        }
-                                    }
-                                }
+                            // ── Settings row: alacrity/latency + notes selector ──
+                            div { class: "session-settings-row",
+                                // Left: player stats (alacrity / latency)
+                                PlayerStatsBar {}
 
-                                // Started time - only show if present
-                                if let Some(ref start) = info.session_start {
-                                    div { class: "session-item",
-                                        span { class: "label", "Started" }
-                                        span { class: "value", "{start}" }
-                                    }
-                                }
+                                // Divider
+                                span { class: "session-settings-divider" }
 
-                                // Area, Class, Discipline only for live sessions with actual values
-                                if live_tailing {
-                                    if let Some(ref area) = info.area_name {
-                                        if !area.is_empty() {
-                                            div { class: "session-item",
-                                                span { class: "label", "Area" }
-                                                span { class: "value", "{area}" }
-                                            }
-                                        }
-                                    }
-                                    if let Some(ref class_name) = info.player_class {
-                                        if !class_name.is_empty() {
-                                            div { class: "session-item",
-                                                span { class: "label", "Class" }
-                                                span { class: "value", "{class_name}" }
-                                            }
-                                        }
-                                    }
-                                    if let Some(ref disc) = info.player_discipline {
-                                        if !disc.is_empty() {
-                                            div { class: "session-item",
-                                                span { class: "label", "Discipline" }
-                                                span { class: "value", "{disc}" }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Ended and Duration for historical sessions only
-                                if !live_tailing {
-                                    if let Some(ref end) = info.session_end {
-                                        div { class: "session-item",
-                                            span { class: "label", "Ended" }
-                                            span { class: "value", "{end}" }
-                                        }
-                                    }
-                                    if let Some(ref duration) = info.duration_formatted {
-                                        div { class: "session-item",
-                                            span { class: "label", "Duration" }
-                                            span { class: "value", "{duration}" }
-                                        }
-                                    }
-                                }
-
-                                // Combat status - always shown
-                                div { class: "session-item",
-                                    span { class: "label", "Combat" }
-                                    span {
-                                        class: if info.in_combat { "value status-warning" } else { "value" },
-                                        if info.in_combat { "In Combat" } else { "Out of Combat" }
-                                    }
-                                }
-                            }
-
-                            // Boss notes selector (only show if there are bosses with notes in current area)
-                            {
-                                let bosses_with_notes: Vec<_> = area_bosses().iter()
-                                    .filter(|b| b.has_notes)
-                                    .cloned()
-                                    .collect();
-                                if !bosses_with_notes.is_empty() {
+                                // Right: boss notes selector (always visible)
+                                {
+                                    let bosses_with_notes: Vec<_> = area_bosses().iter()
+                                        .filter(|b| b.has_notes)
+                                        .cloned()
+                                        .collect();
                                     rsx! {
                                         div { class: "session-notes-selector",
-                                            span { class: "label", "Notes:" }
-                                            select {
-                                                class: "notes-boss-select",
-                                                onchange: move |evt| {
-                                                    let boss_id = evt.value();
-                                                    if !boss_id.is_empty() {
-                                                        selected_boss_id.set(Some(boss_id.clone()));
-                                                        spawn(async move {
-                                                            let _ = api::select_boss_notes(&boss_id).await;
-                                                        });
-                                                    }
-                                                },
-                                                option { value: "", "Select boss..." }
-                                                for boss in bosses_with_notes.iter() {
-                                                    option {
-                                                        value: "{boss.id}",
-                                                        selected: selected_boss_id().as_ref() == Some(&boss.id),
-                                                        "{boss.name}"
+                                            span { class: "label",
+                                                i { class: "fa-solid fa-note-sticky" }
+                                                " Notes:"
+                                            }
+                                            if bosses_with_notes.is_empty() {
+                                                select {
+                                                    class: "notes-boss-select",
+                                                    disabled: true,
+                                                    option { value: "", "No notes available" }
+                                                }
+                                            } else {
+                                                select {
+                                                    class: "notes-boss-select",
+                                                    onchange: move |evt| {
+                                                        let boss_id = evt.value();
+                                                        if !boss_id.is_empty() {
+                                                            selected_boss_id.set(Some(boss_id.clone()));
+                                                            spawn(async move {
+                                                                let _ = api::select_boss_notes(&boss_id).await;
+                                                            });
+                                                        }
+                                                    },
+                                                    option { value: "", "Select boss..." }
+                                                    for boss in bosses_with_notes.iter() {
+                                                        option {
+                                                            value: "{boss.id}",
+                                                            selected: selected_boss_id().as_ref() == Some(&boss.id),
+                                                            "{boss.name}"
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
                                     }
-                                } else {
-                                    rsx! {}
                                 }
                             }
                         }

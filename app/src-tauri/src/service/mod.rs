@@ -3127,14 +3127,20 @@ pub struct SessionInfo {
     pub player_name: Option<String>,
     pub player_class: Option<String>,
     pub player_discipline: Option<String>,
+    /// Discipline icon filename (e.g., "medicine.png") for display
+    pub class_icon: Option<String>,
+    /// Role icon filename (e.g., "icon_heal.png") for display
+    pub role_icon: Option<String>,
     pub area_name: Option<String>,
     pub in_combat: bool,
     pub encounter_count: usize,
     /// Session start time extracted from log filename (formatted as "Jan 18, 3:45 PM")
     pub session_start: Option<String>,
+    /// Short start time for inline display (e.g., "3:45 PM")
+    pub session_start_short: Option<String>,
     /// Session end time for historical sessions (formatted as "Jan 18, 3:45 PM")
     pub session_end: Option<String>,
-    /// Duration formatted as short form (e.g., "47m" or "1h 23m")
+    /// Duration formatted as short form (e.g., "47m" or "1h 23m") — always computed
     pub duration_formatted: Option<String>,
     /// True if the log file's last event is older than 30 minutes (no active session)
     pub stale_session: bool,

@@ -237,10 +237,13 @@ impl ServiceHandle {
             Some(datetime)
         });
         let session_start = start_datetime.map(|dt| dt.format("%b %d, %l:%M %p").to_string());
+        let session_start_short = start_datetime.map(|dt| dt.format("%l:%M %p").to_string());
 
-        // For historical sessions, calculate end time and duration
+        // Calculate end time (historical only) and duration (always)
         let is_live = self.shared.is_live_tailing.load(Ordering::SeqCst);
-        let (session_end, duration_formatted) = if !is_live {
+
+        // For historical sessions, find the end time
+        let end_naive = if !is_live {
             // Try to get end time from last encounter (ISO 8601 format)
             let last_end_time = cache
                 .encounter_history
@@ -251,41 +254,42 @@ impl ServiceHandle {
                 .and_then(|iso| chrono::NaiveDateTime::parse_from_str(iso, "%+").ok());
 
             // Fallback to file modification time if no encounters
-            let end_naive = last_end_time.or_else(|| {
+            last_end_time.or_else(|| {
                 session.active_file.as_ref().and_then(|path| {
                     path.metadata()
                         .ok()
                         .and_then(|m| m.modified().ok())
                         .map(|st| chrono::DateTime::<chrono::Local>::from(st).naive_local())
                 })
-            });
-
-            let session_end = end_naive.map(|dt| dt.format("%b %d, %l:%M %p").to_string());
-
-            // Calculate duration if we have both start and end
-            let duration_formatted = match (start_datetime, end_naive) {
-                (Some(start), Some(end)) => {
-                    let duration = end.signed_duration_since(start);
-                    let total_mins = duration.num_minutes();
-                    if total_mins < 60 {
-                        Some(format!("{}m", total_mins.max(1)))
-                    } else {
-                        let hours = total_mins / 60;
-                        let mins = total_mins % 60;
-                        if mins == 0 {
-                            Some(format!("{}h", hours))
-                        } else {
-                            Some(format!("{}h {}m", hours, mins))
-                        }
-                    }
-                }
-                _ => None,
-            };
-
-            (session_end, duration_formatted)
+            })
         } else {
-            (None, None)
+            None
         };
+
+        let session_end = end_naive.map(|dt| dt.format("%b %d, %l:%M %p").to_string());
+
+        // Always compute duration: for live sessions use last log event time, for historical use end time
+        let duration_formatted = start_datetime.and_then(|start| {
+            let end = if is_live {
+                // Use the last log line timestamp so duration freezes when session goes stale
+                session.last_event_time.unwrap_or_else(|| chrono::Local::now().naive_local())
+            } else {
+                end_naive?
+            };
+            let duration = end.signed_duration_since(start);
+            let total_mins = duration.num_minutes();
+            if total_mins < 60 {
+                Some(format!("{}m", total_mins.max(1)))
+            } else {
+                let hours = total_mins / 60;
+                let mins = total_mins % 60;
+                if mins == 0 {
+                    Some(format!("{}h", hours))
+                } else {
+                    Some(format!("{}h {}m", hours, mins))
+                }
+            }
+        });
 
         // Check if this is a stale session (last event >15 min ago, or game process closed).
         // Only relevant for live-tailing mode — historical sessions are inherently "not live".
@@ -297,6 +301,13 @@ impl ServiceHandle {
                 || self.shared.auto_hide.is_not_live_active()
         } else {
             false
+        };
+
+        // Look up discipline icons from the player's discipline name
+        let discipline_enum = if cache.player_initialized {
+            Discipline::from_name(&cache.player.discipline_name)
+        } else {
+            None
         };
 
         Some(SessionInfo {
@@ -315,6 +326,8 @@ impl ServiceHandle {
             } else {
                 None
             },
+            class_icon: discipline_enum.map(|d| d.icon_name().to_string()),
+            role_icon: discipline_enum.map(|d| d.role().icon_name().to_string()),
             area_name: if !cache.current_area.area_name.is_empty() {
                 Some(cache.current_area.area_name.clone())
             } else {
@@ -328,6 +341,7 @@ impl ServiceHandle {
                 .max()
                 .unwrap_or(0) as usize,
             session_start,
+            session_start_short,
             session_end,
             duration_formatted,
             stale_session,

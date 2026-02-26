@@ -871,15 +871,6 @@ button:active {
   font-weight: bold;
 }
 
-.status-off {
-  color: var(--text-muted);
-}
-
-.status-warning {
-  color: var(--color-warning);
-  font-weight: bold;
-}
-
 /* Overlay controls */
 .overlay-controls {
   margin: 0;
@@ -1171,40 +1162,6 @@ button:active {
   color: var(--swtor-blue);
 }
 
-.session-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5vh 1vw;
-}
-
-.session-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 0.5em 0.75em;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--blue-alpha-8);
-  border-radius: var(--radius-lg);
-  transition: border-color 0.2s;
-}
-
-.session-item:hover {
-  border-color: var(--blue-alpha-20);
-}
-
-.session-item .label {
-  font-size: clamp(0.5rem, 1.2vh, 0.75rem);
-  color: var(--swtor-blue-dim);
-  text-transform: uppercase;
-  margin-bottom: 0.2em;
-}
-
-.session-item .value {
-  font-weight: 500;
-  font-size: clamp(0.7rem, 1.6vh, 1rem);
-}
-
 /* Session empty states */
 .session-empty {
   display: flex;
@@ -1246,9 +1203,6 @@ button:active {
   display: flex;
   align-items: center;
   gap: 0.5em;
-  padding: 0.5em 0;
-  margin-top: 0.5em;
-  border-top: 1px solid var(--border-dim);
 }
 
 .session-notes-selector .label {
@@ -1283,11 +1237,135 @@ button:active {
   color: var(--swtor-light-blue);
 }
 
+/* ── Session header left (status + inline time) ── */
+.session-header-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.session-time-inline {
+  font-weight: 400;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-left: 0.15em;
+}
+
+/* ── Duration badge ── */
+.session-duration-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.25em 0.65em;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--blue-alpha-8);
+  border-radius: var(--radius-md);
+}
+
+.session-duration-badge i {
+  color: var(--swtor-blue-dim);
+  font-size: 0.9em;
+}
+
+/* ── Combat indicator icon ── */
+.combat-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 0.85em;
+  color: var(--color-success);
+  background: rgba(95, 217, 142, 0.1);
+  border: 1px solid rgba(95, 217, 142, 0.3);
+  transition: all 0.3s;
+}
+
+.combat-indicator.in-combat {
+  color: var(--swtor-red);
+  background: rgba(232, 117, 117, 0.15);
+  border-color: rgba(232, 117, 117, 0.4);
+  animation: combat-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes combat-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ── Player identity row ── */
+.session-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.5em 0;
+}
+
+.session-role-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+.session-class-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 3px;
+}
+
+.session-identity-text {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  min-width: 0;
+}
+
+.session-player-name {
+  font-weight: 600;
+  font-size: clamp(0.9rem, 2vh, 1.15rem);
+  color: var(--text-primary);
+}
+
+.session-player-detail {
+  font-size: clamp(0.75rem, 1.5vh, 0.9rem);
+  color: var(--text-muted);
+}
+
+/* ── Settings row (alacrity/latency + notes) ── */
+.session-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  padding: 0.5em 0 0.25em;
+  border-top: 1px solid var(--border-dim);
+  margin-top: 0.25em;
+  flex-wrap: wrap;
+}
+
+.session-settings-divider {
+  width: 1px;
+  height: 1.5em;
+  background: var(--border-dim);
+  flex-shrink: 0;
+}
+
+/* Override player-stats-bar when inside settings row (keep border, adjust padding) */
+.session-settings-row .player-stats-bar {
+  padding: 0.3em 0.7em;
+}
+
 /* Session toolbar */
 .session-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 1.5em;
+  flex-wrap: wrap;
   margin-bottom: 0.5em;
 }
 
@@ -3756,9 +3834,6 @@ details[open] .collapsible-summary::before {
     min-width: 42px;
   }
 
-  .session-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
 @media (min-width: 800px) {
@@ -3787,10 +3862,6 @@ details[open] .collapsible-summary::before {
     padding: 1em;
   }
 
-  .session-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
   .session-panel {
     padding: 1.5em;
   }
@@ -3814,10 +3885,6 @@ details[open] .collapsible-summary::before {
     min-width: 50px;
   }
 
-  .session-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1em 2em;
-  }
 }
 
 @media (min-width: 1200px) {
