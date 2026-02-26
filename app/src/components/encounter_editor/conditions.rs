@@ -446,6 +446,7 @@ fn condition_type_name(condition: &Condition) -> &'static str {
     match condition {
         Condition::PhaseActive { .. } => "phase_active",
         Condition::CounterCompare { .. } => "counter_compare",
+        Condition::TimerTimeRemaining { .. } => "timer_time_remaining",
         Condition::AllOf { .. } => "all_of",
         Condition::AnyOf { .. } => "any_of",
         Condition::Not { .. } => "not",
@@ -460,6 +461,11 @@ fn default_condition_for_type(type_name: &str, current: &Condition) -> Condition
             counter_id: String::new(),
             operator: ComparisonOp::Gte,
             value: 1,
+        },
+        "timer_time_remaining" => Condition::TimerTimeRemaining {
+            timer_id: String::new(),
+            operator: ComparisonOp::Gte,
+            value: 0.0,
         },
         // Composite: wrap current condition
         "all_of" => Condition::AllOf {
@@ -499,6 +505,7 @@ fn SimpleConditionEditor(
                     },
                     option { value: "phase_active", selected: type_name == "phase_active", "Phase Active" }
                     option { value: "counter_compare", selected: type_name == "counter_compare", "Counter Compare" }
+                    option { value: "timer_time_remaining", selected: type_name == "timer_time_remaining", "Timer Time Remaining" }
                     // Composite wrappers
                     option { value: "all_of", selected: type_name == "all_of", "All Of (AND)" }
                     option { value: "any_of", selected: type_name == "any_of", "Any Of (OR)" }
@@ -519,6 +526,15 @@ fn SimpleConditionEditor(
                     Condition::CounterCompare { counter_id, operator, value } => rsx! {
                         CounterCompareEditor {
                             counter_id: counter_id.clone(),
+                            operator: *operator,
+                            value: *value,
+                            encounter_data: encounter_data.clone(),
+                            on_change: on_change,
+                        }
+                    },
+                    Condition::TimerTimeRemaining { timer_id, operator, value } => rsx! {
+                        TimerTimeRemainingEditor {
+                            timer_id: timer_id.clone(),
                             operator: *operator,
                             value: *value,
                             encounter_data: encounter_data.clone(),
@@ -660,6 +676,111 @@ fn CounterCompareEditor(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Timer Time Remaining condition: timer dropdown + operator (gte/lte) + seconds value
+#[component]
+fn TimerTimeRemainingEditor(
+    timer_id: String,
+    operator: ComparisonOp,
+    value: f32,
+    encounter_data: EncounterData,
+    on_change: EventHandler<Condition>,
+) -> Element {
+    let op_value = match operator {
+        ComparisonOp::Gte => "gte",
+        ComparisonOp::Lte => "lte",
+        // Fallback display for hand-edited TOML with other ops
+        ComparisonOp::Gt => "gte",
+        ComparisonOp::Lt => "lte",
+        ComparisonOp::Eq => "gte",
+        ComparisonOp::Ne => "gte",
+    };
+
+    let selected_timer = if timer_id.is_empty() {
+        "__none__".to_string()
+    } else {
+        timer_id.clone()
+    };
+
+    let timers = encounter_data.countdown_timer_ids();
+    let timer_id_for_op = timer_id.clone();
+    let timer_id_for_val = timer_id.clone();
+    let has_timer = !timer_id.is_empty();
+
+    rsx! {
+        div { class: "flex items-center gap-xs",
+            select {
+                class: "select",
+                style: "width: 140px;",
+                value: "{selected_timer}",
+                onchange: move |e| {
+                    let new_id = if e.value() == "__none__" {
+                        String::new()
+                    } else {
+                        e.value()
+                    };
+                    on_change.call(Condition::TimerTimeRemaining {
+                        timer_id: new_id,
+                        operator,
+                        value,
+                    });
+                },
+                option { value: "__none__", selected: selected_timer == "__none__", "(select timer)" }
+                for tid in &timers {
+                    option { value: "{tid}", selected: *tid == selected_timer, "{tid}" }
+                }
+            }
+
+            if has_timer {
+                select {
+                    class: "select",
+                    style: "width: 55px;",
+                    value: "{op_value}",
+                    onchange: {
+                        let tid = timer_id_for_op.clone();
+                        move |e| {
+                            let op = match e.value().as_str() {
+                                "gte" => ComparisonOp::Gte,
+                                "lte" => ComparisonOp::Lte,
+                                _ => ComparisonOp::Gte,
+                            };
+                            on_change.call(Condition::TimerTimeRemaining {
+                                timer_id: tid.clone(),
+                                operator: op,
+                                value,
+                            });
+                        }
+                    },
+                    option { value: "gte", selected: op_value == "gte", "\u{2265}" }
+                    option { value: "lte", selected: op_value == "lte", "\u{2264}" }
+                }
+
+                input {
+                    r#type: "number",
+                    class: "input-inline",
+                    style: "width: 70px;",
+                    min: "0",
+                    step: "0.1",
+                    value: "{value}",
+                    oninput: {
+                        let tid = timer_id_for_val.clone();
+                        move |e| {
+                            if let Ok(val) = e.value().parse::<f32>() {
+                                on_change.call(Condition::TimerTimeRemaining {
+                                    timer_id: tid.clone(),
+                                    operator,
+                                    value: val,
+                                });
+                            }
+                        }
+                    }
+                }
+
+                span { class: "text-muted text-sm", "sec" }
             }
         }
     }

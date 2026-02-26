@@ -97,6 +97,15 @@ impl EncounterData {
         self.timers.iter().map(|t| t.id.clone()).collect()
     }
 
+    /// Get timer IDs for condition dropdowns (excludes instant alerts which have no duration)
+    pub fn countdown_timer_ids(&self) -> Vec<String> {
+        self.timers
+            .iter()
+            .filter(|t| !t.is_alert)
+            .map(|t| t.id.clone())
+            .collect()
+    }
+
     /// Get phase IDs for dropdowns
     pub fn phase_ids(&self) -> Vec<String> {
         self.phases.iter().map(|p| p.id.clone()).collect()

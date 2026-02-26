@@ -138,6 +138,12 @@ pub struct CombatEncounter {
     /// Challenge metrics for boss encounters
     pub challenge_tracker: ChallengeTracker,
 
+    // ─── Timer Snapshot (for timer_time_remaining conditions) ──────────────
+    /// Snapshot of active timer remaining seconds, keyed by definition_id.
+    /// Updated by TimerManager before each signal dispatch cycle.
+    /// Absent entries mean the timer is not active (treated as 0.0).
+    pub timer_remaining: HashMap<String, f32>,
+
     // ─── Line Number Tracking (for per-encounter Parsely uploads) ────────────
     /// Line number of the first event accumulated for this encounter
     pub first_event_line: Option<u64>,
@@ -194,6 +200,9 @@ impl CombatEncounter {
             // Metrics
             accumulated_data: HashMap::new(),
             challenge_tracker: ChallengeTracker::new(),
+
+            // Timer snapshot
+            timer_remaining: HashMap::new(),
 
             // Line number tracking
             first_event_line: None,
@@ -507,6 +516,16 @@ impl CombatEncounter {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // Timer Snapshot (for timer_time_remaining conditions)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// Replace the timer remaining snapshot with a fresh one.
+    /// Called by the parser before dispatching signals so conditions see current timer state.
+    pub fn update_timer_snapshot(&mut self, snapshot: HashMap<String, f32>) {
+        self.timer_remaining = snapshot;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // Condition Evaluation
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -523,6 +542,18 @@ impl CombatEncounter {
             } => {
                 let current = self.get_counter(counter_id);
                 operator.evaluate(current, *value)
+            }
+
+            Condition::TimerTimeRemaining {
+                timer_id,
+                operator,
+                value,
+            } => {
+                // If the timer is not active, the condition is always false
+                match self.timer_remaining.get(timer_id) {
+                    Some(&remaining) => operator.evaluate_f32(remaining, *value),
+                    None => false,
+                }
             }
 
             Condition::AllOf { conditions } => {

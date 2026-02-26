@@ -94,4 +94,16 @@ impl ComparisonOp {
             ComparisonOp::Ne => left != right,
         }
     }
+
+    /// Evaluate a comparison on f32 values (used for timer remaining seconds).
+    pub fn evaluate_f32(&self, left: f32, right: f32) -> bool {
+        match self {
+            ComparisonOp::Eq => (left - right).abs() < f32::EPSILON,
+            ComparisonOp::Lt => left < right,
+            ComparisonOp::Gt => left > right,
+            ComparisonOp::Lte => left <= right,
+            ComparisonOp::Gte => left >= right,
+            ComparisonOp::Ne => (left - right).abs() >= f32::EPSILON,
+        }
+    }
 }

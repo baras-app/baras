@@ -303,6 +303,17 @@ impl ParsingSession {
     }
 
     fn dispatch_signals(&mut self, signals: &[GameSignal]) {
+        // Update timer snapshot on encounter BEFORE dispatching signals,
+        // so that timer_time_remaining conditions see current timer state.
+        if let (Some(timer_mgr), Some(cache)) = (&self.timer_manager, &mut self.session_cache) {
+            let timer_mgr = timer_mgr.lock().unwrap_or_else(|p| p.into_inner());
+            let snapshot = timer_mgr.timer_remaining_snapshot();
+            drop(timer_mgr);
+            if let Some(enc) = cache.current_encounter_mut() {
+                enc.update_timer_snapshot(snapshot);
+            }
+        }
+
         let Some(cache) = &self.session_cache else {
             return;
         };

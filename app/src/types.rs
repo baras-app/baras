@@ -717,6 +717,11 @@ pub struct CounterCondition {
     pub value: u32,
 }
 
+/// Default operator for TimerTimeRemaining (gte — "at least N seconds remaining").
+fn default_gte() -> ComparisonOp {
+    ComparisonOp::Gte
+}
+
 /// State-based condition for gating triggers, timers, phases, and victory triggers.
 ///
 /// Unlike triggers (which fire on events), conditions check current encounter state.
@@ -733,6 +738,14 @@ pub enum Condition {
         operator: ComparisonOp,
         value: u32,
     },
+    /// True when a timer's remaining time satisfies the comparison.
+    /// Inactive timers are treated as having 0.0 seconds remaining.
+    TimerTimeRemaining {
+        timer_id: String,
+        #[serde(default = "default_gte")]
+        operator: ComparisonOp,
+        value: f32,
+    },
     /// All sub-conditions must be true (AND logic).
     AllOf { conditions: Vec<Condition> },
     /// Any sub-condition must be true (OR logic).
@@ -747,6 +760,7 @@ impl Condition {
         match self {
             Self::PhaseActive { .. } => "Phase Active",
             Self::CounterCompare { .. } => "Counter Compare",
+            Self::TimerTimeRemaining { .. } => "Timer Time Remaining",
             Self::AllOf { .. } => "All Of (AND)",
             Self::AnyOf { .. } => "Any Of (OR)",
             Self::Not { .. } => "Not",
@@ -758,6 +772,7 @@ impl Condition {
         match self {
             Self::PhaseActive { .. } => "phase_active",
             Self::CounterCompare { .. } => "counter_compare",
+            Self::TimerTimeRemaining { .. } => "timer_time_remaining",
             Self::AllOf { .. } => "all_of",
             Self::AnyOf { .. } => "any_of",
             Self::Not { .. } => "not",

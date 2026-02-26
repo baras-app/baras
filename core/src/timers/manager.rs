@@ -376,6 +376,27 @@ impl TimerManager {
         self.active_timers.values().collect()
     }
 
+    /// Build a snapshot of timer remaining seconds keyed by definition_id.
+    /// For per-target timers with multiple instances, uses the maximum remaining time
+    /// (any instance active = most time remaining wins).
+    /// Used to populate CombatEncounter.timer_remaining for condition evaluation.
+    /// Returns a hashbrown::HashMap to match CombatEncounter's field type.
+    pub fn timer_remaining_snapshot(&self) -> hashbrown::HashMap<String, f32> {
+        let mut snapshot = hashbrown::HashMap::new();
+        for timer in self.active_timers.values() {
+            let remaining = timer.remaining_secs_realtime();
+            if remaining > 0.0 {
+                let entry = snapshot
+                    .entry(timer.definition_id.clone())
+                    .or_insert(0.0f32);
+                if remaining > *entry {
+                    *entry = remaining;
+                }
+            }
+        }
+        snapshot
+    }
+
     /// Get active timers as owned data (for sending to overlay)
     pub fn active_timers_snapshot(&self, current_time: NaiveDateTime) -> Vec<ActiveTimer> {
         self.active_timers

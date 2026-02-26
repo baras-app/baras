@@ -187,6 +187,40 @@ npc_id = 123456789                    # Optional: specific NPC
 
 `total_percent` · `total_per_second` · `per_second_percent` · `total_only` · `per_second_only` · `percent_only`
 
+### Conditions
+
+State-based guards that gate when timers, phases, and victory triggers are active.
+Conditions are implicitly AND'd — all must be true for the gated item to activate.
+
+| Type                    | Fields                                      | Description                              |
+| ----------------------- | ------------------------------------------- | ---------------------------------------- |
+| `phase_active`          | `phase_ids` (array of strings)              | True when in any of the listed phases    |
+| `counter_compare`       | `counter_id`, `operator`, `value` (u32)     | True when counter satisfies comparison   |
+| `timer_time_remaining`  | `timer_id`, `operator`, `value` (f32 secs)  | True when timer remaining time matches   |
+| `all_of`                | `conditions` (array of conditions)          | AND: all sub-conditions must be true     |
+| `any_of`                | `conditions` (array of conditions)          | OR: any sub-condition must be true       |
+| `not`                   | `condition` (single condition)              | Negation: true when inner is false       |
+
+#### Timer Time Remaining
+
+Checks remaining seconds on an active timer. Inactive timers are treated as 0.0 seconds.
+
+```toml
+# Only activate when enrage timer is running (any time remaining)
+[[boss.timer.conditions]]
+type = "timer_time_remaining"
+timer_id = "enrage_timer"
+operator = "gte"
+value = 0.01
+
+# Only activate when a timer has 10 seconds or less remaining
+[[boss.timer.conditions]]
+type = "timer_time_remaining"
+timer_id = "some_mechanic"
+operator = "lte"
+value = 10.0
+```
+
 ### Comparison Operators
 
 `eq` · `ne` · `lt` · `lte` · `gt` · `gte`

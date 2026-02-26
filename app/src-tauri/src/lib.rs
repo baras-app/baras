@@ -29,6 +29,35 @@ use overlay::{OverlayManager, OverlayState, SharedOverlayState};
 use router::spawn_overlay_router;
 use service::{CombatService, OverlayUpdate, ServiceHandle};
 use tauri::Manager;
+use tauri_plugin_window_state::{AppHandleExt, StateFlags};
+
+/// Returns the window state flags to save/restore.
+///
+/// On Wayland, POSITION is excluded because the compositor controls window placement
+/// (set_position is a no-op / protocol violation).
+/// MAXIMIZED and FULLSCREEN are excluded on all platforms to avoid restoring the app
+/// into those states on launch.
+fn window_state_flags() -> StateFlags {
+    let mut flags = StateFlags::SIZE | StateFlags::VISIBLE | StateFlags::DECORATIONS;
+
+    #[cfg(target_os = "linux")]
+    {
+        let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok()
+            || std::env::var("XDG_SESSION_TYPE")
+                .map(|v| v == "wayland")
+                .unwrap_or(false);
+        if !is_wayland {
+            flags |= StateFlags::POSITION;
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        flags |= StateFlags::POSITION;
+    }
+
+    flags
+}
 
 /// Auto-show all enabled overlays on startup (if overlays_visible is true)
 fn spawn_auto_show_overlays(overlay_state: SharedOverlayState, service_handle: ServiceHandle) {
@@ -93,6 +122,11 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(window_state_flags())
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -163,6 +197,8 @@ pub fn run() {
                     .unwrap_or(true);
 
                 if minimize_to_tray {
+                    // Save window state before hiding (plugin only auto-saves on exit)
+                    let _ = window.app_handle().save_window_state(window_state_flags());
                     // Hide the window instead of closing
                     let _ = window.hide();
                     // Prevent the default close behavior

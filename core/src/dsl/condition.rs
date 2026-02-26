@@ -10,6 +10,11 @@ use serde::{Deserialize, Serialize};
 
 use super::counter::{ComparisonOp, CounterCondition};
 
+/// Default operator for TimerTimeRemaining (gte — "at least N seconds remaining").
+fn default_gte() -> ComparisonOp {
+    ComparisonOp::Gte
+}
+
 /// A state-based condition that evaluates to true/false.
 ///
 /// Unlike triggers (which fire on events), conditions check current encounter state.
@@ -45,6 +50,20 @@ pub enum Condition {
         value: u32,
     },
 
+    /// True when a timer's remaining time satisfies the comparison.
+    /// Inactive timers are treated as having 0.0 seconds remaining.
+    /// Use `operator = "gte", value = 0.01` to check if a timer is active,
+    /// or `operator = "lte", value = 5.0` to check if it's about to expire.
+    TimerTimeRemaining {
+        /// Timer definition ID to check
+        timer_id: String,
+        /// Comparison operator (typically gte or lte)
+        #[serde(default = "default_gte")]
+        operator: ComparisonOp,
+        /// Seconds to compare against
+        value: f32,
+    },
+
     // ─── Composition ────────────────────────────────────────────────────────
     /// All sub-conditions must be true (AND logic).
     AllOf { conditions: Vec<Condition> },
@@ -62,6 +81,7 @@ impl Condition {
         match self {
             Self::PhaseActive { .. } => "Phase Active",
             Self::CounterCompare { .. } => "Counter Compare",
+            Self::TimerTimeRemaining { .. } => "Timer Time Remaining",
             Self::AllOf { .. } => "All Of (AND)",
             Self::AnyOf { .. } => "Any Of (OR)",
             Self::Not { .. } => "Not",
@@ -73,6 +93,7 @@ impl Condition {
         match self {
             Self::PhaseActive { .. } => "phase_active",
             Self::CounterCompare { .. } => "counter_compare",
+            Self::TimerTimeRemaining { .. } => "timer_time_remaining",
             Self::AllOf { .. } => "all_of",
             Self::AnyOf { .. } => "any_of",
             Self::Not { .. } => "not",
