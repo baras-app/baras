@@ -1089,7 +1089,7 @@ impl CombatService {
                                 let session_guard = self.shared.session.read().await;
                                 if let Some(session) = session_guard.as_ref() {
                                     let mut session = session.write().await;
-                                    session.load_boss_definitions(bosses);
+                                    session.load_boss_definitions(bosses, false);
                                 }
                             } else {
                                 // No definitions for this area - clear notes
@@ -1193,7 +1193,7 @@ impl CombatService {
                 mgr.invalidate_definitions_cache();
             }
         }
-        session.load_boss_definitions(bosses);
+        session.load_boss_definitions(bosses, true);
     }
 
     /// Send notes from boss definitions to the notes overlay (only in live mode)
@@ -1814,7 +1814,7 @@ impl CombatService {
                             if let Some(bosses) = self.load_area_definitions(parse_result.area.area_id) {
                                 // Send notes to overlay
                                 self.send_notes_from_bosses(&bosses);
-                                session_guard.load_boss_definitions(bosses);
+                                session_guard.load_boss_definitions(bosses, false);
                             }
                         }
 

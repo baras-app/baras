@@ -726,7 +726,7 @@ fn process_and_write_encounters(
                                 count = bosses.len(),
                                 "Loaded boss definitions for area"
                             );
-                            cache.load_boss_definitions(bosses);
+                            cache.load_boss_definitions(bosses, false);
                         }
                         Err(e) => {
                             tracing::warn!(area_id, error = %e, "Failed to load definitions for area");

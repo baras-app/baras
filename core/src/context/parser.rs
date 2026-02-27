@@ -169,7 +169,7 @@ impl ParsingSession {
             if area_id != 0 && area_id != self.loaded_area_id {
                 if let Some(loader) = &self.definition_loader {
                     if let Some(bosses) = loader(area_id) {
-                        self.load_boss_definitions(bosses);
+                        self.load_boss_definitions(bosses, false);
                         tracing::info!(area_id, "Sync loaded boss definitions for area");
                     }
                     self.loaded_area_id = area_id;
@@ -494,10 +494,14 @@ impl ParsingSession {
 
     /// Load boss definitions into both SessionCache and TimerManager.
     /// Requires mutable access - use this when entering a new area.
-    pub fn load_boss_definitions(&mut self, bosses: Vec<BossEncounterDefinition>) {
+    ///
+    /// When `force` is true, the current encounter's definitions are always replaced
+    /// (used during hot-reload). When false, only updates if the encounter has no
+    /// definitions yet (normal area-entry path).
+    pub fn load_boss_definitions(&mut self, bosses: Vec<BossEncounterDefinition>, force: bool) {
         // Update SessionCache (for boss encounter detection and state tracking)
         if let Some(cache) = &mut self.session_cache {
-            cache.load_boss_definitions(bosses.clone());
+            cache.load_boss_definitions(bosses.clone(), force);
         }
 
         // Update TimerManager (for timer activation) - Live mode only

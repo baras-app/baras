@@ -54,7 +54,7 @@ fn collect_signals_from_fixture_ext(
     if let Some(config_path) = boss_config_path
         && let Some(config) = load_boss_config(config_path)
     {
-        cache.load_boss_definitions(config.bosses);
+        cache.load_boss_definitions(config.bosses, false);
     }
 
     let mut all_signals = Vec::new();
@@ -479,7 +479,7 @@ fn test_boss_hp_and_phase_signals() {
 
     // Load boss definitions
     if let Some(config) = load_boss_config(config_path) {
-        cache.load_boss_definitions(config.bosses);
+        cache.load_boss_definitions(config.bosses, false);
     }
 
     // Pre-initialize encounter to InCombat state (since fixture lacks EnterCombat)
@@ -644,7 +644,7 @@ fn test_bestia_complete_encounter() {
     let parser = crate::combat_log::LogParser::new(chrono::Local::now().naive_local());
     let mut processor = super::EventProcessor::new();
     let mut cache = SessionCache::default();
-    cache.load_boss_definitions(config.bosses);
+    cache.load_boss_definitions(config.bosses, false);
 
     let mut timer_manager = TimerManager::new();
     timer_manager.load_definitions(timer_defs);

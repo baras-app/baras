@@ -319,7 +319,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut timer_manager = TimerManager::new();
 
     let boss_defs = vec![(*boss_def).clone()];
-    cache.load_boss_definitions(boss_defs.clone());
+    cache.load_boss_definitions(boss_defs.clone(), false);
     timer_manager.load_boss_definitions(boss_defs);
 
     // Initialize challenge tracker

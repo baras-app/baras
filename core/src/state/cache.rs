@@ -247,7 +247,16 @@ impl SessionCache {
     /// Load boss definitions for the current area.
     /// Replaces any existing definitions and registers HP overlay entities.
     /// Also updates the current encounter with the new definitions.
-    pub fn load_boss_definitions(&mut self, definitions: Vec<BossEncounterDefinition>) {
+    ///
+    /// When `force` is true, the current encounter's definitions are always replaced
+    /// (used during hot-reload so that phases, counters, etc. are updated immediately).
+    /// When `force` is false, the current encounter is only updated if it has no
+    /// definitions yet (avoids clobbering mid-fight definitions during area changes).
+    pub fn load_boss_definitions(
+        &mut self,
+        definitions: Vec<BossEncounterDefinition>,
+        force: bool,
+    ) {
         // Register HP overlay entities for name lookup
         for def in &definitions {
             for entity in def.hp_overlay_entities() {
@@ -260,11 +269,11 @@ impl SessionCache {
         self.boss_definitions = Arc::clone(&definitions);
 
         // Share definitions with current encounter (Arc clone is cheap)
-        // BUT only if the encounter doesn't already have definitions loaded
+        // When force=false, only update if the encounter doesn't already have definitions
         // (e.g., when player dies and revives in another area before encounter finalizes,
         // we don't want to clobber the mid-fight definitions)
         if let Some(enc) = self.current_encounter_mut() {
-            if enc.boss_definitions().is_empty() {
+            if force || enc.boss_definitions().is_empty() {
                 enc.load_boss_definitions(definitions);
             }
         }
