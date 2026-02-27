@@ -1,4 +1,4 @@
-# v2026.2.2600
+# v2026.2.2700
 
 **Operations Timer** a new timer feature has been added that starts a time countdown from either the first boss pull or when the user triggers it.
 This can be a great help when trying to track timer runs! Note: as of now, it must be manually stopped once it starts running.
