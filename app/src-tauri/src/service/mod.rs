@@ -2013,6 +2013,9 @@ impl CombatService {
             let mut last_cooldowns_count: usize = 0;
             let mut last_dot_tracker_count: usize = 0;
 
+            // Throttle stale-recovery checks to once per second
+            let mut last_stale_check = tokio::time::Instant::now();
+
             loop {
                 // Check which overlays are active to determine sleep interval
                 let raid_active = shared.raid_overlay_active.load(Ordering::Relaxed);
@@ -2043,6 +2046,19 @@ impl CombatService {
                     500
                 };
                 tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
+
+                // Periodic stale-recovery: if the session was flagged not-live (e.g. player
+                // went AFK for >15 min), check whether new log activity has resumed. This
+                // lets overlays restore on any activity, not just combat start.
+                if shared.auto_hide.is_not_live_active()
+                    && last_stale_check.elapsed() >= std::time::Duration::from_secs(1)
+                {
+                    last_stale_check = tokio::time::Instant::now();
+                    if !shared.is_session_not_live().await {
+                        let _ = overlay_tx
+                            .try_send(OverlayUpdate::NotLiveStateChanged { is_live: true });
+                    }
+                }
 
                 // Skip processing if nothing needs updating
                 if !any_overlay_active && !needs_audio {
