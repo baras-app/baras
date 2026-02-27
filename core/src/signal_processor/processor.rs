@@ -776,7 +776,7 @@ impl EventProcessor {
         let boss_ids = enc.boss_entity_ids();
         let local_player_id = Some(cache.player.id).filter(|&id| id != 0);
         let current_target_id = local_player_id.and_then(|pid| enc.local_player_target_id(pid));
-        let filter_ctx = phase::FilterContext {
+        let filter_ctx = super::trigger_eval::FilterContext {
             entities: &boss_def.entities,
             local_player_id,
             current_target_id,
@@ -785,7 +785,8 @@ impl EventProcessor {
 
         // Check if trigger matches (needs immutable borrow)
         let trigger_fired = if let Some(ref trigger) = boss_def.victory_trigger {
-            check_victory_trigger(trigger, event, signals, &boss_def.entities, &filter_ctx)
+            super::trigger_eval::check_event_trigger(trigger, event, Some(&filter_ctx))
+                || super::trigger_eval::check_signal_trigger(trigger, signals, &filter_ctx)
         } else {
             false
         };
@@ -1069,102 +1070,5 @@ impl EventProcessor {
 // Victory Trigger Checking
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Check if a victory trigger is satisfied by the current event and signals.
-/// Supports event-based triggers (ability casts, effects), signal-based triggers
-/// (HP thresholds, entity deaths), and composite triggers (AnyOf).
-fn check_victory_trigger(
-    trigger: &crate::dsl::Trigger,
-    event: &crate::combat_log::CombatEvent,
-    signals: &[GameSignal],
-    entities: &[crate::dsl::EntityDefinition],
-    filter_ctx: &phase::FilterContext,
-) -> bool {
-    use crate::dsl::Trigger;
-
-    match trigger {
-        // Event-based triggers (ability casts, effects)
-        Trigger::AbilityCast { .. }
-        | Trigger::EffectApplied { .. }
-        | Trigger::EffectRemoved { .. } => {
-            phase::check_ability_trigger(trigger, event, Some(filter_ctx))
-        }
-
-        // Signal-based triggers: HP thresholds
-        Trigger::BossHpBelow { .. } => signals.iter().any(|s| {
-            if let GameSignal::BossHpChanged {
-                npc_id,
-                entity_name,
-                old_hp_percent,
-                new_hp_percent,
-                ..
-            } = s
-            {
-                trigger.matches_boss_hp_below(
-                    entities,
-                    *npc_id,
-                    entity_name,
-                    *old_hp_percent,
-                    *new_hp_percent,
-                )
-            } else {
-                false
-            }
-        }),
-
-        Trigger::BossHpAbove { .. } => signals.iter().any(|s| {
-            if let GameSignal::BossHpChanged {
-                npc_id,
-                entity_name,
-                old_hp_percent,
-                new_hp_percent,
-                ..
-            } = s
-            {
-                trigger.matches_boss_hp_above(
-                    entities,
-                    *npc_id,
-                    entity_name,
-                    *old_hp_percent,
-                    *new_hp_percent,
-                )
-            } else {
-                false
-            }
-        }),
-
-        // Signal-based triggers: Entity lifecycle
-        Trigger::NpcAppears { .. } => signals.iter().any(|s| {
-            if let GameSignal::NpcFirstSeen {
-                npc_id,
-                entity_name,
-                ..
-            } = s
-            {
-                trigger.matches_npc_appears(entities, *npc_id, entity_name)
-            } else {
-                false
-            }
-        }),
-
-        Trigger::EntityDeath { .. } => signals.iter().any(|s| {
-            if let GameSignal::EntityDeath {
-                npc_id,
-                entity_name,
-                ..
-            } = s
-            {
-                trigger.matches_entity_death(entities, *npc_id, entity_name)
-            } else {
-                false
-            }
-        }),
-
-        // Composition: AnyOf
-        Trigger::AnyOf { conditions } => conditions
-            .iter()
-            .any(|c| check_victory_trigger(c, event, signals, entities, filter_ctx)),
-
-        // Other triggers not supported for victory conditions
-        _ => false,
-    }
-}
+// Victory trigger evaluation now uses the unified trigger_eval functions.
+// See the call site in handle_victory_trigger() above.

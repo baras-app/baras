@@ -618,7 +618,7 @@ impl TimerManager {
             .filter_map(|(key, timer)| {
                 if let Some(def) = self.definitions.get(&timer.definition_id)
                     && let Some(ref cancel_trigger) = def.cancel_trigger
-                    && matches!(cancel_trigger, TimerTrigger::TimerStarted { timer_id } if timer_id == started_timer_id) {
+                    && cancel_trigger.matches_timer_started(started_timer_id) {
                         Some(key.clone())
                     } else {
                         None
@@ -810,7 +810,7 @@ impl TimerManager {
             .filter_map(|(key, timer)| {
                 if let Some(def) = self.definitions.get(&timer.definition_id)
                     && let Some(ref cancel_trigger) = def.cancel_trigger
-                    && matches!(cancel_trigger, TimerTrigger::TimerExpires { timer_id } if timer_id == expired_timer_id)
+                    && cancel_trigger.matches_timer_expires(expired_timer_id)
                 {
                     Some(key.clone())
                 } else {

@@ -2,18 +2,17 @@
 //!
 //! Phases represent distinct stages of a boss fight (e.g., "Walker 1", "Burn Phase").
 //! This module handles detecting phase transitions based on various triggers.
+//!
+//! All trigger matching delegates to the unified functions in `trigger_eval`
+//! to ensure consistent behavior across timers, phases, and counters.
 
 use chrono::NaiveDateTime;
 
-use std::collections::HashSet;
-
 use crate::combat_log::CombatEvent;
-use crate::dsl::EntityDefinition;
 use crate::dsl::Trigger;
-use crate::game_data::{effect_id, effect_type_id};
 use crate::state::SessionCache;
-use crate::timers::matches_source_target_filters;
 
+use super::trigger_eval::{self, FilterContext};
 use super::GameSignal;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -157,11 +156,11 @@ pub fn check_ability_phase_transitions(
             }
 
             let trigger_matched =
-                check_ability_trigger(&phase.start_trigger, event, Some(&filter_ctx))
-                    || check_signal_phase_trigger(
+                trigger_eval::check_event_trigger(&phase.start_trigger, event, Some(&filter_ctx))
+                    || trigger_eval::check_signal_trigger(
                         &phase.start_trigger,
-                        &def.entities,
                         current_signals,
+                        &filter_ctx,
                     );
 
             if trigger_matched {
@@ -203,7 +202,7 @@ pub fn check_ability_phase_transitions(
     Vec::new()
 }
 
-/// Check for phase transitions based on entity signals (NpcAppears, EntityDeath).
+/// Check for phase transitions based on entity signals (NpcAppears, EntityDeath, etc.).
 pub fn check_entity_phase_transitions(
     cache: &mut SessionCache,
     current_signals: &[GameSignal],
@@ -219,6 +218,17 @@ pub fn check_entity_phase_transitions(
         };
 
         let def = &enc.boss_definitions()[def_idx];
+
+        // Build filter context for signal-based trigger evaluation
+        let boss_ids = enc.boss_entity_ids();
+        let local_player_id = Some(cache.player.id).filter(|&id| id != 0);
+        let current_target_id = local_player_id.and_then(|pid| enc.local_player_target_id(pid));
+        let filter_ctx = FilterContext {
+            entities: &def.entities,
+            local_player_id,
+            current_target_id,
+            boss_entity_ids: &boss_ids,
+        };
 
         let mut found = None;
         for phase in &def.phases {
@@ -242,7 +252,11 @@ pub fn check_entity_phase_transitions(
                 continue;
             }
 
-            if check_signal_phase_trigger(&phase.start_trigger, &def.entities, current_signals) {
+            if trigger_eval::check_signal_trigger(
+                &phase.start_trigger,
+                current_signals,
+                &filter_ctx,
+            ) {
                 // Capture data needed for mutation and signal construction
                 found = Some((
                     enc.current_phase.clone(), // old_phase for signal
@@ -377,6 +391,129 @@ pub fn check_time_phase_transitions(
     Vec::new()
 }
 
+/// Check for phase transitions triggered by timer events (expires/starts).
+/// Called after TimerManager processes signals to handle timer→phase triggers.
+///
+/// This is the phase-system counterpart to `check_counter_timer_triggers()`.
+pub fn check_timer_phase_transitions(
+    expired_timer_ids: &[String],
+    started_timer_ids: &[String],
+    cache: &mut SessionCache,
+    timestamp: NaiveDateTime,
+) -> Vec<GameSignal> {
+    if expired_timer_ids.is_empty() && started_timer_ids.is_empty() {
+        return Vec::new();
+    }
+
+    let mut all_signals = Vec::new();
+
+    // Check phase start triggers against timer events
+    let start_match = {
+        let Some(enc) = cache.current_encounter() else {
+            return Vec::new();
+        };
+        let Some(def_idx) = enc.active_boss_idx() else {
+            return Vec::new();
+        };
+
+        let def = &enc.boss_definitions()[def_idx];
+
+        let mut found = None;
+        for phase in &def.phases {
+            if enc.current_phase.as_ref() == Some(&phase.id) {
+                continue;
+            }
+
+            if let Some(ref required) = phase.preceded_by {
+                let last_phase = enc.current_phase.as_ref().or(enc.previous_phase.as_ref());
+                if last_phase != Some(required) {
+                    continue;
+                }
+            }
+
+            // Check conditions (new unified + legacy counter_condition)
+            if !enc.evaluate_merged_conditions(
+                &phase.conditions,
+                &[],
+                phase.counter_condition.as_ref(),
+            ) {
+                continue;
+            }
+
+            if trigger_eval::check_timer_trigger(
+                &phase.start_trigger,
+                expired_timer_ids,
+                started_timer_ids,
+            ) {
+                found = Some((
+                    enc.current_phase.clone(),
+                    phase.id.clone(),
+                    def.id.clone(),
+                    phase.resets_counters.clone(),
+                    def.counters.clone(),
+                ));
+                break;
+            }
+        }
+        found
+    };
+
+    if let Some((old_phase, new_phase_id, boss_id, resets, counter_defs)) = start_match {
+        let Some(enc) = cache.current_encounter_mut() else {
+            tracing::error!(
+                "BUG: encounter disappeared mid-function in check_timer_phase_transitions"
+            );
+            return Vec::new();
+        };
+        enc.set_phase(&new_phase_id, timestamp);
+        enc.reset_counters_to_initial(&resets, &counter_defs);
+        enc.challenge_tracker.set_phase(&new_phase_id, timestamp);
+
+        all_signals.push(GameSignal::PhaseChanged {
+            boss_id,
+            old_phase,
+            new_phase: new_phase_id,
+            timestamp,
+        });
+    }
+
+    // Check current phase's end trigger against timer events
+    let end_match = {
+        let Some(enc) = cache.current_encounter() else {
+            return all_signals;
+        };
+        let Some(def_idx) = enc.active_boss_idx() else {
+            return all_signals;
+        };
+        let Some(current_phase_id) = &enc.current_phase else {
+            return all_signals;
+        };
+
+        let def = &enc.boss_definitions()[def_idx];
+        let Some(phase) = def.phases.iter().find(|p| &p.id == current_phase_id) else {
+            return all_signals;
+        };
+        let Some(ref end_trigger) = phase.end_trigger else {
+            return all_signals;
+        };
+
+        if trigger_eval::check_timer_trigger(end_trigger, expired_timer_ids, started_timer_ids) {
+            Some(current_phase_id.clone())
+        } else {
+            None
+        }
+    };
+
+    if let Some(phase_id) = end_match {
+        all_signals.push(GameSignal::PhaseEndTriggered {
+            phase_id,
+            timestamp,
+        });
+    }
+
+    all_signals
+}
+
 /// Check if the current phase's end_trigger fired.
 /// Emits PhaseEndTriggered signal which other phases can use as a start_trigger.
 pub fn check_phase_end_triggers(
@@ -415,47 +552,21 @@ pub fn check_phase_end_triggers(
         boss_entity_ids: &boss_ids,
     };
 
-    // Check ability/effect-based triggers
-    if check_ability_trigger(end_trigger, event, Some(&filter_ctx)) {
+    // Check ability/effect-based triggers (from CombatEvent)
+    if trigger_eval::check_event_trigger(end_trigger, event, Some(&filter_ctx)) {
         return vec![GameSignal::PhaseEndTriggered {
             phase_id: current_phase_id.clone(),
             timestamp: event.timestamp,
         }];
     }
 
-    // Check signal-based triggers (entity death, phase ended, counter reached)
-    if check_signal_phase_trigger(end_trigger, &def.entities, current_signals) {
+    // Check all signal-based triggers (entity death, phase entered/ended, counter,
+    // HP thresholds, combat start, damage taken, healing taken, etc.)
+    if trigger_eval::check_signal_trigger(end_trigger, current_signals, &filter_ctx) {
         return vec![GameSignal::PhaseEndTriggered {
             phase_id: current_phase_id.clone(),
             timestamp: event.timestamp,
         }];
-    }
-
-    // Check HP-based triggers from BossHpChanged signals
-    for signal in current_signals {
-        if let GameSignal::BossHpChanged {
-            npc_id,
-            entity_name,
-            old_hp_percent,
-            new_hp_percent,
-            timestamp,
-            ..
-        } = signal
-        {
-            if check_hp_trigger(
-                end_trigger,
-                &def.entities,
-                *old_hp_percent,
-                *new_hp_percent,
-                *npc_id,
-                entity_name,
-            ) {
-                return vec![GameSignal::PhaseEndTriggered {
-                    phase_id: current_phase_id.clone(),
-                    timestamp: *timestamp,
-                }];
-            }
-        }
     }
 
     Vec::new()
@@ -469,7 +580,7 @@ pub fn check_phase_end_triggers(
 /// Delegates to unified `Trigger::matches_boss_hp_below` and `matches_boss_hp_above`.
 pub fn check_hp_trigger(
     trigger: &Trigger,
-    entities: &[EntityDefinition],
+    entities: &[crate::dsl::EntityDefinition],
     old_hp: f32,
     new_hp: f32,
     npc_id: i64,
@@ -477,145 +588,6 @@ pub fn check_hp_trigger(
 ) -> bool {
     trigger.matches_boss_hp_below(entities, npc_id, entity_name, old_hp, new_hp)
         || trigger.matches_boss_hp_above(entities, npc_id, entity_name, old_hp, new_hp)
-}
-
-/// Check if an ability/effect-based phase trigger is satisfied.
-/// First checks event type, then delegates to unified Trigger methods.
-/// Context needed for source/target filter evaluation in phase/victory triggers.
-pub struct FilterContext<'a> {
-    pub entities: &'a [EntityDefinition],
-    pub local_player_id: Option<i64>,
-    pub current_target_id: Option<i64>,
-    pub boss_entity_ids: &'a HashSet<i64>,
-}
-
-pub fn check_ability_trigger(
-    trigger: &Trigger,
-    event: &CombatEvent,
-    filter_ctx: Option<&FilterContext>,
-) -> bool {
-    // Check AbilityCast triggers
-    if event.effect.effect_id == effect_id::ABILITYACTIVATE {
-        let ability_id = event.action.action_id as u64;
-        let ability_name = crate::context::resolve(event.action.name);
-        if trigger.matches_ability(ability_id, Some(ability_name)) {
-            if check_event_filters(trigger, event, filter_ctx) {
-                return true;
-            }
-        }
-    }
-
-    // Check EffectApplied triggers
-    if event.effect.type_id == effect_type_id::APPLYEFFECT {
-        let effect_id = event.effect.effect_id as u64;
-        let effect_name = crate::context::resolve(event.effect.effect_name);
-        if trigger.matches_effect_applied(effect_id, Some(effect_name)) {
-            if check_event_filters(trigger, event, filter_ctx) {
-                return true;
-            }
-        }
-    }
-
-    // Check EffectRemoved triggers
-    // This matches either:
-    // 1. The effect being removed (event.effect.effect_id) - e.g., a buff expiring
-    // 2. The ability doing the removing (event.action.action_id) - e.g., Dying Light removing Surging Flame
-    if event.effect.type_id == effect_type_id::REMOVEEFFECT {
-        let effect_id = event.effect.effect_id as u64;
-        let effect_name = crate::context::resolve(event.effect.effect_name);
-        // First try matching the effect being removed
-        if trigger.matches_effect_removed(effect_id, Some(effect_name)) {
-            if check_event_filters(trigger, event, filter_ctx) {
-                return true;
-            }
-        }
-        // Also try matching the ability doing the removing (e.g., Dying Light)
-        let action_id = event.action.action_id as u64;
-        let action_name = crate::context::resolve(event.action.name);
-        if trigger.matches_effect_removed(action_id, Some(action_name)) {
-            if check_event_filters(trigger, event, filter_ctx) {
-                return true;
-            }
-        }
-    }
-
-    false
-}
-
-/// Check source/target filters for an event-based trigger.
-/// Returns true (passes) if no filter context is available (backward compat).
-fn check_event_filters(
-    trigger: &Trigger,
-    event: &CombatEvent,
-    filter_ctx: Option<&FilterContext>,
-) -> bool {
-    let Some(ctx) = filter_ctx else {
-        return true; // No context = no filtering
-    };
-
-    matches_source_target_filters(
-        trigger,
-        ctx.entities,
-        event.source_entity.log_id,
-        event.source_entity.entity_type,
-        event.source_entity.name,
-        event.source_entity.class_id,
-        event.target_entity.log_id,
-        event.target_entity.entity_type,
-        event.target_entity.name,
-        event.target_entity.class_id,
-        ctx.local_player_id,
-        ctx.current_target_id,
-        ctx.boss_entity_ids,
-    )
-}
-
-/// Check if a signal-based phase trigger is satisfied (NpcAppears, EntityDeath, etc.).
-/// Iterates through signals and delegates matching to unified Trigger methods.
-pub fn check_signal_phase_trigger(
-    trigger: &Trigger,
-    entities: &[EntityDefinition],
-    signals: &[GameSignal],
-) -> bool {
-    for signal in signals {
-        match signal {
-            GameSignal::NpcFirstSeen {
-                npc_id,
-                entity_name,
-                ..
-            } => {
-                if trigger.matches_npc_appears(entities, *npc_id, entity_name) {
-                    return true;
-                }
-            }
-            GameSignal::EntityDeath {
-                npc_id,
-                entity_name,
-                ..
-            } => {
-                if trigger.matches_entity_death(entities, *npc_id, entity_name) {
-                    return true;
-                }
-            }
-            GameSignal::PhaseEndTriggered { phase_id, .. } => {
-                if trigger.matches_phase_ended(phase_id) {
-                    return true;
-                }
-            }
-            GameSignal::CounterChanged {
-                counter_id,
-                old_value,
-                new_value,
-                ..
-            } => {
-                if trigger.matches_counter_reaches(counter_id, *old_value, *new_value) {
-                    return true;
-                }
-            }
-            _ => {}
-        }
-    }
-    false
 }
 
 /// Check if a TimeElapsed trigger is satisfied (time crossed threshold).

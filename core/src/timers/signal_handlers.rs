@@ -10,7 +10,7 @@ use crate::context::IStr;
 use crate::dsl::EntityDefinition;
 use crate::encounter::CombatEncounter;
 
-use super::{TimerManager, TimerTrigger};
+use super::TimerManager;
 
 /// Get the entity roster from the current encounter, or empty slice if none.
 fn get_entities(encounter: Option<&CombatEncounter>) -> &[EntityDefinition] {
@@ -76,8 +76,8 @@ pub(super) fn handle_ability(
 
     // Check for cancel triggers on ability cast
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::AbilityCast { abilities, .. } if abilities.iter().any(|s| s.matches(ability_id, Some(ability_name_str)))),
-        &format!("ability {} cast", ability_id)
+        |t| t.matches_ability(ability_id, Some(ability_name_str)),
+        &format!("ability {} cast", ability_id),
     );
 }
 
@@ -133,8 +133,8 @@ pub(super) fn handle_effect_applied(
 
     // Check for cancel triggers on effect applied
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::EffectApplied { effects, .. } if effects.iter().any(|s| s.matches(effect_id, Some(effect_name)))),
-        &format!("effect {} applied", effect_name)
+        |t| t.matches_effect_applied(effect_id, Some(effect_name)),
+        &format!("effect {} applied", effect_name),
     );
 }
 
@@ -190,8 +190,8 @@ pub(super) fn handle_effect_removed(
 
     // Check for cancel triggers on effect removed
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::EffectRemoved { effects, .. } if effects.iter().any(|s| s.matches(effect_id, Some(effect_name)))),
-        &format!("effect {} removed", effect_name)
+        |t| t.matches_effect_removed(effect_id, Some(effect_name)),
+        &format!("effect {} removed", effect_name),
     );
 }
 
@@ -258,9 +258,8 @@ pub(super) fn handle_phase_change(
     }
 
     // Check for cancel triggers on phase entered
-    let phase_id_owned = phase_id.to_string();
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::PhaseEntered { phase_id: pid } if pid == &phase_id_owned),
+        |t| t.matches_phase_entered(phase_id),
         &format!("phase {} entered", phase_id),
     );
 }
@@ -284,9 +283,8 @@ pub(super) fn handle_phase_ended(
     }
 
     // Check for cancel triggers on phase ended
-    let phase_id_owned = phase_id.to_string();
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::PhaseEnded { phase_id: pid } if pid == &phase_id_owned),
+        |t| t.matches_phase_ended(phase_id),
         &format!("phase {} ended", phase_id),
     );
 }
@@ -315,12 +313,8 @@ pub(super) fn handle_counter_change(
     }
 
     // Check for cancel triggers on counter change
-    let counter_id_owned = counter_id.to_string();
     manager.cancel_timers_matching(
-        |t| {
-            matches!(t, TimerTrigger::CounterReaches { counter_id: cid, value }
-            if cid == &counter_id_owned && old_value < *value && new_value >= *value)
-        },
+        |t| t.matches_counter_reaches(counter_id, old_value, new_value),
         &format!("counter {} reached {}", counter_id, new_value),
     );
 }
@@ -491,8 +485,8 @@ pub(super) fn handle_damage_taken(
 
     // Check for cancel triggers on damage taken
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::DamageTaken { abilities, .. } if abilities.iter().any(|s| s.matches(ability_id, Some(&ability_name_str)))),
-        &format!("damage taken from {}", ability_name_str)
+        |t| t.matches_damage_taken(ability_id, Some(&ability_name_str)),
+        &format!("damage taken from {}", ability_name_str),
     );
 }
 
@@ -548,8 +542,8 @@ pub(super) fn handle_healing_taken(
 
     // Check for cancel triggers on healing taken
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::HealingTaken { abilities, .. } if abilities.iter().any(|s| s.matches(ability_id, Some(&ability_name_str)))),
-        &format!("healing taken from {}", ability_name_str)
+        |t| t.matches_healing_taken(ability_id, Some(&ability_name_str)),
+        &format!("healing taken from {}", ability_name_str),
     );
 }
 
@@ -588,8 +582,8 @@ pub(super) fn handle_time_elapsed(
 
     // Check for cancel triggers on time elapsed
     manager.cancel_timers_matching(
-        |t| matches!(t, TimerTrigger::TimeElapsed { secs } if old_combat_secs < *secs && new_combat_secs >= *secs),
-        &format!("{:.1}s elapsed", new_combat_secs)
+        |t| t.matches_time_elapsed(old_combat_secs, new_combat_secs),
+        &format!("{:.1}s elapsed", new_combat_secs),
     );
 }
 

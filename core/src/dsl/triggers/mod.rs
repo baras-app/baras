@@ -612,6 +612,19 @@ impl Trigger {
         }
     }
 
+    /// Check if trigger matches a timer starting.
+    pub fn matches_timer_started(&self, timer_id: &str) -> bool {
+        match self {
+            Self::TimerStarted {
+                timer_id: trigger_id,
+            } => trigger_id == timer_id,
+            Self::AnyOf { conditions } => {
+                conditions.iter().any(|c| c.matches_timer_started(timer_id))
+            }
+            _ => false,
+        }
+    }
+
     /// Check if trigger matches target set (NPC targeting something).
     pub fn matches_target_set(
         &self,

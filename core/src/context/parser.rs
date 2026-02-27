@@ -378,6 +378,17 @@ impl ParsingSession {
                 self.dispatch_signals(&counter_signals);
             }
         }
+
+        // Check phase transitions triggered by timer events (TimerExpires/TimerStarted).
+        // Run after counter dispatch so phases can react to updated counter state.
+        if let Some(cache) = &mut self.session_cache {
+            use crate::signal_processor::check_timer_phase_transitions;
+            let phase_signals =
+                check_timer_phase_transitions(&expired_ids, &started_ids, cache, timestamp);
+            if !phase_signals.is_empty() {
+                self.dispatch_signals(&phase_signals);
+            }
+        }
     }
 
     /// Get a shared reference to the effect tracker for overlay queries.
