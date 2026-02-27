@@ -1146,8 +1146,8 @@ button:active {
 /* Session panel */
 /* ── Collapsible Session Dashboard Bar ── */
 .session-dashboard-bar {
-  margin: 0;
-  width: 100%;
+  align-self: stretch;
+  margin: 0 2vw;
   background: var(--gradient-panel);
   border-bottom: 1px solid var(--border-accent);
   padding: 0.4em 1.2em;
@@ -1167,7 +1167,8 @@ button:active {
     rgba(212, 168, 80, 0.08) 0%,
     var(--bg-mid) 100%
   );
-  border-bottom-color: rgba(212, 168, 80, 0.3);
+  border: 1px solid rgba(212, 168, 80, 0.3);
+  border-radius: var(--radius-lg);
 }
 
 .dashboard-toggle-row {
