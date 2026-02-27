@@ -87,6 +87,11 @@ pub struct TimerManager {
     /// When NPCs with these class IDs are first seen, add their entity_id to boss_entity_ids
     boss_npc_class_ids: HashSet<i64>,
 
+    /// Timer definition IDs that have already been started by combat-time triggers
+    /// (CombatStart / TimeElapsed) this combat. Prevents re-creation after cancellation.
+    /// Cleared on combat end and encounter change.
+    pub(super) combat_time_started: HashSet<String>,
+
     // ─── Encounter-scoped State (for lazy re-initialization) ─────────────────
     /// Current encounter ID being tracked (for detecting encounter changes)
     /// When this doesn't match the signal's encounter, we reset timer state.
@@ -120,6 +125,7 @@ impl TimerManager {
             current_target_id: None,
             boss_entity_ids: HashSet::new(),
             boss_npc_class_ids: HashSet::new(),
+            combat_time_started: HashSet::new(),
             active_encounter_id: None,
             definitions_fingerprint: 0,
         }
@@ -245,10 +251,6 @@ impl TimerManager {
             return false;
         }
 
-        // Track if we were in combat before loading (for mid-combat reload handling)
-        let was_in_combat = self.in_combat;
-        let combat_start = self.combat_start_time;
-
         // Clear existing boss-related timer definitions (keep generic ones)
         // We'll re-add them from the fresh boss definitions
         self.definitions
@@ -307,16 +309,10 @@ impl TimerManager {
         // Validate timer chain references
         self.validate_timer_chains();
 
-        // If we were in combat when definitions loaded and have no active timers,
-        // this likely means definitions loaded late. Re-trigger combat_start timers.
-        if was_in_combat && self.active_timers.is_empty() && combat_start.is_some() {
-            tracing::info!("Definitions loaded mid-combat, triggering combat_start timers");
-            // Note: We can't call signal_handlers::handle_combat_start here because
-            // we don't have the encounter reference. The next signal will detect
-            // the encounter mismatch and handle it via lazy re-init.
-            // Mark that we need to re-trigger on next signal.
-            self.active_encounter_id = None;
-        }
+        // No special mid-combat handling needed: combat_start and time_elapsed
+        // triggers are evaluated continuously by handle_combat_time_triggers
+        // on every tick/event. When definitions load mid-combat, the next
+        // tick will pick them up and backdate start timestamps correctly.
 
         true
     }
@@ -354,11 +350,15 @@ impl TimerManager {
         }
     }
 
-    /// Tick to process timer expirations based on real time.
+    /// Tick to process timer expirations and time-elapsed triggers based on real time.
     /// Call periodically to update timers even without new signals.
     /// Pass the current encounter context to allow timer restarts.
     pub fn tick(&mut self, encounter: Option<&crate::encounter::CombatEncounter>) {
         if let Some(ts) = self.last_timestamp {
+            // Evaluate combat-time triggers (CombatStart + TimeElapsed) so they
+            // fire even during idle periods (no combat events arriving).
+            signal_handlers::handle_combat_time_triggers(self, encounter);
+
             let effective_time = self
                 .active_timers
                 .values()
@@ -368,6 +368,11 @@ impl TimerManager {
                 .map_or(ts, |max_expires| max_expires.max(ts));
 
             self.process_expirations(effective_time, encounter);
+
+            // Process cancellation chains (timer_canceled triggers)
+            for timer_id in self.canceled_this_tick.clone() {
+                self.start_timers_on_cancel(&timer_id, ts);
+            }
         }
     }
 
@@ -911,37 +916,6 @@ impl SignalHandler for TimerManager {
             // AreaEntered: Context is now read from CombatEncounter directly
             GameSignal::AreaEntered { .. } => return,
 
-            // BossEncounterDetected: Set boss context even if definitions not yet loaded.
-            // This fixes a race where definitions load after combat starts (e.g., after watcher restart).
-            GameSignal::BossEncounterDetected {
-                entity_id,
-                boss_npc_class_ids,
-                timestamp,
-                ..
-            } => {
-                // Track boss entity ID for source/target "boss" filter
-                self.boss_entity_ids.insert(*entity_id);
-
-                // Store boss NPC class IDs (for tracking additional boss entities in multi-boss fights)
-                self.boss_npc_class_ids.clear();
-                for &class_id in boss_npc_class_ids {
-                    self.boss_npc_class_ids.insert(class_id);
-                }
-
-                // Set combat state
-                let combat_start = encounter
-                    .and_then(|e| e.enter_combat_time)
-                    .unwrap_or(*timestamp);
-                self.in_combat = true;
-                self.combat_start_time = Some(combat_start);
-
-                // Start combat-start timers only if definitions are loaded
-                if !self.definitions.is_empty() {
-                    signal_handlers::handle_combat_start(self, encounter, combat_start);
-                }
-                return;
-            }
-
             // CombatEnded: Clear combat state even if definitions not loaded
             GameSignal::CombatEnded { .. } => {
                 signal_handlers::clear_combat_timers(self);
@@ -959,28 +933,17 @@ impl SignalHandler for TimerManager {
         let ts = signal.timestamp();
         self.last_timestamp = Some(ts);
 
-        // ─── Lazy Re-initialization: Detect encounter changes ───────────────────
-        // If the encounter ID changed, reset timer state and re-trigger combat_start.
-        // This handles cases where:
-        // 1. Definitions loaded after combat started
-        // 2. Timer manager somehow got out of sync with the encounter
-        // 3. App was restarted mid-encounter
+        // ─── Encounter change detection ────────────────────────────────────────
+        // If the encounter ID changed, reset timer state. Combat-time triggers
+        // (combat_start, time_elapsed) will be picked up naturally by
+        // handle_combat_time_triggers on the next evaluation.
         if let Some(enc) = encounter {
             let current_enc_id = enc.id;
             if self.active_encounter_id != Some(current_enc_id) {
-                // Encounter changed - reset timer state
                 self.active_timers.clear();
                 self.fired_alerts.clear();
-
-                // Update tracked encounter
+                self.combat_time_started.clear();
                 self.active_encounter_id = Some(current_enc_id);
-
-                // If we're in combat, re-trigger combat_start timers
-                if self.in_combat {
-                    if let Some(combat_start) = self.combat_start_time {
-                        signal_handlers::handle_combat_start(self, Some(enc), combat_start);
-                    }
-                }
             }
         }
 
@@ -992,6 +955,26 @@ impl SignalHandler for TimerManager {
         match signal {
             // Context signals already handled above
             GameSignal::PlayerInitialized { .. } | GameSignal::AreaEntered { .. } => {}
+
+            // BossEncounterDetected: set boss context, then fall through to
+            // handle_combat_time_triggers below so combat_start timers fire immediately.
+            GameSignal::BossEncounterDetected {
+                entity_id,
+                boss_npc_class_ids,
+                timestamp,
+                ..
+            } => {
+                self.boss_entity_ids.insert(*entity_id);
+                self.boss_npc_class_ids.clear();
+                for &class_id in boss_npc_class_ids {
+                    self.boss_npc_class_ids.insert(class_id);
+                }
+                let combat_start = encounter
+                    .and_then(|e| e.enter_combat_time)
+                    .unwrap_or(*timestamp);
+                self.in_combat = true;
+                self.combat_start_time = Some(combat_start);
+            }
 
             GameSignal::AbilityActivated {
                 ability_id,
@@ -1085,7 +1068,10 @@ impl SignalHandler for TimerManager {
             }
 
             GameSignal::CombatStarted { timestamp, .. } => {
-                signal_handlers::handle_combat_start(self, encounter, *timestamp);
+                // Just set combat state. Combat-start timers are evaluated
+                // continuously by handle_combat_time_triggers below.
+                self.in_combat = true;
+                self.combat_start_time = Some(*timestamp);
             }
 
             // CombatEnded handled in early context-setting section above
@@ -1288,10 +1274,8 @@ impl SignalHandler for TimerManager {
             _ => {}
         }
 
-        // Check for time-elapsed triggers if we're in combat
-        if let Some(ts) = self.last_timestamp {
-            signal_handlers::handle_time_elapsed(self, encounter, ts);
-        }
+        // Evaluate combat-time triggers (CombatStart + TimeElapsed)
+        signal_handlers::handle_combat_time_triggers(self, encounter);
 
         // Process expirations after handling signal
         if let Some(ts) = self.last_timestamp {

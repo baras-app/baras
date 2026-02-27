@@ -8,6 +8,7 @@ use super::{TimerDefinition, TimerManager, TimerTrigger};
 use crate::dsl::AudioConfig;
 use crate::dsl::EntityFilter;
 use crate::dsl::{AbilitySelector, EffectSelector, EntitySelector};
+use crate::encounter::{CombatEncounter, ProcessingMode};
 use crate::signal_processor::{GameSignal, SignalHandler};
 
 /// Create a test timer with the given trigger
@@ -28,6 +29,7 @@ fn make_timer(id: &str, name: &str, trigger: TimerTrigger, duration: f32) -> Tim
         alert_at_secs: None,
         alert_text: None,
         audio: AudioConfig::default(),
+        icon_ability_id: None,
         show_on_raid_frames: false,
         show_at_secs: 0.0,
         area_ids: Vec::new(),
@@ -46,6 +48,15 @@ fn now() -> chrono::NaiveDateTime {
     Local::now().naive_local()
 }
 
+/// Create a minimal CombatEncounter in combat at the given timestamp
+fn make_encounter(combat_start: chrono::NaiveDateTime, combat_time_secs: f32) -> CombatEncounter {
+    let mut enc = CombatEncounter::new(1, ProcessingMode::Live);
+    enc.enter_combat_time = Some(combat_start);
+    enc.combat_time_secs = combat_time_secs;
+    enc.state = crate::encounter::EncounterState::InCombat;
+    enc
+}
+
 #[test]
 fn test_combat_start_triggers_timer() {
     let mut manager = TimerManager::new();
@@ -56,14 +67,17 @@ fn test_combat_start_triggers_timer() {
     // No timers active initially
     assert!(manager.active_timers().is_empty());
 
-    // Send CombatStarted signal
+    let start = now();
+    let enc = make_encounter(start, 0.5); // 0.5s into combat
+
+    // Send CombatStarted signal with encounter context
     let signal = GameSignal::CombatStarted {
-        timestamp: now(),
+        timestamp: start,
         encounter_id: 1,
     };
-    manager.handle_signal(&signal, None);
+    manager.handle_signal(&signal, Some(&enc));
 
-    // Timer should now be active
+    // Timer should now be active (picked up by handle_combat_time_triggers)
     let active = manager.active_timers();
     assert_eq!(active.len(), 1, "Expected 1 active timer");
     assert_eq!(active[0].name, "Enrage Timer");
@@ -274,12 +288,15 @@ fn test_anyof_mixed_trigger_types() {
     );
     manager.load_definitions(vec![timer]);
 
+    let start = now();
+    let enc = make_encounter(start, 0.5);
+
     // Combat start should trigger
     let signal = GameSignal::CombatStarted {
-        timestamp: now(),
+        timestamp: start,
         encounter_id: 1,
     };
-    manager.handle_signal(&signal, None);
+    manager.handle_signal(&signal, Some(&enc));
 
     assert_eq!(
         manager.active_timers().len(),
@@ -291,6 +308,8 @@ fn test_anyof_mixed_trigger_types() {
 #[test]
 fn test_cancel_on_timer() {
     let mut manager = TimerManager::new();
+
+    let start = now();
 
     // Timer A starts on combat, canceled when B starts
     let timer_a = TimerDefinition {
@@ -318,18 +337,22 @@ fn test_cancel_on_timer() {
 
     manager.load_definitions(vec![timer_a, timer_b]);
 
+    let enc = make_encounter(start, 0.5);
+
     // Start combat - Timer A should be active
     manager.handle_signal(
         &GameSignal::CombatStarted {
-            timestamp: now(),
+            timestamp: start,
             encounter_id: 1,
         },
-        None,
+        Some(&enc),
     );
 
     let active = manager.active_timers();
     assert_eq!(active.len(), 1);
     assert_eq!(active[0].name, "Timer A");
+
+    let enc2 = make_encounter(start, 1.0);
 
     // Trigger Timer B - Timer A should be canceled
     manager.handle_signal(
@@ -344,9 +367,9 @@ fn test_cancel_on_timer() {
             target_name: crate::context::IStr::default(),
             target_entity_type: crate::combat_log::EntityType::Player,
             target_npc_id: 0,
-            timestamp: now(),
+            timestamp: start + chrono::Duration::milliseconds(1000),
         },
-        None,
+        Some(&enc2),
     );
 
     let active = manager.active_timers();
@@ -396,6 +419,7 @@ fn test_wrong_ability_does_not_trigger() {
 fn test_combat_end_clears_timers() {
     let mut manager = TimerManager::new();
 
+    let start = now();
     let timer = make_timer(
         "combat_timer",
         "Combat Timer",
@@ -404,13 +428,15 @@ fn test_combat_end_clears_timers() {
     );
     manager.load_definitions(vec![timer]);
 
+    let enc = make_encounter(start, 0.5);
+
     // Start combat
     manager.handle_signal(
         &GameSignal::CombatStarted {
-            timestamp: now(),
+            timestamp: start,
             encounter_id: 1,
         },
-        None,
+        Some(&enc),
     );
     assert_eq!(manager.active_timers().len(), 1);
 
@@ -452,6 +478,7 @@ fn test_timer_expires_triggers_chain() {
     manager.load_definitions(vec![timer_a, timer_b]);
 
     let start_time = now();
+    let enc = make_encounter(start_time, 0.5);
 
     // Start combat - Timer A should start
     manager.handle_signal(
@@ -459,7 +486,7 @@ fn test_timer_expires_triggers_chain() {
             timestamp: start_time,
             encounter_id: 1,
         },
-        None,
+        Some(&enc),
     );
 
     let active = manager.active_timers();
@@ -468,6 +495,7 @@ fn test_timer_expires_triggers_chain() {
 
     // Send a signal with future timestamp to advance time and trigger tick
     let after_expiry = start_time + chrono::Duration::seconds(3);
+    let enc2 = make_encounter(start_time, 3.0);
     manager.handle_signal(
         &GameSignal::AbilityActivated {
             ability_id: 999999, // Non-matching ability just to advance time
@@ -482,9 +510,9 @@ fn test_timer_expires_triggers_chain() {
             target_npc_id: 0,
             timestamp: after_expiry,
         },
-        None,
+        Some(&enc2),
     );
-    manager.tick(None);
+    manager.tick(Some(&enc2));
 
     // Timer A should be gone, Timer B should now be active
     let active = manager.active_timers();
@@ -505,13 +533,14 @@ fn test_timer_expires_without_chain() {
     manager.load_definitions(vec![timer]);
 
     let start_time = now();
+    let enc = make_encounter(start_time, 0.1);
 
     manager.handle_signal(
         &GameSignal::CombatStarted {
             timestamp: start_time,
             encounter_id: 1,
         },
-        None,
+        Some(&enc),
     );
 
     assert_eq!(manager.active_timers().len(), 1);
@@ -818,6 +847,7 @@ fn test_multi_timer_chain_a_b_c() {
     manager.load_definitions(vec![timer_a, timer_b, timer_c]);
 
     let start_time = now();
+    let enc = make_encounter(start_time, 0.1);
 
     // Start combat - Timer A starts
     manager.handle_signal(
@@ -825,7 +855,7 @@ fn test_multi_timer_chain_a_b_c() {
             timestamp: start_time,
             encounter_id: 1,
         },
-        None,
+        Some(&enc),
     );
 
     assert_eq!(manager.active_timers().len(), 1);
@@ -935,6 +965,7 @@ fn test_cancel_on_timer_with_chain() {
     manager.load_definitions(vec![timer_a, timer_b, timer_c]);
 
     let start_time = now();
+    let enc = make_encounter(start_time, 0.1);
 
     // Start combat - Timer A and Timer B both start
     manager.handle_signal(
@@ -942,7 +973,7 @@ fn test_cancel_on_timer_with_chain() {
             timestamp: start_time,
             encounter_id: 1,
         },
-        None,
+        Some(&enc),
     );
 
     let active = manager.active_timers();

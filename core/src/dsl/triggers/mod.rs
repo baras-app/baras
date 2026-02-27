@@ -505,7 +505,55 @@ impl Trigger {
         }
     }
 
+    /// Returns the `secs` threshold if this is a `TimeElapsed` trigger.
+    pub fn time_elapsed_secs(&self) -> Option<f32> {
+        match self {
+            Self::TimeElapsed { secs } => Some(*secs),
+            _ => None,
+        }
+    }
+
+    /// Check if the TimeElapsed condition is met: combat time >= threshold.
+    /// Unlike `matches_time_elapsed`, this is a simple state check, not a
+    /// threshold-crossing detector. Safe to call repeatedly — callers handle dedup.
+    pub fn is_time_elapsed_met(&self, combat_secs: f32) -> bool {
+        match self {
+            Self::TimeElapsed { secs } => combat_secs >= *secs,
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.is_time_elapsed_met(combat_secs)),
+            _ => false,
+        }
+    }
+
+    /// Check if this trigger's combat-time condition is met.
+    /// Treats CombatStart as TimeElapsed { secs: 0 } — both are just
+    /// "fire when combat has been running >= threshold seconds."
+    /// Safe to call repeatedly; callers handle deduplication.
+    pub fn is_combat_time_met(&self, combat_secs: f32) -> bool {
+        match self {
+            Self::CombatStart => combat_secs >= 0.0,
+            Self::TimeElapsed { secs } => combat_secs >= *secs,
+            Self::AnyOf { conditions } => {
+                conditions.iter().any(|c| c.is_combat_time_met(combat_secs))
+            }
+            _ => false,
+        }
+    }
+
+    /// Returns the combat-time threshold in seconds for this trigger.
+    /// CombatStart = 0.0, TimeElapsed = configured secs.
+    /// Returns None for non-combat-time triggers.
+    pub fn combat_time_threshold(&self) -> Option<f32> {
+        match self {
+            Self::CombatStart => Some(0.0),
+            Self::TimeElapsed { secs } => Some(*secs),
+            _ => None,
+        }
+    }
+
     /// Check if trigger matches time elapsed crossing a threshold.
+    /// Used by the phase system where one-shot threshold detection is needed.
     pub fn matches_time_elapsed(&self, old_secs: f32, new_secs: f32) -> bool {
         match self {
             Self::TimeElapsed { secs } => old_secs < *secs && new_secs >= *secs,
@@ -548,9 +596,9 @@ impl Trigger {
             Self::TimerCanceled {
                 timer_id: trigger_id,
             } => trigger_id == timer_id,
-            Self::AnyOf { conditions } => {
-                conditions.iter().any(|c| c.matches_timer_canceled(timer_id))
-            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_timer_canceled(timer_id)),
             _ => false,
         }
     }

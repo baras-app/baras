@@ -547,65 +547,54 @@ pub(super) fn handle_healing_taken(
     );
 }
 
-/// Handle time elapsed - check for TimeElapsed triggers
-pub(super) fn handle_time_elapsed(
+/// Evaluate combat-time-based triggers: CombatStart and TimeElapsed.
+///
+/// Both are treated uniformly: CombatStart fires at combat_time >= 0,
+/// TimeElapsed fires at combat_time >= threshold_secs.
+///
+/// Called on every tick and signal. Deduplication is handled by `start_timer`
+/// which ignores already-active timers. Start timestamps are backdated to
+/// `enter_combat_time + threshold` so remaining duration is correct regardless
+/// of when definitions loaded or when this is first evaluated.
+pub(super) fn handle_combat_time_triggers(
     manager: &mut TimerManager,
     encounter: Option<&CombatEncounter>,
-    _timestamp: NaiveDateTime,
 ) {
+    if !manager.in_combat {
+        return;
+    }
+
     let Some(enc) = encounter else {
         return;
     };
 
-    // Read combat time from encounter (source of truth)
-    let new_combat_secs = enc.combat_time_secs;
-    let old_combat_secs = enc.prev_combat_time_secs;
-
-    // Only check if time has progressed
-    if new_combat_secs <= old_combat_secs {
+    let combat_secs = enc.combat_time_secs;
+    let Some(combat_start) = enc.enter_combat_time else {
         return;
-    }
+    };
 
+    // Find definitions whose combat-time trigger is met (CombatStart or TimeElapsed)
+    // Skip definitions already started this combat (prevents re-creation after cancel)
     let matching: Vec<_> = manager
         .definitions
         .values()
         .filter(|d| {
-            d.matches_time_elapsed(old_combat_secs, new_combat_secs)
+            d.trigger.is_combat_time_met(combat_secs)
+                && !manager.combat_time_started.contains(&d.id)
                 && manager.is_definition_active(d, encounter)
         })
         .cloned()
         .collect();
 
     for def in matching {
-        manager.start_timer(&def, _timestamp, None);
+        let threshold = def.trigger.combat_time_threshold().unwrap_or(0.0);
+        let start_ts = combat_start + chrono::Duration::milliseconds((threshold * 1000.0) as i64);
+        manager.combat_time_started.insert(def.id.clone());
+        manager.start_timer(&def, start_ts, None);
     }
 
-    // Check for cancel triggers on time elapsed
-    manager.cancel_timers_matching(
-        |t| t.matches_time_elapsed(old_combat_secs, new_combat_secs),
-        &format!("{:.1}s elapsed", new_combat_secs),
-    );
-}
-
-/// Handle combat start - start combat-triggered timers
-pub(super) fn handle_combat_start(
-    manager: &mut TimerManager,
-    encounter: Option<&CombatEncounter>,
-    timestamp: NaiveDateTime,
-) {
-    manager.in_combat = true;
-    manager.combat_start_time = Some(timestamp);
-
-    let matching: Vec<_> = manager
-        .definitions
-        .values()
-        .filter(|d| d.triggers_on_combat_start() && manager.is_definition_active(d, encounter))
-        .cloned()
-        .collect();
-
-    for def in matching {
-        manager.start_timer(&def, timestamp, None);
-    }
+    // Cancel triggers based on combat time
+    manager.cancel_timers_matching(|t| t.is_combat_time_met(combat_secs), "combat_time cancel");
 }
 
 /// Clear all combat-scoped timers and encounter context
@@ -615,6 +604,7 @@ pub(super) fn clear_combat_timers(manager: &mut TimerManager) {
     manager.active_timers.clear();
     manager.fired_alerts.clear();
     manager.boss_entity_ids.clear();
+    manager.combat_time_started.clear();
     // Boss name is now read from encounter.active_boss directly
     manager.clear_boss_npc_class_ids();
     // Clear encounter tracking so next encounter triggers fresh initialization

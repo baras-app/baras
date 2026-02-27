@@ -435,6 +435,17 @@ impl ParsingSession {
             tracker.lock().unwrap_or_else(|p| p.into_inner()).tick();
         }
 
+        // Update combat time so TimeElapsed triggers fire promptly during idle periods
+        if let Some(cache) = &mut self.session_cache {
+            if let Some(enc) = cache.current_encounter_mut() {
+                if enc.enter_combat_time.is_some()
+                    && matches!(enc.state, crate::encounter::EncounterState::InCombat)
+                {
+                    enc.update_combat_time(chrono::Local::now().naive_local());
+                }
+            }
+        }
+
         // Tick timer manager
         if let Some(timer_mgr) = &self.timer_manager {
             let encounter = self

@@ -157,6 +157,7 @@ npc_id = 123456789                    # Optional: specific NPC
 | `counter_reaches`  | `counter_id`, `value`                   |
 | `timer_expires`    | `timer_id`                              |
 | `timer_started`    | `timer_id`                              |
+| `timer_canceled`   | `timer_id`                              |
 | `time_elapsed`     | `secs`                                  |
 | `any_of`           | `conditions` (array of triggers)        |
 | `manual`           | — (debug)                               |

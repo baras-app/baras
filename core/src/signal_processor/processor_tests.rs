@@ -637,6 +637,7 @@ fn test_bestia_complete_encounter() {
             phases: Vec::new(),
             counter_condition: None,
             per_target: bt.per_target,
+            icon_ability_id: None,
         })
         .collect();
 

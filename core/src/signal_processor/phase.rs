@@ -299,12 +299,15 @@ pub fn check_time_phase_transitions(
     cache: &mut SessionCache,
     timestamp: NaiveDateTime,
 ) -> Vec<GameSignal> {
-    // First: update combat time (requires mutable borrow)
+    // First: update combat time (requires mutable borrow).
+    // Only update when in combat so we don't advance the clock before
+    // CombatStarted fires. No boss gate — TimeElapsed triggers on timers
+    // should work from combat start, not boss detection.
     let (old_time, new_time) = {
         let Some(enc) = cache.current_encounter_mut() else {
             return Vec::new();
         };
-        if enc.active_boss_idx().is_none() {
+        if !matches!(enc.state, crate::encounter::EncounterState::InCombat { .. }) {
             return Vec::new();
         }
         enc.update_combat_time(timestamp)
@@ -314,18 +317,16 @@ pub fn check_time_phase_transitions(
         return Vec::new();
     }
 
-    // Second pass: find matching phase using immutable borrow
+    // Second pass: find matching phase using immutable borrow.
+    // Phase transitions DO require an active boss (phases are boss-specific).
     let match_data = {
         let Some(enc) = cache.current_encounter() else {
-            tracing::error!(
-                "BUG: encounter disappeared after update_combat_time in check_time_phase_transitions"
-            );
             return Vec::new();
         };
         let Some(def_idx) = enc.active_boss_idx() else {
-            tracing::error!(
-                "BUG: no active boss after update_combat_time in check_time_phase_transitions"
-            );
+            // No active boss — combat time was updated above but no phase
+            // transitions to check. Return empty so timers still benefit
+            // from the updated combat_time_secs.
             return Vec::new();
         };
 

@@ -439,13 +439,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // ─── Step 1: Dispatch signals to timer manager (accumulate IDs, no output yet) ───
         let encounter = cache.current_encounter();
         let mut expired_timer_ids: Vec<String> = Vec::new();
-        let mut cancelled_timer_ids: Vec<String> = Vec::new();
+        let mut canceled_timer_ids: Vec<String> = Vec::new();
         let mut started_timer_ids: Vec<String> = Vec::new();
 
         for signal in &signals {
             timer_manager.handle_signal(signal, encounter);
             expired_timer_ids.extend(timer_manager.expired_timer_ids().iter().cloned());
-            cancelled_timer_ids.extend(timer_manager.cancelled_timer_ids().iter().cloned());
+            canceled_timer_ids.extend(timer_manager.canceled_timer_ids().iter().cloned());
             started_timer_ids.extend(timer_manager.started_timer_ids().iter().cloned());
         }
 
@@ -458,6 +458,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let timer_counter_signals = check_counter_timer_triggers(
             &expired_timer_ids,
             &started_timer_ids,
+            &canceled_timer_ids,
             &mut cache,
             event.timestamp,
         );
@@ -474,6 +475,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let timer_phase_signals = check_timer_phase_transitions(
             &expired_timer_ids,
             &started_timer_ids,
+            &canceled_timer_ids,
             &mut cache,
             event.timestamp,
         );
@@ -673,9 +675,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             cli.timer_expire(event.timestamp, expired_id, expired_id);
         }
 
-        // Log cancelled timers
-        for cancelled_id in &cancelled_timer_ids {
-            cli.timer_cancel(event.timestamp, cancelled_id, cancelled_id);
+        // Log canceled timers
+        for canceled_id in &canceled_timer_ids {
+            cli.timer_cancel(event.timestamp, canceled_id, canceled_id);
         }
 
         // Log new/restarted timers
