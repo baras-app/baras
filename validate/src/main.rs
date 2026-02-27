@@ -468,6 +468,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let encounter = cache.current_encounter();
             for signal in &timer_counter_signals {
                 timer_manager.handle_signal(signal, encounter);
+                expired_timer_ids.extend(timer_manager.expired_timer_ids().iter().cloned());
+                canceled_timer_ids.extend(timer_manager.canceled_timer_ids().iter().cloned());
+                started_timer_ids.extend(timer_manager.started_timer_ids().iter().cloned());
             }
         }
 
@@ -485,6 +488,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let encounter = cache.current_encounter();
             for signal in &timer_phase_signals {
                 timer_manager.handle_signal(signal, encounter);
+                expired_timer_ids.extend(timer_manager.expired_timer_ids().iter().cloned());
+                canceled_timer_ids.extend(timer_manager.canceled_timer_ids().iter().cloned());
+                started_timer_ids.extend(timer_manager.started_timer_ids().iter().cloned());
             }
         }
 

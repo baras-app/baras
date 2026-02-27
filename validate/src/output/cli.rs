@@ -51,6 +51,7 @@ pub struct CliOutput {
     use_colors: bool,
     timers_started: u32,
     timers_expired: u32,
+    timers_canceled: u32,
     alerts_fired: u32,
     phase_changes: u32,
     counter_changes: u32,
@@ -78,6 +79,7 @@ impl CliOutput {
             use_colors: atty::is(atty::Stream::Stdout),
             timers_started: 0,
             timers_expired: 0,
+            timers_canceled: 0,
             alerts_fired: 0,
             phase_changes: 0,
             counter_changes: 0,
@@ -217,6 +219,8 @@ impl CliOutput {
 
     /// Log timer cancellation
     pub fn timer_cancel(&mut self, time: NaiveDateTime, name: &str, timer_id: &str) {
+        self.timers_canceled += 1;
+
         if self.level < OutputLevel::Timers || !self.should_output() {
             return;
         }
@@ -444,11 +448,12 @@ impl CliOutput {
         println!("{}", line);
         println!("  TIMER VALIDATION SUMMARY");
         println!("{}", line);
-        println!("Timers Started:  {}", self.timers_started);
-        println!("Timers Expired:  {}", self.timers_expired);
-        println!("Alerts Fired:    {}", self.alerts_fired);
+        println!("Timers Started:   {}", self.timers_started);
+        println!("Timers Expired:   {}", self.timers_expired);
+        println!("Timers Canceled:  {}", self.timers_canceled);
+        println!("Alerts Fired:     {}", self.alerts_fired);
         println!(
-            "Phase Changes:   {}",
+            "Phase Changes:    {}",
             if self.phase_changes > 0 {
                 self.cyan(&self.phase_changes.to_string())
             } else {
@@ -456,7 +461,7 @@ impl CliOutput {
             }
         );
         println!(
-            "Counter Updates: {}",
+            "Counter Updates:  {}",
             if self.counter_changes > 0 {
                 self.bright_green(&self.counter_changes.to_string())
             } else {
@@ -470,7 +475,7 @@ impl CliOutput {
             } else {
                 self.red(&format!("FAILED ({}/{})", passed, total))
             };
-            println!("Verification:    {}", status);
+            println!("Verification:     {}", status);
         }
         println!("{}", line);
     }
