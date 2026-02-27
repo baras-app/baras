@@ -183,7 +183,7 @@ impl ParsingSession {
         let tick_signals = self.session_cache.as_mut().map(|cache| {
             crate::signal_processor::tick_combat_state(cache)
         }).unwrap_or_default();
-        
+
         if !tick_signals.is_empty() {
             let should_flush_tick = tick_signals
                 .iter()
@@ -358,13 +358,14 @@ impl ParsingSession {
             return;
         };
         let timer_mgr = timer_mgr.lock().unwrap_or_else(|p| p.into_inner());
-        let (expired_ids, started_ids) = (
+        let (expired_ids, started_ids, canceled_ids) = (
             timer_mgr.expired_timer_ids().to_vec(),
             timer_mgr.started_timer_ids().to_vec(),
+            timer_mgr.canceled_timer_ids().to_vec(),
         );
         drop(timer_mgr); // Release lock before further processing
 
-        if expired_ids.is_empty() && started_ids.is_empty() {
+        if expired_ids.is_empty() && started_ids.is_empty() && canceled_ids.is_empty() {
             return;
         }
 
@@ -373,7 +374,7 @@ impl ParsingSession {
         if let Some(cache) = &mut self.session_cache {
             use crate::signal_processor::check_counter_timer_triggers;
             let counter_signals =
-                check_counter_timer_triggers(&expired_ids, &started_ids, cache, timestamp);
+                check_counter_timer_triggers(&expired_ids, &started_ids, &canceled_ids, cache, timestamp);
             if !counter_signals.is_empty() {
                 self.dispatch_signals(&counter_signals);
             }
@@ -384,7 +385,7 @@ impl ParsingSession {
         if let Some(cache) = &mut self.session_cache {
             use crate::signal_processor::check_timer_phase_transitions;
             let phase_signals =
-                check_timer_phase_transitions(&expired_ids, &started_ids, cache, timestamp);
+                check_timer_phase_transitions(&expired_ids, &started_ids, &canceled_ids, cache, timestamp);
             if !phase_signals.is_empty() {
                 self.dispatch_signals(&phase_signals);
             }
@@ -419,9 +420,9 @@ impl ParsingSession {
                 let should_flush = signals
                     .iter()
                     .any(|s| matches!(s, GameSignal::CombatEnded { .. }));
-                
+
                 self.dispatch_signals(&signals);
-                
+
                 // Flush parquet on combat end (same as event-driven path)
                 if should_flush {
                     self.flush_encounter_parquet();

@@ -385,6 +385,7 @@ pub fn SimpleTriggerEditor(
                         "healing_taken" => TimerTrigger::HealingTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "timer_expires" => TimerTrigger::TimerExpires { timer_id: String::new() },
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
+                        "timer_canceled" => TimerTrigger::TimerCanceled { timer_id: String::new() },
                         "phase_entered" => TimerTrigger::PhaseEntered { phase_id: String::new() },
                         "phase_ended" => TimerTrigger::PhaseEnded { phase_id: String::new() },
                         "any_phase_change" => TimerTrigger::AnyPhaseChange,
@@ -409,6 +410,7 @@ pub fn SimpleTriggerEditor(
                 option { value: "healing_taken", "Healing Taken" }
                 option { value: "timer_expires", "Timer Expires" }
                 option { value: "timer_started", "Timer Started" }
+                option { value: "timer_canceled", "Timer Canceled" }
                 option { value: "phase_entered", "Phase Entered" }
                 option { value: "phase_ended", "Phase Ended" }
                 option { value: "any_phase_change", "Any Phase Change" }
@@ -644,6 +646,17 @@ pub fn SimpleTriggerEditor(
                                 value: timer_id,
                                 available: available_timers,
                                 on_change: move |id| on_change.call(TimerTrigger::TimerStarted { timer_id: id })
+                            }
+                        }
+                    },
+                    TimerTrigger::TimerCanceled { timer_id } => {
+                        let available_timers = encounter_data.timer_ids();
+                        rsx! {
+                            IdSelector {
+                                label: "Timer",
+                                value: timer_id,
+                                available: available_timers,
+                                on_change: move |id| on_change.call(TimerTrigger::TimerCanceled { timer_id: id })
                             }
                         }
                     },

@@ -251,7 +251,9 @@ pub fn check_signal_trigger(
         }),
 
         // ─── Timer triggers (handled by check_timer_trigger, not signals) ──
-        Trigger::TimerExpires { .. } | Trigger::TimerStarted { .. } => false,
+        Trigger::TimerExpires { .. }
+        | Trigger::TimerStarted { .. }
+        | Trigger::TimerCanceled { .. } => false,
 
         // ─── Event-based triggers (handled by check_event_trigger, not signals)
         Trigger::AbilityCast { .. }
@@ -367,19 +369,21 @@ fn check_event_filters(
 // Timer-ID-based trigger evaluation
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Check if a trigger matches any expired or started timer IDs.
-/// Handles TimerExpires, TimerStarted, and AnyOf composition.
+/// Check if a trigger matches any expired, started, or canceled timer IDs.
+/// Handles TimerExpires, TimerStarted, TimerCanceled, and AnyOf composition.
 pub fn check_timer_trigger(
     trigger: &Trigger,
     expired_timer_ids: &[String],
     started_timer_ids: &[String],
+    canceled_timer_ids: &[String],
 ) -> bool {
     match trigger {
         Trigger::TimerExpires { timer_id } => expired_timer_ids.contains(timer_id),
         Trigger::TimerStarted { timer_id } => started_timer_ids.contains(timer_id),
-        Trigger::AnyOf { conditions } => conditions
-            .iter()
-            .any(|c| check_timer_trigger(c, expired_timer_ids, started_timer_ids)),
+        Trigger::TimerCanceled { timer_id } => canceled_timer_ids.contains(timer_id),
+        Trigger::AnyOf { conditions } => conditions.iter().any(|c| {
+            check_timer_trigger(c, expired_timer_ids, started_timer_ids, canceled_timer_ids)
+        }),
         _ => false,
     }
 }

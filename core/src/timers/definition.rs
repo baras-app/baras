@@ -191,6 +191,10 @@ impl TimerDefinition {
         self.trigger.matches_timer_expires(timer_id)
     }
 
+    pub fn matches_timer_canceled(&self, timer_id: &str) -> bool {
+        self.trigger.matches_timer_canceled(timer_id)
+    }
+
     /// Check if this timer triggers on combat start.
     pub fn triggers_on_combat_start(&self) -> bool {
         self.trigger.contains_combat_start()

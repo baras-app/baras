@@ -1606,7 +1606,7 @@ impl CombatService {
                 {
                     Ok(Ok(e)) => e,
                     Ok(Err(_)) => break, // Channel closed
-                    Err(_) => break,     // Task cancelled
+                    Err(_) => break,     // Task canceled
                 };
                 // Emit event to frontend - they can fetch fresh data
                 let _ = app_handle.emit("session-updated", format!("{:?}", event));

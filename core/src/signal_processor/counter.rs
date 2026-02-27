@@ -120,10 +120,11 @@ pub fn check_counter_increments(
 pub fn check_counter_timer_triggers(
     expired_timer_ids: &[String],
     started_timer_ids: &[String],
+    canceled_timer_ids: &[String],
     cache: &mut SessionCache,
     timestamp: chrono::NaiveDateTime,
 ) -> Vec<GameSignal> {
-    if expired_timer_ids.is_empty() && started_timer_ids.is_empty() {
+    if expired_timer_ids.is_empty() && started_timer_ids.is_empty() && canceled_timer_ids.is_empty() {
         return Vec::new();
     }
 
@@ -147,6 +148,7 @@ pub fn check_counter_timer_triggers(
             &counter.increment_on,
             expired_timer_ids,
             started_timer_ids,
+            canceled_timer_ids,
         ) {
             let Some(enc) = cache.current_encounter_mut() else {
                 tracing::error!(
@@ -166,7 +168,7 @@ pub fn check_counter_timer_triggers(
 
         // Check decrement_on for timer triggers
         if let Some(ref trigger) = counter.decrement_on {
-            if trigger_eval::check_timer_trigger(trigger, expired_timer_ids, started_timer_ids) {
+            if trigger_eval::check_timer_trigger(trigger, expired_timer_ids, started_timer_ids, canceled_timer_ids) {
                 let Some(enc) = cache.current_encounter_mut() else {
                     tracing::error!(
                         "BUG: encounter missing in check_counter_timer_triggers (decrement_on)"
@@ -192,6 +194,7 @@ pub fn check_counter_timer_triggers(
             &counter.reset_on,
             expired_timer_ids,
             started_timer_ids,
+            canceled_timer_ids,
         ) {
             let Some(enc) = cache.current_encounter_mut() else {
                 tracing::error!(

@@ -156,11 +156,14 @@ pub enum Trigger {
     CounterReaches { counter_id: String, value: u32 },
 
     // ─── Timer Events ───────────────────────────────────────────────────────
-    /// Another timer expires (chaining).
+    /// Another timer expires
     TimerExpires { timer_id: String },
 
-    /// Another timer starts (for cancellation).
+    /// Another timer starts
     TimerStarted { timer_id: String },
+
+    /// Another Timer is Canceled
+    TimerCanceled { timer_id: String },
 
     // ─── Time-based ─────────────────────────────────────────────────────────
     /// Time elapsed since combat start.
@@ -534,6 +537,19 @@ impl Trigger {
             } => trigger_id == timer_id,
             Self::AnyOf { conditions } => {
                 conditions.iter().any(|c| c.matches_timer_started(timer_id))
+            }
+            _ => false,
+        }
+    }
+
+    /// Check if trigger matches a timer being canceled.
+    pub fn matches_timer_canceled(&self, timer_id: &str) -> bool {
+        match self {
+            Self::TimerCanceled {
+                timer_id: trigger_id,
+            } => trigger_id == timer_id,
+            Self::AnyOf { conditions } => {
+                conditions.iter().any(|c| c.matches_timer_canceled(timer_id))
             }
             _ => false,
         }

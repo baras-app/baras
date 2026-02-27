@@ -872,7 +872,7 @@ impl EventProcessor {
             return;
         }
 
-        // B) Battle rez interrupted or cancelled — clear pending flag
+        // B) Battle rez interrupted or canceled — clear pending flag
         if (eid == effect_id::ABILITYINTERRUPT || eid == effect_id::ABILITYCANCEL)
             && BATTLE_REZ_ABILITY_IDS.contains(&event.action.action_id)
         {
@@ -880,7 +880,7 @@ impl EventProcessor {
                 if enc.battle_rez_pending {
                     enc.battle_rez_pending = false;
                     tracing::debug!(
-                        "[BATTLE_REZ] Battle rez cancelled/interrupted at {}",
+                        "[BATTLE_REZ] Battle rez canceled/interrupted at {}",
                         event.timestamp
                     );
                 }

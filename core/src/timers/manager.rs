@@ -60,8 +60,8 @@ pub struct TimerManager {
     /// Timers that started this tick (for counter triggers)
     started_this_tick: Vec<String>,
 
-    /// Timers that were cancelled this tick (for validation output)
-    cancelled_this_tick: Vec<String>,
+    /// Timers that were canceled this tick (for validation output)
+    canceled_this_tick: Vec<String>,
 
     /// Whether we're currently in combat
     pub(super) in_combat: bool,
@@ -112,7 +112,7 @@ impl TimerManager {
             fired_alerts: Vec::new(),
             expired_this_tick: Vec::new(),
             started_this_tick: Vec::new(),
-            cancelled_this_tick: Vec::new(),
+            canceled_this_tick: Vec::new(),
             in_combat: false,
             combat_start_time: None,
             last_timestamp: None,
@@ -511,9 +511,9 @@ impl TimerManager {
         &self.started_this_tick
     }
 
-    /// Get timer IDs that were cancelled this tick (for validation output).
-    pub fn cancelled_timer_ids(&self) -> &[String] {
-        &self.cancelled_this_tick
+    /// Get timer IDs that were canceled this tick (for validation output).
+    pub fn canceled_timer_ids(&self) -> &[String] {
+        &self.canceled_this_tick
     }
 
     /// Check if a timer definition is active for current encounter context.
@@ -621,7 +621,6 @@ impl TimerManager {
             alert_on_expire,
             def.alert_text.clone(),
         );
-
         self.active_timers.insert(key, timer);
 
         // Track that this timer started (for counter triggers)
@@ -650,8 +649,8 @@ impl TimerManager {
         // Track cancellations and remove timers
         for key in keys_to_cancel {
             self.active_timers.remove(&key);
-            // Move key.definition_id into cancelled_this_tick (avoids extra clone)
-            self.cancelled_this_tick.push(key.definition_id);
+            // Move key.definition_id into canceled_this_tick (avoids extra clone)
+            self.canceled_this_tick.push(key.definition_id);
         }
     }
 
@@ -678,8 +677,8 @@ impl TimerManager {
         // Track cancellations and remove timers
         for key in keys_to_cancel {
             self.active_timers.remove(&key);
-            // Move key.definition_id into cancelled_this_tick (avoids extra clone)
-            self.cancelled_this_tick.push(key.definition_id);
+            // Move key.definition_id into canceled_this_tick (avoids extra clone)
+            self.canceled_this_tick.push(key.definition_id);
         }
     }
 
@@ -710,8 +709,8 @@ impl TimerManager {
         // Track cancellations and remove timers
         for key in keys_to_cancel {
             self.active_timers.remove(&key);
-            // Move key.definition_id into cancelled_this_tick (avoids extra clone)
-            self.cancelled_this_tick.push(key.definition_id);
+            // Move key.definition_id into canceled_this_tick (avoids extra clone)
+            self.canceled_this_tick.push(key.definition_id);
         }
     }
 
@@ -821,6 +820,7 @@ impl TimerManager {
         for expired_id in &expired_ids {
             self.cancel_timers_on_expire(expired_id);
         }
+
     }
 
     /// Cancel active timers that have cancel_trigger matching the expired timer ID
@@ -843,9 +843,20 @@ impl TimerManager {
         // Track cancellations and remove timers
         for key in keys_to_cancel {
             self.active_timers.remove(&key);
-            // Move key.definition_id into cancelled_this_tick (avoids extra clone)
-            self.cancelled_this_tick.push(key.definition_id);
+            // Move key.definition_id into canceled_this_tick (avoids extra clone)
+            self.canceled_this_tick.push(key.definition_id);
         }
+    }
+
+    pub fn start_timers_on_cancel(&mut self, canceled_timer_id: &str, current_time: NaiveDateTime) {
+        let keys_to_start: Vec<_> = self.definitions.values()
+            .filter(|d| d.matches_timer_canceled(canceled_timer_id))
+            .cloned()
+            .collect();
+
+        for key in keys_to_start {
+            self.start_timer(&key, current_time, None);
+        };
     }
 
     // ─── Entity Filter Matching (delegates to matching module) ─────────────────
@@ -976,7 +987,7 @@ impl SignalHandler for TimerManager {
         // Clear tick-tracking vectors at the start of each signal processing.
         // Timer starts/cancels accumulate during matching below, then we read them after handle_signal.
         self.started_this_tick.clear();
-        self.cancelled_this_tick.clear();
+        self.canceled_this_tick.clear();
 
         match signal {
             // Context signals already handled above
@@ -1286,6 +1297,13 @@ impl SignalHandler for TimerManager {
         if let Some(ts) = self.last_timestamp {
             self.process_expirations(ts, encounter);
         }
+        // Process Cancellation Triggers
+        if let Some(ts) = self.last_timestamp {
+            for timer_id in self.canceled_this_tick.clone() {
+                self.start_timers_on_cancel(&timer_id, ts);
+            }
+        }
+
     }
 
     fn on_encounter_start(&mut self, _encounter_id: u64) {

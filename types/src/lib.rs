@@ -821,6 +821,9 @@ pub enum Trigger {
     /// Another timer starts (for cancellation). [T only]
     TimerStarted { timer_id: String },
 
+    /// A timer has been canceled
+    TimerCanceled { timer_id: String },
+
     // ─── Time-based [TP] ───────────────────────────────────────────────────
     /// Time elapsed since combat start. [TP]
     TimeElapsed { secs: f32 },
@@ -859,6 +862,7 @@ impl Trigger {
             Self::CounterReaches { .. } => "Counter Reaches",
             Self::TimerExpires { .. } => "Timer Expires",
             Self::TimerStarted { .. } => "Timer Started",
+            Self::TimerCanceled { .. } => "Timer Canceled",
             Self::TimeElapsed { .. } => "Time Elapsed",
             Self::Manual => "Manual",
             Self::Never => "Never",
@@ -887,6 +891,7 @@ impl Trigger {
             Self::CounterReaches { .. } => "counter_reaches",
             Self::TimerExpires { .. } => "timer_expires",
             Self::TimerStarted { .. } => "timer_started",
+            Self::TimerCanceled { .. } => "timer_canceled",
             Self::TimeElapsed { .. } => "time_elapsed",
             Self::Manual => "manual",
             Self::Never => "never",

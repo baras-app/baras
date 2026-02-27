@@ -292,7 +292,7 @@ fn test_anyof_mixed_trigger_types() {
 fn test_cancel_on_timer() {
     let mut manager = TimerManager::new();
 
-    // Timer A starts on combat, cancelled when B starts
+    // Timer A starts on combat, canceled when B starts
     let timer_a = TimerDefinition {
         id: "timer_a".to_string(),
         name: "Timer A".to_string(),
@@ -331,7 +331,7 @@ fn test_cancel_on_timer() {
     assert_eq!(active.len(), 1);
     assert_eq!(active[0].name, "Timer A");
 
-    // Trigger Timer B - Timer A should be cancelled
+    // Trigger Timer B - Timer A should be canceled
     manager.handle_signal(
         &GameSignal::AbilityActivated {
             ability_id: 444,
@@ -908,7 +908,7 @@ fn test_cancel_on_timer_with_chain() {
     let mut manager = TimerManager::new();
 
     // Setup: Timer A starts on combat
-    //        Timer B starts on combat, but is cancelled when Timer C starts
+    //        Timer B starts on combat, but is canceled when Timer C starts
     //        Timer C is triggered by Timer A expiring
 
     let timer_a = TimerDefinition {
@@ -973,7 +973,7 @@ fn test_cancel_on_timer_with_chain() {
     assert_eq!(
         active.len(),
         1,
-        "Only Timer C should remain (Timer B cancelled)"
+        "Only Timer C should remain (Timer B canceled)"
     );
     assert_eq!(active[0].name, "Timer C");
 }

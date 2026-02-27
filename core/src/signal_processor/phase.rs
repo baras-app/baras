@@ -398,10 +398,12 @@ pub fn check_time_phase_transitions(
 pub fn check_timer_phase_transitions(
     expired_timer_ids: &[String],
     started_timer_ids: &[String],
+    canceled_timer_ids: &[String],
     cache: &mut SessionCache,
     timestamp: NaiveDateTime,
 ) -> Vec<GameSignal> {
-    if expired_timer_ids.is_empty() && started_timer_ids.is_empty() {
+    if expired_timer_ids.is_empty() && started_timer_ids.is_empty() && canceled_timer_ids.is_empty()
+    {
         return Vec::new();
     }
 
@@ -444,6 +446,7 @@ pub fn check_timer_phase_transitions(
                 &phase.start_trigger,
                 expired_timer_ids,
                 started_timer_ids,
+                canceled_timer_ids,
             ) {
                 found = Some((
                     enc.current_phase.clone(),
@@ -497,7 +500,12 @@ pub fn check_timer_phase_transitions(
             return all_signals;
         };
 
-        if trigger_eval::check_timer_trigger(end_trigger, expired_timer_ids, started_timer_ids) {
+        if trigger_eval::check_timer_trigger(
+            end_trigger,
+            expired_timer_ids,
+            started_timer_ids,
+            canceled_timer_ids,
+        ) {
             Some(current_phase_id.clone())
         } else {
             None
