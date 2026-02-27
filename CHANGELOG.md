@@ -1,30 +1,39 @@
-# v2026.2.2500
+# v2026.2.2600
+
+**Operations Timer** a new timer feature has been added that starts a time countdown from either the first boss pull or when the user triggers it.
+This can be a great help when trying to track timer runs! Note: as of now, it must be manually stopped once it starts running.
+
+The last window size and position should now be remembered upon re-opening the application.
+
+## UI
+
+- The session page has been removed; relevant information has been rolled into a persistent header panel
+- Encounter-specific parsely upload, challenges, and enemy lists are now displayed in the data explorer
+- Discipline specific icons are now used in the UI instead of the class icons
+- Effects tab renamed to Effects Editor
+- Time range selection clear button is now red
+
+## Log Management
+
+- Log indexing happens in a background process to prevent hanging when large amounts of log files are present
 
 ## Timers
 
-**Creating timers is a lot of work and it's easy to make mistakes, if you see something off please
-report it so we can update the defaults**
+- Fixed bug where compound cancel trigger were being evaluated via invalid codepath
+- Definitions now hot reload in-game when changes are made to phases or variable counters
+- Unified trigger handling logic across all objects
+- Added `Timer Time Remaining` condition type
+- Added `Timer Canceled` trigger type
 
-- Timer conditions system has been overhauled to support full boolean composition
-- Optional icon field has been added to timers (ability/effect icons), defaults to none
-- Apex Vanguard Mass Target Lock P4 timer no longer fires on combat start
-- XR-53 timers have been overhauled by Keetsune. Several are disabled by default on his recommendation.
-- Timers for all bosses in Gods have been updated. Thank you to Error for working on this.
+## Effects
 
-## Encounter Classification
+- Fixed issue causing medical probe to add a kolto probe stack
+- Fixed issue where other modified charges events of other players were being attributed to the local player if
+  same ability was cast on the same target
+- Fixed issue with Kolto Probes being refreshed erroneously if ability cast shortly after they expired
+- Fixed issue with Kolto Shells / Trauma Probes double registering if the "Other's" effects were activated
 
-- Non-battle revives of the local player will now automatically end the combat encounter
-- Encounters ended by exiting the Area are now classified as wipes unless there is a known special condition (e.g. TFB excluded)
-- Healing actions are ignored when evaluating fallback encounter timeout
-- Huntmaster wipe/clear classification improved
-- Izax wipe/clear classification corrected
+## Misc
 
-## Data Explorer
-
-- Increased font size of ability usage tab
-- Combat log IDs now show before the associated name
-- Combat log _Filter_ text now persists when navigating across encounters
-
-## Performance
-
-- Cache data-explorer icons to reduce memory pressure from frequent lookups
+- Removed "Imperfect Construct" from XR-53 boss definition fallback list
+- Process monitor for `swtor.exe` now runs and is used to ensure prior session indicator stays in-sync
