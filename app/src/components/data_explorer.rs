@@ -16,10 +16,10 @@ use crate::components::ability_icon::AbilityIcon;
 use crate::components::charts_panel::ChartsPanel;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::combat_log::CombatLog;
-use crate::components::history_panel::EncounterSummary;
+use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, UploadState, group_by_area};
 use crate::components::phase_timeline::PhaseTimelineFilter;
 use crate::components::rotation_view::RotationView;
-use crate::components::{ToastSeverity, use_toast};
+use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
 use crate::types::{BreakdownMode, CombatLogSessionState, DataTab, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
 use crate::utils::js_set;
 use baras_types::formatting;
@@ -321,27 +321,7 @@ fn parse_hsl(color: &str) -> Option<(f64, f64, f64)> {
 
 
 
-/// Group encounters into sections by area (based on is_phase_start flag or area change)
-fn group_by_area(
-    encounters: &[EncounterSummary],
-) -> Vec<(String, Option<String>, Vec<&EncounterSummary>)> {
-    let mut sections: Vec<(String, Option<String>, Vec<&EncounterSummary>)> = Vec::new();
-
-    for enc in encounters.iter() {
-        // Start new section if: phase start, no sections yet, or area/difficulty changed
-        let area_changed = sections
-            .last()
-            .map_or(false, |s| s.0 != enc.area_name || s.1 != enc.difficulty);
-
-        if enc.is_phase_start || sections.is_empty() || area_changed {
-            sections.push((enc.area_name.clone(), enc.difficulty.clone(), vec![enc]));
-        } else if let Some(section) = sections.last_mut() {
-            section.2.push(enc);
-        }
-    }
-
-    sections
-}
+// group_by_area is now in encounter_types module
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -359,7 +339,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     let mut encounters = use_signal(Vec::<EncounterSummary>::new);
     
     // Extract persisted state fields into local signals for easier access
-    // Initialize from parent state to support navigation from other components (e.g., HistoryPanel)
+    // Initialize from parent state to support navigation from other components
     let mut selected_encounter = use_signal(|| props.state.read().data_explorer.selected_encounter);
     let mut view_mode = use_signal(|| props.state.read().data_explorer.view_mode);
     let mut selected_source = use_signal(|| props.state.read().data_explorer.selected_source.clone());
@@ -382,6 +362,10 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     let mut sidebar_collapsed = use_signal(|| false);
     let mut entity_collapsed = use_signal(|| false);
     let mut overview_fullscreen = use_signal(|| false);
+
+    // Parsely upload state for per-encounter uploads
+    let mut parsely_upload = use_parsely_upload();
+    let mut upload_states = use_signal(HashMap::<u64, UploadState>::new);
 
     // Combat log state is a separate signal that CombatLog component will modify
     let mut combat_log_state = use_signal(|| props.state.read().combat_log.clone());
@@ -441,7 +425,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     });
     
     // NOTE: selected_encounter is initialized from parent state on mount (line 332).
-    // This handles navigation from HistoryPanel "View in Explorer" button.
+    // This handles navigation from external components that set selected_encounter before mounting.
     // We do NOT have a continuous parent→local sync effect here because it creates
     // a bidirectional sync loop with the local→parent sync above, causing
     // encounter clicks in the sidebar to be ignored/sticky.
@@ -672,6 +656,25 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             let _ = unlisten_handle.try_write().map(|mut w| *w = Some(func));
         }
         closure.forget();
+    });
+
+    // Listen for parsely upload success (DOM CustomEvent from ParselyUploadModal)
+    use_future(move || async move {
+        if let Some(window) = web_sys::window() {
+            let closure = Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
+                // Refresh encounter list to pick up persisted parsely links
+                spawn(async move {
+                    if let Some(list) = api::get_encounter_history().await {
+                        let _ = encounters.try_write().map(|mut w| *w = list);
+                    }
+                });
+            });
+            let _ = window.add_event_listener_with_callback(
+                "parsely-upload-success",
+                closure.as_ref().unchecked_ref(),
+            );
+            closure.forget();
+        }
     });
 
     // Cleanup on component unmount
@@ -1550,8 +1553,18 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                 {
                                                     // Use actual encounter_id for parquet file lookup
                                                     let enc_idx = enc.encounter_id as u32;
+                                                    let enc_id = enc.encounter_id;
                                                     let is_selected = *selected_encounter.read() == Some(enc_idx);
                                                     let success_class = if enc.success { "success" } else { "wipe" };
+                                                    let npc_list = enc.npc_names.join(", ");
+                                                    let persisted_link = enc.parsely_link.clone();
+                                                    let current_upload_state = upload_states()
+                                                        .get(&enc_id)
+                                                        .cloned()
+                                                        .unwrap_or(UploadState::Idle);
+                                                    let start_line = enc.event_start_line.unwrap_or(0);
+                                                    let end_line = enc.event_end_line.unwrap_or(0);
+                                                    let area_line = enc.area_entered_line;
 
                                                     rsx! {
                                                         div {
@@ -1559,11 +1572,90 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                             onclick: move |_| selected_encounter.set(Some(enc_idx)),
                                                             div { class: "encounter-main",
                                                                 span { class: "encounter-name", "{enc.display_name}" }
-                                                                span { class: "result-indicator {success_class}",
-                                                                    if enc.success {
-                                                                        i { class: "fa-solid fa-check" }
-                                                                    } else {
-                                                                        i { class: "fa-solid fa-skull" }
+                                                                div { class: "encounter-main-right",
+                                                                    // Parsely upload / link button
+                                                                    {
+                                                                        // Determine the link to show (persisted takes priority, then transient success)
+                                                                        let link_url = persisted_link.clone().or_else(|| {
+                                                                            if let UploadState::Success(ref url) = current_upload_state {
+                                                                                Some(url.clone())
+                                                                            } else {
+                                                                                None
+                                                                            }
+                                                                        });
+
+                                                                        if let Some(url) = link_url {
+                                                                            rsx! {
+                                                                                button {
+                                                                                    class: "parsely-upload-btn success",
+                                                                                    title: "View on Parsely",
+                                                                                    onclick: move |e| {
+                                                                                        e.stop_propagation();
+                                                                                        let u = url.clone();
+                                                                                        spawn(async move { api::open_url(&u).await; });
+                                                                                    },
+                                                                                    i { class: "fa-solid fa-external-link" }
+                                                                                }
+                                                                            }
+                                                                        } else {
+                                                                            match current_upload_state {
+                                                                                UploadState::Idle => rsx! {
+                                                                                    button {
+                                                                                        class: "parsely-upload-btn",
+                                                                                        title: "Upload to Parsely",
+                                                                                        onclick: {
+                                                                                            let encounter_name = enc.display_name.clone();
+                                                                                            move |e| {
+                                                                                                e.stop_propagation();
+                                                                                                let name = encounter_name.clone();
+                                                                                                spawn(async move {
+                                                                                                    if let Some(path) = api::get_active_file().await {
+                                                                                                        parsely_upload.open_encounter(
+                                                                                                            path,
+                                                                                                            name,
+                                                                                                            enc_id,
+                                                                                                            start_line,
+                                                                                                            end_line,
+                                                                                                            area_line,
+                                                                                                        );
+                                                                                                    }
+                                                                                                });
+                                                                                            }
+                                                                                        },
+                                                                                        i { class: "fa-solid fa-upload" }
+                                                                                    }
+                                                                                },
+                                                                                UploadState::Uploading => rsx! {
+                                                                                    span { class: "parsely-upload-btn uploading",
+                                                                                        i { class: "fa-solid fa-spinner fa-spin" }
+                                                                                    }
+                                                                                },
+                                                                                UploadState::Success(_) => rsx! {
+                                                                                    // Handled above via link_url
+                                                                                },
+                                                                                UploadState::Error(ref err) => rsx! {
+                                                                                    button {
+                                                                                        class: "parsely-upload-btn error",
+                                                                                        title: "Error: {err}. Click to retry.",
+                                                                                        onclick: move |e| {
+                                                                                            e.stop_propagation();
+                                                                                            upload_states.with_mut(|states| {
+                                                                                                states.insert(enc_id, UploadState::Idle);
+                                                                                            });
+                                                                                        },
+                                                                                        i { class: "fa-solid fa-triangle-exclamation" }
+                                                                                    }
+                                                                                },
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    // Result indicator (success/wipe)
+                                                                    span { class: "result-indicator {success_class}",
+                                                                        if enc.success {
+                                                                            i { class: "fa-solid fa-check" }
+                                                                        } else {
+                                                                            i { class: "fa-solid fa-skull" }
+                                                                        }
                                                                     }
                                                                 }
                                                             }
@@ -1572,6 +1664,13 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                                     span { class: "encounter-time", "{time}" }
                                                                 }
                                                                 span { class: "encounter-duration", "({formatting::format_duration(enc.duration_seconds)})" }
+                                                            }
+                                                            // NPC names (if available)
+                                                            if !npc_list.is_empty() {
+                                                                div { class: "encounter-npcs",
+                                                                    i { class: "fa-solid fa-skull-crossbones" }
+                                                                    " {npc_list}"
+                                                                }
                                                             }
                                                         }
                                                     }
@@ -1871,6 +1970,79 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         }
                                     }
 
+                                    // Challenge Results (above donuts when available)
+                                    {
+                                        let challenges: Vec<ChallengeSummary> = if let Some(enc_idx) = *selected_encounter.read() {
+                                            encounters().iter()
+                                                .find(|e| e.encounter_id as u32 == enc_idx)
+                                                .map(|e| e.challenges.clone())
+                                                .unwrap_or_default()
+                                        } else {
+                                            Vec::new()
+                                        };
+                                        let format_compact = |n: i64| formatting::format_compact(n, eu);
+                                        rsx! {
+                                            if !challenges.is_empty() {
+                                                div { class: "challenge-results",
+                                                    h4 { class: "challenge-results-header",
+                                                        i { class: "fa-solid fa-trophy" }
+                                                        " Challenges"
+                                                    }
+                                                    div { class: "challenge-cards",
+                                                        for challenge in challenges.iter() {
+                                                            {
+                                                                let duration_str = formatting::format_duration(challenge.duration_secs as i64);
+                                                                let per_sec_str = challenge.per_second
+                                                                    .map(|ps| format_compact(ps as i64))
+                                                                    .unwrap_or_default();
+
+                                                                rsx! {
+                                                                    div { class: "challenge-card",
+                                                                        div { class: "challenge-card-header",
+                                                                            span { class: "challenge-name", "{challenge.name}" }
+                                                                            span { class: "challenge-total",
+                                                                                "{format_compact(challenge.total_value)}"
+                                                                                if !per_sec_str.is_empty() {
+                                                                                    span { class: "text-muted", " ({per_sec_str}/s)" }
+                                                                                }
+                                                                            }
+                                                                            span { class: "challenge-duration text-muted", "{duration_str}" }
+                                                                        }
+                                                                        if !challenge.by_player.is_empty() {
+                                                                            div { class: "challenge-players",
+                                                                                for player in challenge.by_player.iter() {
+                                                                                    {
+                                                                                        let ps_str = player.per_second
+                                                                                            .map(|ps| format_compact(ps as i64))
+                                                                                            .unwrap_or_default();
+                                                                                        rsx! {
+                                                                                            div { class: "challenge-player-row",
+                                                                                                div {
+                                                                                                    class: "challenge-bar-fill",
+                                                                                                    style: "width: {player.percent:.1}%",
+                                                                                                }
+                                                                                                span { class: "challenge-player-name", "{player.name}" }
+                                                                                                if !ps_str.is_empty() {
+                                                                                                    span { class: "challenge-player-ps", "{ps_str}/s" }
+                                                                                                }
+                                                                                                span { class: "challenge-player-value", "{format_compact(player.value)}" }
+                                                                                                span { class: "challenge-player-pct", "{formatting::format_pct_f32(player.percent, eu)}" }
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     // Donut Charts Grid (2x2 below table)
                                     div { class: "overview-charts-section",
                                         h4 { class: "overview-charts-title", "Breakdown by Player" }
@@ -1937,6 +2109,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                             }
                                         }
                                     }
+
                                 }
                             }
                         }

@@ -7,7 +7,7 @@ use wasm_bindgen_futures::spawn_local;
 
 use crate::api::{self, BossNotesInfo};
 use crate::components::{
-    DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel, HistoryPanel,
+    DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
     HotkeyInput, ParselyUploadModal, SettingsPanel, ToastFrame, ToastSeverity, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
@@ -76,6 +76,9 @@ pub fn App() -> Element {
     // Boss notes selector state
     let mut area_bosses = use_signal(Vec::<BossNotesInfo>::new);
     let mut selected_boss_id = use_signal(|| None::<String>);
+
+    // Session dashboard bar collapse state
+    let mut dashboard_collapsed = use_signal(|| false);
 
     // File browser state
     let mut file_browser_open = use_signal(|| false);
@@ -811,12 +814,6 @@ pub fn App() -> Element {
 
             // Tabs
             nav { class: "main-tabs",
-                button {
-                    class: if ui_state.read().active_tab == MainTab::Session { "tab-btn active" } else { "tab-btn" },
-                    onclick: move |_| ui_state.write().active_tab = MainTab::Session,
-                    i { class: "fa-solid fa-chart-line" }
-                    " Session"
-                }
                button {
                     class: if ui_state.read().active_tab == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
                     onclick: move |_| ui_state.write().active_tab = MainTab::DataExplorer,
@@ -844,182 +841,224 @@ pub fn App() -> Element {
 
             }
 
-            // Tab Content
-            div { class: "tab-content",
-                // ─────────────────────────────────────────────────────────────
-                // Session Tab
-                // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::Session {
-                    // Empty states: show when no player data yet (but not if missing_area already detected)
-                    if show_empty_state && !session.as_ref().is_some_and(|s| s.missing_area) {
+            // ─────────────────────────────────────────────────────────────
+            // Collapsible Session Dashboard Bar (visible on all tabs)
+            // ─────────────────────────────────────────────────────────────
+
+            // Empty states: show status when no player data yet
+            if show_empty_state && !session.as_ref().is_some_and(|s| s.missing_area) {
+                div { class: "session-dashboard-bar",
+                    div { class: "dashboard-toggle-row dashboard-empty-state",
                         if !live_tailing {
-                            // Loading a historical file
-                            div { class: "session-empty",
-                                i { class: "fa-solid fa-spinner fa-spin" }
-                                p { "Loading file..." }
-                                p { class: "hint", "Reading historical session data" }
-                            }
+                            i { class: "fa-solid fa-spinner fa-spin dashboard-status-icon" }
+                            span { class: "dashboard-empty-text", "Loading file..." }
                         } else if log_files().is_empty() {
-                            // No log files found - prompt user to configure directory
-                            div { class: "session-empty alert",
-                                i { class: "fa-solid fa-triangle-exclamation" }
-                                p { "No log files found" }
-                                p { class: "hint",
-                                    "Choose a log directory in "
-                                    span {
-                                        class: "settings-link",
-                                        onclick: move |_| general_settings_open.set(true),
-                                        "settings"
-                                    }
-                                }
+                            i { class: "fa-solid fa-triangle-exclamation dashboard-status-icon" }
+                            span { class: "dashboard-empty-text", "No log files found — " }
+                            span {
+                                class: "settings-link",
+                                onclick: move |_| general_settings_open.set(true),
+                                "set log directory"
                             }
                         } else if watching {
-                            // Live: Log file detected but no character data yet
-                            div { class: "session-empty",
-                                i { class: "fa-solid fa-hourglass-half" }
-                                p { "Waiting for player..." }
-                                p { class: "hint", "Log file detected, waiting for character login" }
-                            }
+                            i { class: "fa-solid fa-hourglass-half dashboard-status-icon" }
+                            span { class: "dashboard-empty-text", "Waiting for player..." }
                         } else {
-                            // Not watching - watcher may have stopped
-                            div { class: "session-empty",
-                                i { class: "fa-solid fa-inbox" }
-                                p { "No Active Session" }
-                                p { class: "hint", "File watcher is not running" }
+                            i { class: "fa-solid fa-inbox dashboard-status-icon" }
+                            span { class: "dashboard-empty-text", "No active session" }
+                        }
+                    }
+                }
+            }
+
+            // Incomplete log file warning
+            if session.as_ref().is_some_and(|s| s.missing_area) {
+                div { class: "session-dashboard-bar",
+                    div { class: "dashboard-toggle-row dashboard-empty-state",
+                        i { class: "fa-solid fa-triangle-exclamation dashboard-status-icon warning" }
+                        span { class: "dashboard-empty-text", "Incomplete log file — boss encounters and timers unavailable" }
+                    }
+                }
+            }
+
+            if let Some(ref info) = session {
+                if has_player && !info.missing_area {
+                    {
+                    let is_historical = session_ended() || info.stale_session || !live_tailing;
+                    rsx! {
+                    div {
+                        class: {
+                            let mut cls = String::from("session-dashboard-bar");
+                            if is_historical { cls.push_str(" historical"); }
+                            if dashboard_collapsed() { cls.push_str(" collapsed"); }
+                            cls
+                        },
+
+                        // Character mismatch warning (corrupted log file)
+                        if info.character_mismatch {
+                            div { class: "session-mismatch-warning",
+                                i { class: "fa-solid fa-triangle-exclamation" }
+                                " This log file contains multiple characters. Data may be inaccurate. Please relog to start a new session."
                             }
                         }
-                    }
 
-                    // Incomplete log file: no AreaEntered event at start of file
-                    if session.as_ref().is_some_and(|s| s.missing_area) {
-                        div { class: "session-empty alert",
-                            i { class: "fa-solid fa-triangle-exclamation" }
-                            p { "Incomplete Log File" }
-                            p { class: "hint", "No area data found. Boss encounters and timers are unavailable. Relog or toggle combat logging in game settings to start a new log." }
-                        }
-                    }
+                        // ── Always-visible header row (clickable to toggle collapse) ──
+                        div {
+                            class: "dashboard-toggle-row",
+                            onclick: move |_| dashboard_collapsed.set(!dashboard_collapsed()),
 
-                    // Session panel with info - only show when we have player data
-                    if let Some(ref info) = session {
-                    if has_player && !info.missing_area {
-                        section {
-                            class: if live_tailing && !session_ended() && !info.stale_session { "session-panel" } else { "session-panel historical" },
+                            // Collapse/expand chevron
+                            button {
+                                class: "dashboard-collapse-btn",
+                                title: if dashboard_collapsed() { "Expand session bar" } else { "Collapse session bar" },
+                                i { class: if dashboard_collapsed() { "fa-solid fa-chevron-down" } else { "fa-solid fa-chevron-up" } }
+                            }
 
-                            // Character mismatch warning (corrupted log file)
-                            if info.character_mismatch {
-                                div { class: "session-mismatch-warning",
-                                    i { class: "fa-solid fa-triangle-exclamation" }
-                                    " This log file contains multiple characters. Data may be inaccurate. Please relog to start a new session."
+                            // Session status icon + label + player name + duration (always visible as a summary)
+                            div { class: "dashboard-summary",
+                                // Status icon + label
+                                if session_ended() || info.stale_session {
+                                    span { class: "dashboard-status-label historical",
+                                        i { class: "fa-solid fa-clock" }
+                                        " Prior Session"
+                                    }
+                                } else if live_tailing {
+                                    span { class: "dashboard-status-label live",
+                                        i { class: "fa-solid fa-circle-play" }
+                                        " Live"
+                                    }
+                                } else {
+                                    span { class: "dashboard-status-label historical",
+                                        i { class: "fa-solid fa-circle-pause" }
+                                        " Historical"
+                                    }
                                 }
-                            }
 
-                            // ── Header row: status + time info + duration badge + combat icon + Parsely ──
-                            div { class: "session-toolbar",
-                                // Left: session status with inline time
-                                div { class: "session-header-left",
-                                    if session_ended() || info.stale_session {
-                                        h3 { class: "session-header historical",
-                                            i { class: "fa-solid fa-clock" }
-                                            " Prior Session"
-                                            if let Some(ref start) = info.session_start {
-                                                span { class: "session-time-inline",
-                                                    " — {start}"
-                                                }
-                                            }
-                                        }
-                                    } else if live_tailing {
-                                        h3 { class: "session-header live",
-                                            i { class: "fa-solid fa-circle-play" }
-                                            " Live Session"
-                                            if let Some(ref start_short) = info.session_start_short {
-                                                span { class: "session-time-inline",
-                                                    " — since {start_short}"
-                                                }
-                                            }
-                                        }
+                                span { class: "dashboard-separator", "|" }
+
+                                // Role icon (small)
+                                if let Some(ref role_name) = info.role_icon {
+                                    if let Some(role_asset) = get_role_icon(role_name) {
+                                        img { class: "dashboard-role-icon", src: *role_asset }
+                                    }
+                                }
+                                // Class icon (small)
+                                if let Some(ref icon_name) = info.class_icon {
+                                    if let Some(icon_asset) = get_class_icon(icon_name) {
+                                        img { class: "dashboard-class-icon", src: *icon_asset }
+                                    }
+                                }
+
+                                // Player name
+                                if let Some(ref name) = info.player_name {
+                                    span { class: "dashboard-player-name", "{name}" }
+                                }
+
+                                // Class/discipline
+                                {
+                                    let class_str = info.player_class.as_deref().unwrap_or("");
+                                    let disc_str = info.player_discipline.as_deref().unwrap_or("");
+                                    let detail = if !class_str.is_empty() && !disc_str.is_empty() {
+                                        format!("{class_str} — {disc_str}")
+                                    } else if !class_str.is_empty() {
+                                        class_str.to_string()
+                                    } else if !disc_str.is_empty() {
+                                        disc_str.to_string()
                                     } else {
-                                        h3 { class: "session-header historical",
-                                            i { class: "fa-solid fa-circle-pause" }
-                                            " Historical"
-                                            // Show date range inline
-                                            if let (Some(start), Some(end)) = (&info.session_start, &info.session_end) {
-                                                span { class: "session-time-inline",
-                                                    " — {start} – {end}"
-                                                }
-                                            } else if let Some(ref start) = info.session_start {
-                                                span { class: "session-time-inline",
-                                                    " — {start}"
-                                                }
-                                            }
-                                        }
+                                        String::new()
+                                    };
+                                    if !detail.is_empty() {
+                                        rsx! { span { class: "dashboard-player-detail", "{detail}" } }
+                                    } else {
+                                        rsx! {}
                                     }
                                 }
 
-                                // Right: duration badge + combat icon + Parsely
-                                div { class: "session-toolbar-right",
-                                    // Duration badge (always shown)
-                                    if let Some(ref duration) = info.duration_formatted {
-                                        span { class: "session-duration-badge",
-                                            title: "Session duration",
-                                            i { class: "fa-solid fa-stopwatch" }
-                                            " {duration}"
+                                // Duration badge
+                                if let Some(ref duration) = info.duration_formatted {
+                                    span { class: "session-duration-badge",
+                                        i { class: "fa-solid fa-stopwatch" }
+                                        " {duration}"
+                                    }
+                                }
+
+                                // Session time info
+                                if session_ended() || info.stale_session {
+                                    // Prior session: show start date
+                                    if let Some(ref start) = info.session_start {
+                                        span { class: "dashboard-time-info", "— {start}" }
+                                    }
+                                } else if live_tailing {
+                                    // Live: show "since {time}"
+                                    if let Some(ref start_short) = info.session_start_short {
+                                        span { class: "dashboard-time-info", "— since {start_short}" }
+                                    }
+                                } else {
+                                    // Historical: show date range
+                                    if let (Some(start), Some(end)) = (&info.session_start, &info.session_end) {
+                                        span { class: "dashboard-time-info", "— {start} – {end}" }
+                                    } else if let Some(ref start) = info.session_start {
+                                        span { class: "dashboard-time-info", "— {start}" }
+                                    }
+                                }
+
+                                // Combat status icon (live only)
+                                if live_tailing && !session_ended() && !info.stale_session {
+                                    span {
+                                        class: if info.in_combat { "combat-indicator in-combat" } else { "combat-indicator" },
+                                        title: if info.in_combat { "In Combat" } else { "Out of Combat" },
+                                        if info.in_combat {
+                                            i { class: "fa-solid fa-burst" }
+                                        } else {
+                                            i { class: "fa-solid fa-shield-halved" }
                                         }
                                     }
+                                }
+                            }
 
-                                    // Combat status icon
-                                    if live_tailing && !session_ended() && !info.stale_session {
-                                        span {
-                                            class: if info.in_combat { "combat-indicator in-combat" } else { "combat-indicator" },
-                                            title: if info.in_combat { "In Combat" } else { "Out of Combat" },
-                                            if info.in_combat {
-                                                i { class: "fa-solid fa-burst" }
-                                            } else {
-                                                i { class: "fa-solid fa-shield-halved" }
-                                            }
-                                        }
-                                    }
-
-                                    // Parsely upload button
-                                    if !current_file.is_empty() {
-                                        {
-                                            let path = current_file.clone();
-                                            let upload_result = upload_status().get(&path).cloned();
-                                            rsx! {
-                                                div { class: "session-upload-group",
-                                                    button {
-                                                        class: "btn btn-session-upload",
-                                                        title: "Upload to Parsely",
-                                                        onclick: {
-                                                            let p = path.clone();
-                                                            move |_| {
-                                                                let filename = p.split('/').last()
-                                                                    .or_else(|| p.split('\\').last())
-                                                                    .unwrap_or("combat.txt")
-                                                                    .to_string();
-                                                                parsely_upload.open_file(p.clone(), filename);
-                                                            }
-                                                        },
-                                                        i { class: "fa-solid fa-cloud-arrow-up" }
-                                                        " Parsely"
-                                                    }
-                                                    if let Some((success, ref msg)) = upload_result {
-                                                        if success {
-                                                            button {
-                                                                class: "btn btn-session-upload-result",
-                                                                title: "Open in browser",
-                                                                onclick: {
-                                                                    let url = msg.clone();
-                                                                    move |_| {
-                                                                        let u = url.clone();
-                                                                        spawn(async move { api::open_url(&u).await; });
-                                                                    }
-                                                                },
-                                                                i { class: "fa-solid fa-external-link-alt" }
-                                                            }
-                                                        } else {
-                                                            span { class: "upload-error", title: "{msg}",
-                                                                i { class: "fa-solid fa-triangle-exclamation" }
-                                                            }
+                            // Right side: Parsely upload (always visible)
+                            div { class: "dashboard-right",
+                                if !current_file.is_empty() {
+                                    {
+                                        let path = current_file.clone();
+                                        let upload_result = upload_status().get(&path).cloned();
+                                        rsx! {
+                                            div { class: "session-upload-group",
+                                                button {
+                                                    class: "btn btn-session-upload",
+                                                    title: "Upload session to Parsely",
+                                                    onclick: {
+                                                        let p = path.clone();
+                                                        move |e| {
+                                                            e.stop_propagation();
+                                                            let filename = p.split('/').last()
+                                                                .or_else(|| p.split('\\').last())
+                                                                .unwrap_or("combat.txt")
+                                                                .to_string();
+                                                            parsely_upload.open_file(p.clone(), filename);
+                                                        }
+                                                    },
+                                                    i { class: "fa-solid fa-cloud-arrow-up" }
+                                                    " Parsely"
+                                                }
+                                                if let Some((success, ref msg)) = upload_result {
+                                                    if success {
+                                                        button {
+                                                            class: "btn btn-session-upload-result",
+                                                            title: "Open in browser",
+                                                            onclick: {
+                                                                let url = msg.clone();
+                                                                move |e| {
+                                                                    e.stop_propagation();
+                                                                    let u = url.clone();
+                                                                    spawn(async move { api::open_url(&u).await; });
+                                                                }
+                                                            },
+                                                            i { class: "fa-solid fa-external-link-alt" }
+                                                        }
+                                                    } else {
+                                                        span { class: "upload-error", title: "{msg}",
+                                                            i { class: "fa-solid fa-triangle-exclamation" }
                                                         }
                                                     }
                                                 }
@@ -1028,54 +1067,10 @@ pub fn App() -> Element {
                                     }
                                 }
                             }
+                        }
 
-                            // ── Player identity row: icons + name + class/discipline ──
-                            div { class: "session-identity",
-                                // Role icon
-                                if let Some(ref role_name) = info.role_icon {
-                                    if let Some(role_asset) = get_role_icon(role_name) {
-                                        img { class: "session-role-icon", src: *role_asset, title: "Role" }
-                                    }
-                                }
-                                // Discipline icon
-                                if let Some(ref icon_name) = info.class_icon {
-                                    if let Some(icon_asset) = get_class_icon(icon_name) {
-                                        img {
-                                            class: "session-class-icon",
-                                            src: *icon_asset,
-                                            title: "{info.player_discipline.as_deref().unwrap_or(\"\")}",
-                                        }
-                                    }
-                                }
-                                // Player name and class/discipline text
-                                div { class: "session-identity-text",
-                                    if let Some(ref name) = info.player_name {
-                                        span { class: "session-player-name", "{name}" }
-                                    }
-                                    {
-                                        let class_str = info.player_class.as_deref().unwrap_or("");
-                                        let disc_str = info.player_discipline.as_deref().unwrap_or("");
-                                        let detail = if !class_str.is_empty() && !disc_str.is_empty() {
-                                            format!("{class_str} — {disc_str}")
-                                        } else if !class_str.is_empty() {
-                                            class_str.to_string()
-                                        } else if !disc_str.is_empty() {
-                                            disc_str.to_string()
-                                        } else {
-                                            String::new()
-                                        };
-                                        if !detail.is_empty() {
-                                            rsx! {
-                                                span { class: "session-player-detail", "{detail}" }
-                                            }
-                                        } else {
-                                            rsx! {}
-                                        }
-                                    }
-                                }
-                            }
-
-                            // ── Settings row: alacrity/latency + op timer + notes selector ──
+                        // ── Expanded content (settings row) ──
+                        if !dashboard_collapsed() {
                             div { class: "session-settings-row",
                                 // Player stats (alacrity / latency)
                                 PlayerStatsBar {}
@@ -1137,7 +1132,7 @@ pub fn App() -> Element {
                                 // Divider
                                 span { class: "session-settings-divider" }
 
-                                // Right: boss notes selector (always visible)
+                                // Boss notes selector
                                 {
                                     let bosses_with_notes: Vec<_> = area_bosses().iter()
                                         .filter(|b| b.has_notes)
@@ -1184,10 +1179,12 @@ pub fn App() -> Element {
                         }
                     }
                     }
-
-                    div { class: "history-container-large", HistoryPanel { state: ui_state } }
                 }
+                }
+            }
 
+            // Tab Content
+            div { class: "tab-content",
                 // ─────────────────────────────────────────────────────────────
                 // Overlays Tab
                 // ─────────────────────────────────────────────────────────────

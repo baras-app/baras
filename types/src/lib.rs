@@ -2554,7 +2554,6 @@ impl UiSessionState {
 #[serde(rename_all = "snake_case")]
 pub enum MainTab {
     #[default]
-    Session,
     DataExplorer,
     Overlays,
     EncounterBuilder,
@@ -2565,7 +2564,6 @@ impl MainTab {
     /// Convert to string ID used in old code
     pub fn as_str(&self) -> &'static str {
         match self {
-            MainTab::Session => "session",
             MainTab::DataExplorer => "explorer",
             MainTab::Overlays => "overlays",
             MainTab::EncounterBuilder => "timers",
@@ -2576,12 +2574,12 @@ impl MainTab {
     /// Parse from string ID used in old code
     pub fn from_str(s: &str) -> Self {
         match s {
-            "session" => MainTab::Session,
-            "explorer" => MainTab::DataExplorer,
+            // "session" maps to DataExplorer for backwards compatibility
+            "session" | "explorer" => MainTab::DataExplorer,
             "overlays" => MainTab::Overlays,
             "timers" => MainTab::EncounterBuilder,
             "effects" => MainTab::Effects,
-            _ => MainTab::Session,
+            _ => MainTab::DataExplorer,
         }
     }
 }

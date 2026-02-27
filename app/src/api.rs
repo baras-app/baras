@@ -417,7 +417,7 @@ pub async fn open_url(url: &str) {
 
 /// Get encounter history summaries
 pub async fn get_encounter_history()
--> Option<Vec<crate::components::history_panel::EncounterSummary>> {
+-> Option<Vec<crate::components::encounter_types::EncounterSummary>> {
     let result = invoke("get_encounter_history", JsValue::NULL).await;
     from_js(result)
 }

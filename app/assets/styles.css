@@ -1144,6 +1144,195 @@ button:active {
 }
 
 /* Session panel */
+/* ── Collapsible Session Dashboard Bar ── */
+.session-dashboard-bar {
+  margin: 0;
+  width: 100%;
+  background: var(--gradient-panel);
+  border-bottom: 1px solid var(--border-accent);
+  padding: 0.4em 1.2em;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  transition: padding 0.2s;
+}
+
+.session-dashboard-bar.collapsed {
+  padding: 0.3em 1.2em;
+}
+
+/* Historical / stale session gold tint */
+.session-dashboard-bar.historical {
+  background: linear-gradient(
+    135deg,
+    rgba(212, 168, 80, 0.08) 0%,
+    var(--bg-mid) 100%
+  );
+  border-bottom-color: rgba(212, 168, 80, 0.3);
+}
+
+.dashboard-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  cursor: pointer;
+  user-select: none;
+  min-height: 28px;
+}
+
+.dashboard-toggle-row:hover {
+  opacity: 0.9;
+}
+
+.dashboard-collapse-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2em;
+  font-size: 0.8em;
+  flex-shrink: 0;
+  width: 1.2em;
+  text-align: center;
+}
+
+.dashboard-collapse-btn:hover {
+  color: var(--text-primary);
+}
+
+.dashboard-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-status-icon {
+  font-size: 0.85em;
+  flex-shrink: 0;
+}
+
+.dashboard-status-icon.live {
+  color: var(--color-success);
+}
+
+.dashboard-status-icon.historical,
+.dashboard-status-icon.warning {
+  color: var(--color-warning);
+}
+
+.dashboard-status-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.85em;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dashboard-status-label.live {
+  color: var(--color-success);
+}
+
+.dashboard-status-label.historical {
+  color: var(--color-warning);
+}
+
+.dashboard-separator {
+  color: var(--border-dim);
+  font-size: 0.85em;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.dashboard-time-info {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-role-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+
+.dashboard-class-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.dashboard-player-name {
+  font-weight: 600;
+  font-size: 0.9em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-player-detail {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  flex-shrink: 0;
+}
+
+/* Settings row inside dashboard bar */
+.session-dashboard-bar .session-settings-row {
+  padding: 0.4em 0 0.2em 1.6em;
+  margin-top: 0.3em;
+  border-top: 1px solid var(--border-dim);
+}
+
+/* Empty state in dashboard bar */
+.dashboard-empty-state {
+  cursor: default;
+  color: var(--text-muted);
+  font-size: 0.85em;
+  gap: 0.5em;
+}
+
+.dashboard-empty-state:hover {
+  opacity: 1;
+}
+
+.dashboard-empty-text {
+  color: var(--text-muted);
+}
+
+.dashboard-status-icon.warning {
+  color: var(--swtor-orange);
+}
+
+.dashboard-empty-state .settings-link {
+  color: var(--swtor-blue);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.dashboard-empty-state .settings-link:hover {
+  color: var(--swtor-blue-light, #8ab4f8);
+}
+
+/* Legacy session-panel: keep for backwards compat but redirect */
 .session-panel {
   margin: 0 auto;
   width: 100%;
@@ -6734,6 +6923,44 @@ details[open] .collapsible-summary::before {
 
 .sidebar-encounter-item .encounter-duration {
   opacity: 0.7;
+}
+
+.sidebar-encounter-item .encounter-main-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  flex-shrink: 0;
+}
+
+.sidebar-encounter-item .encounter-npcs {
+  font-size: 0.7em;
+  color: #aa8866;
+  margin-top: 0.2em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.sidebar-encounter-item .encounter-npcs i {
+  font-size: 0.85em;
+  opacity: 0.7;
+  margin-right: 0.25em;
+}
+
+.sidebar-encounter-item .parsely-upload-btn {
+  font-size: 0.7em;
+  padding: 0.15em 0.3em;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.sidebar-encounter-item .parsely-upload-btn:hover {
+  opacity: 1;
+}
+
+.sidebar-encounter-item .parsely-upload-btn.success {
+  opacity: 0.8;
 }
 
 /* Data Panel (main content) */
