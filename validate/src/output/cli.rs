@@ -280,12 +280,23 @@ impl CliOutput {
         }
     }
 
-    /// Log phase change - now collects phase spans instead of printing inline
+    /// Log phase change - prints inline transition and collects phase spans
     pub fn phase_change(&mut self, time: NaiveDateTime, _old_phase: Option<&str>, new_phase: &str) {
         self.phase_changes += 1;
 
-        // End the previous phase
+        // End the previous phase and print inline transition
         if let Some((phase_id, start_time)) = self.current_phase.take() {
+            // Print phase end/enter inline
+            if self.level >= OutputLevel::Timers && self.should_output() {
+                let time_str = self.format_time(time);
+                let duration = (time - start_time).num_milliseconds() as f32 / 1000.0;
+                let text = self.cyan(&format!(
+                    " x  PHASE ENDED: \"{}\" ({:.1}s)",
+                    phase_id, duration
+                ));
+                println!("[{}] {}", time_str, text);
+            }
+
             self.phase_spans.push(PhaseSpan {
                 phase_id,
                 start_time,
@@ -293,13 +304,20 @@ impl CliOutput {
             });
         }
 
+        // Print phase enter inline
+        if self.level >= OutputLevel::Timers && self.should_output() {
+            let time_str = self.format_time(time);
+            let text = self.cyan(&format!("<- PHASE ENTERED: \"{}\"", new_phase));
+            println!("[{}] {}", time_str, text);
+        }
+
         // Start tracking the new phase
         self.current_phase = Some((new_phase.to_string(), time));
     }
 
-    /// Log phase end trigger - no longer prints inline
+    /// Log phase end trigger
     pub fn phase_end_triggered(&mut self, _time: NaiveDateTime, _phase_id: &str) {
-        // Phase end triggers are now implicit in the phase table
+        // Phase end triggers are implicit in the phase table
         // The actual transition happens in phase_change
     }
 
@@ -459,13 +477,28 @@ impl CliOutput {
 
     /// Print the phase timing table
     fn print_phase_table(&self) {
+        // Calculate the max phase name width (minimum 25, cap at 50)
+        let max_name_len = self
+            .phase_spans
+            .iter()
+            .map(|s| s.phase_id.len())
+            .max()
+            .unwrap_or(25)
+            .clamp(25, 50);
+
+        let total_width = max_name_len + 2 + 12 + 1 + 12 + 1 + 12;
+
         println!();
         println!("PHASES:");
         println!(
-            "  {:25} {:>12} {:>12} {:>12}",
-            "Phase", "Start", "End", "Duration"
+            "  {:<width$} {:>12} {:>12} {:>12}",
+            "Phase",
+            "Start",
+            "End",
+            "Duration",
+            width = max_name_len
         );
-        println!("  {}", "─".repeat(65));
+        println!("  {}", "─".repeat(total_width));
 
         for span in &self.phase_spans {
             let start_str = self.format_time_static(span.start_time);
@@ -483,11 +516,12 @@ impl CliOutput {
                 .unwrap_or_else(|| "-".to_string());
 
             println!(
-                "  {:25} {:>12} {:>12} {:>12}",
-                truncate_phase(&span.phase_id, 25),
+                "  {:<width$} {:>12} {:>12} {:>12}",
+                truncate_phase(&span.phase_id, max_name_len),
                 start_str,
                 end_str,
-                duration
+                duration,
+                width = max_name_len
             );
         }
     }

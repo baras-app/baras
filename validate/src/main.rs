@@ -30,6 +30,7 @@ use baras_core::encounter::combat::ActiveBoss;
 use baras_core::game_data::{effect_id, effect_type_id};
 use baras_core::signal_processor::{
     EventProcessor, GameSignal, SignalHandler, check_counter_timer_triggers,
+    check_timer_phase_transitions,
 };
 use baras_core::state::SessionCache;
 use baras_core::timers::TimerManager;
@@ -428,7 +429,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        // Process signals through timer manager, accumulating IDs across all signals
+        // Update timer snapshot on encounter so timer_time_remaining conditions
+        // see current timer state (using game time, not wall clock)
+        let snapshot = timer_manager.timer_remaining_snapshot_at(event.timestamp);
+        if let Some(enc) = cache.current_encounter_mut() {
+            enc.update_timer_snapshot(snapshot);
+        }
+
+        // ─── Step 1: Dispatch signals to timer manager (accumulate IDs, no output yet) ───
         let encounter = cache.current_encounter();
         let mut expired_timer_ids: Vec<String> = Vec::new();
         let mut cancelled_timer_ids: Vec<String> = Vec::new();
@@ -436,66 +444,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         for signal in &signals {
             timer_manager.handle_signal(signal, encounter);
-            // Accumulate IDs after each signal (vectors are cleared per-signal)
             expired_timer_ids.extend(timer_manager.expired_timer_ids().iter().cloned());
             cancelled_timer_ids.extend(timer_manager.cancelled_timer_ids().iter().cloned());
             started_timer_ids.extend(timer_manager.started_timer_ids().iter().cloned());
         }
 
-        // Log new/restarted timers
-        for timer in timer_manager.active_timers() {
-            if started_timer_ids.contains(&timer.definition_id) {
-                cli.timer_start(
-                    event.timestamp,
-                    &timer.name,
-                    timer.duration.as_secs_f32(),
-                    &timer.definition_id,
-                );
+        // Collect fired alerts before further processing
+        let fired_alerts = timer_manager.take_fired_alerts();
 
-                if let Some(ref mut v) = verifier {
-                    v.record_timer_start(&timer.definition_id, combat_time_secs);
-                }
-            }
-        }
-
-        // Log expired timers (may include timers that immediately restarted)
-        for expired_id in &expired_timer_ids {
-            cli.timer_expire(event.timestamp, expired_id, expired_id);
-        }
-
-        // DEBUG: Check fingers timer state around expected 3rd expiration (05:28 = 328s)
-        if combat_time_secs > 325.0 && combat_time_secs < 350.0 {
-            // 325s = 05:25, 350s = 05:50
-            for timer in timer_manager.active_timers() {
-                if timer.definition_id.contains("fingers_knock") {
-                    let remaining = timer.remaining_secs(event.timestamp);
-                    eprintln!(
-                        "[DEBUG {:.2}s] Timer '{}' active, remaining: {:.2}s",
-                        combat_time_secs, timer.definition_id, remaining
-                    );
-                }
-            }
-            if expired_timer_ids.iter().any(|id| id.contains("fingers")) {
-                eprintln!("[DEBUG {:.2}s] Fingers timer expired!", combat_time_secs);
-            }
-            if started_timer_ids.iter().any(|id| id.contains("fingers")) {
-                eprintln!("[DEBUG {:.2}s] Fingers timer started!", combat_time_secs);
-            }
-        }
-
-        // Log cancelled timers
-        for cancelled_id in &cancelled_timer_ids {
-            cli.timer_cancel(event.timestamp, cancelled_id, cancelled_id);
-        }
-
-        // Process alerts
-        for alert in timer_manager.take_fired_alerts() {
-            cli.alert(event.timestamp, &alert.name, &alert.text);
-
-            if let Some(ref mut v) = verifier {
-                v.record_alert(&alert.id);
-            }
-        }
+        // ─── Step 2: Timer-driven counter and phase feedback loops ───
 
         // Process counter triggers from timer events (expires and starts)
         let timer_counter_signals = check_counter_timer_triggers(
@@ -504,15 +461,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &mut cache,
             event.timestamp,
         );
-        for signal in &timer_counter_signals {
-            if let GameSignal::CounterChanged {
-                counter_id,
-                old_value,
-                new_value,
-                timestamp,
-            } = signal
-            {
-                cli.counter_change(*timestamp, counter_id, *old_value, *new_value);
+
+        // Feed counter signals back to timer manager (cascade support)
+        if !timer_counter_signals.is_empty() {
+            let encounter = cache.current_encounter();
+            for signal in &timer_counter_signals {
+                timer_manager.handle_signal(signal, encounter);
+            }
+        }
+
+        // Check phase transitions triggered by timer events
+        let timer_phase_signals = check_timer_phase_transitions(
+            &expired_timer_ids,
+            &started_timer_ids,
+            &mut cache,
+            event.timestamp,
+        );
+
+        // Feed phase signals back to timer manager (phase-gated timer activation)
+        if !timer_phase_signals.is_empty() {
+            let encounter = cache.current_encounter();
+            for signal in &timer_phase_signals {
+                timer_manager.handle_signal(signal, encounter);
             }
         }
 
@@ -535,11 +505,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        // Process signals for output and state updates
+        // ─── Step 3: Output state changes first (phases, counters, deaths, combat) ───
+
         for signal in &signals {
             match signal {
                 GameSignal::AreaEntered { difficulty_id, .. } => {
-                    // Set difficulty from the actual log file's AreaEntered event
                     if let Some(enc) = cache.current_encounter_mut() {
                         enc.difficulty = baras_core::Difficulty::from_difficulty_id(*difficulty_id);
                     }
@@ -547,28 +517,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 GameSignal::CombatStarted { timestamp, .. } => {
                     state.combat_start = Some(*timestamp);
                     cli.combat_start(*timestamp);
-                    // Reset challenge tracker for new encounter
                     challenge_tracker.start(
                         boss_def.challenges.clone(),
                         boss_def.entities.clone(),
                         boss_npc_ids.clone(),
                         *timestamp,
                     );
-                    // Set encounter context for timer matching
                     if let Some(enc) = cache.current_encounter_mut() {
                         enc.area_id = Some(boss_def.area_id);
                         enc.area_name = Some(boss_def.area_name.clone());
-                        // Difficulty is now set from AreaEntered signal above
                     }
                 }
                 GameSignal::CombatEnded { timestamp, .. } => {
-                    // Calculate duration from combat start
                     let duration = if let Some(start) = state.combat_start {
                         (*timestamp - start).num_milliseconds() as f32 / 1000.0
                     } else {
                         0.0
                     };
-                    // Finalize and get challenge snapshot for this encounter
                     challenge_tracker.set_duration(duration);
                     let challenge_snapshot = challenge_tracker.snapshot();
                     cli.combat_end(*timestamp, duration, &challenge_snapshot);
@@ -582,7 +547,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 } => {
                     cli.boss_detected(*timestamp, boss_name);
 
-                    // CRITICAL: Set active boss for timer context
                     if let Some(enc) = cache.current_encounter_mut() {
                         enc.set_boss(ActiveBoss {
                             definition_id: definition_id.clone(),
@@ -627,7 +591,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     timestamp,
                     ..
                 } => {
-                    // Check if this is a kill target
                     let is_kill_target = boss_def
                         .entities
                         .iter()
@@ -637,10 +600,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         kill_target_death_time = Some(*timestamp);
                     }
 
-                    // Output death event
                     cli.entity_death(*timestamp, entity_name, *npc_id, is_kill_target);
 
-                    // Update entity tracking
                     if let Some(entity) = state.entities.get_mut(npc_id) {
                         entity.death_count += 1;
                         entity.last_seen = Some(*timestamp);
@@ -663,6 +624,82 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 _ => {}
+            }
+        }
+
+        // Output timer-driven counter changes
+        for signal in &timer_counter_signals {
+            if let GameSignal::CounterChanged {
+                counter_id,
+                old_value,
+                new_value,
+                timestamp,
+            } = signal
+            {
+                cli.counter_change(*timestamp, counter_id, *old_value, *new_value);
+                challenge_ctx
+                    .counters
+                    .insert(counter_id.clone(), *new_value);
+            }
+        }
+
+        // Output timer-driven phase changes
+        for signal in &timer_phase_signals {
+            match signal {
+                GameSignal::PhaseChanged {
+                    old_phase,
+                    new_phase,
+                    timestamp,
+                    ..
+                } => {
+                    cli.phase_change(*timestamp, old_phase.as_deref(), new_phase);
+                    challenge_ctx.current_phase = Some(new_phase.clone());
+                    challenge_tracker.set_phase(new_phase, *timestamp);
+                }
+                GameSignal::PhaseEndTriggered {
+                    phase_id,
+                    timestamp,
+                } => {
+                    cli.phase_end_triggered(*timestamp, phase_id);
+                }
+                _ => {}
+            }
+        }
+
+        // ─── Step 4: Output timer events (after state changes) ───
+
+        // Log expired timers
+        for expired_id in &expired_timer_ids {
+            cli.timer_expire(event.timestamp, expired_id, expired_id);
+        }
+
+        // Log cancelled timers
+        for cancelled_id in &cancelled_timer_ids {
+            cli.timer_cancel(event.timestamp, cancelled_id, cancelled_id);
+        }
+
+        // Log new/restarted timers
+        for timer in timer_manager.active_timers() {
+            if started_timer_ids.contains(&timer.definition_id) {
+                cli.timer_start(
+                    event.timestamp,
+                    &timer.name,
+                    timer.duration.as_secs_f32(),
+                    &timer.definition_id,
+                );
+
+                if let Some(ref mut v) = verifier {
+                    v.record_timer_start(&timer.definition_id, combat_time_secs);
+                }
+            }
+        }
+
+        // Log alerts
+        for alert in fired_alerts {
+            cli.alert(event.timestamp, &alert.name, &alert.text);
+
+            if let Some(ref mut v) = verifier {
+                v.record_alert(&alert.id);
             }
         }
 

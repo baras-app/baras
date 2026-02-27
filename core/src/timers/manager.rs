@@ -397,6 +397,27 @@ impl TimerManager {
         snapshot
     }
 
+    /// Build a timer remaining snapshot using game time instead of wall clock.
+    /// Use this for replay/validation where wall clock doesn't match game time.
+    pub fn timer_remaining_snapshot_at(
+        &self,
+        game_time: NaiveDateTime,
+    ) -> hashbrown::HashMap<String, f32> {
+        let mut snapshot = hashbrown::HashMap::new();
+        for timer in self.active_timers.values() {
+            let remaining = timer.remaining_secs(game_time);
+            if remaining > 0.0 {
+                let entry = snapshot
+                    .entry(timer.definition_id.clone())
+                    .or_insert(0.0f32);
+                if remaining > *entry {
+                    *entry = remaining;
+                }
+            }
+        }
+        snapshot
+    }
+
     /// Get active timers as owned data (for sending to overlay)
     pub fn active_timers_snapshot(&self, current_time: NaiveDateTime) -> Vec<ActiveTimer> {
         self.active_timers
