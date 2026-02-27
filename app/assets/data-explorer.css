@@ -198,10 +198,10 @@
   padding: 0;
   font-size: 12px;
   line-height: 1;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-subtle);
+  background: hsl(0, 50%, 30%);
+  border: 1px solid hsl(0, 50%, 40%);
   border-radius: var(--radius-sm);
-  color: var(--text-muted);
+  color: hsl(0, 100%, 85%);
   cursor: pointer;
   transition: all var(--transition-fast);
   margin-left: 4px;
@@ -1355,10 +1355,10 @@
 
 .log-clear-filters {
   padding: 4px 10px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-default);
+  background: hsl(45, 40%, 18%);
+  border: 1px solid hsl(45, 50%, 35%);
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: hsl(45, 90%, 75%);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;

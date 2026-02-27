@@ -836,7 +836,7 @@ pub fn App() -> Element {
                     class: if ui_state.read().active_tab == MainTab::Effects { "tab-btn active" } else { "tab-btn" },
                     onclick: move |_| ui_state.write().active_tab = MainTab::Effects,
                     i { class: "fa-solid fa-heart-pulse" }
-                    " Effects"
+                    " Effects Editor"
                 }
 
             }
