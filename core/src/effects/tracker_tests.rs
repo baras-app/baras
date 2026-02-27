@@ -1,6 +1,7 @@
 //! Tests for effect tracker
 //!
-//! Verifies instant alert behavior and OnApply alert fixes.
+//! Verifies instant alert behavior, OnApply alert fixes, and multi-healer
+//! effect tracking correctness (exclusivity, refresh-after-removal, charges).
 
 use chrono::Local;
 
@@ -10,7 +11,7 @@ use crate::combat_log::EntityType;
 use crate::context::empty_istr;
 use crate::dsl::{AudioConfig, EffectSelector, EntityFilter, Trigger};
 use crate::signal_processor::{GameSignal, SignalHandler};
-use baras_types::AlertTrigger;
+use baras_types::{AlertTrigger, RefreshAbility};
 
 fn now() -> chrono::NaiveDateTime {
     Local::now().naive_local()
@@ -291,4 +292,401 @@ fn test_on_apply_alert_fires_for_ability_cast_trigger() {
         "Expected OnApply alert for ability cast trigger"
     );
     assert_eq!(alerts[0].text, "Proc activated!");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: build signals with explicit source/target IDs
+// ─────────────────────────────────────────────────────────────────────────────
+
+fn effect_applied_signal_with_source(
+    effect_id: i64,
+    source_id: i64,
+    target_id: i64,
+    timestamp: chrono::NaiveDateTime,
+) -> GameSignal {
+    GameSignal::EffectApplied {
+        effect_id,
+        effect_name: empty_istr(),
+        action_id: 0,
+        action_name: empty_istr(),
+        source_id,
+        source_name: empty_istr(),
+        source_entity_type: EntityType::Player,
+        source_npc_id: 0,
+        target_id,
+        target_name: empty_istr(),
+        target_entity_type: EntityType::Player,
+        target_npc_id: 0,
+        timestamp,
+        charges: None,
+    }
+}
+
+fn effect_removed_signal_with_source(
+    effect_id: i64,
+    source_id: i64,
+    target_id: i64,
+    timestamp: chrono::NaiveDateTime,
+) -> GameSignal {
+    GameSignal::EffectRemoved {
+        effect_id,
+        effect_name: empty_istr(),
+        source_id,
+        source_entity_type: EntityType::Player,
+        source_name: empty_istr(),
+        source_npc_id: 0,
+        target_id,
+        target_entity_type: EntityType::Player,
+        target_name: empty_istr(),
+        target_npc_id: 0,
+        timestamp,
+    }
+}
+
+fn ability_activated_signal_with_source(
+    ability_id: i64,
+    source_id: i64,
+    target_id: i64,
+    timestamp: chrono::NaiveDateTime,
+) -> GameSignal {
+    GameSignal::AbilityActivated {
+        ability_id,
+        ability_name: empty_istr(),
+        source_id,
+        source_entity_type: EntityType::Player,
+        source_name: empty_istr(),
+        source_npc_id: 0,
+        target_id,
+        target_name: empty_istr(),
+        target_entity_type: EntityType::Player,
+        target_npc_id: 0,
+        timestamp,
+    }
+}
+
+fn charges_changed_signal(
+    effect_id: i64,
+    source_id: i64,
+    target_id: i64,
+    charges: u8,
+    timestamp: chrono::NaiveDateTime,
+) -> GameSignal {
+    GameSignal::EffectChargesChanged {
+        effect_id,
+        effect_name: empty_istr(),
+        action_id: 0,
+        action_name: empty_istr(),
+        source_id,
+        source_entity_type: EntityType::Player,
+        target_id,
+        timestamp,
+        charges,
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bug 1: Phantom _others effects from same-class refresh
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_kolto_shell_others_does_not_create_phantom_when_local_active() {
+    // Set up kolto_shell (local_player) and kolto_shell_others (other_players)
+    // both triggered by the same effect ID
+    let effect_id: u64 = 985226842996736;
+    let local_player_id: i64 = 1;
+    let other_player_id: i64 = 99;
+    let target_id: i64 = 2;
+
+    let mut kolto_shell = make_effect(
+        "kolto_shell",
+        "Kolto Shell",
+        Trigger::EffectApplied {
+            effects: vec![EffectSelector::Id(effect_id)],
+            source: EntityFilter::LocalPlayer,
+            target: EntityFilter::AnyPlayer,
+        },
+        Some(180.0),
+    );
+    kolto_shell.display_target = super::definition::DisplayTarget::RaidFrames;
+    kolto_shell.default_charges = Some(7);
+    kolto_shell.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(
+        effect_id,
+    ))];
+
+    let kolto_shell_others = make_effect(
+        "kolto_shell_others",
+        "Other's Kolto Shell",
+        Trigger::EffectApplied {
+            effects: vec![EffectSelector::Id(effect_id)],
+            source: EntityFilter::OtherPlayers,
+            target: EntityFilter::AnyPlayer,
+        },
+        Some(180.0),
+    );
+
+    let mut tracker = make_tracker(vec![kolto_shell, kolto_shell_others]);
+    tracker.set_player_context(local_player_id, 0);
+
+    let ts = now();
+
+    // Local player applies Kolto Shell on target
+    tracker.handle_signal(
+        &effect_applied_signal_with_source(effect_id as i64, local_player_id, target_id, ts),
+        None,
+    );
+
+    assert_eq!(
+        tracker.active_effects().count(),
+        1,
+        "Should have 1 effect after local player applies"
+    );
+
+    // Another player of same class casts Kolto Shell on same target (refresh in game)
+    let ts2 = ts + chrono::Duration::seconds(5);
+    tracker.handle_signal(
+        &effect_applied_signal_with_source(effect_id as i64, other_player_id, target_id, ts2),
+        None,
+    );
+
+    // Should still have only 1 effect (the local player's, refreshed)
+    // NOT 2 effects (phantom kolto_shell_others should not be created)
+    assert_eq!(
+        tracker.active_effects().count(),
+        1,
+        "Should still have 1 effect — no phantom _others created"
+    );
+
+    // The existing effect should be the local player's (kolto_shell, not kolto_shell_others)
+    let effect = tracker.active_effects().next().unwrap();
+    assert_eq!(effect.definition_id, "kolto_shell");
+    assert_eq!(effect.source_entity_id, local_player_id);
+}
+
+#[test]
+fn test_kolto_shell_others_creates_normally_when_no_local_active() {
+    // When local player's shell is NOT active, _others should create normally
+    let effect_id: u64 = 985226842996736;
+    let local_player_id: i64 = 1;
+    let other_player_id: i64 = 99;
+    let target_id: i64 = 2;
+
+    let mut kolto_shell = make_effect(
+        "kolto_shell",
+        "Kolto Shell",
+        Trigger::EffectApplied {
+            effects: vec![EffectSelector::Id(effect_id)],
+            source: EntityFilter::LocalPlayer,
+            target: EntityFilter::AnyPlayer,
+        },
+        Some(180.0),
+    );
+    kolto_shell.display_target = super::definition::DisplayTarget::RaidFrames;
+
+    let kolto_shell_others = make_effect(
+        "kolto_shell_others",
+        "Other's Kolto Shell",
+        Trigger::EffectApplied {
+            effects: vec![EffectSelector::Id(effect_id)],
+            source: EntityFilter::OtherPlayers,
+            target: EntityFilter::AnyPlayer,
+        },
+        Some(180.0),
+    );
+
+    let mut tracker = make_tracker(vec![kolto_shell, kolto_shell_others]);
+    tracker.set_player_context(local_player_id, 0);
+
+    // Other player applies without local player having it first
+    let ts = now();
+    tracker.handle_signal(
+        &effect_applied_signal_with_source(effect_id as i64, other_player_id, target_id, ts),
+        None,
+    );
+
+    assert_eq!(
+        tracker.active_effects().count(),
+        1,
+        "Should create kolto_shell_others when no local shell active"
+    );
+    let effect = tracker.active_effects().next().unwrap();
+    assert_eq!(effect.definition_id, "kolto_shell_others");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bug 2: Refresh abilities resurrecting removed effects
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_refresh_does_not_resurrect_removed_effect() {
+    // Simulate: Kolto Probes applied, then removed, then refresh ability cast.
+    // The refresh should NOT bring back the removed effect.
+    let effect_id: u64 = 814832605462528;
+    let local_player_id: i64 = 1;
+    let target_id: i64 = 2;
+
+    let mut kolto_probe = make_effect(
+        "kolto_probe",
+        "Kolto Probe",
+        Trigger::EffectApplied {
+            effects: vec![EffectSelector::Id(effect_id)],
+            source: EntityFilter::LocalPlayer,
+            target: EntityFilter::AnyPlayer,
+        },
+        Some(21.0),
+    );
+    kolto_probe.display_target = super::definition::DisplayTarget::RaidFrames;
+    kolto_probe.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(
+        effect_id,
+    ))];
+
+    let mut tracker = make_tracker(vec![kolto_probe]);
+    tracker.set_player_context(local_player_id, 0);
+
+    let ts = now();
+
+    // Step 1: Apply effect
+    tracker.handle_signal(
+        &effect_applied_signal_with_source(effect_id as i64, local_player_id, target_id, ts),
+        None,
+    );
+    assert_eq!(
+        tracker.active_effects().count(),
+        1,
+        "Effect should be active"
+    );
+
+    // Step 2: Remove effect (authoritative game signal, well after application)
+    let ts_remove = ts + chrono::Duration::seconds(22);
+    tracker.handle_signal(
+        &effect_removed_signal_with_source(effect_id as i64, local_player_id, target_id, ts_remove),
+        None,
+    );
+
+    // The effect is marked removed but still in HashMap (tick() hasn't run yet to GC)
+    // Verify it's marked removed
+    let effect = tracker.active_effects().next().unwrap();
+    assert!(
+        effect.removed_at.is_some(),
+        "Effect should be marked as removed"
+    );
+
+    // Step 3: Cast the refresh ability (slightly too late — probes already fell off)
+    let ts_recast = ts_remove + chrono::Duration::milliseconds(500);
+    tracker.handle_signal(
+        &ability_activated_signal_with_source(
+            effect_id as i64,
+            local_player_id,
+            target_id,
+            ts_recast,
+        ),
+        None,
+    );
+
+    // The removed effect should NOT be resurrected by the refresh
+    let effect = tracker.active_effects().next().unwrap();
+    assert!(
+        effect.removed_at.is_some(),
+        "Removed effect should NOT be resurrected by refresh ability"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bug 3: Charges from another player updating local effect
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_charges_from_other_player_do_not_update_local_effect() {
+    // Two operative healers: both have Kolto Probes on the same target.
+    // Charges changed from the other player should NOT update the local player's effect.
+    let effect_id: u64 = 814832605462528;
+    let local_player_id: i64 = 1;
+    let other_player_id: i64 = 99;
+    let target_id: i64 = 2;
+
+    let kolto_probe = make_effect(
+        "kolto_probe",
+        "Kolto Probe",
+        Trigger::EffectApplied {
+            effects: vec![EffectSelector::Id(effect_id)],
+            source: EntityFilter::LocalPlayer,
+            target: EntityFilter::AnyPlayer,
+        },
+        Some(21.0),
+    );
+
+    let mut tracker = make_tracker(vec![kolto_probe]);
+    tracker.set_player_context(local_player_id, 0);
+
+    let ts = now();
+
+    // Local player applies 2 stacks
+    tracker.handle_signal(
+        &effect_applied_signal_with_source(effect_id as i64, local_player_id, target_id, ts),
+        None,
+    );
+    let ts2 = ts + chrono::Duration::seconds(1);
+    tracker.handle_signal(
+        &charges_changed_signal(effect_id as i64, local_player_id, target_id, 2, ts2),
+        None,
+    );
+
+    let effect = tracker.active_effects().next().unwrap();
+    assert_eq!(effect.stacks, 2, "Should have 2 stacks from local player");
+
+    // Other player's probes cause a ModifyCharges event (from their source)
+    let ts3 = ts + chrono::Duration::seconds(3);
+    tracker.handle_signal(
+        &charges_changed_signal(effect_id as i64, other_player_id, target_id, 4, ts3),
+        None,
+    );
+
+    // Local player's effect should still show 2 stacks, NOT 4
+    let effect = tracker.active_effects().next().unwrap();
+    assert_eq!(
+        effect.stacks, 2,
+        "Charges from other player should NOT update local effect"
+    );
+}
+
+#[test]
+fn test_charges_from_local_player_do_update_local_effect() {
+    // Sanity check: charges from the local player should still update
+    let effect_id: u64 = 814832605462528;
+    let local_player_id: i64 = 1;
+    let target_id: i64 = 2;
+
+    let kolto_probe = make_effect(
+        "kolto_probe",
+        "Kolto Probe",
+        Trigger::EffectApplied {
+            effects: vec![EffectSelector::Id(effect_id)],
+            source: EntityFilter::LocalPlayer,
+            target: EntityFilter::AnyPlayer,
+        },
+        Some(21.0),
+    );
+
+    let mut tracker = make_tracker(vec![kolto_probe]);
+    tracker.set_player_context(local_player_id, 0);
+
+    let ts = now();
+
+    // Apply effect
+    tracker.handle_signal(
+        &effect_applied_signal_with_source(effect_id as i64, local_player_id, target_id, ts),
+        None,
+    );
+
+    // Charges changed from local player
+    let ts2 = ts + chrono::Duration::seconds(1);
+    tracker.handle_signal(
+        &charges_changed_signal(effect_id as i64, local_player_id, target_id, 2, ts2),
+        None,
+    );
+
+    let effect = tracker.active_effects().next().unwrap();
+    assert_eq!(
+        effect.stacks, 2,
+        "Charges from local player should update normally"
+    );
 }

@@ -140,6 +140,9 @@ pub struct SharedState {
     /// Whether raid frame rearrange mode is active (bypasses rendering gates)
     pub rearrange_mode: AtomicBool,
 
+    /// Whether the game process is currently running (updated by the process monitor)
+    pub game_running: AtomicBool,
+
     // ─── Centralized auto-hide ───────────────────────────────────────────────
     /// Unified auto-hide state — the single source of truth for overlay suppression
     pub auto_hide: AutoHideState,
@@ -175,6 +178,8 @@ impl SharedState {
             cooldowns_overlay_active: AtomicBool::new(false),
             dot_tracker_overlay_active: AtomicBool::new(false),
             rearrange_mode: AtomicBool::new(false),
+            // Game process state — assume running until the process monitor says otherwise
+            game_running: AtomicBool::new(true),
             // Centralized auto-hide state
             auto_hide: AutoHideState::new(),
             // Shared query context for DataFusion (reuses SessionContext across queries)
@@ -186,10 +191,16 @@ impl SharedState {
         }
     }
 
-    /// Check if the current session is "not live" — i.e. historical, stale, or has no player.
+    /// Check if the current session is "not live" — i.e. historical, game closed,
+    /// newest log file is blank, or has no player.
     /// Returns `true` if overlays should be auto-hidden due to not-live conditions.
     pub async fn is_session_not_live(&self) -> bool {
         if !self.is_live_tailing.load(Ordering::SeqCst) {
+            return true;
+        }
+
+        // Game process not running → not live
+        if !self.game_running.load(Ordering::SeqCst) {
             return true;
         }
 
@@ -209,13 +220,11 @@ impl SharedState {
             return true;
         }
 
-        // Stale check: no events in the last 15 minutes
-        let last_activity = s.last_event_time.or(s.game_session_date);
-        if let Some(last) = last_activity {
-            let elapsed = chrono::Local::now().naive_local().signed_duration_since(last);
-            if elapsed > chrono::Duration::minutes(15) {
-                return true;
-            }
+        // Only stale if the newest log file is blank (session rotation —
+        // SWTOR created a new empty file meaning the player logged out/restarted)
+        let index = self.directory_index.read().await;
+        if index.newest_file().map(|f| f.is_empty).unwrap_or(false) {
+            return true;
         }
 
         false

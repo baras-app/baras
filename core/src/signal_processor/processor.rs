@@ -967,6 +967,8 @@ impl EventProcessor {
                     effect_name: event.effect.effect_name,
                     action_id: event.action.action_id,
                     action_name: event.action.name,
+                    source_id: event.source_entity.log_id,
+                    source_entity_type: event.source_entity.entity_type,
                     target_id: event.target_entity.log_id,
                     timestamp: event.timestamp,
                     charges: event.details.charges as u8,

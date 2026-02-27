@@ -291,14 +291,19 @@ impl ServiceHandle {
             }
         });
 
-        // Check if this is a stale session (last event >15 min ago, or game process closed).
-        // Only relevant for live-tailing mode — historical sessions are inherently "not live".
+        // Check if this is a stale session. Only relevant for live-tailing mode —
+        // historical sessions are inherently "not live".
+        // A live session is stale if:
+        //   1. The game process is not running, OR
+        //   2. The newest log file in the directory is blank (SWTOR rotated to
+        //      a new empty file, meaning the player logged out / restarted)
         let stale_session = if is_live {
-            // Use the live session's last_event_time (updated on every process_event call)
-            // rather than the static directory-index snapshot which becomes stale during tailing.
-            let live_last_event = session.last_event_time;
-            Self::is_session_stale(live_last_event, start_datetime)
-                || self.shared.auto_hide.is_not_live_active()
+            if !self.shared.game_running.load(Ordering::SeqCst) {
+                true
+            } else {
+                let index = self.shared.directory_index.read().await;
+                index.newest_file().map(|f| f.is_empty).unwrap_or(false)
+            }
         } else {
             false
         };
@@ -348,27 +353,6 @@ impl ServiceHandle {
             character_mismatch: cache.character_mismatch,
             missing_area: cache.missing_area,
         })
-    }
-
-    /// Check if a session is stale (no log activity in the last 15 minutes).
-    /// Uses the live session's last event timestamp (updated on every processed event),
-    /// falling back to the session start time from the filename.
-    const STALE_SESSION_MINUTES: i64 = 15;
-
-    pub(crate) fn is_session_stale(
-        last_event_time: Option<chrono::NaiveDateTime>,
-        session_start: Option<chrono::NaiveDateTime>,
-    ) -> bool {
-        let last_activity = last_event_time.or(session_start);
-
-        match last_activity {
-            Some(last) => {
-                let now = chrono::Local::now().naive_local();
-                let elapsed = now.signed_duration_since(last);
-                elapsed > chrono::Duration::minutes(Self::STALE_SESSION_MINUTES)
-            }
-            None => false,
-        }
     }
 
     /// Get current combat data (unified for all overlays)

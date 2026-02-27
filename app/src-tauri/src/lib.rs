@@ -72,19 +72,22 @@ fn spawn_auto_show_overlays(overlay_state: SharedOverlayState, service_handle: S
             return;
         }
 
+        // Seed the game_running state before any overlay decisions.
+        // The continuous process monitor will take over once tailing starts.
+        let game_running = service::process_monitor::is_game_running()
+            .await
+            .unwrap_or(true); // safe default: assume running if check fails
+        service_handle
+            .shared
+            .game_running
+            .store(game_running, std::sync::atomic::Ordering::SeqCst);
+
         // If "hide when not live" is enabled, check whether the session is actually live.
         // The initial file parse may have completed during our delay, revealing a stale
         // or empty session. In that case, skip showing overlays and mark the auto-hide
         // as active so they restore when the session becomes live.
         if config.overlay_settings.hide_when_not_live {
-            // Check if the game process is running — if not, don't show overlays at all.
-            // This avoids the flash of overlays appearing then hiding when BARAS starts
-            // without SWTOR running.
-            let game_running = service::process_monitor::is_game_running()
-                .await
-                .unwrap_or(true); // safe default: assume running if check fails
-
-            if !game_running || service_handle.shared.is_session_not_live().await {
+            if service_handle.shared.is_session_not_live().await {
                 service_handle.shared.auto_hide.set_session_not_live(true);
                 service_handle.shared.auto_hide.set_not_live(true);
                 return;

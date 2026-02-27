@@ -86,6 +86,8 @@ pub enum GameSignal {
         /// The ability/action that caused this charge change
         action_id: i64,
         action_name: IStr,
+        source_id: i64,
+        source_entity_type: EntityType,
         target_id: i64,
         timestamp: NaiveDateTime,
         /// New charge count

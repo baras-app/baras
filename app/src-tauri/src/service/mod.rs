@@ -122,7 +122,7 @@ pub enum ServiceCommand {
     SendNotesToOverlay(NotesData),
     /// Reload area definitions for a new area (triggers notes update)
     ReloadAreaDefinitions(i64),
-    /// Start monitoring for the game process (triggered on first live event)
+    /// Start monitoring the game process continuously (triggered on first live event)
     StartProcessMonitor,
     /// Manually start the operation timer
     StartOperationTimer,
@@ -316,19 +316,11 @@ impl SignalHandler for CombatSignalHandler {
         signal: &GameSignal,
         _encounter: Option<&baras_core::encounter::CombatEncounter>,
     ) {
-        // On first event processed, start monitoring the game process
-        // (only if auto-hide when not live is enabled — no point polling otherwise)
+        // On first event processed, start monitoring the game process.
+        // Always monitor so game_running state is accurate for stale detection.
         if !self.monitor_requested {
             self.monitor_requested = true;
-            let should_monitor = self
-                .shared
-                .config
-                .try_read()
-                .map(|c| c.overlay_settings.hide_when_not_live)
-                .unwrap_or(true); // safe default: start monitor if lock unavailable
-            if should_monitor {
-                let _ = self.cmd_tx.try_send(ServiceCommand::StartProcessMonitor);
-            }
+            let _ = self.cmd_tx.try_send(ServiceCommand::StartProcessMonitor);
         }
 
         match signal {
@@ -1906,9 +1898,9 @@ impl CombatService {
             "Parse completed"
         );
 
-        // Check if this live session is actually stale or empty (no player data).
-        // This catches the case where the app starts tailing an old/empty file.
-        // We emit the event unconditionally — the router checks the setting.
+        // Check if this live session is actually not-live (game closed, no player,
+        // or newest log file is blank). This catches the case where the app starts
+        // tailing an old/empty file. We emit unconditionally — the router checks the setting.
         if self.shared.is_session_not_live().await {
             let _ = self
                 .overlay_tx
@@ -2047,9 +2039,9 @@ impl CombatService {
                 };
                 tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
 
-                // Periodic stale-recovery: if the session was flagged not-live (e.g. player
-                // went AFK for >15 min), check whether new log activity has resumed. This
-                // lets overlays restore on any activity, not just combat start.
+                // Periodic stale-recovery: if the session was flagged not-live (e.g. game
+                // closed, newest file blank), check whether conditions have changed. This
+                // lets overlays restore when the game relaunches or a new file gets content.
                 if shared.auto_hide.is_not_live_active()
                     && last_stale_check.elapsed() >= std::time::Duration::from_secs(1)
                 {
@@ -2291,8 +2283,11 @@ impl CombatService {
         *self.shared.session.write().await = None;
     }
 
-    /// Start monitoring the game process. If the process disappears, emits
-    /// `NotLiveStateChanged { is_live: false }` to auto-hide overlays.
+    /// Start monitoring the game process continuously.
+    ///
+    /// Updates `shared.game_running` on every poll and emits `NotLiveStateChanged`
+    /// events on transitions so the overlay auto-hide system can react.
+    /// Runs for the lifetime of the tailing session (stopped by `stop_tailing`).
     /// Only one monitor runs at a time; calling this while one is active is a no-op.
     fn start_process_monitor(&mut self) {
         if self.process_monitor_handle.is_some() {
@@ -2300,21 +2295,32 @@ impl CombatService {
         }
 
         let overlay_tx = self.overlay_tx.clone();
+        let shared = self.shared.clone();
         let handle = tokio::spawn(async move {
-            // Check immediately on startup, then poll at intervals
+            let mut was_running = shared.game_running.load(Ordering::SeqCst);
+
             loop {
                 match process_monitor::is_game_running().await {
-                    Some(true) => {}
-                    Some(false) => {
-                        info!("Game process no longer detected, emitting not-live event");
-                        let _ = overlay_tx
-                            .try_send(OverlayUpdate::NotLiveStateChanged { is_live: false });
-                        break;
+                    Some(is_running) => {
+                        shared.game_running.store(is_running, Ordering::SeqCst);
+
+                        if was_running && !is_running {
+                            // Game just closed
+                            info!("Game process no longer detected");
+                            let _ = overlay_tx
+                                .try_send(OverlayUpdate::NotLiveStateChanged { is_live: false });
+                        } else if !was_running && is_running {
+                            // Game just launched
+                            info!("Game process detected, session is live again");
+                            let _ = overlay_tx
+                                .try_send(OverlayUpdate::NotLiveStateChanged { is_live: true });
+                        }
+
+                        was_running = is_running;
                     }
                     None => {
-                        // Process check failed — safe default is to stop monitoring
-                        // and leave overlays visible
-                        break;
+                        // Process check failed — safe default: assume running,
+                        // keep current state, and try again next poll
                     }
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(2500)).await;

@@ -59,8 +59,8 @@ pub struct ParsingSession {
     /// Last loaded area ID (to avoid reloading on duplicate events)
     loaded_area_id: i64,
     /// Timestamp of the last event processed during tailing.
-    /// Updated on every `process_event()` call so stale detection
-    /// can use the live value instead of the static directory-index snapshot.
+    /// Updated on every `process_event()` call. Used to freeze the
+    /// session duration display at the last known activity time.
     pub last_event_time: Option<NaiveDateTime>,
 }
 

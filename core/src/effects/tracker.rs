@@ -879,6 +879,39 @@ impl EffectTracker {
 
             let duration = self.effective_duration(def);
 
+            // Hard-coded exclusivity: when another player refreshes the same ability
+            // (e.g., Kolto Shell, Trauma Probe), the game refreshes the original
+            // caster's effect rather than creating a new one. If the local player's
+            // version is already active, refresh it instead of creating a phantom
+            // "_others" variant.
+            let dominant_def_id = match def.id.as_str() {
+                "kolto_shell_others" => Some("kolto_shell"),
+                "trauma_probe_others" => Some("trauma_probe"),
+                _ => None,
+            };
+            if let Some(dominant_id) = dominant_def_id {
+                let dominant_key = EffectKey::new(dominant_id, target_id);
+                if let Some(dominant) = self.active_effects.get_mut(&dominant_key) {
+                    if dominant.removed_at.is_none() {
+                        // The local player's effect exists — the other player just refreshed it.
+                        // Update our effect's duration instead of creating a phantom.
+                        dominant.refresh(timestamp, duration);
+                        if let Some(c) = charges {
+                            dominant.set_stacks(c);
+                        }
+                        // Register the target for raid frames even though the signal
+                        // came from another player — the target is a known group member.
+                        if target_entity_type == EntityType::Player {
+                            self.new_targets.push(NewTargetInfo {
+                                entity_id: target_id,
+                                name: target_name,
+                            });
+                        }
+                        continue;
+                    }
+                }
+            }
+
             // Pre-compute DotTracker validation before mutable borrow of active_effects
             let dot_tracker_valid = def.display_target != DisplayTarget::DotTracker
                 || self.has_recent_refresh_cast(def, target_id, timestamp);
@@ -1111,6 +1144,15 @@ impl EffectTracker {
             };
 
             if let Some(effect) = matched_key.and_then(|k| self.active_effects.get_mut(&k)) {
+                // Don't resurrect effects that have been authoritatively removed.
+                // EffectRemoved is the source of truth — if the game says the effect
+                // is gone, refresh abilities cannot bring it back.
+                // (timer_expired effects CAN still be refreshed — that's the grace period
+                // for when our duration estimate expires before the in-game effect.)
+                if effect.removed_at.is_some() {
+                    continue;
+                }
+
                 // Check min_stacks condition if specified
                 if let Some(min_stacks) = def.min_stacks {
                     if effect.stacks < min_stacks {
@@ -1719,6 +1761,7 @@ impl EffectTracker {
         effect_name: IStr,
         _action_id: i64,
         _action_name: IStr,
+        source_id: i64,
         target_id: i64,
         timestamp: NaiveDateTime,
         charges: u8,
@@ -1744,6 +1787,13 @@ impl EffectTracker {
             };
 
             if let Some(effect) = self.active_effects.get_mut(&key) {
+                // Only update charges if the source matches the effect's source.
+                // This prevents another player's ability charges (e.g., Kolto Probes
+                // from a second operative healer) from corrupting our tracked stacks.
+                if effect.source_entity_id != source_id {
+                    continue;
+                }
+
                 effect.set_stacks(charges);
 
                 // Refresh duration on ModifyCharges if is_refreshed_on_modify is set.
@@ -1949,6 +1999,8 @@ impl SignalHandler for EffectTracker {
                 effect_name,
                 action_id,
                 action_name,
+                source_id,
+                source_entity_type: _,
                 target_id,
                 timestamp,
                 charges,
@@ -1958,6 +2010,7 @@ impl SignalHandler for EffectTracker {
                     *effect_name,
                     *action_id,
                     *action_name,
+                    *source_id,
                     *target_id,
                     *timestamp,
                     *charges,
