@@ -2443,7 +2443,7 @@ pub fn App() -> Element {
             }
 
             // Parsely upload modal
-            ParselyUploadModal {}
+            ParselyUploadModal { guild: parsely_guild() }
 
             // Toast notifications (rendered on top of everything)
             ToastFrame {}

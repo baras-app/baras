@@ -27,6 +27,7 @@ pub async fn upload_to_parsely(
     path: PathBuf,
     visibility: u8,
     notes: Option<String>,
+    guild_log: bool,
     handle: State<'_, ServiceHandle>,
 ) -> Result<ParselyUploadResponse, String> {
     // Quick metadata check before reading
@@ -73,6 +74,10 @@ pub async fn upload_to_parsely(
         }
     }
 
+    if guild_log {
+        form = form.text("guild-log", "1");
+    }
+
     // Send request
     let client = reqwest::Client::new();
     let response = client
@@ -110,6 +115,7 @@ pub async fn upload_encounter_to_parsely(
     area_entered_line: Option<u64>,
     visibility: u8,
     notes: Option<String>,
+    guild_log: bool,
     handle: State<'_, ServiceHandle>,
 ) -> Result<ParselyUploadResponse, String> {
     // Extract and compress the relevant lines
@@ -154,6 +160,10 @@ pub async fn upload_encounter_to_parsely(
         if !config.parsely.guild.is_empty() {
             form = form.text("guild", config.parsely.guild.clone());
         }
+    }
+
+    if guild_log {
+        form = form.text("guild-log", "1");
     }
 
     // Send request

@@ -27,6 +27,7 @@ struct ParselyUploadRequest {
     upload_type: ParselyUploadType,
     visibility: u8,
     notes: String,
+    guild_log: bool,
 }
 
 /// Global manager for Parsely upload modal
@@ -49,6 +50,7 @@ impl ParselyUploadManager {
             upload_type: ParselyUploadType::File { path, filename },
             visibility: 1, // Default to Public
             notes: String::new(),
+            guild_log: false,
         });
     }
 
@@ -73,6 +75,7 @@ impl ParselyUploadManager {
             },
             visibility: 1, // Default to Public
             notes: String::new(),
+            guild_log: false,
         });
     }
 
@@ -100,12 +103,14 @@ pub fn use_parsely_upload() -> ParselyUploadManager {
 
 /// Parsely upload modal component
 #[component]
-pub fn ParselyUploadModal() -> Element {
+pub fn ParselyUploadModal(guild: String) -> Element {
     let mut manager = use_parsely_upload();
     let mut toast = use_toast();
 
     let request = manager.request.read();
     let mut is_uploading = use_signal(|| false);
+
+    let guild_configured = !guild.is_empty();
 
     let Some(req) = request.as_ref() else {
         return rsx! {};
@@ -203,6 +208,25 @@ pub fn ParselyUploadModal() -> Element {
                             }
                         }
                     }
+
+                    // Guild log checkbox
+                    div { class: "parsely-upload-guild-log", style: "text-align: left;",
+                        label {
+                            class: if guild_configured { "checkbox-option" } else { "checkbox-option disabled" },
+                            input {
+                                r#type: "checkbox",
+                                checked: req.guild_log,
+                                disabled: is_uploading() || !guild_configured,
+                                onchange: move |e| {
+                                    manager.request.write().as_mut().unwrap().guild_log = e.checked();
+                                }
+                            }
+                            " Tag all participants as guild members"
+                            if !guild_configured {
+                                span { class: "guild-log-hint", " (No guild configured)" }
+                            }
+                        }
+                    }
                 }
 
                 // Footer with action buttons
@@ -218,6 +242,7 @@ pub fn ParselyUploadModal() -> Element {
                         onclick: move |_| {
                             let upload_req = manager.request.read().clone().unwrap();
                             let visibility = upload_req.visibility;
+                            let guild_log = upload_req.guild_log;
                             let notes = if upload_req.notes.is_empty() {
                                 None
                             } else {
@@ -239,7 +264,7 @@ pub fn ParselyUploadModal() -> Element {
 
                                 let result = match upload_req.upload_type {
                                     ParselyUploadType::File { path, .. } => {
-                                        api::upload_to_parsely(&path, visibility, notes).await
+                                        api::upload_to_parsely(&path, visibility, notes, guild_log).await
                                     }
                                     ParselyUploadType::Encounter {
                                         path,
@@ -256,6 +281,7 @@ pub fn ParselyUploadModal() -> Element {
                                             area_entered_line,
                                             visibility,
                                             notes,
+                                            guild_log,
                                         ).await;
 
                                         // If successful, persist the link
