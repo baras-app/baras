@@ -31,6 +31,11 @@ pub struct AutoHideState {
     /// `NotLiveStateChanged` event. Used by `apply_not_live_auto_hide` to know
     /// the current condition when the user toggles the setting ON.
     session_not_live: AtomicBool,
+    /// Game process was just detected launching. Blocks stale-recovery restore
+    /// until a fresh log session with a new character registration is confirmed,
+    /// preventing overlays from flashing on while the old log file is still present.
+    /// Cleared by the parse worker once a live session is verified.
+    game_starting: AtomicBool,
 }
 
 impl AutoHideState {
@@ -39,6 +44,7 @@ impl AutoHideState {
             conversation_active: AtomicBool::new(false),
             not_live_active: AtomicBool::new(false),
             session_not_live: AtomicBool::new(false),
+            game_starting: AtomicBool::new(false),
         }
     }
 
@@ -86,11 +92,22 @@ impl AutoHideState {
         self.is_auto_hidden()
     }
 
+    /// Whether the game was just detected launching (blocks premature restore).
+    pub fn is_game_starting(&self) -> bool {
+        self.game_starting.load(Ordering::SeqCst)
+    }
+
+    /// Set or clear the game-starting flag.
+    pub fn set_game_starting(&self, starting: bool) {
+        self.game_starting.store(starting, Ordering::SeqCst);
+    }
+
     /// Clear all auto-hide state.
     pub fn clear_all(&self) {
         self.conversation_active.store(false, Ordering::SeqCst);
         self.not_live_active.store(false, Ordering::SeqCst);
         self.session_not_live.store(false, Ordering::SeqCst);
+        self.game_starting.store(false, Ordering::SeqCst);
     }
 }
 
@@ -201,6 +218,12 @@ impl SharedState {
 
         // Game process not running → not live
         if !self.game_running.load(Ordering::SeqCst) {
+            return true;
+        }
+
+        // Game process just detected launching but no fresh session yet — keep hidden
+        // until the parse worker confirms a new character has registered.
+        if self.auto_hide.is_game_starting() {
             return true;
         }
 

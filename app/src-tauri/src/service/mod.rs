@@ -2243,14 +2243,19 @@ impl CombatService {
         // Check if this live session is actually not-live (game closed, no player,
         // or newest log file is blank). This catches the case where the app starts
         // tailing an old/empty file. We emit unconditionally — the router checks the setting.
+        //
+        // Clear game_starting first so the liveness check below is not blocked by it —
+        // the parse completing is exactly the point where we have enough information to
+        // make the call. If the session is still not-live (stale/empty) we re-apply the
+        // block via NotLiveStateChanged { is_live: false }.
+        self.shared.auto_hide.set_game_starting(false);
         if self.shared.is_session_not_live().await {
             let _ = self
                 .overlay_tx
                 .try_send(OverlayUpdate::NotLiveStateChanged { is_live: false });
         } else {
             // Session IS live (player detected, recent data) — tell the router so it
-            // can clear not-live auto-hide. Without this, overlays stay stuck hidden
-            // when file_modified()'s early is_live:true was blocked by the flash guard.
+            // can clear not-live auto-hide.
             let _ = self
                 .overlay_tx
                 .try_send(OverlayUpdate::NotLiveStateChanged { is_live: true });
@@ -2647,10 +2652,10 @@ impl CombatService {
                             let _ = overlay_tx
                                 .try_send(OverlayUpdate::NotLiveStateChanged { is_live: false });
                         } else if !was_running && is_running {
-                            // Game just launched
-                            info!("Game process detected, session is live again");
-                            let _ = overlay_tx
-                                .try_send(OverlayUpdate::NotLiveStateChanged { is_live: true });
+                            // Game just launched — set the starting flag so stale-recovery
+                            // stays blocked until a fresh session confirms a new character.
+                            info!("Game process detected; waiting for fresh log session before restoring overlays");
+                            shared.auto_hide.set_game_starting(true);
                         }
 
                         was_running = is_running;
