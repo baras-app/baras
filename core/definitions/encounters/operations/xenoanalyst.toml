@@ -13,3 +13,60 @@ name = "Xenoanalyst"
 ids = [3213924027596800, 3213928322564096, 3213919732629504]
 is_boss = true
 is_kill_target = true
+
+# Phases
+
+[[boss.phases]]
+id = "xeno_main"
+name = "Main"
+trigger = { type = "combat_start" }
+
+[[boss.phases]]
+id = "xeno_burn"
+name = "Burn"
+preceded_by = "xeno_main"
+trigger = { type = "boss_hp_below", hp_percent = 17.0, selector = [
+  "Xenoanalyst II",
+] }
+
+# Boss Abilities
+
+[[boss.timer]]
+id = "thermal_tolerance_evaluation"
+name = "Thermal Tolerance Evaluation"
+trigger = { type = "ability_cast", abilities = [
+  3156066523152384,
+], target = "local_player" }
+duration_secs = 10
+color = [220, 33, 25, 255]
+difficulties = ["story", "veteran"]
+
+[[boss.timer]]
+id = "species_comparison"
+name = "Species Comparison"
+trigger = { type = "ability_cast", abilities = [
+  3176918589374464,
+] }
+duration_secs = 3
+color = [30, 33, 142, 255]
+difficulties = ["story", "veteran"]
+
+[[boss.timer]]
+id = "problem_solving_evaluation"
+name = "Problem Solving Evaluation"
+trigger = { type = "ability_cast", abilities = [
+  3156328516157440,
+] }
+duration_secs = 90
+color = [30, 133, 25, 255]
+difficulties = ["story", "veteran"]
+
+[[boss.timer]]
+id = "environmental_awareness_test"
+name = "Environmental Awareness Test"
+trigger = { type = "ability_cast", abilities = [
+  3190159973548032,
+] }
+duration_secs = 30
+color = [31, 33, 255, 255]
+difficulties = ["story", "veteran"]
