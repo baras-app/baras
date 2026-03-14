@@ -79,7 +79,38 @@ const BASE_HEIGHT: f32 = 60.0;
 /// Base layout values (at BASE_WIDTH x BASE_HEIGHT)
 const BASE_FONT_SIZE: f32 = 16.0;
 const BASE_PADDING: f32 = 6.0;
-const BASE_HEADER_SPACING: f32 = 3.0;
+/// Header uses a smaller fraction of the base font so the instance name
+/// reads as a compact label above the large timer digits, not a title.
+const HEADER_FONT_RATIO: f32 = 0.60;
+const BASE_HEADER_SPACING: f32 = 2.0;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Return `text` truncated with "…" if it exceeds `max_width` at `font_size`.
+/// Otherwise returns the original string unchanged.
+fn truncate_to_fit(frame: &mut OverlayFrame, text: &str, font_size: f32, max_width: f32) -> String {
+    let (w, _) = frame.measure_text(text, font_size);
+    if w <= max_width {
+        return text.to_string();
+    }
+    // Binary-search the char boundary where truncation keeps us within max_width
+    let ellipsis = "…";
+    let (ew, _) = frame.measure_text(ellipsis, font_size);
+    let budget = max_width - ew;
+    // Walk chars from the end, trimming one at a time
+    let mut chars: Vec<char> = text.chars().collect();
+    while !chars.is_empty() {
+        let candidate: String = chars.iter().collect();
+        let (cw, _) = frame.measure_text(&candidate, font_size);
+        if cw <= budget {
+            return format!("{}{}", candidate, ellipsis);
+        }
+        chars.pop();
+    }
+    ellipsis.to_string()
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Overlay Implementation
@@ -125,7 +156,8 @@ impl OperationTimerOverlay {
         let padding = self.frame.scaled(BASE_PADDING);
         let base_font_size = self.frame.scaled(BASE_FONT_SIZE);
         let time_font_size = base_font_size * self.config.font_scale;
-        let header_font_size = base_font_size * 0.85;
+        // Title is intentionally small — it's a compact label, not a headline.
+        let header_font_size = base_font_size * HEADER_FONT_RATIO;
         let header_spacing = self.frame.scaled(BASE_HEADER_SPACING);
         let color = color_from_rgba(self.config.font_color);
 
@@ -140,10 +172,13 @@ impl OperationTimerOverlay {
 
         let mut y = padding;
 
-        // Title: operation name if available, otherwise "Op Timer"
+        // Title: operation/flashpoint name if available, otherwise "Op Timer".
+        // Truncated with "…" if too wide to fit in the overlay.
         if self.config.show_title {
-            let title = self.data.operation_name.as_deref().unwrap_or("Op Timer");
+            let raw_title = self.data.operation_name.as_deref().unwrap_or("Op Timer");
             let content_width = self.content_width(padding);
+            let title =
+                truncate_to_fit(&mut self.frame, raw_title, header_font_size, content_width);
             y = Header::new(title)
                 .with_color(color)
                 .with_centered(true)

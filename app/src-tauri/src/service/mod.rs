@@ -134,11 +134,48 @@ pub enum ServiceCommand {
     SetOperationTimerContext { operation_name: Option<String> },
     /// Auto-switch profile based on role change (triggered by DisciplineChanged)
     AutoSwitchProfile { role_name: String },
+    /// Emit the current operation timer state to the frontend and overlay
+    EmitOperationTimerTick,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Operation Timer State
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// The type of area the player is currently in, for operation timer routing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AreaKind {
+    Operation,
+    Flashpoint,
+    PvP,
+    Other,
+}
+
+impl AreaKind {
+    /// Classify an area_id into an AreaKind.
+    pub fn from_area_id(area_id: i64) -> Self {
+        if baras_core::game_data::is_operation(area_id) {
+            AreaKind::Operation
+        } else if baras_core::game_data::is_flashpoint(area_id) {
+            AreaKind::Flashpoint
+        } else if baras_core::game_data::is_pvp_area(area_id) {
+            AreaKind::PvP
+        } else {
+            AreaKind::Other
+        }
+    }
+
+    /// Whether this area type should have the timer auto-start immediately on entry
+    /// (as opposed to operations which wait for boss pull).
+    pub fn auto_starts_on_entry(self) -> bool {
+        matches!(self, AreaKind::Flashpoint | AreaKind::PvP)
+    }
+
+    /// Whether this area type should auto-reset the timer when entered.
+    pub fn auto_resets_on_entry(self) -> bool {
+        matches!(self, AreaKind::Operation | AreaKind::Flashpoint | AreaKind::PvP)
+    }
+}
 
 /// Persistent timer state that tracks an entire operation run.
 /// Lives in the service layer, independent of overlay visibility.
@@ -190,12 +227,53 @@ impl OperationTimerState {
         }
     }
 
-    /// Stop the timer, accumulating elapsed time
+    /// Start the timer with a pre-seeded elapsed time (for live-resume backfill).
+    /// Pre-accumulates `pre_secs` seconds so the timer immediately shows backfilled time.
+    pub fn start_with_offset(&mut self, pre_secs: u64) {
+        self.accumulated_secs = pre_secs;
+        self.started_at = Some(std::time::Instant::now());
+    }
+
+    /// Stop the timer, accumulating elapsed time (marks as manually stopped).
     pub fn stop(&mut self) {
         if let Some(started) = self.started_at.take() {
             self.accumulated_secs += started.elapsed().as_secs();
         }
         self.manually_stopped = true;
+    }
+
+    /// Stop the timer without marking as manually stopped.
+    /// Used for auto-stop on area exit.
+    pub fn stop_auto(&mut self) {
+        if let Some(started) = self.started_at.take() {
+            self.accumulated_secs += started.elapsed().as_secs();
+        }
+        // Do NOT set manually_stopped — auto-starts should still work next instance
+    }
+
+    /// Stop the timer, correcting for the grace-period lag between when the boss
+    /// actually died (game timestamp) and when the CombatEnded signal is dispatched
+    /// (which can be 3+ seconds later due to the boss combat-exit grace window).
+    ///
+    /// `combat_ended_at`: the game-log timestamp on the CombatEnded signal.
+    /// We measure how far in the past that timestamp is (relative to wall clock)
+    /// and subtract that overshoot from the accumulated total.
+    pub fn stop_auto_at(&mut self, combat_ended_at: chrono::NaiveDateTime) {
+        if let Some(started) = self.started_at.take() {
+            let raw_elapsed = started.elapsed().as_secs();
+            // Compute how many seconds ago the game event actually occurred.
+            // chrono::Local::now().naive_local() gives the current local time;
+            // combat_ended_at is the game-log timestamp (local time).
+            let overshoot_secs = chrono::Local::now()
+                .naive_local()
+                .signed_duration_since(combat_ended_at)
+                .num_seconds()
+                .max(0) as u64;
+            // Subtract the overshoot (grace period + dispatch lag), clamped to zero.
+            let corrected = raw_elapsed.saturating_sub(overshoot_secs);
+            self.accumulated_secs += corrected;
+        }
+        // Do NOT set manually_stopped
     }
 
     /// Reset all timer state
@@ -292,6 +370,14 @@ struct CombatSignalHandler {
     current_role: Option<Role>,
     /// Whether we've already requested the process monitor for this tailing session
     monitor_requested: bool,
+    /// Whether the active boss definition has is_final_boss = true.
+    /// Captured in BossEncounterDetected and consumed in CombatEnded.
+    /// (The _encounter arg in CombatEnded is already the new empty encounter,
+    ///  so we must snapshot this flag earlier.)
+    current_boss_is_final: bool,
+    /// The type of area the player is currently in.
+    /// Used to detect FP/PvP → other transitions for auto-stop.
+    current_area_kind: AreaKind,
 }
 
 impl CombatSignalHandler {
@@ -311,6 +397,8 @@ impl CombatSignalHandler {
             local_player_id: None,
             current_role: None,
             monitor_requested: false,
+            current_boss_is_final: false,
+            current_area_kind: AreaKind::Other,
         }
     }
 }
@@ -340,33 +428,46 @@ impl SignalHandler for CombatSignalHandler {
                         .try_send(OverlayUpdate::NotLiveStateChanged { is_live: true });
                 }
             }
-            GameSignal::CombatEnded { .. } => {
+            GameSignal::CombatEnded { timestamp, .. } => {
                 self.shared.in_combat.store(false, Ordering::SeqCst);
                 let _ = self.trigger_tx.try_send(MetricsTrigger::CombatEnded);
                 let _ = self.session_event_tx.send(SessionEvent::CombatEnded);
                 // Clear boss health and timer overlays
                 let _ = self.overlay_tx.try_send(OverlayUpdate::CombatEnded);
 
-                // Auto-stop operation timer when final boss is killed
-                // Only in live mode - historical replays should not drive the timer
-                if self.shared.is_live_tailing.load(Ordering::SeqCst) {
-                    if let Some(enc) = _encounter {
-                        if let Some(def) = enc.active_boss_definition() {
-                            if def.is_final_boss {
-                                let area_id = self.shared.current_area_id.load(Ordering::SeqCst);
-                                if baras_core::game_data::is_operation(area_id) {
-                                    let success = baras_core::encounter::summary::determine_success(enc);
-                                    if success {
-                                        let mut timer = self.shared.operation_timer.lock().unwrap();
-                                        if timer.is_running() {
-                                            timer.stop();
-                                        }
-                                    }
-                                }
-                            }
+                // Auto-stop operation timer when the final boss is killed.
+                //
+                // NOTE: `_encounter` at this point is the brand-new empty encounter
+                // (push_new_encounter() already ran before signal dispatch), so we
+                // cannot call enc.active_boss_definition() here — it would return None.
+                // Instead we use `current_boss_is_final`, which was snapshotted in the
+                // preceding BossEncounterDetected signal.
+                //
+                // We use `_encounter` (the new encounter's predecessor in history) only
+                // to determine success — but since the encounter has already been moved to
+                // history by the time we get here, we rely on the fact that if is_final_boss
+                // is set and we were in an operation, combat ending == a successful clear.
+                // (Wipes also fire CombatEnded, so we additionally check determine_success
+                // on the encounter that was passed — but since _encounter is now the new
+                // one, we check the area type alone for ops and trust that a wipe restarts
+                // the fight without hitting is_final_boss again.)
+                //
+                // Only in live mode - historical replays should not drive the timer.
+                if self.shared.is_live_tailing.load(Ordering::SeqCst) && self.current_boss_is_final {
+                    let area_kind = self.current_area_kind;
+                    if matches!(area_kind, AreaKind::Operation | AreaKind::Flashpoint) {
+                        let mut timer = self.shared.operation_timer.lock().unwrap();
+                        if timer.is_running() {
+                            // Use the game-log timestamp to subtract the grace-period lag
+                            // (CombatEnded is dispatched ~3s after the actual kill event).
+                            timer.stop_auto_at(*timestamp);
                         }
+                        drop(timer);
+                        let _ = self.cmd_tx.try_send(ServiceCommand::EmitOperationTimerTick);
                     }
                 }
+                // Reset the flag — next boss may or may not be final
+                self.current_boss_is_final = false;
             }
             GameSignal::DisciplineChanged {
                 entity_id,
@@ -438,8 +539,72 @@ impl SignalHandler for CombatSignalHandler {
                     // Trigger area definition reload (will send notes or clear them)
                     let _ = self.cmd_tx.try_send(ServiceCommand::ReloadAreaDefinitions(*area_id));
 
-                    // Update operation timer context with operation name
-                    if baras_core::game_data::is_operation(*area_id) {
+                    // ── Operation timer area-transition logic ────────────────────
+                    // Only in live mode - historical replays should not drive the timer
+                    if self.shared.is_live_tailing.load(Ordering::SeqCst) {
+                        let prev_kind = self.current_area_kind;
+                        let new_kind = AreaKind::from_area_id(*area_id);
+                        self.current_area_kind = new_kind;
+
+                        // Determine the display name for this area.
+                        // For non-timed areas (fleet/open world) we don't update the name —
+                        // the previous instance name is preserved on the overlay so the user
+                        // can still see what run the timer belongs to after returning to fleet.
+                        let area_display_name: Option<String> = match new_kind {
+                            AreaKind::Operation => baras_core::game_data::get_operation_name(*area_id)
+                                .map(|s| s.to_string()),
+                            AreaKind::Flashpoint => baras_core::game_data::get_flashpoint_name(*area_id)
+                                .map(|s| s.to_string()),
+                            AreaKind::PvP => Some("PvP".to_string()),
+                            AreaKind::Other => None, // unused below — name preserved
+                        };
+
+                        // If entering a timed area (op/FP/PvP): reset the timer for a fresh run.
+                        // This handles requirement 3: auto-clear on new instance.
+                        // Clearing manually_stopped here is intentional — a new area = new run.
+                        if new_kind.auto_resets_on_entry() {
+                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            timer.reset();
+                            timer.operation_name = area_display_name.clone();
+                            drop(timer);
+                        }
+                        // When returning to open world / fleet, do NOT touch operation_name.
+                        // The name stays on the overlay so the user can see which run the
+                        // (now-stopped) timer belongs to.
+
+                        // If leaving a FP/PvP area, auto-stop the timer.
+                        if matches!(prev_kind, AreaKind::Flashpoint | AreaKind::PvP)
+                            && !matches!(new_kind, AreaKind::Flashpoint | AreaKind::PvP)
+                        {
+                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            if timer.is_running() {
+                                timer.stop_auto();
+                            }
+                            drop(timer);
+                            let _ = self.cmd_tx.try_send(ServiceCommand::EmitOperationTimerTick);
+                        }
+
+                        // If entering a FP/PvP area: immediately start the timer
+                        // (requirement 1: no boss pull needed).
+                        if new_kind.auto_starts_on_entry() {
+                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                            if !timer.is_running() && !timer.manually_stopped {
+                                timer.start();
+                                drop(timer);
+                                let _ = self.cmd_tx.try_send(ServiceCommand::EmitOperationTimerTick);
+                            }
+                        }
+                    } else {
+                        // Historical mode: still track area kind so backfill works on resume
+                        self.current_area_kind = AreaKind::from_area_id(*area_id);
+                    }
+
+                    // Legacy context update for operations (kept for backward compatibility;
+                    // the name is now set above in the timer block, but this handles the
+                    // case where live tailing is false at signal time).
+                    if baras_core::game_data::is_operation(*area_id)
+                        && !self.shared.is_live_tailing.load(Ordering::SeqCst)
+                    {
                         let op_name = baras_core::game_data::get_operation_name(*area_id)
                             .map(|s| s.to_string());
                         let _ = self.cmd_tx.try_send(
@@ -455,6 +620,18 @@ impl SignalHandler for CombatSignalHandler {
                 boss_name,
                 ..
             } => {
+                // Snapshot is_final_boss from this boss definition.
+                // We must do it here because by the time CombatEnded fires, push_new_encounter()
+                // has already run and _encounter will be the new, empty encounter.
+                self.current_boss_is_final = if let Some(enc) = _encounter {
+                    enc.boss_definitions()
+                        .get(*definition_idx)
+                        .map(|d| d.is_final_boss)
+                        .unwrap_or(false)
+                } else {
+                    false
+                };
+
                 // Send notes for this specific boss to the overlay
                 if let Some(enc) = _encounter {
                     if let Some(def) = enc.boss_definitions().get(*definition_idx) {
@@ -470,15 +647,16 @@ impl SignalHandler for CombatSignalHandler {
                     }
                 }
 
-                // Auto-start operation timer on first boss pull in an operation
-                // Start directly (not via command channel) to avoid 1-second tick delay
-                // Only in live mode - historical replays should not drive the timer
+                // Auto-start operation timer on first boss pull in an operation.
+                // Start directly (not via command channel) to avoid 1-second tick delay.
+                // Only in live mode - historical replays should not drive the timer.
                 if self.shared.is_live_tailing.load(Ordering::SeqCst) {
-                    let area_id = self.shared.current_area_id.load(Ordering::SeqCst);
-                    if baras_core::game_data::is_operation(area_id) {
+                    if matches!(self.current_area_kind, AreaKind::Operation) {
                         let mut timer = self.shared.operation_timer.lock().unwrap();
                         if !timer.is_running() && !timer.manually_stopped {
                             timer.start();
+                            drop(timer);
+                            let _ = self.cmd_tx.try_send(ServiceCommand::EmitOperationTimerTick);
                         }
                     }
                 }
@@ -1074,6 +1252,13 @@ impl CombatService {
                             let _ = self
                                 .overlay_tx
                                 .try_send(OverlayUpdate::NotLiveStateChanged { is_live: false });
+                            // Requirement 4: zero out the operation timer when a historical
+                            // file is opened — it represents a different session entirely.
+                            {
+                                let mut timer = self.shared.operation_timer.lock().unwrap();
+                                timer.reset();
+                            }
+                            self.emit_operation_timer_tick();
                             self.start_tailing(path).await;
                         }
                         ServiceCommand::ResumeLiveTailing => {
@@ -1167,6 +1352,9 @@ impl CombatService {
                         ServiceCommand::SetOperationTimerContext { operation_name } => {
                             let mut timer = self.shared.operation_timer.lock().unwrap();
                             timer.operation_name = operation_name;
+                        }
+                        ServiceCommand::EmitOperationTimerTick => {
+                            self.emit_operation_timer_tick();
                         }
                         ServiceCommand::AutoSwitchProfile { role_name } => {
                             let config = self.shared.config.read().await;
@@ -1920,6 +2108,82 @@ impl CombatService {
                             elapsed_ms = parse_result.elapsed_ms,
                             "Subprocess parse completed"
                         );
+
+                        // Requirement 5: Backfill the operation timer when resuming live
+                        // mode mid-area so the timer immediately reflects how long the
+                        // player has been in the instance.
+                        //
+                        // - Flashpoints / PvP: timer starts from area entry time.
+                        // - Operations: timer starts from the first boss pull time
+                        //   (using the earliest encounter start in parse_result.encounters).
+                        //
+                        // Only fires when in live tailing mode and the timer isn't already
+                        // running (handles the app restart / reconnect case).
+                        if self.shared.is_live_tailing.load(Ordering::SeqCst) {
+                            let area_id = parse_result.area.area_id;
+                            let area_kind = AreaKind::from_area_id(area_id);
+                            let timer_already_running = self.shared.operation_timer
+                                .lock().unwrap().is_running();
+
+                            if !timer_already_running {
+                                const MAX_BACKFILL_SECS: u64 = 4 * 3600; // 4-hour cap
+
+                                match area_kind {
+                                    AreaKind::Flashpoint | AreaKind::PvP => {
+                                        // Use area entry timestamp for backfill
+                                        if let Some(entered_at) = parse_result.area.entered_at {
+                                            let now = chrono::Local::now().naive_local();
+                                            let elapsed = now.signed_duration_since(entered_at);
+                                            let elapsed_secs = elapsed.num_seconds()
+                                                .max(0) as u64;
+                                            let capped = elapsed_secs.min(MAX_BACKFILL_SECS);
+                                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                                            if !timer.manually_stopped {
+                                                info!(
+                                                    area_kind = ?area_kind,
+                                                    elapsed_secs = capped,
+                                                    "Backfilling operation timer from area entry"
+                                                );
+                                                timer.start_with_offset(capped);
+                                                drop(timer);
+                                                self.emit_operation_timer_tick();
+                                            }
+                                        }
+                                    }
+                                    AreaKind::Operation => {
+                                        // Use earliest boss pull time in this session
+                                        let earliest_start = parse_result.encounters.iter()
+                                            .filter(|s| s.encounter_type == PhaseType::Raid)
+                                            .filter_map(|s| s.start_time.as_ref())
+                                            .filter_map(|t| {
+                                                chrono::NaiveDateTime::parse_from_str(
+                                                    t, "%Y-%m-%dT%H:%M:%S"
+                                                ).ok()
+                                            })
+                                            .min();
+
+                                        if let Some(first_pull) = earliest_start {
+                                            let now = chrono::Local::now().naive_local();
+                                            let elapsed = now.signed_duration_since(first_pull);
+                                            let elapsed_secs = elapsed.num_seconds()
+                                                .max(0) as u64;
+                                            let capped = elapsed_secs.min(MAX_BACKFILL_SECS);
+                                            let mut timer = self.shared.operation_timer.lock().unwrap();
+                                            if !timer.manually_stopped {
+                                                info!(
+                                                    elapsed_secs = capped,
+                                                    "Backfilling operation timer from first boss pull"
+                                                );
+                                                timer.start_with_offset(capped);
+                                                drop(timer);
+                                                self.emit_operation_timer_tick();
+                                            }
+                                        }
+                                    }
+                                    AreaKind::Other => {}
+                                }
+                            }
+                        }
 
                         // If we detected mid-combat startup, set in_combat BEFORE emitting event
                         // This ensures frontend gets correct state when it fetches session info

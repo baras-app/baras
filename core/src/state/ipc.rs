@@ -7,6 +7,7 @@ use crate::context::{intern, resolve};
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::EncounterSummary;
 use crate::state::AreaInfo;
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 /// Player info for IPC (uses plain String instead of IStr for serialization).
@@ -92,6 +93,9 @@ pub struct WorkerAreaInfo {
     pub difficulty_id: i64,
     pub difficulty_name: String,
     pub entered_at_line: Option<u64>,
+    /// Timestamp of the AreaEntered event, used for operation timer backfill on live resume.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entered_at: Option<NaiveDateTime>,
 }
 
 impl WorkerAreaInfo {
@@ -103,6 +107,7 @@ impl WorkerAreaInfo {
             difficulty_id: area.difficulty_id,
             difficulty_name: area.difficulty_name.clone(),
             entered_at_line: area.entered_at_line,
+            entered_at: area.entered_at,
         }
     }
 
@@ -113,6 +118,7 @@ impl WorkerAreaInfo {
         area.difficulty_id = self.difficulty_id;
         area.difficulty_name = self.difficulty_name.clone();
         area.entered_at_line = self.entered_at_line;
+        area.entered_at = self.entered_at;
     }
 }
 
