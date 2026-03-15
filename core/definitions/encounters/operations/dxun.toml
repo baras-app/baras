@@ -542,15 +542,17 @@ victory_trigger = { type = "any_of", conditions = [
   ] },
 ] }
 victory_conditions = [
-  { type = "counter_compare", counter_id = "huntmaster_below_35", operator = "gte", value = 1 },
+  { type = "counter_compare", counter_id = "hunmaster_adrenaline_rush", operator = "gte", value = 1 },
 ]
 
 [[boss.counter]]
-id = "huntmaster_below_35"
-name = "Huntmaster 35 percent"
-increment_on = { type = "boss_hp_below", hp_percent = 35.1, selector = [
+id = "huntmaster_adrenaline_rush"
+name = "Huntmaster Adrenaline Rush Proc"
+increment_on = { type = "effect_applied", effects = [
+  4281979314896896,
+], target = { selector = [
   "Huntmaster",
-] }
+] } }
 
 [[boss.entities]]
 name = "Huntmaster"
