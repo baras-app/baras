@@ -99,6 +99,7 @@ impl MetricType {
         match key {
             "dps" => Some(MetricType::Dps),
             "edps" => Some(MetricType::EDps),
+            "bossdps" => Some(MetricType::BossDps),
             "hps" => Some(MetricType::Hps),
             "ehps" => Some(MetricType::EHps),
             "tps" => Some(MetricType::Tps),
