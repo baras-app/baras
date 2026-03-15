@@ -518,7 +518,7 @@ impl RaidOverlay {
         let capacity = layout.capacity() as usize;
         let frames = (0..capacity).map(|i| RaidFrame::empty(i as u8)).collect();
 
-        Ok(Self {
+        let mut overlay = Self {
             frame,
             frames,
             layout,
@@ -530,7 +530,12 @@ impl RaidOverlay {
             last_render: Instant::now() - RENDER_INTERVAL, // Allow immediate first render
             pending_registry_actions: Vec::new(),
             european_number_format: false,
-        })
+        };
+
+        // Establish correct initial state for Normal mode (background_alpha = 0)
+        overlay.set_interaction_mode(InteractionMode::Normal);
+
+        Ok(overlay)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1254,9 +1259,10 @@ impl Overlay for RaidOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Raid(raid_config, alpha, european) = config {
+        if let OverlayConfigUpdate::Raid(raid_config, _alpha, european) = config {
             self.config = raid_config;
-            self.frame.set_background_alpha(alpha);
+            // background_alpha is owned by the interaction mode (set_interaction_mode),
+            // not by config — Normal/Rearrange = 0, Move = 120 (hardcoded).
             self.european_number_format = european;
             self.needs_render = true;
         }
