@@ -153,6 +153,10 @@ where
                         overlay.frame_mut().window_mut().set_position(x, y);
                         needs_render = true;
                     }
+                    OverlayCommand::SetSize(w, h) => {
+                        overlay.frame_mut().window_mut().set_size(w, h);
+                        needs_render = true;
+                    }
                     OverlayCommand::GetPosition(response_tx) => {
                         let pos = overlay.position();
                         let current_monitor = overlay.frame().window().current_monitor();
@@ -317,6 +321,13 @@ where
                         dispatch::Queue::main().exec_sync(move || {
                             let overlay = unsafe { &mut *overlay_ptr.get() };
                             overlay.frame_mut().window_mut().set_position(x, y);
+                        });
+                        needs_render = true;
+                    }
+                    OverlayCommand::SetSize(w, h) => {
+                        dispatch::Queue::main().exec_sync(move || {
+                            let overlay = unsafe { &mut *overlay_ptr.get() };
+                            overlay.frame_mut().window_mut().set_size(w, h);
                         });
                         needs_render = true;
                     }

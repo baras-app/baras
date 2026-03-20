@@ -145,6 +145,45 @@ pub fn clamp_to_virtual_screen(
         .unwrap_or((x, y))
 }
 
+/// Ensure an overlay position is visible on an actual monitor.
+/// If the overlay doesn't overlap any monitor (e.g. it landed in a dead zone
+/// between monitors of different sizes), move it to the nearest monitor edge.
+pub fn ensure_visible_on_monitor(
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    monitors: &[MonitorInfo],
+) -> (i32, i32) {
+    if monitors.is_empty() {
+        return (x, y);
+    }
+
+    // If it already overlaps a monitor, just apply virtual-screen clamping
+    if monitors.iter().any(|m| m.overlaps(x, y, width, height)) {
+        return clamp_to_virtual_screen(x, y, width, height, monitors);
+    }
+
+    // Not on any monitor — find the nearest one and clamp to its bounds
+    let center_x = x + width as i32 / 2;
+    let center_y = y + height as i32 / 2;
+
+    let nearest = monitors
+        .iter()
+        .min_by_key(|m| {
+            let mx = (m.x + m.width as i32 / 2) as i64;
+            let my = (m.y + m.height as i32 / 2) as i64;
+            let dx = center_x as i64 - mx;
+            let dy = center_y as i64 - my;
+            dx * dx + dy * dy
+        })
+        .unwrap();
+
+    let clamped_x = x.clamp(nearest.x, (nearest.x + nearest.width as i32 - width as i32).max(nearest.x));
+    let clamped_y = y.clamp(nearest.y, (nearest.y + nearest.height as i32 - height as i32).max(nearest.y));
+    (clamped_x, clamped_y)
+}
+
 /// Find the monitor that contains the center of the given rectangle.
 /// Falls back to the monitor with the most overlap, then primary, then first.
 pub fn find_monitor_at(

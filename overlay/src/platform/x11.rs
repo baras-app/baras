@@ -317,10 +317,17 @@ impl OverlayPlatform for X11Overlay {
 
         // Resolve absolute position
         let monitors = get_all_monitors();
-        let (abs_x, abs_y) = super::resolve_absolute_position(
+        let (raw_x, raw_y) = super::resolve_absolute_position(
             config.x,
             config.y,
             config.target_monitor_id.as_deref(),
+            &monitors,
+        );
+        let (abs_x, abs_y) = super::ensure_visible_on_monitor(
+            raw_x,
+            raw_y,
+            config.width,
+            config.height,
             &monitors,
         );
 

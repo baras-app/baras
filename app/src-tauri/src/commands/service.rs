@@ -9,7 +9,7 @@ use baras_core::EncounterSummary;
 use baras_core::PlayerMetrics;
 use baras_core::context::{AppConfig, AppConfigExt, OverlayAppearanceConfig};
 
-use crate::overlay::{MetricType, OverlayCommand, OverlayType, SharedOverlayState};
+use crate::overlay::{MetricType, OverlayCommand, OverlayManager, OverlayType, SharedOverlayState};
 use crate::service::{LogFileInfo, ServiceHandle, SessionInfo};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -349,6 +349,9 @@ pub async fn save_profile(
         if let Ok(state) = overlay_state.lock() {
             sync_enabled_with_running(&mut config, &state);
         }
+        // Flush current overlay positions so the profile captures where
+        // overlays actually are on screen, not stale saved positions.
+        OverlayManager::flush_positions(&overlay_state, &mut config).await;
     }
 
     config.save_profile(name).map_err(|e| e.to_string())?;

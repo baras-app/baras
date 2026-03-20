@@ -386,46 +386,33 @@ impl OverlayPlatform for WindowsOverlay {
         overlay_log!("  Window class registered");
 
         // Convert relative position to absolute screen coordinates
-        // Position is stored relative to the target monitor
+        // Uses the shared resolution function for consistent fallback behavior
         let monitors = get_all_monitors();
-        let (abs_x, abs_y, monitor_found) = if let Some(ref target_id) = config.target_monitor_id {
-            // Find the target monitor and add its position
-            if let Some(mon) = monitors.iter().find(|m| m.id == *target_id) {
-                overlay_log!(
-                    "  Found target monitor '{}' at ({},{})",
-                    target_id,
-                    mon.x,
-                    mon.y
-                );
-                (config.x + mon.x, config.y + mon.y, true)
-            } else {
-                overlay_log!(
-                    "  WARNING: Target monitor '{}' not found! Falling back to primary",
-                    target_id
-                );
-                // Monitor not found, use primary
-                let result = monitors
-                    .iter()
-                    .find(|m| m.is_primary)
-                    .map(|m| (config.x + m.x, config.y + m.y))
-                    .unwrap_or((config.x, config.y));
-                (result.0, result.1, false)
-            }
-        } else {
-            overlay_log!("  No target monitor specified, using primary");
-            // No monitor ID, use primary monitor
-            let result = monitors
-                .iter()
-                .find(|m| m.is_primary)
-                .map(|m| (config.x + m.x, config.y + m.y))
-                .unwrap_or((config.x, config.y));
-            (result.0, result.1, true)
-        };
+        let (raw_x, raw_y) = super::resolve_absolute_position(
+            config.x,
+            config.y,
+            config.target_monitor_id.as_deref(),
+            &monitors,
+        );
+        // Clamp to ensure the overlay is visible on an actual monitor,
+        // not in a dead zone between monitors of different dimensions.
+        let (abs_x, abs_y) = super::ensure_visible_on_monitor(
+            raw_x,
+            raw_y,
+            config.width,
+            config.height,
+            &monitors,
+        );
         overlay_log!(
-            "  Absolute position: ({},{}) monitor_found={}",
+            "  Absolute position: ({},{}) target_monitor={:?}{}",
             abs_x,
             abs_y,
-            monitor_found
+            config.target_monitor_id,
+            if (abs_x, abs_y) != (raw_x, raw_y) {
+                format!(" (clamped from ({},{}))", raw_x, raw_y)
+            } else {
+                String::new()
+            }
         );
 
         let hwnd = unsafe {

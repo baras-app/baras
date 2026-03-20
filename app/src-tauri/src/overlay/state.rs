@@ -26,6 +26,8 @@ pub enum OverlayCommand {
     UpdateConfig(OverlayConfigUpdate),
     /// Set overlay position (x, y in screen coordinates)
     SetPosition(i32, i32),
+    /// Set overlay size (width, height in pixels)
+    SetSize(u32, u32),
     /// Request current position via oneshot channel
     GetPosition(tokio::sync::oneshot::Sender<PositionEvent>),
     /// Shutdown the overlay

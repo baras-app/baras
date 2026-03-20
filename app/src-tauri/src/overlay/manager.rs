@@ -264,6 +264,28 @@ impl OverlayManager {
         }
     }
 
+    /// Flush all running overlay positions into config (for profile save).
+    pub async fn flush_positions(
+        state: &SharedOverlayState,
+        config: &mut baras_core::context::AppConfig,
+    ) {
+        let overlays: Vec<_> = {
+            let Ok(s) = state.lock() else { return };
+            s.all_overlays()
+                .into_iter()
+                .map(|(k, tx)| (k, tx.clone()))
+                .collect()
+        };
+
+        for (kind, tx) in overlays {
+            if let Some(pos) = Self::query_position(&tx).await {
+                config
+                    .overlay_settings
+                    .set_position(kind.config_key(), Self::position_to_config(&pos));
+            }
+        }
+    }
+
     /// Save overlay positions to config after a delay (for newly spawned overlays).
     pub async fn save_positions_delayed(
         pending: Vec<(String, tokio::sync::mpsc::Sender<OverlayCommand>)>,
@@ -932,6 +954,15 @@ impl OverlayManager {
         state: &SharedOverlayState,
         service: &ServiceHandle,
     ) -> Result<bool, String> {
+        // Flush current overlay positions into config before reading it back.
+        // Without this, refresh sends stale saved positions back to overlays,
+        // resetting any moves the user made since the last position-save event.
+        {
+            let mut config = service.config().await;
+            Self::flush_positions(state, &mut config).await;
+            let _ = service.update_config(config).await;
+        }
+
         let config = service.config().await;
         let settings = &config.overlay_settings;
         let globally_visible = settings.overlays_visible;
@@ -1046,7 +1077,7 @@ impl OverlayManager {
         let monitors = platform::get_all_monitors();
 
         for (kind, tx) in overlays {
-            // Send position update
+            // Send position and size updates from profile
             if let Some(pos) = settings.positions.get(kind.config_key()) {
                 // Convert relative position to absolute screen coordinates
                 // Positions are stored relative to their target monitor
@@ -1057,6 +1088,7 @@ impl OverlayManager {
                     &monitors,
                 );
                 let _ = tx.send(OverlayCommand::SetPosition(abs_x, abs_y)).await;
+                let _ = tx.send(OverlayCommand::SetSize(pos.width, pos.height)).await;
             }
 
             // Send config update
