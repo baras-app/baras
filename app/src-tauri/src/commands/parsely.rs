@@ -13,6 +13,11 @@ use crate::service::ServiceHandle;
 const PARSELY_URL: &str = "https://parsely.io/api/upload2";
 const USER_AGENT: &str = "BARAS v0.1.0";
 
+/// Extra seconds of trailing log lines to include beyond the encounter's end_line
+/// when uploading to Parsely. Ensures late-arriving damage/death events from SWTOR's
+/// log buffering are captured for accurate classification.
+const PARSELY_TRAILING_SECS: u32 = 5;
+
 /// Response from Parsely upload
 #[derive(Debug, serde::Serialize)]
 pub struct ParselyUploadResponse {
@@ -188,6 +193,9 @@ pub async fn upload_encounter_to_parsely(
 /// Extract specific lines from a file, optionally prepending the area entered line,
 /// and gzip compress the result.
 ///
+/// Includes a trailing window of [`PARSELY_TRAILING_SECS`] seconds beyond `end_line`
+/// so that late-arriving damage/death events are captured for Parsely classification.
+///
 /// Note: Log files are Windows-1252 encoded, so we read raw bytes and split by newlines
 /// without attempting UTF-8 conversion.
 fn extract_and_compress_lines(
@@ -214,6 +222,7 @@ fn extract_and_compress_lines(
     // Split by newlines, keeping track of line numbers (1-indexed)
     let mut line_num: u64 = 0;
     let mut start = 0;
+    let mut end_line_secs: Option<u32> = None;
 
     for (i, &byte) in contents.iter().enumerate() {
         if byte == b'\n' {
@@ -230,7 +239,6 @@ fn extract_and_compress_lines(
                 area_line_content = Some(line);
             }
 
-            // Write lines in the encounter range
             if line_num >= start_line && line_num <= end_line {
                 // If we have a captured area line, write it first (once)
                 if let Some(area_line) = area_line_content.take() {
@@ -239,11 +247,33 @@ fn extract_and_compress_lines(
                 }
                 encoder.write_all(line)?;
                 encoder.write_all(b"\n")?;
-            }
 
-            // Stop early if we've passed the end and don't need to capture area line
-            if line_num > end_line && (!capture_area_line || area_line_content.is_none()) {
-                break;
+                // Capture the timestamp of end_line for the trailing window
+                if line_num == end_line {
+                    end_line_secs = extract_timestamp_secs(line);
+                }
+            } else if line_num > end_line {
+                // Trailing window: include lines within PARSELY_TRAILING_SECS of end_line
+                if let Some(end_secs) = end_line_secs {
+                    if let Some(line_secs) = extract_timestamp_secs(line) {
+                        // Handle midnight wraparound (line timestamp < end timestamp)
+                        let elapsed = if line_secs >= end_secs {
+                            line_secs - end_secs
+                        } else {
+                            break; // Timestamp went backwards, stop
+                        };
+                        if elapsed <= PARSELY_TRAILING_SECS {
+                            encoder.write_all(line)?;
+                            encoder.write_all(b"\n")?;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break; // Unparseable line, stop
+                    }
+                } else {
+                    break; // No reference timestamp, stop
+                }
             }
 
             start = i + 1;
@@ -270,6 +300,28 @@ fn extract_and_compress_lines(
     }
 
     encoder.finish()
+}
+
+/// Extract total seconds from a SWTOR log line timestamp.
+/// Format: `[HH:MM:SS.mmm] ...` — returns HH*3600 + MM*60 + SS.
+fn extract_timestamp_secs(line: &[u8]) -> Option<u32> {
+    // Minimum: [HH:MM:SS.mmm] = 14 bytes, first byte must be '['
+    if line.len() < 14 || line[0] != b'[' {
+        return None;
+    }
+    let h = digit2(line[1], line[2])?;
+    let m = digit2(line[4], line[5])?;
+    let s = digit2(line[7], line[8])?;
+    Some(h * 3600 + m * 60 + s)
+}
+
+#[inline]
+fn digit2(a: u8, b: u8) -> Option<u32> {
+    if a.is_ascii_digit() && b.is_ascii_digit() {
+        Some((a - b'0') as u32 * 10 + (b - b'0') as u32)
+    } else {
+        None
+    }
 }
 
 /// Parse Parsely XML response

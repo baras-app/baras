@@ -1131,14 +1131,6 @@ impl CombatEncounter {
         }
     }
 
-    /// Returns true if any NPC in this encounter is a known training dummy.
-    pub fn is_training_dummy(&self) -> bool {
-        use crate::{ContentType, lookup_boss};
-        self.npcs
-            .values()
-            .any(|npc| lookup_boss(npc.class_id).is_some_and(|b| b.content_type == ContentType::TrainingDummy))
-    }
-
     pub fn is_active(&self) -> bool {
         matches!(
             self.state,

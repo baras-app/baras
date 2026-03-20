@@ -26,10 +26,6 @@ const BOSS_COMBAT_EXIT_GRACE_SECS: i64 = 3;
 /// Grace period for non-boss encounters before finalizing combat end (seconds).
 const TRASH_COMBAT_EXIT_GRACE_SECS: i64 = 1;
 
-/// Grace period for training dummy encounters (seconds).
-/// Longer window ensures trailing damage events are captured for accurate parse uploads.
-const DUMMY_COMBAT_EXIT_GRACE_SECS: i64 = 5;
-
 /// Soft-timeout for wipe detection after local player receives revive immunity (seconds).
 /// If local player receives RECENTLY_REVIVED during a boss encounter and kill targets
 /// aren't dead after this timeout, mark the encounter as a wipe and end it.
@@ -42,20 +38,16 @@ fn within_grace_window(cache: &SessionCache, timestamp: NaiveDateTime) -> bool {
         return false;
     };
 
-    let grace_secs = grace_duration(cache);
-    timestamp.signed_duration_since(exit_time).num_seconds() <= grace_secs
-}
-
-/// Determine the appropriate grace duration for the current encounter.
-fn grace_duration(cache: &SessionCache) -> i64 {
-    let enc = cache.current_encounter();
-    if enc.map_or(false, |e| e.active_boss_idx().is_some()) {
+    let grace_secs = if cache
+        .current_encounter()
+        .map_or(false, |e| e.active_boss_idx().is_some())
+    {
         BOSS_COMBAT_EXIT_GRACE_SECS
-    } else if enc.map_or(false, |e| e.is_training_dummy()) {
-        DUMMY_COMBAT_EXIT_GRACE_SECS
     } else {
         TRASH_COMBAT_EXIT_GRACE_SECS
-    }
+    };
+
+    timestamp.signed_duration_since(exit_time).num_seconds() <= grace_secs
 }
 
 /// Advance the combat state machine and emit CombatStarted/CombatEnded signals.
@@ -706,7 +698,14 @@ pub fn tick_combat_state(cache: &mut SessionCache, now: NaiveDateTime) -> Vec<Ga
 
     // Check for grace window expiration
     if let Some(exit_time) = cache.last_combat_exit_time {
-        let grace_secs = grace_duration(cache);
+        let grace_secs = if cache
+            .current_encounter()
+            .map_or(false, |e| e.active_boss_idx().is_some())
+        {
+            BOSS_COMBAT_EXIT_GRACE_SECS
+        } else {
+            TRASH_COMBAT_EXIT_GRACE_SECS
+        };
 
         let elapsed = now.signed_duration_since(exit_time).num_seconds();
         if elapsed > grace_secs {
