@@ -986,7 +986,7 @@ impl OverlayManager {
                 // spawner can observe it as running after we've taken the handle.
                 let handle = state.lock().map_err(|e| e.to_string())?.remove(overlay_type);
                 if let Some(h) = handle {
-                    let _ = h.tx.try_send(OverlayCommand::Shutdown);
+                    Self::shutdown_no_position(h).await;
                     service.set_overlay_active(key, false);
                 }
             } else if enabled && globally_visible && !service.shared.auto_hide.is_auto_hidden() {

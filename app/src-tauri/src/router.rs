@@ -156,12 +156,11 @@ async fn process_overlay_update(
                 state.get_challenges_tx().cloned()
             };
 
-            if let Some(tx) = challenges_tx
-                && let Some(challenges) = data.challenges
-            {
+            if let Some(tx) = challenges_tx {
+                let challenge_data = data.challenges.unwrap_or_default();
                 let _ = tx
                     .send(OverlayCommand::UpdateData(OverlayData::Challenges(
-                        challenges,
+                        challenge_data,
                     )))
                     .await;
             }
