@@ -78,8 +78,6 @@ pub struct OverlayState {
     pub move_mode: bool,
     /// Raid rearrange mode state (click-to-swap frames)
     pub rearrange_mode: bool,
-    /// Whether overlays are currently visible (mirrors config)
-    pub overlays_visible: bool,
 }
 
 impl Default for OverlayState {
@@ -88,7 +86,6 @@ impl Default for OverlayState {
             overlays: HashMap::new(),
             move_mode: false,
             rearrange_mode: false,
-            overlays_visible: true,
         }
     }
 }

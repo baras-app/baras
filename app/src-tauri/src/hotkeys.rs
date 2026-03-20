@@ -367,15 +367,12 @@ async fn toggle_visibility_hotkey(
     overlay_state: SharedOverlayState,
     service_handle: ServiceHandle,
 ) {
-    let is_visible = {
-        if let Ok(state) = overlay_state.lock() {
-            state.overlays_visible
-        } else {
-            return;
-        }
-    };
+    let any_running = overlay_state
+        .lock()
+        .map(|s| s.any_running())
+        .unwrap_or(false);
 
-    if is_visible {
+    if any_running {
         let _ = OverlayManager::hide_all(&overlay_state, &service_handle).await;
     } else {
         // show_all() records overlays_visible=true in config. If auto-hide is
@@ -397,7 +394,7 @@ async fn toggle_move_mode_hotkey(overlay_state: SharedOverlayState, service: Ser
             Err(_) => return,
         };
 
-        if !state.overlays_visible || state.running_overlays().is_empty() {
+        if state.running_overlays().is_empty() {
             return;
         }
 

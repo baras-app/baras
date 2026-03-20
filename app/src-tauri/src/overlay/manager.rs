@@ -610,12 +610,6 @@ impl OverlayManager {
         config.overlay_settings.overlays_visible = true;
         service.update_config(config.clone()).await?;
 
-        // Update state
-        {
-            let mut s = state.lock().map_err(|e| e.to_string())?;
-            s.overlays_visible = true;
-        }
-
         // If auto-hide is active, don't spawn — intent is recorded, overlays
         // will appear when auto-hide clears
         if service.shared.auto_hide.is_auto_hidden() {
@@ -729,7 +723,6 @@ impl OverlayManager {
         let handles = {
             let mut s = state.lock().map_err(|e| e.to_string())?;
             s.move_mode = false;
-            s.overlays_visible = false;
             s.drain()
         };
 
@@ -737,11 +730,7 @@ impl OverlayManager {
             Self::shutdown_no_position(handle).await;
         }
 
-        // Clear all overlay status flags
-        service.set_overlay_active("raid", false);
-        service.set_overlay_active("boss_health", false);
-        service.set_overlay_active("timers", false);
-        service.set_overlay_active("effects", false);
+        Self::clear_all_overlay_active_flags(service);
 
         // Notify frontend to update UI buttons
         service.emit_overlay_status_changed();
@@ -759,7 +748,6 @@ impl OverlayManager {
         let handles = {
             let mut s = state.lock().map_err(|e| e.to_string())?;
             s.move_mode = false;
-            // DO NOT update s.overlays_visible - this is temporary
             s.drain()
         };
 
@@ -767,11 +755,7 @@ impl OverlayManager {
             Self::shutdown_no_position(handle).await;
         }
 
-        // Clear all overlay status flags
-        service.set_overlay_active("raid", false);
-        service.set_overlay_active("boss_health", false);
-        service.set_overlay_active("timers", false);
-        service.set_overlay_active("effects", false);
+        Self::clear_all_overlay_active_flags(service);
 
         Ok(true)
     }
@@ -950,14 +934,20 @@ impl OverlayManager {
     }
 
     /// Refresh settings for all running overlays, starting/stopping overlays as needed.
+    /// When `flush` is true, current overlay positions are saved into config first
+    /// (preserving user-moved positions during normal settings edits).
+    /// Set `flush` to false after a profile load — the new profile's positions
+    /// should be applied as-is without being overwritten by the old overlay state.
     pub async fn refresh_settings(
         state: &SharedOverlayState,
         service: &ServiceHandle,
+        flush: bool,
     ) -> Result<bool, String> {
         // Flush current overlay positions into config before reading it back.
         // Without this, refresh sends stale saved positions back to overlays,
         // resetting any moves the user made since the last position-save event.
-        {
+        // Skipped on profile load — new profile positions must not be overwritten.
+        if flush {
             let mut config = service.config().await;
             Self::flush_positions(state, &mut config).await;
             let _ = service.update_config(config).await;
@@ -1017,22 +1007,16 @@ impl OverlayManager {
 
         // Special case: Raid overlay always recreates to handle grid size changes
         let raid_enabled = settings.enabled.get("raid").copied().unwrap_or(false);
-        let raid_was_running = {
-            let mut was_running = false;
-            if let Ok(mut s) = state.lock()
-                && let Some(handle) = s.remove(OverlayType::Raid)
-            {
-                let _ = handle.tx.try_send(OverlayCommand::Shutdown);
-                was_running = true;
-            }
-            was_running
+        let raid_handle = {
+            state.lock().ok().and_then(|mut s| s.remove(OverlayType::Raid))
         };
 
-        // Brief delay after shutting down old raid overlay before spawning the new one.
-        // On Wayland (Hyprland), two layer-shell surfaces with the same namespace
-        // coexisting briefly causes the compositor to misposition the new surface.
-        if raid_was_running {
-            tokio::time::sleep(Duration::from_millis(50)).await;
+        // Properly shut down the old Raid overlay before spawning a new one.
+        // shutdown_no_position joins the thread, guaranteeing the OS window is
+        // destroyed — necessary on Wayland where two layer-shell surfaces with
+        // the same namespace cause compositor mispositioning.
+        if let Some(handle) = raid_handle {
+            Self::shutdown_no_position(handle).await;
         }
 
         // Only respawn raid if it is enabled in the current profile, global visibility
@@ -1114,6 +1098,18 @@ impl OverlayManager {
         }
 
         Ok(true)
+    }
+
+    /// Clear all overlay-active flags on the service so the effects loop
+    /// stops computing data for overlays that are no longer running.
+    fn clear_all_overlay_active_flags(service: &ServiceHandle) {
+        service.set_overlay_active("raid", false);
+        service.set_overlay_active("boss_health", false);
+        service.set_overlay_active("timers", false);
+        service.set_overlay_active("effects_a", false);
+        service.set_overlay_active("effects_b", false);
+        service.set_overlay_active("cooldowns", false);
+        service.set_overlay_active("dot_tracker", false);
     }
 
     /// Get all overlay types for iteration.

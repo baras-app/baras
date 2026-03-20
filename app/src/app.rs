@@ -812,7 +812,6 @@ pub fn App() -> Element {
                                             overlay_settings.set(cfg.overlay_settings);
                                         }
                                         profile_dirty.set(false);
-                                        api::refresh_overlay_settings().await;
                                         if let Some(status) = api::get_overlay_status().await {
                                             apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
                                                 &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,

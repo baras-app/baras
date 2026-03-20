@@ -287,7 +287,6 @@ pub fn SettingsPanel(
                                                                         draft_settings.set(config.overlay_settings.clone());
                                                                         settings.set(config.overlay_settings);
                                                                     }
-                                                                    api::refresh_overlay_settings().await;
                                                                     if let Some(status) = api::get_overlay_status().await {
                                                                         let new_map: HashMap<MetricType, bool> = MetricType::all()
                                                                             .iter()

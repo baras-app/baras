@@ -276,7 +276,7 @@ pub async fn refresh_overlay_settings(
     state: State<'_, SharedOverlayState>,
     service: State<'_, ServiceHandle>,
 ) -> Result<bool, String> {
-    OverlayManager::refresh_settings(&state, &service).await
+    OverlayManager::refresh_settings(&state, &service, true).await
 }
 
 /// Preview overlay settings without persisting to disk.

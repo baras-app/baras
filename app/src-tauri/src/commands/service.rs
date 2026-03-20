@@ -9,7 +9,7 @@ use baras_core::EncounterSummary;
 use baras_core::PlayerMetrics;
 use baras_core::context::{AppConfig, AppConfigExt, OverlayAppearanceConfig};
 
-use crate::overlay::{MetricType, OverlayCommand, OverlayManager, OverlayType, SharedOverlayState};
+use crate::overlay::{MetricType, OverlayManager, OverlayType, SharedOverlayState};
 use crate::service::{LogFileInfo, ServiceHandle, SessionInfo};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -387,20 +387,16 @@ pub async fn load_profile(
     }
 
     // Reset move mode on profile switch
-    let txs: Vec<_> = {
+    {
         if let Ok(mut state) = overlay_state.lock() {
             state.move_mode = false;
             state.rearrange_mode = false;
-            state.all_txs().into_iter().cloned().collect()
-        } else {
-            vec![]
         }
     };
 
-    // Broadcast move mode reset to all overlays
-    for tx in txs {
-        let _ = tx.send(OverlayCommand::SetMoveMode(false)).await;
-    }
+    // Apply new profile's overlay settings without flushing old positions —
+    // the new profile's positions should be applied as-is.
+    OverlayManager::refresh_settings(&overlay_state, &handle, false).await?;
 
     Ok(())
 }
