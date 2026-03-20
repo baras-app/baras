@@ -494,6 +494,20 @@ pub async fn update_encounter_item(
     from_js(result).ok_or_else(|| "Failed to deserialize updated item".to_string())
 }
 
+/// Bulk-set roles (visibility) for all timers of a boss
+pub async fn set_all_timer_roles(
+    boss_id: &str,
+    file_path: &str,
+    roles: &[String],
+) -> Result<(), String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "bossId", &JsValue::from_str(boss_id));
+    js_set(&obj, "filePath", &JsValue::from_str(file_path));
+    let roles_js = serde_wasm_bindgen::to_value(roles).unwrap_or(JsValue::NULL);
+    js_set(&obj, "roles", &roles_js);
+    try_invoke("set_all_timer_roles", obj.into()).await.map(|_| ())
+}
+
 /// Delete an encounter item
 pub async fn delete_encounter_item(
     item_type: &str,

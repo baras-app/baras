@@ -826,6 +826,50 @@ pub async fn update_encounter_item(
     Ok(item)
 }
 
+/// Bulk-set roles (visibility) for all timers of a boss.
+#[tauri::command]
+pub async fn set_all_timer_roles(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    boss_id: String,
+    file_path: String,
+    roles: Vec<String>,
+) -> Result<(), String> {
+    let file_path_buf = PathBuf::from(&file_path);
+    let bosses = load_all_bosses(&app_handle)?;
+
+    let boss_with_path = bosses
+        .iter()
+        .find(|b| b.boss.id == boss_id && b.file_path == file_path_buf)
+        .ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
+
+    let roles_option = roles_from_strings(&roles);
+    let mut prefs = load_timer_preferences();
+
+    for timer in &boss_with_path.boss.timers {
+        let key = boss_timer_key(
+            &boss_with_path.boss.area_name,
+            &boss_with_path.boss.name,
+            &timer.id,
+        );
+        prefs.update_roles(&key, roles_option.clone());
+    }
+    save_timer_preferences(&prefs)?;
+
+    // Update live session
+    if let Some(session) = service.shared.session.read().await.as_ref() {
+        let session = session.read().await;
+        if let Some(timer_mgr) = session.timer_manager()
+            && let Ok(mut mgr) = timer_mgr.lock()
+        {
+            mgr.set_preferences(prefs);
+        }
+    }
+
+    let _ = service.reload_timer_definitions().await;
+    Ok(())
+}
+
 /// Delete an encounter item.
 #[tauri::command]
 pub async fn delete_encounter_item(

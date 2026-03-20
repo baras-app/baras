@@ -144,6 +144,39 @@ pub fn TimersTab(
                             "Hide disabled ({disabled_count})"
                         }
                     }
+                    if !timers.is_empty() {
+                        {
+                            let all_hidden = timers.iter().all(|t| t.roles.is_empty());
+                            let bwp_bulk = boss_with_path.clone();
+                            let timers_for_bulk = timers.clone();
+                            rsx! {
+                                button {
+                                    class: "btn btn-sm text-xs",
+                                    title: if all_hidden { "Show all timers for all roles" } else { "Hide all timers for all roles" },
+                                    onclick: move |_| {
+                                        let new_roles: Vec<String> = if all_hidden {
+                                            vec!["Tank".into(), "Healer".into(), "Dps".into()]
+                                        } else {
+                                            vec![]
+                                        };
+                                        let mut updated = timers_for_bulk.clone();
+                                        for t in &mut updated {
+                                            t.roles = new_roles.clone();
+                                        }
+                                        on_change.call(updated);
+                                        let boss_id = bwp_bulk.boss.id.clone();
+                                        let file_path = bwp_bulk.file_path.clone();
+                                        let roles = new_roles.clone();
+                                        spawn(async move {
+                                            let _ = api::set_all_timer_roles(&boss_id, &file_path, &roles).await;
+                                            on_refetch.call(());
+                                        });
+                                    },
+                                    if all_hidden { "Show All" } else { "Hide All" }
+                                }
+                            }
+                        }
+                    }
                 }
                 {
                     let bwp = boss_with_path.clone();
