@@ -38,6 +38,7 @@ fn make_timer(id: &str, name: &str, trigger: TimerTrigger, duration: f32) -> Tim
         boss_definition_id: None,
         display_target: Default::default(),
         difficulties: Vec::new(),
+        group_size: None,
         conditions: Vec::new(),
         phases: Vec::new(),
         counter_condition: None,

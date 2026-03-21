@@ -443,6 +443,8 @@ pub struct BossTimerDefinition {
     pub counter_condition: Option<CounterCondition>,
     #[serde(default)]
     pub difficulties: Vec<String>,
+    #[serde(default)]
+    pub group_size: Option<u8>,
     #[serde(default = "default_enabled")]
     pub enabled: bool,
     #[serde(default)]

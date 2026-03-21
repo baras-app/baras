@@ -342,6 +342,7 @@ fn convert_to_boss_timer(xml: &XmlConfigTimer) -> BossTimerDefinition {
         phases: Vec::new(),
         counter_condition: None,
         difficulties: Vec::new(),
+        group_size: None,
         enabled: xml.enabled.unwrap_or(true),
         can_be_refreshed: !xml.ignore_repeated.unwrap_or(false),
         repeats: xml.repeat.unwrap_or(0),

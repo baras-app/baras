@@ -137,6 +137,10 @@ pub struct TimerDefinition {
     #[serde(default)]
     pub difficulties: Vec<String>,
 
+    /// Group size filter (None = all sizes, Some(8) = 8-man only, Some(16) = 16-man only)
+    #[serde(default)]
+    pub group_size: Option<u8>,
+
     // ─── Conditions (state guards) ──────────────────────────────────────────
     /// State conditions that must be satisfied for this timer to be active.
     /// Implicitly AND'd — all conditions must be true.
@@ -359,12 +363,22 @@ impl TimerDefinition {
             }
         }
 
-        // Check difficulty filter
+        // Check difficulty tier filter
         if !self.difficulties.is_empty() {
             let Some(diff) = difficulty else {
-                return false; // Timer requires specific difficulties but none is set
+                return false;
             };
             if !self.difficulties.iter().any(|d| diff.matches_config_key(d)) {
+                return false;
+            }
+        }
+
+        // Check group size filter (independent of difficulty tier)
+        if let Some(required_size) = self.group_size {
+            let Some(diff) = difficulty else {
+                return false;
+            };
+            if diff.group_size() != required_size {
                 return false;
             }
         }

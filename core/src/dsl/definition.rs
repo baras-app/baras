@@ -399,6 +399,10 @@ pub struct BossTimerDefinition {
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_empty_vec")]
     pub difficulties: Vec<String>,
 
+    /// Group size filter (None = all sizes, Some(8) = 8-man only, Some(16) = 16-man only)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group_size: Option<u8>,
+
     /// Whether timer is enabled
     #[serde(
         default = "crate::serde_defaults::default_true",
@@ -497,7 +501,14 @@ impl BossTimerDefinition {
             encounters: vec![area_name.to_string()], // Kept for logging/legacy
             boss: Some(boss_name.to_string()),
             boss_definition_id: Some(boss_id.to_string()),
-            difficulties: self.difficulties.clone(),
+            difficulties: self
+                .difficulties
+                .iter()
+                .map(|d| strip_group_size_suffix(d).to_string())
+                .collect(),
+            group_size: self
+                .group_size
+                .or_else(|| infer_group_size_from_difficulties(&self.difficulties)),
             conditions: self.conditions.clone(),
             phases: self.phases.clone(),
             counter_condition: self.counter_condition.clone(),
@@ -506,6 +517,37 @@ impl BossTimerDefinition {
             icon_ability_id: self.icon_ability_id,
         }
     }
+}
+
+/// Strip group size suffix from a difficulty key (e.g., "veteran_8" -> "veteran")
+fn strip_group_size_suffix(key: &str) -> &str {
+    for suffix in ["_8", "_16", "_4"] {
+        if let Some(base) = key.strip_suffix(suffix) {
+            if matches!(base, "story" | "veteran" | "master") {
+                return base;
+            }
+        }
+    }
+    key
+}
+
+/// Infer group_size from legacy compound difficulty keys (e.g., ["veteran_8"] -> Some(8))
+fn infer_group_size_from_difficulties(difficulties: &[String]) -> Option<u8> {
+    let mut found: Option<u8> = None;
+    for d in difficulties {
+        for (suffix, size) in [("_8", 8u8), ("_16", 16), ("_4", 4)] {
+            if d.ends_with(suffix) {
+                let base = &d[..d.len() - suffix.len()];
+                if matches!(base, "story" | "veteran" | "master") {
+                    if found.is_some() && found != Some(size) {
+                        return None; // Mixed sizes, can't infer
+                    }
+                    found = Some(size);
+                }
+            }
+        }
+    }
+    found
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

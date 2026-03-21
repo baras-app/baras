@@ -634,6 +634,7 @@ fn test_bestia_complete_encounter() {
             boss_definition_id: None,
             display_target: Default::default(),
             difficulties: Vec::new(),
+            group_size: None,
             conditions: Vec::new(),
             phases: Vec::new(),
             counter_condition: None,
