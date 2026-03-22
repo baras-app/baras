@@ -387,7 +387,17 @@ async fn process_overlay_update(
             }
         }
         OverlayUpdate::CombatStarted => {
-            // Could show overlay or clear entries
+            // Safety fallback: combat starting lifts ALL auto-hide conditions immediately,
+            // regardless of settings. If overlays were temporarily hidden (conversation or
+            // not-live), force-clear those flags and restore the windows. We do NOT restore
+            // if the user has globally disabled overlays — only temporary auto-hides are lifted.
+            let was_hidden = shared.auto_hide.is_auto_hidden();
+            shared.auto_hide.set_conversation(false);
+            shared.auto_hide.set_not_live(false);
+            if was_hidden {
+                let _ = OverlayManager::temporary_show_all(overlay_state, service_handle).await;
+                service_handle.emit_overlay_status_changed();
+            }
         }
         OverlayUpdate::CombatEnded => {
             // Clear boss health, timer, and challenges overlays when combat ends
