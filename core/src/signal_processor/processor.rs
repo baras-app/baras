@@ -1,5 +1,6 @@
 use crate::combat_log::{CombatEvent, EntityType};
 use crate::context::resolve;
+use crate::dsl::triggers::EntitySelectorExt;
 use crate::encounter::combat::ActiveBoss;
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::EncounterState;
@@ -74,9 +75,6 @@ impl EventProcessor {
         // 1f. Boss HP tracking and phase transitions
         self.handle_boss_hp_and_phases(&event, cache, &mut signals);
 
-        // 1f'. Boss shield activation/deactivation/depletion
-        self.handle_boss_shields(&event, cache);
-
         // 1g. NPC Target Tracking
         self.handle_target_changed(&event, cache, &mut signals);
 
@@ -91,6 +89,10 @@ impl EventProcessor {
         self.emit_action_signals(&event, cache, &mut signals);
         self.emit_damage_signals(&event, &mut signals);
         self.emit_healing_signals(&event, &mut signals);
+
+        // Boss shield activation/deactivation/depletion (post-signal path).
+        // Evaluated against the full signal vec so all Trigger variants are available.
+        self.check_shield_triggers(&signals, cache);
 
         // Effect stack counters: update per-entity stack state and aggregate
         // Must run after effect signals are emitted, before the counter↔phase loop.
@@ -784,102 +786,94 @@ impl EventProcessor {
         }
     }
 
-    /// Handle boss shield activation, deactivation, and depletion from damage absorption.
-    fn handle_boss_shields(&self, event: &CombatEvent, cache: &mut SessionCache) {
-        // Early out: need active boss encounter
-        let (def_idx, effect_type) = {
-            let Some(enc) = cache.current_encounter() else {
-                return;
-            };
-            let Some(idx) = enc.active_boss_idx() else {
-                return;
-            };
-            (idx, event.effect.type_id)
+    /// Evaluate shield start/end triggers against the emitted signal vec and update
+    /// boss shield state (activate, deactivate, deplete).
+    ///
+    /// This runs after Phase 2 signal emission so that all `GameSignal` variants —
+    /// including `PhaseChanged`, `CounterChanged`, `TimerExpires`, etc. — are
+    /// available for `start_trigger` / `end_trigger` matching.
+    fn check_shield_triggers(&self, signals: &[GameSignal], cache: &mut SessionCache) {
+        let Some(enc) = cache.current_encounter() else {
+            return;
         };
+        let Some(def_idx) = enc.active_boss_idx() else {
+            return;
+        };
+        let difficulty = enc.difficulty;
+        let boss_def = &enc.boss_definitions()[def_idx];
+        let entities = boss_def.entities.as_slice();
 
-        match effect_type {
-            effect_type_id::APPLYEFFECT
-                if event.effect.effect_id != effect_id::DAMAGE
-                    && event.effect.effect_id != effect_id::HEAL =>
-            {
-                let target_class_id = event.target_entity.class_id;
-                if target_class_id == 0 || event.target_entity.entity_type != EntityType::Npc {
-                    return;
+        // Collect all shield state changes before mutating.
+        // Each item is either:
+        //   ShieldChange::Activate(npc_class_id, shield_idx, effective_total)
+        //   ShieldChange::Deactivate(npc_class_id, shield_idx)
+        //   ShieldChange::Absorb(npc_class_id, amount)
+        enum ShieldChange {
+            Activate(i64, usize, i64),
+            Deactivate(i64, usize),
+            Absorb(i64, i64),
+        }
+
+        let mut changes: Vec<ShieldChange> = Vec::new();
+
+        for signal in signals {
+            match signal {
+                // ── Damage absorption: deplete all active shields on the target NPC ──
+                GameSignal::DamageTaken {
+                    target_npc_id,
+                    target_entity_type,
+                    absorbed,
+                    ..
+                } if *absorbed > 0
+                    && *target_npc_id != 0
+                    && *target_entity_type == EntityType::Npc =>
+                {
+                    changes.push(ShieldChange::Absorb(*target_npc_id, *absorbed as i64));
                 }
-                let eid = event.effect.effect_id;
-                // Collect shield activations (read-only borrow of definitions)
-                // Resolve effective shield HP: use total_16 for 16-man encounters when set
-                let is_16man = cache
-                    .current_encounter()
-                    .and_then(|enc| enc.difficulty)
-                    .map(|d| d.group_size() == 16)
-                    .unwrap_or(false);
-                let activations: Vec<(usize, i64)> = cache
-                    .current_encounter()
-                    .and_then(|enc| enc.boss_definitions()[def_idx].entity_for_id(target_class_id))
-                    .map(|entity_def| {
-                        entity_def
-                            .shields
-                            .iter()
-                            .enumerate()
-                            .filter(|(_, s)| s.trigger_effect == eid as u64)
-                            .map(|(idx, s)| {
-                                let effective_total = if is_16man {
-                                    s.total_16.unwrap_or(s.total)
-                                } else {
-                                    s.total
-                                };
-                                (idx, effective_total)
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default();
-                // Apply activations (mutable borrow)
-                if let Some(enc) = cache.current_encounter_mut() {
-                    for (idx, total) in activations {
-                        enc.activate_shield(target_class_id, idx, total);
+
+                // ── All other signals: check start/end triggers for each shield ──
+                _ => {
+                    for entity in entities {
+                        for (shield_idx, shield) in entity.shields.iter().enumerate() {
+                            // Check start_trigger
+                            if shield_signal_matches(&shield.start_trigger, signal, entities) {
+                                // Determine which NPC class IDs belong to this entity
+                                for &npc_id in &entity.ids {
+                                    let total = shield.effective_total(difficulty);
+                                    changes.push(ShieldChange::Activate(npc_id, shield_idx, total));
+                                }
+                            }
+                            // Check end_trigger
+                            if shield_signal_matches(&shield.end_trigger, signal, entities) {
+                                for &npc_id in &entity.ids {
+                                    changes.push(ShieldChange::Deactivate(npc_id, shield_idx));
+                                }
+                            }
+                        }
                     }
                 }
             }
-            effect_type_id::REMOVEEFFECT => {
-                let source_class_id = event.source_entity.class_id;
-                if source_class_id == 0 {
-                    return;
+        }
+
+        // Apply all collected changes
+        if changes.is_empty() {
+            return;
+        }
+        let Some(enc) = cache.current_encounter_mut() else {
+            return;
+        };
+        for change in changes {
+            match change {
+                ShieldChange::Activate(npc_id, idx, total) => {
+                    enc.activate_shield(npc_id, idx, total);
                 }
-                let eid = event.effect.effect_id;
-                let deactivations: Vec<usize> = cache
-                    .current_encounter()
-                    .and_then(|enc| enc.boss_definitions()[def_idx].entity_for_id(source_class_id))
-                    .map(|entity_def| {
-                        entity_def
-                            .shields
-                            .iter()
-                            .enumerate()
-                            .filter(|(_, s)| s.end_trigger_effect == eid as u64)
-                            .map(|(idx, _)| idx)
-                            .collect()
-                    })
-                    .unwrap_or_default();
-                if let Some(enc) = cache.current_encounter_mut() {
-                    for idx in deactivations {
-                        enc.deactivate_shield(source_class_id, idx);
-                    }
+                ShieldChange::Deactivate(npc_id, idx) => {
+                    enc.deactivate_shield(npc_id, idx);
+                }
+                ShieldChange::Absorb(npc_id, amount) => {
+                    enc.absorb_shield_damage(npc_id, amount);
                 }
             }
-            effect_type_id::APPLYEFFECT if event.effect.effect_id == effect_id::DAMAGE => {
-                let absorbed = event.details.dmg_absorbed;
-                if absorbed <= 0 {
-                    return;
-                }
-                let target_class_id = event.target_entity.class_id;
-                if target_class_id == 0 || event.target_entity.entity_type != EntityType::Npc {
-                    return;
-                }
-                if let Some(enc) = cache.current_encounter_mut() {
-                    enc.absorb_shield_damage(target_class_id, absorbed as i64);
-                }
-            }
-            _ => {}
         }
     }
 
@@ -1243,6 +1237,7 @@ impl EventProcessor {
             target_name: event.target_entity.name,
             target_npc_id: event.target_entity.class_id,
             timestamp: event.timestamp,
+            absorbed: event.details.dmg_absorbed,
         });
     }
 
@@ -1285,3 +1280,262 @@ impl EventProcessor {
 
 // Victory trigger evaluation now uses the unified trigger_eval functions.
 // See the call site in handle_victory_trigger() above.
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Shield Signal Matching
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Check whether a shield `Trigger` matches a given `GameSignal`.
+///
+/// This is the shield-specific counterpart to the timer signal dispatch in
+/// `timers/signal_handlers.rs`. It evaluates the full `Trigger` enum against
+/// the emitted signal vec, making all signal-producing variants available.
+///
+/// `CombatStart` and `TimeElapsed` are intentionally excluded — they produce no
+/// signal and are caught by `validate_triggers()` at config load time.
+fn shield_signal_matches(
+    trigger: &crate::dsl::Trigger,
+    signal: &GameSignal,
+    entities: &[crate::dsl::EntityDefinition],
+) -> bool {
+    use crate::context::resolve;
+    use crate::dsl::Trigger;
+
+    match trigger {
+        Trigger::AnyOf { conditions } => conditions
+            .iter()
+            .any(|c| shield_signal_matches(c, signal, entities)),
+
+        Trigger::EffectApplied { effects, .. } => {
+            if let GameSignal::EffectApplied {
+                effect_id,
+                effect_name,
+                ..
+            } = signal
+            {
+                let name = resolve(*effect_name);
+                !effects.is_empty()
+                    && effects
+                        .iter()
+                        .any(|s| s.matches(*effect_id as u64, Some(name)))
+            } else {
+                false
+            }
+        }
+
+        Trigger::EffectRemoved { effects, .. } => {
+            if let GameSignal::EffectRemoved {
+                effect_id,
+                effect_name,
+                ..
+            } = signal
+            {
+                let name = resolve(*effect_name);
+                !effects.is_empty()
+                    && effects
+                        .iter()
+                        .any(|s| s.matches(*effect_id as u64, Some(name)))
+            } else {
+                false
+            }
+        }
+
+        Trigger::AbilityCast { abilities, .. } => {
+            if let GameSignal::AbilityActivated {
+                ability_id,
+                ability_name,
+                ..
+            } = signal
+            {
+                let name = resolve(*ability_name);
+                !abilities.is_empty()
+                    && abilities
+                        .iter()
+                        .any(|s| s.matches(*ability_id as u64, Some(name)))
+            } else {
+                false
+            }
+        }
+
+        Trigger::DamageTaken { abilities, .. } => {
+            if let GameSignal::DamageTaken {
+                ability_id,
+                ability_name,
+                ..
+            } = signal
+            {
+                let name = resolve(*ability_name);
+                !abilities.is_empty()
+                    && abilities
+                        .iter()
+                        .any(|s| s.matches(*ability_id as u64, Some(name)))
+            } else {
+                false
+            }
+        }
+
+        Trigger::HealingTaken { abilities, .. } => {
+            if let GameSignal::HealingDone {
+                ability_id,
+                ability_name,
+                ..
+            } = signal
+            {
+                let name = resolve(*ability_name);
+                !abilities.is_empty()
+                    && abilities
+                        .iter()
+                        .any(|s| s.matches(*ability_id as u64, Some(name)))
+            } else {
+                false
+            }
+        }
+
+        Trigger::NpcAppears { selector } => {
+            if let GameSignal::NpcFirstSeen {
+                npc_id,
+                entity_name,
+                ..
+            } = signal
+            {
+                !selector.is_empty()
+                    && selector.matches_with_roster(entities, *npc_id, Some(entity_name.as_str()))
+            } else {
+                false
+            }
+        }
+
+        Trigger::EntityDeath { selector } => {
+            if let GameSignal::EntityDeath {
+                npc_id,
+                entity_name,
+                ..
+            } = signal
+            {
+                if selector.is_empty() {
+                    return true;
+                }
+                selector.matches_with_roster(entities, *npc_id, Some(entity_name.as_str()))
+            } else {
+                false
+            }
+        }
+
+        Trigger::BossHpBelow {
+            hp_percent,
+            selector,
+        } => {
+            if let GameSignal::BossHpChanged {
+                npc_id,
+                entity_name,
+                old_hp_percent,
+                new_hp_percent,
+                ..
+            } = signal
+            {
+                let crossed =
+                    *old_hp_percent > *hp_percent && *new_hp_percent <= *hp_percent + 0.01;
+                if !crossed {
+                    return false;
+                }
+                if selector.is_empty() {
+                    return true;
+                }
+                selector.matches_with_roster(entities, *npc_id, Some(entity_name.as_str()))
+            } else {
+                false
+            }
+        }
+
+        Trigger::BossHpAbove {
+            hp_percent,
+            selector,
+        } => {
+            if let GameSignal::BossHpChanged {
+                npc_id,
+                entity_name,
+                old_hp_percent,
+                new_hp_percent,
+                ..
+            } = signal
+            {
+                let crossed =
+                    *old_hp_percent < *hp_percent && *new_hp_percent >= *hp_percent - 0.01;
+                if !crossed {
+                    return false;
+                }
+                if selector.is_empty() {
+                    return true;
+                }
+                selector.matches_with_roster(entities, *npc_id, Some(entity_name.as_str()))
+            } else {
+                false
+            }
+        }
+
+        Trigger::PhaseEntered { phase_id } => {
+            matches!(signal, GameSignal::PhaseChanged { new_phase, .. } if new_phase == phase_id)
+        }
+
+        Trigger::PhaseEnded { phase_id } => {
+            matches!(signal, GameSignal::PhaseEndTriggered { phase_id: pid, .. } if pid == phase_id)
+        }
+
+        Trigger::AnyPhaseChange => {
+            matches!(
+                signal,
+                GameSignal::PhaseChanged { .. } | GameSignal::PhaseEndTriggered { .. }
+            )
+        }
+
+        Trigger::CounterReaches { counter_id, value } => {
+            matches!(
+                signal,
+                GameSignal::CounterChanged { counter_id: cid, old_value, new_value, .. }
+                    if cid == counter_id && new_value == value && old_value != value
+            )
+        }
+
+        Trigger::CounterChanges { counter_id } => {
+            matches!(signal, GameSignal::CounterChanged { counter_id: cid, .. } if cid == counter_id)
+        }
+
+        Trigger::TimerExpires { timer_id } => {
+            // TimerExpires/Started/Canceled have no corresponding GameSignal currently;
+            // they are only evaluated in the timer system. Always false for shields.
+            let _ = timer_id;
+            false
+        }
+
+        Trigger::TimerStarted { timer_id } => {
+            let _ = timer_id;
+            false
+        }
+
+        Trigger::TimerCanceled { timer_id } => {
+            let _ = timer_id;
+            false
+        }
+
+        Trigger::TargetSet { selector, .. } => {
+            if let GameSignal::TargetChanged {
+                source_npc_id,
+                source_name,
+                ..
+            } = signal
+            {
+                if selector.is_empty() {
+                    return false;
+                }
+                let name = resolve(*source_name);
+                selector.matches_with_roster(entities, *source_npc_id, Some(name))
+            } else {
+                false
+            }
+        }
+
+        Trigger::CombatStart | Trigger::TimeElapsed { .. } => false,
+        Trigger::CombatEnd => matches!(signal, GameSignal::CombatEnded { .. }),
+        Trigger::Manual | Trigger::Never => false,
+    }
+}

@@ -554,17 +554,26 @@ pub struct HpMarker {
     pub label: String,
 }
 
-/// Shield mechanic definition for a boss entity
+/// Per-difficulty HP entry for a shield (mirrors baras_core::dsl::ShieldHpEntry)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ShieldHpEntry {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulties: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group_size: Option<u8>,
+    pub total: i64,
+}
+
+/// Shield mechanic definition for a boss entity (mirrors baras_core::dsl::ShieldDefinition)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ShieldDefinition {
     pub label: String,
-    pub trigger_effect: u64,
+    pub start_trigger: Trigger,
+    pub end_trigger: Trigger,
+    #[serde(default)]
     pub total: i64,
-    /// Total shield HP for 16-man encounters. When set, 16-man encounters
-    /// use this value instead of `total`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub total_16: Option<i64>,
-    pub end_trigger_effect: u64,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hp: Vec<ShieldHpEntry>,
 }
 
 /// Entity definition (mirrors baras_core::dsl::EntityDefinition)

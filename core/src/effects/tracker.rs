@@ -2240,6 +2240,7 @@ impl SignalHandler for EffectTracker {
                 target_name,
                 target_npc_id,
                 timestamp,
+                ..
             } => {
                 // AoE refresh damage correlation
                 self.handle_damage_for_aoe_refresh(*ability_id, *target_id, *timestamp);

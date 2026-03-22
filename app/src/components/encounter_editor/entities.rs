@@ -7,9 +7,11 @@
 use dioxus::prelude::*;
 
 use crate::api;
-use crate::types::{BossWithPath, EncounterItem, EntityDefinition};
+use crate::types::{BossWithPath, EncounterItem, EntityDefinition, EntityFilter, Trigger};
 
-use super::{IdChipEditor, InlineNameCreator, NpcIdChipEditor};
+use super::tabs::EncounterData;
+use super::triggers::ComposableTriggerEditor;
+use super::{InlineNameCreator, NpcIdChipEditor};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entities Tab
@@ -130,6 +132,7 @@ fn EntityRow(
     on_status: EventHandler<(String, bool)>,
     on_collapse: EventHandler<()>,
 ) -> Element {
+    let encounter_data = EncounterData::from_boss(&boss_with_path);
     let mut is_dirty = use_signal(|| false);
     let id_count = entity.ids.len();
 
@@ -189,6 +192,7 @@ fn EntityRow(
                         div { class: "list-item-body",
                             EntityEditForm {
                                 entity: entity.clone(),
+                                encounter_data: encounter_data.clone(),
                                 on_dirty: move |dirty: bool| is_dirty.set(dirty),
                                 on_save: move |(updated, original_name): (EntityDefinition, String)| {
                                     let all = all_entities_for_save.clone();
@@ -253,6 +257,7 @@ fn EntityRow(
 #[component]
 fn EntityEditForm(
     entity: EntityDefinition,
+    encounter_data: EncounterData,
     on_save: EventHandler<(EntityDefinition, String)>,
     on_delete: EventHandler<EntityDefinition>,
     #[props(default)] on_dirty: EventHandler<bool>,
@@ -488,13 +493,22 @@ fn EntityEditForm(
                     button {
                         class: "btn btn-sm",
                         onclick: move |_| {
+                            use crate::types::ShieldDefinition;
                             let mut d = draft();
-                            d.shields.push(crate::types::ShieldDefinition {
+                            d.shields.push(ShieldDefinition {
                                 label: String::new(),
-                                trigger_effect: 0,
+                                start_trigger: Trigger::EffectApplied {
+                                    effects: vec![],
+                                    source: EntityFilter::Any,
+                                    target: EntityFilter::Any,
+                                },
+                                end_trigger: Trigger::EffectRemoved {
+                                    effects: vec![],
+                                    source: EntityFilter::Any,
+                                    target: EntityFilter::Any,
+                                },
                                 total: 0,
-                                total_16: None,
-                                end_trigger_effect: 0,
+                                hp: vec![],
                             });
                             draft.set(d);
                         },
@@ -502,14 +516,15 @@ fn EntityEditForm(
                     }
                 }
                 div { class: "text-xs text-muted mb-xs", "Absorb shields shown on the HP bar overlay" }
+
                 for (i, shield) in draft().shields.iter().cloned().enumerate() {
-                    div { class: "form-section", style: "padding: 4px 8px; margin-bottom: 4px;",
-                        // Header row: Label + remove button
-                        div { class: "form-row-hz",
-                            label { "Label" }
+                    div { class: "form-section", style: "padding: 8px 10px; margin-bottom: 8px;",
+
+                        // ── Label + remove ────────────────────────────────────
+                        div { style: "display: flex; align-items: center; gap: 8px;",
                             input {
                                 class: "input-inline",
-                                style: "width: 140px;",
+                                style: "flex: 1;",
                                 placeholder: "Shield name...",
                                 value: "{shield.label}",
                                 oninput: move |e| {
@@ -520,79 +535,170 @@ fn EntityEditForm(
                             }
                             button {
                                 class: "btn btn-danger btn-xs",
+                                style: "padding: 1px 5px; font-size: 11px; line-height: 1; flex-shrink: 0;",
+                                title: "Remove shield",
                                 onclick: move |_| {
                                     let mut d = draft();
                                     d.shields.remove(i);
                                     draft.set(d);
                                 },
-                                "×"
+                                "Remove"
                             }
                         }
-                        // Two-column layout: HP values | Effect IDs
-                        div { class: "flex gap-md", style: "margin-top: 4px;",
-                            // Left column: HP values
-                            div { class: "flex-1",
-                                div { class: "form-row-hz",
-                                    label { "Total HP" }
-                                    input {
-                                        class: "input-inline text-mono",
-                                        style: "width: 120px;",
-                                        r#type: "number",
-                                        value: "{shield.total}",
-                                        oninput: move |e| {
+
+                        // ── Trigger cards ─────────────────────────────────────
+                        div { class: "trigger-two-col", style: "margin-top: 10px;",
+
+                            // Start trigger card
+                            div { class: "form-card",
+                                div { class: "form-card-header",
+                                    i { class: "fa-solid fa-play" }
+                                    span { "Start On" }
+                                }
+                                div { class: "form-card-content",
+                                    ComposableTriggerEditor {
+                                        trigger: shield.start_trigger.clone(),
+                                        encounter_data: encounter_data.clone(),
+                                        on_change: move |t| {
                                             let mut d = draft();
-                                            if let Ok(v) = e.value().parse::<i64>() {
-                                                d.shields[i].total = v;
-                                                draft.set(d);
+                                            d.shields[i].start_trigger = t;
+                                            draft.set(d);
+                                        },
+                                        hide_timer_only: true,
+                                    }
+                                }
+                            }
+
+                            // End trigger card
+                            div { class: "form-card",
+                                div { class: "form-card-header",
+                                    i { class: "fa-solid fa-stop" }
+                                    span { "End On" }
+                                }
+                                div { class: "form-card-content",
+                                    ComposableTriggerEditor {
+                                        trigger: shield.end_trigger.clone(),
+                                        encounter_data: encounter_data.clone(),
+                                        on_change: move |t| {
+                                            let mut d = draft();
+                                            d.shields[i].end_trigger = t;
+                                            draft.set(d);
+                                        },
+                                        hide_timer_only: true,
+                                    }
+                                }
+                            }
+                        }
+
+                        // ── HP values ─────────────────────────────────────────
+                        div { style: "margin-top: 10px;",
+                            div { class: "flex items-center justify-between mb-xs",
+                                span { class: "text-xs font-bold text-secondary", "HP Values" }
+                                button {
+                                    class: "btn btn-xs",
+                                    style: "padding: 1px 6px; font-size: 11px;",
+                                    onclick: move |_| {
+                                        use crate::types::ShieldHpEntry;
+                                        let mut d = draft();
+                                        d.shields[i].hp.push(ShieldHpEntry {
+                                            difficulties: vec![],
+                                            group_size: None,
+                                            total: 0,
+                                        });
+                                        draft.set(d);
+                                    },
+                                    "+ Add"
+                                }
+                            }
+                            if shield.hp.is_empty() {
+                                div { class: "text-xs text-muted", style: "padding: 2px 0;",
+                                    "No HP values defined"
+                                }
+                            }
+                            for (j, entry) in shield.hp.iter().cloned().enumerate() {
+                                div {
+                                    class: "form-section",
+                                    style: "padding: 5px 8px; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;",
+
+                                    // Difficulty toggles
+                                    div { class: "flex items-center gap-xs",
+                                        span { class: "text-xs text-muted", style: "margin-right: 2px;", "Diff:" }
+                                        for diff in ["story", "veteran", "master"] {
+                                            {
+                                                let diff_str = diff.to_string();
+                                                let is_active = entry.difficulties.iter().any(|d| d == diff);
+                                                rsx! {
+                                                    button {
+                                                        class: if is_active { "toggle-btn active" } else { "toggle-btn" },
+                                                        onclick: move |_| {
+                                                            let mut d = draft();
+                                                            let e = &mut d.shields[i].hp[j];
+                                                            if is_active {
+                                                                e.difficulties.retain(|x| x != &diff_str);
+                                                            } else {
+                                                                e.difficulties.push(diff_str.clone());
+                                                            }
+                                                            draft.set(d);
+                                                        },
+                                                        "{diff}"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if entry.difficulties.is_empty() {
+                                            span { class: "text-xs text-muted", "(all)" }
+                                        }
+                                    }
+
+                                    // Group size toggles
+                                    div { class: "flex items-center gap-xs",
+                                        span { class: "text-xs text-muted", style: "margin-right: 2px;", "Size:" }
+                                        for (size_label, size_val) in [("All", None), ("4-man", Some(4u8)), ("8-man", Some(8u8)), ("16-man", Some(16u8))] {
+                                            {
+                                                let is_active = entry.group_size == size_val;
+                                                rsx! {
+                                                    button {
+                                                        class: if is_active { "toggle-btn active" } else { "toggle-btn" },
+                                                        onclick: move |_| {
+                                                            let mut d = draft();
+                                                            d.shields[i].hp[j].group_size = size_val;
+                                                            draft.set(d);
+                                                        },
+                                                        "{size_label}"
+                                                    }
+                                                }
                                             }
                                         }
                                     }
-                                }
-                                div { class: "form-row-hz",
-                                    label { "HP (16-man)" }
-                                    input {
-                                        class: "input-inline text-mono",
-                                        style: "width: 120px;",
-                                        r#type: "number",
-                                        placeholder: "Same as Total HP",
-                                        value: if let Some(v) = shield.total_16 { format!("{v}") } else { String::new() },
-                                        oninput: move |e| {
-                                            let mut d = draft();
-                                            let val = e.value();
-                                            d.shields[i].total_16 = if val.is_empty() {
-                                                None
-                                            } else {
-                                                val.parse::<i64>().ok()
-                                            };
-                                            draft.set(d);
+
+                                    // HP input
+                                    div { class: "flex items-center gap-xs",
+                                        span { class: "text-xs text-muted", "HP:" }
+                                        input {
+                                            class: "input-inline text-mono",
+                                            style: "width: 120px;",
+                                            r#type: "number",
+                                            value: "{entry.total}",
+                                            oninput: move |e| {
+                                                let mut d = draft();
+                                                if let Ok(v) = e.value().parse::<i64>() {
+                                                    d.shields[i].hp[j].total = v;
+                                                    draft.set(d);
+                                                }
+                                            }
                                         }
                                     }
-                                }
-                            }
-                            // Right column: Effect IDs
-                            div { class: "flex-1",
-                                div { class: "form-row-hz", style: "align-items: flex-start;",
-                                    label { style: "padding-top: 6px;", "Start Effect" }
-                                    IdChipEditor {
-                                        ids: if shield.trigger_effect != 0 { vec![shield.trigger_effect] } else { vec![] },
-                                        placeholder: "Effect ID (Enter)",
-                                        on_change: move |ids: Vec<u64>| {
+
+                                    // Remove
+                                    button {
+                                        class: "btn btn-danger btn-xs",
+                                        style: "margin-left: auto; padding: 1px 5px; font-size: 11px; line-height: 1;",
+                                        onclick: move |_| {
                                             let mut d = draft();
-                                            d.shields[i].trigger_effect = ids.first().copied().unwrap_or(0);
+                                            d.shields[i].hp.remove(j);
                                             draft.set(d);
-                                        }
-                                    }
-                                }
-                                div { class: "form-row-hz", style: "align-items: flex-start;",
-                                    label { style: "padding-top: 6px;", "End Effect" }
-                                    IdChipEditor {
-                                        ids: if shield.end_trigger_effect != 0 { vec![shield.end_trigger_effect] } else { vec![] },
-                                        placeholder: "Effect ID (Enter)",
-                                        on_change: move |ids: Vec<u64>| {
-                                            let mut d = draft();
-                                            d.shields[i].end_trigger_effect = ids.first().copied().unwrap_or(0);
-                                            draft.set(d);
-                                        }
+                                        },
+                                        "×"
                                     }
                                 }
                             }

@@ -4,10 +4,13 @@
 //! with their phases, counters, timers, and challenges.
 
 use hashbrown::HashSet;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
-use super::{ChallengeDefinition, Condition, CounterCondition, CounterDefinition, PhaseDefinition};
+use super::{
+    ChallengeDefinition, Condition, CounterCondition, CounterDefinition, PhaseDefinition, Trigger,
+};
 use crate::dsl::audio::AudioConfig;
+use crate::game_data::Difficulty;
 use baras_types::AlertTrigger;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -99,22 +102,99 @@ pub struct HpMarker {
     pub label: String,
 }
 
-/// Shield mechanic definition for a boss entity
+/// Per-difficulty HP entry for a shield.
+///
+/// Entries are evaluated in order; the first match wins.
+/// Both `difficulties` and `group_size` must match when specified.
+/// Omitting a field means "any" for that dimension.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ShieldHpEntry {
+    /// Difficulty tiers this entry applies to (e.g., ["veteran", "master"]).
+    /// Supports compound keys like "veteran_8". Empty = all difficulties.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulties: Vec<String>,
+
+    /// Group size this entry applies to (None = all sizes).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group_size: Option<u8>,
+
+    /// Shield HP for this difficulty/group combination.
+    pub total: i64,
+}
+
+/// Shield mechanic definition for a boss entity.
+///
+/// Define HP values per difficulty/group-size using the `hp` vec.
+/// Entries are evaluated in order; first match wins.
+///
+/// Example TOML:
+/// ```toml
+/// [[boss.entities.shields]]
+/// label = "Voltinator"
+/// start_trigger = { type = "effect_applied", effects = [4310755595780426] }
+/// end_trigger   = { type = "effect_removed", effects = [4310755595780426] }
+///
+/// [[boss.entities.shields.hp]]
+/// total = 1428519   # applies to all difficulties/sizes (no filter)
+///
+/// [[boss.entities.shields.hp]]
+/// difficulties = ["veteran", "master"]
+/// group_size = 16
+/// total = 2100000
+/// ```
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ShieldDefinition {
-    /// Display label
+    /// Display label.
     pub label: String,
-    /// Effect ID that activates the shield (EffectApplied on this entity)
-    pub trigger_effect: u64,
-    /// Total shield HP value (used for 8-man and as fallback for 16-man)
+
+    /// Trigger that activates the shield.
+    /// Supports the full Trigger enum including AnyOf.
+    pub start_trigger: Trigger,
+
+    /// Trigger that deactivates the shield.
+    /// Supports the full Trigger enum including AnyOf.
+    pub end_trigger: Trigger,
+
+    /// Fallback shield HP when no `hp` entry matches (defaults to 0).
+    /// Prefer defining explicit `hp` entries instead of relying on this.
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_i64")]
     pub total: i64,
-    /// Total shield HP value for 16-man encounters.
-    /// When set and the current encounter difficulty is 16-man, this value
-    /// is used instead of `total`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub total_16: Option<i64>,
-    /// Effect ID that deactivates the shield (EffectRemoved fallback)
-    pub end_trigger_effect: u64,
+
+    /// Per-difficulty/group-size HP definitions.
+    /// Evaluated in order; first matching entry wins.
+    /// Falls back to `total` (default 0) if no entry matches.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hp: Vec<ShieldHpEntry>,
+}
+
+impl ShieldDefinition {
+    /// Resolve the effective shield HP for the given encounter difficulty.
+    ///
+    /// Checks `hp` entries in order (first match wins) before falling back
+    /// to `total`. Matching mirrors the timer difficulty/group_size logic:
+    /// both `difficulties` and `group_size` must agree when specified.
+    pub fn effective_total(&self, difficulty: Option<Difficulty>) -> i64 {
+        let Some(diff) = difficulty else {
+            return self.total;
+        };
+        for entry in &self.hp {
+            if let Some(req_size) = entry.group_size {
+                if diff.group_size() != req_size {
+                    continue;
+                }
+            }
+            if !entry.difficulties.is_empty()
+                && !entry
+                    .difficulties
+                    .iter()
+                    .any(|d| diff.matches_config_key(d))
+            {
+                continue;
+            }
+            return entry.total;
+        }
+        self.total
+    }
 }
 
 /// Definition of an NPC entity in the encounter (boss or add).
@@ -155,7 +235,11 @@ pub struct EntityDefinition {
     pub hp_markers: Vec<HpMarker>,
 
     /// Shield mechanic definitions
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_shields_lossy"
+    )]
     pub shields: Vec<ShieldDefinition>,
 
     /// HP percentage at which this entity is "pushed" out of combat.
@@ -163,6 +247,29 @@ pub struct EntityDefinition {
     /// is removed from the Boss HP overlay when HP drops to or below this %.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pushes_at: Option<f32>,
+}
+
+/// Deserialize a `Vec<ShieldDefinition>` lossily: entries that fail to parse
+/// are warned about and skipped rather than failing the entire file.
+/// This provides forward/backward compatibility when the shield format changes.
+fn deserialize_shields_lossy<'de, D>(deserializer: D) -> Result<Vec<ShieldDefinition>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw: Vec<toml::Value> = Vec::deserialize(deserializer)?;
+    let mut shields = Vec::with_capacity(raw.len());
+    for value in raw {
+        match ShieldDefinition::deserialize(value.clone()) {
+            Ok(shield) => shields.push(shield),
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "Skipping shield entry that failed to parse (old format or invalid config)"
+                );
+            }
+        }
+    }
+    Ok(shields)
 }
 
 impl EntityDefinition {
@@ -703,6 +810,27 @@ impl BossEncounterDefinition {
                     trigger_type = %kind,
                     "Victory trigger type is not supported and will never fire"
                 );
+            }
+        }
+
+        // Validate shield triggers
+        for entity in &self.entities {
+            for shield in &entity.shields {
+                for (field, trigger) in [
+                    ("start_trigger", &shield.start_trigger),
+                    ("end_trigger", &shield.end_trigger),
+                ] {
+                    if let Some(kind) = trigger.contains_unsupported_for_shields() {
+                        tracing::warn!(
+                            boss = %self.id,
+                            entity = %entity.name,
+                            shield = %shield.label,
+                            field = %field,
+                            trigger_type = %kind,
+                            "Shield trigger type will never fire (CombatStart/TimeElapsed are not evaluated for shields)"
+                        );
+                    }
+                }
             }
         }
     }

@@ -1003,9 +1003,13 @@ label = "Extinction"
 
 [[boss.entities.shields]]
 label = "Ignite (8m MM)"
-trigger_effect = 4127300362698752
+start_trigger = { type = "effect_applied", effects = [4127300362698752] }
+end_trigger = { type = "effect_removed", effects = [4127300362698752] }
+
+[[boss.entities.shields.hp]]
+difficulties = ["master"]
+group_size = 8
 total = 2489887
-end_trigger_effect = 4127300362698752
 
 [[boss.entities]]
 name = "Omega Protocol Droid"

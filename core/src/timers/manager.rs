@@ -1381,6 +1381,7 @@ impl SignalHandler for TimerManager {
                 target_name,
                 target_npc_id,
                 timestamp,
+                ..
             } => {
                 signal_handlers::handle_damage_taken(
                     self,

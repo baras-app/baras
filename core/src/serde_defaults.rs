@@ -27,6 +27,11 @@ pub fn is_zero_f32(n: &f32) -> bool {
     *n == 0.0
 }
 
+/// Skip serializing if i64 is zero
+pub fn is_zero_i64(n: &i64) -> bool {
+    *n == 0
+}
+
 /// Skip serializing if Vec is empty
 pub fn is_empty_vec<T>(v: &Vec<T>) -> bool {
     v.is_empty()

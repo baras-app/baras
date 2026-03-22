@@ -864,9 +864,11 @@ is_kill_target = true
 
 [[boss.entities.shields]]
 label = "Voltinator"
-trigger_effect = 4310755595780426
+start_trigger = { type = "effect_applied", effects = [4310755595780426] }
+end_trigger = { type = "effect_removed", effects = [4310755595780426] }
+
+[[boss.entities.shields.hp]]
 total = 1428519
-end_trigger_effect = 4310755595780426
 
 
 [[boss.entities]]

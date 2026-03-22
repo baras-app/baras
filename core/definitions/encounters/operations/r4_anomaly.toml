@@ -677,9 +677,11 @@ label = "Burn"
 
 [[boss.entities.shields]]
 label = "Surging Growth"
-trigger_effect = 4601859889168384
+start_trigger = { type = "effect_applied", effects = [4601859889168384] }
+end_trigger = { type = "effect_removed", effects = [4601859889168384] }
+
+[[boss.entities.shields.hp]]
 total = 1316090
-end_trigger_effect = 4601859889168384
 
 [[boss.phases]]
 id = "kanoth_p1"
@@ -1502,9 +1504,11 @@ label = "Final Burn"
 
 [[boss.entities.shields]]
 label = "Insulate"
-trigger_effect = 4590800348381184
+start_trigger = { type = "effect_applied", effects = [4590800348381184] }
+end_trigger = { type = "effect_removed", effects = [4590800348381184] }
+
+[[boss.entities.shields.hp]]
 total = 600000
-end_trigger_effect = 4590800348381184
 
 [[boss.entities]]
 name = "Watchdog"

@@ -133,8 +133,10 @@ pub struct CombatEncounter {
     pub local_player_ooc_revive_time: Option<NaiveDateTime>,
 
     // ─── Boss Shield State ────────────────────────────────────────────────
-    /// Active boss shield state: (npc_class_id, shield_def_index) → remaining HP
-    pub boss_shields: HashMap<(i64, usize), i64>,
+    /// Active boss shield state: (npc_class_id, shield_def_index) → (remaining, effective_total)
+    /// Both values are in HP units. `effective_total` is the difficulty-resolved max,
+    /// stored here so the overlay always displays the correct denominator.
+    pub boss_shields: HashMap<(i64, usize), (i64, i64)>,
 
     // ─── Effect Stack Tracking (for effect stack counters) ────────────────
     /// Per-entity effect stack counts: effect_id → (entity_id → stack_count)
@@ -393,12 +395,13 @@ impl CombatEncounter {
     // Boss Shield Management
     // ═══════════════════════════════════════════════════════════════════════
 
-    /// Activate a boss shield with its full HP value
+    /// Activate a boss shield with its difficulty-resolved HP value.
+    /// Stores both remaining and effective_total so the overlay always shows the right denominator.
     pub fn activate_shield(&mut self, npc_class_id: i64, shield_idx: usize, total: i64) {
-        self.boss_shields.insert((npc_class_id, shield_idx), total);
+        self.boss_shields.insert((npc_class_id, shield_idx), (total, total));
     }
 
-    /// Deactivate a specific boss shield
+    /// Deactivate a specific boss shield.
     pub fn deactivate_shield(&mut self, npc_class_id: i64, shield_idx: usize) {
         self.boss_shields.remove(&(npc_class_id, shield_idx));
     }
@@ -414,7 +417,7 @@ impl CombatEncounter {
             .collect();
 
         for key in keys {
-            if let Some(remaining) = self.boss_shields.get_mut(&key) {
+            if let Some((remaining, _total)) = self.boss_shields.get_mut(&key) {
                 *remaining = (*remaining - amount).max(0);
                 if *remaining == 0 {
                     self.boss_shields.remove(&key);
@@ -456,10 +459,10 @@ impl CombatEncounter {
                             .filter_map(|(idx, shield_def)| {
                                 self.boss_shields
                                     .get(&(npc.class_id, idx))
-                                    .map(|&remaining| super::ActiveShield {
+                                    .map(|&(remaining, effective_total)| super::ActiveShield {
                                         label: shield_def.label.clone(),
                                         remaining,
-                                        total: shield_def.total,
+                                        total: effective_total,
                                     })
                             })
                             .collect()

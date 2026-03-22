@@ -134,6 +134,8 @@ pub enum GameSignal {
         /// NPC class/template ID of target (0 for players/companions)
         target_npc_id: i64,
         timestamp: NaiveDateTime,
+        /// Damage absorbed by boss shields (0 if none)
+        absorbed: i32,
     },
 
     /// Healing done (for effect refresh on heal completion)
