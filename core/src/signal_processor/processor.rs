@@ -90,10 +90,6 @@ impl EventProcessor {
         self.emit_damage_signals(&event, &mut signals);
         self.emit_healing_signals(&event, &mut signals);
 
-        // Boss shield activation/deactivation/depletion (post-signal path).
-        // Evaluated against the full signal vec so all Trigger variants are available.
-        self.check_shield_triggers(&signals, cache);
-
         // Effect stack counters: update per-entity stack state and aggregate
         // Must run after effect signals are emitted, before the counter↔phase loop.
         signals.extend(counter::check_effect_stack_counters(
@@ -179,6 +175,10 @@ impl EventProcessor {
                 );
             }
         }
+
+        // Boss shield activation/deactivation/depletion.
+        // Runs after the full fixed-point loop so phase/counter signals are visible.
+        self.check_shield_triggers(&signals, cache);
 
         // Victory trigger detection (for special encounters like Coratanni)
         // Must happen after signals are emitted to support HP-based victory triggers
@@ -814,14 +814,20 @@ impl EventProcessor {
             Absorb(i64, i64),
         }
 
+        // Snapshot active shield keys before mutation so end triggers can scan them.
+        let active_shield_keys: Vec<(i64, usize)> = cache
+            .current_encounter()
+            .map(|enc| enc.boss_shields.keys().copied().collect())
+            .unwrap_or_default();
+
         let mut changes: Vec<ShieldChange> = Vec::new();
 
         for signal in signals {
             match signal {
                 // ── Damage absorption: deplete shields on the specific NPC instance ──
                 GameSignal::DamageTaken {
-                    target_id,     // log_id — unique per NPC instance
-                    target_npc_id, // class_id — used to confirm it's a known NPC type
+                    target_id,
+                    target_npc_id,
                     target_entity_type,
                     absorbed,
                     ..
@@ -832,25 +838,27 @@ impl EventProcessor {
                     changes.push(ShieldChange::Absorb(*target_id, *absorbed as i64));
                 }
 
-                // ── All other signals: check start/end triggers for each shield ──
                 _ => {
-                    // Extract the log_id of the NPC instance involved in this signal.
-                    // We activate/deactivate shields on the specific instance (log_id),
-                    // while trigger matching still uses class_id via the roster.
-                    let signal_log_id = signal_npc_log_id(signal);
-
                     for entity in entities {
                         for (shield_idx, shield) in entity.shields.iter().enumerate() {
+                            // ── Start trigger: activate on the specific NPC instance ──
                             if shield_signal_matches(&shield.start_trigger, signal, entities) {
-                                if let Some(log_id) = signal_log_id {
-                                    // Signal is tied to a specific instance — activate only that one
+                                if let Some(log_id) = signal_npc_log_id(signal) {
                                     let total = shield.effective_total(difficulty);
                                     changes.push(ShieldChange::Activate(log_id, shield_idx, total));
                                 }
                             }
+
+                            // ── End trigger: deactivate ALL active instances of this shield ──
+                            // Don't infer which instance from the signal — scan the active map
+                            // and deactivate every currently-active instance of this shield.
+                            // This correctly handles phase/counter/non-NPC-specific triggers,
+                            // and triggers where the signalling NPC differs from the shielded one.
                             if shield_signal_matches(&shield.end_trigger, signal, entities) {
-                                if let Some(log_id) = signal_log_id {
-                                    changes.push(ShieldChange::Deactivate(log_id, shield_idx));
+                                for &(log_id, idx) in &active_shield_keys {
+                                    if idx == shield_idx {
+                                        changes.push(ShieldChange::Deactivate(log_id, idx));
+                                    }
                                 }
                             }
                         }
