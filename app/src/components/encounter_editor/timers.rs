@@ -298,9 +298,9 @@ fn TimerRow(
                     span { class: "text-xs text-mono text-muted", "  {timer.id}" }
                 }
 
-                // Trigger tag
+                // Overlay tag
                 span { class: "timer-col-trigger",
-                    span { class: "tag", "{timer.trigger.label()}" }
+                    span { class: "tag", "{timer.display_target.label()}" }
                 }
 
                 // Duration / Alert
