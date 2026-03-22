@@ -7250,8 +7250,10 @@ details[open] .collapsible-summary::before {
 }
 
 .sidebar-encounter-item .result-indicator {
-  font-size: 0.75em;
+  font-size: 1em;
   flex-shrink: 0;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .sidebar-encounter-item .result-indicator.success {
@@ -7304,10 +7306,12 @@ details[open] .collapsible-summary::before {
 }
 
 .sidebar-encounter-item .parsely-upload-btn {
-  font-size: 0.7em;
-  padding: 0.15em 0.3em;
+  font-size: 1em;
+  padding: 0 0.3em;
   opacity: 0.6;
   transition: opacity 0.15s;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .sidebar-encounter-item .parsely-upload-btn:hover {
