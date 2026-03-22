@@ -9,6 +9,7 @@ use crate::dsl::{
     ChallengeCondition, ChallengeContext, ChallengeDefinition, ChallengeMetric, EntityDefinition,
     EntityInfo,
 };
+use crate::game_data::Difficulty;
 use crate::EntityFilter;
 use baras_types::ChallengeColumns;
 
@@ -110,14 +111,29 @@ impl ChallengeTracker {
         Self::default()
     }
 
-    /// Initialize tracker with challenges from a boss definition
+    /// Initialize tracker with challenges from a boss definition.
+    ///
+    /// Challenges whose `difficulties` list doesn't match `current_difficulty`
+    /// are excluded entirely — they will not accumulate events and won't appear
+    /// in the overlay or history for this encounter.
     pub fn start(
         &mut self,
         challenges: Vec<ChallengeDefinition>,
         entities: Vec<EntityDefinition>,
         boss_npc_ids: Vec<i64>,
         timestamp: chrono::NaiveDateTime,
+        current_difficulty: Option<&Difficulty>,
     ) {
+        // Filter out challenges that don't apply to this difficulty
+        let challenges: Vec<ChallengeDefinition> = challenges
+            .into_iter()
+            .filter(|c| {
+                c.difficulties.is_empty()
+                    || current_difficulty.map_or(true, |d| {
+                        c.difficulties.iter().any(|key| d.matches_config_key(key))
+                    })
+            })
+            .collect();
         self.definitions = challenges;
         self.entities = entities;
         self.boss_npc_ids = boss_npc_ids;

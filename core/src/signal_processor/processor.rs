@@ -676,8 +676,15 @@ impl EventProcessor {
                 });
 
                 // Start challenge tracker (combat already started via EnterCombat)
-                enc.challenge_tracker
-                    .start(challenges, entities, npc_ids.clone(), event.timestamp);
+                // Pass current difficulty so difficulty-gated challenges are excluded.
+                let current_difficulty = enc.difficulty.as_ref();
+                enc.challenge_tracker.start(
+                    challenges,
+                    entities,
+                    npc_ids.clone(),
+                    event.timestamp,
+                    current_difficulty,
+                );
                 if let Some(ref initial) = initial_phase {
                     enc.challenge_tracker
                         .set_phase(&initial.id, event.timestamp);

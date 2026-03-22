@@ -11,7 +11,7 @@ use crate::types::{BossWithPath, EncounterItem, EntityDefinition, EntityFilter, 
 
 use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
-use super::{InlineNameCreator, NpcIdChipEditor};
+use super::{DifficultiesEditor, InlineNameCreator, NpcIdChipEditor};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entities Tab
@@ -436,6 +436,7 @@ fn EntityEditForm(
                             d.hp_markers.push(crate::types::HpMarker {
                                 hp_percent: 50.0,
                                 label: String::new(),
+                                difficulties: vec![],
                             });
                             draft.set(d);
                         },
@@ -444,43 +445,57 @@ fn EntityEditForm(
                 }
                 div { class: "text-xs text-muted mb-xs", "Visual indicators on the HP bar at key thresholds" }
                 for (i, marker) in draft().hp_markers.iter().cloned().enumerate() {
-                    div { class: "form-row-hz", style: "align-items: center;",
-                        input {
-                            class: "input-inline",
-                            style: "width: 60px;",
-                            r#type: "number",
-                            step: "1",
-                            min: "0",
-                            max: "100",
-                            value: "{marker.hp_percent}",
-                            oninput: move |e| {
-                                let mut d = draft();
-                                if let Ok(v) = e.value().parse::<f32>() {
-                                    d.hp_markers[i].hp_percent = v;
+                    div { class: "flex-col gap-xs mb-xs",
+                        div { class: "form-row-hz", style: "align-items: center;",
+                            input {
+                                class: "input-inline",
+                                style: "width: 60px;",
+                                r#type: "number",
+                                step: "1",
+                                min: "0",
+                                max: "100",
+                                value: "{marker.hp_percent}",
+                                oninput: move |e| {
+                                    let mut d = draft();
+                                    if let Ok(v) = e.value().parse::<f32>() {
+                                        d.hp_markers[i].hp_percent = v;
+                                        draft.set(d);
+                                    }
+                                }
+                            }
+                            span { class: "text-xs text-muted", "%" }
+                            input {
+                                class: "input-inline",
+                                style: "width: 120px;",
+                                placeholder: "Label...",
+                                value: "{marker.label}",
+                                oninput: move |e| {
+                                    let mut d = draft();
+                                    d.hp_markers[i].label = e.value();
                                     draft.set(d);
                                 }
                             }
-                        }
-                        span { class: "text-xs text-muted", "%" }
-                        input {
-                            class: "input-inline",
-                            style: "width: 120px;",
-                            placeholder: "Label...",
-                            value: "{marker.label}",
-                            oninput: move |e| {
-                                let mut d = draft();
-                                d.hp_markers[i].label = e.value();
-                                draft.set(d);
+                            button {
+                                class: "btn btn-danger btn-xs",
+                                onclick: move |_| {
+                                    let mut d = draft();
+                                    d.hp_markers.remove(i);
+                                    draft.set(d);
+                                },
+                                "×"
                             }
                         }
-                        button {
-                            class: "btn btn-danger btn-xs",
-                            onclick: move |_| {
-                                let mut d = draft();
-                                d.hp_markers.remove(i);
-                                draft.set(d);
-                            },
-                            "×"
+                        div { class: "form-row-hz", style: "align-items: center; padding-left: 4px;",
+                            span { class: "text-xs text-muted", style: "min-width: 70px;", "Difficulties" }
+                            DifficultiesEditor {
+                                difficulties: marker.difficulties.clone(),
+                                on_change: move |updated: Vec<String>| {
+                                    let mut d = draft();
+                                    d.hp_markers[i].difficulties = updated;
+                                    draft.set(d);
+                                }
+                            }
+                            span { class: "text-xs text-muted", "(empty = all)" }
                         }
                     }
                 }

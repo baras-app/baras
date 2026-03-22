@@ -43,6 +43,18 @@ pub fn check_hp_phase_transitions(
             if !phase.enabled {
                 continue;
             }
+            // Difficulty gate: skip phases whose difficulties list doesn't match
+            if !phase.difficulties.is_empty() {
+                let matches_diff = enc.difficulty.as_ref().map_or(false, |d| {
+                    phase
+                        .difficulties
+                        .iter()
+                        .any(|key| d.matches_config_key(key))
+                });
+                if !matches_diff {
+                    continue;
+                }
+            }
             if enc.current_phase.as_ref() == Some(&phase.id) {
                 continue;
             }
@@ -148,6 +160,18 @@ pub fn check_ability_phase_transitions(
         for phase in &def.phases {
             if !phase.enabled {
                 continue;
+            }
+            // Difficulty gate: skip phases whose difficulties list doesn't match
+            if !phase.difficulties.is_empty() {
+                let matches_diff = enc.difficulty.as_ref().map_or(false, |d| {
+                    phase
+                        .difficulties
+                        .iter()
+                        .any(|key| d.matches_config_key(key))
+                });
+                if !matches_diff {
+                    continue;
+                }
             }
             if enc.current_phase.as_ref() == Some(&phase.id) {
                 continue;
@@ -261,6 +285,18 @@ pub fn check_entity_phase_transitions(
         for phase in &def.phases {
             if !phase.enabled {
                 continue;
+            }
+            // Difficulty gate: skip phases whose difficulties list doesn't match
+            if !phase.difficulties.is_empty() {
+                let matches_diff = enc.difficulty.as_ref().map_or(false, |d| {
+                    phase
+                        .difficulties
+                        .iter()
+                        .any(|key| d.matches_config_key(key))
+                });
+                if !matches_diff {
+                    continue;
+                }
             }
             if enc.current_phase.as_ref() == Some(&phase.id) {
                 continue;
@@ -380,6 +416,18 @@ pub fn check_time_phase_transitions(
             if !phase.enabled {
                 continue;
             }
+            // Difficulty gate: skip phases whose difficulties list doesn't match
+            if !phase.difficulties.is_empty() {
+                let matches_diff = enc.difficulty.as_ref().map_or(false, |d| {
+                    phase
+                        .difficulties
+                        .iter()
+                        .any(|key| d.matches_config_key(key))
+                });
+                if !matches_diff {
+                    continue;
+                }
+            }
             if enc.current_phase.as_ref() == Some(&phase.id) {
                 continue;
             }
@@ -479,6 +527,18 @@ pub fn check_timer_phase_transitions(
         for phase in &def.phases {
             if !phase.enabled {
                 continue;
+            }
+            // Difficulty gate: skip phases whose difficulties list doesn't match
+            if !phase.difficulties.is_empty() {
+                let matches_diff = enc.difficulty.as_ref().map_or(false, |d| {
+                    phase
+                        .difficulties
+                        .iter()
+                        .any(|key| d.matches_config_key(key))
+                });
+                if !matches_diff {
+                    continue;
+                }
             }
             if enc.current_phase.as_ref() == Some(&phase.id) {
                 continue;

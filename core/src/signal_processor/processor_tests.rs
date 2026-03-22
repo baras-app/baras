@@ -946,6 +946,7 @@ fn test_counter_phase_entered_trigger() {
                 conditions: vec![],
                 counter_condition: None,
                 resets_counters: vec![],
+                difficulties: vec![],
             },
             PhaseDefinition {
                 id: "p2".to_string(),
@@ -962,6 +963,7 @@ fn test_counter_phase_entered_trigger() {
                 conditions: vec![],
                 counter_condition: None,
                 resets_counters: vec![],
+                difficulties: vec![],
             },
         ],
         counters: vec![
@@ -1211,6 +1213,7 @@ fn test_phase_cascade_in_single_event() {
                 conditions: vec![],
                 counter_condition: None,
                 resets_counters: vec![],
+                difficulties: vec![],
             },
             PhaseDefinition {
                 id: "p2".to_string(),
@@ -1228,6 +1231,7 @@ fn test_phase_cascade_in_single_event() {
                 conditions: vec![],
                 counter_condition: None,
                 resets_counters: vec![],
+                difficulties: vec![],
             },
             PhaseDefinition {
                 id: "p3".to_string(),
@@ -1242,6 +1246,7 @@ fn test_phase_cascade_in_single_event() {
                 conditions: vec![],
                 counter_condition: None,
                 resets_counters: vec![],
+                difficulties: vec![],
             },
         ],
         counters: vec![CounterDefinition {
@@ -1435,6 +1440,7 @@ fn test_counter_reaches_enables_phase() {
                 conditions: vec![],
                 counter_condition: None,
                 resets_counters: vec![],
+                difficulties: vec![],
             },
             PhaseDefinition {
                 id: "p2".to_string(),
@@ -1453,6 +1459,7 @@ fn test_counter_reaches_enables_phase() {
                     value: 3,
                 }),
                 resets_counters: vec![],
+                difficulties: vec![],
             },
         ],
         counters: vec![CounterDefinition {
@@ -1643,6 +1650,7 @@ fn test_phase_ended_counter_no_double_increment() {
                 conditions: vec![],
                 counter_condition: None,
                 resets_counters: vec![],
+                difficulties: vec![],
             },
             PhaseDefinition {
                 id: "shield".to_string(),
@@ -1663,6 +1671,7 @@ fn test_phase_ended_counter_no_double_increment() {
                 conditions: vec![],
                 counter_condition: None,
                 resets_counters: vec![],
+                difficulties: vec![],
             },
         ],
         counters: vec![CounterDefinition {

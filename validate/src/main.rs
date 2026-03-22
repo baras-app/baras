@@ -365,6 +365,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         boss_def.entities.clone(),
         boss_npc_ids.clone(),
         session_date,
+        None, // No difficulty context in validation mode
     );
 
     let mut challenge_ctx = ChallengeContext::default();
@@ -600,6 +601,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         boss_def.entities.clone(),
                         boss_npc_ids.clone(),
                         *timestamp,
+                        None, // No difficulty context in validation mode
                     );
                     if let Some(enc) = cache.current_encounter_mut() {
                         enc.area_id = Some(boss_def.area_id);

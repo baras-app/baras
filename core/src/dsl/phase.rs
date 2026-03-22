@@ -54,4 +54,11 @@ pub struct PhaseDefinition {
     /// Counters to reset when entering this phase
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub resets_counters: Vec<String>,
+
+    /// Difficulty tiers this phase applies to (e.g., ["veteran", "master"]).
+    /// Empty = all difficulties. When set, the phase start trigger is only
+    /// evaluated on matching difficulties; on other difficulties it is silently
+    /// skipped (timers that condition on this phase will also not fire).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulties: Vec<String>,
 }

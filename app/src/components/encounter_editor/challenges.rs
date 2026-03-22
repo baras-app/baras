@@ -15,7 +15,7 @@ use crate::utils::parse_hex_color;
 use super::tabs::EncounterData;
 use super::timers::PhaseSelector;
 use super::triggers::EntityFilterDropdown;
-use super::InlineNameCreator;
+use super::{DifficultiesEditor, InlineNameCreator};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Challenges Tab
@@ -33,6 +33,7 @@ fn default_challenge(name: String) -> ChallengeDefinition {
         enabled: true,
         color: None,
         columns: ChallengeColumns::TotalPercent,
+        difficulties: vec![],
     }
 }
 
@@ -525,6 +526,25 @@ fn ChallengeEditForm(
                                 onchange: move |e| {
                                     let mut d = draft();
                                     d.enabled = e.checked();
+                                    draft.set(d);
+                                }
+                            }
+                        }
+
+                        div { class: "form-row-hz",
+                            label { class: "flex items-center",
+                                "Difficulties"
+                                span {
+                                    class: "help-icon",
+                                    title: "Only track this challenge on selected difficulties. Empty = all difficulties.",
+                                    "?"
+                                }
+                            }
+                            DifficultiesEditor {
+                                difficulties: draft().difficulties.clone(),
+                                on_change: move |updated: Vec<String>| {
+                                    let mut d = draft();
+                                    d.difficulties = updated;
                                     draft.set(d);
                                 }
                             }

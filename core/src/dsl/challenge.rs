@@ -13,8 +13,8 @@ use baras_types::ChallengeColumns;
 use serde::{Deserialize, Serialize};
 
 use super::ComparisonOp;
-use crate::dsl::EntityDefinition;
 use crate::dsl::entity_filter::{EntityFilter, EntityFilterMatching};
+use crate::dsl::EntityDefinition;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Challenge Definition
@@ -55,6 +55,13 @@ pub struct ChallengeDefinition {
     /// Which columns to display for this challenge
     #[serde(default)]
     pub columns: ChallengeColumns,
+
+    /// Difficulty tiers this challenge applies to (e.g., ["veteran", "master"]).
+    /// Empty = all difficulties. Challenges that don't match the current
+    /// encounter difficulty are excluded at combat start — no accumulation
+    /// happens and the challenge is not shown in the overlay.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulties: Vec<String>,
 }
 
 fn default_enabled() -> bool {
@@ -556,6 +563,7 @@ mod tests {
             enabled: true,
             color: None,
             columns: ChallengeColumns::default(),
+            difficulties: vec![],
         };
 
         // Both conditions pass
@@ -585,6 +593,7 @@ mod tests {
             enabled: true,
             color: None,
             columns: ChallengeColumns::default(),
+            difficulties: vec![],
         };
 
         // Empty conditions = always matches
@@ -644,6 +653,7 @@ mod tests {
             enabled: true,
             color: None,
             columns: ChallengeColumns::default(),
+            difficulties: vec![],
         };
 
         let add_damage_challenge = ChallengeDefinition {
@@ -660,6 +670,7 @@ mod tests {
             }],
             enabled: true,
             color: None,
+            difficulties: vec![],
             columns: ChallengeColumns::default(),
         };
 
@@ -818,6 +829,7 @@ mod tests {
             enabled: true,
             color: None,
             columns: ChallengeColumns::default(),
+            difficulties: vec![],
         };
 
         // Track metrics

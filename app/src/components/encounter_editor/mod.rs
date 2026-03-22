@@ -960,3 +960,44 @@ fn ImportPreviewModal(
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared: Difficulties Editor
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Toggle-button row for selecting difficulty tiers (story / veteran / master).
+///
+/// Empty selection means "all difficulties". Matches the same semantic as
+/// timer difficulties.
+#[component]
+pub fn DifficultiesEditor(
+    difficulties: Vec<String>,
+    on_change: EventHandler<Vec<String>>,
+) -> Element {
+    rsx! {
+        div { class: "flex gap-xs",
+            for diff in ["story", "veteran", "master"] {
+                {
+                    let diff_str = diff.to_string();
+                    let is_active = difficulties.iter().any(|d| d == diff);
+                    let diffs_clone = difficulties.clone();
+                    rsx! {
+                        button {
+                            class: if is_active { "toggle-btn active" } else { "toggle-btn" },
+                            onclick: move |_| {
+                                let mut updated = diffs_clone.clone();
+                                if is_active {
+                                    updated.retain(|x| x != &diff_str);
+                                } else {
+                                    updated.push(diff_str.clone());
+                                }
+                                on_change.call(updated);
+                            },
+                            "{diff}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

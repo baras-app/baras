@@ -100,6 +100,10 @@ pub struct HpMarker {
     pub hp_percent: f32,
     /// Short label (e.g., "Burn", "Adds")
     pub label: String,
+    /// Difficulty tiers this marker applies to (e.g., ["veteran", "master"]).
+    /// Empty = all difficulties.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulties: Vec<String>,
 }
 
 /// Per-difficulty HP entry for a shield.

@@ -450,7 +450,20 @@ impl CombatEncounter {
                 // Look up entity definition for hp_markers and shields
                 let entity_def = def.entity_for_id(npc.class_id);
                 let hp_markers = entity_def
-                    .map(|e| e.hp_markers.clone())
+                    .map(|e| {
+                        e.hp_markers
+                            .iter()
+                            .filter(|m| {
+                                m.difficulties.is_empty()
+                                    || self.difficulty.as_ref().map_or(true, |d| {
+                                        m.difficulties
+                                            .iter()
+                                            .any(|key| d.matches_config_key(key))
+                                    })
+                            })
+                            .cloned()
+                            .collect()
+                    })
                     .unwrap_or_default();
                 let active_shields = entity_def
                     .map(|e| {

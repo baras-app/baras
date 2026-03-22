@@ -1351,14 +1351,17 @@ mod examples {
                     HpMarker {
                         hp_percent: 75.0,
                         label: "Clones".to_string(),
+                        difficulties: vec![],
                     },
                     HpMarker {
                         hp_percent: 50.0,
                         label: "Burn".to_string(),
+                        difficulties: vec![],
                     },
                     HpMarker {
                         hp_percent: 25.0,
                         label: "Droid".to_string(),
+                        difficulties: vec![],
                     },
                 ],
                 active_shields: vec![],
@@ -1390,10 +1393,12 @@ mod examples {
                     HpMarker {
                         hp_percent: 60.0,
                         label: "Portal".to_string(),
+                        difficulties: vec![],
                     },
                     HpMarker {
                         hp_percent: 30.0,
                         label: "Enrage".to_string(),
+                        difficulties: vec![],
                     },
                 ],
                 active_shields: vec![ActiveShield {

@@ -495,6 +495,9 @@ pub struct PhaseDefinition {
     pub counter_condition: Option<CounterCondition>,
     #[serde(default)]
     pub resets_counters: Vec<String>,
+    /// Difficulty tiers this phase applies to. Empty = all difficulties.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulties: Vec<String>,
 }
 
 /// Counter definition (mirrors baras_core::dsl::CounterDefinition)
@@ -545,6 +548,9 @@ pub struct ChallengeDefinition {
     pub color: Option<[u8; 4]>,
     #[serde(default)]
     pub columns: ChallengeColumns,
+    /// Difficulty tiers this challenge applies to. Empty = all difficulties.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulties: Vec<String>,
 }
 
 /// HP threshold marker for visual display on boss health bar
@@ -552,6 +558,9 @@ pub struct ChallengeDefinition {
 pub struct HpMarker {
     pub hp_percent: f32,
     pub label: String,
+    /// Difficulty tiers this marker applies to. Empty = all difficulties.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulties: Vec<String>,
 }
 
 /// Per-difficulty HP entry for a shield (mirrors baras_core::dsl::ShieldHpEntry)

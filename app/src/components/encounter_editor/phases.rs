@@ -11,7 +11,7 @@ use crate::types::{BossWithPath, Condition, EncounterItem, PhaseDefinition, Trig
 use super::conditions::{ConditionsEditor, CounterConditionEditor};
 use super::tabs::EncounterData;
 use super::triggers::ComposableTriggerEditor;
-use super::InlineNameCreator;
+use super::{DifficultiesEditor, InlineNameCreator};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Phases Tab
@@ -30,6 +30,7 @@ fn default_phase(name: String) -> PhaseDefinition {
         conditions: vec![],
         counter_condition: None,
         resets_counters: vec![],
+        difficulties: vec![],
     }
 }
 
@@ -383,6 +384,25 @@ fn PhaseEditForm(
                                 oninput: move |e| {
                                     let mut d = draft();
                                     d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
+                                    draft.set(d);
+                                }
+                            }
+                        }
+
+                        div { class: "form-row-hz",
+                            label { class: "flex items-center",
+                                "Difficulties"
+                                span {
+                                    class: "help-icon",
+                                    title: "Only activate this phase on selected difficulties. Empty = all difficulties.",
+                                    "?"
+                                }
+                            }
+                            DifficultiesEditor {
+                                difficulties: draft().difficulties.clone(),
+                                on_change: move |updated: Vec<String>| {
+                                    let mut d = draft();
+                                    d.difficulties = updated;
                                     draft.set(d);
                                 }
                             }
