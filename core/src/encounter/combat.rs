@@ -133,9 +133,9 @@ pub struct CombatEncounter {
     pub local_player_ooc_revive_time: Option<NaiveDateTime>,
 
     // ─── Boss Shield State ────────────────────────────────────────────────
-    /// Active boss shield state: (npc_class_id, shield_def_index) → (remaining, effective_total)
-    /// Both values are in HP units. `effective_total` is the difficulty-resolved max,
-    /// stored here so the overlay always displays the correct denominator.
+    /// Active boss shield state: (npc_log_id, shield_def_index) → (remaining, effective_total)
+    /// Keyed by log_id (unique per-instance) so multiple NPCs of the same class each
+    /// have independent shield state. Both HP values are in raw units.
     pub boss_shields: HashMap<(i64, usize), (i64, i64)>,
 
     // ─── Effect Stack Tracking (for effect stack counters) ────────────────
@@ -396,23 +396,24 @@ impl CombatEncounter {
     // ═══════════════════════════════════════════════════════════════════════
 
     /// Activate a boss shield with its difficulty-resolved HP value.
-    /// Stores both remaining and effective_total so the overlay always shows the right denominator.
-    pub fn activate_shield(&mut self, npc_class_id: i64, shield_idx: usize, total: i64) {
-        self.boss_shields.insert((npc_class_id, shield_idx), (total, total));
+    /// Keyed by log_id (unique NPC instance) so multiple NPCs of the same class
+    /// each have independent shield state.
+    pub fn activate_shield(&mut self, npc_log_id: i64, shield_idx: usize, total: i64) {
+        self.boss_shields.insert((npc_log_id, shield_idx), (total, total));
     }
 
-    /// Deactivate a specific boss shield.
-    pub fn deactivate_shield(&mut self, npc_class_id: i64, shield_idx: usize) {
-        self.boss_shields.remove(&(npc_class_id, shield_idx));
+    /// Deactivate a specific boss shield by NPC instance.
+    pub fn deactivate_shield(&mut self, npc_log_id: i64, shield_idx: usize) {
+        self.boss_shields.remove(&(npc_log_id, shield_idx));
     }
 
-    /// Absorb damage across all active shields for a given NPC class.
+    /// Absorb damage across all active shields for a given NPC instance.
     /// Decrements remaining HP and removes depleted shields.
-    pub fn absorb_shield_damage(&mut self, npc_class_id: i64, amount: i64) {
+    pub fn absorb_shield_damage(&mut self, npc_log_id: i64, amount: i64) {
         let keys: Vec<(i64, usize)> = self
             .boss_shields
             .keys()
-            .filter(|(id, _)| *id == npc_class_id)
+            .filter(|(id, _)| *id == npc_log_id)
             .copied()
             .collect();
 
@@ -458,7 +459,7 @@ impl CombatEncounter {
                             .enumerate()
                             .filter_map(|(idx, shield_def)| {
                                 self.boss_shields
-                                    .get(&(npc.class_id, idx))
+                                    .get(&(npc.log_id, idx))
                                     .map(|&(remaining, effective_total)| super::ActiveShield {
                                         label: shield_def.label.clone(),
                                         remaining,

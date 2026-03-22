@@ -818,9 +818,10 @@ impl EventProcessor {
 
         for signal in signals {
             match signal {
-                // ── Damage absorption: deplete all active shields on the target NPC ──
+                // ── Damage absorption: deplete shields on the specific NPC instance ──
                 GameSignal::DamageTaken {
-                    target_npc_id,
+                    target_id,     // log_id — unique per NPC instance
+                    target_npc_id, // class_id — used to confirm it's a known NPC type
                     target_entity_type,
                     absorbed,
                     ..
@@ -828,25 +829,28 @@ impl EventProcessor {
                     && *target_npc_id != 0
                     && *target_entity_type == EntityType::Npc =>
                 {
-                    changes.push(ShieldChange::Absorb(*target_npc_id, *absorbed as i64));
+                    changes.push(ShieldChange::Absorb(*target_id, *absorbed as i64));
                 }
 
                 // ── All other signals: check start/end triggers for each shield ──
                 _ => {
+                    // Extract the log_id of the NPC instance involved in this signal.
+                    // We activate/deactivate shields on the specific instance (log_id),
+                    // while trigger matching still uses class_id via the roster.
+                    let signal_log_id = signal_npc_log_id(signal);
+
                     for entity in entities {
                         for (shield_idx, shield) in entity.shields.iter().enumerate() {
-                            // Check start_trigger
                             if shield_signal_matches(&shield.start_trigger, signal, entities) {
-                                // Determine which NPC class IDs belong to this entity
-                                for &npc_id in &entity.ids {
+                                if let Some(log_id) = signal_log_id {
+                                    // Signal is tied to a specific instance — activate only that one
                                     let total = shield.effective_total(difficulty);
-                                    changes.push(ShieldChange::Activate(npc_id, shield_idx, total));
+                                    changes.push(ShieldChange::Activate(log_id, shield_idx, total));
                                 }
                             }
-                            // Check end_trigger
                             if shield_signal_matches(&shield.end_trigger, signal, entities) {
-                                for &npc_id in &entity.ids {
-                                    changes.push(ShieldChange::Deactivate(npc_id, shield_idx));
+                                if let Some(log_id) = signal_log_id {
+                                    changes.push(ShieldChange::Deactivate(log_id, shield_idx));
                                 }
                             }
                         }
@@ -1284,6 +1288,60 @@ impl EventProcessor {
 // ═══════════════════════════════════════════════════════════════════════════
 // Shield Signal Matching
 // ═══════════════════════════════════════════════════════════════════════════
+
+/// Extract the NPC instance log_id from a signal — the specific NPC this signal is "about".
+///
+/// Used by the shield system to key activation/deactivation against the correct NPC instance
+/// rather than the class/template ID, so multiple NPCs of the same type have independent state.
+///
+/// Returns `None` for signals that aren't tied to a specific NPC instance (e.g. phase/counter changes).
+fn signal_npc_log_id(signal: &GameSignal) -> Option<i64> {
+    match signal {
+        // Effect signals: the NPC is the target
+        GameSignal::EffectApplied {
+            target_id,
+            target_entity_type,
+            ..
+        }
+        | GameSignal::EffectRemoved {
+            target_id,
+            target_entity_type,
+            ..
+        }
+        | GameSignal::EffectChargesChanged {
+            target_id,
+            target_entity_type,
+            ..
+        } if *target_entity_type == EntityType::Npc => Some(*target_id),
+        // Ability/damage/heal: source NPC (the one casting/dealing)
+        GameSignal::AbilityActivated {
+            source_id,
+            source_entity_type,
+            ..
+        }
+        | GameSignal::DamageTaken {
+            source_id,
+            source_entity_type,
+            ..
+        }
+        | GameSignal::HealingDone {
+            source_id,
+            source_entity_type,
+            ..
+        } if *source_entity_type == EntityType::Npc => Some(*source_id),
+        // NPC lifecycle
+        GameSignal::NpcFirstSeen { entity_id, .. } => Some(*entity_id),
+        GameSignal::EntityDeath {
+            entity_id,
+            entity_type,
+            ..
+        } if *entity_type == EntityType::Npc => Some(*entity_id),
+        // BossHpChanged: the boss NPC
+        GameSignal::BossHpChanged { entity_id, .. } => Some(*entity_id),
+        // Phase/counter/timer/combat signals are not instance-specific
+        _ => None,
+    }
+}
 
 /// Check whether a shield `Trigger` matches a given `GameSignal`.
 ///
