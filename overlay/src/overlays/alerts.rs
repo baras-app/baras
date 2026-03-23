@@ -129,8 +129,61 @@ impl AlertsOverlay {
         self.entries.retain(|e| !e.is_expired(fade_duration));
     }
 
+    /// Render a skeleton preview when in move mode
+    fn render_preview(&mut self) {
+        let padding = self.frame.scaled(BASE_PADDING);
+        let line_height = self.frame.scaled(BASE_LINE_HEIGHT);
+        let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING);
+        let font_size = self.frame.scaled(self.config.font_size as f32);
+
+        self.frame.begin_frame();
+
+        let previews: [(&str, [u8; 4]); 3] = [
+            ("Stack!", [255, 80, 80, 255]),
+            ("Move Away!", [255, 210, 50, 255]),
+            ("Spread Out", [255, 255, 255, 255]),
+        ];
+
+        let mut y = padding + font_size;
+
+        for (text, color) in &previews {
+            let shadow = colors::text_shadow();
+
+            let (text_width, _) = self.frame.measure_text_styled(text, font_size, true, false);
+            let text_x = (self.frame.width() as f32 - text_width) / 2.0;
+
+            self.frame.draw_text_styled(
+                text,
+                text_x + 1.0,
+                y + 1.0,
+                font_size,
+                shadow,
+                true,
+                false,
+            );
+            self.frame.draw_text_styled(
+                text,
+                text_x,
+                y,
+                font_size,
+                color_from_rgba(*color),
+                true,
+                false,
+            );
+
+            y += line_height + entry_spacing;
+        }
+
+        self.frame.end_frame();
+    }
+
     /// Render the overlay
     pub fn render(&mut self) {
+        if self.frame.is_in_move_mode() {
+            self.render_preview();
+            return;
+        }
+
         // Remove expired alerts first
         self.prune_expired();
 

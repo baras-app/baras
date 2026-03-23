@@ -218,8 +218,67 @@ impl BossHealthOverlay {
             .map(|m| (m.hp_percent, m.label.as_str()))
     }
 
+    /// Render a skeleton preview when in move mode (1 boss)
+    fn render_preview(&mut self) {
+        let width = self.frame.width() as f32;
+
+        let font_scale = self.config.font_scale.clamp(1.0, 2.0);
+        let padding = self.frame.scaled(BASE_PADDING);
+        let bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
+        let label_height = self.frame.scaled(BASE_LABEL_HEIGHT);
+        let label_bar_gap = self.frame.scaled(BASE_LABEL_BAR_GAP);
+        let font_size = self.frame.scaled(BASE_FONT_SIZE) * font_scale;
+        let label_font_size = self.frame.scaled(BASE_LABEL_FONT_SIZE) * font_scale;
+        let bar_radius = 4.0 * self.frame.scale_factor();
+
+        let bar_color = color_from_rgba(self.config.bar_color);
+        let font_color = color_from_rgba(self.config.font_color);
+
+        let content_width = width - padding * 2.0;
+
+        self.frame.begin_frame();
+
+        let mut y = padding;
+
+        // Boss name label
+        let name_y = y + label_font_size;
+        self.frame
+            .draw_text_glowed("Boss", padding, name_y, label_font_size, font_color);
+        y += label_height + label_bar_gap;
+
+        // HP bar
+        let health_text = "1.2M / 1.2M";
+        let percent_text = if self.config.show_percent {
+            "72.0%".to_string()
+        } else {
+            String::new()
+        };
+        let bar_font_size = font_size * 0.70;
+        ProgressBar::new(health_text, 0.72)
+            .with_fill_color(bar_color)
+            .with_bg_color(colors::dps_bar_bg())
+            .with_text_color(font_color)
+            .with_right_text(percent_text)
+            .render(
+                &mut self.frame,
+                padding,
+                y,
+                content_width,
+                bar_height,
+                bar_font_size,
+                bar_radius,
+            );
+
+        self.frame.end_frame();
+    }
+
     /// Render the overlay
     pub fn render(&mut self) {
+        if self.frame.is_in_move_mode() {
+            self.render_preview();
+            return;
+        }
+
         let width = self.frame.width() as f32;
 
         // Filter out dead bosses (0% health) and pushed bosses (HP at/below pushes_at threshold)

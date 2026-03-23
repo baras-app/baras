@@ -111,8 +111,61 @@ impl TimerOverlay {
         self.data = data;
     }
 
+    /// Render a skeleton preview when in move mode
+    fn render_preview(&mut self) {
+        let width = self.frame.width() as f32;
+
+        let padding = self.frame.scaled(BASE_PADDING);
+        let bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
+        let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING);
+        let font_scale = self.config.font_scale.clamp(1.0, 2.0);
+        let font_size = self.frame.scaled(BASE_FONT_SIZE * font_scale);
+        let font_color = color_from_rgba(self.config.font_color);
+
+        self.frame.begin_frame();
+
+        let content_width = width - padding * 2.0;
+        let bar_radius = 3.0 * self.frame.scale_factor();
+
+        let previews = [
+            ("Mechanic A", "12.3", 0.75_f32),
+            ("Mechanic B", "45.0", 0.40_f32),
+            ("Mechanic C", "1:30", 0.10_f32),
+        ];
+
+        let mut y = padding;
+
+        for (name, time_text, progress) in &previews {
+            ProgressBar::new(*name, *progress)
+                .with_fill_color(colors::effect_icon_bg())
+                .with_bg_color(colors::dps_bar_bg())
+                .with_text_color(font_color)
+                .with_right_text(*time_text)
+                .with_bold_text()
+                .with_text_glow()
+                .render(
+                    &mut self.frame,
+                    padding,
+                    y,
+                    content_width,
+                    bar_height,
+                    font_size,
+                    bar_radius,
+                );
+
+            y += bar_height + entry_spacing;
+        }
+
+        self.frame.end_frame();
+    }
+
     /// Render the overlay
     pub fn render(&mut self) {
+        if self.frame.is_in_move_mode() {
+            self.render_preview();
+            return;
+        }
+
         let width = self.frame.width() as f32;
 
         let padding = self.frame.scaled(BASE_PADDING);
