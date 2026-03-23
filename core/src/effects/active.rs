@@ -227,6 +227,9 @@ impl ActiveEffect {
         self.timer_expired = false;
         // Reset on-end alert so it can fire again
         self.on_end_alert_fired = false;
+        // Reset audio so it fires again on the next expiration/offset
+        self.audio_played = false;
+        self.countdown_announced = [false; 10];
     }
 
     /// Refresh only the duration (without updating last_refreshed_at)
@@ -242,6 +245,9 @@ impl ActiveEffect {
         self.removed_at = None;
         self.timer_expired = false;
         self.on_end_alert_fired = false;
+        // Reset audio so it fires again on the next expiration/offset
+        self.audio_played = false;
+        self.countdown_announced = [false; 10];
     }
 
     /// Update stack count
