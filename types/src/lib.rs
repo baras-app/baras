@@ -1562,6 +1562,9 @@ pub struct AlertsOverlayConfig {
     /// Seconds for fade-out effect after duration expires
     #[serde(default = "default_alerts_fade_duration")]
     pub fade_duration: f32,
+    /// Show ability icon to the left of alert text (default true)
+    #[serde(default = "default_true")]
+    pub show_icons: bool,
 }
 
 fn default_alerts_font_size() -> u8 {
@@ -1584,6 +1587,7 @@ impl Default for AlertsOverlayConfig {
             max_display: default_alerts_max_display(),
             default_duration: default_alerts_duration(),
             fade_duration: default_alerts_fade_duration(),
+            show_icons: true,
         }
     }
 }

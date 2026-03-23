@@ -2056,6 +2056,19 @@ pub fn SettingsPanel(
                     h4 { style: "margin-top: 16px;", "Display" }
 
                     div { class: "setting-row",
+                        label { "Show Icons" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.alerts_overlay.show_icons,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.alerts_overlay.show_icons = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row",
                         label { "Max Displayed" }
                         select {
                             class: "input-inline",

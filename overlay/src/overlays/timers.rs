@@ -106,8 +106,22 @@ impl TimerOverlay {
         self.frame.set_background_alpha(alpha);
     }
 
-    /// Update the data
+    /// Update the data and pre-cache icons at current display size
     pub fn set_data(&mut self, data: TimerData) {
+        let bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
+        let icon_size = (bar_height - 4.0 * self.frame.scale_factor()).round() as u32;
+
+        for entry in &data.entries {
+            if let (Some(ability_id), Some(icon_arc)) = (entry.icon_ability_id, &entry.icon) {
+                let cache_key = (ability_id, icon_size);
+                if !self.icon_cache.contains_key(&cache_key) {
+                    let (src_w, src_h, ref src_data) = **icon_arc;
+                    let scaled = scale_icon(src_data, src_w, src_h, icon_size);
+                    self.icon_cache.insert(cache_key, scaled);
+                }
+            }
+        }
+
         self.data = data;
     }
 
@@ -312,6 +326,32 @@ impl TimerOverlay {
         // End frame (resize indicator, commit)
         self.frame.end_frame();
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Icon Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Scale icon to target size using nearest-neighbor sampling
+fn scale_icon(src: &[u8], src_w: u32, src_h: u32, target_size: u32) -> Vec<u8> {
+    let mut dest = vec![0u8; (target_size * target_size * 4) as usize];
+    let scale_x = src_w as f32 / target_size as f32;
+    let scale_y = src_h as f32 / target_size as f32;
+
+    for dy in 0..target_size {
+        for dx in 0..target_size {
+            let sx = ((dx as f32 * scale_x) as u32).min(src_w - 1);
+            let sy = ((dy as f32 * scale_y) as u32).min(src_h - 1);
+            let src_idx = ((sy * src_w + sx) * 4) as usize;
+            let dest_idx = ((dy * target_size + dx) * 4) as usize;
+
+            dest[dest_idx] = src[src_idx];
+            dest[dest_idx + 1] = src[src_idx + 1];
+            dest[dest_idx + 2] = src[src_idx + 2];
+            dest[dest_idx + 3] = src[src_idx + 3];
+        }
+    }
+    dest
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

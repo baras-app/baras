@@ -148,7 +148,7 @@ pub fn run() {
                 }
 
                 // Create and spawn the combat service (includes audio service)
-                let (service, handle) =
+                let (service, handle, icon_cache) =
                     CombatService::new(app.handle().clone(), overlay_tx, audio_tx, audio_rx);
                 tauri::async_runtime::spawn(service.run());
 
@@ -161,6 +161,7 @@ pub fn run() {
                     overlay_state.clone(),
                     handle.clone(),
                     handle.shared.clone(),
+                    icon_cache,
                 );
 
                 // Auto-show enabled overlays on startup

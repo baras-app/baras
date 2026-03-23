@@ -22,6 +22,7 @@ pub fn spawn_overlay_router(
     overlay_state: SharedOverlayState,
     service_handle: ServiceHandle,
     shared: Arc<SharedState>,
+    icon_cache: Option<Arc<baras_overlay::icons::IconCache>>,
 ) {
     // Create async channel for registry actions (bridges sync overlay thread → async router)
     let (registry_tx, mut registry_rx) = mpsc::channel::<RaidRegistryAction>(32);
@@ -63,6 +64,7 @@ pub fn spawn_overlay_router(
                                 &overlay_state,
                                 &service_handle,
                                 &shared,
+                                icon_cache.as_ref(),
                                 update,
                             ).await;
                         }
@@ -100,6 +102,7 @@ async fn process_overlay_update(
     overlay_state: &SharedOverlayState,
     service_handle: &ServiceHandle,
     shared: &Arc<SharedState>,
+    icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
     update: OverlayUpdate,
 ) {
     match update {
@@ -258,6 +261,7 @@ async fn process_overlay_update(
         OverlayUpdate::AlertsFired(fired_alerts) => {
             // Convert FiredAlert to AlertEntry and send to alerts overlay
             use baras_overlay::AlertEntry;
+            use std::sync::Arc;
             use std::time::Instant;
 
             let alerts_tx = {
@@ -271,19 +275,29 @@ async fn process_overlay_update(
             if let Some(tx) = alerts_tx {
                 let entries: Vec<AlertEntry> = fired_alerts
                     .into_iter()
-                    .map(|a| AlertEntry {
-                        text: a.text,
-                        color: a.color.unwrap_or([255, 255, 255, 255]),
-                        created_at: Instant::now(),
-                        duration_secs: 5.0, // Default duration, could come from config
+                    .filter(|a| a.alert_text_enabled)
+                    .map(|a| {
+                        let icon = a.icon_ability_id.and_then(|id| {
+                            icon_cache.and_then(|cache| cache.get_icon(id))
+                        });
+                        AlertEntry {
+                            text: a.text,
+                            color: a.color.unwrap_or([255, 255, 255, 255]),
+                            created_at: Instant::now(),
+                            duration_secs: 5.0, // Default duration, could come from config
+                            icon_ability_id: a.icon_ability_id,
+                            icon: icon.map(|d| Arc::new((d.width, d.height, d.rgba))),
+                        }
                     })
                     .collect();
 
-                let _ = tx
-                    .send(OverlayCommand::UpdateData(OverlayData::Alerts(
-                        baras_overlay::AlertsData { entries },
-                    )))
-                    .await;
+                if !entries.is_empty() {
+                    let _ = tx
+                        .send(OverlayCommand::UpdateData(OverlayData::Alerts(
+                            baras_overlay::AlertsData { entries },
+                        )))
+                        .await;
+                }
             }
         }
         OverlayUpdate::EffectsAUpdated(effects_data) => {

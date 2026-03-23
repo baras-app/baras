@@ -510,6 +510,7 @@ impl EffectTracker {
             alert_text_enabled: has_text,
             audio_enabled: def.audio.enabled,
             audio_file: def.audio.file.clone(),
+            icon_ability_id: def.icon_ability_id,
         }
     }
 
@@ -831,6 +832,7 @@ impl EffectTracker {
                     alert_text_enabled: true,
                     audio_enabled,
                     audio_file,
+                    icon_ability_id: def.icon_ability_id,
                 });
             }
         }
@@ -984,6 +986,7 @@ impl EffectTracker {
                         alert_text_enabled: true,
                         audio_enabled: false,
                         audio_file: None,
+                        icon_ability_id: def.icon_ability_id,
                     });
                 }
             } else {
@@ -1035,6 +1038,7 @@ impl EffectTracker {
                         alert_text_enabled: true,
                         audio_enabled: false,
                         audio_file: None,
+                        icon_ability_id: def.icon_ability_id,
                     });
                 }
             }
@@ -1565,6 +1569,7 @@ impl EffectTracker {
                         alert_text_enabled: true,
                         audio_enabled: false,
                         audio_file: None,
+                        icon_ability_id: def.icon_ability_id,
                     });
                 }
             } else {
@@ -1609,6 +1614,7 @@ impl EffectTracker {
                         alert_text_enabled: true,
                         audio_enabled: false,
                         audio_file: None,
+                        icon_ability_id: def.icon_ability_id,
                     });
                 }
             }
@@ -1694,6 +1700,7 @@ impl EffectTracker {
                         alert_text_enabled: true,
                         audio_enabled: false,
                         audio_file: None,
+                        icon_ability_id: def.icon_ability_id,
                     });
                 }
             } else {
@@ -1738,6 +1745,7 @@ impl EffectTracker {
                         alert_text_enabled: true,
                         audio_enabled: false,
                         audio_file: None,
+                        icon_ability_id: def.icon_ability_id,
                     });
                 }
             }
@@ -1867,6 +1875,7 @@ impl EffectTracker {
                         alert_text_enabled: true,
                         audio_enabled: false,
                         audio_file: None,
+                        icon_ability_id: def.icon_ability_id,
                     });
                 }
             }

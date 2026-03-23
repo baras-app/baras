@@ -41,6 +41,8 @@ pub struct FiredAlert {
     pub audio_enabled: bool,
     /// Optional custom audio file for this alert (relative path)
     pub audio_file: Option<String>,
+    /// Optional ability ID for icon display in the alerts overlay
+    pub icon_ability_id: Option<u64>,
 }
 
 /// Manages ability cooldown and buff timers.
@@ -615,6 +617,7 @@ impl TimerManager {
                         timer.name.clone(),
                         timer.color,
                         timer.audio_file.clone(),
+                        timer.icon_ability_id,
                     ))
                 } else {
                     None
@@ -625,7 +628,7 @@ impl TimerManager {
         // Now format with elapsed time
         triggered
             .into_iter()
-            .map(|(id, name, color, audio_file)| {
+            .map(|(id, name, color, audio_file, icon_ability_id)| {
                 let text = self.format_alert_text(&name, interp_time);
                 FiredAlert {
                     id,
@@ -636,6 +639,7 @@ impl TimerManager {
                     alert_text_enabled: false,
                     audio_enabled: true,
                     audio_file,
+                    icon_ability_id,
                 }
             })
             .collect()
@@ -752,6 +756,7 @@ impl TimerManager {
                 alert_text_enabled: true,
                 audio_enabled: alert_audio_enabled,
                 audio_file: alert_audio_file,
+                icon_ability_id: def.icon_ability_id,
             });
         }
 
@@ -963,6 +968,7 @@ impl TimerManager {
                         alert_text_enabled: should_fire_expire_alert,
                         audio_enabled: should_fire_audio,
                         audio_file,
+                        icon_ability_id: timer.icon_ability_id,
                     });
                 }
                 // Prepare chain to next timer (take ownership of triggers_timer)

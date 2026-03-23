@@ -707,7 +707,7 @@ impl CombatService {
         overlay_tx: mpsc::Sender<OverlayUpdate>,
         audio_tx: AudioSender,
         audio_rx: mpsc::Receiver<AudioEvent>,
-    ) -> (Self, ServiceHandle) {
+    ) -> (Self, ServiceHandle, Option<Arc<baras_overlay::icons::IconCache>>) {
         let (cmd_tx, cmd_rx) = mpsc::channel(32);
 
         let config = AppConfig::load();
@@ -784,7 +784,10 @@ impl CombatService {
         // Spawn background area indexer to populate file area cache
         Self::spawn_area_indexer(shared, area_index_for_scanner, app_handle);
 
-        (service, handle)
+        // Clone icon_cache for the router (router needs it to resolve alert icons)
+        let icon_cache_for_router = service.icon_cache.clone();
+
+        (service, handle, icon_cache_for_router)
     }
 
     /// Build area index from encounter definition files (lightweight - only reads headers)
