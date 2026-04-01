@@ -14,29 +14,35 @@ macro_rules! overlay_log {
 use std::mem;
 use std::ptr;
 
+use windows::core::PCWSTR;
+use windows::Win32::Devices::Display::{
+    DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QueryDisplayConfig,
+    DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME, DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME,
+    DISPLAYCONFIG_DEVICE_INFO_HEADER, DISPLAYCONFIG_SOURCE_DEVICE_NAME,
+    DISPLAYCONFIG_TARGET_DEVICE_NAME, QDC_ONLY_ACTIVE_PATHS,
+};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleDC, CreateDIBSection, DIB_RGB_COLORS,
-    DeleteDC, EnumDisplayMonitors, GetCurrentObject, GetDC, GetMonitorInfoW, HBITMAP, HDC,
-    HMONITOR, MONITORINFOEXW, OBJ_BITMAP, ReleaseDC, SelectObject, SetDIBits,
+    CreateCompatibleDC, CreateDIBSection, DeleteDC, EnumDisplayMonitors, GetCurrentObject, GetDC,
+    GetMonitorInfoW, ReleaseDC, SelectObject, SetDIBits, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
+    DIB_RGB_COLORS, HBITMAP, HDC, HMONITOR, MONITORINFOEXW, OBJ_BITMAP,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
-    GWL_EXSTYLE, GetCursorPos, HTCLIENT, HWND_TOPMOST, IDC_ARROW, LoadCursorW, MSG, PM_REMOVE,
-    PeekMessageW, RegisterClassExW, SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
-    SetWindowLongPtrW, SetWindowPos, ShowWindow, TranslateMessage, ULW_ALPHA, UpdateLayeredWindow,
+    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, LoadCursorW,
+    PeekMessageW, RegisterClassExW, SetWindowLongPtrW, SetWindowPos, ShowWindow, TranslateMessage,
+    UpdateLayeredWindow, CS_HREDRAW, CS_VREDRAW, GWL_EXSTYLE, HTCLIENT, HWND_TOPMOST, IDC_ARROW,
+    MSG, PM_REMOVE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SW_SHOWNOACTIVATE, ULW_ALPHA,
     WM_DESTROY, WM_ERASEBKGND, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEMOVE, WM_NCHITTEST, WM_QUIT,
     WNDCLASSEXW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
     WS_EX_TRANSPARENT, WS_POPUP,
 };
-use windows::core::PCWSTR;
 
 use windows::Win32::Foundation::RECT;
 
-use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
 use super::{MonitorInfo, OverlayConfig, OverlayPlatform, PlatformError};
+use super::{MAX_OVERLAY_HEIGHT, MAX_OVERLAY_WIDTH, MIN_OVERLAY_SIZE, RESIZE_CORNER_SIZE};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Standalone Monitor Enumeration
@@ -91,18 +97,171 @@ unsafe extern "system" fn enum_monitors_callback(
     }
 }
 
-/// Convert raw monitor data to MonitorInfo with stable device-name-based IDs
+/// Look up the stable hardware device path for a GDI display device name.
+///
+/// Uses the CCD API (`QueryDisplayConfig` + `DisplayConfigGetDeviceInfo`) to
+/// obtain the monitor's kernel device interface path, e.g.:
+/// `\\?\DISPLAY#DELA0B7#5&3a7fcf8c&0&UID8193#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}`
+///
+/// This path is stable across reboots, sleep/wake, and session changes because
+/// it is derived from the monitor's EDID (manufacturer + product code) and the
+/// PCI bus location of the adapter output — not from the GDI enumeration order.
+///
+/// # Arguments
+/// * `gdi_device_name` — the `szDevice` string from `MONITORINFOEXW`, e.g. `\\.\DISPLAY2`
+///
+/// # Returns
+/// `Some(path)` on success, `None` if the CCD API fails or returns no match
+/// (e.g. virtual/headless displays, some VM drivers).
+fn get_monitor_device_path(gdi_device_name: &str) -> Option<String> {
+    unsafe {
+        // Step 1: size the buffers
+        let mut num_paths: u32 = 0;
+        let mut num_modes: u32 = 0;
+        let err =
+            GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &mut num_paths, &mut num_modes);
+        if err.0 != 0 {
+            overlay_log!(
+                "get_monitor_device_path: GetDisplayConfigBufferSizes failed (err={})",
+                err.0
+            );
+            return None;
+        }
+
+        // Step 2: query the display config
+        let mut paths = vec![
+            windows::Win32::Devices::Display::DISPLAYCONFIG_PATH_INFO::default();
+            num_paths as usize
+        ];
+        let mut modes = vec![
+            windows::Win32::Devices::Display::DISPLAYCONFIG_MODE_INFO::default();
+            num_modes as usize
+        ];
+        let err = QueryDisplayConfig(
+            QDC_ONLY_ACTIVE_PATHS,
+            &mut num_paths,
+            paths.as_mut_ptr(),
+            &mut num_modes,
+            modes.as_mut_ptr(),
+            None,
+        );
+        if err.0 != 0 {
+            overlay_log!(
+                "get_monitor_device_path: QueryDisplayConfig failed (err={})",
+                err.0
+            );
+            return None;
+        }
+        paths.truncate(num_paths as usize);
+
+        // Normalise the GDI device name for comparison (trim null padding)
+        let gdi_wide: Vec<u16> = gdi_device_name.encode_utf16().collect();
+
+        // Step 3: for each path, get the source name and compare to gdi_device_name
+        for path in &paths {
+            let mut src_name = DISPLAYCONFIG_SOURCE_DEVICE_NAME {
+                header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
+                    r#type: DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME,
+                    size: mem::size_of::<DISPLAYCONFIG_SOURCE_DEVICE_NAME>() as u32,
+                    adapterId: path.sourceInfo.adapterId,
+                    id: path.sourceInfo.id,
+                },
+                ..Default::default()
+            };
+            let ret = DisplayConfigGetDeviceInfo(
+                &mut src_name.header as *mut DISPLAYCONFIG_DEVICE_INFO_HEADER,
+            );
+            if ret != 0 {
+                continue;
+            }
+
+            // Convert viewGdiDeviceName ([u16; 32]) to a comparable slice
+            let src_len = src_name
+                .viewGdiDeviceName
+                .iter()
+                .position(|&c| c == 0)
+                .unwrap_or(src_name.viewGdiDeviceName.len());
+            let src_slice = &src_name.viewGdiDeviceName[..src_len];
+
+            if src_slice != gdi_wide.as_slice() {
+                continue; // not the right source
+            }
+
+            // Step 4: found the matching source — now get the target device name
+            let mut tgt_name = DISPLAYCONFIG_TARGET_DEVICE_NAME {
+                header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
+                    r#type: DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME,
+                    size: mem::size_of::<DISPLAYCONFIG_TARGET_DEVICE_NAME>() as u32,
+                    adapterId: path.targetInfo.adapterId,
+                    id: path.targetInfo.id,
+                },
+                ..Default::default()
+            };
+            let ret = DisplayConfigGetDeviceInfo(
+                &mut tgt_name.header as *mut DISPLAYCONFIG_DEVICE_INFO_HEADER,
+            );
+            if ret != 0 {
+                overlay_log!(
+                    "get_monitor_device_path: DisplayConfigGetDeviceInfo(target) failed (ret={})",
+                    ret
+                );
+                return None;
+            }
+
+            // Convert monitorDevicePath ([u16; 128]) to String
+            let path_len = tgt_name
+                .monitorDevicePath
+                .iter()
+                .position(|&c| c == 0)
+                .unwrap_or(tgt_name.monitorDevicePath.len());
+            if path_len == 0 {
+                return None; // empty path — treat as unsupported
+            }
+            let device_path =
+                String::from_utf16_lossy(&tgt_name.monitorDevicePath[..path_len]).to_string();
+            return Some(device_path);
+        }
+
+        overlay_log!(
+            "get_monitor_device_path: no path matched GDI device '{}'",
+            gdi_device_name
+        );
+        None
+    }
+}
+
+/// Convert raw monitor data to MonitorInfo with stable hardware-path-based IDs.
+///
+/// ID priority:
+///   1. `monitorDevicePath` from CCD API — stable hardware identity tied to
+///      EDID manufacturer/product and PCI bus location.
+///   2. Geometry fingerprint `"WxH@X,Y"` — stable as long as the user does not
+///      rearrange monitors in Display Settings; used when the CCD API is
+///      unavailable (VMs, some headless drivers).
+///
+/// The raw GDI device name (`\\.\DISPLAYn`) is intentionally NOT used as the
+/// ID because Windows can reassign those numbers between sessions.
 fn raw_monitors_to_info(raw_monitors: Vec<RawMonitor>) -> Vec<MonitorInfo> {
     raw_monitors
         .into_iter()
-        .map(|raw| MonitorInfo {
-            id: raw.device_name.clone(),
-            name: raw.device_name,
-            x: raw.x,
-            y: raw.y,
-            width: raw.width,
-            height: raw.height,
-            is_primary: raw.is_primary,
+        .map(|raw| {
+            // Try CCD API first for a hardware-stable path, fall back to geometry fingerprint.
+            let id = get_monitor_device_path(&raw.device_name).unwrap_or_else(|| {
+                overlay_log!(
+                    "raw_monitors_to_info: CCD path unavailable for '{}', using geometry fingerprint",
+                    raw.device_name
+                );
+                format!("{}x{}@{},{}", raw.width, raw.height, raw.x, raw.y)
+            });
+            MonitorInfo {
+                id,
+                name: raw.device_name,
+                x: raw.x,
+                y: raw.y,
+                width: raw.width,
+                height: raw.height,
+                is_primary: raw.is_primary,
+            }
         })
         .collect()
 }
@@ -396,13 +555,8 @@ impl OverlayPlatform for WindowsOverlay {
         );
         // Clamp to ensure the overlay is visible on an actual monitor,
         // not in a dead zone between monitors of different dimensions.
-        let (abs_x, abs_y) = super::ensure_visible_on_monitor(
-            raw_x,
-            raw_y,
-            config.width,
-            config.height,
-            &monitors,
-        );
+        let (abs_x, abs_y) =
+            super::ensure_visible_on_monitor(raw_x, raw_y, config.width, config.height, &monitors);
         overlay_log!(
             "  Absolute position: ({},{}) target_monitor={:?}{}",
             abs_x,
