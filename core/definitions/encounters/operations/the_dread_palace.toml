@@ -1074,13 +1074,6 @@ triggers_encounter = false
 is_kill_target = false
 
 [[boss.entities]]
-name = "Future Calphy"
-ids = []
-is_boss = false
-triggers_encounter = false
-is_kill_target = false
-
-[[boss.entities]]
 name = "Dread Master Calphayus"
 ids = [3273946195558400]
 is_boss = true
