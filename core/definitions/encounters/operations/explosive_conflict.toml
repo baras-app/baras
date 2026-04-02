@@ -312,7 +312,7 @@ value = 4
 [[boss.counters]]
 id = "fs_defensive_systems_ct"
 name = "Defensive Systems"
-increment_on = { type = "phase_ended", phase_id = "fs_shield" }
+increment_on = { type = "phase_entered", phase_id = "fs_shield" }
 reset_on = { type = "combat_end" }
 initial_value = 0
 
