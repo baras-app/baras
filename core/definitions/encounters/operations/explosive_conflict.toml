@@ -34,6 +34,110 @@ ids = [
 is_boss = true
 is_kill_target = false
 
+[[boss.entities.hp_markers]]
+hp_percent = 90.0
+label = "Jump + Fearful"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_90"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 70.0
+label = "Jump + Fearful"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_70"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 50.0
+label = "Jump + Fearful"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_50"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 30.0
+label = "Jump + Fearful"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_30"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 10.0
+label = "Jump + Fearful"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_10"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 80.0
+label = "Berserk + Baradium Toss"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_80"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 40.0
+label = "Berserk + Baradium Toss"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_40"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 60.0
+label = "Ground Shatter + Shriek"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_60"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 20.0
+label = "Ground Shatter + Shriek"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_20"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 5.0
+label = "Soft Enrage"
+difficulties = ["veteran", "master"]
+
 [[boss.entities]]
 name = "Toth"
 ids = [
@@ -45,6 +149,247 @@ ids = [
 ]
 is_boss = true
 is_kill_target = false
+
+[[boss.entities.hp_markers]]
+hp_percent = 90.0
+label = "Jump + Fearful"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_90"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 70.0
+label = "Jump + Fearful"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_70"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 50.0
+label = "Jump + Fearful"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_50"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 30.0
+label = "Jump + Fearful"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_30"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 10.0
+label = "Jump + Fearful"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_10"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 80.0
+label = "Berserk + Baradium Toss"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_80"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 40.0
+label = "Berserk + Baradium Toss"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_40"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 60.0
+label = "Ground Shatter + Shriek"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_60"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 20.0
+label = "Ground Shatter + Shriek"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "zorn_toth_below_20"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 5.0
+label = "Soft Enrage"
+difficulties = ["veteran", "master"]
+
+
+[[boss.counters]]
+id = "zorn_toth_below_90"
+name = "HP Gate 90%"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "boss_hp_below"
+hp_percent = 90.0
+selector = ["Zorn", "Toth"]
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.counters]]
+id = "zorn_toth_below_80"
+name = "HP Gate 80%"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "boss_hp_below"
+hp_percent = 80.0
+selector = ["Zorn", "Toth"]
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.counters]]
+id = "zorn_toth_below_70"
+name = "HP Gate 70%"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "boss_hp_below"
+hp_percent = 70.0
+selector = ["Zorn", "Toth"]
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.counters]]
+id = "zorn_toth_below_60"
+name = "HP Gate 60%"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "boss_hp_below"
+hp_percent = 60.0
+selector = ["Zorn", "Toth"]
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.counters]]
+id = "zorn_toth_below_50"
+name = "HP Gate 50%"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "boss_hp_below"
+hp_percent = 50.0
+selector = ["Zorn", "Toth"]
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.counters]]
+id = "zorn_toth_below_40"
+name = "HP Gate 40%"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "boss_hp_below"
+hp_percent = 40.0
+selector = ["Zorn", "Toth"]
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.counters]]
+id = "zorn_toth_below_30"
+name = "HP Gate 30%"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "boss_hp_below"
+hp_percent = 30.0
+selector = ["Zorn", "Toth"]
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.counters]]
+id = "zorn_toth_below_20"
+name = "HP Gate 20%"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "boss_hp_below"
+hp_percent = 20.0
+selector = ["Zorn", "Toth"]
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.counters]]
+id = "zorn_toth_below_10"
+name = "HP Gate 10%"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "boss_hp_below"
+hp_percent = 10.0
+selector = ["Zorn", "Toth"]
+
+[boss.counters.reset_on]
+type = "combat_end"
+
 
 [[boss.phases]]
 id = "zorn_toth_murdok"
@@ -666,6 +1011,10 @@ ids = [
 is_boss = true
 is_kill_target = true
 
+[[boss.entities.hp_markers]]
+hp_percent = 59.0
+label = "Breath of the Masters"
+
 [[boss.entities]]
 name = "Warstrider Battlewalker"
 ids = [2876562936430592, 2794185463693312, 2876532871659520, 2876593001201664]
@@ -797,6 +1146,7 @@ duration_secs = 20.0
 color = [224, 168, 33, 255]
 repeats = 1
 trigger = { type = "counter_reaches", counter_id = "wk_trando_spawns", value = 1 }
+difficulties = ["veteran", "master"]
 
 
 [[boss.timer]]
