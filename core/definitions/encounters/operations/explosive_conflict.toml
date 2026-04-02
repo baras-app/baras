@@ -223,11 +223,91 @@ ids = [2876434087411712, 2876459857215488, 2876481332051968, 2808827007205376]
 is_boss = true
 is_kill_target = true
 
+[[boss.entities.hp_markers]]
+hp_percent = 80.0
+label = "Defensive Systems"
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "fs_defensive_systems_ct"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 60.0
+label = "Defensive Systems"
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "fs_defensive_systems_ct"
+operator = "lt"
+value = 2
+
+[[boss.entities.hp_markers]]
+hp_percent = 40.0
+label = "Defensive Systems"
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "fs_defensive_systems_ct"
+operator = "lt"
+value = 3
+
+[[boss.entities.hp_markers]]
+hp_percent = 20.0
+label = "Final Defensive Systems"
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "fs_defensive_systems_ct"
+operator = "lt"
+value = 4
+
 [[boss.entities]]
 name = "Stormcaller"
 ids = [2876438382379008, 2876464152182784, 2876485627019264, 2808831302172672]
 is_boss = true
 is_kill_target = true
+
+[[boss.entities.hp_markers]]
+hp_percent = 80.0
+label = "Defensive Systems"
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "fs_defensive_systems_ct"
+operator = "lt"
+value = 1
+
+[[boss.entities.hp_markers]]
+hp_percent = 60.0
+label = "Defensive Systems"
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "fs_defensive_systems_ct"
+operator = "lt"
+value = 2
+
+[[boss.entities.hp_markers]]
+hp_percent = 40.0
+label = "Defensive Systems"
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "fs_defensive_systems_ct"
+operator = "lt"
+value = 3
+
+[[boss.entities.hp_markers]]
+hp_percent = 20.0
+label = "Final Defensive Systems"
+
+[[boss.entities.hp_markers.conditions]]
+type = "counter_compare"
+counter_id = "fs_defensive_systems_ct"
+operator = "lt"
+value = 4
 
 [[boss.counters]]
 id = "fs_defensive_systems_ct"
