@@ -1,16 +1,502 @@
 [area]
 name = "Colossal Monolith"
-id = 3541801830973440
-
+area_id = 3541801830973440
+area_type = "operation"
 
 [[boss]]
 id = "monolith"
-name = "Colossal Monolith"
-difficulties = ["story", "veteran"]
-is_final_boss = true
+area_type = "operation"
 
 [[boss.entities]]
 name = "Colossal Monolith"
 ids = [3541140406009856, 3570951774011392, 3570947479044096, 3570956068978688]
 is_boss = true
 triggers_encounter = true
+is_kill_target = true
+
+[[boss.counters]]
+id = "monolith_pae"
+name = "Potent Ancient Energy (Purple)"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "effect_applied"
+effects = [3545285049450496]
+source = "any"
+target = "local_player"
+
+[boss.counters.reset_on]
+type = "effect_removed"
+effects = [3545285049450496]
+source = "any"
+target = "local_player"
+
+[[boss.counters]]
+id = "monolith_mae"
+name = "Mighty Ancient Energy (Green)"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "effect_applied"
+effects = [3545942179446784]
+source = "any"
+target = "local_player"
+
+[boss.counters.reset_on]
+type = "effect_removed"
+effects = [3545942179446784]
+source = "any"
+target = "local_player"
+
+[[boss.counters]]
+id = "monolith_fae"
+name = "Forceful Ancient Energy (Red)"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "effect_applied"
+effects = [3545946474414080]
+source = "any"
+target = "local_player"
+
+[boss.counters.reset_on]
+type = "effect_removed"
+effects = [3545946474414080]
+source = "any"
+target = "local_player"
+
+[[boss.counters]]
+id = "monolith_dae"
+name = "Dominant Ancient Energy (Yellow)"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "effect_applied"
+effects = [3545950769381376]
+source = "any"
+target = "local_player"
+
+[boss.counters.reset_on]
+type = "effect_removed"
+effects = [3545950769381376]
+source = "any"
+target = "local_player"
+
+[[boss.counters]]
+id = "monolith_bw"
+name = "Bite Wounds Stacks"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "ability_cast"
+abilities = []
+source = "any"
+target = "any"
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[boss.counters.track_effect_stacks]
+effects = [3546045258661888]
+target = "local_player"
+aggregation = "max"
+
+[[boss.timer]]
+id = "monolith_bw_1st"
+name = "Bite Wounds"
+duration_secs = 15.0
+color = [189, 47, 0, 255]
+icon_ability_id = 3546045258661888
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "monolith_gs_1st"
+name = "Great Slam"
+duration_secs = 18.0
+color = [209, 212, 22, 255]
+icon_ability_id = 3518046366859264
+difficulties = ["story", "veteran", "master"]
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "monolith_ts_1st"
+name = "Terrible Shout"
+duration_secs = 23.5
+color = [159, 41, 255, 255]
+icon_ability_id = 3543292184625152
+difficulties = ["veteran", "master"]
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "monolith_cotm_1st"
+name = "Curse of the Monolith"
+duration_secs = 26.5
+color = [61, 0, 173, 255]
+icon_ability_id = 3545963654283264
+difficulties = ["veteran", "master"]
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "monolith_sy_1st"
+name = "Syphon Energy"
+duration_secs = 30.0
+color = [90, 201, 216, 255]
+icon_ability_id = 3545242099777536
+difficulties = ["veteran", "master"]
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "monolith_ld_1st"
+name = "Lingering Destruction"
+duration_secs = 40.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3546341611405312
+difficulties = ["story", "veteran", "master"]
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "monolith_ep_1st"
+name = "Exposed Power"
+duration_secs = 60.0
+color = [138, 138, 138, 255]
+icon_ability_id = 3545272164548608
+difficulties = ["veteran", "master"]
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "monolith_br_1st"
+name = "Breaking the Rift"
+duration_secs = 80.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3546333021470720
+difficulties = ["veteran", "master"]
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "monolith_bw"
+name = "Bite Wounds"
+duration_secs = 19.55
+color = [189, 47, 0, 255]
+icon_ability_id = 3546045258661888
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3546045258661888]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "monolith_gs"
+name = "Great Slam"
+duration_secs = 20.0
+color = [209, 212, 22, 255]
+icon_ability_id = 3518046366859264
+difficulties = ["veteran", "master"]
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3543287889657856]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "monolith_ts"
+name = "Terrible Shout"
+duration_secs = 21.5
+color = [159, 41, 255, 255]
+icon_ability_id = 3543292184625152
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3565583064891392]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "monolith_cotm"
+name = "Curse of the Monolith"
+duration_secs = 60.0
+color = [61, 0, 173, 255]
+icon_ability_id = 3545963654283264
+difficulties = ["veteran", "master"]
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3545963654283264]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "monolith_sy"
+name = "Syphon Energy"
+duration_secs = 15.0
+color = [90, 201, 216, 255]
+icon_ability_id = 3545242099777536
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3545242099777536]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "monolith_ld"
+name = "Lingering Destruction"
+duration_secs = 30.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3546341611405312
+difficulties = ["veteran", "master"]
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3546341611405312]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "monolith_ep"
+name = "Exposed Power"
+duration_secs = 71.0
+color = [138, 138, 138, 255]
+icon_ability_id = 3545272164548608
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3545272164548608]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "monolith_br"
+name = "Breaking the Rift"
+duration_secs = 71.5
+color = [255, 0, 0, 255]
+icon_ability_id = 3546333021470720
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+show_at_secs = 15.0
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3553398242672640]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "monolith_rc"
+name = "Rift Charged"
+duration_secs = 20.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3546333021471007
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3546333021470720]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "effect_removed"
+effects = [3553398242672907]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "monolith_not_red"
+name = "Not Red"
+duration_secs = 30.0
+is_alert = true
+color = [255, 0, 0, 255]
+icon_ability_id = 3545946474414080
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3545272164548608]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "monolith_fae"
+operator = "gte"
+value = 1
+
+[[boss.timer]]
+id = "monolith_not_purple"
+name = "Not Purple"
+duration_secs = 30.0
+is_alert = true
+color = [166, 0, 255, 255]
+icon_ability_id = 3545285049450496
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3545272164548608]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "monolith_pae"
+operator = "gte"
+value = 1
+
+[[boss.timer]]
+id = "monolith_not_green"
+name = "Not Green"
+duration_secs = 30.0
+is_alert = true
+color = [50, 200, 50, 255]
+icon_ability_id = 3545942179446784
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3545272164548608]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "monolith_mae"
+operator = "gte"
+value = 1
+
+[[boss.timer]]
+id = "monolith_not_yellow"
+name = "Not Yellow"
+duration_secs = 30.0
+is_alert = true
+color = [240, 227, 86, 255]
+icon_ability_id = 3545950769381376
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3545272164548608]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "monolith_dae"
+operator = "gte"
+value = 1
+
+[[boss.timer]]
+id = "monolith_tank_swap"
+name = "Tank Swap"
+duration_secs = 30.0
+is_alert = true
+color = [255, 0, 0, 255]
+icon_ability_id = 3546045258662174
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "counter_reaches"
+counter_id = "monolith_bw"
+value = 3
+
+[[boss.timer]]
+id = "monolith_cursed"
+name = "No Heal"
+duration_secs = 30.0
+is_alert = true
+color = [187, 0, 255, 255]
+icon_ability_id = 3545963654283264
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3545963654283264]
+source = "any"
+target = "local_player"
+
+[[boss.timer]]
+id = "monolith_kite"
+name = "Kite"
+duration_secs = 30.0
+is_alert = true
+color = [255, 128, 0, 255]
+icon_ability_id = 3546341611405312
+difficulties = ["story", "veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3546341611405312]
+source = "any"
+target = "local_player"
