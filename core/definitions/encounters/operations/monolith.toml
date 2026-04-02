@@ -5,6 +5,7 @@ area_type = "operation"
 
 [[boss]]
 id = "monolith"
+name = "Colosssal Monolith"
 area_type = "operation"
 
 [[boss.entities]]
