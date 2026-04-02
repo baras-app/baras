@@ -1,35 +1,26 @@
-# v2026.3.23001 Hotfix
+# v2026.4.2
 
-- Huntmaster clears will now properly detect encounter end
+## Windows Monitor Identifier Update
 
-# v2026.3.23
+The configuration format for identifying the display monitor on Windows has changed. The old format was not stable across all hardware setups and causing overlays to appear on the incorrect monitor for many users.
 
-- Operations timer has been overhauled and now works with flashpoints and PvP areas.
-- Added parsely upload option to tag all guild members
-- Overhauled the entity shield object to be more robust and support multiple group size and difficulty configurations
-- Boss timers can now have visibility toggled via a show/hide all
-- Challenges, phases, shields, and HP markers can now be difficulty-scoped
+This is a breaking change that will require users to resave their overlay profiles to update them to the new IDs. Profiles with the old monitor identifier will display overlays on the primary monitor by default.
 
-## Definitions
+## Features
 
-- Added definition files for additional flashpoints
-- Vorgath now has phases for each demo droid
-- Replaced all God's timers with Keetsune's set of timers
-- Updated TFB (boss) to use correct IDs
+- Added ability to display HP markers conditionally
 
-## Overlays
+## Timers & Definitions
 
-- Added icon support for alerts overlay
-- Added visual previews in move mode for boss HP, timers, and alerts overlays
+- Updated Gods timers to use Keetsune's files (for real this time)
+- Updated DP timers
+- Added HP markers for EC Z&T and Tanks
+- Updated RR timers to all enabled by default
+- Added Colossal Monolith Timers
 
 ## Bugfixes
 
-- Boss definitions now properly load for second boss when fighting two bosses back to back in different areas
-- Fixed race condition causing overlays to render incorrectly when auto-unhide and profile swaps triggered simultaneously
-- Fixed issue with data explorer encounter time showing incorrect final value
-- Operations timer now respects the final boss flag
-- Overlays should now no longer flash on/off when autohide is enabled and game starts
-- Fixed issue causing Huntmaster victory trigger to fail to fire in specific edge cases
-- Challenges overlay will now clear on the next encounter
-- Fixed issue causing effects audio to fail to fire when refreshing effects with specific triggers
-- Uploading encounter data for training dummies will now capture all logs up to 5 seconds after the encounter is recorded as over.
+- Stack counts no longer display on the DoT tracker
+- Filtering the combat log for player deaths now displays up to +1.5 seconds after death
+- Effect removal triggers now process even when there's no source
+- Other minor fixes to trigger detection logic
