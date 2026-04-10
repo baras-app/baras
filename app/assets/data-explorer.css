@@ -1387,12 +1387,12 @@
   content: '\00a0'; /* Non-breaking space */
 }
 
-/* Resize handle between columns - positioned absolutely on column border */
+/* Resize handle — absolutely positioned inside each header cell (position: relative) */
 .log-resize-handle {
   position: absolute;
   top: 0;
-  right: -2px;
-  width: 4px;
+  right: 0;
+  width: 6px;
   height: 100%;
   cursor: col-resize;
   background: transparent;
