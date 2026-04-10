@@ -83,8 +83,8 @@ pub struct ActiveEffect {
     /// RGBA color for display
     pub color: [u8; 4],
 
-    /// Which overlay should display this effect
-    pub display_target: DisplayTarget,
+    /// Which overlays should display this effect (may be multiple)
+    pub display_targets: Vec<DisplayTarget>,
 
     /// Ability ID for icon lookup (may differ from game_effect_id)
     pub icon_ability_id: u64,
@@ -158,7 +158,7 @@ impl ActiveEffect {
         event_timestamp: NaiveDateTime,
         duration: Option<Duration>,
         color: [u8; 4],
-        display_target: DisplayTarget,
+        display_targets: Vec<DisplayTarget>,
         icon_ability_id: u64,
         show_at_secs: f32,
         show_icon: bool,
@@ -188,7 +188,7 @@ impl ActiveEffect {
             removed_at: None,
             stacks: 1,
             color,
-            display_target,
+            display_targets,
             icon_ability_id,
             show_at_secs,
             show_icon,

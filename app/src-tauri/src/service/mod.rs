@@ -3041,7 +3041,7 @@ async fn build_raid_frame_data(
 
     for effect in tracker.active_effects() {
         // Skip effects not destined for raid frames or already removed
-        if effect.display_target != DisplayTarget::RaidFrames || effect.removed_at.is_some() || effect.timer_expired {
+        if !effect.display_targets.contains(&DisplayTarget::RaidFrames) || effect.removed_at.is_some() || effect.timer_expired {
             continue;
         }
 

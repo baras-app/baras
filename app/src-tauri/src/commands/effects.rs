@@ -52,6 +52,7 @@ pub struct EffectListItem {
     pub show_at_secs: f32,
 
     // Display routing
+    #[serde(default, alias = "display_target")]
     pub display_targets: Vec<DisplayTarget>,
     pub icon_ability_id: Option<u64>,
     pub show_icon: bool,
@@ -102,7 +103,7 @@ impl EffectListItem {
             default_charges: def.default_charges,
             color: def.color,
             show_at_secs: def.show_at_secs,
-            display_targets: if def.display_target == DisplayTarget::None { vec![] } else { vec![def.display_target] },
+            display_targets: def.display_targets.clone(),
             icon_ability_id: def.icon_ability_id,
             show_icon: def.show_icon,
             display_source: def.display_source,
@@ -146,7 +147,7 @@ impl EffectListItem {
             alert_text: self.alert_text.clone(),
             alert_on: self.alert_on,
             audio: self.audio.clone(),
-            display_target: self.display_targets.first().copied().unwrap_or_default(),
+            display_targets: self.display_targets.clone(),
             icon_ability_id: self.icon_ability_id,
             is_affected_by_alacrity: self.is_affected_by_alacrity,
             cooldown_ready_secs: self.cooldown_ready_secs,
@@ -581,7 +582,7 @@ pub async fn preview_import_effects(
         let diff = EffectImportDiff {
             id: effect.id.clone(),
             name: effect.name.clone(),
-            display_targets: if effect.display_target == DisplayTarget::None { vec![] } else { vec![effect.display_target] },
+            display_targets: effect.display_targets.clone(),
         };
 
         if current_ids.contains(&effect.id) {

@@ -782,7 +782,7 @@ pub struct EffectListItem {
     pub show_at_secs: f32,
 
     // Display routing
-    #[serde(default)]
+    #[serde(default, alias = "display_target")]
     pub display_targets: Vec<DisplayTarget>,
     #[serde(default)]
     pub icon_ability_id: Option<u64>,
@@ -1142,6 +1142,7 @@ pub struct ImportPreview {
 pub struct EffectImportDiff {
     pub id: String,
     pub name: String,
+    #[serde(default, alias = "displayTarget")]
     pub display_targets: Vec<DisplayTarget>,
 }
 
