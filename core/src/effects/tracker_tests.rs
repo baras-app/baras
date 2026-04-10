@@ -40,7 +40,7 @@ fn make_effect(
         cooldown_ready_secs: 0.0,
         color: None,
         show_at_secs: 0.0,
-        display_target: super::definition::DisplayTarget::None,
+        display_targets: vec![],
         icon_ability_id: None,
         show_icon: true,
         display_source: false,
@@ -412,7 +412,7 @@ fn test_kolto_shell_others_does_not_create_phantom_when_local_active() {
         },
         Some(180.0),
     );
-    kolto_shell.display_target = super::definition::DisplayTarget::RaidFrames;
+    kolto_shell.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     kolto_shell.default_charges = Some(7);
     kolto_shell.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(
         effect_id,
@@ -485,7 +485,7 @@ fn test_kolto_shell_others_creates_normally_when_no_local_active() {
         },
         Some(180.0),
     );
-    kolto_shell.display_target = super::definition::DisplayTarget::RaidFrames;
+    kolto_shell.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
 
     let kolto_shell_others = make_effect(
         "kolto_shell_others",
@@ -539,7 +539,7 @@ fn test_refresh_does_not_resurrect_removed_effect() {
         },
         Some(21.0),
     );
-    kolto_probe.display_target = super::definition::DisplayTarget::RaidFrames;
+    kolto_probe.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     kolto_probe.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(
         effect_id,
     ))];
@@ -730,7 +730,7 @@ fn test_kolto_shell_others_refreshes_via_ability_activated() {
         },
         Some(180.0),
     );
-    kolto_shell_others.display_target = super::definition::DisplayTarget::RaidFrames;
+    kolto_shell_others.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     kolto_shell_others.refresh_abilities = vec![RefreshAbility::Simple(
         baras_types::AbilitySelector::Id(effect_id),
     )];
@@ -791,7 +791,7 @@ fn test_other_player_effect_late_registration_not_marked_local() {
         },
         Some(180.0),
     );
-    kolto_shell_others.display_target = super::definition::DisplayTarget::RaidFrames;
+    kolto_shell_others.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     kolto_shell_others.refresh_abilities = vec![RefreshAbility::Simple(
         baras_types::AbilitySelector::Id(effect_id),
     )];
@@ -834,7 +834,7 @@ fn test_local_player_cast_does_not_create_phantom_others_via_refresh() {
         },
         Some(180.0),
     );
-    kolto_shell.display_target = super::definition::DisplayTarget::RaidFrames;
+    kolto_shell.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     kolto_shell.refresh_abilities = vec![RefreshAbility::Simple(baras_types::AbilitySelector::Id(
         effect_id,
     ))];
@@ -849,7 +849,7 @@ fn test_local_player_cast_does_not_create_phantom_others_via_refresh() {
         },
         Some(180.0),
     );
-    kolto_shell_others.display_target = super::definition::DisplayTarget::RaidFrames;
+    kolto_shell_others.display_targets = vec![super::definition::DisplayTarget::RaidFrames];
     kolto_shell_others.refresh_abilities = vec![RefreshAbility::Simple(
         baras_types::AbilitySelector::Id(effect_id),
     )];

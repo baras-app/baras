@@ -588,7 +588,7 @@ impl EffectTracker {
                 effect.name = def.name.clone();
                 effect.display_text = def.display_text.clone().unwrap_or_else(|| def.name.clone());
                 effect.color = def.effective_color();
-                effect.display_target = def.display_target;
+                effect.display_targets = def.display_targets.clone();
                 effect.icon_ability_id = def.icon_ability_id.unwrap_or(effect.game_effect_id);
                 effect.show_at_secs = def.show_at_secs;
                 effect.show_icon = def.show_icon;
@@ -704,28 +704,28 @@ impl EffectTracker {
     pub fn raid_frame_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
         self.active_effects
             .values()
-            .filter(|e| e.display_target == DisplayTarget::RaidFrames && e.removed_at.is_none() && !e.timer_expired)
+            .filter(|e| e.display_targets.contains(&DisplayTarget::RaidFrames) && e.removed_at.is_none() && !e.timer_expired)
     }
 
     /// Get effects destined for Effects A overlay
     pub fn effects_a(&self) -> impl Iterator<Item = &ActiveEffect> {
         self.active_effects
             .values()
-            .filter(|e| e.display_target == DisplayTarget::EffectsA && e.removed_at.is_none() && !e.timer_expired)
+            .filter(|e| e.display_targets.contains(&DisplayTarget::EffectsA) && e.removed_at.is_none() && !e.timer_expired)
     }
 
     /// Get effects destined for Effects B overlay
     pub fn effects_b(&self) -> impl Iterator<Item = &ActiveEffect> {
         self.active_effects
             .values()
-            .filter(|e| e.display_target == DisplayTarget::EffectsB && e.removed_at.is_none() && !e.timer_expired)
+            .filter(|e| e.display_targets.contains(&DisplayTarget::EffectsB) && e.removed_at.is_none() && !e.timer_expired)
     }
 
     /// Get effects destined for cooldown tracker
     pub fn cooldown_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
         self.active_effects
             .values()
-            .filter(|e| e.display_target == DisplayTarget::Cooldowns && e.removed_at.is_none() && !e.timer_expired)
+            .filter(|e| e.display_targets.contains(&DisplayTarget::Cooldowns) && e.removed_at.is_none() && !e.timer_expired)
     }
 
     /// Get effects destined for DOT tracker, grouped by target entity
@@ -733,7 +733,7 @@ impl EffectTracker {
         let mut by_target: std::collections::HashMap<i64, Vec<&ActiveEffect>> =
             std::collections::HashMap::new();
         for effect in self.active_effects.values() {
-            if effect.removed_at.is_none() && !effect.timer_expired && effect.display_target == DisplayTarget::DotTracker {
+            if effect.removed_at.is_none() && !effect.timer_expired && effect.display_targets.contains(&DisplayTarget::DotTracker) {
                 by_target
                     .entry(effect.target_entity_id)
                     .or_default()
@@ -747,7 +747,7 @@ impl EffectTracker {
     pub fn effects_overlay_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
         self.active_effects
             .values()
-            .filter(|e| e.display_target == DisplayTarget::EffectsOverlay && e.removed_at.is_none() && !e.timer_expired)
+            .filter(|e| e.display_targets.contains(&DisplayTarget::EffectsOverlay) && e.removed_at.is_none() && !e.timer_expired)
     }
 
     /// Drain the queue of targets for raid frame registration attempts.
@@ -952,7 +952,7 @@ impl EffectTracker {
                 // DotTracker effects are never refreshed via EffectApplied.
                 // All refreshes go through damage-confirmed refresh (handle_damage_for_dot_refresh).
                 // EffectApplied only creates new DotTracker effects (initial application).
-                if def.display_target == DisplayTarget::DotTracker {
+                if def.display_targets.contains(&DisplayTarget::DotTracker) {
                     if let Some(c) = charges {
                         existing.set_stacks(c);
                     }
@@ -1006,7 +1006,7 @@ impl EffectTracker {
                     timestamp,
                     duration,
                     def.effective_color(),
-                    def.display_target,
+                    def.display_targets.clone(),
                     icon_ability_id,
                     def.show_at_secs,
                     def.show_icon,
@@ -1112,7 +1112,7 @@ impl EffectTracker {
             display_text: String,
             duration: Option<Duration>,
             color: [u8; 4],
-            display_target: DisplayTarget,
+            display_targets: Vec<DisplayTarget>,
             icon_ability_id: u64,
             show_at_secs: f32,
             show_icon: bool,
@@ -1170,7 +1170,7 @@ impl EffectTracker {
                     display_text: def.display_text().to_string(),
                     duration: self.effective_duration(def),
                     color: def.effective_color(),
-                    display_target: def.display_target,
+                    display_targets: def.display_targets.clone(),
                     icon_ability_id: def.icon_ability_id.unwrap_or(action_id as u64),
                     show_at_secs: def.show_at_secs,
                     show_icon: def.show_icon,
@@ -1191,7 +1191,7 @@ impl EffectTracker {
             // that will be consumed when damage from this ability lands on a target.
             // AoE refresh abilities are handled separately by the existing AoE damage
             // correlation path (setup_pending_aoe_refresh / handle_damage_for_aoe_refresh).
-            if def.display_target == DisplayTarget::DotTracker
+            if def.display_targets.contains(&DisplayTarget::DotTracker)
                 && trigger_type == RefreshTrigger::Activation
             {
                 self.pending_dot_refresh = Some(PendingDotRefresh {
@@ -1242,13 +1242,13 @@ impl EffectTracker {
                 effect.refresh(timestamp, def.duration);
 
                 // Re-register for raid frames (in case user cleared the slot)
-                if def.display_target == DisplayTarget::RaidFrames && is_player {
+                if def.display_targets.contains(&DisplayTarget::RaidFrames) && is_player {
                     self.new_targets.push(NewTargetInfo {
                         entity_id: target_id,
                         name: target_name,
                     });
                 }
-            } else if def.display_target == DisplayTarget::RaidFrames {
+            } else if def.display_targets.contains(&DisplayTarget::RaidFrames) {
                 // Don't late-register if min_stacks is required — no existing effect
                 // means 0 stacks, which can't satisfy the minimum. Only unconditional
                 // refresh abilities (Simple variant, no min_stacks) should late-register.
@@ -1269,7 +1269,7 @@ impl EffectTracker {
                     timestamp,
                     def.duration,
                     def.color,
-                    def.display_target,
+                    def.display_targets.clone(),
                     def.icon_ability_id,
                     def.show_at_secs,
                     def.show_icon,
@@ -1288,7 +1288,7 @@ impl EffectTracker {
                 self.ticking_count += 1;
 
                 // Queue target for raid frame registration (only players)
-                if def.display_target == DisplayTarget::RaidFrames && is_player {
+                if def.display_targets.contains(&DisplayTarget::RaidFrames) && is_player {
                     self.new_targets.push(NewTargetInfo {
                         entity_id: target_id,
                         name: target_name,
@@ -1441,7 +1441,7 @@ impl EffectTracker {
             .definitions
             .find_refreshable_by(ability_id as u64, None)
             .into_iter()
-            .filter(|def| def.display_target == DisplayTarget::DotTracker)
+            .filter(|def| def.display_targets.contains(&DisplayTarget::DotTracker))
             .map(|def| (def.id.clone(), self.effective_duration(def)))
             .collect();
 
@@ -1588,7 +1588,7 @@ impl EffectTracker {
                     timestamp,
                     duration,
                     def.effective_color(),
-                    def.display_target,
+                    def.display_targets.clone(),
                     icon_ability_id,
                     def.show_at_secs,
                     def.show_icon,
@@ -1719,7 +1719,7 @@ impl EffectTracker {
                     timestamp,
                     duration,
                     def.effective_color(),
-                    def.display_target,
+                    def.display_targets.clone(),
                     icon_ability_id,
                     def.show_at_secs,
                     def.show_icon,
@@ -1802,7 +1802,7 @@ impl EffectTracker {
             if def.is_effect_applied_trigger() {
                 // Mark existing effect as removed (normal behavior)
                 // Skip if ignore_effect_removed OR cooldowns (cooldowns always use timer-based expiry)
-                let is_cooldown = def.display_target == DisplayTarget::Cooldowns;
+                let is_cooldown = def.display_targets.contains(&DisplayTarget::Cooldowns);
                 if !def.ignore_effect_removed
                     && !is_cooldown
                     && let Some(effect) = self.active_effects.get_mut(&key)
@@ -1849,7 +1849,7 @@ impl EffectTracker {
                     timestamp,
                     duration,
                     def.effective_color(),
-                    def.display_target,
+                    def.display_targets.clone(),
                     icon_ability_id,
                     def.show_at_secs,
                     def.show_icon,
