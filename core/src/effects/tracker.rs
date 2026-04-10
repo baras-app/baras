@@ -743,6 +743,24 @@ impl EffectTracker {
         by_target
     }
 
+    /// Get effects destined for the boss HP overlay, grouped by resolved target name.
+    pub fn boss_health_effects_by_name(&self) -> std::collections::HashMap<String, Vec<&ActiveEffect>> {
+        let mut by_name: std::collections::HashMap<String, Vec<&ActiveEffect>> =
+            std::collections::HashMap::new();
+        for effect in self.active_effects.values() {
+            if effect.removed_at.is_none()
+                && !effect.timer_expired
+                && effect.display_targets.contains(&DisplayTarget::BossHealth)
+            {
+                by_name
+                    .entry(crate::context::resolve(effect.target_name).to_string())
+                    .or_default()
+                    .push(effect);
+            }
+        }
+        by_name
+    }
+
     /// Get effects destined for generic effects overlay (legacy)
     pub fn effects_overlay_effects(&self) -> impl Iterator<Item = &ActiveEffect> {
         self.active_effects

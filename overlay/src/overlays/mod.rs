@@ -25,7 +25,7 @@ mod raid;
 mod timers;
 
 pub use alerts::{AlertEntry, AlertsData, AlertsOverlay};
-pub use boss_health::{BossHealthData, BossHealthOverlay};
+pub use boss_health::{BossEffectIcon, BossHealthData, BossHealthOverlay};
 pub use combat_time::{CombatTimeConfig, CombatTimeData, CombatTimeOverlay};
 pub use challenges::{ChallengeData, ChallengeEntry, ChallengeOverlay, PlayerContribution};
 pub use cooldowns::{CooldownConfig, CooldownData, CooldownEntry, CooldownOverlay};

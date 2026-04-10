@@ -43,6 +43,8 @@ pub enum DisplayTarget {
     Cooldowns,
     /// Show on multi-target DOT tracker (DOTs on enemies)
     DotTracker,
+    /// Show on boss HP overlay (icons below the relevant boss bar)
+    BossHealth,
     /// Show on generic effects countdown overlay (legacy)
     EffectsOverlay,
 }
