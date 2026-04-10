@@ -309,6 +309,7 @@ ids = [3431605855059968]
 is_boss = true
 triggers_encounter = true
 is_kill_target = false    # Core is the actual kill target
+pushes_at = 10.0
 
 [[boss.entities.hp_markers]]
 hp_percent = 65.0
@@ -319,7 +320,7 @@ hp_percent = 28.0
 label = "Floor 3"
 
 [[boss.entities.hp_markers]]
-hp_percent = 9.0
+hp_percent = 10.0
 label = "Core Burn"
 
 [[boss.entities]]
