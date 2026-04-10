@@ -798,10 +798,10 @@ fn EffectImportPreviewModal(
                                         }
                                         td { style: "padding: 3px 8px;",
                                             {
-                                                let targets_label = if effect.display_targets.is_empty() {
-                                                    "None".to_string()
-                                                } else {
-                                                    effect.display_targets.iter().map(|t| t.label()).collect::<Vec<_>>().join(", ")
+                                                let targets_label = match effect.display_targets.len() {
+                                                    0 => "None".to_string(),
+                                                    1 => effect.display_targets[0].label().to_string(),
+                                                    n => format!("⊞ {n} targets"),
                                                 };
                                                 rsx! { span { class: "effect-target-badge", "{targets_label}" } }
                                             }
@@ -921,10 +921,10 @@ fn EffectRow(
                         span { class: "tag tag-alert", "Alert" }
                     } else {
                         {
-                            let targets_label = if effect.display_targets.is_empty() {
-                                "None".to_string()
-                            } else {
-                                effect.display_targets.iter().map(|t| t.label()).collect::<Vec<_>>().join(", ")
+                            let targets_label = match effect.display_targets.len() {
+                                0 => "None".to_string(),
+                                1 => effect.display_targets[0].label().to_string(),
+                                n => format!("⊞ {n} targets"),
                             };
                             rsx! { span { class: "effect-target-badge", "{targets_label}" } }
                         }
