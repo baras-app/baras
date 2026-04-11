@@ -14,6 +14,7 @@ use tokio::sync::RwLock;
 
 use baras_core::context::{AppConfig, DirectoryIndex, LogAreaCache, ParsingSession};
 use baras_core::query::QueryContext;
+use baras_types::AudioSettings;
 
 // ─── Centralized Auto-Hide State ─────────────────────────────────────────────
 
@@ -172,11 +173,16 @@ pub struct SharedState {
 
     /// Operation timer state (persistent across encounters, lives in service layer)
     pub operation_timer: Mutex<crate::service::OperationTimerState>,
+
+    /// Live audio settings — updated when config changes so AudioService always
+    /// uses the current volume without requiring a restart
+    pub audio_settings: Arc<RwLock<AudioSettings>>,
 }
 
 impl SharedState {
     pub fn new(config: AppConfig, directory_index: DirectoryIndex) -> Self {
         let raid_slots = config.overlay_settings.raid_overlay.total_slots();
+        let audio_settings = Arc::new(RwLock::new(config.audio.clone()));
         Self {
             config: RwLock::new(config),
             directory_index: RwLock::new(directory_index),
@@ -205,6 +211,8 @@ impl SharedState {
             area_cache: RwLock::new(LogAreaCache::new()),
             // Operation timer (defaults to stopped/empty)
             operation_timer: Mutex::new(crate::service::OperationTimerState::default()),
+            // Audio settings — kept in sync with config so AudioService reads live values
+            audio_settings,
         }
     }
 

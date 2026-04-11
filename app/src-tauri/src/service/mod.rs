@@ -743,12 +743,9 @@ impl CombatService {
                     .unwrap_or_else(|| PathBuf::from("."))
                     .join("core/definitions/sounds")
             });
-        let audio_settings = Arc::new(tokio::sync::RwLock::new(
-            shared.config.blocking_read().audio.clone(),
-        ));
         let audio_service = AudioService::new(
             audio_rx,
-            audio_settings,
+            shared.audio_settings.clone(),
             user_sounds_dir,
             bundled_sounds_dir,
         );
