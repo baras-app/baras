@@ -26,9 +26,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Requirements**: DATA-01, DATA-02, DATA-03, DATA-04, DATA-05
 **Success Criteria** (what must be TRUE):
   1. `TimerDisplayTarget::AbilityQueue` variant exists and `cargo check -p baras-core` passes
-  2. A timer with `gcd_secs` set causes an `ActiveGcd` entry to be pushed to `active_gcds` when the timer fires, and the entry is pruned when it expires
+  2. A timer with `gcd_secs` set causes `active_gcd: Option<ActiveGcd>` to be set to `Some(ActiveGcd)` when the timer fires (replacing any existing), and pruned to `None` when it expires
   3. A timer with `queue_on_expire = true` remains alive in manager state with `is_queued = true` after its duration elapses, rather than being removed
-  4. `clear_combat_timers` clears `active_gcds` in the same pass as active timers (GCD vec not leaked across combats)
+  4. `clear_combat_timers` clears `active_gcd` to `None` in the same pass as active timers (GCD state not leaked across combats)
   5. `queue_remove_trigger` field exists on `TimerDefinition` with `#[serde(default)]` and evaluation is stubbed as a no-op (ordering pitfall deferred safely)
 **Plans:** 2 plans
 Plans:
