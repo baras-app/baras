@@ -79,6 +79,12 @@ pub struct TimerManager {
     /// Timers that were canceled during the current signal (cleared per-signal).
     canceled_this_tick: Vec<String>,
 
+    /// Timers that transitioned to queued/READY during the current signal.
+    queued_this_tick: Vec<String>,
+
+    /// Timers removed from queued state by queue_remove_trigger during the current signal.
+    removed_queued_this_tick: Vec<String>,
+
     /// Batch-level accumulation of expired timer IDs across all signals in a
     /// `handle_signals` or `tick` call. Read by the timer feedback loop.
     batch_expired: Vec<String>,
@@ -88,6 +94,12 @@ pub struct TimerManager {
 
     /// Batch-level accumulation of canceled timer IDs.
     batch_canceled: Vec<String>,
+
+    /// Batch-level accumulation of timers that transitioned to queued/READY state.
+    batch_queued: Vec<String>,
+
+    /// Batch-level accumulation of timers removed from queued state.
+    batch_removed_queued: Vec<String>,
 
     /// Whether we're currently in combat
     pub(super) in_combat: bool,
@@ -155,9 +167,13 @@ impl TimerManager {
             expired_this_tick: Vec::new(),
             started_this_tick: Vec::new(),
             canceled_this_tick: Vec::new(),
+            queued_this_tick: Vec::new(),
+            removed_queued_this_tick: Vec::new(),
             batch_expired: Vec::new(),
             batch_started: Vec::new(),
             batch_canceled: Vec::new(),
+            batch_queued: Vec::new(),
+            batch_removed_queued: Vec::new(),
             in_combat: false,
             combat_start_time: None,
             last_timestamp: None,
@@ -452,9 +468,13 @@ impl TimerManager {
             self.started_this_tick.clear();
             self.canceled_this_tick.clear();
             self.expired_this_tick.clear();
+            self.queued_this_tick.clear();
+            self.removed_queued_this_tick.clear();
             self.batch_expired.clear();
             self.batch_started.clear();
             self.batch_canceled.clear();
+            self.batch_queued.clear();
+            self.batch_removed_queued.clear();
 
             // Evaluate combat-time triggers (CombatStart + TimeElapsed) so they
             // fire even during idle periods (no combat events arriving).
@@ -481,6 +501,8 @@ impl TimerManager {
             self.batch_expired.extend(self.expired_this_tick.drain(..));
             self.batch_started.extend(self.started_this_tick.drain(..));
             self.batch_canceled.extend(self.canceled_this_tick.drain(..));
+            self.batch_queued.extend(self.queued_this_tick.drain(..));
+            self.batch_removed_queued.extend(self.removed_queued_this_tick.drain(..));
         }
     }
 
@@ -703,6 +725,16 @@ impl TimerManager {
     /// Get timer IDs that were canceled across the entire `handle_signals` batch.
     pub fn batch_canceled_timer_ids(&self) -> &[String] {
         &self.batch_canceled
+    }
+
+    /// Get timer IDs that transitioned to queued/READY state across the batch.
+    pub fn batch_queued_timer_ids(&self) -> &[String] {
+        &self.batch_queued
+    }
+
+    /// Get timer IDs that were cleared from queued state via queue_remove_trigger.
+    pub fn batch_removed_queued_timer_ids(&self) -> &[String] {
+        &self.batch_removed_queued
     }
 
     /// Check if a timer definition is active for current encounter context.
@@ -1048,7 +1080,8 @@ impl TimerManager {
 
         for key in keys {
             self.active_timers.remove(&key);
-            self.canceled_this_tick.push(key.definition_id);
+            self.canceled_this_tick.push(key.definition_id.clone());
+            self.removed_queued_this_tick.push(key.definition_id);
         }
     }
 
@@ -1149,6 +1182,7 @@ impl TimerManager {
                 // Fire alerts and chains on the transition tick BEFORE marking queued
                 if timer.queue_on_expire {
                     self.expired_this_tick.push(key.definition_id.clone());
+                    self.queued_this_tick.push(key.definition_id.clone());
 
                     let should_fire_audio = !timer.role_hidden && timer.audio_enabled && timer.audio_file.is_some() && timer.audio_offset == 0;
                     let should_fire_expire_alert = !timer.role_hidden && timer.alert_on_expire;
@@ -1372,12 +1406,16 @@ impl SignalHandler for TimerManager {
         self.batch_expired.clear();
         self.batch_started.clear();
         self.batch_canceled.clear();
+        self.batch_queued.clear();
+        self.batch_removed_queued.clear();
         for signal in signals {
             self.handle_signal(signal, encounter);
             // Accumulate per-signal events into batch-level vectors
             self.batch_expired.extend(self.expired_this_tick.drain(..));
             self.batch_started.extend(self.started_this_tick.drain(..));
             self.batch_canceled.extend(self.canceled_this_tick.drain(..));
+            self.batch_queued.extend(self.queued_this_tick.drain(..));
+            self.batch_removed_queued.extend(self.removed_queued_this_tick.drain(..));
         }
     }
 

@@ -478,11 +478,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut expired_timer_ids: Vec<String> = Vec::new();
         let mut canceled_timer_ids: Vec<String> = Vec::new();
         let mut started_timer_ids: Vec<String> = Vec::new();
+        let mut queued_timer_ids: Vec<String> = Vec::new();
+        let mut removed_queued_timer_ids: Vec<String> = Vec::new();
 
         timer_manager.handle_signals(&signals, encounter);
         expired_timer_ids.extend(timer_manager.batch_expired_timer_ids().iter().cloned());
         canceled_timer_ids.extend(timer_manager.batch_canceled_timer_ids().iter().cloned());
         started_timer_ids.extend(timer_manager.batch_started_timer_ids().iter().cloned());
+        queued_timer_ids.extend(timer_manager.batch_queued_timer_ids().iter().cloned());
+        removed_queued_timer_ids.extend(timer_manager.batch_removed_queued_timer_ids().iter().cloned());
 
         // ─── Step 2: Timer feedback loop (mirrors live process_timer_feedback_loop) ───
         // Timer events → counter/phase triggers → dispatch new signals → repeat until quiescent.
@@ -556,6 +560,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 expired_timer_ids.extend(iter_expired.iter().cloned());
                 started_timer_ids.extend(iter_started.iter().cloned());
                 canceled_timer_ids.extend(iter_canceled.iter().cloned());
+                queued_timer_ids.extend(timer_manager.batch_queued_timer_ids().iter().cloned());
+                removed_queued_timer_ids.extend(timer_manager.batch_removed_queued_timer_ids().iter().cloned());
 
                 // Collect feedback signals for output
                 feedback_signals.extend(new_signals);
@@ -744,8 +750,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // ─── Step 4: Output timer events (after state changes) ───
 
-        // Log expired timers (use snapshotted name → definition name → raw ID)
+        // Build sets for routing: queued timers show as READY, not EXPIRED;
+        // removed-queued timers show as QUEUE CLEARED, not CANCELED.
+        let queued_set: std::collections::HashSet<&str> =
+            queued_timer_ids.iter().map(|s| s.as_str()).collect();
+        let removed_queued_set: std::collections::HashSet<&str> =
+            removed_queued_timer_ids.iter().map(|s| s.as_str()).collect();
+
+        // Log expired timers — skip those that went to READY (handled below)
         for expired_id in &expired_timer_ids {
+            if queued_set.contains(expired_id.as_str()) {
+                continue;
+            }
             let name = timer_names
                 .get(expired_id)
                 .map(|s| s.as_str())
@@ -754,14 +770,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             cli.timer_expire(event.timestamp, name, expired_id);
         }
 
-        // Log canceled timers (use snapshotted name → definition name → raw ID)
+        // Log timers that transitioned to READY state
+        for queued_id in &queued_timer_ids {
+            let name = timer_names
+                .get(queued_id)
+                .map(|s| s.as_str())
+                .or_else(|| timer_manager.definition_name(queued_id))
+                .unwrap_or(queued_id);
+            cli.timer_queued(event.timestamp, name, queued_id);
+        }
+
+        // Log canceled timers — skip those cleared from queue (handled below)
         for canceled_id in &canceled_timer_ids {
+            if removed_queued_set.contains(canceled_id.as_str()) {
+                continue;
+            }
             let name = timer_names
                 .get(canceled_id)
                 .map(|s| s.as_str())
                 .or_else(|| timer_manager.definition_name(canceled_id))
                 .unwrap_or(canceled_id);
             cli.timer_cancel(event.timestamp, name, canceled_id);
+        }
+
+        // Log timers cleared from READY state by queue_remove_trigger
+        for removed_id in &removed_queued_timer_ids {
+            let name = timer_names
+                .get(removed_id)
+                .map(|s| s.as_str())
+                .or_else(|| timer_manager.definition_name(removed_id))
+                .unwrap_or(removed_id);
+            cli.timer_queue_cleared(event.timestamp, name, removed_id);
         }
 
         // Log new/restarted timers

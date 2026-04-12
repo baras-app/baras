@@ -52,6 +52,8 @@ pub struct CliOutput {
     timers_started: u32,
     timers_expired: u32,
     timers_canceled: u32,
+    timers_queued: u32,
+    timers_queue_cleared: u32,
     alerts_fired: u32,
     phase_changes: u32,
     counter_changes: u32,
@@ -83,6 +85,8 @@ impl CliOutput {
             timers_started: 0,
             timers_expired: 0,
             timers_canceled: 0,
+            timers_queued: 0,
+            timers_queue_cleared: 0,
             alerts_fired: 0,
             phase_changes: 0,
             counter_changes: 0,
@@ -174,6 +178,14 @@ impl CliOutput {
         }
     }
 
+    fn magenta(&self, text: &str) -> String {
+        if self.use_colors {
+            format!("\x1b[35m{}\x1b[0m", text)
+        } else {
+            text.to_string()
+        }
+    }
+
     fn dim(&self, text: &str) -> String {
         if self.use_colors {
             format!("\x1b[2m{}\x1b[0m", text)
@@ -244,6 +256,36 @@ impl CliOutput {
         let time_str = self.format_time(time);
         let arrow = self.dim("x--");
         let label = self.dim("TIMER CANCEL:");
+        let id = self.dim(&format!("[{}]", timer_id));
+
+        println!("[{}] {} {} \"{}\" {}", time_str, arrow, label, name, id);
+    }
+
+    /// Log timer transitioning to queued/READY state
+    pub fn timer_queued(&mut self, time: NaiveDateTime, name: &str, timer_id: &str) {
+        self.timers_queued += 1;
+        if self.level < OutputLevel::Timers || !self.should_output() {
+            return;
+        }
+
+        let time_str = self.format_time(time);
+        let arrow = self.magenta("~~>");
+        let label = self.magenta("TIMER READY:");
+        let id = self.dim(&format!("[{}]", timer_id));
+
+        println!("[{}] {} {} \"{}\" {}", time_str, arrow, label, name, id);
+    }
+
+    /// Log queued timer cleared by queue_remove_trigger
+    pub fn timer_queue_cleared(&mut self, time: NaiveDateTime, name: &str, timer_id: &str) {
+        self.timers_queue_cleared += 1;
+        if self.level < OutputLevel::Timers || !self.should_output() {
+            return;
+        }
+
+        let time_str = self.format_time(time);
+        let arrow = self.dim("x~~");
+        let label = self.dim("QUEUE CLEARED:");
         let id = self.dim(&format!("[{}]", timer_id));
 
         println!("[{}] {} {} \"{}\" {}", time_str, arrow, label, name, id);
@@ -489,6 +531,22 @@ impl CliOutput {
         println!("Timers Started:   {}", self.timers_started);
         println!("Timers Expired:   {}", self.timers_expired);
         println!("Timers Canceled:  {}", self.timers_canceled);
+        println!(
+            "Timers Queued:    {}",
+            if self.timers_queued > 0 {
+                self.magenta(&self.timers_queued.to_string())
+            } else {
+                "0".to_string()
+            }
+        );
+        println!(
+            "Queue Cleared:    {}",
+            if self.timers_queue_cleared > 0 {
+                self.timers_queue_cleared.to_string()
+            } else {
+                "0".to_string()
+            }
+        );
         println!(
             "Active at End:    {}",
             if active_at_end > 0 {
