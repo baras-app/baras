@@ -43,6 +43,10 @@ fn make_timer(id: &str, name: &str, trigger: TimerTrigger, duration: f32) -> Tim
         phases: Vec::new(),
         counter_condition: None,
         per_target: true, // Tests use per-target behavior by default
+        gcd_secs: None,
+        queue_on_expire: false,
+        queue_priority: 0,
+        queue_remove_trigger: None,
     }
 }
 
@@ -1204,7 +1208,7 @@ fn test_timer_refresh_resets_expiration() {
     );
 
     assert_eq!(manager.active_timers().len(), 1);
-    let initial_remaining = manager.active_timers()[0].remaining_secs(start_time);
+    let _initial_remaining = manager.active_timers()[0].remaining_secs(start_time);
 
     // Advance 3 seconds
     let t1 = start_time + chrono::Duration::seconds(3);

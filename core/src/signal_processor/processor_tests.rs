@@ -640,6 +640,10 @@ fn test_bestia_complete_encounter() {
             counter_condition: None,
             per_target: bt.per_target,
             icon_ability_id: None,
+            gcd_secs: None,
+            queue_on_expire: false,
+            queue_priority: 0,
+            queue_remove_trigger: None,
         })
         .collect();
 

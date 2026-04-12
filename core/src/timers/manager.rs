@@ -810,6 +810,8 @@ impl TimerManager {
             alert_on_expire,
             def.alert_text.clone(),
             role_hidden,
+            def.queue_on_expire,
+            def.queue_priority,
         );
         self.active_timers.insert(key, timer);
 

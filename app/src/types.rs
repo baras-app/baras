@@ -664,7 +664,6 @@ pub enum DisplayTarget {
     EffectsB,
     Cooldowns,
     DotTracker,
-    BossHealth,
     EffectsOverlay,
 }
 
@@ -677,7 +676,6 @@ impl DisplayTarget {
             Self::EffectsB => "Effects B",
             Self::Cooldowns => "Cooldowns",
             Self::DotTracker => "DOT Tracker",
-            Self::BossHealth => "Boss HP Bar",
             Self::EffectsOverlay => "Effects Overlay",
         }
     }
@@ -690,7 +688,6 @@ impl DisplayTarget {
             Self::EffectsB,
             Self::Cooldowns,
             Self::DotTracker,
-            Self::BossHealth,
         ]
     }
 }
@@ -758,8 +755,8 @@ pub struct EffectListItem {
     pub show_at_secs: f32,
 
     // Display routing
-    #[serde(default, alias = "display_target")]
-    pub display_targets: Vec<DisplayTarget>,
+    #[serde(default)]
+    pub display_target: DisplayTarget,
     #[serde(default)]
     pub icon_ability_id: Option<u64>,
     #[serde(default = "crate::utils::default_true")]
@@ -1115,8 +1112,7 @@ pub struct ImportPreview {
 pub struct EffectImportDiff {
     pub id: String,
     pub name: String,
-    #[serde(default, alias = "displayTarget")]
-    pub display_targets: Vec<DisplayTarget>,
+    pub display_target: DisplayTarget,
 }
 
 /// Effect import preview response

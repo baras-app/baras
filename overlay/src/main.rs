@@ -26,8 +26,8 @@ mod examples {
     use baras_core::encounter::ActiveShield;
     use baras_core::OverlayHealthEntry;
     use baras_overlay::{
-        colors, BossEffectIcon, BossHealthData, BossHealthOverlay, ChallengeData, ChallengeEntry,
-        ChallengeOverlay, Color, InteractionMode, MetricEntry, MetricOverlay, Overlay, OverlayConfig,
+        colors, BossHealthData, BossHealthOverlay, ChallengeData, ChallengeEntry, ChallengeOverlay,
+        Color, InteractionMode, MetricEntry, MetricOverlay, Overlay, OverlayConfig,
         PlayerContribution, PlayerRole, RaidEffect, RaidFrame, RaidGridLayout, RaidOverlay,
         RaidOverlayConfig, TimerData, TimerEntry, TimerOverlay,
     };
@@ -1443,7 +1443,6 @@ mod examples {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: three_bosses.clone(),
-                        ..Default::default()
                     });
                     overlays.push(overlay);
                 }
@@ -1481,7 +1480,6 @@ mod examples {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: entries.to_vec(),
-                        ..Default::default()
                     });
                     overlays.push(overlay);
                 }
@@ -1512,7 +1510,6 @@ mod examples {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: markers_and_shields,
-                        ..Default::default()
                     });
                     overlays.push(overlay);
                 }
@@ -1520,166 +1517,6 @@ mod examples {
                     tracing::error!(error = %e, "Failed to create markers/shields overlay");
                     return;
                 }
-            }
-        }
-
-        // ── Row 4: Boss HP icons demo ──────────────────────────────────
-        // Col 0: icons only (no marker text)
-        // Col 1: icons + marker text on same row
-        // Col 2: two bosses, each with their own icon set
-        {
-            // Reusable helper: a colored-square icon (no real image data)
-            let make_icon = |name: &str, color: [u8; 4], remaining: f32, total: f32| BossEffectIcon {
-                effect_id: 0,
-                icon_ability_id: 0,
-                name: name.to_string(),
-                remaining_secs: remaining,
-                total_secs: total,
-                color,
-                show_icon: false, // no image data in test harness — renders colored square
-                icon: None,
-            };
-
-            // Col 0: single boss, three icons, no marker
-            let col0_icons = {
-                let mut m = std::collections::HashMap::new();
-                m.insert(
-                    "Revan".to_string(),
-                    vec![
-                        make_icon("Affliction", [200, 60,  60,  255], 8.5, 15.0),
-                        make_icon("Crush Mind", [60,  120, 220, 255], 3.2, 12.0),
-                        make_icon("Slow",       [180, 100, 20,  255], 1.8, 6.0),
-                    ],
-                );
-                m
-            };
-            match BossHealthOverlay::new(
-                OverlayConfig { x: 50, y: 930, width: 280, height: 120,
-                    namespace: "baras-boss-icons-only".to_string(),
-                    click_through: true, target_monitor_id: None },
-                BossHealthConfig { dynamic_background: true, ..Default::default() },
-                180,
-            ) {
-                Ok(mut overlay) => {
-                    overlay.set_data(BossHealthData {
-                        entries: vec![OverlayHealthEntry {
-                            name: "Revan".to_string(),
-                            current: 4_800_000,
-                            max: 8_000_000,
-                            first_seen_at: None,
-                            target_name: None,
-                            hp_markers: vec![],
-                            active_shields: vec![],
-                            pushes_at: None,
-                        }],
-                        boss_icons: col0_icons,
-                    });
-                    overlays.push(overlay);
-                }
-                Err(e) => { tracing::error!(%e, "Failed to create icons-only overlay"); return; }
-            }
-
-            // Col 1: single boss, two icons + active marker text on same row
-            let col1_icons = {
-                let mut m = std::collections::HashMap::new();
-                m.insert(
-                    "Styrak".to_string(),
-                    vec![
-                        make_icon("Nightmare", [220, 40, 200, 255], 11.0, 20.0),
-                        make_icon("Torment",   [60, 200, 80,  255],  2.5, 10.0),
-                    ],
-                );
-                m
-            };
-            match BossHealthOverlay::new(
-                OverlayConfig { x: 350, y: 930, width: 280, height: 120,
-                    namespace: "baras-boss-icons-marker".to_string(),
-                    click_through: true, target_monitor_id: None },
-                BossHealthConfig { dynamic_background: true, ..Default::default() },
-                180,
-            ) {
-                Ok(mut overlay) => {
-                    overlay.set_data(BossHealthData {
-                        entries: vec![OverlayHealthEntry {
-                            name: "Styrak".to_string(),
-                            current: 5_200_000,
-                            max: 8_000_000,
-                            first_seen_at: None,
-                            target_name: None,
-                            hp_markers: vec![HpMarker {
-                                hp_percent: 50.0,
-                                label: "Burn".to_string(),
-                                difficulties: vec![], group_size: None, conditions: vec![],
-                            }],
-                            active_shields: vec![],
-                            pushes_at: None,
-                        }],
-                        boss_icons: col1_icons,
-                    });
-                    overlays.push(overlay);
-                }
-                Err(e) => { tracing::error!(%e, "Failed to create icons+marker overlay"); return; }
-            }
-
-            // Col 2: two bosses, each with different icon sets
-            let col2_icons = {
-                let mut m = std::collections::HashMap::new();
-                m.insert(
-                    "Calphayus".to_string(),
-                    vec![
-                        make_icon("Time Warp", [60,  180, 220, 255], 14.0, 20.0),
-                        make_icon("Doom",      [220,  60,  60, 255],  5.5, 15.0),
-                        make_icon("Seal",      [160,  80, 220, 255],  0.9,  8.0),
-                    ],
-                );
-                m.insert(
-                    "Raptus".to_string(),
-                    vec![
-                        make_icon("Whirlwind", [220, 160, 40, 255], 7.0, 12.0),
-                    ],
-                );
-                m
-            };
-            match BossHealthOverlay::new(
-                OverlayConfig { x: 650, y: 930, width: 280, height: 200,
-                    namespace: "baras-boss-icons-multi".to_string(),
-                    click_through: true, target_monitor_id: None },
-                BossHealthConfig { dynamic_background: true, ..Default::default() },
-                180,
-            ) {
-                Ok(mut overlay) => {
-                    overlay.set_data(BossHealthData {
-                        entries: vec![
-                            OverlayHealthEntry {
-                                name: "Calphayus".to_string(),
-                                current: 3_000_000,
-                                max: 8_000_000,
-                                first_seen_at: None,
-                                target_name: None,
-                                hp_markers: vec![HpMarker {
-                                    hp_percent: 30.0,
-                                    label: "Enrage".to_string(),
-                                    difficulties: vec![], group_size: None, conditions: vec![],
-                                }],
-                                active_shields: vec![],
-                                pushes_at: None,
-                            },
-                            OverlayHealthEntry {
-                                name: "Raptus".to_string(),
-                                current: 6_500_000,
-                                max: 8_000_000,
-                                first_seen_at: None,
-                                target_name: None,
-                                hp_markers: vec![],
-                                active_shields: vec![],
-                                pushes_at: None,
-                            },
-                        ],
-                        boss_icons: col2_icons,
-                    });
-                    overlays.push(overlay);
-                }
-                Err(e) => { tracing::error!(%e, "Failed to create multi-boss icons overlay"); return; }
             }
         }
 
@@ -1693,8 +1530,6 @@ mod examples {
         println!("│  Row 2: Content-aware BG with 1 | 2 | 3 bosses (280x300)   │");
         println!("│         Background shrinks to fit content height!            │");
         println!("│  Row 3: HP markers + shields (300x350)                      │");
-        println!("│  Row 4: Effect icons (y=930) — icons only | icons+marker |  │");
-        println!("│         two bosses with separate icon sets                   │");
         println!("├─────────────────────────────────────────────────────────────┤");
         println!("│  All overlays in click-through mode (no move borders)       │");
         println!("├─────────────────────────────────────────────────────────────┤");

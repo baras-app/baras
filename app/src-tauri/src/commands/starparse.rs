@@ -388,7 +388,7 @@ fn convert_to_effect(xml: &XmlConfigTimer) -> EffectDefinition {
         cooldown_ready_secs: 0.0,
         color,
         show_at_secs: 0.0,
-        display_targets: if is_alert { vec![] } else { vec![DisplayTarget::EffectsA] },
+        display_target: if is_alert { DisplayTarget::None } else { DisplayTarget::EffectsA },
         icon_ability_id: None,
         show_icon: true,
         display_source: false,

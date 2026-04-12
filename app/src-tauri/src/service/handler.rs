@@ -184,9 +184,6 @@ impl ServiceHandle {
         let new_alacrity = config.alacrity_percent;
         let new_latency = config.latency_ms;
 
-        // Keep audio settings in sync so AudioService uses the live volume
-        *self.shared.audio_settings.write().await = config.audio.clone();
-
         *self.shared.config.write().await = config.clone();
         if let Err(e) = config.save() {
             tracing::error!(error = %e, "Failed to save configuration");
