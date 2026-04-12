@@ -55,6 +55,42 @@ pub struct TimerData {
     pub entries: Vec<TimerEntry>,
 }
 
+/// A single entry in the ability queue overlay.
+///
+/// - GCD entries: `is_pinned = true` → tier-1 accent bar (pinned top)
+/// - Queued/ready entries: `is_queued = true` → tier-2 "READY" label
+/// - Active countdown entries: both flags false → tier-3 progress bar
+#[derive(Debug, Clone)]
+pub struct AbilityQueueEntry {
+    pub name: String,
+    pub remaining_secs: f32,
+    pub total_secs: f32,
+    pub color: [u8; 4],
+    /// Sort priority for tier-2 queued entries (higher = higher on screen).
+    pub queue_priority: u8,
+    /// True for the synthetic GCD entry — pinned at tier 1.
+    pub is_pinned: bool,
+    /// True when the timer has expired and is held in ready/queued state.
+    pub is_queued: bool,
+    pub icon_ability_id: Option<u64>,
+    pub icon: Option<Arc<(u32, u32, Vec<u8>)>>,
+}
+
+impl AbilityQueueEntry {
+    pub fn progress(&self) -> f32 {
+        if self.total_secs <= 0.0 {
+            return 0.0;
+        }
+        (self.remaining_secs / self.total_secs).clamp(0.0, 1.0)
+    }
+}
+
+/// Snapshot delivered to the Ability Queue overlay on every timer tick.
+#[derive(Debug, Clone, Default)]
+pub struct AbilityQueueData {
+    pub entries: Vec<AbilityQueueEntry>,
+}
+
 /// Base dimensions for scaling calculations
 const BASE_WIDTH: f32 = 220.0;
 const BASE_HEIGHT: f32 = 150.0;

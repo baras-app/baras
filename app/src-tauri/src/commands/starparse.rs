@@ -355,6 +355,10 @@ fn convert_to_boss_timer(xml: &XmlConfigTimer) -> BossTimerDefinition {
         audio: convert_audio(xml),
         per_target: false,
         roles: Vec::new(),
+        gcd_secs: None,
+        queue_on_expire: false,
+        queue_priority: 0,
+        queue_remove_trigger: None,
     }
 }
 

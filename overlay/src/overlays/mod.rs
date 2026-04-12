@@ -9,6 +9,7 @@
 //! All overlays implement the `Overlay` trait, which provides a unified
 //! interface for the application layer to interact with any overlay type.
 
+mod ability_queue;
 mod alerts;
 mod boss_health;
 mod challenges;
@@ -56,7 +57,8 @@ pub use raid::{
     RaidOverlayConfig,
     SwapState,
 };
-pub use timers::{TimerData, TimerEntry, TimerOverlay};
+pub use ability_queue::{AbilityQueueConfig, AbilityQueueOverlay};
+pub use timers::{AbilityQueueData, AbilityQueueEntry, TimerData, TimerEntry, TimerOverlay};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registry Action (for raid overlay → service communication)
@@ -117,6 +119,8 @@ pub enum OverlayData {
     CombatTime(CombatTimeData),
     /// Operation timer (persistent across encounters)
     OperationTimer(OperationTimerData),
+    /// Ability queue (GCD + queued + active countdown entries)
+    AbilityQueue(AbilityQueueData),
 }
 
 /// Configuration updates that can be sent to overlays
@@ -157,6 +161,8 @@ pub enum OverlayConfigUpdate {
     CombatTime(CombatTimeConfig, u8, bool),
     /// Config for operation timer overlay (+ background alpha)
     OperationTimer(OperationTimerConfig, u8),
+    /// Config for ability queue overlay (+ background alpha)
+    AbilityQueue(AbilityQueueConfig, u8),
 }
 
 /// Position information for an overlay

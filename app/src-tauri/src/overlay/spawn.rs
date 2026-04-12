@@ -62,13 +62,14 @@ use baras_core::context::{
     OverlayPositionConfig, PersonalOverlayConfig, TimerOverlayConfig,
 };
 use baras_overlay::{
-    AlertsOverlay, BossHealthOverlay, ChallengeOverlay, CombatTimeConfig, CombatTimeOverlay,
-    CooldownConfig, CooldownOverlay, DotTrackerConfig, DotTrackerOverlay, EffectsABConfig,
-    EffectsABOverlay, MetricOverlay, NotesConfig, NotesOverlay, OperationTimerConfig,
-    OperationTimerOverlay, Overlay, OverlayConfig, PersonalOverlay, RaidGridLayout, RaidOverlay,
-    RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
+    AbilityQueueConfig, AbilityQueueOverlay, AlertsOverlay, BossHealthOverlay, ChallengeOverlay,
+    CombatTimeConfig, CombatTimeOverlay, CooldownConfig, CooldownOverlay, DotTrackerConfig,
+    DotTrackerOverlay, EffectsABConfig, EffectsABOverlay, MetricOverlay, NotesConfig, NotesOverlay,
+    OperationTimerConfig, OperationTimerOverlay, Overlay, OverlayConfig, PersonalOverlay,
+    RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
 };
 use baras_types::{
+    AbilityQueueOverlayConfig as TypesAbilityQueueConfig,
     CombatTimeOverlayConfig as TypesCombatTimeConfig, CooldownTrackerConfig,
     DotTrackerConfig as TypesDotTrackerConfig, EffectsAConfig as TypesEffectsAConfig,
     EffectsBConfig as TypesEffectsBConfig, NotesOverlayConfig as TypesNotesOverlayConfig,
@@ -1075,6 +1076,47 @@ pub fn create_operation_timer_overlay(
     let factory = move || {
         OperationTimerOverlay::new(config, overlay_config, background_alpha)
             .map_err(|e| format!("Failed to create operation timer overlay: {}", e))
+    };
+
+    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
+
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
+}
+
+/// Create and spawn the ability queue overlay
+pub fn create_ability_queue_overlay(
+    position: OverlayPositionConfig,
+    aq_config: TypesAbilityQueueConfig,
+    background_alpha: u8,
+) -> Result<OverlayHandle, String> {
+    let config = OverlayConfig {
+        x: position.x,
+        y: position.y,
+        width: position.width,
+        height: position.height,
+        namespace: "baras-ability-queue".to_string(),
+        click_through: true,
+        target_monitor_id: position.monitor_id.clone(),
+    };
+
+    let kind = OverlayType::AbilityQueue;
+
+    let overlay_config = AbilityQueueConfig {
+        max_display: aq_config.max_display,
+        font_scale: aq_config.font_scale,
+        font_color: aq_config.font_color,
+        gcd_color: aq_config.gcd_color,
+        dynamic_background: aq_config.dynamic_background,
+    };
+
+    let factory = move || {
+        AbilityQueueOverlay::new(config, overlay_config, background_alpha)
+            .map_err(|e| format!("Failed to create ability queue overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;

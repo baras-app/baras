@@ -400,6 +400,21 @@ async fn process_overlay_update(
                     .await;
             }
         }
+        OverlayUpdate::AbilityQueueUpdated(data) => {
+            // Route to ability queue overlay when it exists (wired in Phase 4)
+            let tx = {
+                let state = match overlay_state.lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                state.get_tx(OverlayType::AbilityQueue).cloned()
+            };
+            if let Some(tx) = tx {
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::AbilityQueue(data)))
+                    .await;
+            }
+        }
         OverlayUpdate::CombatStarted => {
             // Safety fallback: combat starting lifts ALL auto-hide conditions immediately,
             // regardless of settings. If overlays were temporarily hidden (conversation or
@@ -440,6 +455,11 @@ async fn process_overlay_update(
 
                 // NOTE: Challenges overlay is NOT cleared on combat end — the finalized
                 // snapshot remains visible until the next encounter starts or data is cleared.
+
+                // Ability queue overlay
+                if let Some(tx) = state.get_tx(OverlayType::AbilityQueue) {
+                    channels.push((tx.clone(), OverlayData::AbilityQueue(Default::default())));
+                }
 
                 // Combat time overlay
                 if let Some(tx) = state.get_combat_time_tx() {
@@ -542,6 +562,11 @@ async fn process_overlay_update(
                         tx.clone(),
                         OverlayData::OperationTimer(Default::default()),
                     ));
+                }
+
+                // Ability queue overlay
+                if let Some(tx) = state.get_tx(OverlayType::AbilityQueue) {
+                    channels.push((tx.clone(), OverlayData::AbilityQueue(Default::default())));
                 }
 
                 channels

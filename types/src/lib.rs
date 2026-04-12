@@ -2014,6 +2014,45 @@ impl Default for OperationTimerOverlayConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Ability Queue Overlay Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Configuration for the ability queue overlay
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AbilityQueueOverlayConfig {
+    /// Maximum entries to display across all tiers
+    #[serde(default = "default_max_display")]
+    pub max_display: u8,
+    /// Font scale multiplier (default 1.0)
+    #[serde(default = "default_scaling_factor")]
+    pub font_scale: f32,
+    /// Font color (RGBA)
+    #[serde(default = "default_font_color")]
+    pub font_color: Color,
+    /// GCD bar accent color (RGBA)
+    #[serde(default = "default_gcd_color")]
+    pub gcd_color: Color,
+    /// When true, background shrinks to fit content
+    #[serde(default = "default_true")]
+    pub dynamic_background: bool,
+}
+
+fn default_max_display() -> u8 { 12 }
+fn default_gcd_color() -> Color { [120, 200, 255, 255] }
+
+impl Default for AbilityQueueOverlayConfig {
+    fn default() -> Self {
+        Self {
+            max_display: 12,
+            font_scale: 1.0,
+            font_color: overlay_colors::WHITE,
+            gcd_color: [120, 200, 255, 255],
+            dynamic_background: true,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Hotkey Settings
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2147,6 +2186,10 @@ pub struct OverlaySettings {
     pub operation_timer: OperationTimerOverlayConfig,
     #[serde(default = "default_opacity")]
     pub operation_timer_opacity: u8,
+    #[serde(default)]
+    pub ability_queue: AbilityQueueOverlayConfig,
+    #[serde(default = "default_opacity")]
+    pub ability_queue_opacity: u8,
     /// Auto-hide overlays when local player is in a conversation
     #[serde(default)]
     pub hide_during_conversations: bool,
@@ -2201,6 +2244,8 @@ impl Default for OverlaySettings {
             combat_time_opacity: 180,
             operation_timer: OperationTimerOverlayConfig::default(),
             operation_timer_opacity: 180,
+            ability_queue: AbilityQueueOverlayConfig::default(),
+            ability_queue_opacity: 180,
             hide_during_conversations: false,
             hide_when_not_live: false,
         }

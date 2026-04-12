@@ -323,6 +323,8 @@ pub enum OverlayUpdate {
     NotesUpdated(NotesData),
     /// Operation timer update (persistent across encounters)
     OperationTimerUpdated(baras_overlay::OperationTimerData),
+    /// Ability queue snapshot (GCD + queued + active countdown entries)
+    AbilityQueueUpdated(baras_overlay::AbilityQueueData),
     /// Clear all overlay data (sent when switching files)
     ClearAllData,
     /// Local player entered conversation - temporarily hide overlays
@@ -2543,23 +2545,27 @@ impl CombatService {
 
                 // Timers + Audio: always poll when in live mode (alerts can fire at combat end)
                 if shared.is_live_tailing.load(Ordering::SeqCst) {
-                    // Process timer audio and get timer data (returns (TimersA data, TimersB data, countdowns, alerts))
-                    if let Some((timers_a, timers_b, countdowns, alerts)) =
+                    if let Some(bundle) =
                         build_timer_data_with_audio(&shared, icon_cache.as_ref()).await
                     {
                         // Send timer overlay data (only when in combat)
                         if in_combat && timer_active {
-                            if overlay_tx.try_send(OverlayUpdate::TimersAUpdated(timers_a)).is_err() {
+                            if overlay_tx.try_send(OverlayUpdate::TimersAUpdated(bundle.timers_a)).is_err() {
                                 warn!("Overlay channel full, dropped timers A update");
                             }
-                            if overlay_tx.try_send(OverlayUpdate::TimersBUpdated(timers_b)).is_err() {
+                            if overlay_tx.try_send(OverlayUpdate::TimersBUpdated(bundle.timers_b)).is_err() {
                                 warn!("Overlay channel full, dropped timers B update");
                             }
                         }
 
+                        // Ability queue: always send (overlay gates on its own active flag)
+                        if overlay_tx.try_send(OverlayUpdate::AbilityQueueUpdated(bundle.ability_queue)).is_err() {
+                            warn!("Overlay channel full, dropped ability queue update");
+                        }
+
                         // Send countdown audio events (only when in combat)
                         if in_combat {
-                            for (name, seconds, voice_pack) in countdowns {
+                            for (name, seconds, voice_pack) in bundle.countdowns {
                                 let _ = audio_tx.try_send(AudioEvent::Countdown {
                                     timer_name: name,
                                     seconds,
@@ -2569,7 +2575,7 @@ impl CombatService {
                         }
 
                         // Send text alerts to overlay (only those with alert_text_enabled and not stale)
-                        let text_alerts: Vec<_> = alerts.iter().filter(|a| a.alert_text_enabled && a.timestamp >= tailing_started_at).cloned().collect();
+                        let text_alerts: Vec<_> = bundle.alerts.iter().filter(|a| a.alert_text_enabled && a.timestamp >= tailing_started_at).cloned().collect();
                         if !text_alerts.is_empty() {
                             if overlay_tx.try_send(OverlayUpdate::AlertsFired(text_alerts)).is_err() {
                                 warn!("Overlay channel full, dropped timer alerts");
@@ -2578,7 +2584,7 @@ impl CombatService {
 
                         // Send alert audio events (only if audio_enabled for that alert)
                         // Skip alerts from before we started tailing (stale encounter recovery)
-                        for alert in alerts {
+                        for alert in bundle.alerts {
                             if alert.audio_enabled && alert.timestamp >= tailing_started_at {
                                 let _ = audio_tx.try_send(AudioEvent::Alert {
                                     text: alert.text,
@@ -3113,16 +3119,26 @@ async fn build_boss_health_data(shared: &Arc<SharedState>) -> Option<BossHealthD
     Some(BossHealthData { entries })
 }
 
-/// Build timer data with audio events (countdowns and alerts)
+/// Named bundle returned by `build_timer_data_with_audio`.
+struct TimerDataBundle {
+    timers_a: TimerData,
+    timers_b: TimerData,
+    ability_queue: baras_overlay::AbilityQueueData,
+    countdowns: Vec<(String, u8, String)>,
+    alerts: Vec<FiredAlert>,
+}
+
+/// Build timer data with audio events (countdowns and alerts).
 ///
-/// Returns (TimersA data, TimersB data, countdowns_to_announce, fired_alerts)
-/// Timers are routed to A or B based on their display_target field.
-/// Countdowns are (timer_name, seconds, voice_pack)
+/// Routes timers to TimersA, TimersB, or AbilityQueue based on `display_target`.
+/// Assembles the GCD entry from `active_gcd` and queued entries from timers with
+/// `is_queued = true` (which bypass the `remaining <= 0.0` guard).
 async fn build_timer_data_with_audio(
     shared: &Arc<SharedState>,
     icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
-) -> Option<(TimerData, TimerData, Vec<(String, u8, String)>, Vec<FiredAlert>)> {
+) -> Option<TimerDataBundle> {
     use baras_core::timers::TimerDisplayTarget;
+    use baras_overlay::{AbilityQueueData, AbilityQueueEntry};
 
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
@@ -3148,12 +3164,13 @@ async fn build_timer_data_with_audio(
     // If not in combat, return only alerts (no countdown checks)
     let in_combat = shared.in_combat.load(Ordering::SeqCst);
     if !in_combat {
-        return Some((
-            TimerData::default(),
-            TimerData::default(),
-            Vec::new(),
+        return Some(TimerDataBundle {
+            timers_a: TimerData::default(),
+            timers_b: TimerData::default(),
+            ability_queue: AbilityQueueData::default(),
+            countdowns: Vec::new(),
             alerts,
-        ));
+        });
     }
 
     // Check for countdowns to announce (uses realtime internally)
@@ -3162,27 +3179,43 @@ async fn build_timer_data_with_audio(
     // Compute interpolated game time once for all timers
     let interp_time = timer_mgr.interpolated_game_time();
 
-    // Convert active timers to TimerEntry format, routing to A or B based on display_target
     let mut entries_a = Vec::new();
     let mut entries_b = Vec::new();
+    let mut aq_entries: Vec<AbilityQueueEntry> = Vec::new();
+
+    // GCD tier-1 entry: synthesized from active_gcd if present
+    if let Some(gcd) = timer_mgr.active_gcd()
+        && let Some(t) = interp_time
+    {
+        let remaining = gcd.remaining_secs(t);
+        let total = gcd
+            .expires_at
+            .signed_duration_since(gcd.started_at)
+            .num_milliseconds()
+            .max(0) as f32
+            / 1000.0;
+        aq_entries.push(AbilityQueueEntry {
+            name: String::new(),
+            remaining_secs: remaining,
+            total_secs: total,
+            color: [255, 255, 255, 255],
+            queue_priority: 255,
+            is_pinned: true,
+            is_queued: false,
+            icon_ability_id: None,
+            icon: None,
+        });
+    }
 
     for timer in timer_mgr.active_timers() {
-        let remaining = interp_time
-            .map(|t| timer.remaining_secs(t))
-            .unwrap_or(0.0);
-        if remaining <= 0.0 {
-            continue;
-        }
-
         // Skip timers hidden by role filtering
         if timer.role_hidden {
             continue;
         }
 
-        // Skip timers hidden by show_at_secs threshold
-        if !timer.is_visible(remaining) {
-            continue;
-        }
+        let remaining = interp_time
+            .map(|t| timer.remaining_secs(t))
+            .unwrap_or(0.0);
 
         // Load icon from cache if ability ID is set
         let icon = timer.icon_ability_id.and_then(|ability_id| {
@@ -3193,31 +3226,61 @@ async fn build_timer_data_with_audio(
             })
         });
 
-        let entry = TimerEntry {
-            name: timer.name.clone(),
-            remaining_secs: remaining,
-            total_secs: if timer.show_at_secs > 0.0 {
-                timer.show_at_secs
-            } else {
-                timer.duration.as_secs_f32()
-            },
-            color: timer.color,
-            icon_ability_id: timer.icon_ability_id,
-            icon,
-        };
         match timer.display_target {
-            TimerDisplayTarget::TimersA => entries_a.push(entry),
-            TimerDisplayTarget::TimersB => entries_b.push(entry),
-            TimerDisplayTarget::None => {} // Don't show on any timer overlay
+            TimerDisplayTarget::TimersA | TimerDisplayTarget::TimersB => {
+                if remaining <= 0.0 || !timer.is_visible(remaining) {
+                    continue;
+                }
+                let entry = TimerEntry {
+                    name: timer.name.clone(),
+                    remaining_secs: remaining,
+                    total_secs: if timer.show_at_secs > 0.0 {
+                        timer.show_at_secs
+                    } else {
+                        timer.duration.as_secs_f32()
+                    },
+                    color: timer.color,
+                    icon_ability_id: timer.icon_ability_id,
+                    icon,
+                };
+                if timer.display_target == TimerDisplayTarget::TimersA {
+                    entries_a.push(entry);
+                } else {
+                    entries_b.push(entry);
+                }
+            }
+            TimerDisplayTarget::AbilityQueue => {
+                // Queued entries (is_queued=true) bypass the remaining <= 0.0 guard
+                if !timer.is_queued && remaining <= 0.0 {
+                    continue;
+                }
+                aq_entries.push(AbilityQueueEntry {
+                    name: timer.name.clone(),
+                    remaining_secs: remaining,
+                    total_secs: if timer.show_at_secs > 0.0 {
+                        timer.show_at_secs
+                    } else {
+                        timer.duration.as_secs_f32()
+                    },
+                    color: timer.color,
+                    queue_priority: timer.queue_priority,
+                    is_pinned: false,
+                    is_queued: timer.is_queued,
+                    icon_ability_id: timer.icon_ability_id,
+                    icon,
+                });
+            }
+            TimerDisplayTarget::None => {}
         }
     }
 
-    Some((
-        TimerData { entries: entries_a },
-        TimerData { entries: entries_b },
+    Some(TimerDataBundle {
+        timers_a: TimerData { entries: entries_a },
+        timers_b: TimerData { entries: entries_b },
+        ability_queue: AbilityQueueData { entries: aq_entries },
         countdowns,
         alerts,
-    ))
+    })
 }
 
 /// Result of processing effect audio

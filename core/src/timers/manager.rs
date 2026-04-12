@@ -786,19 +786,27 @@ impl TimerManager {
 
         let key = TimerKey::new(&def.id, target_id);
 
-        // Check if timer already exists and can be refreshed
-        if let Some(existing) = self.active_timers.get_mut(&key) {
-            if def.can_be_refreshed {
-                existing.refresh(timestamp);
-                if let Some(secs) = def.gcd_secs {
-                    self.active_gcd = Some(super::ActiveGcd::new(timestamp, secs));
+        // Check if timer already exists
+        let existing_is_queued = self.active_timers.get(&key).map(|t| t.is_queued);
+        match existing_is_queued {
+            Some(true) => {
+                // Queued/ready timer: always restart fresh when trigger fires again.
+                // Remove the queued entry and fall through to create a new countdown.
+                self.active_timers.remove(&key);
+            }
+            Some(false) => {
+                // Running timer: refresh if allowed, otherwise ignore
+                if def.can_be_refreshed {
+                    let existing = self.active_timers.get_mut(&key).unwrap();
+                    existing.refresh(timestamp);
+                    if let Some(secs) = def.gcd_secs {
+                        self.active_gcd = Some(super::ActiveGcd::new(timestamp, secs));
+                    }
+                    self.cancel_timers_on_start(&def.id);
                 }
-                // Still need to cancel timers that depend on this one
-                self.cancel_timers_on_start(&def.id);
                 return;
             }
-            // Timer exists and can't be refreshed - ignore
-            return;
+            None => {} // Timer doesn't exist yet — fall through to create
         }
 
         // Build audio config with preference overrides
@@ -868,6 +876,27 @@ impl TimerManager {
         for key in keys_to_cancel {
             self.active_timers.remove(&key);
             // Move key.definition_id into canceled_this_tick (avoids extra clone)
+            self.canceled_this_tick.push(key.definition_id);
+        }
+
+        // Also remove queued entries whose queue_remove_trigger matches timer started
+        let keys_to_remove: Vec<_> = self.active_timers
+            .iter()
+            .filter_map(|(key, timer)| {
+                if timer.is_queued
+                    && let Some(def) = self.definitions.get(&timer.definition_id)
+                    && let Some(ref remove_trigger) = def.queue_remove_trigger
+                    && remove_trigger.matches_timer_started(started_timer_id)
+                {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for key in keys_to_remove {
+            self.active_timers.remove(&key);
             self.canceled_this_tick.push(key.definition_id);
         }
     }
@@ -991,6 +1020,93 @@ impl TimerManager {
             .collect();
 
         for key in keys_to_cancel {
+            self.active_timers.remove(&key);
+            self.canceled_this_tick.push(key.definition_id);
+        }
+    }
+
+    /// Remove queued/ready timers whose queue_remove_trigger matches the given predicate
+    pub(super) fn remove_queued_matching<F>(&mut self, trigger_matches: F)
+    where
+        F: Fn(&TimerTrigger) -> bool,
+    {
+        let keys: Vec<_> = self
+            .active_timers
+            .iter()
+            .filter_map(|(key, timer)| {
+                if timer.is_queued
+                    && let Some(def) = self.definitions.get(&timer.definition_id)
+                    && let Some(ref remove_trigger) = def.queue_remove_trigger
+                    && trigger_matches(remove_trigger)
+                {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for key in keys {
+            self.active_timers.remove(&key);
+            self.canceled_this_tick.push(key.definition_id);
+        }
+    }
+
+    /// Remove queued/ready timers whose queue_remove_trigger matches, with entity filters
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn remove_queued_matching_with_source_target<F>(
+        &mut self,
+        entities: &[crate::dsl::EntityDefinition],
+        source_id: i64,
+        source_type: crate::combat_log::EntityType,
+        source_name: crate::context::IStr,
+        source_npc_id: i64,
+        target_id: i64,
+        target_type: crate::combat_log::EntityType,
+        target_name: crate::context::IStr,
+        target_npc_id: i64,
+        trigger_matches: F,
+    ) where
+        F: Fn(&TimerTrigger) -> bool,
+    {
+        let local_player_id = self.local_player_id;
+        let current_target_id = self.current_target_id;
+        let boss_entity_ids = &self.boss_entity_ids;
+
+        let keys: Vec<_> = self
+            .active_timers
+            .iter()
+            .filter_map(|(key, timer)| {
+                if !timer.is_queued {
+                    return None;
+                }
+                let def = self.definitions.get(&timer.definition_id)?;
+                let remove_trigger = def.queue_remove_trigger.as_ref()?;
+                if trigger_matches(remove_trigger)
+                    && matches_source_target_filters(
+                        remove_trigger,
+                        entities,
+                        source_id,
+                        source_type,
+                        source_name,
+                        source_npc_id,
+                        target_id,
+                        target_type,
+                        target_name,
+                        target_npc_id,
+                        local_player_id,
+                        current_target_id,
+                        boss_entity_ids,
+                    )
+                {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for key in keys {
             self.active_timers.remove(&key);
             self.canceled_this_tick.push(key.definition_id);
         }
@@ -1165,7 +1281,28 @@ impl TimerManager {
         // Track cancellations and remove timers
         for key in keys_to_cancel {
             self.active_timers.remove(&key);
-            // Move key.definition_id into canceled_this_tick (avoids extra clone)
+            self.canceled_this_tick.push(key.definition_id);
+        }
+
+        // Also remove queued entries whose queue_remove_trigger matches timer expired
+        let keys_to_remove: Vec<_> = self
+            .active_timers
+            .iter()
+            .filter_map(|(key, timer)| {
+                if timer.is_queued
+                    && let Some(def) = self.definitions.get(&timer.definition_id)
+                    && let Some(ref remove_trigger) = def.queue_remove_trigger
+                    && remove_trigger.matches_timer_expires(expired_timer_id)
+                {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for key in keys_to_remove {
+            self.active_timers.remove(&key);
             self.canceled_this_tick.push(key.definition_id);
         }
     }
