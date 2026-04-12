@@ -660,6 +660,7 @@ impl OverlayManager {
                 "notes" => OverlayType::Notes,
                 "combat_time" => OverlayType::CombatTime,
                 "operation_timer" => OverlayType::OperationTimer,
+                "ability_queue" => OverlayType::AbilityQueue,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)
@@ -819,6 +820,7 @@ impl OverlayManager {
                 "notes" => OverlayType::Notes,
                 "combat_time" => OverlayType::CombatTime,
                 "operation_timer" => OverlayType::OperationTimer,
+                "ability_queue" => OverlayType::AbilityQueue,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)

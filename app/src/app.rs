@@ -1453,18 +1453,6 @@ pub fn App() -> Element {
                                         i { class: "fa-solid fa-hourglass-half overlay-btn-icon" }
                                         "Op Timer"
                                     }
-                                    button {
-                                        class: if ability_queue_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
-                                        title: "Displays GCD bar, queued/ready abilities, and active ability countdowns",
-                                        onclick: move |_| { spawn(async move {
-                                            if api::toggle_overlay(OverlayType::AbilityQueue, ability_queue_on).await {
-                                                ability_queue_enabled.set(!ability_queue_on);
-                                                profile_dirty.set(true);
-                                            }
-                                        }); },
-                                        i { class: "fa-solid fa-layer-group overlay-btn-icon" }
-                                        "Ability Queue"
-                                    }
                                 }
                             }
 
@@ -1531,6 +1519,18 @@ pub fn App() -> Element {
                                         }); },
                                         i { class: "fa-solid fa-note-sticky overlay-btn-icon" }
                                         "Notes"
+                                    }
+                                    button {
+                                        class: if ability_queue_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                        title: "Displays GCD bar, queued/ready abilities, and active ability countdowns",
+                                        onclick: move |_| { spawn(async move {
+                                            if api::toggle_overlay(OverlayType::AbilityQueue, ability_queue_on).await {
+                                                ability_queue_enabled.set(!ability_queue_on);
+                                                profile_dirty.set(true);
+                                            }
+                                        }); },
+                                        i { class: "fa-solid fa-layer-group overlay-btn-icon" }
+                                        "Ability Queue"
                                     }
                                 }
                             }
