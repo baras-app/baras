@@ -1037,8 +1037,7 @@ impl TimerManager {
                     let should_fire_audio = !timer.role_hidden && timer.audio_enabled && timer.audio_file.is_some() && timer.audio_offset == 0;
                     let should_fire_expire_alert = !timer.role_hidden && timer.alert_on_expire;
                     if should_fire_audio || should_fire_expire_alert {
-                        let raw_text = timer.alert_text.as_deref().unwrap_or(&timer.name);
-                        let text = self.format_alert_text(raw_text, current_time);
+                        let text = timer.alert_text.clone().unwrap_or_else(|| timer.name.clone());
                         self.fired_alerts.push(FiredAlert {
                             id: timer.definition_id.clone(),
                             name: timer.name.clone(),
