@@ -30,7 +30,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A timer with `queue_on_expire = true` remains alive in manager state with `is_queued = true` after its duration elapses, rather than being removed
   4. `clear_combat_timers` clears `active_gcds` in the same pass as active timers (GCD vec not leaked across combats)
   5. `queue_remove_trigger` field exists on `TimerDefinition` with `#[serde(default)]` and evaluation is stubbed as a no-op (ordering pitfall deferred safely)
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — Type definitions: AbilityQueue variant, ability-queue fields on TimerDefinition, ActiveGcd struct, is_queued/queue fields on ActiveTimer
+- [ ] 01-02-PLAN.md — Manager behavior: active_gcd field and GCD lifecycle, queued-hold logic in process_expirations, clear_combat_timers extension
 
 ### Phase 2: Service Layer
 **Goal**: The service produces a complete `AbilityQueueData` snapshot and delivers it via a dedicated channel path, with `build_timer_data_with_audio` returning a named `TimerDataBundle` struct
@@ -84,7 +87,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Data Model | 0/TBD | Not started | - |
+| 1. Core Data Model | 0/2 | Planned | - |
 | 2. Service Layer | 0/TBD | Not started | - |
 | 3. Overlay Renderer | 0/TBD | Not started | - |
 | 4. App Wiring | 0/TBD | Not started | - |
