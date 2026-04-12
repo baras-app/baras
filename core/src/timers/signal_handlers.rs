@@ -666,6 +666,7 @@ pub(super) fn clear_combat_timers(manager: &mut TimerManager) {
     manager.in_combat = false;
     manager.combat_start_time = None;
     manager.active_timers.clear();
+    manager.active_gcd = None;
     manager.fired_alerts.clear();
     manager.boss_entity_ids.clear();
     manager.combat_time_started.clear();
