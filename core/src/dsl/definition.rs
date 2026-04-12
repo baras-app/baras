@@ -633,6 +633,10 @@ impl BossTimerDefinition {
             // Boss timers default to single-instance (per_target = false)
             per_target: self.per_target,
             icon_ability_id: self.icon_ability_id,
+            gcd_secs: None,
+            queue_on_expire: false,
+            queue_priority: 0,
+            queue_remove_trigger: None,
         }
     }
 }
