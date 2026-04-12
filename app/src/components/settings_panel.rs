@@ -12,7 +12,7 @@ use crate::components::{ToastSeverity, use_toast};
 use crate::types::{
     AlertsOverlayConfig, BossHealthConfig, ChallengeLayout, CooldownTrackerConfig,
     DotTrackerConfig, EffectsAConfig, EffectsBConfig, MAX_PROFILES, MetricType,
-    NotesOverlayConfig, OverlayAppearanceConfig, OverlaySettings, PersonalOverlayConfig,
+    OverlayAppearanceConfig, OverlaySettings, PersonalOverlayConfig,
     PersonalStat, RaidOverlaySettings, TimerOverlayConfig,
 };
 use crate::utils::{color_to_hex, parse_hex_color};

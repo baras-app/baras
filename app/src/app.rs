@@ -13,9 +13,8 @@ use crate::components::{
 };
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::types::{
-    CombatLogSessionState, DataExplorerState, EffectsEditorState, EncounterBuilderState,
     LogFileInfo, MainTab, MetricType, OverlaySettings, OverlayStatus, OverlayType,
-    SessionInfo, UiSessionState, UpdateInfo, ViewMode,
+    SessionInfo, UiSessionState, UpdateInfo,
 };
 
 static CSS: Asset = asset!("/assets/styles.css");

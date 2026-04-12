@@ -20,7 +20,7 @@ use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, Upl
 use crate::components::phase_timeline::PhaseTimelineFilter;
 use crate::components::rotation_view::RotationView;
 use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
-use crate::types::{BreakdownMode, CombatLogSessionState, DataTab, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
+use crate::types::{DataTab, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
 use crate::utils::js_set;
 use baras_types::formatting;
 
@@ -3215,8 +3215,8 @@ fn build_usage_timeline_option(
 
     // Collect ability names in selection order for Y-axis categories (reversed so
     // first-selected appears at top)
-    let mut categories = js_sys::Array::new();
-    let mut series_arr = js_sys::Array::new();
+    let categories = js_sys::Array::new();
+    let series_arr = js_sys::Array::new();
 
     for (ability_id, color) in selected.iter().rev() {
         if let Some(row) = rows.iter().find(|r| r.ability_id == *ability_id) {
