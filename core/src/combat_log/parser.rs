@@ -60,12 +60,12 @@ impl LogParser {
             return None;
         }
 
-        let time_segment = _line.get(brackets[0] + 1..end_brackets[0]).unwrap_or("");
-        let source_entity_segment = _line.get(brackets[1] + 1..end_brackets[1]).unwrap_or("");
-        let target_entity_segment = _line.get(brackets[2] + 1..end_brackets[2]).unwrap_or("");
-        let action_segment = _line.get(brackets[3] + 1..end_brackets[3]).unwrap_or("");
-        let effect_segment = _line.get(brackets[4] + 1..end_brackets[4]).unwrap_or("");
-        let details_segment = _line.get(end_brackets[4] + 1..).unwrap_or("");
+        let time_segment = &_line[brackets[0] + 1..end_brackets[0]];
+        let source_entity_segment = &_line[brackets[1] + 1..end_brackets[1]];
+        let target_entity_segment = &_line[brackets[2] + 1..end_brackets[2]];
+        let action_segment = &_line[brackets[3] + 1..end_brackets[3]];
+        let effect_segment = &_line[brackets[4] + 1..end_brackets[4]];
+        let details_segment = &_line[end_brackets[4] + 1..];
 
         let timestamp = self.parse_timestamp(time_segment)?;
         let source_entity = self.parse_entity(source_entity_segment)?;
@@ -155,9 +155,9 @@ impl LogParser {
         let pipe0 = pipe_iter.next()?;
         let pipe1 = pipe_iter.next()?;
 
-        let name_segment = segment.get(..pipe0).unwrap_or("");
+        let name_segment = &segment[..pipe0];
         // coordinates between pipe0 and pipe1 are ignored
-        let health_segment = segment.get(pipe1..).unwrap_or("");
+        let health_segment = &segment[pipe1..];
 
         let (name, class_id, log_id, entity_type) = LogParser::parse_entity_name_id(name_segment)?;
         let health = LogParser::parse_entity_health(health_segment)?;
@@ -177,8 +177,8 @@ impl LogParser {
         let slash = memchr(b'/', bytes);
         let paren_end = memchr(b')', bytes);
 
-        let current_health = parse_i32!(segment.get(paren? + 1..slash?).unwrap_or(""));
-        let health_end_pos = parse_i32!(segment.get(slash? + 1..paren_end?).unwrap_or(""));
+        let current_health = parse_i32!(&segment[paren? + 1..slash?]);
+        let health_end_pos = parse_i32!(&segment[slash? + 1..paren_end?]);
 
         Some((current_health, health_end_pos))
     }
@@ -193,20 +193,16 @@ impl LogParser {
 
         // Parse Player and Player Companion
         if hashtag.is_some() {
-            let player_name = segment.get(1..hashtag?).unwrap_or("");
+            let player_name = &segment[1..hashtag?];
 
             if slash.is_none() {
-                let player_id = parse_i64!(segment.get(hashtag? + 1..).unwrap_or(""));
+                let player_id = parse_i64!(&segment[hashtag? + 1..]);
 
                 return Some((player_name, 0, player_id, EntityType::Player));
             } else {
-                let companion_name = segment
-                    .get(slash? + 1..brace?.saturating_sub(1))
-                    .unwrap_or("");
-                let companion_char_id =
-                    parse_i64!(segment.get(brace? + 1..end_brace?).unwrap_or(""));
-                let companion_log_id =
-                    parse_i64!(segment.get(end_brace? + 2..).unwrap_or(""));
+                let companion_name = &segment[slash? + 1..brace? - 1];
+                let companion_char_id = parse_i64!(&segment[brace? + 1..end_brace?]);
+                let companion_log_id = parse_i64!(&&segment[end_brace? + 2..]);
 
                 return Some((
                     companion_name,
@@ -218,9 +214,9 @@ impl LogParser {
         }
 
         // if no '#' detected parse NPC
-        let npc_name = segment.get(..brace?).unwrap_or("").trim();
-        let npc_char_id = parse_i64!(segment.get(brace? + 1..end_brace?).unwrap_or(""));
-        let npc_log_id = parse_i64!(segment.get(end_brace? + 2..).unwrap_or(""));
+        let npc_name = segment[..brace?].trim();
+        let npc_char_id = parse_i64!(&segment[brace? + 1..end_brace?]);
+        let npc_log_id = parse_i64!(&segment[end_brace? + 2..]);
 
         Some((npc_name, npc_char_id, npc_log_id, EntityType::Npc))
     }
@@ -237,8 +233,8 @@ impl LogParser {
             });
         }
 
-        let action_name = segment.get(..brace?).unwrap_or("").trim();
-        let action_id = parse_i64!(segment.get(brace? + 1..end_brace?).unwrap_or(""));
+        let action_name = segment[..brace?].trim();
+        let action_id = parse_i64!(segment[brace? + 1..end_brace?]);
 
         Some(Action {
             name: intern(action_name),
@@ -275,26 +271,16 @@ impl LogParser {
             });
         }
 
-        let type_name = intern(segment.get(..braces[0]).unwrap_or("").trim());
-        let type_id = parse_i64!(segment.get(braces[0] + 1..end_braces[0]).unwrap_or(""));
-        let effect_name = intern(
-            segment
-                .get(end_braces[0] + 2..braces[1].saturating_sub(1))
-                .unwrap_or("")
-                .trim(),
-        );
-        let effect_id = parse_i64!(segment.get(braces[1] + 1..end_braces[1]).unwrap_or(""));
+        let type_name = intern(segment[..braces[0]].trim());
+        let type_id = parse_i64!(&segment[braces[0] + 1..end_braces[0]]);
+        let effect_name = intern(segment[end_braces[0] + 2..braces[1] - 1].trim());
+        let effect_id = parse_i64!(&segment[braces[1] + 1..end_braces[1]]);
 
         let (difficulty_name, difficulty_id) =
             if type_id == effect_type_id::AREAENTERED && brace_count == 3 {
                 (
-                    intern(
-                        segment
-                            .get(end_braces[1] + 1..braces[2])
-                            .unwrap_or("")
-                            .trim(),
-                    ),
-                    parse_i64!(segment.get(braces[2] + 1..end_braces[2]).unwrap_or("")),
+                    intern(segment[end_braces[1] + 1..braces[2]].trim()),
+                    parse_i64!(segment[braces[2] + 1..end_braces[2]]),
                 )
             } else {
                 (intern(""), 0)
@@ -302,13 +288,8 @@ impl LogParser {
 
         let (discipline_name, discipline_id) = if type_id == effect_type_id::DISCIPLINECHANGED {
             (
-                intern(
-                    segment
-                        .get(slash? + 1..braces[2])
-                        .unwrap_or("")
-                        .trim(),
-                ),
-                parse_i64!(segment.get(braces[2] + 1..end_braces[2]).unwrap_or("")),
+                intern(segment[slash? + 1..braces[2]].trim()),
+                parse_i64!(segment[braces[2] + 1..end_braces[2]]),
             )
         } else {
             (intern(""), 0)
@@ -336,7 +317,7 @@ impl LogParser {
                 let angle_end = memchr(b'>', bytes);
                 let threat = angle
                     .zip(angle_end)
-                    .and_then(|(s, e)| segment.get(s + 1..e)?.parse::<f32>().ok())
+                    .and_then(|(s, e)| segment[s + 1..e].parse::<f32>().ok())
                     .unwrap_or_default();
                 Some(Details {
                     threat,
@@ -367,13 +348,13 @@ impl LogParser {
         let angle = memchr(b'<', bytes);
         let angle_end = memchr(b'>', bytes);
 
-        let inner = segment.get(paren + 1..paren_end).unwrap_or("");
+        let inner = &segment[paren + 1..paren_end];
         let inner_bytes = inner.as_bytes();
 
         // Parse threat from <value>
         let threat = angle
             .zip(angle_end)
-            .and_then(|(s, e)| segment.get(s + 1..e)?.parse::<f32>().ok())
+            .and_then(|(s, e)| segment[s + 1..e].parse::<f32>().ok())
             .unwrap_or_default();
 
         // Handle edge case: (0 -) - nullified damage from reflect
@@ -395,10 +376,10 @@ impl LogParser {
         // Check for avoidance (-miss, -dodge, -parry, -immune, -resist, -deflect, -shield, -)
         let dash = memchr(b'-', inner_bytes);
         let defense_type_id = if let Some(dash_pos) = dash {
-            let after_dash = inner.get(dash_pos + 1..).unwrap_or("");
+            let after_dash = &inner[dash_pos + 1..];
             let after_bytes = after_dash.as_bytes();
             if let (Some(b), Some(be)) = (memchr(b'{', after_bytes), memchr(b'}', after_bytes)) {
-                parse_i64!(after_dash.get(b + 1..be).unwrap_or(""))
+                parse_i64!(&after_dash[b + 1..be])
             } else {
                 0
             }
@@ -413,20 +394,18 @@ impl LogParser {
         let amount_end = inner
             .find(|c: char| !c.is_ascii_digit())
             .unwrap_or(inner.len());
-        let dmg_amount = parse_i32!(inner.get(..amount_end).unwrap_or(""));
+        let dmg_amount = parse_i32!(&inner[..amount_end]);
 
         // Parse effective damage after ~
         let tilde = memchr(b'~', inner_bytes);
         let dmg_effective = tilde
             .map(|pos| {
                 let start = pos + 1;
-                let end = inner
-                    .get(start..)
-                    .unwrap_or("")
+                let end = inner[start..]
                     .find(|c: char| !c.is_ascii_digit())
                     .map(|e| start + e)
                     .unwrap_or(inner.len());
-                parse_i32!(inner.get(start..end).unwrap_or(""))
+                parse_i32!(&inner[start..end])
             })
             .unwrap_or(dmg_amount);
         // Find damage type and ID (first { } pair in inner, but not "reflected" or "absorbed")
@@ -435,15 +414,13 @@ impl LogParser {
 
         let (dmg_type, dmg_type_id) = if let (Some(bs), Some(be)) = (brace, brace_end) {
             // Find type name before the brace - scan backwards for a word
-            let type_start = inner
-                .get(..bs)
-                .unwrap_or("")
+            let type_start = inner[..bs]
                 .trim_end()
                 .rfind(|c: char| c.is_whitespace())
                 .map(|p| p + 1)
                 .unwrap_or(0);
-            let dmg_type = inner.get(type_start..bs).unwrap_or("").trim();
-            let dmg_type_id = parse_i64!(inner.get(bs + 1..be).unwrap_or(""));
+            let dmg_type = inner[type_start..bs].trim();
+            let dmg_type_id = parse_i64!(&inner[bs + 1..be]);
             if dmg_type.contains('-') {
                 (intern(""), 0)
             } else {
@@ -456,17 +433,14 @@ impl LogParser {
         // Parse absorbed amount from nested (X absorbed {id})
         let dmg_absorbed =
             if let Some(absorbed_pos) = memchr::memmem::find(inner_bytes, b"{836045448945511}") {
-                let before_absorbed = inner.get(..absorbed_pos).unwrap_or("");
+                let before_absorbed = &inner[..absorbed_pos];
                 if let Some(nested_paren) = before_absorbed.rfind('(') {
-                    let num_section = before_absorbed
-                        .get(nested_paren + 1..)
-                        .unwrap_or("")
-                        .trim_start();
+                    let num_section = &before_absorbed[nested_paren + 1..].trim_start();
                     // Extract only the leading digits
                     let num_end = num_section
                         .find(|c: char| !c.is_ascii_digit())
                         .unwrap_or(num_section.len());
-                    Some(parse_i32!(num_section.get(..num_end).unwrap_or("")))
+                    Some(parse_i32!(&num_section[..num_end]))
                 } else {
                     Some(0)
                 }
@@ -514,13 +488,13 @@ impl LogParser {
         let angle = memchr(b'<', bytes);
         let angle_end = memchr(b'>', bytes);
 
-        let inner = segment.get(paren + 1..paren_end).unwrap_or("");
+        let inner = &segment[paren + 1..paren_end];
         let inner_bytes = inner.as_bytes();
 
         // Parse threat from <value> - only present if effective heal occurred
         let threat = angle
             .zip(angle_end)
-            .and_then(|(s, e)| segment.get(s + 1..e)?.parse::<f32>().ok())
+            .and_then(|(s, e)| segment[s + 1..e].parse::<f32>().ok())
             .unwrap_or_default();
 
         // Check for crit marker
@@ -530,20 +504,18 @@ impl LogParser {
         let amount_end = inner
             .find(|c: char| !c.is_ascii_digit())
             .unwrap_or(inner.len());
-        let heal_amount = parse_i32!(inner.get(..amount_end).unwrap_or(""));
+        let heal_amount = parse_i32!(&inner[..amount_end]);
 
         // Parse effective heal after ~, default to heal_amount if not present
         let tilde = memchr(b'~', inner_bytes);
         let heal_effective = tilde
             .map(|pos| {
                 let start = pos + 1;
-                let end = inner
-                    .get(start..)
-                    .unwrap_or("")
+                let end = inner[start..]
                     .find(|c: char| !c.is_ascii_digit())
                     .map(|e| start + e)
                     .unwrap_or(inner.len());
-                parse_i32!(inner.get(start..end).unwrap_or(""))
+                parse_i32!(&inner[start..end])
             })
             .unwrap_or(heal_amount);
 
@@ -565,14 +537,14 @@ impl LogParser {
         let brace_end = memchr(b'}', bytes)?;
 
         // Parse count: number before "charges"
-        let inner = segment.get(paren + 1..paren_end).unwrap_or("");
+        let inner = &segment[paren + 1..paren_end];
         let count_end = inner
             .find(|c: char| !c.is_ascii_digit())
             .unwrap_or(inner.len());
-        let charges = parse_i32!(inner.get(..count_end).unwrap_or(""));
+        let charges = parse_i32!(&inner[..count_end]);
 
         // Parse ability ID
-        let ability_id = parse_i64!(segment.get(brace + 1..brace_end).unwrap_or(""));
+        let ability_id = parse_i64!(&segment[brace + 1..brace_end]);
 
         Some(Details {
             charges,

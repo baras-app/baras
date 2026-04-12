@@ -29,10 +29,9 @@ use baras_core::{
     EFFECTS_DSL_VERSION, EntityType, GameSignal, PlayerMetrics, Reader, SignalHandler,
 };
 use baras_overlay::{
-    BossEffectIcon, BossHealthData, ChallengeData, ChallengeEntry, Color, CooldownData,
-    CooldownEntry, DotEntry, DotTarget, DotTrackerData, EffectABEntry, EffectsABData, NotesData,
-    PersonalStats, PlayerContribution, PlayerRole, RaidEffect, RaidFrame, RaidFrameData, TimerData,
-    TimerEntry,
+    BossHealthData, ChallengeData, ChallengeEntry, Color, CooldownData, CooldownEntry, DotEntry,
+    DotTarget, DotTrackerData, EffectABEntry, EffectsABData, NotesData, PersonalStats,
+    PlayerContribution, PlayerRole, RaidEffect, RaidFrame, RaidFrameData, TimerData, TimerEntry,
 };
 
 use crate::audio::{AudioEvent, AudioSender, AudioService};
@@ -743,9 +742,12 @@ impl CombatService {
                     .unwrap_or_else(|| PathBuf::from("."))
                     .join("core/definitions/sounds")
             });
+        let audio_settings = Arc::new(tokio::sync::RwLock::new(
+            shared.config.blocking_read().audio.clone(),
+        ));
         let audio_service = AudioService::new(
             audio_rx,
-            shared.audio_settings.clone(),
+            audio_settings,
             user_sounds_dir,
             bundled_sounds_dir,
         );
@@ -2532,7 +2534,7 @@ impl CombatService {
                 // Boss health: only poll when in combat
                 if boss_active
                     && in_combat
-                    && let Some(data) = build_boss_health_data(&shared, icon_cache.as_ref()).await
+                    && let Some(data) = build_boss_health_data(&shared).await
                 {
                     if overlay_tx.try_send(OverlayUpdate::BossHealthUpdated(data)).is_err() {
                         warn!("Overlay channel full, dropped boss health update");
@@ -3034,7 +3036,7 @@ async fn build_raid_frame_data(
 
     for effect in tracker.active_effects() {
         // Skip effects not destined for raid frames or already removed
-        if !effect.display_targets.contains(&DisplayTarget::RaidFrames) || effect.removed_at.is_some() || effect.timer_expired {
+        if effect.display_target != DisplayTarget::RaidFrames || effect.removed_at.is_some() || effect.timer_expired {
             continue;
         }
 
@@ -3095,13 +3097,7 @@ async fn build_raid_frame_data(
 }
 
 /// Build boss health data from the current encounter
-async fn build_boss_health_data(
-    shared: &Arc<SharedState>,
-    icon_cache: Option<&Arc<baras_overlay::icons::IconCache>>,
-) -> Option<BossHealthData> {
-    use std::collections::HashMap;
-    use std::sync::Arc as StdArc;
-
+async fn build_boss_health_data(shared: &Arc<SharedState>) -> Option<BossHealthData> {
     let session_guard = shared.session.read().await;
     let session = session_guard.as_ref()?;
     let session = session.read().await;
@@ -3114,49 +3110,7 @@ async fn build_boss_health_data(
     }
 
     let entries = cache.get_boss_health();
-
-    // Collect BossHealth-targeted effects grouped by target name
-    let boss_icons: HashMap<String, Vec<BossEffectIcon>> =
-        if let Some(effect_tracker) = session.effect_tracker() {
-            let tracker = effect_tracker.lock().unwrap_or_else(|p| p.into_inner());
-            let interp_time = tracker.interpolated_game_time();
-            tracker
-                .boss_health_effects_by_name()
-                .into_iter()
-                .filter_map(|(name, effects)| {
-                    let icons: Vec<BossEffectIcon> = effects
-                        .into_iter()
-                        .filter_map(|effect| {
-                            let remaining_secs = calculate_remaining_secs(effect, interp_time)?;
-                            let total_secs = effect.duration?.as_secs_f32();
-                            if !effect.is_visible(remaining_secs) {
-                                return None;
-                            }
-                            let icon = icon_cache.and_then(|cache| {
-                                cache
-                                    .get_icon(effect.icon_ability_id)
-                                    .map(|data| StdArc::new((data.width, data.height, data.rgba)))
-                            });
-                            Some(BossEffectIcon {
-                                effect_id: effect.game_effect_id,
-                                icon_ability_id: effect.icon_ability_id,
-                                name: effect.name.clone(),
-                                remaining_secs,
-                                total_secs,
-                                color: effect.color,
-                                show_icon: effect.show_icon,
-                                icon,
-                            })
-                        })
-                        .collect();
-                    if icons.is_empty() { None } else { Some((name, icons)) }
-                })
-                .collect()
-        } else {
-            HashMap::new()
-        };
-
-    Some(BossHealthData { entries, boss_icons })
+    Some(BossHealthData { entries })
 }
 
 /// Build timer data with audio events (countdowns and alerts)

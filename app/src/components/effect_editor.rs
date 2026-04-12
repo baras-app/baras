@@ -209,7 +209,7 @@ fn default_effect(name: String) -> EffectListItem {
         is_refreshed_on_modify: false,
         color: Some([80, 200, 80, 255]),
         show_at_secs: 0.0,
-        display_targets: vec![],
+        display_target: DisplayTarget::None,
         icon_ability_id: None,
         show_icon: true,
         display_source: false,
@@ -348,9 +348,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                 if !query.is_empty() {
                     return e.name.to_lowercase().contains(&query)
                         || e.id.to_lowercase().contains(&query)
-                        || e.display_targets
-                            .iter()
-                            .any(|t| t.label().to_lowercase().contains(&query));
+                        || e.display_target.label().to_lowercase().contains(&query);
                 }
                 true
             })
@@ -797,14 +795,7 @@ fn EffectImportPreviewModal(
                                             code { class: "text-xs", "{effect.id}" }
                                         }
                                         td { style: "padding: 3px 8px;",
-                                            {
-                                                let targets_label = match effect.display_targets.len() {
-                                                    0 => "None".to_string(),
-                                                    1 => effect.display_targets[0].label().to_string(),
-                                                    n => format!("⊞ {n} targets"),
-                                                };
-                                                rsx! { span { class: "effect-target-badge", "{targets_label}" } }
-                                            }
+                                            span { class: "effect-target-badge", "{effect.display_target.label()}" }
                                         }
                                     }
                                 }
@@ -920,14 +911,7 @@ fn EffectRow(
                     if effect.is_alert {
                         span { class: "tag tag-alert", "Alert" }
                     } else {
-                        {
-                            let targets_label = match effect.display_targets.len() {
-                                0 => "None".to_string(),
-                                1 => effect.display_targets[0].label().to_string(),
-                                n => format!("⊞ {n} targets"),
-                            };
-                            rsx! { span { class: "effect-target-badge", "{targets_label}" } }
-                        }
+                        span { class: "effect-target-badge", "{effect.display_target.label()}" }
                     }
                 }
 
@@ -1130,35 +1114,37 @@ fn EffectEditForm(
                                         }
                                     }
 
-                                    // Display Overlays (multi-select: an effect can appear on multiple overlays)
+                                    // Display Overlay
                                     div { class: "form-row-hz",
                                         label { class: "flex items-center",
-                                            "Display Overlays"
+                                            "Display Overlay"
                                             span {
                                                 class: "help-icon",
-                                                title: "Overlays this effect will appear on. Select multiple to show the same effect on more than one overlay.",
+                                                title: "Sets which overlay displays this effect when triggered",
                                                 "?"
                                             }
                                         }
-                                        div { class: "flex flex-wrap gap-sm",
-                                            for target in DisplayTarget::all().iter().filter(|t| !matches!(t, DisplayTarget::None)).copied() {
-                                                label { class: "flex items-center gap-xs text-sm",
-                                                    input {
-                                                        r#type: "checkbox",
-                                                        checked: draft().display_targets.contains(&target),
-                                                        onchange: move |e| {
-                                                            let mut d = draft();
-                                                            let is_checked = e.checked();
-                                                            let already_has = d.display_targets.contains(&target);
-                                                            if is_checked && !already_has {
-                                                                d.display_targets.push(target);
-                                                            } else if !is_checked && already_has {
-                                                                d.display_targets.retain(|t| *t != target);
-                                                            }
-                                                            draft.set(d);
-                                                        }
-                                                    }
-                                                    span { "{target.label()}" }
+                                        select {
+                                            class: "select-inline",
+                                            value: "{draft().display_target.label()}",
+                                            onchange: move |e| {
+                                                let mut d = draft();
+                                                d.display_target = match e.value().as_str() {
+                                                    "None" => DisplayTarget::None,
+                                                    "Raid Frames" => DisplayTarget::RaidFrames,
+                                                    "Effects A" => DisplayTarget::EffectsA,
+                                                    "Effects B" => DisplayTarget::EffectsB,
+                                                    "Cooldowns" => DisplayTarget::Cooldowns,
+                                                    "DOT Tracker" => DisplayTarget::DotTracker,
+                                                    "Effects Overlay" => DisplayTarget::EffectsOverlay,
+                                                    _ => d.display_target,
+                                                };
+                                                draft.set(d);
+                                            },
+                                            for target in DisplayTarget::all() {
+                                                option {
+                                                    value: "{target.label()}",
+                                                    "{target.label()}"
                                                 }
                                             }
                                         }
@@ -1258,7 +1244,7 @@ fn EffectEditForm(
                                     }
 
                                     // Display Source - only for personal overlays
-                                    if draft().display_targets.iter().any(|t| matches!(t, DisplayTarget::EffectsA | DisplayTarget::EffectsB | DisplayTarget::Cooldowns)) {
+                                    if matches!(draft().display_target, DisplayTarget::EffectsA | DisplayTarget::EffectsB | DisplayTarget::Cooldowns) {
                                         div { class: "form-row-hz",
                                             label { class: "flex items-center",
                                                 "Display Source"
@@ -1658,7 +1644,7 @@ fn EffectEditForm(
                                 }
 
                                 // Fixed Duration - hide for Cooldowns (they always ignore effect removed)
-                                if !draft().display_targets.contains(&DisplayTarget::Cooldowns) {
+                                if draft().display_target != DisplayTarget::Cooldowns {
                                     label { class: "flex items-center gap-xs text-sm",
                                         input {
                                             r#type: "checkbox",
@@ -1681,7 +1667,7 @@ fn EffectEditForm(
                                 }
 
                                 // Cooldown Ready Secs (only for Cooldowns display target)
-                                if draft().display_targets.contains(&DisplayTarget::Cooldowns) {
+                                if draft().display_target == DisplayTarget::Cooldowns {
                                     div { class: "form-row-hz",
                                         label { class: "flex items-center",
                                             "Ready State"

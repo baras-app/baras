@@ -49,7 +49,6 @@ pub use overlays::{
     AlertEntry,
     AlertsData,
     AlertsOverlay,
-    BossEffectIcon,
     BossHealthData,
     BossHealthOverlay,
     ChallengeData,
