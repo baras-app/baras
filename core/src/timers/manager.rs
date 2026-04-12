@@ -63,6 +63,9 @@ pub struct TimerManager {
     /// Currently active timers (countdown timers with duration > 0)
     pub(super) active_timers: HashMap<TimerKey, ActiveTimer>,
 
+    /// Active GCD countdown (single slot, replaced on re-fire per D-03)
+    pub(super) active_gcd: Option<super::ActiveGcd>,
+
     /// Fired alerts (ephemeral notifications, not countdown timers)
     pub(super) fired_alerts: Vec<FiredAlert>,
 
@@ -147,6 +150,7 @@ impl TimerManager {
             trigger_index: HashMap::new(),
             preferences: TimerPreferences::new(),
             active_timers: HashMap::new(),
+            active_gcd: None,
             fired_alerts: Vec::new(),
             expired_this_tick: Vec::new(),
             started_this_tick: Vec::new(),
@@ -190,6 +194,11 @@ impl TimerManager {
     /// Get a reference to current preferences
     pub fn preferences(&self) -> &TimerPreferences {
         &self.preferences
+    }
+
+    /// Get the current active GCD (if any)
+    pub fn active_gcd(&self) -> Option<&super::ActiveGcd> {
+        self.active_gcd.as_ref()
     }
 
     /// Get a mutable reference to preferences (for updating)
@@ -453,6 +462,14 @@ impl TimerManager {
 
             // Use interpolated game time to check expirations
             let interp_time = self.interpolated_game_time().unwrap_or(ts);
+
+            // Prune expired GCD
+            if let Some(ref gcd) = self.active_gcd {
+                if gcd.has_expired(interp_time) {
+                    self.active_gcd = None;
+                }
+            }
+
             self.process_expirations(interp_time, encounter);
 
             // Process cancellation chains (timer_canceled triggers)
@@ -773,6 +790,9 @@ impl TimerManager {
         if let Some(existing) = self.active_timers.get_mut(&key) {
             if def.can_be_refreshed {
                 existing.refresh(timestamp);
+                if let Some(secs) = def.gcd_secs {
+                    self.active_gcd = Some(super::ActiveGcd::new(timestamp, secs));
+                }
                 // Still need to cancel timers that depend on this one
                 self.cancel_timers_on_start(&def.id);
                 return;
@@ -814,6 +834,12 @@ impl TimerManager {
             def.queue_priority,
         );
         self.active_timers.insert(key, timer);
+
+        // Create GCD entry if this timer has gcd_secs configured (per D-02)
+        // Replace policy: any existing GCD is overwritten (per D-03)
+        if let Some(secs) = def.gcd_secs {
+            self.active_gcd = Some(super::ActiveGcd::new(timestamp, secs));
+        }
 
         // Track that this timer started (for counter triggers)
         self.started_this_tick.push(def.id.clone());
@@ -990,14 +1016,55 @@ impl TimerManager {
         let mut chains_to_start: Vec<(String, Option<i64>)> = Vec::new();
 
         for key in expired_keys {
-            // Check if timer can repeat
-            if let Some(timer) = self.active_timers.get_mut(&key)
-                && timer.can_repeat()
-            {
-                timer.repeat(current_time);
-                // Record expiration (move from key since we're done with it)
-                self.expired_this_tick.push(key.definition_id);
-            } else if let Some(mut timer) = self.active_timers.remove(&key) {
+            if let Some(timer) = self.active_timers.get_mut(&key) {
+                // Skip already-queued timers — they stay indefinitely until combat end
+                if timer.is_queued {
+                    continue;
+                }
+
+                // Check if timer can repeat
+                if timer.can_repeat() {
+                    timer.repeat(current_time);
+                    self.expired_this_tick.push(key.definition_id);
+                    continue;
+                }
+
+                // Check if timer should hold as queued (per D-07)
+                // Fire alerts and chains on the transition tick BEFORE marking queued
+                if timer.queue_on_expire {
+                    self.expired_this_tick.push(key.definition_id.clone());
+
+                    let should_fire_audio = !timer.role_hidden && timer.audio_enabled && timer.audio_file.is_some() && timer.audio_offset == 0;
+                    let should_fire_expire_alert = !timer.role_hidden && timer.alert_on_expire;
+                    if should_fire_audio || should_fire_expire_alert {
+                        let raw_text = timer.alert_text.as_deref().unwrap_or(&timer.name);
+                        let text = self.format_alert_text(raw_text, current_time);
+                        self.fired_alerts.push(FiredAlert {
+                            id: timer.definition_id.clone(),
+                            name: timer.name.clone(),
+                            text,
+                            color: Some(timer.color),
+                            timestamp: current_time,
+                            alert_text_enabled: should_fire_expire_alert,
+                            audio_enabled: should_fire_audio,
+                            audio_file: timer.audio_file.clone(),
+                            icon_ability_id: timer.icon_ability_id,
+                        });
+                    }
+
+                    // Fire chain on the transition tick
+                    if let Some(next_timer_id) = timer.triggers_timer.clone() {
+                        chains_to_start.push((next_timer_id, timer.target_entity_id));
+                    }
+
+                    // NOW mark as queued — timer stays in active_timers indefinitely
+                    timer.is_queued = true;
+                    continue;
+                }
+            }
+
+            // Timer is fully expired — remove it, fire alerts, chain
+            if let Some(mut timer) = self.active_timers.remove(&key) {
                 // Record expiration (move from key since we're done with it)
                 self.expired_this_tick.push(key.definition_id);
                 // Fire expiration alert if:
