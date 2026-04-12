@@ -61,28 +61,28 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATA-01 | — | Pending |
-| DATA-02 | — | Pending |
-| DATA-03 | — | Pending |
-| DATA-04 | — | Pending |
-| DATA-05 | — | Pending |
-| SVC-01 | — | Pending |
-| SVC-02 | — | Pending |
-| SVC-03 | — | Pending |
-| OVLY-01 | — | Pending |
-| OVLY-02 | — | Pending |
-| OVLY-03 | — | Pending |
-| WIRE-01 | — | Pending |
-| WIRE-02 | — | Pending |
-| WIRE-03 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
+| DATA-01 | Phase 1 | Pending |
+| DATA-02 | Phase 1 | Pending |
+| DATA-03 | Phase 1 | Pending |
+| DATA-04 | Phase 1 | Pending |
+| DATA-05 | Phase 1 | Pending |
+| SVC-01 | Phase 2 | Pending |
+| SVC-02 | Phase 2 | Pending |
+| SVC-03 | Phase 2 | Pending |
+| OVLY-01 | Phase 3 | Pending |
+| OVLY-02 | Phase 3 | Pending |
+| OVLY-03 | Phase 3 | Pending |
+| WIRE-01 | Phase 4 | Pending |
+| WIRE-02 | Phase 4 | Pending |
+| WIRE-03 | Phase 4 | Pending |
+| UI-01 | Phase 5 | Pending |
+| UI-02 | Phase 5 | Pending |
 
 **Coverage:**
 - v1.0 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16 ⚠️ (roadmap pending)
+- Mapped to phases: 16
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-11 after initial definition*
+*Last updated: 2026-04-11 — traceability filled after roadmap creation*
