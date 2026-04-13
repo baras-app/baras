@@ -1456,6 +1456,7 @@ mod examples {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: three_bosses.clone(),
+                        ..Default::default()
                     });
                     overlays.push(overlay);
                 }
@@ -1493,6 +1494,7 @@ mod examples {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: entries.to_vec(),
+                        ..Default::default()
                     });
                     overlays.push(overlay);
                 }
@@ -1523,6 +1525,7 @@ mod examples {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: markers_and_shields,
+                        ..Default::default()
                     });
                     overlays.push(overlay);
                 }
