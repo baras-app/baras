@@ -69,7 +69,7 @@ use baras_overlay::{
     RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
 };
 use baras_types::{
-    AbilityQueueOverlayConfig as TypesAbilityQueueConfig,
+    AbilityQueueOverlayConfig as TypesAbilityQueueConfig, ClassIconMode,
     CombatTimeOverlayConfig as TypesCombatTimeConfig, CooldownTrackerConfig,
     DotTrackerConfig as TypesDotTrackerConfig, EffectsAConfig as TypesEffectsAConfig,
     EffectsBConfig as TypesEffectsBConfig, NotesOverlayConfig as TypesNotesOverlayConfig,
@@ -473,7 +473,7 @@ pub fn create_metric_overlay(
     show_empty_bars: bool,
     stack_from_bottom: bool,
     scaling_factor: f32,
-    show_class_icons: bool,
+    icon_mode: ClassIconMode,
     font_scale: f32,
     dynamic_background: bool,
     show_background_bar: bool,
@@ -504,7 +504,7 @@ pub fn create_metric_overlay(
             show_empty_bars,
             stack_from_bottom,
             scaling_factor,
-            show_class_icons,
+            icon_mode,
             font_scale,
             dynamic_background,
             show_background_bar,

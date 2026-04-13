@@ -55,7 +55,7 @@ impl OverlayManager {
                     settings.metric_show_empty_bars,
                     settings.metric_stack_from_bottom,
                     settings.metric_scaling_factor,
-                    settings.class_icons_enabled,
+                    settings.class_icon_mode,
                     settings.metric_font_scale,
                     settings.metric_dynamic_background,
                     settings.metric_show_background_bar,
@@ -335,11 +335,12 @@ impl OverlayManager {
                     settings.metric_show_empty_bars,
                     settings.metric_stack_from_bottom,
                     settings.metric_scaling_factor,
-                    settings.class_icons_enabled,
+                    settings.class_icon_mode,
                     settings.metric_font_scale,
                     settings.metric_dynamic_background,
                     eu,
                     settings.metric_show_background_bar,
+                    settings.class_colors.clone(),
                 )
             }
             OverlayType::Personal => {

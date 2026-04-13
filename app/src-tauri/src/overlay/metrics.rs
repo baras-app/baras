@@ -101,23 +101,25 @@ pub fn create_entries_for_type(
         .map(|m| {
             let v = extract_values(m, overlay_type);
             let class_icon = m.class_icon.clone();
+            let discipline_icon = m.discipline.map(|d| d.icon_name().to_string());
+            let class_name = m.class_name.clone();
             let role = m.discipline.map(|d| match d.role() {
                 GameRole::Tank => OverlayRole::Tank,
                 GameRole::Healer => OverlayRole::Healer,
                 GameRole::Dps => OverlayRole::Damage,
             });
-            (m.name.clone(), v, class_icon, role)
+            (m.name.clone(), v, class_icon, discipline_icon, class_name, role)
         })
         .collect();
 
     // Sort by rate value descending (highest first)
     values.sort_by(|a, b| b.1.rate.cmp(&a.1.rate));
 
-    let max_value = values.iter().map(|(_, v, _, _)| v.rate).max().unwrap_or(1);
+    let max_value = values.iter().map(|(_, v, _, _, _, _)| v.rate).max().unwrap_or(1);
 
     values
         .into_iter()
-        .map(|(name, v, class_icon, role)| {
+        .map(|(name, v, class_icon, discipline_icon, class_name, role)| {
             let mut entry = MetricEntry::new(&name, v.rate, max_value).with_total(v.total);
             if let (Some(sr), Some(st)) = (v.split_rate, v.split_total) {
                 entry = entry.with_split(sr, st);
@@ -131,6 +133,12 @@ pub fn create_entries_for_type(
                 } else {
                     entry = entry.with_icon(icon);
                 }
+            }
+            if let Some(icon) = discipline_icon {
+                entry = entry.with_discipline_icon(icon);
+            }
+            if let Some(name) = class_name {
+                entry = entry.with_class_name(name);
             }
             entry
         })

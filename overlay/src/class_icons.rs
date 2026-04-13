@@ -82,6 +82,60 @@ static ICON_DATA: &[(&str, &[u8])] = &[
 
 static DECODED_ICONS: OnceLock<HashMap<String, ClassIcon>> = OnceLock::new();
 
+// Embed discipline icons at compile time
+static DISCIPLINE_ICON_DATA: &[(&str, &[u8])] = &[
+    ("advanced-prototype", include_bytes!("../assets/discipline/advanced-prototype.png")),
+    ("annihilation", include_bytes!("../assets/discipline/annihilation.png")),
+    ("arsenal", include_bytes!("../assets/discipline/arsenal.png")),
+    ("assault-specialist", include_bytes!("../assets/discipline/assault-specialist.png")),
+    ("balance", include_bytes!("../assets/discipline/balance.png")),
+    ("bodyguard", include_bytes!("../assets/discipline/bodyguard.png")),
+    ("carnage", include_bytes!("../assets/discipline/carnage.png")),
+    ("combat", include_bytes!("../assets/discipline/combat.png")),
+    ("combat-medic", include_bytes!("../assets/discipline/combat-medic.png")),
+    ("concealment", include_bytes!("../assets/discipline/concealment.png")),
+    ("concentration", include_bytes!("../assets/discipline/concentration.png")),
+    ("corruption", include_bytes!("../assets/discipline/corruption.png")),
+    ("darkness", include_bytes!("../assets/discipline/darkness.png")),
+    ("deception", include_bytes!("../assets/discipline/deception.png")),
+    ("defense", include_bytes!("../assets/discipline/defense.png")),
+    ("dirty-fighting", include_bytes!("../assets/discipline/dirty-fighting.png")),
+    ("engineering", include_bytes!("../assets/discipline/engineering.png")),
+    ("focus", include_bytes!("../assets/discipline/focus.png")),
+    ("fury", include_bytes!("../assets/discipline/fury.png")),
+    ("gunnery", include_bytes!("../assets/discipline/gunnery.png")),
+    ("hatred", include_bytes!("../assets/discipline/hatred.png")),
+    ("immortal", include_bytes!("../assets/discipline/immortal.png")),
+    ("infiltration", include_bytes!("../assets/discipline/infiltration.png")),
+    ("innovative-ordnance", include_bytes!("../assets/discipline/innovative-ordnance.png")),
+    ("kinetic-combat", include_bytes!("../assets/discipline/kinetic-combat.png")),
+    ("lethality", include_bytes!("../assets/discipline/lethality.png")),
+    ("lightning", include_bytes!("../assets/discipline/lightning.png")),
+    ("madness", include_bytes!("../assets/discipline/madness.png")),
+    ("marksmanship", include_bytes!("../assets/discipline/marksmanship.png")),
+    ("medicine", include_bytes!("../assets/discipline/medicine.png")),
+    ("plasmatech", include_bytes!("../assets/discipline/plasmatech.png")),
+    ("pyrotech", include_bytes!("../assets/discipline/pyrotech.png")),
+    ("rage", include_bytes!("../assets/discipline/rage.png")),
+    ("ruffian", include_bytes!("../assets/discipline/ruffian.png")),
+    ("saboteur", include_bytes!("../assets/discipline/saboteur.png")),
+    ("sawbones", include_bytes!("../assets/discipline/sawbones.png")),
+    ("scrapper", include_bytes!("../assets/discipline/scrapper.png")),
+    ("seer", include_bytes!("../assets/discipline/seer.png")),
+    ("serenity", include_bytes!("../assets/discipline/serenity.png")),
+    ("sharpshooter", include_bytes!("../assets/discipline/sharpshooter.png")),
+    ("shield-specialist", include_bytes!("../assets/discipline/shield-specialist.png")),
+    ("shield-tech", include_bytes!("../assets/discipline/shield-tech.png")),
+    ("tactics", include_bytes!("../assets/discipline/tactics.png")),
+    ("telekinetics", include_bytes!("../assets/discipline/telekinetics.png")),
+    ("vengeance", include_bytes!("../assets/discipline/vengeance.png")),
+    ("vigilance", include_bytes!("../assets/discipline/vigilance.png")),
+    ("virulence", include_bytes!("../assets/discipline/virulence.png")),
+    ("watchman", include_bytes!("../assets/discipline/watchman.png")),
+];
+
+static DECODED_DISCIPLINE_ICONS: OnceLock<HashMap<String, ClassIcon>> = OnceLock::new();
+
 // Embed role icons at compile time
 static ROLE_ICON_DATA: &[(&str, &[u8])] = &[
     ("icon_tank", include_bytes!("../assets/role/icon_tank.png")),
@@ -175,6 +229,27 @@ fn get_role_icons() -> &'static HashMap<String, ClassIcon> {
 pub fn get_role_icon(name: &str) -> Option<&'static ClassIcon> {
     let key = name.strip_suffix(".png").unwrap_or(name);
     get_role_icons().get(key)
+}
+
+/// Get decoded discipline icons (lazily initialized)
+fn get_discipline_icons() -> &'static HashMap<String, ClassIcon> {
+    DECODED_DISCIPLINE_ICONS.get_or_init(|| {
+        let mut map = HashMap::new();
+        for (name, data) in DISCIPLINE_ICON_DATA {
+            if let Some(icon) = decode_png(data) {
+                map.insert((*name).to_string(), icon);
+            }
+        }
+        map
+    })
+}
+
+/// Get a discipline icon by name as raw RGBA (e.g., "lightning", "lightning.png").
+/// Returns `None` if the discipline is unknown.
+pub fn get_discipline_icon(name: &str) -> Option<ClassIcon> {
+    let key = name.strip_suffix(".png").unwrap_or(name);
+    let base = get_discipline_icons().get(key)?;
+    Some(ClassIcon { rgba: base.rgba.clone(), width: base.width, height: base.height })
 }
 
 /// Get a class icon with role-based tinting applied

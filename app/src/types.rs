@@ -20,6 +20,8 @@ pub use baras_types::{
     BreakdownMode,
     ChallengeColumns,
     ChallengeLayout,
+    ClassColorConfig,
+    ClassIconMode,
     Color,
     CombatLogSessionState,
     CooldownTrackerConfig,
@@ -685,6 +687,7 @@ pub enum DisplayTarget {
     EffectsB,
     Cooldowns,
     DotTracker,
+    BossHealth,
     EffectsOverlay,
 }
 
@@ -697,6 +700,7 @@ impl DisplayTarget {
             Self::EffectsB => "Effects B",
             Self::Cooldowns => "Cooldowns",
             Self::DotTracker => "DOT Tracker",
+            Self::BossHealth => "Boss HP Bar",
             Self::EffectsOverlay => "Effects Overlay",
         }
     }
@@ -709,6 +713,7 @@ impl DisplayTarget {
             Self::EffectsB,
             Self::Cooldowns,
             Self::DotTracker,
+            Self::BossHealth,
         ]
     }
 }

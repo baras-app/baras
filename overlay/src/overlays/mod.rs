@@ -79,6 +79,7 @@ use baras_core::context::{
     AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig,
     PersonalOverlayConfig, TimerOverlayConfig,
 };
+use baras_types::{ClassColorConfig, ClassIconMode};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Types
@@ -129,8 +130,8 @@ pub enum OverlayData {
 /// and `european_number_format` (`bool`) for number display formatting.
 #[derive(Debug, Clone)]
 pub enum OverlayConfigUpdate {
-    /// Appearance config for metric overlays (+ alpha, show_empty, stack_bottom, scale, show_class_icons, font_scale, dynamic_background, european, show_background_bar)
-    Metric(OverlayAppearanceConfig, u8, bool, bool, f32, bool, f32, bool, bool, bool),
+    /// Appearance config for metric overlays (+ alpha, show_empty, stack_bottom, scale, icon_mode, font_scale, dynamic_background, european, show_background_bar, class_colors)
+    Metric(OverlayAppearanceConfig, u8, bool, bool, f32, ClassIconMode, f32, bool, bool, bool, ClassColorConfig),
     /// Config for personal overlay (+ background alpha, european)
     Personal(PersonalOverlayConfig, u8, bool),
     /// Config for raid overlay (+ background alpha, european)

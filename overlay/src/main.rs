@@ -31,6 +31,7 @@ mod examples {
         PlayerContribution, PlayerRole, RaidEffect, RaidFrame, RaidGridLayout, RaidOverlay,
         RaidOverlayConfig, TimerData, TimerEntry, TimerOverlay,
     };
+    use baras_types::ClassIconMode;
 
     pub fn run_metric_overlay() {
         let config = OverlayConfig {
@@ -52,7 +53,7 @@ mod examples {
             true,
             false,
             1.0,
-            true,
+            ClassIconMode::Class,
             1.0,
             true,
             false,
@@ -76,6 +77,8 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
             },
             MetricEntry {
                 name: "Player 2".to_string(),
@@ -88,6 +91,8 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
             },
             MetricEntry {
                 name: "Player 3".to_string(),
@@ -100,6 +105,8 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
             },
             MetricEntry {
                 name: "Player 4".to_string(),
@@ -112,6 +119,8 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
             },
         ];
 
@@ -167,7 +176,7 @@ mod examples {
             true,
             false,
             1.0,
-            true,
+            ClassIconMode::Class,
             1.0,
             true,
             false,
@@ -207,6 +216,8 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
             })
             .collect();
 
@@ -270,7 +281,7 @@ mod examples {
             true,
             false,
             1.0,
-            true,
+            ClassIconMode::Class,
             1.0,
             true,
             false,
@@ -320,6 +331,8 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
             })
             .collect();
 

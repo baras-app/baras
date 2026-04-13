@@ -989,6 +989,100 @@ fn default_scaling_factor() -> f32 {
 // Overlay Appearance Config
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Which icon to show next to player names in metric overlays.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ClassIconMode {
+    /// No icon
+    None,
+    /// Class silhouette icon (role-tinted)
+    #[default]
+    Class,
+    /// Discipline-specific icon (full color)
+    Discipline,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Class Color Config
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Per-archetype bar colors for metric overlays.
+///
+/// Each field covers a mirror-class pair (Imperial / Republic).
+/// Used when `use_class_color` is enabled on a metric overlay.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClassColorConfig {
+    /// Sorcerer / Sage
+    #[serde(default = "default_class_color_sorcerer")]
+    pub sorcerer_sage: Color,
+    /// Assassin / Shadow
+    #[serde(default = "default_class_color_assassin")]
+    pub assassin_shadow: Color,
+    /// Juggernaut / Guardian
+    #[serde(default = "default_class_color_juggernaut")]
+    pub juggernaut_guardian: Color,
+    /// Marauder / Sentinel
+    #[serde(default = "default_class_color_marauder")]
+    pub marauder_sentinel: Color,
+    /// Mercenary / Commando
+    #[serde(default = "default_class_color_mercenary")]
+    pub mercenary_commando: Color,
+    /// Powertech / Vanguard
+    #[serde(default = "default_class_color_powertech")]
+    pub powertech_vanguard: Color,
+    /// Operative / Scoundrel
+    #[serde(default = "default_class_color_operative")]
+    pub operative_scoundrel: Color,
+    /// Sniper / Gunslinger
+    #[serde(default = "default_class_color_sniper")]
+    pub sniper_gunslinger: Color,
+}
+
+fn default_class_color_sorcerer() -> Color { [128, 64, 192, 255] }   // violet
+fn default_class_color_assassin() -> Color { [90, 48, 128, 255] }    // dark purple
+fn default_class_color_juggernaut() -> Color { [192, 48, 48, 255] }  // crimson
+fn default_class_color_marauder() -> Color { [208, 80, 32, 255] }    // red-orange
+fn default_class_color_mercenary() -> Color { [64, 128, 64, 255] }   // green
+fn default_class_color_powertech() -> Color { [192, 104, 32, 255] }  // orange
+fn default_class_color_operative() -> Color { [96, 120, 48, 255] }   // olive
+fn default_class_color_sniper() -> Color { [192, 160, 32, 255] }     // gold
+
+impl Default for ClassColorConfig {
+    fn default() -> Self {
+        Self {
+            sorcerer_sage: default_class_color_sorcerer(),
+            assassin_shadow: default_class_color_assassin(),
+            juggernaut_guardian: default_class_color_juggernaut(),
+            marauder_sentinel: default_class_color_marauder(),
+            mercenary_commando: default_class_color_mercenary(),
+            powertech_vanguard: default_class_color_powertech(),
+            operative_scoundrel: default_class_color_operative(),
+            sniper_gunslinger: default_class_color_sniper(),
+        }
+    }
+}
+
+impl ClassColorConfig {
+    /// Look up the bar color for a class by its display name.
+    ///
+    /// Accepts both Imperial and Republic class names (e.g., "Sorcerer" or "Sage").
+    /// Returns `None` if the name is unrecognized — callers should fall back to
+    /// the configured bar color.
+    pub fn for_class_name(&self, name: &str) -> Option<Color> {
+        match name {
+            "Sorcerer" | "Sage" => Some(self.sorcerer_sage),
+            "Assassin" | "Shadow" => Some(self.assassin_shadow),
+            "Juggernaut" | "Guardian" => Some(self.juggernaut_guardian),
+            "Marauder" | "Sentinel" => Some(self.marauder_sentinel),
+            "Mercenary" | "Commando" => Some(self.mercenary_commando),
+            "Powertech" | "Vanguard" => Some(self.powertech_vanguard),
+            "Operative" | "Scoundrel" => Some(self.operative_scoundrel),
+            "Sniper" | "Gunslinger" => Some(self.sniper_gunslinger),
+            _ => None,
+        }
+    }
+}
+
 /// Per-overlay appearance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OverlayAppearanceConfig {
@@ -1012,6 +1106,10 @@ pub struct OverlayAppearanceConfig {
     pub show_percent: bool,
     #[serde(default = "default_true")]
     pub show_duration: bool,
+    /// Color each player's bar using their class color (from global ClassColorConfig).
+    /// Falls back to `bar_color` when class is unknown.
+    #[serde(default)]
+    pub use_class_color: bool,
 }
 
 fn default_font_color() -> Color {
@@ -1037,6 +1135,7 @@ impl Default for OverlayAppearanceConfig {
             show_per_second: true,
             show_percent: true,
             show_duration: true,
+            use_class_color: false,
         }
     }
 }
@@ -2138,8 +2237,8 @@ pub struct OverlaySettings {
     pub metric_show_background_bar: bool,
     #[serde(default = "default_opacity")]
     pub personal_opacity: u8,
-    #[serde(default = "default_true")]
-    pub class_icons_enabled: bool,
+    #[serde(default)]
+    pub class_icon_mode: ClassIconMode,
     #[serde(default)]
     pub default_appearances: HashMap<String, OverlayAppearanceConfig>,
     #[serde(default)]
@@ -2208,6 +2307,9 @@ pub struct OverlaySettings {
     /// Auto-hide overlays when not in a live session (historical, logged out, etc.)
     #[serde(default)]
     pub hide_when_not_live: bool,
+    /// Per-archetype bar colors used when `use_class_color` is enabled on a metric overlay.
+    #[serde(default)]
+    pub class_colors: ClassColorConfig,
 }
 
 impl Default for OverlaySettings {
@@ -2226,8 +2328,9 @@ impl Default for OverlaySettings {
             metric_dynamic_background: false,
             metric_show_background_bar: false,
             personal_opacity: 180,
-            class_icons_enabled: true,
+            class_icon_mode: ClassIconMode::Class,
             default_appearances: HashMap::new(),
+            class_colors: ClassColorConfig::default(),
             raid_overlay: RaidOverlaySettings::default(),
             raid_opacity: 180,
             boss_health: BossHealthConfig::default(),
