@@ -908,6 +908,7 @@ pub fn create_cooldowns_overlay(
         show_header: cooldowns_config.show_header,
         font_scale: cooldowns_config.font_scale,
         dynamic_background: cooldowns_config.dynamic_background,
+        layout_bar: cooldowns_config.layout_bar,
     };
 
     let factory = move || {

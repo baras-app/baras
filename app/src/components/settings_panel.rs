@@ -1327,6 +1327,19 @@ pub fn SettingsPanel(
                     h4 { style: "margin-top: 16px;", "Display Options" }
 
                     div { class: "setting-row",
+                        label { "Bar Mode" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.cooldown_tracker.layout_bar,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.cooldown_tracker.layout_bar = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row",
                         label { "Show Header" }
                         input {
                             r#type: "checkbox",

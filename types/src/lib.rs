@@ -1834,6 +1834,9 @@ pub struct CooldownTrackerConfig {
     /// When true, background shrinks to fit content instead of filling the window
     #[serde(default)]
     pub dynamic_background: bool,
+    /// Render cooldowns as stacked progress bars instead of icons
+    #[serde(default)]
+    pub layout_bar: bool,
 }
 
 fn default_max_cooldowns() -> u8 {
@@ -1852,6 +1855,7 @@ impl Default for CooldownTrackerConfig {
             show_header: false,
             font_scale: 1.0,
             dynamic_background: false,
+            layout_bar: false,
         }
     }
 }

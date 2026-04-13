@@ -3601,16 +3601,24 @@ async fn build_cooldowns_data(
             let tracker_total = effect.duration?.as_secs_f32();
             let total_secs = tracker_total - effect.cooldown_ready_secs;
 
-            // Remaining time until tracker expires
-            let tracker_remaining = calculate_remaining_secs(effect, interp_time)?;
+            // Remaining time until tracker expires.
+            // Do NOT use `?` here — include entries at 0 as "Ready" until the tracker's
+            // next tick marks them timer_expired and removes them from cooldown_effects().
+            // Between log events the interpolated clock can pass expires_at before the
+            // tracker has a chance to run tick(), so dropping at 0 would cut the ready
+            // state short (or skip it entirely for effects with cooldown_ready_secs = 0).
+            let tracker_remaining = interp_time
+                .and_then(|t| effect.remaining_secs(t))
+                .unwrap_or(0.0);
 
             // Display remaining = tracker remaining minus ready period (clamped to 0)
             // So display hits 0 when entering ready state, not when effect disappears
             let remaining_secs = (tracker_remaining - effect.cooldown_ready_secs).max(0.0);
 
-            // In ready state when tracker remaining is within the ready period
-            let is_in_ready_state =
-                effect.cooldown_ready_secs > 0.0 && tracker_remaining <= effect.cooldown_ready_secs;
+            // In ready state whenever the display countdown has reached 0.
+            // Removing the cooldown_ready_secs > 0 guard so entries without an explicit
+            // ready period also show "Ready" briefly until the tracker clears them.
+            let is_in_ready_state = remaining_secs <= 0.0;
 
             // Load icon from cache
             let icon = icon_cache.and_then(|cache| {

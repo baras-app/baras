@@ -428,6 +428,7 @@ impl OverlayManager {
                     show_header: cfg.show_header,
                     font_scale: cfg.font_scale,
                     dynamic_background: cfg.dynamic_background,
+                    layout_bar: cfg.layout_bar,
                 };
                 OverlayConfigUpdate::Cooldowns(cooldowns_config, settings.cooldown_tracker_opacity, eu)
             }
