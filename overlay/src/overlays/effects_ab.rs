@@ -10,8 +10,8 @@ use std::sync::Arc;
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::color_from_rgba;
-use crate::widgets::colors;
+use crate::utils::{color_from_rgba, scale_icon};
+use crate::widgets::{colors, ProgressBar};
 use crate::widgets::Header;
 
 /// Cache for pre-scaled icons to avoid re-scaling every frame
@@ -25,6 +25,8 @@ pub enum EffectsLayout {
     Horizontal,
     /// Vertical column of icons with text
     Vertical,
+    /// Vertically stacked progress bars (timer-style)
+    Bar,
 }
 
 /// A single effect entry for display
@@ -36,6 +38,8 @@ pub struct EffectABEntry {
     pub icon_ability_id: u64,
     /// Display name of the effect
     pub name: String,
+    /// Display text override (from definition; falls back to name if empty)
+    pub display_text: String,
     /// Remaining time in seconds
     pub remaining_secs: f32,
     /// Total duration in seconds (for progress calculation)
@@ -120,6 +124,9 @@ const BASE_HEIGHT: f32 = 300.0;
 const BASE_PADDING: f32 = 4.0;
 const BASE_SPACING: f32 = 4.0;
 const BASE_FONT_SIZE: f32 = 10.0;
+/// Bar mode dimensions (matches timer overlay style)
+const BASE_BAR_HEIGHT: f32 = 24.0;
+const BASE_BAR_FONT_SIZE: f32 = 11.0;
 
 /// Effects overlay - displays effect icons in horizontal or vertical layout
 pub struct EffectsABOverlay {
@@ -201,6 +208,7 @@ impl EffectsABOverlay {
         match self.config.layout {
             EffectsLayout::Horizontal => self.render_horizontal(),
             EffectsLayout::Vertical => self.render_vertical(),
+            EffectsLayout::Bar => self.render_bar_mode(),
         }
     }
 
@@ -536,6 +544,145 @@ impl EffectsABOverlay {
         self.frame.end_frame();
     }
 
+    /// Render bar mode (vertically stacked progress bars, timer-style)
+    fn render_bar_mode(&mut self) {
+        let max_display = self.config.max_display as usize;
+
+        // Dirty check
+        let current_state: Vec<(u64, String, u8)> = self
+            .data.effects.iter().take(max_display)
+            .map(|e| (e.effect_id, e.format_time(self.european_number_format), e.stacks))
+            .collect();
+
+        if current_state == self.last_rendered && !self.last_rendered.is_empty() {
+            return;
+        }
+        self.last_rendered = current_state;
+
+        let font_scale = self.config.font_scale.clamp(1.0, 2.0);
+        let bar_height = self.frame.scaled(BASE_BAR_HEIGHT * font_scale);
+        let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);
+        let entry_spacing = self.frame.scaled(BASE_SPACING);
+        let padding = self.frame.scaled(BASE_PADDING);
+        let bar_radius = 3.0 * self.frame.scale_factor();
+        let content_width = self.frame.width() as f32 - 2.0 * padding;
+        let font_color = colors::white();
+        let header_font_size = font_size * 1.4;
+        let scale = self.frame.scale_factor();
+
+        // Icon sizing derived from bar height (matches timer overlay)
+        let icon_size = bar_height - 4.0 * scale;
+        let icon_padding = 2.0 * scale;
+        let icon_size_u32 = icon_size.round() as u32;
+
+        let header_space = if self.config.show_header {
+            header_font_size + entry_spacing + 2.0 + entry_spacing + 4.0 * scale
+        } else {
+            0.0
+        };
+
+        let num_visible = self.data.effects.iter().take(max_display).count();
+        let content_height = if num_visible == 0 {
+            if self.config.show_header { padding * 2.0 + header_space } else { 0.0 }
+        } else {
+            padding * 2.0
+                + header_space
+                + num_visible as f32 * bar_height
+                + (num_visible - 1) as f32 * entry_spacing
+        };
+
+        if self.config.dynamic_background {
+            self.frame.begin_frame_with_content_height(content_height);
+        } else {
+            self.frame.begin_frame();
+        }
+
+        if self.config.show_header && !self.config.header_title.is_empty() {
+            Header::new(&self.config.header_title)
+                .with_color(colors::white())
+                .render(&mut self.frame, padding, padding, content_width, header_font_size, entry_spacing);
+        }
+
+        if self.data.effects.is_empty() {
+            self.frame.end_frame();
+            return;
+        }
+
+        let effects: Vec<_> = self.data.effects.iter().take(max_display).cloned().collect();
+        let mut y = padding + header_space;
+
+        for effect in &effects {
+            // Build label: stacks prefix + optional name + optional source
+            let mut label = String::new();
+            if effect.stacks > 0 {
+                label.push_str(&format!("{}x ", effect.stacks));
+            }
+            if self.config.show_effect_names || label.is_empty() {
+                let text = if !effect.display_text.is_empty() { &effect.display_text } else { &effect.name };
+                label.push_str(text);
+            }
+            if effect.display_source && !effect.source_name.is_empty() {
+                label.push_str(&format!(" ({})", effect.source_name));
+            }
+
+            let has_icon = effect.show_icon && effect.icon.is_some();
+            let bar_color = color_from_rgba(effect.color);
+
+            let mut bar = ProgressBar::new(&label, effect.progress())
+                .with_fill_color(bar_color)
+                .with_bg_color(colors::dps_bar_bg())
+                .with_text_color(font_color)
+                .with_bold_text()
+                .with_text_glow();
+
+            if self.config.show_countdown {
+                bar = bar.with_right_text(effect.format_time(self.european_number_format));
+            }
+            if has_icon {
+                bar = bar.with_label_offset(icon_size + icon_padding);
+            }
+
+            bar.render(&mut self.frame, padding, y, content_width, bar_height, font_size, bar_radius);
+
+            // Draw icon with glow border (identical to timer overlay pattern)
+            if has_icon {
+                let icon_x = padding + icon_padding;
+                let icon_y = y + icon_padding;
+                let cache_key = (effect.icon_ability_id, icon_size_u32);
+                let icon_drawn = if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
+                    self.frame.draw_image(scaled_icon, icon_size_u32, icon_size_u32, icon_x, icon_y, icon_size, icon_size);
+                    true
+                } else if let Some(ref icon_arc) = effect.icon {
+                    let (img_w, img_h, ref rgba) = **icon_arc;
+                    self.frame.draw_image(rgba, img_w, img_h, icon_x, icon_y, icon_size, icon_size);
+                    true
+                } else {
+                    false
+                };
+
+                if icon_drawn {
+                    let icon_radius = 2.0 * scale;
+                    let glow_expand = 1.0 * scale;
+                    let outer_glow = tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.25).unwrap();
+                    self.frame.stroke_rounded_rect(
+                        icon_x - glow_expand, icon_y - glow_expand,
+                        icon_size + glow_expand * 2.0, icon_size + glow_expand * 2.0,
+                        icon_radius + glow_expand, 1.5 * scale, outer_glow,
+                    );
+                    let inner_border = tiny_skia::Color::from_rgba(1.0, 1.0, 1.0, 0.6).unwrap();
+                    self.frame.stroke_rounded_rect(
+                        icon_x, icon_y, icon_size, icon_size,
+                        icon_radius, 1.0 * scale, inner_border,
+                    );
+                }
+            }
+
+            y += bar_height + entry_spacing;
+        }
+
+        self.frame.end_frame();
+    }
+
     /// Draw icon or colored square fallback
     fn draw_icon(
         &mut self,
@@ -666,6 +813,7 @@ impl EffectsABOverlay {
         match self.config.layout {
             EffectsLayout::Horizontal => self.render_preview_horizontal(),
             EffectsLayout::Vertical => self.render_preview_vertical(),
+            EffectsLayout::Bar => self.render_preview_bar(),
         }
     }
 
@@ -844,6 +992,57 @@ impl EffectsABOverlay {
         self.frame.end_frame();
     }
 
+    /// Render bar mode preview (timer-style stacked bars)
+    fn render_preview_bar(&mut self) {
+        let font_scale = self.config.font_scale.clamp(1.0, 2.0);
+        let bar_height = self.frame.scaled(BASE_BAR_HEIGHT * font_scale);
+        let font_size = self.frame.scaled(BASE_BAR_FONT_SIZE * font_scale);
+        let entry_spacing = self.frame.scaled(BASE_SPACING);
+        let padding = self.frame.scaled(BASE_PADDING);
+        let bar_radius = 3.0 * self.frame.scale_factor();
+        let content_width = self.frame.width() as f32 - 2.0 * padding;
+        let font_color = colors::white();
+        let header_font_size = font_size * 1.4;
+        let scale = self.frame.scale_factor();
+
+        let header_space = if self.config.show_header {
+            header_font_size + entry_spacing + 2.0 + entry_spacing + 4.0 * scale
+        } else {
+            0.0
+        };
+
+        self.frame.begin_frame();
+
+        if self.config.show_header && !self.config.header_title.is_empty() {
+            Header::new(&self.config.header_title)
+                .with_color(colors::white())
+                .render(&mut self.frame, padding, padding, content_width, header_font_size, entry_spacing);
+        }
+
+        let previews = [
+            ("3x Effect Name", "12.3", 0.75_f32),
+            ("Effect Name", "45.0", 0.40_f32),
+            ("2x Effect Name (Source)", "8.5", 0.10_f32),
+        ];
+
+        let mut y = padding + header_space;
+        for (name, time_text, progress) in &previews {
+            let mut bar = ProgressBar::new(*name, *progress)
+                .with_fill_color(colors::effect_icon_bg())
+                .with_bg_color(colors::dps_bar_bg())
+                .with_text_color(font_color)
+                .with_bold_text()
+                .with_text_glow();
+            if self.config.show_countdown {
+                bar = bar.with_right_text(*time_text);
+            }
+            bar.render(&mut self.frame, padding, y, content_width, bar_height, font_size, bar_radius);
+            y += bar_height + entry_spacing;
+        }
+
+        self.frame.end_frame();
+    }
+
     /// Draw preview stack-priority mode (big stacks centered, timer in corner)
     fn draw_preview_stack_priority(
         &mut self,
@@ -935,28 +1134,6 @@ fn truncate_name(name: &str, max_chars: usize) -> String {
         let truncated: String = name.chars().take(max_chars - 1).collect();
         format!("{}…", truncated)
     }
-}
-
-/// Scale icon to target size (nearest neighbor for speed)
-fn scale_icon(src: &[u8], src_w: u32, src_h: u32, target_size: u32) -> Vec<u8> {
-    let mut dest = vec![0u8; (target_size * target_size * 4) as usize];
-    let scale_x = src_w as f32 / target_size as f32;
-    let scale_y = src_h as f32 / target_size as f32;
-
-    for dy in 0..target_size {
-        for dx in 0..target_size {
-            let sx = ((dx as f32 * scale_x) as u32).min(src_w - 1);
-            let sy = ((dy as f32 * scale_y) as u32).min(src_h - 1);
-            let src_idx = ((sy * src_w + sx) * 4) as usize;
-            let dest_idx = ((dy * target_size + dx) * 4) as usize;
-
-            dest[dest_idx] = src[src_idx];
-            dest[dest_idx + 1] = src[src_idx + 1];
-            dest[dest_idx + 2] = src[src_idx + 2];
-            dest[dest_idx + 3] = src[src_idx + 3];
-        }
-    }
-    dest
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

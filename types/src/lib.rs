@@ -1697,6 +1697,9 @@ pub struct EffectsAConfig {
     /// Use vertical layout (true) or horizontal (false)
     #[serde(default)]
     pub layout_vertical: bool,
+    /// Render as stacked progress bars — overrides layout_vertical
+    #[serde(default)]
+    pub layout_bar: bool,
     /// Show effect names below/beside icons
     #[serde(default)]
     pub show_effect_names: bool,
@@ -1730,6 +1733,7 @@ impl Default for EffectsAConfig {
             icon_size: 32,
             max_display: 8,
             layout_vertical: false,
+            layout_bar: false,
             show_effect_names: false,
             show_countdown: true,
             stack_priority: false,
@@ -1752,6 +1756,9 @@ pub struct EffectsBConfig {
     /// Use vertical layout (true) or horizontal (false)
     #[serde(default)]
     pub layout_vertical: bool,
+    /// Render as stacked progress bars — overrides layout_vertical
+    #[serde(default)]
+    pub layout_bar: bool,
     /// Show effect names below/beside icons
     #[serde(default)]
     pub show_effect_names: bool,
@@ -1778,6 +1785,7 @@ impl Default for EffectsBConfig {
             icon_size: 32,
             max_display: 8,
             layout_vertical: false,
+            layout_bar: false,
             show_effect_names: false,
             show_countdown: true,
             stack_priority: false,

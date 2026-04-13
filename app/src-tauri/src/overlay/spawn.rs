@@ -793,7 +793,9 @@ pub fn create_effects_a_overlay(
     let overlay_config = EffectsABConfig {
         icon_size: effects_config.icon_size,
         max_display: effects_config.max_display,
-        layout: if effects_config.layout_vertical {
+        layout: if effects_config.layout_bar {
+            EffectsLayout::Bar
+        } else if effects_config.layout_vertical {
             EffectsLayout::Vertical
         } else {
             EffectsLayout::Horizontal
@@ -846,7 +848,9 @@ pub fn create_effects_b_overlay(
     let overlay_config = EffectsABConfig {
         icon_size: effects_config.icon_size,
         max_display: effects_config.max_display,
-        layout: if effects_config.layout_vertical {
+        layout: if effects_config.layout_bar {
+            EffectsLayout::Bar
+        } else if effects_config.layout_vertical {
             EffectsLayout::Vertical
         } else {
             EffectsLayout::Horizontal

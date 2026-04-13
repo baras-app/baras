@@ -372,7 +372,9 @@ impl OverlayManager {
             }
             OverlayType::EffectsA => {
                 let cfg = &settings.effects_a;
-                let layout = if cfg.layout_vertical {
+                let layout = if cfg.layout_bar {
+                    EffectsLayout::Bar
+                } else if cfg.layout_vertical {
                     EffectsLayout::Vertical
                 } else {
                     EffectsLayout::Horizontal
@@ -393,7 +395,9 @@ impl OverlayManager {
             }
             OverlayType::EffectsB => {
                 let cfg = &settings.effects_b;
-                let layout = if cfg.layout_vertical {
+                let layout = if cfg.layout_bar {
+                    EffectsLayout::Bar
+                } else if cfg.layout_vertical {
                     EffectsLayout::Vertical
                 } else {
                     EffectsLayout::Horizontal

@@ -497,7 +497,7 @@ impl DotTrackerOverlay {
             // DOT icons after name
             let mut icon_x = x + name_width;
 
-            for (time_text, stacks) in dots {
+            for (time_text, _stacks) in dots {
                 // Placeholder icon background
                 self.frame.fill_rounded_rect(
                     icon_x,

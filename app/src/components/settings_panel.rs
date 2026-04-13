@@ -971,6 +971,19 @@ pub fn SettingsPanel(
                     h4 { style: "margin-top: 16px;", "Layout" }
 
                     div { class: "setting-row",
+                        label { "Bar Mode" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.effects_a.layout_bar,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.effects_a.layout_bar = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row",
                         label { "Vertical Layout" }
                         input {
                             r#type: "checkbox",
@@ -1134,6 +1147,19 @@ pub fn SettingsPanel(
                     }
 
                     h4 { style: "margin-top: 16px;", "Layout" }
+
+                    div { class: "setting-row",
+                        label { "Bar Mode" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.effects_b.layout_bar,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.effects_b.layout_bar = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
 
                     div { class: "setting-row",
                         label { "Vertical Layout" }
