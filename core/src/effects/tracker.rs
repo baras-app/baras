@@ -750,7 +750,7 @@ impl EffectTracker {
         for effect in self.active_effects.values() {
             if effect.removed_at.is_none()
                 && !effect.timer_expired
-                && effect.display_target == DisplayTarget::BossHealth
+                && effect.display_targets.contains(&DisplayTarget::BossHealth)
             {
                 by_name
                     .entry(crate::context::resolve(effect.target_name).to_string())
@@ -967,12 +967,24 @@ impl EffectTracker {
             }
 
             if let Some(existing) = self.active_effects.get_mut(&key) {
-                // DotTracker effects are never refreshed via EffectApplied.
-                // All refreshes go through damage-confirmed refresh (handle_damage_for_dot_refresh).
-                // EffectApplied only creates new DotTracker effects (initial application).
                 if def.display_targets.contains(&DisplayTarget::DotTracker) {
-                    if let Some(c) = charges {
-                        existing.set_stacks(c);
+                    if existing.removed_at.is_some() {
+                        // EffectRemoved arrived before EffectApplied (reverse ordering).
+                        // Revive the effect — EffectApplied is authoritative for new applications.
+                        // Always restore ticking_count: it was decremented either when
+                        // timer_expired was set OR by handle_effect_removed — exactly once.
+                        existing.refresh(timestamp, duration);
+                        self.ticking_count += 1;
+                    } else {
+                        // Effect is still active. Touch last_refreshed_at so the 1-second
+                        // stale-removal guard covers the incoming EffectRemoved for the old
+                        // DOT instance. Without this, a RemoveEffect for an 18s DOT would
+                        // have since_refresh_ms ≈ 17000ms and bypass the guard, marking
+                        // the effect removed before the damage-tick refresh can land.
+                        existing.last_refreshed_at = timestamp;
+                        if let Some(c) = charges {
+                            existing.set_stacks(c);
+                        }
                     }
                     continue;
                 }
@@ -1442,6 +1454,12 @@ impl EffectTracker {
             return;
         }
 
+        // Skip self-targeted events (e.g. lifesteal heals on the caster that share the
+        // same ability ID as the DOT). Don't consume pending — let the actual enemy hit claim it.
+        if Some(target_id) == self.local_player_id {
+            return;
+        }
+
         // Check if pending has timed out
         let elapsed_ms = (timestamp - pending.timestamp).num_milliseconds();
         if elapsed_ms > PENDING_TIMEOUT_MS {
@@ -1450,7 +1468,7 @@ impl EffectTracker {
         }
 
         let source_id = pending.source_id;
-        // Consume pending state — only the first damage event triggers the refresh
+        // Consume pending state — only the first non-self damage event triggers the refresh
         self.pending_dot_refresh = None;
 
         // Find all DotTracker definitions refreshable by this ability and refresh
