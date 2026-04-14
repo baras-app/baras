@@ -95,21 +95,37 @@ chains_to = "wh_jelly_male"
 [[boss.timer]]
 id = "wh_jelly_male"
 name = "Jelly Male"
-trigger = { type = "manual" }
 duration_secs = 90.0
 color = [197, 17, 188, 255]
 difficulties = ["veteran", "master"]
 repeats = 10
+[boss.timer.trigger]
+type = "timer_expires"
+timer_id = "wh_jelly_male_cs"
 
 [[boss.timer]]
 id = "wh_corrosive_slime"
 name = "Corrosive Slime"
 alert_text = "Slime on you"
+icon_ability_id = 3010651815411712
 difficulties = ["veteran", "master"]
 is_alert = true
 trigger = { type = "effect_applied", effects = [
   3010686175150344,
 ], target = "local_player" }
+
+[[boss.timer]]
+id = "writhing_horror_adds_spawning"
+name = "Adds spawning"
+duration_secs = 30.0
+is_alert = true
+color = [255, 128, 0, 255]
+icon_ability_id = 3010626045607936
+difficulties = ["story", "veteran", "master"]
+
+[boss.timer.trigger]
+type = "effect_removed"
+effects = [3010626045607936]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: The Dread Guard
@@ -174,140 +190,246 @@ name = "Kel'sara"
 preceded_by = "dg_ciphas"
 trigger = { type = "entity_death", selector = ["Ciphas"] }
 
-# -- Empowered Barrier --
+# -- Heirad phase --
 [[boss.timer]]
 id = "dg_barrier_cs"
-name = "Barrier"
+name = "Ciphas Barrier"
 trigger = { type = "combat_start" }
 duration_secs = 15.0
-color = [40, 30, 222, 255]
-difficulties = ["story", "veteran"]
-chains_to = "dg_barrier"
-
-[[boss.timer]]
-id = "dg_barrier_cs_mm"
-name = "Barrier"
-trigger = { type = "combat_start" }
-duration_secs = 10.0
-color = [40, 30, 222, 255]
-difficulties = ["master"]
-chains_to = "dg_barrier_mm"
+color = [150, 0, 150, 255]
+icon_ability_id = 2989877058600960
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "dg_barrier"
-name = "Barrier"
-trigger = { type = "ability_cast", abilities = [2988107532075008] }
-duration_secs = 55.0
-color = [40, 30, 222, 255]
-difficulties = ["story", "veteran"]
+name = "Ciphas Barrier"
+duration_secs = 25.0
+color = [150, 0, 150, 255]
+icon_ability_id = 2989877058600960
+difficulties = ["story", "veteran", "master"]
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3014637545062400]
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "effect_applied"
+effects = [2989877058600960]
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "dg_ciphas"
 
 [[boss.timer]]
-id = "dg_barrier_mm"
-name = "Barrier"
-trigger = { type = "ability_cast", abilities = [2988107532075008] }
-duration_secs = 45.0
-color = [40, 30, 222, 255]
-difficulties = ["master"]
+id = "dg_lightning_field_explosion"
+name = "Lightning field explosion"
+duration_secs = 6.7
+color = [140, 0, 255, 255]
+icon_ability_id = 3014637545062400
+difficulties = ["master", "veteran", "story"]
 
-# -- Lightning Field --
-[[boss.timer]]
-id = "dg_lightning_cs"
-name = "Lightning"
-trigger = { type = "combat_start" }
-duration_secs = 45.0
-color = [28, 177, 195, 255]
-difficulties = ["story", "veteran"]
-chains_to = "dg_lightning"
+[boss.timer.trigger]
+type = "damage_taken"
+abilities = [3014637545062400]
 
-[[boss.timer]]
-id = "dg_lightning_cs_mm"
-name = "Lightning"
-trigger = { type = "combat_start" }
-duration_secs = 30.0
-color = [28, 177, 195, 255]
-difficulties = ["master"]
-chains_to = "dg_lightning_mm"
-
-[[boss.timer]]
-id = "dg_lightning"
-name = "Lightning"
-trigger = { type = "ability_cast", abilities = [2988369525080064] }
-duration_secs = 55.0
-color = [28, 177, 195, 255]
-difficulties = ["story", "veteran"]
-
-[[boss.timer]]
-id = "dg_lightning_mm"
-name = "Lightning"
-trigger = { type = "ability_cast", abilities = [2988369525080064] }
-duration_secs = 45.0
-color = [28, 177, 195, 255]
-difficulties = ["master"]
-
-
-# -- Force Choke --
+# -- Ciphas phase --
 [[boss.timer]]
 id = "dg_choke_cs"
 name = "Choke"
 trigger = { type = "phase_entered", phase_id = "dg_ciphas" }
-duration_secs = 15.0
-color = [20, 131, 18, 255]
+duration_secs = 17.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3014620365193216
 difficulties = ["veteran", "master"]
-chains_to = "dg_choke"
 
 [[boss.timer]]
 id = "dg_choke"
 name = "Choke"
-trigger = { type = "ability_cast", abilities = [3014616070225920] }
-duration_secs = 30.0
-color = [20, 131, 18, 255]
+duration_secs = 31.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3014620365193216
 difficulties = ["veteran", "master"]
+can_be_refreshed = true
+show_at_secs = 10.0
 
-# -- Force Leech --
-[[boss.timer]]
-id = "dg_leech"
-name = "Force Leech"
-trigger = { type = "ability_cast", abilities = [3007065517719552] }
-duration_secs = 14.0
-color = [128, 30, 222, 255]
-difficulties = ["veteran", "master"]
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3014620365193473]
 
-# -- Overload --
-[[boss.timer]]
-id = "dg_overload"
-name = "Overload"
-trigger = { type = "ability_cast", abilities = [3014530170880000] }
-duration_secs = 19.0
-color = [222, 117, 30, 255]
-difficulties = ["veteran", "master"]
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "dg_kelsara"
 
 [[boss.timer]]
-id = "dg_doom"
-name = "Doom"
-trigger = { type = "effect_applied", effects = [3014573120552960] }
+id = "dg_doom_hm"
+name = "Doom hm"
+display_text = "Doom on you"
 duration_secs = 24.0
 color = [227, 27, 28, 255]
-difficulties = ["veteran", "master"]
+icon_ability_id = 3014573120552960
+difficulties = ["veteran"]
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3014573120552960]
+target = "local_player"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "dg_kelsara"
+
+[[boss.timer]]
+id = "dg_doom_nim"
+name = "Doom nim"
+display_text = "Doom on you"
+duration_secs = 34.0
+color = [150, 0, 0, 255]
+icon_ability_id = 3014573120552960
+difficulties = ["master"]
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3014573120552960]
+target = "local_player"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "dg_kelsara"
 
 [[boss.timer]]
 id = "dg_doom_sm"
 name = "Doom"
 trigger = { type = "effect_applied", effects = [3014573120552960] }
 duration_secs = 34.0
-color = [227, 27, 28, 255]
+color = [150, 0, 0, 255]
+icon_ability_id = 3014573120552960
 difficulties = ["story"]
 
 [[boss.timer]]
 id = "dg_vitality_ext"
-name = "Vitality Extraction"
-display_text = "Puddling Forming"
+name = "Dropping circle"
 is_alert = true
-trigger = { type = "ability_cast", abilities = [
-  3014512991010816,
-], target = "local_player" }
-alert_text = "Vitality Extraction"
+color = [0, 222, 123, 255]
+icon_ability_id = 3014512991010816
 difficulties = ["veteran", "master"]
 
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3014512991011084]
+target = "local_player"
+
+[[boss.timer]]
+id = "dg_circle_tracker_not_displayed"
+name = "Circle tracker, not displayed"
+duration_secs = 10.0
+color = [0, 100, 0, 255]
+difficulties = ["master"]
+can_be_refreshed = true
+display_target = "none"
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3014512991011084]
+
+[[boss.timer]]
+id = "dg_at_12_circles"
+name = "At 12 circles"
+duration_secs = 30.0
+is_alert = true
+color = [0, 150, 0, 255]
+difficulties = ["master"]
+
+[boss.timer.trigger]
+type = "timer_expires"
+timer_id = "dg_circle_tracker_not_displayed"
+
+[[boss.timer]]
+id = "dg_take_kelsara_away"
+name = "Take kelsara away"
+duration_secs = 30.0
+is_alert = true
+color = [255, 128, 0, 255]
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "boss_hp_below"
+hp_percent = 80.0
+selector = ["Kel'sara"]
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["dg_ciphas"]
+
+# -- Kelsara phase --
+
+[[boss.timer]]
+id = "dg_adds"
+name = "Adds"
+duration_secs = 30.0
+is_alert = true
+color = [200, 0, 0, 255]
+difficulties = ["story", "veteran", "master"]
+
+[boss.timer.trigger]
+type = "npc_appears"
+selector = [3013344759906304]
+
+[[boss.timer]]
+id = "dg_1st_leech_soon"
+name = "1st leech soon"
+duration_secs = 30.0
+is_alert = true
+color = [150, 0, 255, 255]
+icon_ability_id = 3014530170880000
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "dg_kelsara"
+
+[[boss.timer]]
+id = "dg_leech"
+name = "Leech"
+duration_secs = 15.0
+color = [150, 0, 255, 255]
+icon_ability_id = 3014530170880000
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3014543055781888]
+
+[boss.timer.cancel_trigger]
+type = "effect_removed"
+effects = [3014543055781888]
+
+[[boss.timer]]
+id = "dg_wither"
+name = "Wither"
+duration_secs = 8.5
+color = [255, 200, 0, 255]
+icon_ability_id = 3014560235651072
+difficulties = ["master", "veteran"]
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3014530170880000]
+
+[[boss.timer]]
+id = "dg_overload"
+name = "Overload + marked"
+duration_secs = 18.0
+color = [0, 150, 255, 255]
+icon_ability_id = 3014551645716480
+difficulties = ["veteran", "master", "story"]
+show_at_secs = 10.0
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3014530170880000]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Operator IX
@@ -348,16 +470,9 @@ is_kill_target = false
 [[boss.entities]]
 name = "Data Core"
 ids = [2994876400533504, 2940596603846656, 2994867810598912, 2994872105566208]
-is_boss = false
+is_boss = true
+is_kill_target = false
 show_on_hp_overlay = true
-
-[[boss.counters]]
-id = "op_ix_data_cores"
-name = "Data Cores Killed"
-increment_on = { type = "entity_death", selector = ["Data Core"] }
-reset_on = { type = "combat_end" }
-initial_value = 0
-
 
 [[boss.phases]]
 id = "op_ix_blue"
@@ -388,16 +503,20 @@ trigger = { type = "npc_appears", selector = ["Operator IX"] }
 id = "op_ix_blue_cd"
 name = "Blue Scalene"
 trigger = { type = "phase_entered", phase_id = "op_ix_blue" }
+cancel_trigger = { type = "phase_ended", phase_id = "op_ix_blue" }
 duration_secs = 70.0
-color = [20, 131, 18, 255]
+color = [0, 150, 255, 255]
+icon_ability_id = 3036833936048128
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "op_ix_orange_cd"
 name = "Orange Scalene"
 trigger = { type = "phase_entered", phase_id = "op_ix_orange" }
+cancel_trigger = { type = "phase_ended", phase_id = "op_ix_orange" }
 duration_secs = 60.0
-color = [20, 131, 18, 255]
+color = [255, 150, 0, 255]
+icon_ability_id = 3036838231015424
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
@@ -406,7 +525,8 @@ name = "Purple Scalene"
 trigger = { type = "phase_entered", phase_id = "op_ix_purple" }
 cancel_trigger = { type = "phase_ended", phase_id = "op_ix_purple" }
 duration_secs = 55.0
-color = [20, 131, 18, 255]
+color = [150, 0, 255, 255]
+icon_ability_id = 3036842525982720
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
@@ -415,15 +535,29 @@ name = "Yellow Scalene"
 trigger = { type = "phase_entered", phase_id = "op_ix_yellow" }
 cancel_trigger = { type = "phase_ended", phase_id = "op_ix_yellow" }
 duration_secs = 50.0
-color = [20, 131, 18, 255]
+color = [250, 222, 0, 255]
+icon_ability_id = 3036846820950016
 difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "op_ix_core_under_10"
+name = "Core under 10%"
+is_alert = true
+color = [255, 128, 0, 255]
+difficulties = ["master"]
+
+[boss.timer.trigger]
+type = "boss_hp_below"
+hp_percent = 10.0
+selector = ["Data Core"]
 
 [[boss.timer]]
 id = "op_ix_black_obtuse"
 name = "Black Obtuse"
 trigger = { type = "ability_cast", abilities = [2998471288160256] }
-duration_secs = 30.0
-color = [20, 131, 18, 255]
+duration_secs = 31.0
+color = [255, 150, 0, 255]
+icon_ability_id = 2998471288160256
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
@@ -447,6 +581,67 @@ is_alert = true
 alert_text = "Adds Incoming!"
 difficulties = ["veteran", "master"]
 
+[[boss.timer]]
+id = "op_ix_taunt_for_cheese"
+name = "Taunt for cheese in"
+duration_secs = 10.0
+color = [0, 125, 200, 255]
+icon_ability_id = 2959344136093696
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [2998471288160256]
+
+# -- Deletion --
+
+[[boss.timer]]
+id = "op_ix_blue_deletion"
+name = "Blue deletion"
+is_alert = true
+color = [0, 150, 255, 255]
+icon_ability_id = 2959348431060992
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [2959348431060992]
+
+[[boss.timer]]
+id = "op_ix_orange_deletion"
+name = "Orange deletion"
+is_alert = true
+color = [255, 150, 0, 255]
+icon_ability_id = 2959357020995584
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [2959357020995584]
+
+[[boss.timer]]
+id = "op_ix_purple_deletion"
+name = "Purple deletion"
+is_alert = true
+color = [150, 0, 255, 255]
+icon_ability_id = 2959361315962880
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [2959361315962880]
+
+[[boss.timer]]
+id = "op_ix_yellow_deletion"
+name = "Yellow deletion"
+is_alert = true
+color = [255, 222, 0, 255]
+icon_ability_id = 2959369905897472
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [2959369905897472]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Kephess
@@ -545,6 +740,7 @@ trigger = { type = "ability_cast", abilities = [
 ] }
 duration_secs = 15.0
 color = [222, 31, 30, 255]
+icon_ability_id = 3012588845662208
 difficulties = ["veteran", "master"]
 
 # Cascade Jump - alert when Cascade phase timer would expire
@@ -579,6 +775,7 @@ trigger = { type = "target_set", selector = [
 ], target = "local_player" }
 is_alert = true
 alert_text = "Targeted by sphere!"
+icon_ability_id = 3012825068863746
 color = [195, 30, 222, 255]
 
 # Nanites dropped alert (effect lost)
@@ -591,7 +788,22 @@ trigger = { type = "effect_removed", effects = [
 is_alert = true
 alert_text = "Nanites dropped!"
 color = [34, 190, 28, 255]
+icon_ability_id = 3012588845662208
 difficulties = ["veteran", "master"]
+
+# tank has the debuff that makes boss ignore that player
+[[boss.timer]]
+id = "kephess_the_undying_cleanse_feet"
+name = "Cleanse feet"
+is_alert = true
+color = [0, 204, 255, 255]
+icon_ability_id = 3012687629910282
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3012687629910282]
+target = "local_player"
 
 # ─── Counter-Based Timers (Rotating Mechanics) ──────────────────────────────────
 # NOTE: counter_condition checks value BEFORE increment (0-based)
@@ -608,6 +820,7 @@ conditions = [
 ]
 duration_secs = 4.5
 color = [46, 34, 228, 255]
+icon_ability_id = 3012674745008128
 difficulties = ["veteran", "master"]
 
 # Corrupted Nanites - fires on nanites cast #1 (counter == 0)
@@ -624,6 +837,7 @@ conditions = [
 ]
 duration_secs = 15.0
 color = [49, 190, 28, 255]
+icon_ability_id = 3012588845662208
 difficulties = ["veteran", "master"]
 
 # Corrupted Nanites - fires on nanites cast #2 (Master Mode only)
@@ -640,6 +854,7 @@ conditions = [
 ]
 duration_secs = 15.0
 color = [39, 197, 29, 255]
+icon_ability_id = 3012588845662208
 difficulties = ["master"]
 
 # Nanites + Jump - fires on nanites cast #2 (Veteran Mode only)
@@ -656,6 +871,7 @@ conditions = [
 ]
 duration_secs = 15.0
 color = [220, 45, 32, 255]
+icon_ability_id = 3012588845662208
 difficulties = ["veteran"]
 
 # Nanites + Jump - fires on nanites cast #3 (counter == 2)
@@ -672,6 +888,7 @@ conditions = [
 ]
 duration_secs = 15.0
 color = [220, 36, 26, 255]
+icon_ability_id = 3012588845662208
 difficulties = ["veteran", "master"]
 
 # Jump alert - fires on nanites cast #1 (counter == 0)
@@ -728,12 +945,6 @@ victory_trigger = { type = "any_of", conditions = [
 ] }
 
 # ─── Phases ─────────────────────────────────────────────────────────────────────
-
-[[boss.phases]]
-id = "tfb_phase1"
-name = "Tunneling Tentacles"
-trigger = { type = "combat_start" }
-
 [[boss.phases]]
 id = "tfb_phase2"
 name = "Platforms"
@@ -997,6 +1208,7 @@ id = "tfb_tunneling_slam_first"
 name = "Tunneling Slam"
 duration_secs = 15.5
 color = [213, 45, 38, 255]
+icon_ability_id = 3041137493278720
 difficulties = ["veteran", "master"]
 
 [boss.timer.trigger]
@@ -1013,6 +1225,7 @@ id = "tfb_tunneling_slam"
 name = "Tunneling Slam"
 duration_secs = 10.5
 color = [220, 33, 32, 255]
+icon_ability_id = 3041137493278720
 difficulties = ["veteran", "master"]
 
 [boss.timer.trigger]
@@ -1036,7 +1249,8 @@ phase_id = "the_terror_from_beyond_p2t"
 id = "tfb_void_disturbance_debuff"
 name = "Void Disturbance"
 duration_secs = 16.0
-color = [222, 26, 32, 255]
+color = [49, 201, 221, 255]
+icon_ability_id = 3246243656499200
 difficulties = ["veteran", "master"]
 
 [boss.timer.trigger]
@@ -1101,6 +1315,7 @@ id = "the_terror_from_beyond_vdz"
 name = "Void Disturbance"
 duration_secs = 21.0
 color = [51, 204, 215, 255]
+icon_ability_id = 3246243656499200
 difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
@@ -1118,6 +1333,7 @@ id = "the_terror_from_beyond_vdz1"
 name = "Void Disturbance Setup"
 duration_secs = 10.0
 color = [37, 230, 244, 255]
+icon_ability_id = 3246243656499200
 difficulties = ["story", "veteran", "master"]
 display_target = "none"
 
@@ -1141,6 +1357,7 @@ id = "the_terror_from_beyond_vdz2"
 name = "Void Disturbance"
 duration_secs = 35.0
 color = [49, 201, 221, 255]
+icon_ability_id = 3246243656499200
 difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
@@ -1163,7 +1380,8 @@ id = "the_terror_from_beyond_vdz_check"
 name = "Void Disturbance Check"
 duration_secs = 30.0
 is_alert = true
-color = [255, 128, 0, 255]
+color = [49, 201, 221, 255]
+icon_ability_id = 3246243656499200
 difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
@@ -1180,7 +1398,8 @@ value = 1
 id = "the_terror_from_beyond_bspwn"
 name = "Hypergate Beacon"
 duration_secs = 26.0
-color = [183, 204, 25, 255]
+color = [49, 201, 221, 255]
+icon_ability_id = 3025405028073472
 difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
@@ -1192,6 +1411,7 @@ id = "tfb_grasping_slam"
 name = "Grasping Slam"
 duration_secs = 19.0
 color = [229, 26, 25, 255]
+icon_ability_id = 3041137493278720
 difficulties = ["veteran", "master"]
 
 [boss.timer.trigger]
@@ -1228,6 +1448,7 @@ id = "the_terror_from_beyond_p2_tentacles"
 name = "Tentacles"
 duration_secs = 36.0
 color = [14, 103, 24, 255]
+icon_ability_id = 3025864589574402
 difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
@@ -1239,6 +1460,7 @@ id = "tfb_spit_pool_first"
 name = "Spit Pool + Scream"
 duration_secs = 36.0
 color = [228, 127, 40, 255]
+icon_ability_id = 3052914293604352
 difficulties = ["veteran", "master"]
 
 [boss.timer.trigger]
@@ -1250,6 +1472,7 @@ id = "tfb_spit_pool"
 name = "Spit Pool + Scream"
 duration_secs = 28.0
 color = [228, 127, 40, 255]
+icon_ability_id = 3052914293604352
 difficulties = ["veteran", "master"]
 
 [boss.timer.trigger]
@@ -1274,6 +1497,7 @@ id = "the_terror_from_beyond_spit_pool_p2int"
 name = "Spit Pool + Scream"
 duration_secs = 24.0
 color = [255, 128, 0, 255]
+icon_ability_id = 3052914293604352
 difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
@@ -1286,6 +1510,7 @@ name = "Inconsistency"
 is_alert = true
 alert_text = "Run to inconsistency"
 color = [0, 255, 123, 255]
+icon_ability_id = 3245079720361984
 difficulties = ["master"]
 
 [boss.timer.trigger]
@@ -1306,6 +1531,31 @@ difficulties = ["story", "veteran", "master"]
 type = "target_set"
 selector = ["Unstable Larva"]
 target = "local_player"
+
+[[boss.timer]]
+id = "the_terror_from_beyond_tentacle_under_10"
+name = "Tentacle under 10%"
+is_alert = true
+color = [0, 225, 255, 255]
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "boss_hp_below"
+hp_percent = 10.0
+selector = ["Tunneling Tentacle"]
+
+[[boss.timer]]
+id = "the_terror_from_beyond_enraged_tentacle"
+name = "Enraged tentacle"
+duration_secs = 70.0
+color = [200, 0, 0, 255]
+icon_ability_id = 3041244867461120
+difficulties = ["story", "veteran", "master"]
+show_at_secs = 10.0
+
+[boss.timer.trigger]
+type = "npc_appears"
+selector = ["Tunneling Tentacle"]
 
 #---------- Dreadful Entity
 [[boss]]
