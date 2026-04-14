@@ -9,7 +9,7 @@ mod matchers;
 pub use matchers::{AbilitySelector, EffectSelector, EntitySelector, EntitySelectorExt};
 
 // Re-export EntityFilter for use in triggers
-pub use baras_types::EntityFilter;
+pub use baras_types::{EntityFilter, MitigationType};
 
 use std::collections::HashSet;
 
@@ -118,6 +118,11 @@ pub enum Trigger {
         /// Who took the damage (default: any)
         #[serde(default = "EntityFilter::default_any")]
         target: EntityFilter,
+        /// Optional mitigation filter — if non-empty, only fires when the hit
+        /// result matches one of the listed types (e.g. IMMUNE, RESIST).
+        /// Empty (default) matches any hit result.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        mitigation: Vec<MitigationType>,
     },
 
     /// Healing is received from an ability.
@@ -316,10 +321,11 @@ impl Trigger {
                 source,
                 target,
             },
-            Self::DamageTaken { abilities, .. } => Self::DamageTaken {
+            Self::DamageTaken { abilities, mitigation, .. } => Self::DamageTaken {
                 abilities,
                 source,
                 target,
+                mitigation,
             },
             Self::HealingTaken { abilities, .. } => Self::HealingTaken {
                 abilities,
@@ -381,18 +387,30 @@ impl Trigger {
     }
 
     /// Check if trigger matches damage taken from an ability.
-    pub fn matches_damage_taken(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+    ///
+    /// `defense_type_id` is 0 for a normal hit. When the trigger has a non-empty
+    /// `mitigation` list, the event only matches if its defense type is in that list.
+    pub fn matches_damage_taken(
+        &self,
+        ability_id: u64,
+        ability_name: Option<&str>,
+        defense_type_id: i64,
+    ) -> bool {
         match self {
-            Self::DamageTaken { abilities, .. } => {
-                // Require explicit selectors - empty list matches nothing
-                !abilities.is_empty()
-                    && abilities
-                        .iter()
-                        .any(|s| s.matches(ability_id, ability_name))
+            Self::DamageTaken { abilities, mitigation, .. } => {
+                // Require explicit ability selectors - empty list matches nothing
+                if abilities.is_empty()
+                    || !abilities.iter().any(|s| s.matches(ability_id, ability_name))
+                {
+                    return false;
+                }
+                // Empty mitigation list = any hit result
+                mitigation.is_empty()
+                    || mitigation.iter().any(|m| m.defense_type_id() == defense_type_id)
             }
             Self::AnyOf { conditions } => conditions
                 .iter()
-                .any(|c| c.matches_damage_taken(ability_id, ability_name)),
+                .any(|c| c.matches_damage_taken(ability_id, ability_name, defense_type_id)),
             _ => false,
         }
     }

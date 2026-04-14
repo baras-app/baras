@@ -538,6 +538,7 @@ pub(super) fn handle_damage_taken(
     target_name: IStr,
     target_npc_id: i64,
     timestamp: NaiveDateTime,
+    defense_type_id: i64,
 ) {
     let ability_id = ability_id as u64;
     let ability_name_str = crate::context::resolve(ability_name);
@@ -546,7 +547,7 @@ pub(super) fn handle_damage_taken(
         .definitions_for_kind(TriggerKind::DamageTaken)
         .iter()
         .filter(|d| {
-            d.matches_damage_taken(ability_id, Some(&ability_name_str))
+            d.matches_damage_taken(ability_id, Some(&ability_name_str), defense_type_id)
                 && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger,
@@ -584,7 +585,7 @@ pub(super) fn handle_damage_taken(
         target_type,
         target_name,
         target_npc_id,
-        |t| t.matches_damage_taken(ability_id, Some(&ability_name_str)),
+        |t| t.matches_damage_taken(ability_id, Some(&ability_name_str), defense_type_id),
     );
     manager.remove_queued_matching_with_source_target(
         get_entities(encounter),
@@ -596,7 +597,7 @@ pub(super) fn handle_damage_taken(
         target_type,
         target_name,
         target_npc_id,
-        |t| t.matches_damage_taken(ability_id, Some(&ability_name_str)),
+        |t| t.matches_damage_taken(ability_id, Some(&ability_name_str), defense_type_id),
     );
 }
 

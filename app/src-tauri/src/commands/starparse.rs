@@ -255,6 +255,7 @@ fn convert_trigger(xml: &XmlTrigger) -> Trigger {
             ),
             source,
             target,
+            mitigation: vec![],
         },
         "HEAL" => Trigger::HealingTaken {
             abilities: build_ability_selectors(

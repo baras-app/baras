@@ -136,6 +136,8 @@ pub enum GameSignal {
         timestamp: NaiveDateTime,
         /// Damage absorbed by boss shields (0 if none)
         absorbed: i32,
+        /// Defense result ID (0 = normal hit). Maps to `game_data::defense_type` constants.
+        defense_type_id: i64,
     },
 
     /// Healing done (for effect refresh on heal completion)

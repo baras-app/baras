@@ -89,11 +89,12 @@ fn set_trigger_source(trigger: Trigger, source: EntityFilter) -> Trigger {
             target,
         },
         Trigger::DamageTaken {
-            abilities, target, ..
+            abilities, target, mitigation, ..
         } => Trigger::DamageTaken {
             abilities,
             source,
             target,
+            mitigation,
         },
         Trigger::HealingTaken {
             abilities, target, ..
@@ -131,11 +132,12 @@ fn set_trigger_target(trigger: Trigger, target: EntityFilter) -> Trigger {
             target,
         },
         Trigger::DamageTaken {
-            abilities, source, ..
+            abilities, source, mitigation, ..
         } => Trigger::DamageTaken {
             abilities,
             source,
             target,
+            mitigation,
         },
         Trigger::HealingTaken {
             abilities, source, ..
@@ -173,10 +175,11 @@ fn set_trigger_abilities(trigger: Trigger, abilities: Vec<AbilitySelector>) -> T
             source,
             target,
         },
-        Trigger::DamageTaken { source, target, .. } => Trigger::DamageTaken {
+        Trigger::DamageTaken { source, target, mitigation, .. } => Trigger::DamageTaken {
             abilities,
             source,
             target,
+            mitigation,
         },
         Trigger::HealingTaken { source, target, .. } => Trigger::HealingTaken {
             abilities,
@@ -1343,6 +1346,7 @@ fn EffectEditForm(
                                                     abilities: vec![],
                                                     source,
                                                     target,
+                                                    mitigation: vec![],
                                                 },
                                                 EffectTriggerType::HealingTaken => Trigger::HealingTaken {
                                                     abilities: vec![],

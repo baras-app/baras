@@ -184,12 +184,17 @@ pub fn check_signal_trigger(
                 target_entity_type,
                 target_name,
                 target_npc_id,
+                defense_type_id,
                 ..
             } = s
             {
                 let ability_name_str = crate::context::resolve(*ability_name);
 
-                if !trigger.matches_damage_taken(*ability_id as u64, Some(ability_name_str)) {
+                if !trigger.matches_damage_taken(
+                    *ability_id as u64,
+                    Some(ability_name_str),
+                    *defense_type_id,
+                ) {
                     return false;
                 }
 

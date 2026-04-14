@@ -327,8 +327,13 @@ impl TimerDefinition {
 
     /// Check if this timer triggers when damage is taken from an ability.
     /// Delegates to unified `Trigger::matches_damage_taken`.
-    pub fn matches_damage_taken(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
-        self.trigger.matches_damage_taken(ability_id, ability_name)
+    pub fn matches_damage_taken(
+        &self,
+        ability_id: u64,
+        ability_name: Option<&str>,
+        defense_type_id: i64,
+    ) -> bool {
+        self.trigger.matches_damage_taken(ability_id, ability_name, defense_type_id)
     }
 
     /// Check if this timer triggers when healing is taken from an ability.

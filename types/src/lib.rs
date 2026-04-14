@@ -728,6 +728,76 @@ pub enum StackAggregation {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Mitigation / Defense Type
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Defense result that reduced or negated damage.
+///
+/// Maps directly to the game's `defense_type_id` log field.
+/// Used as an optional filter on `Trigger::DamageTaken` to fire only when a
+/// specific mitigation result occurs (e.g., only on IMMUNE, only on RESIST).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MitigationType {
+    Miss,
+    Parry,
+    Dodge,
+    Immune,
+    Resist,
+    Deflect,
+    Shield,
+    Absorbed,
+    Cover,
+    Reflected,
+}
+
+impl MitigationType {
+    /// Returns the game's numeric `defense_type_id` for this mitigation result.
+    pub fn defense_type_id(self) -> i64 {
+        match self {
+            Self::Miss => 836045448945502,
+            Self::Parry => 836045448945503,
+            Self::Dodge => 836045448945505,
+            Self::Immune => 836045448945506,
+            Self::Resist => 836045448945507,
+            Self::Deflect => 836045448945508,
+            Self::Shield => 836045448945509,
+            Self::Absorbed => 836045448945511,
+            Self::Cover => 836045448945510,
+            Self::Reflected => 836045448953649,
+        }
+    }
+
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::Miss => "Miss",
+            Self::Parry => "Parry",
+            Self::Dodge => "Dodge",
+            Self::Immune => "Immune",
+            Self::Resist => "Resist",
+            Self::Deflect => "Deflect",
+            Self::Shield => "Shield",
+            Self::Absorbed => "Absorbed",
+            Self::Cover => "Cover",
+            Self::Reflected => "Reflected",
+        }
+    }
+
+    pub const ALL: &'static [Self] = &[
+        Self::Miss,
+        Self::Parry,
+        Self::Dodge,
+        Self::Immune,
+        Self::Resist,
+        Self::Deflect,
+        Self::Shield,
+        Self::Absorbed,
+        Self::Cover,
+        Self::Reflected,
+    ];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Trigger Types (shared across timers, phases, counters)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -788,6 +858,11 @@ pub enum Trigger {
         source: EntityFilter,
         #[serde(default)]
         target: EntityFilter,
+        /// Optional mitigation filter — if non-empty, only fires when the hit
+        /// result matches one of the listed types (e.g. IMMUNE, RESIST).
+        /// Empty (default) matches any hit result.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        mitigation: Vec<MitigationType>,
     },
 
     /// Healing is received from an ability. [TPC]

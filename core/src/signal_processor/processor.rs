@@ -1269,6 +1269,7 @@ impl EventProcessor {
             target_npc_id: event.target_entity.class_id,
             timestamp: event.timestamp,
             absorbed: event.details.dmg_absorbed,
+            defense_type_id: event.details.defense_type_id,
         });
     }
 
@@ -1442,18 +1443,16 @@ fn shield_signal_matches(
             }
         }
 
-        Trigger::DamageTaken { abilities, .. } => {
+        Trigger::DamageTaken { .. } => {
             if let GameSignal::DamageTaken {
                 ability_id,
                 ability_name,
+                defense_type_id,
                 ..
             } = signal
             {
                 let name = resolve(*ability_name);
-                !abilities.is_empty()
-                    && abilities
-                        .iter()
-                        .any(|s| s.matches(*ability_id as u64, Some(name)))
+                trigger.matches_damage_taken(*ability_id as u64, Some(name), *defense_type_id)
             } else {
                 false
             }

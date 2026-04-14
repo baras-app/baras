@@ -37,6 +37,7 @@ pub use baras_types::{
     EntityFilter,
     EntitySelector,
     MainTab,
+    MitigationType,
     NotesOverlayConfig,
     OverlayAppearanceConfig,
     OverlaySettings,
