@@ -360,17 +360,18 @@ pub async fn save_profile(
     Ok(())
 }
 
-#[tauri::command]
-pub async fn load_profile(
-    name: String,
-    handle: State<'_, ServiceHandle>,
-    overlay_state: State<'_, SharedOverlayState>,
+/// Shared logic for loading a profile — used by both the Tauri command and
+/// the auto-switch service command so both paths behave identically.
+pub async fn apply_profile(
+    name: &str,
+    handle: &ServiceHandle,
+    overlay_state: &SharedOverlayState,
 ) -> Result<(), String> {
     let old_config = handle.config().await;
     let old_slots = old_config.overlay_settings.raid_overlay.total_slots();
 
     let mut config = old_config;
-    config.load_profile(&name).map_err(|e| e.to_string())?;
+    config.load_profile(name).map_err(|e| e.to_string())?;
     let new_slots = config.overlay_settings.raid_overlay.total_slots();
 
     *handle.shared.config.write().await = config.clone();
@@ -387,18 +388,25 @@ pub async fn load_profile(
     }
 
     // Reset move mode on profile switch
-    {
-        if let Ok(mut state) = overlay_state.lock() {
-            state.move_mode = false;
-            state.rearrange_mode = false;
-        }
-    };
+    if let Ok(mut state) = overlay_state.lock() {
+        state.move_mode = false;
+        state.rearrange_mode = false;
+    }
 
     // Apply new profile's overlay settings without flushing old positions —
     // the new profile's positions should be applied as-is.
-    OverlayManager::refresh_settings(&overlay_state, &handle, false).await?;
+    OverlayManager::refresh_settings(overlay_state, handle, false).await?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn load_profile(
+    name: String,
+    handle: State<'_, ServiceHandle>,
+    overlay_state: State<'_, SharedOverlayState>,
+) -> Result<(), String> {
+    apply_profile(&name, &handle, &overlay_state).await
 }
 
 #[tauri::command]

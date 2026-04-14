@@ -1373,26 +1373,14 @@ impl CombatService {
                                 drop(config);
 
                                 if !already_active && profile_exists {
-                                    let mut config = self.shared.config.write().await;
-                                    if config.load_profile(&profile_name).is_ok() {
-                                        let saved = config.clone().save();
-                                        drop(config);
-                                        if let Err(e) = saved {
-                                            warn!("Failed to save config after auto-switching profile: {e}");
-                                        } else {
+                                    let overlay_state = self.app_handle.state::<crate::overlay::SharedOverlayState>();
+                                    let service_handle = self.app_handle.state::<ServiceHandle>();
+                                    match crate::commands::apply_profile(&profile_name, &service_handle, &overlay_state).await {
+                                        Ok(()) => {
                                             info!("Auto-switched to profile '{}' for role {}", profile_name, role_name);
                                             let _ = self.app_handle.emit("profile-auto-switched", &profile_name);
-                                            // Apply new profile settings to running overlays —
-                                            // same as manual load_profile, without flushing current
-                                            // positions (the new profile's positions take precedence).
-                                            let overlay_state = self.app_handle.state::<crate::overlay::SharedOverlayState>();
-                                            let service_handle = self.app_handle.state::<ServiceHandle>();
-                                            let _ = crate::overlay::OverlayManager::refresh_settings(
-                                                &overlay_state,
-                                                &service_handle,
-                                                false,
-                                            ).await;
                                         }
+                                        Err(e) => warn!("Failed to auto-switch profile '{}': {e}", profile_name),
                                     }
                                 }
                             }
