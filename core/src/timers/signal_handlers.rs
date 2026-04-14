@@ -601,6 +601,66 @@ pub(super) fn handle_damage_taken(
     );
 }
 
+/// Handle threat modified - check for ThreatModified triggers
+pub(super) fn handle_threat_modified(
+    manager: &mut TimerManager,
+    encounter: Option<&CombatEncounter>,
+    ability_id: i64,
+    ability_name: IStr,
+    source_id: i64,
+    source_type: EntityType,
+    source_name: IStr,
+    source_npc_id: i64,
+    target_id: i64,
+    target_type: EntityType,
+    target_name: IStr,
+    target_npc_id: i64,
+    timestamp: NaiveDateTime,
+) {
+    let ability_id = ability_id as u64;
+    let ability_name_str = crate::context::resolve(ability_name);
+
+    let matching: Vec<_> = manager
+        .definitions_for_kind(TriggerKind::ThreatModified)
+        .iter()
+        .filter(|d| {
+            d.matches_threat_modified(ability_id, Some(&ability_name_str))
+                && manager.is_definition_active(d, encounter)
+                && manager.matches_source_target_filters(
+                    &d.trigger,
+                    get_entities(encounter),
+                    source_id,
+                    source_type,
+                    source_name,
+                    source_npc_id,
+                    target_id,
+                    target_type,
+                    target_name,
+                    target_npc_id,
+                )
+        })
+        .cloned()
+        .collect();
+
+    for def in matching {
+        let instance_id = if def.per_target { Some(target_id) } else { None };
+        manager.start_timer(&def, timestamp, instance_id);
+    }
+
+    manager.cancel_timers_matching_with_source_target(
+        get_entities(encounter),
+        source_id, source_type, source_name, source_npc_id,
+        target_id, target_type, target_name, target_npc_id,
+        |t| t.matches_threat_modified(ability_id, Some(&ability_name_str)),
+    );
+    manager.remove_queued_matching_with_source_target(
+        get_entities(encounter),
+        source_id, source_type, source_name, source_npc_id,
+        target_id, target_type, target_name, target_npc_id,
+        |t| t.matches_threat_modified(ability_id, Some(&ability_name_str)),
+    );
+}
+
 /// Handle healing taken - check for HealingTaken triggers
 pub(super) fn handle_healing_taken(
     manager: &mut TimerManager,

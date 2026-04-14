@@ -394,6 +394,7 @@ pub fn SimpleTriggerEditor(
                         "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "damage_taken" => TimerTrigger::DamageTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default(), mitigation: vec![] },
                         "healing_taken" => TimerTrigger::HealingTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
+                        "threat_modified" => TimerTrigger::ThreatModified { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "timer_expires" => TimerTrigger::TimerExpires { timer_id: String::new() },
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
                         "timer_canceled" => TimerTrigger::TimerCanceled { timer_id: String::new() },
@@ -420,6 +421,7 @@ pub fn SimpleTriggerEditor(
                 option { value: "effect_removed", "Effect Removed" }
                 option { value: "damage_taken", "Damage Taken" }
                 option { value: "healing_taken", "Healing Taken" }
+                option { value: "threat_modified", "Threat Modified" }
                 option { value: "timer_expires", "Timer Expires" }
                 option { value: "timer_started", "Timer Started" }
                 option { value: "timer_canceled", "Timer Canceled" }
@@ -654,6 +656,45 @@ pub fn SimpleTriggerEditor(
                                 value: target,
                                 options: EntityFilter::target_options(),
                                 on_change: move |f| on_change.call(TimerTrigger::HealingTaken {
+                                    abilities: abilities_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
+                            }
+                        }
+                    },
+                    TimerTrigger::ThreatModified { abilities, source, target } => {
+                        let source_for_abilities = source.clone();
+                        let target_for_abilities = target.clone();
+                        let abilities_for_source = abilities.clone();
+                        let target_for_source = target.clone();
+                        let abilities_for_target = abilities.clone();
+                        let source_for_target = source.clone();
+                        rsx! {
+                            AbilitySelectorEditor {
+                                label: "Abilities (empty = any)",
+                                selectors: abilities,
+                                on_change: move |sels| on_change.call(TimerTrigger::ThreatModified {
+                                    abilities: sels,
+                                    source: source_for_abilities.clone(),
+                                    target: target_for_abilities.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Source",
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::ThreatModified {
+                                    abilities: abilities_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::ThreatModified {
                                     abilities: abilities_for_target.clone(),
                                     source: source_for_target.clone(),
                                     target: f,

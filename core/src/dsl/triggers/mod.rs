@@ -33,6 +33,7 @@ pub enum TriggerKind {
     EffectRemoved,
     DamageTaken,
     HealingTaken,
+    ThreatModified,
     BossHpBelow,
     BossHpAbove,
     NpcAppears,
@@ -138,6 +139,19 @@ pub enum Trigger {
         target: EntityFilter,
     },
 
+    /// Threat is modified by an ability (MODIFYTHREAT or TAUNT effects).
+    ThreatModified {
+        /// Ability selectors (ID or name). Empty matches any ability.
+        #[serde(default)]
+        abilities: Vec<AbilitySelector>,
+        /// Who generated the threat (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        source: EntityFilter,
+        /// Who received the threat change (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        target: EntityFilter,
+    },
+
     // ─── HP Thresholds ───────────────────────────────────────────────────────
     /// Boss HP drops below threshold.
     BossHpBelow {
@@ -237,6 +251,7 @@ impl Trigger {
             Self::EffectRemoved { .. } => out.push(TriggerKind::EffectRemoved),
             Self::DamageTaken { .. } => out.push(TriggerKind::DamageTaken),
             Self::HealingTaken { .. } => out.push(TriggerKind::HealingTaken),
+            Self::ThreatModified { .. } => out.push(TriggerKind::ThreatModified),
             Self::BossHpBelow { .. } => out.push(TriggerKind::BossHpBelow),
             Self::BossHpAbove { .. } => out.push(TriggerKind::BossHpAbove),
             Self::NpcAppears { .. } => out.push(TriggerKind::NpcAppears),
@@ -275,7 +290,8 @@ impl Trigger {
             | Self::EffectApplied { source, .. }
             | Self::EffectRemoved { source, .. }
             | Self::DamageTaken { source, .. }
-            | Self::HealingTaken { source, .. } => Some(source),
+            | Self::HealingTaken { source, .. }
+            | Self::ThreatModified { source, .. } => Some(source),
             _ => None,
         }
     }
@@ -289,6 +305,7 @@ impl Trigger {
             | Self::EffectRemoved { target, .. }
             | Self::DamageTaken { target, .. }
             | Self::HealingTaken { target, .. }
+            | Self::ThreatModified { target, .. }
             | Self::TargetSet { target, .. } => Some(target),
             _ => None,
         }
@@ -328,6 +345,11 @@ impl Trigger {
                 mitigation,
             },
             Self::HealingTaken { abilities, .. } => Self::HealingTaken {
+                abilities,
+                source,
+                target,
+            },
+            Self::ThreatModified { abilities, .. } => Self::ThreatModified {
                 abilities,
                 source,
                 target,
@@ -398,9 +420,9 @@ impl Trigger {
     ) -> bool {
         match self {
             Self::DamageTaken { abilities, mitigation, .. } => {
-                // Require explicit ability selectors - empty list matches nothing
-                if abilities.is_empty()
-                    || !abilities.iter().any(|s| s.matches(ability_id, ability_name))
+                // Empty abilities = any ability; otherwise must match one selector
+                if !abilities.is_empty()
+                    && !abilities.iter().any(|s| s.matches(ability_id, ability_name))
                 {
                     return false;
                 }
@@ -427,6 +449,21 @@ impl Trigger {
             Self::AnyOf { conditions } => conditions
                 .iter()
                 .any(|c| c.matches_healing_taken(ability_id, ability_name)),
+            _ => false,
+        }
+    }
+
+    /// Check if trigger matches a threat modification event.
+    /// Empty `abilities` matches any ability.
+    pub fn matches_threat_modified(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+        match self {
+            Self::ThreatModified { abilities, .. } => {
+                abilities.is_empty()
+                    || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_threat_modified(ability_id, ability_name)),
             _ => false,
         }
     }

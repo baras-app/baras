@@ -875,6 +875,19 @@ pub enum Trigger {
         target: EntityFilter,
     },
 
+    /// Threat is modified by an ability (MODIFYTHREAT or TAUNT). [TPC]
+    ThreatModified {
+        /// Ability selectors. Empty matches any ability.
+        #[serde(default)]
+        abilities: Vec<AbilitySelector>,
+        /// Who generated the threat (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        source: EntityFilter,
+        /// Who received the threat change (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        target: EntityFilter,
+    },
+
     // ─── HP Thresholds [TPC] ───────────────────────────────────────────────
     /// Boss HP drops below threshold. [TPC]
     BossHpBelow {
@@ -965,6 +978,7 @@ impl Trigger {
             Self::EffectRemoved { .. } => "Effect Removed",
             Self::DamageTaken { .. } => "Damage Taken",
             Self::HealingTaken { .. } => "Healing Taken",
+            Self::ThreatModified { .. } => "Threat Modified",
             Self::BossHpBelow { .. } => "Boss HP Below",
             Self::BossHpAbove { .. } => "Boss HP Above",
             Self::NpcAppears { .. } => "NPC Appears",
@@ -995,6 +1009,7 @@ impl Trigger {
             Self::EffectRemoved { .. } => "effect_removed",
             Self::DamageTaken { .. } => "damage_taken",
             Self::HealingTaken { .. } => "healing_taken",
+            Self::ThreatModified { .. } => "threat_modified",
             Self::BossHpBelow { .. } => "boss_hp_below",
             Self::BossHpAbove { .. } => "boss_hp_above",
             Self::NpcAppears { .. } => "npc_appears",

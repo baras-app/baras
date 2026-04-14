@@ -1746,6 +1746,36 @@ impl SignalHandler for TimerManager {
                 );
             }
 
+            GameSignal::ThreatModified {
+                ability_id,
+                ability_name,
+                source_id,
+                source_entity_type,
+                source_name,
+                source_npc_id,
+                target_id,
+                target_entity_type,
+                target_name,
+                target_npc_id,
+                timestamp,
+            } => {
+                signal_handlers::handle_threat_modified(
+                    self,
+                    encounter,
+                    *ability_id,
+                    *ability_name,
+                    *source_id,
+                    *source_entity_type,
+                    *source_name,
+                    *source_npc_id,
+                    *target_id,
+                    *target_entity_type,
+                    *target_name,
+                    *target_npc_id,
+                    *timestamp,
+                );
+            }
+
             // ─── Boss Encounter Signals (from EventProcessor) ─────────────────────
             // BossEncounterDetected handled in early context-setting section above
             GameSignal::BossHpChanged {

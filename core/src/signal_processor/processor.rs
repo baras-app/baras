@@ -89,6 +89,7 @@ impl EventProcessor {
         self.emit_action_signals(&event, cache, &mut signals);
         self.emit_damage_signals(&event, &mut signals);
         self.emit_healing_signals(&event, &mut signals);
+        self.emit_threat_signals(&event, &mut signals);
 
         // Effect stack counters: update per-entity stack state and aggregate
         // Must run after effect signals are emitted, before the counter↔phase loop.
@@ -1304,6 +1305,37 @@ impl EventProcessor {
             timestamp: event.timestamp,
         });
     }
+
+    /// Emit signals for threat modification events (MODIFYTHREAT and TAUNT).
+    /// Pure transformation - no encounter state modification.
+    fn emit_threat_signals(&self, event: &CombatEvent, out: &mut Vec<GameSignal>) {
+        if event.effect.type_id != effect_type_id::APPLYEFFECT
+            || (event.effect.effect_id != effect_id::MODIFYTHREAT
+                && event.effect.effect_id != effect_id::TAUNT)
+        {
+            return;
+        }
+
+        if event.source_entity.entity_type == EntityType::Empty
+            || event.target_entity.entity_type == EntityType::Empty
+        {
+            return;
+        }
+
+        out.push(GameSignal::ThreatModified {
+            ability_id: event.action.action_id,
+            ability_name: event.action.name,
+            source_id: event.source_entity.log_id,
+            source_entity_type: event.source_entity.entity_type,
+            source_name: event.source_entity.name,
+            source_npc_id: event.source_entity.class_id,
+            target_id: event.target_entity.log_id,
+            target_entity_type: event.target_entity.entity_type,
+            target_name: event.target_entity.name,
+            target_npc_id: event.target_entity.class_id,
+            timestamp: event.timestamp,
+        });
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1470,6 +1502,20 @@ fn shield_signal_matches(
                     && abilities
                         .iter()
                         .any(|s| s.matches(*ability_id as u64, Some(name)))
+            } else {
+                false
+            }
+        }
+
+        Trigger::ThreatModified { .. } => {
+            if let GameSignal::ThreatModified {
+                ability_id,
+                ability_name,
+                ..
+            } = signal
+            {
+                let name = resolve(*ability_name);
+                trigger.matches_threat_modified(*ability_id as u64, Some(name))
             } else {
                 false
             }
