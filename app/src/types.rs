@@ -981,6 +981,7 @@ pub enum ChallengeMetric {
     EffectCount,
     EffectStacks,
     DamageAbsorbed,
+    InterruptCount,
 }
 
 impl ChallengeMetric {
@@ -995,6 +996,7 @@ impl ChallengeMetric {
             Self::EffectCount => "Effect Count",
             Self::EffectStacks => "Effect Stacks",
             Self::DamageAbsorbed => "Damage Absorbed",
+            Self::InterruptCount => "Interrupt Count",
         }
     }
 
@@ -1009,6 +1011,7 @@ impl ChallengeMetric {
             Self::EffectCount,
             Self::EffectStacks,
             Self::DamageAbsorbed,
+            Self::InterruptCount,
         ]
     }
 }

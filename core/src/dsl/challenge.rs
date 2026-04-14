@@ -103,6 +103,9 @@ pub enum ChallengeMetric {
 
     /// Total damage absorbed by target shields
     DamageAbsorbed,
+
+    /// Count of ability interrupts (player interrupts a specific ability)
+    InterruptCount,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

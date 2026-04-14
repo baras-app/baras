@@ -84,6 +84,14 @@ pub fn process_challenge_events(event: &CombatEvent, cache: &mut SessionCache) {
                 timestamp,
             );
         }
+        effect_id::ABILITYINTERRUPT => {
+            tracker.process_interrupt(
+                &ctx,
+                &source,
+                event.action.action_id as u64,
+                timestamp,
+            );
+        }
         _ => {
             if event.effect.type_id == effect_type_id::APPLYEFFECT {
                 tracker.process_effect_applied(

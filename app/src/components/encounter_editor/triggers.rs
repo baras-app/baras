@@ -582,7 +582,7 @@ pub fn SimpleTriggerEditor(
                         let target_for_mitigation = target.clone();
                         rsx! {
                             AbilitySelectorEditor {
-                                label: "Abilities",
+                                label: "Abilities (empty = any)",
                                 selectors: abilities,
                                 on_change: move |sels| on_change.call(TimerTrigger::DamageTaken {
                                     abilities: sels,
