@@ -268,7 +268,7 @@ id = "dg_doom_hm"
 name = "Doom hm"
 display_text = "Doom on you"
 duration_secs = 24.0
-color = [227, 27, 28, 255]
+color = [150, 0, 0, 255]
 icon_ability_id = 3014573120552960
 difficulties = ["veteran"]
 
@@ -1398,7 +1398,7 @@ value = 1
 id = "the_terror_from_beyond_bspwn"
 name = "Hypergate Beacon"
 duration_secs = 26.0
-color = [49, 201, 221, 255]
+color = [46, 34, 228, 255]
 icon_ability_id = 3025405028073472
 difficulties = ["story", "veteran", "master"]
 
