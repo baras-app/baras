@@ -108,7 +108,7 @@ async fn process_overlay_update(
     match update {
         OverlayUpdate::DataUpdated(data) => {
             // Create entries for all metric overlay types
-            let all_entries = create_all_entries(&data.metrics);
+            let all_entries = create_all_entries(&data.metrics, data.player_entity_id);
 
             // Get running metric overlays and their channels
             let (metric_txs, personal_tx): (Vec<_>, _) = {

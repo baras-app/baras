@@ -38,6 +38,8 @@ pub struct MetricEntry {
     pub discipline_icon: Option<String>,
     /// Optional class name for class-color bar rendering (e.g., "Sorcerer", "Sage")
     pub class_name: Option<String>,
+    /// Whether this entry belongs to the local player
+    pub is_local: bool,
 }
 
 impl MetricEntry {
@@ -55,6 +57,7 @@ impl MetricEntry {
             role: None,
             discipline_icon: None,
             class_name: None,
+            is_local: false,
         }
     }
 
@@ -446,6 +449,10 @@ impl MetricOverlay {
                 .with_fill_color(fill_color)
                 .with_bg_color(bg_color)
                 .with_text_color(font_color);
+
+            if entry.is_local {
+                bar = bar.with_bold_text();
+            }
 
             // Add label offset to make room for icon
             if has_icon {

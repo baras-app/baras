@@ -189,7 +189,7 @@ impl OverlayManager {
                 if data.metrics.is_empty() {
                     return;
                 }
-                let entries = create_entries_for_type(metric_type, &data.metrics);
+                let entries = create_entries_for_type(metric_type, &data.metrics, data.player_entity_id);
                 let _ = tx
                     .send(OverlayCommand::UpdateData(OverlayData::Metrics(entries)))
                     .await;

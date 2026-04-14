@@ -79,6 +79,7 @@ mod examples {
                 role: None,
                 discipline_icon: None,
                 class_name: None,
+                is_local: true,
             },
             MetricEntry {
                 name: "Player 2".to_string(),
@@ -93,6 +94,7 @@ mod examples {
                 role: None,
                 discipline_icon: None,
                 class_name: None,
+                is_local: false,
             },
             MetricEntry {
                 name: "Player 3".to_string(),
@@ -107,6 +109,7 @@ mod examples {
                 role: None,
                 discipline_icon: None,
                 class_name: None,
+                is_local: false,
             },
             MetricEntry {
                 name: "Player 4".to_string(),
@@ -121,6 +124,7 @@ mod examples {
                 role: None,
                 discipline_icon: None,
                 class_name: None,
+                is_local: false,
             },
         ];
 
@@ -218,6 +222,7 @@ mod examples {
                 role: None,
                 discipline_icon: None,
                 class_name: None,
+                is_local: false,
             })
             .collect();
 
@@ -333,6 +338,7 @@ mod examples {
                 role: None,
                 discipline_icon: None,
                 class_name: None,
+                is_local: false,
             })
             .collect();
 
