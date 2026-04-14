@@ -1382,6 +1382,16 @@ impl CombatService {
                                         } else {
                                             info!("Auto-switched to profile '{}' for role {}", profile_name, role_name);
                                             let _ = self.app_handle.emit("profile-auto-switched", &profile_name);
+                                            // Apply new profile settings to running overlays —
+                                            // same as manual load_profile, without flushing current
+                                            // positions (the new profile's positions take precedence).
+                                            let overlay_state = self.app_handle.state::<crate::overlay::SharedOverlayState>();
+                                            let service_handle = self.app_handle.state::<ServiceHandle>();
+                                            let _ = crate::overlay::OverlayManager::refresh_settings(
+                                                &overlay_state,
+                                                &service_handle,
+                                                false,
+                                            ).await;
                                         }
                                     }
                                 }
