@@ -38,6 +38,26 @@ pub fn format_duration_short(secs: f32) -> String {
     formatting::format_duration_f32(secs)
 }
 
+/// Scale icon to target size using nearest-neighbor sampling (shared across overlays)
+pub fn scale_icon(src: &[u8], src_w: u32, src_h: u32, target_size: u32) -> Vec<u8> {
+    let mut dest = vec![0u8; (target_size * target_size * 4) as usize];
+    let scale_x = src_w as f32 / target_size as f32;
+    let scale_y = src_h as f32 / target_size as f32;
+    for dy in 0..target_size {
+        for dx in 0..target_size {
+            let sx = ((dx as f32 * scale_x) as u32).min(src_w - 1);
+            let sy = ((dy as f32 * scale_y) as u32).min(src_h - 1);
+            let src_idx = ((sy * src_w + sx) * 4) as usize;
+            let dest_idx = ((dy * target_size + dx) * 4) as usize;
+            dest[dest_idx] = src[src_idx];
+            dest[dest_idx + 1] = src[src_idx + 1];
+            dest[dest_idx + 2] = src[src_idx + 2];
+            dest[dest_idx + 3] = src[src_idx + 3];
+        }
+    }
+    dest
+}
+
 /// Format a large number with K/M suffix for compact display.
 ///
 /// This is a convenience wrapper that passes `european = false`.

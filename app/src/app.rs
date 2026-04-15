@@ -13,9 +13,8 @@ use crate::components::{
 };
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::types::{
-    CombatLogSessionState, DataExplorerState, EffectsEditorState, EncounterBuilderState,
     LogFileInfo, MainTab, MetricType, OverlaySettings, OverlayStatus, OverlayType,
-    SessionInfo, UiSessionState, UpdateInfo, ViewMode,
+    SessionInfo, UiSessionState, UpdateInfo,
 };
 
 static CSS: Asset = asset!("/assets/styles.css");
@@ -56,6 +55,7 @@ pub fn App() -> Element {
     let mut notes_enabled = use_signal(|| false);
     let mut combat_time_enabled = use_signal(|| false);
     let mut operation_timer_enabled = use_signal(|| false);
+    let mut ability_queue_enabled = use_signal(|| false);
     // Operation timer state from Tauri events
     let mut op_timer_secs = use_signal(|| 0u64);
     let mut op_timer_running = use_signal(|| false);
@@ -230,6 +230,7 @@ pub fn App() -> Element {
                 &mut notes_enabled,
                 &mut combat_time_enabled,
                 &mut operation_timer_enabled,
+                &mut ability_queue_enabled,
                 &mut overlays_visible,
                 &mut move_mode,
                 &mut rearrange_mode,
@@ -323,6 +324,7 @@ pub fn App() -> Element {
                         &mut effects_a_enabled, &mut effects_b_enabled,
                         &mut cooldowns_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
                         &mut combat_time_enabled, &mut operation_timer_enabled,
+                        &mut ability_queue_enabled,
                         &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                 }
             });
@@ -535,6 +537,7 @@ pub fn App() -> Element {
     let notes_on = notes_enabled();
     let combat_time_on = combat_time_enabled();
     let operation_timer_on = operation_timer_enabled();
+    let ability_queue_on = ability_queue_enabled();
     let any_enabled = enabled_map.values().any(|&v| v)
         || personal_on
         || raid_on
@@ -549,7 +552,8 @@ pub fn App() -> Element {
         || dot_tracker_on
         || notes_on
         || combat_time_on
-        || operation_timer_on;
+        || operation_timer_on
+        || ability_queue_on;
     let is_visible = overlays_visible();
     let is_move_mode = move_mode();
     let is_rearrange = rearrange_mode();
@@ -819,6 +823,7 @@ pub fn App() -> Element {
                                                 &mut effects_a_enabled, &mut effects_b_enabled,
                                                 &mut cooldowns_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
                                                 &mut combat_time_enabled, &mut operation_timer_enabled,
+                                                &mut ability_queue_enabled,
                                                 &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                                         }
                                     }
@@ -1514,6 +1519,18 @@ pub fn App() -> Element {
                                         }); },
                                         i { class: "fa-solid fa-note-sticky overlay-btn-icon" }
                                         "Notes"
+                                    }
+                                    button {
+                                        class: if ability_queue_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                        title: "Displays GCD bar, queued/ready abilities, and active ability countdowns",
+                                        onclick: move |_| { spawn(async move {
+                                            if api::toggle_overlay(OverlayType::AbilityQueue, ability_queue_on).await {
+                                                ability_queue_enabled.set(!ability_queue_on);
+                                                profile_dirty.set(true);
+                                            }
+                                        }); },
+                                        i { class: "fa-solid fa-layer-group overlay-btn-icon" }
+                                        "Ability Queue"
                                     }
                                 }
                             }
@@ -2553,6 +2570,7 @@ fn apply_status(
     notes_enabled: &mut Signal<bool>,
     combat_time_enabled: &mut Signal<bool>,
     operation_timer_enabled: &mut Signal<bool>,
+    ability_queue_enabled: &mut Signal<bool>,
     overlays_visible: &mut Signal<bool>,
     move_mode: &mut Signal<bool>,
     rearrange_mode: &mut Signal<bool>,
@@ -2577,6 +2595,7 @@ fn apply_status(
     notes_enabled.set(status.notes_enabled);
     combat_time_enabled.set(status.combat_time_enabled);
     operation_timer_enabled.set(status.operation_timer_enabled);
+    ability_queue_enabled.set(status.ability_queue_enabled);
     overlays_visible.set(status.overlays_visible);
     move_mode.set(status.move_mode);
     rearrange_mode.set(status.rearrange_mode);

@@ -959,8 +959,8 @@ pub async fn install_update() -> Result<(), String> {
 pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch,
     CombatLogRow, CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectWindow,
-    EncounterTimeline, EntityBreakdown, GcdSlot, GroupedEntityNames, HpPoint, NpcHealthRow,
-    PhaseSegment, PlayerDeath, RaidOverviewRow, RotationAnalysis, RotationCycle, RotationEvent,
+    EncounterTimeline, EntityBreakdown, GroupedEntityNames, HpPoint, NpcHealthRow,
+    PhaseSegment, PlayerDeath, RaidOverviewRow, RotationAnalysis,
     SortDirection, TimeRange, TimeSeriesPoint,
 };
 

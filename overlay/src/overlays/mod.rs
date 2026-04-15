@@ -9,6 +9,7 @@
 //! All overlays implement the `Overlay` trait, which provides a unified
 //! interface for the application layer to interact with any overlay type.
 
+mod ability_queue;
 mod alerts;
 mod boss_health;
 mod challenges;
@@ -25,7 +26,7 @@ mod raid;
 mod timers;
 
 pub use alerts::{AlertEntry, AlertsData, AlertsOverlay};
-pub use boss_health::{BossHealthData, BossHealthOverlay};
+pub use boss_health::{BossEffectIcon, BossHealthData, BossHealthOverlay};
 pub use combat_time::{CombatTimeConfig, CombatTimeData, CombatTimeOverlay};
 pub use challenges::{ChallengeData, ChallengeEntry, ChallengeOverlay, PlayerContribution};
 pub use cooldowns::{CooldownConfig, CooldownData, CooldownEntry, CooldownOverlay};
@@ -56,7 +57,8 @@ pub use raid::{
     RaidOverlayConfig,
     SwapState,
 };
-pub use timers::{TimerData, TimerEntry, TimerOverlay};
+pub use ability_queue::{AbilityQueueConfig, AbilityQueueOverlay};
+pub use timers::{AbilityQueueData, AbilityQueueEntry, TimerData, TimerEntry, TimerOverlay};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registry Action (for raid overlay → service communication)
@@ -77,6 +79,7 @@ use baras_core::context::{
     AlertsOverlayConfig, BossHealthConfig, ChallengeOverlayConfig, OverlayAppearanceConfig,
     PersonalOverlayConfig, TimerOverlayConfig,
 };
+use baras_types::{ClassColorConfig, ClassIconMode};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Types
@@ -117,6 +120,8 @@ pub enum OverlayData {
     CombatTime(CombatTimeData),
     /// Operation timer (persistent across encounters)
     OperationTimer(OperationTimerData),
+    /// Ability queue (GCD + queued + active countdown entries)
+    AbilityQueue(AbilityQueueData),
 }
 
 /// Configuration updates that can be sent to overlays
@@ -125,8 +130,8 @@ pub enum OverlayData {
 /// and `european_number_format` (`bool`) for number display formatting.
 #[derive(Debug, Clone)]
 pub enum OverlayConfigUpdate {
-    /// Appearance config for metric overlays (+ alpha, show_empty, stack_bottom, scale, show_class_icons, font_scale, dynamic_background, european, show_background_bar)
-    Metric(OverlayAppearanceConfig, u8, bool, bool, f32, bool, f32, bool, bool, bool),
+    /// Appearance config for metric overlays (+ alpha, show_empty, stack_bottom, scale, icon_mode, font_scale, dynamic_background, european, show_background_bar, class_colors)
+    Metric(OverlayAppearanceConfig, u8, bool, bool, f32, ClassIconMode, f32, bool, bool, bool, ClassColorConfig),
     /// Config for personal overlay (+ background alpha, european)
     Personal(PersonalOverlayConfig, u8, bool),
     /// Config for raid overlay (+ background alpha, european)
@@ -157,6 +162,8 @@ pub enum OverlayConfigUpdate {
     CombatTime(CombatTimeConfig, u8, bool),
     /// Config for operation timer overlay (+ background alpha)
     OperationTimer(OperationTimerConfig, u8),
+    /// Config for ability queue overlay (+ background alpha)
+    AbilityQueue(AbilityQueueConfig, u8),
 }
 
 /// Position information for an overlay

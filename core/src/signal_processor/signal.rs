@@ -136,11 +136,30 @@ pub enum GameSignal {
         timestamp: NaiveDateTime,
         /// Damage absorbed by boss shields (0 if none)
         absorbed: i32,
+        /// Defense result ID (0 = normal hit). Maps to `game_data::defense_type` constants.
+        defense_type_id: i64,
     },
 
     /// Healing done (for effect refresh on heal completion)
     HealingDone {
         /// The ability that healed
+        ability_id: i64,
+        ability_name: IStr,
+        source_id: i64,
+        source_entity_type: EntityType,
+        source_name: IStr,
+        /// NPC class/template ID of source (0 for players/companions)
+        source_npc_id: i64,
+        target_id: i64,
+        target_entity_type: EntityType,
+        target_name: IStr,
+        /// NPC class/template ID of target (0 for players/companions)
+        target_npc_id: i64,
+        timestamp: NaiveDateTime,
+    },
+
+    /// Threat modified (MODIFYTHREAT or TAUNT effect)
+    ThreatModified {
         ability_id: i64,
         ability_name: IStr,
         source_id: i64,
@@ -282,7 +301,8 @@ impl GameSignal {
             | Self::BossHpChanged { timestamp, .. }
             | Self::PhaseChanged { timestamp, .. }
             | Self::PhaseEndTriggered { timestamp, .. }
-            | Self::CounterChanged { timestamp, .. } => *timestamp,
+            | Self::CounterChanged { timestamp, .. }
+            | Self::ThreatModified { timestamp, .. } => *timestamp,
         }
     }
 }

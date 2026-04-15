@@ -10,10 +10,10 @@ use std::collections::HashMap;
 use crate::api;
 use crate::components::{ToastSeverity, use_toast};
 use crate::types::{
-    AlertsOverlayConfig, BossHealthConfig, ChallengeLayout, CooldownTrackerConfig,
-    DotTrackerConfig, EffectsAConfig, EffectsBConfig, MAX_PROFILES, MetricType,
-    NotesOverlayConfig, OverlayAppearanceConfig, OverlaySettings, PersonalOverlayConfig,
-    PersonalStat, RaidOverlaySettings, TimerOverlayConfig,
+    AlertsOverlayConfig, BossHealthConfig, ChallengeLayout, ClassIconMode, CooldownTrackerConfig,
+    DotTrackerConfig, EffectsAConfig, EffectsBConfig,
+    MAX_PROFILES, MetricType, OverlayAppearanceConfig, OverlaySettings,
+    PersonalOverlayConfig, PersonalStat, RaidOverlaySettings, TimerOverlayConfig,
 };
 use crate::utils::{color_to_hex, parse_hex_color};
 
@@ -77,6 +77,16 @@ pub fn SettingsPanel(
     let personal_label_font_color_hex =
         color_to_hex(&current_settings.personal_overlay.label_color);
     let boss_bar_hex = color_to_hex(&current_settings.boss_health.bar_color);
+    // Class color hex strings
+    let cc = &current_settings.class_colors;
+    let cc_sorc = color_to_hex(&cc.sorcerer_sage);
+    let cc_asin = color_to_hex(&cc.assassin_shadow);
+    let cc_jugg = color_to_hex(&cc.juggernaut_guardian);
+    let cc_mara = color_to_hex(&cc.marauder_sentinel);
+    let cc_merc = color_to_hex(&cc.mercenary_commando);
+    let cc_pt   = color_to_hex(&cc.powertech_vanguard);
+    let cc_oper = color_to_hex(&cc.operative_scoundrel);
+    let cc_snip = color_to_hex(&cc.sniper_gunslinger);
 
     // Save settings to backend
     let save_to_backend = move |_| {
@@ -98,7 +108,8 @@ pub fn SettingsPanel(
                 config.overlay_settings.metric_font_scale = new_settings.metric_font_scale;
                 config.overlay_settings.metric_dynamic_background = new_settings.metric_dynamic_background;
                 config.overlay_settings.metric_show_background_bar = new_settings.metric_show_background_bar;
-                config.overlay_settings.class_icons_enabled = new_settings.class_icons_enabled;
+                config.overlay_settings.class_icon_mode = new_settings.class_icon_mode;
+                config.overlay_settings.class_colors = new_settings.class_colors.clone();
                 config.overlay_settings.personal_opacity = new_settings.personal_opacity;
                 config.overlay_settings.raid_overlay = new_settings.raid_overlay.clone();
                 config.overlay_settings.raid_opacity = new_settings.raid_opacity;
@@ -599,14 +610,125 @@ pub fn SettingsPanel(
                             }
 
                             div { class: "setting-row",
-                                label { "Show Class Icons" }
-                                input {
-                                    r#type: "checkbox",
-                                    checked: current_settings.class_icons_enabled,
+                                label { "Class Icons" }
+                                select {
+                                    value: match current_settings.class_icon_mode {
+                                        ClassIconMode::None => "none",
+                                        ClassIconMode::Class => "class",
+                                        ClassIconMode::Discipline => "discipline",
+                                    },
                                     onchange: move |e: Event<FormData>| {
                                         let mut new_settings = draft_settings();
-                                        new_settings.class_icons_enabled = e.checked();
+                                        new_settings.class_icon_mode = match e.value().as_str() {
+                                            "class" => ClassIconMode::Class,
+                                            "discipline" => ClassIconMode::Discipline,
+                                            _ => ClassIconMode::None,
+                                        };
                                         update_draft(new_settings);
+                                    },
+                                    option { value: "none", "None" }
+                                    option { value: "class", "Class" }
+                                    option { value: "discipline", "Discipline" }
+                                }
+                            }
+
+                            // ── Class Colors ─────────────────────────────────
+                            details { class: "collapsible",
+                                summary { class: "collapsible-summary", "Class Colors" }
+                                div { class: "setting-row",
+                                    label { "Sorcerer / Sage" }
+                                    input { r#type: "color", value: "{cc_sorc}", class: "color-picker",
+                                        oninput: move |e: Event<FormData>| {
+                                            if let Some(color) = parse_hex_color(&e.value()) {
+                                                let mut s = draft_settings();
+                                                s.class_colors.sorcerer_sage = color;
+                                                update_draft(s);
+                                            }
+                                        }
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Assassin / Shadow" }
+                                    input { r#type: "color", value: "{cc_asin}", class: "color-picker",
+                                        oninput: move |e: Event<FormData>| {
+                                            if let Some(color) = parse_hex_color(&e.value()) {
+                                                let mut s = draft_settings();
+                                                s.class_colors.assassin_shadow = color;
+                                                update_draft(s);
+                                            }
+                                        }
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Juggernaut / Guardian" }
+                                    input { r#type: "color", value: "{cc_jugg}", class: "color-picker",
+                                        oninput: move |e: Event<FormData>| {
+                                            if let Some(color) = parse_hex_color(&e.value()) {
+                                                let mut s = draft_settings();
+                                                s.class_colors.juggernaut_guardian = color;
+                                                update_draft(s);
+                                            }
+                                        }
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Marauder / Sentinel" }
+                                    input { r#type: "color", value: "{cc_mara}", class: "color-picker",
+                                        oninput: move |e: Event<FormData>| {
+                                            if let Some(color) = parse_hex_color(&e.value()) {
+                                                let mut s = draft_settings();
+                                                s.class_colors.marauder_sentinel = color;
+                                                update_draft(s);
+                                            }
+                                        }
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Mercenary / Commando" }
+                                    input { r#type: "color", value: "{cc_merc}", class: "color-picker",
+                                        oninput: move |e: Event<FormData>| {
+                                            if let Some(color) = parse_hex_color(&e.value()) {
+                                                let mut s = draft_settings();
+                                                s.class_colors.mercenary_commando = color;
+                                                update_draft(s);
+                                            }
+                                        }
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Powertech / Vanguard" }
+                                    input { r#type: "color", value: "{cc_pt}", class: "color-picker",
+                                        oninput: move |e: Event<FormData>| {
+                                            if let Some(color) = parse_hex_color(&e.value()) {
+                                                let mut s = draft_settings();
+                                                s.class_colors.powertech_vanguard = color;
+                                                update_draft(s);
+                                            }
+                                        }
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Operative / Scoundrel" }
+                                    input { r#type: "color", value: "{cc_oper}", class: "color-picker",
+                                        oninput: move |e: Event<FormData>| {
+                                            if let Some(color) = parse_hex_color(&e.value()) {
+                                                let mut s = draft_settings();
+                                                s.class_colors.operative_scoundrel = color;
+                                                update_draft(s);
+                                            }
+                                        }
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Sniper / Gunslinger" }
+                                    input { r#type: "color", value: "{cc_snip}", class: "color-picker",
+                                        oninput: move |e: Event<FormData>| {
+                                            if let Some(color) = parse_hex_color(&e.value()) {
+                                                let mut s = draft_settings();
+                                                s.class_colors.sniper_gunslinger = color;
+                                                update_draft(s);
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -971,6 +1093,19 @@ pub fn SettingsPanel(
                     h4 { style: "margin-top: 16px;", "Layout" }
 
                     div { class: "setting-row",
+                        label { "Bar Mode" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.effects_a.layout_bar,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.effects_a.layout_bar = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row",
                         label { "Vertical Layout" }
                         input {
                             r#type: "checkbox",
@@ -1136,6 +1271,19 @@ pub fn SettingsPanel(
                     h4 { style: "margin-top: 16px;", "Layout" }
 
                     div { class: "setting-row",
+                        label { "Bar Mode" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.effects_b.layout_bar,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.effects_b.layout_bar = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row",
                         label { "Vertical Layout" }
                         input {
                             r#type: "checkbox",
@@ -1299,6 +1447,19 @@ pub fn SettingsPanel(
                     }
 
                     h4 { style: "margin-top: 16px;", "Display Options" }
+
+                    div { class: "setting-row",
+                        label { "Bar Mode" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.cooldown_tracker.layout_bar,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.cooldown_tracker.layout_bar = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
 
                     div { class: "setting-row",
                         label { "Show Header" }
@@ -2705,6 +2866,24 @@ pub fn SettingsPanel(
                                                 appearance.font_color = color;
                                                 update_draft(new_settings);
                                             }
+                                        }
+                                    }
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Color Bars by Class" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: current_appearance.use_class_color,
+                                    onchange: {
+                                        let tab = tab_key.clone();
+                                        move |e: Event<FormData>| {
+                                            let mut new_settings = draft_settings();
+                                            let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
+                                            let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
+                                            appearance.use_class_color = e.checked();
+                                            update_draft(new_settings);
                                         }
                                     }
                                 }

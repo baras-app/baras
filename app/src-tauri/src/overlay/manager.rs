@@ -12,11 +12,12 @@ use std::time::Duration;
 
 use super::metrics::create_entries_for_type;
 use super::spawn::{
-    create_alerts_overlay, create_boss_health_overlay, create_challenges_overlay,
-    create_combat_time_overlay, create_cooldowns_overlay, create_dot_tracker_overlay,
-    create_effects_a_overlay, create_effects_b_overlay, create_metric_overlay,
-    create_notes_overlay, create_operation_timer_overlay, create_personal_overlay,
-    create_raid_overlay, create_timers_a_overlay, create_timers_b_overlay,
+    create_ability_queue_overlay, create_alerts_overlay, create_boss_health_overlay,
+    create_challenges_overlay, create_combat_time_overlay, create_cooldowns_overlay,
+    create_dot_tracker_overlay, create_effects_a_overlay, create_effects_b_overlay,
+    create_metric_overlay, create_notes_overlay, create_operation_timer_overlay,
+    create_personal_overlay, create_raid_overlay, create_timers_a_overlay,
+    create_timers_b_overlay,
 };
 use super::state::{OverlayCommand, OverlayHandle, PositionEvent};
 use super::types::{MetricType, OverlayType};
@@ -54,7 +55,7 @@ impl OverlayManager {
                     settings.metric_show_empty_bars,
                     settings.metric_stack_from_bottom,
                     settings.metric_scaling_factor,
-                    settings.class_icons_enabled,
+                    settings.class_icon_mode,
                     settings.metric_font_scale,
                     settings.metric_dynamic_background,
                     settings.metric_show_background_bar,
@@ -126,6 +127,10 @@ impl OverlayManager {
                     settings.operation_timer_opacity,
                 )?
             }
+            OverlayType::AbilityQueue => {
+                let aq_config = settings.ability_queue.clone();
+                create_ability_queue_overlay(position, aq_config, settings.ability_queue_opacity)?
+            }
         };
 
         Ok(SpawnResult {
@@ -184,7 +189,7 @@ impl OverlayManager {
                 if data.metrics.is_empty() {
                     return;
                 }
-                let entries = create_entries_for_type(metric_type, &data.metrics);
+                let entries = create_entries_for_type(metric_type, &data.metrics, data.player_entity_id);
                 let _ = tx
                     .send(OverlayCommand::UpdateData(OverlayData::Metrics(entries)))
                     .await;
@@ -227,7 +232,8 @@ impl OverlayManager {
             | OverlayType::EffectsB
             | OverlayType::Cooldowns
             | OverlayType::DotTracker
-            | OverlayType::Notes => {
+            | OverlayType::Notes
+            | OverlayType::AbilityQueue => {
                 // These get data via separate update channels (bridge)
             }
         }
@@ -329,11 +335,12 @@ impl OverlayManager {
                     settings.metric_show_empty_bars,
                     settings.metric_stack_from_bottom,
                     settings.metric_scaling_factor,
-                    settings.class_icons_enabled,
+                    settings.class_icon_mode,
                     settings.metric_font_scale,
                     settings.metric_dynamic_background,
                     eu,
                     settings.metric_show_background_bar,
+                    settings.class_colors.clone(),
                 )
             }
             OverlayType::Personal => {
@@ -366,7 +373,9 @@ impl OverlayManager {
             }
             OverlayType::EffectsA => {
                 let cfg = &settings.effects_a;
-                let layout = if cfg.layout_vertical {
+                let layout = if cfg.layout_bar {
+                    EffectsLayout::Bar
+                } else if cfg.layout_vertical {
                     EffectsLayout::Vertical
                 } else {
                     EffectsLayout::Horizontal
@@ -387,7 +396,9 @@ impl OverlayManager {
             }
             OverlayType::EffectsB => {
                 let cfg = &settings.effects_b;
-                let layout = if cfg.layout_vertical {
+                let layout = if cfg.layout_bar {
+                    EffectsLayout::Bar
+                } else if cfg.layout_vertical {
                     EffectsLayout::Vertical
                 } else {
                     EffectsLayout::Horizontal
@@ -418,6 +429,7 @@ impl OverlayManager {
                     show_header: cfg.show_header,
                     font_scale: cfg.font_scale,
                     dynamic_background: cfg.dynamic_background,
+                    layout_bar: cfg.layout_bar,
                 };
                 OverlayConfigUpdate::Cooldowns(cooldowns_config, settings.cooldown_tracker_opacity, eu)
             }
@@ -470,6 +482,18 @@ impl OverlayManager {
                     ot_config,
                     settings.operation_timer_opacity,
                 )
+            }
+            OverlayType::AbilityQueue => {
+                use baras_overlay::AbilityQueueConfig;
+                let cfg = &settings.ability_queue;
+                let aq_config = AbilityQueueConfig {
+                    max_display: cfg.max_display,
+                    font_scale: cfg.font_scale,
+                    font_color: cfg.font_color,
+                    gcd_color: cfg.gcd_color,
+                    dynamic_background: cfg.dynamic_background,
+                };
+                OverlayConfigUpdate::AbilityQueue(aq_config, settings.ability_queue_opacity)
             }
         }
     }
@@ -642,6 +666,7 @@ impl OverlayManager {
                 "notes" => OverlayType::Notes,
                 "combat_time" => OverlayType::CombatTime,
                 "operation_timer" => OverlayType::OperationTimer,
+                "ability_queue" => OverlayType::AbilityQueue,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)
@@ -801,6 +826,7 @@ impl OverlayManager {
                 "notes" => OverlayType::Notes,
                 "combat_time" => OverlayType::CombatTime,
                 "operation_timer" => OverlayType::OperationTimer,
+                "ability_queue" => OverlayType::AbilityQueue,
                 _ => {
                     if let Some(mt) = MetricType::from_config_key(key) {
                         OverlayType::Metric(mt)

@@ -3,6 +3,9 @@
 //! Displays real-time health bars for boss NPCs in the current encounter.
 //! Supports HP threshold markers (vertical lines at key HP%) and shield bars.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use baras_core::context::BossHealthConfig;
 use baras_core::OverlayHealthEntry;
 use tiny_skia::Color;
@@ -15,11 +18,40 @@ use crate::widgets::colors;
 use crate::widgets::ProgressBar;
 use baras_types::formatting;
 
+/// A single effect icon to render beneath a boss HP bar.
+#[derive(Debug, Clone)]
+pub struct BossEffectIcon {
+    pub effect_id: u64,
+    pub icon_ability_id: u64,
+    pub name: String,
+    pub remaining_secs: f32,
+    pub total_secs: f32,
+    pub color: [u8; 4],
+    pub show_icon: bool,
+    pub icon: Option<Arc<(u32, u32, Vec<u8>)>>,
+}
+
+impl BossEffectIcon {
+    pub fn progress(&self) -> f32 {
+        if self.total_secs > 0.0 {
+            (self.remaining_secs / self.total_secs).clamp(0.0, 1.0)
+        } else {
+            1.0
+        }
+    }
+
+    pub fn format_time(&self, european: bool) -> String {
+        formatting::format_countdown_compact(self.remaining_secs, "0", european)
+    }
+}
+
 /// Data sent from service to boss health overlay
 #[derive(Debug, Clone, Default)]
 pub struct BossHealthData {
     /// Current boss health entries (sorted by encounter order)
     pub entries: Vec<OverlayHealthEntry>,
+    /// Effect icons keyed by NPC display name (matches OverlayHealthEntry::name)
+    pub boss_icons: HashMap<String, Vec<BossEffectIcon>>,
 }
 
 /// Base dimensions for scaling calculations
@@ -106,7 +138,10 @@ impl BossHealthOverlay {
         (base_font_size * scale).max(min_font)
     }
 
-    /// Calculate per-entry height for a given entry (accounts for shields)
+    /// Calculate per-entry height for a given entry (accounts for shields and icon row).
+    ///
+    /// `icon_row_height`: `Some(h)` when an icon strip is rendered below the bar
+    /// (overrides the plain marker-text row). `None` falls back to marker-text-only.
     fn entry_height(
         &self,
         entry: &OverlayHealthEntry,
@@ -115,6 +150,7 @@ impl BossHealthOverlay {
         label_bar_gap: f32,
         label_font_size: f32,
         shield_bar_height: f32,
+        icon_row_height: Option<f32>,
     ) -> f32 {
         let mut h = label_height + label_bar_gap;
 
@@ -125,13 +161,18 @@ impl BossHealthOverlay {
 
         h += bar_height;
 
-        // Marker label below bar
-        if Self::next_marker(entry).is_some() {
-            let marker_font_size = label_font_size * 0.85;
-            h += marker_font_size + 2.0;
+        if let Some(row_h) = icon_row_height {
+            h += row_h;
+        } else if Self::next_marker(entry).is_some() {
+            h += label_font_size * 0.85 + 2.0;
         }
 
         h
+    }
+
+    /// Icon row height for a given bar height (3px gap above icons + icon size + 3px gap below).
+    fn icon_row_height(bar_height: f32) -> f32 {
+        bar_height * 0.9 + 6.0
     }
 
     /// Calculate compression factor to fit entries in available height
@@ -145,10 +186,14 @@ impl BossHealthOverlay {
         let label_font_size = self.frame.scaled(BASE_LABEL_FONT_SIZE);
         let shield_bar_height = self.frame.scaled(BASE_SHIELD_BAR_HEIGHT);
 
+        let icon_row_h = Self::icon_row_height(bar_height);
+
         let total_needed: f32 = padding * 2.0
             + entries
                 .iter()
                 .map(|e| {
+                    let has_icons = self.data.boss_icons.get(&e.name).is_some_and(|v| !v.is_empty());
+                    let icon_row = (has_icons || Self::next_marker(e).is_some()).then_some(icon_row_h);
                     self.entry_height(
                         e,
                         bar_height,
@@ -156,6 +201,7 @@ impl BossHealthOverlay {
                         label_bar_gap,
                         label_font_size,
                         shield_bar_height,
+                        icon_row,
                     ) + entry_spacing
                 })
                 .sum::<f32>()
@@ -180,9 +226,12 @@ impl BossHealthOverlay {
             * self.config.font_scale.clamp(1.0, 2.0);
         let shield_bar_height = self.frame.scaled(BASE_SHIELD_BAR_HEIGHT) * compression;
 
+        let icon_row_h = Self::icon_row_height(bar_height);
         let mut y = padding;
 
         for entry in entries {
+            let has_icons = self.data.boss_icons.get(&entry.name).is_some_and(|v| !v.is_empty());
+            let icon_row = (has_icons || Self::next_marker(entry).is_some()).then_some(icon_row_h);
             y += self.entry_height(
                 entry,
                 bar_height,
@@ -190,6 +239,7 @@ impl BossHealthOverlay {
                 label_bar_gap,
                 label_font_size,
                 shield_bar_height,
+                icon_row,
             );
             y += entry_spacing;
         }
@@ -331,6 +381,9 @@ impl BossHealthOverlay {
 
         let content_width = width - padding * 2.0;
         let bar_radius = 4.0 * self.frame.scale_factor() * compression;
+        let icon_size = bar_height * 0.9;
+        let icon_spacing = 2.0;
+        let time_font_size = icon_size * 0.38;
 
         let mut y = padding;
 
@@ -474,8 +527,79 @@ impl BossHealthOverlay {
 
             y += bar_height;
 
-            // ── Marker Label (below bar) ────────────────────────────────
-            if let Some((hp_pct, label)) = marker {
+            // ── Icon + Marker Row (below bar) ──────────────────────────
+            let entry_icons = self.data.boss_icons.get(&entry.name);
+            if entry_icons.is_some_and(|v| !v.is_empty()) {
+                let icons = entry_icons.unwrap();
+                let icon_y = y + 3.0;
+                let mut icon_x = padding;
+
+                for icon_entry in icons {
+                    let drawn = if icon_entry.show_icon {
+                        if let Some(ref img) = icon_entry.icon {
+                            let (iw, ih, ref rgba) = **img;
+                            self.frame.draw_image(rgba, iw, ih, icon_x, icon_y, icon_size, icon_size);
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    };
+
+                    if !drawn {
+                        self.frame.fill_rounded_rect(
+                            icon_x, icon_y, icon_size, icon_size, 2.0,
+                            color_from_rgba(icon_entry.color),
+                        );
+                    }
+
+                    // Clock wipe — dark overlay from top, shrinks as time remains
+                    let overlay_h = icon_size * (1.0 - icon_entry.progress());
+                    if overlay_h > 1.0 {
+                        self.frame.fill_rect(
+                            icon_x, icon_y, icon_size, overlay_h,
+                            color_from_rgba([0, 0, 0, 140]),
+                        );
+                    }
+
+                    self.frame.stroke_rounded_rect(
+                        icon_x, icon_y, icon_size, icon_size, 2.0, 1.0, colors::white(),
+                    );
+
+                    let time_text = icon_entry.format_time(self.european_number_format);
+                    let (tw, _) = self.frame.measure_text(&time_text, time_font_size);
+                    let time_color = if icon_entry.remaining_secs <= 3.0 {
+                        colors::effect_debuff()
+                    } else {
+                        colors::white()
+                    };
+                    self.frame.draw_text_glowed(
+                        &time_text,
+                        icon_x + (icon_size - tw) / 2.0,
+                        icon_y + icon_size / 2.0 + time_font_size * 0.4,
+                        time_font_size,
+                        time_color,
+                    );
+
+                    icon_x += icon_size + icon_spacing;
+                }
+
+                // Marker text to the right of icons (same row, vertically centered)
+                if let Some((hp_pct, label)) = marker {
+                    let marker_font_size = label_font_size * 0.85;
+                    let marker_label = format!("{}% {}", hp_pct as u32, label);
+                    self.frame.draw_text_glowed(
+                        &marker_label,
+                        icon_x + icon_spacing,
+                        icon_y + icon_size / 2.0 + marker_font_size * 0.4,
+                        marker_font_size,
+                        marker_line_color(),
+                    );
+                }
+
+                y += icon_size + 6.0;
+            } else if let Some((hp_pct, label)) = marker {
                 let marker_font_size = label_font_size * 0.85;
                 let marker_label = format!("{}% {}", hp_pct as u32, label);
                 let marker_x = padding + (hp_pct / 100.0) * content_width;
@@ -483,11 +607,10 @@ impl BossHealthOverlay {
                 let marker_label_x = (marker_x - marker_text_w / 2.0)
                     .max(padding)
                     .min(padding + content_width - marker_text_w);
-                let marker_label_y = y + marker_font_size + 1.0;
                 self.frame.draw_text_glowed(
                     &marker_label,
                     marker_label_x,
-                    marker_label_y,
+                    y + marker_font_size + 1.0,
                     marker_font_size,
                     marker_line_color(),
                 );

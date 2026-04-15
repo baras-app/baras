@@ -555,6 +555,42 @@ impl ChallengeTracker {
         updated
     }
 
+    /// Process an ability interrupt event
+    pub fn process_interrupt(
+        &mut self,
+        ctx: &ChallengeContext,
+        source: &EntityInfo,
+        ability_id: u64,
+        timestamp: chrono::NaiveDateTime,
+    ) -> Vec<String> {
+        if !self.active {
+            return Vec::new();
+        }
+
+        let mut updated = Vec::new();
+
+        for def in &self.definitions {
+            if def.metric != ChallengeMetric::InterruptCount {
+                continue;
+            }
+
+            if def.matches(ctx, &self.entities, Some(source), None, Some(ability_id), None)
+                && let Some(val) = self.values.get_mut(&def.id)
+                && source.is_player
+            {
+                if val.first_event_time.is_none() {
+                    val.first_event_time = Some(timestamp);
+                }
+                val.value += 1;
+                val.event_count += 1;
+                *val.by_player.entry(source.entity_id).or_insert(0) += 1;
+                updated.push(def.id.clone());
+            }
+        }
+
+        updated
+    }
+
     /// Process an ability activation (for count metrics)
     pub fn process_ability(
         &mut self,

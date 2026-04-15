@@ -255,6 +255,7 @@ fn convert_trigger(xml: &XmlTrigger) -> Trigger {
             ),
             source,
             target,
+            mitigation: vec![],
         },
         "HEAL" => Trigger::HealingTaken {
             abilities: build_ability_selectors(
@@ -355,6 +356,10 @@ fn convert_to_boss_timer(xml: &XmlConfigTimer) -> BossTimerDefinition {
         audio: convert_audio(xml),
         per_target: false,
         roles: Vec::new(),
+        gcd_secs: None,
+        queue_on_expire: false,
+        queue_priority: 0,
+        queue_remove_trigger: None,
     }
 }
 
@@ -388,7 +393,7 @@ fn convert_to_effect(xml: &XmlConfigTimer) -> EffectDefinition {
         cooldown_ready_secs: 0.0,
         color,
         show_at_secs: 0.0,
-        display_target: if is_alert { DisplayTarget::None } else { DisplayTarget::EffectsA },
+        display_targets: if is_alert { vec![] } else { vec![DisplayTarget::EffectsA] },
         icon_ability_id: None,
         show_icon: true,
         display_source: false,

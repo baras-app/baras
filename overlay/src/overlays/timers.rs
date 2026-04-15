@@ -10,7 +10,7 @@ use baras_core::context::TimerOverlayConfig;
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::color_from_rgba;
+use crate::utils::{color_from_rgba, scale_icon};
 use crate::widgets::{colors, ProgressBar};
 
 /// Cache for pre-scaled icons to avoid re-scaling every frame
@@ -53,6 +53,43 @@ impl TimerEntry {
 pub struct TimerData {
     /// Current active timers
     pub entries: Vec<TimerEntry>,
+}
+
+/// A single entry in the ability queue overlay.
+///
+/// - GCD entries: `is_pinned = true` → tier-1 accent bar (pinned top)
+/// - Queued/ready entries: `is_queued = true` → tier-2 "READY" label
+/// - Active countdown entries: both flags false → tier-3 progress bar
+#[derive(Debug, Clone)]
+pub struct AbilityQueueEntry {
+    pub name: String,
+    pub remaining_secs: f32,
+    pub total_secs: f32,
+    pub color: [u8; 4],
+    /// Sort priority for tier-2 queued entries (higher = higher on screen).
+    pub queue_priority: u8,
+    /// True for the synthetic GCD entry — pinned at tier 1.
+    pub is_pinned: bool,
+    /// True when the timer has expired and is held in ready/queued state.
+    pub is_queued: bool,
+    pub icon_ability_id: Option<u64>,
+    pub icon: Option<Arc<(u32, u32, Vec<u8>)>>,
+}
+
+impl AbilityQueueEntry {
+    pub fn progress(&self) -> f32 {
+        if self.total_secs <= 0.0 {
+            return 1.0;
+        }
+        let elapsed = self.total_secs - self.remaining_secs;
+        (elapsed / self.total_secs).clamp(0.0, 1.0)
+    }
+}
+
+/// Snapshot delivered to the Ability Queue overlay on every timer tick.
+#[derive(Debug, Clone, Default)]
+pub struct AbilityQueueData {
+    pub entries: Vec<AbilityQueueEntry>,
 }
 
 /// Base dimensions for scaling calculations
@@ -326,32 +363,6 @@ impl TimerOverlay {
         // End frame (resize indicator, commit)
         self.frame.end_frame();
     }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Icon Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Scale icon to target size using nearest-neighbor sampling
-fn scale_icon(src: &[u8], src_w: u32, src_h: u32, target_size: u32) -> Vec<u8> {
-    let mut dest = vec![0u8; (target_size * target_size * 4) as usize];
-    let scale_x = src_w as f32 / target_size as f32;
-    let scale_y = src_h as f32 / target_size as f32;
-
-    for dy in 0..target_size {
-        for dx in 0..target_size {
-            let sx = ((dx as f32 * scale_x) as u32).min(src_w - 1);
-            let sy = ((dy as f32 * scale_y) as u32).min(src_h - 1);
-            let src_idx = ((sy * src_w + sx) * 4) as usize;
-            let dest_idx = ((dy * target_size + dx) * 4) as usize;
-
-            dest[dest_idx] = src[src_idx];
-            dest[dest_idx + 1] = src[src_idx + 1];
-            dest[dest_idx + 2] = src[src_idx + 2];
-            dest[dest_idx + 3] = src[src_idx + 3];
-        }
-    }
-    dest
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

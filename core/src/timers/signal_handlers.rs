@@ -88,6 +88,19 @@ pub(super) fn handle_ability(
         target_npc_id,
         |t| t.matches_ability(ability_id, Some(ability_name_str)),
     );
+    // Check queue_remove_trigger on ability cast (entity-filtered)
+    manager.remove_queued_matching_with_source_target(
+        get_entities(encounter),
+        source_id,
+        source_type,
+        source_name,
+        source_npc_id,
+        target_id,
+        target_type,
+        target_name,
+        target_npc_id,
+        |t| t.matches_ability(ability_id, Some(ability_name_str)),
+    );
 }
 
 /// Handle effect applied
@@ -142,6 +155,18 @@ pub(super) fn handle_effect_applied(
 
     // Check for cancel triggers on effect applied (entity-filtered)
     manager.cancel_timers_matching_with_source_target(
+        get_entities(encounter),
+        source_id,
+        source_type,
+        source_name,
+        source_npc_id,
+        target_id,
+        target_type,
+        target_name,
+        target_npc_id,
+        |t| t.matches_effect_applied(effect_id, Some(effect_name)),
+    );
+    manager.remove_queued_matching_with_source_target(
         get_entities(encounter),
         source_id,
         source_type,
@@ -218,6 +243,18 @@ pub(super) fn handle_effect_removed(
         target_npc_id,
         |t| t.matches_effect_removed(effect_id, Some(effect_name)),
     );
+    manager.remove_queued_matching_with_source_target(
+        get_entities(encounter),
+        source_id,
+        source_type,
+        source_name,
+        source_npc_id,
+        target_id,
+        target_type,
+        target_name,
+        target_npc_id,
+        |t| t.matches_effect_removed(effect_id, Some(effect_name)),
+    );
 }
 
 /// Handle boss HP change - check for HP threshold triggers
@@ -282,6 +319,7 @@ pub(super) fn handle_phase_change(
 
     // Check for cancel triggers on phase entered
     manager.cancel_timers_matching(|t| t.matches_phase_entered(phase_id));
+    manager.remove_queued_matching(|t| t.matches_phase_entered(phase_id));
 }
 
 /// Handle phase ended - check for PhaseEnded triggers
@@ -304,6 +342,7 @@ pub(super) fn handle_phase_ended(
 
     // Check for cancel triggers on phase ended
     manager.cancel_timers_matching(|t| t.matches_phase_ended(phase_id));
+    manager.remove_queued_matching(|t| t.matches_phase_ended(phase_id));
 }
 
 /// Handle any phase change - check for AnyPhaseChange triggers
@@ -328,6 +367,7 @@ pub(super) fn handle_any_phase_change(
 
     // Check for cancel triggers on any phase change
     manager.cancel_timers_matching(|t| t.is_any_phase_change());
+    manager.remove_queued_matching(|t| t.is_any_phase_change());
 }
 
 /// Handle counter change - check for CounterReaches and CounterChanges triggers
@@ -371,6 +411,8 @@ pub(super) fn handle_counter_change(
     // Check for cancel triggers on counter change
     manager.cancel_timers_matching(|t| t.matches_counter_reaches(counter_id, old_value, new_value));
     manager.cancel_timers_matching(|t| t.matches_counter_changes(counter_id));
+    manager.remove_queued_matching(|t| t.matches_counter_reaches(counter_id, old_value, new_value));
+    manager.remove_queued_matching(|t| t.matches_counter_changes(counter_id));
 }
 
 /// Handle NPC first seen - check for NpcAppears triggers
@@ -496,6 +538,7 @@ pub(super) fn handle_damage_taken(
     target_name: IStr,
     target_npc_id: i64,
     timestamp: NaiveDateTime,
+    defense_type_id: i64,
 ) {
     let ability_id = ability_id as u64;
     let ability_name_str = crate::context::resolve(ability_name);
@@ -504,7 +547,7 @@ pub(super) fn handle_damage_taken(
         .definitions_for_kind(TriggerKind::DamageTaken)
         .iter()
         .filter(|d| {
-            d.matches_damage_taken(ability_id, Some(&ability_name_str))
+            d.matches_damage_taken(ability_id, Some(&ability_name_str), defense_type_id)
                 && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger,
@@ -542,7 +585,79 @@ pub(super) fn handle_damage_taken(
         target_type,
         target_name,
         target_npc_id,
-        |t| t.matches_damage_taken(ability_id, Some(&ability_name_str)),
+        |t| t.matches_damage_taken(ability_id, Some(&ability_name_str), defense_type_id),
+    );
+    manager.remove_queued_matching_with_source_target(
+        get_entities(encounter),
+        source_id,
+        source_type,
+        source_name,
+        source_npc_id,
+        target_id,
+        target_type,
+        target_name,
+        target_npc_id,
+        |t| t.matches_damage_taken(ability_id, Some(&ability_name_str), defense_type_id),
+    );
+}
+
+/// Handle threat modified - check for ThreatModified triggers
+pub(super) fn handle_threat_modified(
+    manager: &mut TimerManager,
+    encounter: Option<&CombatEncounter>,
+    ability_id: i64,
+    ability_name: IStr,
+    source_id: i64,
+    source_type: EntityType,
+    source_name: IStr,
+    source_npc_id: i64,
+    target_id: i64,
+    target_type: EntityType,
+    target_name: IStr,
+    target_npc_id: i64,
+    timestamp: NaiveDateTime,
+) {
+    let ability_id = ability_id as u64;
+    let ability_name_str = crate::context::resolve(ability_name);
+
+    let matching: Vec<_> = manager
+        .definitions_for_kind(TriggerKind::ThreatModified)
+        .iter()
+        .filter(|d| {
+            d.matches_threat_modified(ability_id, Some(&ability_name_str))
+                && manager.is_definition_active(d, encounter)
+                && manager.matches_source_target_filters(
+                    &d.trigger,
+                    get_entities(encounter),
+                    source_id,
+                    source_type,
+                    source_name,
+                    source_npc_id,
+                    target_id,
+                    target_type,
+                    target_name,
+                    target_npc_id,
+                )
+        })
+        .cloned()
+        .collect();
+
+    for def in matching {
+        let instance_id = if def.per_target { Some(target_id) } else { None };
+        manager.start_timer(&def, timestamp, instance_id);
+    }
+
+    manager.cancel_timers_matching_with_source_target(
+        get_entities(encounter),
+        source_id, source_type, source_name, source_npc_id,
+        target_id, target_type, target_name, target_npc_id,
+        |t| t.matches_threat_modified(ability_id, Some(&ability_name_str)),
+    );
+    manager.remove_queued_matching_with_source_target(
+        get_entities(encounter),
+        source_id, source_type, source_name, source_npc_id,
+        target_id, target_type, target_name, target_npc_id,
+        |t| t.matches_threat_modified(ability_id, Some(&ability_name_str)),
     );
 }
 
@@ -609,6 +724,18 @@ pub(super) fn handle_healing_taken(
         target_npc_id,
         |t| t.matches_healing_taken(ability_id, Some(&ability_name_str)),
     );
+    manager.remove_queued_matching_with_source_target(
+        get_entities(encounter),
+        source_id,
+        source_type,
+        source_name,
+        source_npc_id,
+        target_id,
+        target_type,
+        target_name,
+        target_npc_id,
+        |t| t.matches_healing_taken(ability_id, Some(&ability_name_str)),
+    );
 }
 
 /// Evaluate combat-time-based triggers: CombatStart and TimeElapsed.
@@ -659,6 +786,7 @@ pub(super) fn handle_combat_time_triggers(
 
     // Cancel triggers based on combat time
     manager.cancel_timers_matching(|t| t.is_combat_time_met(combat_secs));
+    manager.remove_queued_matching(|t| t.is_combat_time_met(combat_secs));
 }
 
 /// Clear all combat-scoped timers and encounter context
@@ -666,6 +794,7 @@ pub(super) fn clear_combat_timers(manager: &mut TimerManager) {
     manager.in_combat = false;
     manager.combat_start_time = None;
     manager.active_timers.clear();
+    manager.active_gcd = None;
     manager.fired_alerts.clear();
     manager.boss_entity_ids.clear();
     manager.combat_time_started.clear();

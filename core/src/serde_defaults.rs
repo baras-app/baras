@@ -67,10 +67,6 @@ pub fn is_default_display_target(t: &crate::timers::TimerDisplayTarget) -> bool 
     *t == crate::timers::TimerDisplayTarget::TimersA
 }
 
-/// Skip serializing if effect DisplayTarget is None (the default)
-pub fn is_default_effect_display_target(t: &crate::effects::DisplayTarget) -> bool {
-    *t == crate::effects::DisplayTarget::None
-}
 
 /// Default entity filter for boss timer source/target (matches any entity)
 /// Boss timers need permissive defaults since abilities come from NPCs, not players.

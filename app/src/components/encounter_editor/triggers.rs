@@ -4,7 +4,9 @@
 
 use dioxus::prelude::*;
 
-use crate::types::{AbilitySelector, EffectSelector, EntityFilter, EntitySelector, TimerTrigger};
+use crate::types::{
+    AbilitySelector, EffectSelector, EntityFilter, EntitySelector, MitigationType, TimerTrigger,
+};
 
 use super::tabs::EncounterData;
 
@@ -390,8 +392,9 @@ pub fn SimpleTriggerEditor(
                         "ability_cast" => TimerTrigger::AbilityCast { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "effect_applied" => TimerTrigger::EffectApplied { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "effect_removed" => TimerTrigger::EffectRemoved { effects: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
-                        "damage_taken" => TimerTrigger::DamageTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
+                        "damage_taken" => TimerTrigger::DamageTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default(), mitigation: vec![] },
                         "healing_taken" => TimerTrigger::HealingTaken { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
+                        "threat_modified" => TimerTrigger::ThreatModified { abilities: vec![], source: EntityFilter::default(), target: EntityFilter::default() },
                         "timer_expires" => TimerTrigger::TimerExpires { timer_id: String::new() },
                         "timer_started" => TimerTrigger::TimerStarted { timer_id: String::new() },
                         "timer_canceled" => TimerTrigger::TimerCanceled { timer_id: String::new() },
@@ -418,6 +421,7 @@ pub fn SimpleTriggerEditor(
                 option { value: "effect_removed", "Effect Removed" }
                 option { value: "damage_taken", "Damage Taken" }
                 option { value: "healing_taken", "Healing Taken" }
+                option { value: "threat_modified", "Threat Modified" }
                 option { value: "timer_expires", "Timer Expires" }
                 option { value: "timer_started", "Timer Started" }
                 option { value: "timer_canceled", "Timer Canceled" }
@@ -563,21 +567,28 @@ pub fn SimpleTriggerEditor(
                             }
                         }
                     },
-                    TimerTrigger::DamageTaken { abilities, source, target } => {
+                    TimerTrigger::DamageTaken { abilities, source, target, mitigation } => {
                         let source_for_abilities = source.clone();
                         let target_for_abilities = target.clone();
+                        let mitigation_for_abilities = mitigation.clone();
                         let abilities_for_source = abilities.clone();
                         let target_for_source = target.clone();
+                        let mitigation_for_source = mitigation.clone();
                         let abilities_for_target = abilities.clone();
                         let source_for_target = source.clone();
+                        let mitigation_for_target = mitigation.clone();
+                        let abilities_for_mitigation = abilities.clone();
+                        let source_for_mitigation = source.clone();
+                        let target_for_mitigation = target.clone();
                         rsx! {
                             AbilitySelectorEditor {
-                                label: "Abilities",
+                                label: "Abilities (empty = any)",
                                 selectors: abilities,
                                 on_change: move |sels| on_change.call(TimerTrigger::DamageTaken {
                                     abilities: sels,
                                     source: source_for_abilities.clone(),
                                     target: target_for_abilities.clone(),
+                                    mitigation: mitigation_for_abilities.clone(),
                                 })
                             }
                             EntityFilterDropdown {
@@ -588,6 +599,7 @@ pub fn SimpleTriggerEditor(
                                     abilities: abilities_for_source.clone(),
                                     source: f,
                                     target: target_for_source.clone(),
+                                    mitigation: mitigation_for_source.clone(),
                                 })
                             }
                             EntityFilterDropdown {
@@ -598,6 +610,16 @@ pub fn SimpleTriggerEditor(
                                     abilities: abilities_for_target.clone(),
                                     source: source_for_target.clone(),
                                     target: f,
+                                    mitigation: mitigation_for_target.clone(),
+                                })
+                            }
+                            MitigationTypeEditor {
+                                selected: mitigation,
+                                on_change: move |m| on_change.call(TimerTrigger::DamageTaken {
+                                    abilities: abilities_for_mitigation.clone(),
+                                    source: source_for_mitigation.clone(),
+                                    target: target_for_mitigation.clone(),
+                                    mitigation: m,
                                 })
                             }
                         }
@@ -634,6 +656,45 @@ pub fn SimpleTriggerEditor(
                                 value: target,
                                 options: EntityFilter::target_options(),
                                 on_change: move |f| on_change.call(TimerTrigger::HealingTaken {
+                                    abilities: abilities_for_target.clone(),
+                                    source: source_for_target.clone(),
+                                    target: f,
+                                })
+                            }
+                        }
+                    },
+                    TimerTrigger::ThreatModified { abilities, source, target } => {
+                        let source_for_abilities = source.clone();
+                        let target_for_abilities = target.clone();
+                        let abilities_for_source = abilities.clone();
+                        let target_for_source = target.clone();
+                        let abilities_for_target = abilities.clone();
+                        let source_for_target = source.clone();
+                        rsx! {
+                            AbilitySelectorEditor {
+                                label: "Abilities (empty = any)",
+                                selectors: abilities,
+                                on_change: move |sels| on_change.call(TimerTrigger::ThreatModified {
+                                    abilities: sels,
+                                    source: source_for_abilities.clone(),
+                                    target: target_for_abilities.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Source",
+                                value: source,
+                                options: EntityFilter::source_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::ThreatModified {
+                                    abilities: abilities_for_source.clone(),
+                                    source: f,
+                                    target: target_for_source.clone(),
+                                })
+                            }
+                            EntityFilterDropdown {
+                                label: "Target",
+                                value: target,
+                                options: EntityFilter::target_options(),
+                                on_change: move |f| on_change.call(TimerTrigger::ThreatModified {
                                     abilities: abilities_for_target.clone(),
                                     source: source_for_target.clone(),
                                     target: f,
@@ -1010,6 +1071,94 @@ pub fn AbilitySelectorEditor(
                                 on_change.call(new_sels);
                             }
                             new_input.set(String::new());
+                        }
+                    },
+                    "Add"
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mitigation Type Editor
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Editor for an optional list of mitigation type filters on DamageTaken triggers.
+/// Renders chips for selected types and a dropdown to add more.
+/// An empty list means "any hit result" (no filtering).
+#[component]
+pub fn MitigationTypeEditor(
+    selected: Vec<MitigationType>,
+    on_change: EventHandler<Vec<MitigationType>>,
+) -> Element {
+    let mut pending = use_signal(|| MitigationType::Miss);
+
+    let selected_for_add = selected.clone();
+
+    rsx! {
+        div { class: "flex-col gap-xs items-start",
+            span { class: "text-sm text-secondary text-left", "Mitigation (optional):" }
+
+            // Selected type chips
+            if !selected.is_empty() {
+                div { class: "flex flex-wrap gap-xs",
+                    for (idx, m) in selected.iter().enumerate() {
+                        {
+                            let selected_clone = selected.clone();
+                            let label = m.display_name();
+                            rsx! {
+                                span { class: "chip",
+                                    "{label}"
+                                    button {
+                                        class: "chip-remove",
+                                        onclick: move |_| {
+                                            let mut next = selected_clone.clone();
+                                            next.remove(idx);
+                                            on_change.call(next);
+                                        },
+                                        "×"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Add dropdown + button
+            div { class: "flex gap-xs items-center",
+                select {
+                    class: "select",
+                    style: "width: 130px;",
+                    onchange: move |e| {
+                        let m = match e.value().as_str() {
+                            "Miss" => MitigationType::Miss,
+                            "Parry" => MitigationType::Parry,
+                            "Dodge" => MitigationType::Dodge,
+                            "Immune" => MitigationType::Immune,
+                            "Resist" => MitigationType::Resist,
+                            "Deflect" => MitigationType::Deflect,
+                            "Shield" => MitigationType::Shield,
+                            "Absorbed" => MitigationType::Absorbed,
+                            "Cover" => MitigationType::Cover,
+                            "Reflected" => MitigationType::Reflected,
+                            _ => MitigationType::Miss,
+                        };
+                        pending.set(m);
+                    },
+                    for m in MitigationType::ALL {
+                        option { value: "{m:?}", selected: *m == *pending.read(), "{m.display_name()}" }
+                    }
+                }
+                button {
+                    class: "btn btn-sm",
+                    onclick: move |_| {
+                        let m = *pending.read();
+                        if !selected_for_add.contains(&m) {
+                            let mut next = selected_for_add.clone();
+                            next.push(m);
+                            on_change.call(next);
                         }
                     },
                     "Add"

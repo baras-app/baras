@@ -3,7 +3,7 @@
 //! Definitions are templates loaded from TOML config files that describe
 //! what effects to track and how to display them.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::dsl::AudioConfig;
 use crate::dsl::Trigger;
@@ -43,6 +43,8 @@ pub enum DisplayTarget {
     Cooldowns,
     /// Show on multi-target DOT tracker (DOTs on enemies)
     DotTracker,
+    /// Show on boss HP overlay (icons below the relevant boss bar)
+    BossHealth,
     /// Show on generic effects countdown overlay (legacy)
     EffectsOverlay,
 }
@@ -131,12 +133,20 @@ pub struct EffectDefinition {
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_f32")]
     pub show_at_secs: f32,
 
-    /// Which overlay should display this effect
+    /// Which overlays should display this effect.
+    ///
+    /// A single effect can be shown on multiple overlays simultaneously
+    /// (e.g. a HoT can appear on both RaidFrames and EffectsA).
+    ///
+    /// Backwards-compatible with the legacy `display_target = "..."` single-value
+    /// form via a custom deserializer.
     #[serde(
         default,
-        skip_serializing_if = "crate::serde_defaults::is_default_effect_display_target"
+        alias = "display_target",
+        deserialize_with = "deserialize_display_targets",
+        skip_serializing_if = "Vec::is_empty"
     )]
-    pub display_target: DisplayTarget,
+    pub display_targets: Vec<DisplayTarget>,
 
     /// Icon ability ID for display (falls back to effect_id or trigger ability if not set)
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -205,10 +215,62 @@ pub struct EffectDefinition {
     pub audio: AudioConfig,
 }
 
+/// Deserialize `display_targets` accepting either a single bare value
+/// (legacy `display_target = "raid_frames"`) or an array
+/// (`display_targets = ["raid_frames", "effects_a"]`).
+/// `None` values are filtered out so empty/unset = no overlay display.
+fn deserialize_display_targets<'de, D>(deserializer: D) -> Result<Vec<DisplayTarget>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::{self, SeqAccess, Visitor};
+    use std::fmt;
+
+    struct OneOrMany;
+
+    impl<'de> Visitor<'de> for OneOrMany {
+        type Value = Vec<DisplayTarget>;
+
+        fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("a display target string or a list of display target strings")
+        }
+
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+            let t = DisplayTarget::deserialize(de::value::StrDeserializer::<E>::new(v))?;
+            Ok(if matches!(t, DisplayTarget::None) {
+                Vec::new()
+            } else {
+                vec![t]
+            })
+        }
+
+        fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+            self.visit_str(&v)
+        }
+
+        fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+            let mut out = Vec::new();
+            while let Some(item) = seq.next_element::<DisplayTarget>()? {
+                if !matches!(item, DisplayTarget::None) && !out.contains(&item) {
+                    out.push(item);
+                }
+            }
+            Ok(out)
+        }
+    }
+
+    deserializer.deserialize_any(OneOrMany)
+}
+
 impl EffectDefinition {
     /// Get the effective color (explicit color or default gray)
     pub fn effective_color(&self) -> [u8; 4] {
         self.color.unwrap_or(DEFAULT_EFFECT_COLOR)
+    }
+
+    /// Check whether this effect should appear on the given overlay target.
+    pub fn displays_on(&self, target: DisplayTarget) -> bool {
+        self.display_targets.contains(&target)
     }
 
     /// Get the display text, falling back to name if not set

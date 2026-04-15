@@ -154,6 +154,8 @@ pub enum OverlayType {
     CombatTime,
     /// Persistent operation timer (tracks entire raid run)
     OperationTimer,
+    /// Ability queue overlay (GCD bar + queued/ready + active countdowns)
+    AbilityQueue,
 }
 
 impl OverlayType {
@@ -175,6 +177,7 @@ impl OverlayType {
             OverlayType::Notes => "notes",
             OverlayType::CombatTime => "combat_time",
             OverlayType::OperationTimer => "operation_timer",
+            OverlayType::AbilityQueue => "ability_queue",
         }
     }
 
@@ -196,6 +199,7 @@ impl OverlayType {
             OverlayType::Notes => "baras-notes".to_string(),
             OverlayType::CombatTime => "baras-combat-time".to_string(),
             OverlayType::OperationTimer => "baras-operation-timer".to_string(),
+            OverlayType::AbilityQueue => "baras-ability-queue".to_string(),
         }
     }
 
@@ -217,6 +221,7 @@ impl OverlayType {
             OverlayType::Notes => (950, 550),
             OverlayType::CombatTime => (400, 100),
             OverlayType::OperationTimer => (400, 160),
+            OverlayType::AbilityQueue => (650, 850),
         }
     }
 }

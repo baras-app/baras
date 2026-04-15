@@ -21,7 +21,6 @@ pub mod toast;
 pub use data_explorer::DataExplorerPanel;
 pub use effect_editor::EffectEditorPanel;
 pub use encounter_editor::EncounterEditorPanel;
-pub use encounter_types::{ChallengeSummary, ChallengePlayerSummary, EncounterSummary, UploadState};
 pub use hotkey_input::HotkeyInput;
 pub use parsely_upload_modal::{ParselyUploadModal, use_parsely_upload, use_parsely_upload_provider};
 pub use settings_panel::SettingsPanel;

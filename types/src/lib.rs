@@ -728,6 +728,76 @@ pub enum StackAggregation {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Mitigation / Defense Type
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Defense result that reduced or negated damage.
+///
+/// Maps directly to the game's `defense_type_id` log field.
+/// Used as an optional filter on `Trigger::DamageTaken` to fire only when a
+/// specific mitigation result occurs (e.g., only on IMMUNE, only on RESIST).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MitigationType {
+    Miss,
+    Parry,
+    Dodge,
+    Immune,
+    Resist,
+    Deflect,
+    Shield,
+    Absorbed,
+    Cover,
+    Reflected,
+}
+
+impl MitigationType {
+    /// Returns the game's numeric `defense_type_id` for this mitigation result.
+    pub fn defense_type_id(self) -> i64 {
+        match self {
+            Self::Miss => 836045448945502,
+            Self::Parry => 836045448945503,
+            Self::Dodge => 836045448945505,
+            Self::Immune => 836045448945506,
+            Self::Resist => 836045448945507,
+            Self::Deflect => 836045448945508,
+            Self::Shield => 836045448945509,
+            Self::Absorbed => 836045448945511,
+            Self::Cover => 836045448945510,
+            Self::Reflected => 836045448953649,
+        }
+    }
+
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::Miss => "Miss",
+            Self::Parry => "Parry",
+            Self::Dodge => "Dodge",
+            Self::Immune => "Immune",
+            Self::Resist => "Resist",
+            Self::Deflect => "Deflect",
+            Self::Shield => "Shield",
+            Self::Absorbed => "Absorbed",
+            Self::Cover => "Cover",
+            Self::Reflected => "Reflected",
+        }
+    }
+
+    pub const ALL: &'static [Self] = &[
+        Self::Miss,
+        Self::Parry,
+        Self::Dodge,
+        Self::Immune,
+        Self::Resist,
+        Self::Deflect,
+        Self::Shield,
+        Self::Absorbed,
+        Self::Cover,
+        Self::Reflected,
+    ];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Trigger Types (shared across timers, phases, counters)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -788,6 +858,11 @@ pub enum Trigger {
         source: EntityFilter,
         #[serde(default)]
         target: EntityFilter,
+        /// Optional mitigation filter — if non-empty, only fires when the hit
+        /// result matches one of the listed types (e.g. IMMUNE, RESIST).
+        /// Empty (default) matches any hit result.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        mitigation: Vec<MitigationType>,
     },
 
     /// Healing is received from an ability. [TPC]
@@ -797,6 +872,19 @@ pub enum Trigger {
         #[serde(default)]
         source: EntityFilter,
         #[serde(default)]
+        target: EntityFilter,
+    },
+
+    /// Threat is modified by an ability (MODIFYTHREAT or TAUNT). [TPC]
+    ThreatModified {
+        /// Ability selectors. Empty matches any ability.
+        #[serde(default)]
+        abilities: Vec<AbilitySelector>,
+        /// Who generated the threat (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        source: EntityFilter,
+        /// Who received the threat change (default: any)
+        #[serde(default = "EntityFilter::default_any")]
         target: EntityFilter,
     },
 
@@ -890,6 +978,7 @@ impl Trigger {
             Self::EffectRemoved { .. } => "Effect Removed",
             Self::DamageTaken { .. } => "Damage Taken",
             Self::HealingTaken { .. } => "Healing Taken",
+            Self::ThreatModified { .. } => "Threat Modified",
             Self::BossHpBelow { .. } => "Boss HP Below",
             Self::BossHpAbove { .. } => "Boss HP Above",
             Self::NpcAppears { .. } => "NPC Appears",
@@ -920,6 +1009,7 @@ impl Trigger {
             Self::EffectRemoved { .. } => "effect_removed",
             Self::DamageTaken { .. } => "damage_taken",
             Self::HealingTaken { .. } => "healing_taken",
+            Self::ThreatModified { .. } => "threat_modified",
             Self::BossHpBelow { .. } => "boss_hp_below",
             Self::BossHpAbove { .. } => "boss_hp_above",
             Self::NpcAppears { .. } => "npc_appears",
@@ -989,6 +1079,100 @@ fn default_scaling_factor() -> f32 {
 // Overlay Appearance Config
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Which icon to show next to player names in metric overlays.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ClassIconMode {
+    /// No icon
+    None,
+    /// Class silhouette icon (role-tinted)
+    #[default]
+    Class,
+    /// Discipline-specific icon (full color)
+    Discipline,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Class Color Config
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Per-archetype bar colors for metric overlays.
+///
+/// Each field covers a mirror-class pair (Imperial / Republic).
+/// Used when `use_class_color` is enabled on a metric overlay.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClassColorConfig {
+    /// Sorcerer / Sage
+    #[serde(default = "default_class_color_sorcerer")]
+    pub sorcerer_sage: Color,
+    /// Assassin / Shadow
+    #[serde(default = "default_class_color_assassin")]
+    pub assassin_shadow: Color,
+    /// Juggernaut / Guardian
+    #[serde(default = "default_class_color_juggernaut")]
+    pub juggernaut_guardian: Color,
+    /// Marauder / Sentinel
+    #[serde(default = "default_class_color_marauder")]
+    pub marauder_sentinel: Color,
+    /// Mercenary / Commando
+    #[serde(default = "default_class_color_mercenary")]
+    pub mercenary_commando: Color,
+    /// Powertech / Vanguard
+    #[serde(default = "default_class_color_powertech")]
+    pub powertech_vanguard: Color,
+    /// Operative / Scoundrel
+    #[serde(default = "default_class_color_operative")]
+    pub operative_scoundrel: Color,
+    /// Sniper / Gunslinger
+    #[serde(default = "default_class_color_sniper")]
+    pub sniper_gunslinger: Color,
+}
+
+fn default_class_color_sorcerer() -> Color { [128, 64, 192, 255] }   // violet
+fn default_class_color_assassin() -> Color { [90, 48, 128, 255] }    // dark purple
+fn default_class_color_juggernaut() -> Color { [192, 48, 48, 255] }  // crimson
+fn default_class_color_marauder() -> Color { [208, 80, 32, 255] }    // red-orange
+fn default_class_color_mercenary() -> Color { [64, 128, 64, 255] }   // green
+fn default_class_color_powertech() -> Color { [192, 104, 32, 255] }  // orange
+fn default_class_color_operative() -> Color { [96, 120, 48, 255] }   // olive
+fn default_class_color_sniper() -> Color { [192, 160, 32, 255] }     // gold
+
+impl Default for ClassColorConfig {
+    fn default() -> Self {
+        Self {
+            sorcerer_sage: default_class_color_sorcerer(),
+            assassin_shadow: default_class_color_assassin(),
+            juggernaut_guardian: default_class_color_juggernaut(),
+            marauder_sentinel: default_class_color_marauder(),
+            mercenary_commando: default_class_color_mercenary(),
+            powertech_vanguard: default_class_color_powertech(),
+            operative_scoundrel: default_class_color_operative(),
+            sniper_gunslinger: default_class_color_sniper(),
+        }
+    }
+}
+
+impl ClassColorConfig {
+    /// Look up the bar color for a class by its display name.
+    ///
+    /// Accepts both Imperial and Republic class names (e.g., "Sorcerer" or "Sage").
+    /// Returns `None` if the name is unrecognized — callers should fall back to
+    /// the configured bar color.
+    pub fn for_class_name(&self, name: &str) -> Option<Color> {
+        match name {
+            "Sorcerer" | "Sage" => Some(self.sorcerer_sage),
+            "Assassin" | "Shadow" => Some(self.assassin_shadow),
+            "Juggernaut" | "Guardian" => Some(self.juggernaut_guardian),
+            "Marauder" | "Sentinel" => Some(self.marauder_sentinel),
+            "Mercenary" | "Commando" => Some(self.mercenary_commando),
+            "Powertech" | "Vanguard" => Some(self.powertech_vanguard),
+            "Operative" | "Scoundrel" => Some(self.operative_scoundrel),
+            "Sniper" | "Gunslinger" => Some(self.sniper_gunslinger),
+            _ => None,
+        }
+    }
+}
+
 /// Per-overlay appearance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OverlayAppearanceConfig {
@@ -1012,6 +1196,10 @@ pub struct OverlayAppearanceConfig {
     pub show_percent: bool,
     #[serde(default = "default_true")]
     pub show_duration: bool,
+    /// Color each player's bar using their class color (from global ClassColorConfig).
+    /// Falls back to `bar_color` when class is unknown.
+    #[serde(default)]
+    pub use_class_color: bool,
 }
 
 fn default_font_color() -> Color {
@@ -1037,6 +1225,7 @@ impl Default for OverlayAppearanceConfig {
             show_per_second: true,
             show_percent: true,
             show_duration: true,
+            use_class_color: false,
         }
     }
 }
@@ -1697,6 +1886,9 @@ pub struct EffectsAConfig {
     /// Use vertical layout (true) or horizontal (false)
     #[serde(default)]
     pub layout_vertical: bool,
+    /// Render as stacked progress bars — overrides layout_vertical
+    #[serde(default)]
+    pub layout_bar: bool,
     /// Show effect names below/beside icons
     #[serde(default)]
     pub show_effect_names: bool,
@@ -1730,6 +1922,7 @@ impl Default for EffectsAConfig {
             icon_size: 32,
             max_display: 8,
             layout_vertical: false,
+            layout_bar: false,
             show_effect_names: false,
             show_countdown: true,
             stack_priority: false,
@@ -1752,6 +1945,9 @@ pub struct EffectsBConfig {
     /// Use vertical layout (true) or horizontal (false)
     #[serde(default)]
     pub layout_vertical: bool,
+    /// Render as stacked progress bars — overrides layout_vertical
+    #[serde(default)]
+    pub layout_bar: bool,
     /// Show effect names below/beside icons
     #[serde(default)]
     pub show_effect_names: bool,
@@ -1778,6 +1974,7 @@ impl Default for EffectsBConfig {
             icon_size: 32,
             max_display: 8,
             layout_vertical: false,
+            layout_bar: false,
             show_effect_names: false,
             show_countdown: true,
             stack_priority: false,
@@ -1826,6 +2023,9 @@ pub struct CooldownTrackerConfig {
     /// When true, background shrinks to fit content instead of filling the window
     #[serde(default)]
     pub dynamic_background: bool,
+    /// Render cooldowns as stacked progress bars instead of icons
+    #[serde(default)]
+    pub layout_bar: bool,
 }
 
 fn default_max_cooldowns() -> u8 {
@@ -1844,6 +2044,7 @@ impl Default for CooldownTrackerConfig {
             show_header: false,
             font_scale: 1.0,
             dynamic_background: false,
+            layout_bar: false,
         }
     }
 }
@@ -2014,6 +2215,45 @@ impl Default for OperationTimerOverlayConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Ability Queue Overlay Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Configuration for the ability queue overlay
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AbilityQueueOverlayConfig {
+    /// Maximum entries to display across all tiers
+    #[serde(default = "default_max_display")]
+    pub max_display: u8,
+    /// Font scale multiplier (default 1.0)
+    #[serde(default = "default_scaling_factor")]
+    pub font_scale: f32,
+    /// Font color (RGBA)
+    #[serde(default = "default_font_color")]
+    pub font_color: Color,
+    /// GCD bar accent color (RGBA)
+    #[serde(default = "default_gcd_color")]
+    pub gcd_color: Color,
+    /// When true, background shrinks to fit content
+    #[serde(default = "default_true")]
+    pub dynamic_background: bool,
+}
+
+fn default_max_display() -> u8 { 12 }
+fn default_gcd_color() -> Color { [120, 200, 255, 255] }
+
+impl Default for AbilityQueueOverlayConfig {
+    fn default() -> Self {
+        Self {
+            max_display: 12,
+            font_scale: 1.0,
+            font_color: overlay_colors::WHITE,
+            gcd_color: [120, 200, 255, 255],
+            dynamic_background: true,
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Hotkey Settings
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2087,8 +2327,8 @@ pub struct OverlaySettings {
     pub metric_show_background_bar: bool,
     #[serde(default = "default_opacity")]
     pub personal_opacity: u8,
-    #[serde(default = "default_true")]
-    pub class_icons_enabled: bool,
+    #[serde(default)]
+    pub class_icon_mode: ClassIconMode,
     #[serde(default)]
     pub default_appearances: HashMap<String, OverlayAppearanceConfig>,
     #[serde(default)]
@@ -2147,12 +2387,19 @@ pub struct OverlaySettings {
     pub operation_timer: OperationTimerOverlayConfig,
     #[serde(default = "default_opacity")]
     pub operation_timer_opacity: u8,
+    #[serde(default)]
+    pub ability_queue: AbilityQueueOverlayConfig,
+    #[serde(default = "default_opacity")]
+    pub ability_queue_opacity: u8,
     /// Auto-hide overlays when local player is in a conversation
     #[serde(default)]
     pub hide_during_conversations: bool,
     /// Auto-hide overlays when not in a live session (historical, logged out, etc.)
     #[serde(default)]
     pub hide_when_not_live: bool,
+    /// Per-archetype bar colors used when `use_class_color` is enabled on a metric overlay.
+    #[serde(default)]
+    pub class_colors: ClassColorConfig,
 }
 
 impl Default for OverlaySettings {
@@ -2171,8 +2418,9 @@ impl Default for OverlaySettings {
             metric_dynamic_background: false,
             metric_show_background_bar: false,
             personal_opacity: 180,
-            class_icons_enabled: true,
+            class_icon_mode: ClassIconMode::Class,
             default_appearances: HashMap::new(),
+            class_colors: ClassColorConfig::default(),
             raid_overlay: RaidOverlaySettings::default(),
             raid_opacity: 180,
             boss_health: BossHealthConfig::default(),
@@ -2201,6 +2449,8 @@ impl Default for OverlaySettings {
             combat_time_opacity: 180,
             operation_timer: OperationTimerOverlayConfig::default(),
             operation_timer_opacity: 180,
+            ability_queue: AbilityQueueOverlayConfig::default(),
+            ability_queue_opacity: 180,
             hide_during_conversations: false,
             hide_when_not_live: false,
         }

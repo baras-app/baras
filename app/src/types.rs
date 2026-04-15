@@ -20,6 +20,8 @@ pub use baras_types::{
     BreakdownMode,
     ChallengeColumns,
     ChallengeLayout,
+    ClassColorConfig,
+    ClassIconMode,
     Color,
     CombatLogSessionState,
     CooldownTrackerConfig,
@@ -35,6 +37,7 @@ pub use baras_types::{
     EntityFilter,
     EntitySelector,
     MainTab,
+    MitigationType,
     NotesOverlayConfig,
     OverlayAppearanceConfig,
     OverlaySettings,
@@ -131,6 +134,10 @@ pub struct OverlayStatus {
     pub operation_timer_running: bool,
     #[serde(default)]
     pub operation_timer_enabled: bool,
+    #[serde(default)]
+    pub ability_queue_running: bool,
+    #[serde(default)]
+    pub ability_queue_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -282,6 +289,7 @@ pub enum OverlayType {
     Notes,
     CombatTime,
     OperationTimer,
+    AbilityQueue,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -397,6 +405,8 @@ pub enum TimerDisplayTarget {
     TimersA,
     /// Show on Timers B overlay
     TimersB,
+    /// Show on Ability Queue overlay
+    AbilityQueue,
     /// No overlay display (alerts only)
     None,
 }
@@ -406,12 +416,13 @@ impl TimerDisplayTarget {
         match self {
             Self::TimersA => "Timers A",
             Self::TimersB => "Timers B",
+            Self::AbilityQueue => "Ability Queue",
             Self::None => "None",
         }
     }
 
     pub fn all() -> &'static [TimerDisplayTarget] {
-        &[Self::TimersA, Self::TimersB, Self::None]
+        &[Self::TimersA, Self::TimersB, Self::AbilityQueue, Self::None]
     }
 }
 
@@ -468,6 +479,19 @@ pub struct BossTimerDefinition {
     /// Role filter: which roles should see this timer (empty vec = hidden for all roles)
     #[serde(default)]
     pub roles: Vec<String>,
+    // ─── Ability Queue ────────────────────────────────────────────────────────
+    /// GCD duration (seconds). Creates a GCD bar in the ability queue overlay when fired.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gcd_secs: Option<f32>,
+    /// If true, timer holds at zero as "queued/ready" instead of being removed.
+    #[serde(default)]
+    pub queue_on_expire: bool,
+    /// Sort priority for queued entries in tier 2 (higher = higher priority).
+    #[serde(default)]
+    pub queue_priority: u8,
+    /// Trigger that clears a queued/ready entry from the ability queue.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub queue_remove_trigger: Option<Trigger>,
 }
 
 fn default_timer_color() -> [u8; 4] {
@@ -664,6 +688,7 @@ pub enum DisplayTarget {
     EffectsB,
     Cooldowns,
     DotTracker,
+    BossHealth,
     EffectsOverlay,
 }
 
@@ -676,6 +701,7 @@ impl DisplayTarget {
             Self::EffectsB => "Effects B",
             Self::Cooldowns => "Cooldowns",
             Self::DotTracker => "DOT Tracker",
+            Self::BossHealth => "Boss HP Bar",
             Self::EffectsOverlay => "Effects Overlay",
         }
     }
@@ -688,6 +714,7 @@ impl DisplayTarget {
             Self::EffectsB,
             Self::Cooldowns,
             Self::DotTracker,
+            Self::BossHealth,
         ]
     }
 }
@@ -755,8 +782,8 @@ pub struct EffectListItem {
     pub show_at_secs: f32,
 
     // Display routing
-    #[serde(default)]
-    pub display_target: DisplayTarget,
+    #[serde(default, alias = "display_target")]
+    pub display_targets: Vec<DisplayTarget>,
     #[serde(default)]
     pub icon_ability_id: Option<u64>,
     #[serde(default = "crate::utils::default_true")]
@@ -954,6 +981,7 @@ pub enum ChallengeMetric {
     EffectCount,
     EffectStacks,
     DamageAbsorbed,
+    InterruptCount,
 }
 
 impl ChallengeMetric {
@@ -968,6 +996,7 @@ impl ChallengeMetric {
             Self::EffectCount => "Effect Count",
             Self::EffectStacks => "Effect Stacks",
             Self::DamageAbsorbed => "Damage Absorbed",
+            Self::InterruptCount => "Interrupt Count",
         }
     }
 
@@ -982,6 +1011,7 @@ impl ChallengeMetric {
             Self::EffectCount,
             Self::EffectStacks,
             Self::DamageAbsorbed,
+            Self::InterruptCount,
         ]
     }
 }
@@ -1112,7 +1142,8 @@ pub struct ImportPreview {
 pub struct EffectImportDiff {
     pub id: String,
     pub name: String,
-    pub display_target: DisplayTarget,
+    #[serde(default, alias = "displayTarget")]
+    pub display_targets: Vec<DisplayTarget>,
 }
 
 /// Effect import preview response

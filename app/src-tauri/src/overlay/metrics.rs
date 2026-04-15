@@ -95,30 +95,35 @@ fn extract_values(m: &PlayerMetrics, overlay_type: MetricType) -> MetricValues {
 pub fn create_entries_for_type(
     overlay_type: MetricType,
     metrics: &[PlayerMetrics],
+    local_player_id: i64,
 ) -> Vec<MetricEntry> {
     let mut values: Vec<_> = metrics
         .iter()
         .map(|m| {
             let v = extract_values(m, overlay_type);
             let class_icon = m.class_icon.clone();
+            let discipline_icon = m.discipline.map(|d| d.icon_name().to_string());
+            let class_name = m.class_name.clone();
             let role = m.discipline.map(|d| match d.role() {
                 GameRole::Tank => OverlayRole::Tank,
                 GameRole::Healer => OverlayRole::Healer,
                 GameRole::Dps => OverlayRole::Damage,
             });
-            (m.name.clone(), v, class_icon, role)
+            let is_local = m.entity_id == local_player_id;
+            (m.name.clone(), v, class_icon, discipline_icon, class_name, role, is_local)
         })
         .collect();
 
     // Sort by rate value descending (highest first)
     values.sort_by(|a, b| b.1.rate.cmp(&a.1.rate));
 
-    let max_value = values.iter().map(|(_, v, _, _)| v.rate).max().unwrap_or(1);
+    let max_value = values.iter().map(|(_, v, _, _, _, _, _)| v.rate).max().unwrap_or(1);
 
     values
         .into_iter()
-        .map(|(name, v, class_icon, role)| {
+        .map(|(name, v, class_icon, discipline_icon, class_name, role, is_local)| {
             let mut entry = MetricEntry::new(&name, v.rate, max_value).with_total(v.total);
+            entry.is_local = is_local;
             if let (Some(sr), Some(st)) = (v.split_rate, v.split_total) {
                 entry = entry.with_split(sr, st);
                 if let Some(color) = v.split_color {
@@ -132,18 +137,27 @@ pub fn create_entries_for_type(
                     entry = entry.with_icon(icon);
                 }
             }
+            if let Some(icon) = discipline_icon {
+                entry = entry.with_discipline_icon(icon);
+            }
+            if let Some(name) = class_name {
+                entry = entry.with_class_name(name);
+            }
             entry
         })
         .collect()
 }
 
 /// Create entries for all overlay types from metrics
-pub fn create_all_entries(metrics: &[PlayerMetrics]) -> HashMap<MetricType, Vec<MetricEntry>> {
+pub fn create_all_entries(
+    metrics: &[PlayerMetrics],
+    local_player_id: i64,
+) -> HashMap<MetricType, Vec<MetricEntry>> {
     let mut result = HashMap::new();
     for overlay_type in MetricType::all() {
         result.insert(
             *overlay_type,
-            create_entries_for_type(*overlay_type, metrics),
+            create_entries_for_type(*overlay_type, metrics, local_player_id),
         );
     }
     result

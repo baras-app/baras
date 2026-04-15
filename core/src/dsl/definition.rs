@@ -578,6 +578,23 @@ pub struct BossTimerDefinition {
     /// Role filter for API responses (populated from preferences, not saved to TOML)
     #[serde(default)]
     pub roles: Vec<String>,
+
+    // ─── Ability Queue ────────────────────────────────────────────────────────
+    /// Creates a GCD countdown bar when this timer fires (ability queue overlay only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gcd_secs: Option<f32>,
+
+    /// If true, timer holds at zero as "queued/ready" after expiring.
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
+    pub queue_on_expire: bool,
+
+    /// Sort priority for queued entries (higher = shown first, 0–255).
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_u8")]
+    pub queue_priority: u8,
+
+    /// Trigger that clears a queued/ready entry from the ability queue.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub queue_remove_trigger: Option<crate::timers::TimerTrigger>,
 }
 
 impl BossTimerDefinition {
@@ -633,6 +650,10 @@ impl BossTimerDefinition {
             // Boss timers default to single-instance (per_target = false)
             per_target: self.per_target,
             icon_ability_id: self.icon_ability_id,
+            gcd_secs: self.gcd_secs,
+            queue_on_expire: self.queue_on_expire,
+            queue_priority: self.queue_priority,
+            queue_remove_trigger: self.queue_remove_trigger.clone(),
         }
     }
 }

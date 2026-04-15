@@ -31,6 +31,7 @@ mod examples {
         PlayerContribution, PlayerRole, RaidEffect, RaidFrame, RaidGridLayout, RaidOverlay,
         RaidOverlayConfig, TimerData, TimerEntry, TimerOverlay,
     };
+    use baras_types::ClassIconMode;
 
     pub fn run_metric_overlay() {
         let config = OverlayConfig {
@@ -52,7 +53,7 @@ mod examples {
             true,
             false,
             1.0,
-            true,
+            ClassIconMode::Class,
             1.0,
             true,
             false,
@@ -76,6 +77,9 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
+                is_local: true,
             },
             MetricEntry {
                 name: "Player 2".to_string(),
@@ -88,6 +92,9 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
+                is_local: false,
             },
             MetricEntry {
                 name: "Player 3".to_string(),
@@ -100,6 +107,9 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
+                is_local: false,
             },
             MetricEntry {
                 name: "Player 4".to_string(),
@@ -112,6 +122,9 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
+                is_local: false,
             },
         ];
 
@@ -167,7 +180,7 @@ mod examples {
             true,
             false,
             1.0,
-            true,
+            ClassIconMode::Class,
             1.0,
             true,
             false,
@@ -207,6 +220,9 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
+                is_local: false,
             })
             .collect();
 
@@ -270,7 +286,7 @@ mod examples {
             true,
             false,
             1.0,
-            true,
+            ClassIconMode::Class,
             1.0,
             true,
             false,
@@ -320,6 +336,9 @@ mod examples {
                 split_color: None,
                 class_icon: None,
                 role: None,
+                discipline_icon: None,
+                class_name: None,
+                is_local: false,
             })
             .collect();
 
@@ -1443,6 +1462,7 @@ mod examples {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: three_bosses.clone(),
+                        ..Default::default()
                     });
                     overlays.push(overlay);
                 }
@@ -1480,6 +1500,7 @@ mod examples {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: entries.to_vec(),
+                        ..Default::default()
                     });
                     overlays.push(overlay);
                 }
@@ -1510,6 +1531,7 @@ mod examples {
                 Ok(mut overlay) => {
                     overlay.set_data(BossHealthData {
                         entries: markers_and_shields,
+                        ..Default::default()
                     });
                     overlays.push(overlay);
                 }

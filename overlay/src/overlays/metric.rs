@@ -3,6 +3,7 @@
 //! Displays a ranked list of players with their damage/healing output.
 
 use baras_core::context::OverlayAppearanceConfig;
+use baras_types::{ClassColorConfig, ClassIconMode, formatting};
 use tiny_skia::Color;
 
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
@@ -11,7 +12,6 @@ use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, truncate_name};
 use crate::widgets::colors;
 use crate::widgets::{Footer, Header, ProgressBar};
-use baras_types::formatting;
 
 /// Entry in a DPS/HPS metric
 #[derive(Debug, Clone)]
@@ -34,6 +34,12 @@ pub struct MetricEntry {
     pub class_icon: Option<String>,
     /// Optional role for icon tinting
     pub role: Option<crate::class_icons::Role>,
+    /// Optional discipline icon name (e.g., "lightning.png"). Shown instead of class icon when set.
+    pub discipline_icon: Option<String>,
+    /// Optional class name for class-color bar rendering (e.g., "Sorcerer", "Sage")
+    pub class_name: Option<String>,
+    /// Whether this entry belongs to the local player
+    pub is_local: bool,
 }
 
 impl MetricEntry {
@@ -49,6 +55,9 @@ impl MetricEntry {
             split_color: None,
             class_icon: None,
             role: None,
+            discipline_icon: None,
+            class_name: None,
+            is_local: false,
         }
     }
 
@@ -88,6 +97,18 @@ impl MetricEntry {
         self.role = Some(role);
         self
     }
+
+    /// Set the discipline-specific icon (e.g., "lightning.png"). Takes priority over class icon.
+    pub fn with_discipline_icon(mut self, icon: String) -> Self {
+        self.discipline_icon = Some(icon);
+        self
+    }
+
+    /// Set the class name for class-color bar rendering.
+    pub fn with_class_name(mut self, name: String) -> Self {
+        self.class_name = Some(name);
+        self
+    }
 }
 
 /// Base dimensions for scaling calculations
@@ -114,7 +135,7 @@ pub struct MetricOverlay {
     show_empty_bars: bool,
     stack_from_bottom: bool,
     scaling_factor: f32,
-    show_class_icons: bool,
+    icon_mode: ClassIconMode,
     /// Global font scale for metric bar text (1.0 - 2.0)
     font_scale: f32,
     /// Global dynamic background setting for metrics
@@ -123,6 +144,10 @@ pub struct MetricOverlay {
     show_background_bar: bool,
     /// Use European number formatting (swap `.` and `,`)
     european_number_format: bool,
+    /// Color bars by class archetype color when true
+    use_class_color: bool,
+    /// Per-archetype color palette
+    class_colors: ClassColorConfig,
 }
 
 impl MetricOverlay {
@@ -135,7 +160,7 @@ impl MetricOverlay {
         show_empty_bars: bool,
         stack_from_bottom: bool,
         scaling_factor: f32,
-        show_class_icons: bool,
+        icon_mode: ClassIconMode,
         font_scale: f32,
         dynamic_background: bool,
         show_background_bar: bool,
@@ -152,11 +177,13 @@ impl MetricOverlay {
             show_empty_bars,
             stack_from_bottom,
             scaling_factor: scaling_factor.clamp(1.0, 2.0),
-            show_class_icons,
+            icon_mode,
             font_scale: font_scale.clamp(1.0, 2.0),
             dynamic_background,
             show_background_bar,
             european_number_format: false,
+            use_class_color: false,
+            class_colors: ClassColorConfig::default(),
         })
     }
 
@@ -185,9 +212,9 @@ impl MetricOverlay {
         self.scaling_factor = factor.clamp(1.0, 2.0);
     }
 
-    /// Update show class icons setting
-    pub fn set_show_class_icons(&mut self, show: bool) {
-        self.show_class_icons = show;
+    /// Update icon display mode
+    pub fn set_icon_mode(&mut self, mode: ClassIconMode) {
+        self.icon_mode = mode;
     }
 
     /// Update font scale (clamped to 1.0-2.0)
@@ -245,7 +272,6 @@ impl MetricOverlay {
         // Get display options
         let show_total = self.appearance.show_total;
         let show_per_second = self.appearance.show_per_second;
-        let show_class_icons = self.show_class_icons;
 
         // Filter and limit entries to max_entries
         let max_entries = self.appearance.max_entries as usize;
@@ -386,15 +412,25 @@ impl MetricOverlay {
         let icon_padding = 2.0 * self.frame.scale_factor();
 
         for entry in &visible_entries {
-            // Determine fill color (use entry color if custom, otherwise config bar_color)
-            let fill_color = if entry.color != colors::dps_bar_fill() {
+            // Determine fill color: class color > custom entry color > configured bar_color
+            let fill_color = if self.use_class_color {
+                entry.class_name.as_deref()
+                    .and_then(|n| self.class_colors.for_class_name(n))
+                    .map(color_from_rgba)
+                    .unwrap_or(bar_color)
+            } else if entry.color != colors::dps_bar_fill() {
                 entry.color
             } else {
                 bar_color
             };
 
-            // Check if we have an icon to show
-            let has_icon = show_class_icons && entry.class_icon.is_some();
+            // Select icon based on mode
+            let icon_name = match self.icon_mode {
+                ClassIconMode::None => None,
+                ClassIconMode::Class => entry.class_icon.as_ref(),
+                ClassIconMode::Discipline => entry.discipline_icon.as_ref().or(entry.class_icon.as_ref()),
+            };
+            let has_icon = icon_name.is_some();
 
             let display_name = truncate_name(&entry.name, MAX_NAME_CHARS);
             let progress = if max_val > 0.0 {
@@ -413,6 +449,10 @@ impl MetricOverlay {
                 .with_fill_color(fill_color)
                 .with_bg_color(bg_color)
                 .with_text_color(font_color);
+
+            if entry.is_local {
+                bar = bar.with_bold_text();
+            }
 
             // Add label offset to make room for icon
             if has_icon {
@@ -468,11 +508,12 @@ impl MetricOverlay {
                 bar_radius,
             );
 
-            // Draw class icon on top of bar if enabled and available
-            // Use role-colored tint when role is known, otherwise white
+            // Draw icon on top of bar: discipline icon (raw) or class icon (role-tinted/white)
             if has_icon {
-                if let Some(icon_name) = &entry.class_icon {
-                    let icon = if let Some(role) = entry.role {
+                if let Some(icon_name) = icon_name {
+                    let icon = if self.icon_mode == ClassIconMode::Discipline {
+                        crate::class_icons::get_discipline_icon(icon_name)
+                    } else if let Some(role) = entry.role {
                         crate::class_icons::get_role_colored_class_icon(icon_name, role)
                     } else {
                         crate::class_icons::get_white_class_icon(icon_name)
@@ -556,18 +597,21 @@ impl Overlay for MetricOverlay {
             dynamic_bg,
             european,
             show_bg_bar,
+            class_colors,
         ) = config
         {
+            self.use_class_color = appearance.use_class_color;
             self.set_appearance(appearance);
             self.set_background_alpha(alpha);
             self.set_show_empty_bars(show_empty);
             self.set_stack_from_bottom(stack_bottom);
             self.set_scaling_factor(scale);
-            self.set_show_class_icons(show_icons);
+            self.set_icon_mode(show_icons);
             self.set_font_scale(font_scale);
             self.set_dynamic_background(dynamic_bg);
             self.european_number_format = european;
             self.set_show_background_bar(show_bg_bar);
+            self.class_colors = class_colors;
         }
     }
 

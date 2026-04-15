@@ -31,6 +31,8 @@ pub enum TimerDisplayTarget {
     TimersB,
     /// No overlay display (alerts only)
     None,
+    /// Show on Ability Queue overlay
+    AbilityQueue,
 }
 
 /// Definition of a timer (loaded from config)
@@ -163,6 +165,25 @@ pub struct TimerDefinition {
     /// Defaults to true for user-created timers, false for boss encounter timers.
     #[serde(default = "crate::serde_defaults::default_true")]
     pub per_target: bool,
+
+    // ─── Ability Queue ──────────────────────────────────────────────────────
+    /// GCD duration in seconds. When set, firing this timer also creates
+    /// a synthetic GCD countdown bar in the ability queue overlay.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gcd_secs: Option<f32>,
+
+    /// If true, timer holds at zero as "queued/ready" instead of being removed.
+    /// The timer stays in active_timers with is_queued = true.
+    #[serde(default)]
+    pub queue_on_expire: bool,
+
+    /// Sort priority for queued entries in tier 2 (higher = higher priority, 255 = first).
+    #[serde(default)]
+    pub queue_priority: u8,
+
+    /// Trigger that clears a queued entry. Evaluation stubbed as no-op in v1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub queue_remove_trigger: Option<Trigger>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -306,8 +327,18 @@ impl TimerDefinition {
 
     /// Check if this timer triggers when damage is taken from an ability.
     /// Delegates to unified `Trigger::matches_damage_taken`.
-    pub fn matches_damage_taken(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
-        self.trigger.matches_damage_taken(ability_id, ability_name)
+    pub fn matches_damage_taken(
+        &self,
+        ability_id: u64,
+        ability_name: Option<&str>,
+        defense_type_id: i64,
+    ) -> bool {
+        self.trigger.matches_damage_taken(ability_id, ability_name, defense_type_id)
+    }
+
+    /// Check if this timer triggers on a threat modification event.
+    pub fn matches_threat_modified(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+        self.trigger.matches_threat_modified(ability_id, ability_name)
     }
 
     /// Check if this timer triggers when healing is taken from an ability.

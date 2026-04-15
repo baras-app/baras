@@ -184,12 +184,17 @@ pub fn check_signal_trigger(
                 target_entity_type,
                 target_name,
                 target_npc_id,
+                defense_type_id,
                 ..
             } = s
             {
                 let ability_name_str = crate::context::resolve(*ability_name);
 
-                if !trigger.matches_damage_taken(*ability_id as u64, Some(ability_name_str)) {
+                if !trigger.matches_damage_taken(
+                    *ability_id as u64,
+                    Some(ability_name_str),
+                    *defense_type_id,
+                ) {
                     return false;
                 }
 
@@ -276,6 +281,46 @@ pub fn check_signal_trigger(
                     return false;
                 }
 
+                matches_source_target_filters(
+                    trigger,
+                    filter_ctx.entities,
+                    *source_id,
+                    *source_entity_type,
+                    *source_name,
+                    *source_npc_id,
+                    *target_id,
+                    *target_entity_type,
+                    *target_name,
+                    *target_npc_id,
+                    filter_ctx.local_player_id,
+                    filter_ctx.current_target_id,
+                    filter_ctx.boss_entity_ids,
+                )
+            } else {
+                false
+            }
+        }),
+
+        // ─── Threat Modified ───────────────────────────────────────────────
+        Trigger::ThreatModified { .. } => signals.iter().any(|s| {
+            if let GameSignal::ThreatModified {
+                ability_id,
+                ability_name,
+                source_id,
+                source_entity_type,
+                source_name,
+                source_npc_id,
+                target_id,
+                target_entity_type,
+                target_name,
+                target_npc_id,
+                ..
+            } = s
+            {
+                let ability_name_str = crate::context::resolve(*ability_name);
+                if !trigger.matches_threat_modified(*ability_id as u64, Some(ability_name_str)) {
+                    return false;
+                }
                 matches_source_target_filters(
                     trigger,
                     filter_ctx.entities,

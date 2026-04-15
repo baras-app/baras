@@ -422,6 +422,7 @@ fn ChallengeEditForm(
                                         "EffectCount" => ChallengeMetric::EffectCount,
                                         "EffectStacks" => ChallengeMetric::EffectStacks,
                                         "DamageAbsorbed" => ChallengeMetric::DamageAbsorbed,
+                                        "InterruptCount" => ChallengeMetric::InterruptCount,
                                         _ => ChallengeMetric::Damage,
                                     };
                                     draft.set(d);

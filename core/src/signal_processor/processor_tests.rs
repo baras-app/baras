@@ -108,6 +108,7 @@ fn signal_type_name(signal: &GameSignal) -> &'static str {
         GameSignal::PhaseChanged { .. } => "PhaseChanged",
         GameSignal::PhaseEndTriggered { .. } => "PhaseEndTriggered",
         GameSignal::CounterChanged { .. } => "CounterChanged",
+        GameSignal::ThreatModified { .. } => "ThreatModified",
     }
 }
 
@@ -640,6 +641,10 @@ fn test_bestia_complete_encounter() {
             counter_condition: None,
             per_target: bt.per_target,
             icon_ability_id: None,
+            gcd_secs: None,
+            queue_on_expire: false,
+            queue_priority: 0,
+            queue_remove_trigger: None,
         })
         .collect();
 

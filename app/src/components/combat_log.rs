@@ -3,7 +3,7 @@
 //! Displays a virtualized table of combat events with filtering capabilities.
 
 use dioxus::prelude::*;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, prelude::*};
 
 use crate::api::{self, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn, GroupedEntityNames, SortDirection, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
@@ -291,6 +291,9 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     let mut resizing_col = use_signal(|| None::<usize>);
     let mut resize_start_x = use_signal(|| 0.0f64);
     let mut resize_start_width = use_signal(|| 0.0f64);
+    // JS function refs held for cleanup on unmount
+    let mut resize_move_fn = use_signal(|| None::<js_sys::Function>);
+    let mut resize_up_fn = use_signal(|| None::<js_sys::Function>);
     let mut container_height = use_signal(|| 500.0f64);
     let mut loaded_offset = use_signal(|| 0u64);
 
@@ -709,6 +712,71 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     };
     let find_idx = *find_current_idx.read();
 
+    // Document-level mouse listeners for column resizing — prevents the resize
+    // from stopping when the cursor leaves the header area during fast drags.
+    use_effect(move || {
+        let Some(window) = web_sys::window() else { return };
+        let Some(document) = window.document() else { return };
+
+        let on_mousemove =
+            Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
+                let Ok(col_guard) = resizing_col.try_read() else { return };
+                let Some(col_idx) = *col_guard else { return };
+                drop(col_guard);
+
+                let start_x = *resize_start_x.peek();
+                let start_w = *resize_start_width.peek();
+                let new_width = (start_w + e.client_x() as f64 - start_x).max(40.0);
+                match col_idx {
+                    0 => col_time.set(new_width),
+                    1 => col_source.set(new_width),
+                    2 => col_type.set(new_width),
+                    3 => col_target.set(new_width),
+                    4 => col_ability.set(new_width),
+                    5 => col_effect.set(new_width),
+                    6 => col_value.set(new_width),
+                    7 => col_abs.set(new_width),
+                    8 => col_over.set(new_width),
+                    9 => col_mit.set(new_width),
+                    10 => col_dmg_type.set(new_width),
+                    11 => col_threat.set(new_width),
+                    _ => {}
+                }
+            });
+
+        let on_mouseup =
+            Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |_e: web_sys::MouseEvent| {
+                let Ok(col_guard) = resizing_col.try_read() else { return };
+                if col_guard.is_none() { return };
+                drop(col_guard);
+                let _ = resizing_col.try_write().map(|mut w| *w = None);
+                let _ = js_sys::eval("document.body.style.cursor=''");
+            });
+
+        let move_func = on_mousemove.as_ref().unchecked_ref::<js_sys::Function>().clone();
+        let up_func = on_mouseup.as_ref().unchecked_ref::<js_sys::Function>().clone();
+        let _ = document.add_event_listener_with_callback("mousemove", &move_func);
+        let _ = document.add_event_listener_with_callback("mouseup", &up_func);
+        resize_move_fn.set(Some(move_func));
+        resize_up_fn.set(Some(up_func));
+
+        on_mousemove.forget();
+        on_mouseup.forget();
+    });
+
+    use_drop(move || {
+        if let Some(window) = web_sys::window()
+            && let Some(document) = window.document()
+        {
+            if let Some(f) = resize_move_fn.peek().as_ref() {
+                let _ = document.remove_event_listener_with_callback("mousemove", f);
+            }
+            if let Some(f) = resize_up_fn.peek().as_ref() {
+                let _ = document.remove_event_listener_with_callback("mouseup", f);
+            }
+        }
+    });
+
     rsx! {
         div { class: "combat-log-panel",
             // Filter bar - row 1
@@ -1020,139 +1088,50 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 // Sticky header row
                 div {
                     class: "log-header",
-                    onmousemove: move |e| {
-                        if let Some(col_idx) = *resizing_col.read() {
-                            let delta = e.client_coordinates().x - *resize_start_x.read();
-                            let new_width = (*resize_start_width.read() + delta).max(40.0);
-                            match col_idx {
-                                0 => col_time.set(new_width),
-                                1 => col_source.set(new_width),
-                                2 => col_type.set(new_width),
-                                3 => col_target.set(new_width),
-                                4 => col_ability.set(new_width),
-                                5 => col_effect.set(new_width),
-                                6 => col_value.set(new_width),
-                                7 => col_abs.set(new_width),
-                                8 => col_over.set(new_width),
-                                9 => col_mit.set(new_width),
-                                10 => col_dmg_type.set(new_width),
-                                11 => col_threat.set(new_width),
-                                _ => {}
-                            }
-                        }
-                    },
-                    onmouseup: move |_| resizing_col.set(None),
-                    onmouseleave: move |_| resizing_col.set(None),
 
-                    div { class: "log-cell log-time sortable", style: "width: {col_time}px; min-width: {col_time}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Time), "Time{sort_ind_time}" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(0));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_time.read());
-                        },
+                    div { class: "log-cell log-time sortable", style: "width: {col_time}px; min-width: {col_time}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Time),
+                        "Time{sort_ind_time}"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(0)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_time.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-source sortable", style: "width: {col_source}px; min-width: {col_source}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Source), "Source{sort_ind_source}" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(1));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_source.read());
-                        },
+                    div { class: "log-cell log-source sortable", style: "width: {col_source}px; min-width: {col_source}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Source),
+                        "Source{sort_ind_source}"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(1)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_source.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-type sortable", style: "width: {col_type}px; min-width: {col_type}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Type), "Type{sort_ind_type}" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(2));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_type.read());
-                        },
+                    div { class: "log-cell log-type sortable", style: "width: {col_type}px; min-width: {col_type}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Type),
+                        "Type{sort_ind_type}"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(2)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_type.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-target sortable", style: "width: {col_target}px; min-width: {col_target}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Target), "Target{sort_ind_target}" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(3));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_target.read());
-                        },
+                    div { class: "log-cell log-target sortable", style: "width: {col_target}px; min-width: {col_target}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Target),
+                        "Target{sort_ind_target}"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(3)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_target.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-ability sortable", style: "width: {col_ability}px; min-width: {col_ability}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Ability), "Ability{sort_ind_ability}" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(4));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_ability.read());
-                        },
+                    div { class: "log-cell log-ability sortable", style: "width: {col_ability}px; min-width: {col_ability}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Ability),
+                        "Ability{sort_ind_ability}"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(4)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_ability.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-effect sortable", style: "width: {col_effect}px; min-width: {col_effect}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Effect), "Effect{sort_ind_effect}" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(5));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_effect.read());
-                        },
+                    div { class: "log-cell log-effect sortable", style: "width: {col_effect}px; min-width: {col_effect}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Effect),
+                        "Effect{sort_ind_effect}"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(5)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_effect.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-value sortable", style: "width: {col_value}px; min-width: {col_value}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Value), "Value{sort_ind_value}" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(6));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_value.read());
-                        },
+                    div { class: "log-cell log-value sortable", style: "width: {col_value}px; min-width: {col_value}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Value),
+                        "Value{sort_ind_value}"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(6)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_value.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-absorbed sortable", style: "width: {col_abs}px; min-width: {col_abs}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Absorbed), "Abs{sort_ind_abs}" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(7));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_abs.read());
-                        },
+                    div { class: "log-cell log-absorbed sortable", style: "width: {col_abs}px; min-width: {col_abs}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Absorbed),
+                        "Abs{sort_ind_abs}"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(7)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_abs.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-overheal log-overheal-header sortable", style: "width: {col_over}px; min-width: {col_over}px;", title: "Overheal", onclick: move |_| on_sort_click(CombatLogSortColumn::Overheal), "Over{sort_ind_over}" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(8));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_over.read());
-                        },
+                    div { class: "log-cell log-overheal log-overheal-header sortable", style: "width: {col_over}px; min-width: {col_over}px;", title: "Overheal", onclick: move |_| on_sort_click(CombatLogSortColumn::Overheal),
+                        "Over{sort_ind_over}"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(8)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_over.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-mitigation", style: "width: {col_mit}px; min-width: {col_mit}px;", "Mit" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(9));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_mit.read());
-                        },
+                    div { class: "log-cell log-mitigation", style: "width: {col_mit}px; min-width: {col_mit}px;",
+                        "Mit"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(9)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_mit.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
-                    div { class: "log-cell log-dmg-type", style: "width: {col_dmg_type}px; min-width: {col_dmg_type}px;", "Type" }
-                    div {
-                        class: "log-resize-handle",
-                        onmousedown: move |e| {
-                            e.prevent_default();
-                            resizing_col.set(Some(10));
-                            resize_start_x.set(e.client_coordinates().x);
-                            resize_start_width.set(*col_dmg_type.read());
-                        },
+                    div { class: "log-cell log-dmg-type", style: "width: {col_dmg_type}px; min-width: {col_dmg_type}px;",
+                        "Type"
+                        div { class: "log-resize-handle", onmousedown: move |e| { e.prevent_default(); resizing_col.set(Some(10)); resize_start_x.set(e.client_coordinates().x); resize_start_width.set(*col_dmg_type.read()); let _ = js_sys::eval("document.body.style.cursor='col-resize'"); } }
                     }
                     div { class: "log-cell log-threat sortable", style: "width: {col_threat}px; min-width: {col_threat}px;", onclick: move |_| on_sort_click(CombatLogSortColumn::Threat), "Threat{sort_ind_threat}" }
                 }

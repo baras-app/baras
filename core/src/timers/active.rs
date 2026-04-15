@@ -103,6 +103,17 @@ pub struct ActiveTimer {
     /// Whether this timer is hidden due to role filtering
     /// (still ticks/chains/expires, but produces no visual or audio output)
     pub role_hidden: bool,
+
+    // ─── State ──────────────────────────────────────────────────────────────
+    /// Whether this timer is in "queued/ready" state (held at zero, not removed).
+    /// Set to true when a timer with `queue_on_expire` reaches zero.
+    pub is_queued: bool,
+
+    /// Cached from definition: if true, hold at zero instead of removing on expire.
+    pub queue_on_expire: bool,
+
+    /// Cached from definition: sort priority for queued entries (higher = higher priority).
+    pub queue_priority: u8,
 }
 
 impl ActiveTimer {
@@ -124,6 +135,8 @@ impl ActiveTimer {
         alert_on_expire: bool,
         alert_text: Option<String>,
         role_hidden: bool,
+        queue_on_expire: bool,
+        queue_priority: u8,
     ) -> Self {
         let expires_at =
             event_timestamp + chrono::Duration::milliseconds(duration.as_millis() as i64);
@@ -157,6 +170,9 @@ impl ActiveTimer {
             audio_offset_fired: false,
             display_target,
             role_hidden,
+            is_queued: false,
+            queue_on_expire,
+            queue_priority,
         }
     }
 
@@ -310,6 +326,55 @@ impl ActiveTimer {
         }
 
         false
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Active GCD
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// A synthetic GCD countdown created when an ability-queue timer fires.
+/// Contains only timing fields — the overlay uses its own configurable accent color.
+#[derive(Debug, Clone)]
+pub struct ActiveGcd {
+    /// When the GCD started (game time)
+    pub started_at: NaiveDateTime,
+    /// When the GCD expires (game time)
+    pub expires_at: NaiveDateTime,
+}
+
+impl ActiveGcd {
+    pub fn new(started_at: NaiveDateTime, gcd_secs: f32) -> Self {
+        let expires_at = started_at
+            + chrono::Duration::milliseconds((gcd_secs * 1000.0) as i64);
+        Self {
+            started_at,
+            expires_at,
+        }
+    }
+
+    /// Check if the GCD has expired
+    pub fn has_expired(&self, current_time: NaiveDateTime) -> bool {
+        current_time >= self.expires_at
+    }
+
+    /// Get remaining seconds
+    pub fn remaining_secs(&self, current_time: NaiveDateTime) -> f32 {
+        let remaining = self.expires_at.signed_duration_since(current_time);
+        (remaining.num_milliseconds().max(0) as f32) / 1000.0
+    }
+
+    /// Get fill percentage (1.0 = full, 0.0 = expired)
+    pub fn fill_percent(&self, current_time: NaiveDateTime) -> f32 {
+        let total = self.expires_at.signed_duration_since(self.started_at);
+        let remaining = self.expires_at.signed_duration_since(current_time);
+        let total_ms = total.num_milliseconds() as f32;
+        let remaining_ms = remaining.num_milliseconds().max(0) as f32;
+        if total_ms > 0.0 {
+            (remaining_ms / total_ms).clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
     }
 }
 

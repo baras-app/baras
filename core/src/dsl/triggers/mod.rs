@@ -9,7 +9,7 @@ mod matchers;
 pub use matchers::{AbilitySelector, EffectSelector, EntitySelector, EntitySelectorExt};
 
 // Re-export EntityFilter for use in triggers
-pub use baras_types::EntityFilter;
+pub use baras_types::{EntityFilter, MitigationType};
 
 use std::collections::HashSet;
 
@@ -33,6 +33,7 @@ pub enum TriggerKind {
     EffectRemoved,
     DamageTaken,
     HealingTaken,
+    ThreatModified,
     BossHpBelow,
     BossHpAbove,
     NpcAppears,
@@ -118,6 +119,11 @@ pub enum Trigger {
         /// Who took the damage (default: any)
         #[serde(default = "EntityFilter::default_any")]
         target: EntityFilter,
+        /// Optional mitigation filter — if non-empty, only fires when the hit
+        /// result matches one of the listed types (e.g. IMMUNE, RESIST).
+        /// Empty (default) matches any hit result.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        mitigation: Vec<MitigationType>,
     },
 
     /// Healing is received from an ability.
@@ -129,6 +135,19 @@ pub enum Trigger {
         #[serde(default = "EntityFilter::default_any")]
         source: EntityFilter,
         /// Who received the healing (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        target: EntityFilter,
+    },
+
+    /// Threat is modified by an ability (MODIFYTHREAT or TAUNT effects).
+    ThreatModified {
+        /// Ability selectors (ID or name). Empty matches any ability.
+        #[serde(default)]
+        abilities: Vec<AbilitySelector>,
+        /// Who generated the threat (default: any)
+        #[serde(default = "EntityFilter::default_any")]
+        source: EntityFilter,
+        /// Who received the threat change (default: any)
         #[serde(default = "EntityFilter::default_any")]
         target: EntityFilter,
     },
@@ -232,6 +251,7 @@ impl Trigger {
             Self::EffectRemoved { .. } => out.push(TriggerKind::EffectRemoved),
             Self::DamageTaken { .. } => out.push(TriggerKind::DamageTaken),
             Self::HealingTaken { .. } => out.push(TriggerKind::HealingTaken),
+            Self::ThreatModified { .. } => out.push(TriggerKind::ThreatModified),
             Self::BossHpBelow { .. } => out.push(TriggerKind::BossHpBelow),
             Self::BossHpAbove { .. } => out.push(TriggerKind::BossHpAbove),
             Self::NpcAppears { .. } => out.push(TriggerKind::NpcAppears),
@@ -270,7 +290,8 @@ impl Trigger {
             | Self::EffectApplied { source, .. }
             | Self::EffectRemoved { source, .. }
             | Self::DamageTaken { source, .. }
-            | Self::HealingTaken { source, .. } => Some(source),
+            | Self::HealingTaken { source, .. }
+            | Self::ThreatModified { source, .. } => Some(source),
             _ => None,
         }
     }
@@ -284,6 +305,7 @@ impl Trigger {
             | Self::EffectRemoved { target, .. }
             | Self::DamageTaken { target, .. }
             | Self::HealingTaken { target, .. }
+            | Self::ThreatModified { target, .. }
             | Self::TargetSet { target, .. } => Some(target),
             _ => None,
         }
@@ -316,12 +338,18 @@ impl Trigger {
                 source,
                 target,
             },
-            Self::DamageTaken { abilities, .. } => Self::DamageTaken {
+            Self::DamageTaken { abilities, mitigation, .. } => Self::DamageTaken {
+                abilities,
+                source,
+                target,
+                mitigation,
+            },
+            Self::HealingTaken { abilities, .. } => Self::HealingTaken {
                 abilities,
                 source,
                 target,
             },
-            Self::HealingTaken { abilities, .. } => Self::HealingTaken {
+            Self::ThreatModified { abilities, .. } => Self::ThreatModified {
                 abilities,
                 source,
                 target,
@@ -381,18 +409,30 @@ impl Trigger {
     }
 
     /// Check if trigger matches damage taken from an ability.
-    pub fn matches_damage_taken(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+    ///
+    /// `defense_type_id` is 0 for a normal hit. When the trigger has a non-empty
+    /// `mitigation` list, the event only matches if its defense type is in that list.
+    pub fn matches_damage_taken(
+        &self,
+        ability_id: u64,
+        ability_name: Option<&str>,
+        defense_type_id: i64,
+    ) -> bool {
         match self {
-            Self::DamageTaken { abilities, .. } => {
-                // Require explicit selectors - empty list matches nothing
-                !abilities.is_empty()
-                    && abilities
-                        .iter()
-                        .any(|s| s.matches(ability_id, ability_name))
+            Self::DamageTaken { abilities, mitigation, .. } => {
+                // Empty abilities = any ability; otherwise must match one selector
+                if !abilities.is_empty()
+                    && !abilities.iter().any(|s| s.matches(ability_id, ability_name))
+                {
+                    return false;
+                }
+                // Empty mitigation list = any hit result
+                mitigation.is_empty()
+                    || mitigation.iter().any(|m| m.defense_type_id() == defense_type_id)
             }
             Self::AnyOf { conditions } => conditions
                 .iter()
-                .any(|c| c.matches_damage_taken(ability_id, ability_name)),
+                .any(|c| c.matches_damage_taken(ability_id, ability_name, defense_type_id)),
             _ => false,
         }
     }
@@ -409,6 +449,21 @@ impl Trigger {
             Self::AnyOf { conditions } => conditions
                 .iter()
                 .any(|c| c.matches_healing_taken(ability_id, ability_name)),
+            _ => false,
+        }
+    }
+
+    /// Check if trigger matches a threat modification event.
+    /// Empty `abilities` matches any ability.
+    pub fn matches_threat_modified(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+        match self {
+            Self::ThreatModified { abilities, .. } => {
+                abilities.is_empty()
+                    || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+            }
+            Self::AnyOf { conditions } => conditions
+                .iter()
+                .any(|c| c.matches_threat_modified(ability_id, ability_name)),
             _ => false,
         }
     }

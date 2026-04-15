@@ -55,6 +55,10 @@ fn default_timer(name: String) -> BossTimerDefinition {
         display_target: TimerDisplayTarget::TimersA,
         audio: AudioConfig::default(),
         roles: vec!["Tank".into(), "Healer".into(), "Dps".into()],
+        gcd_secs: None,
+        queue_on_expire: false,
+        queue_priority: 0,
+        queue_remove_trigger: None,
     }
 }
 
@@ -809,9 +813,17 @@ fn TimerEditForm(
                                             let mut d = draft();
                                             d.display_target = match e.value().as_str() {
                                                 "timers_b" => TimerDisplayTarget::TimersB,
+                                                "ability_queue" => TimerDisplayTarget::AbilityQueue,
                                                 "none" => TimerDisplayTarget::None,
                                                 _ => TimerDisplayTarget::TimersA,
                                             };
+                                            // Clear queue fields when switching away from AbilityQueue
+                                            if d.display_target != TimerDisplayTarget::AbilityQueue {
+                                                d.queue_on_expire = false;
+                                                d.gcd_secs = None;
+                                                d.queue_priority = 0;
+                                                d.queue_remove_trigger = None;
+                                            }
                                             draft.set(d);
                                         },
                                         for target in TimerDisplayTarget::all() {
@@ -819,6 +831,7 @@ fn TimerEditForm(
                                                 let value = match target {
                                                     TimerDisplayTarget::TimersA => "timers_a",
                                                     TimerDisplayTarget::TimersB => "timers_b",
+                                                    TimerDisplayTarget::AbilityQueue => "ability_queue",
                                                     TimerDisplayTarget::None => "none",
                                                 };
                                                 let is_selected = draft().display_target == *target;
@@ -827,6 +840,111 @@ fn TimerEditForm(
                                                         value: "{value}",
                                                         selected: is_selected,
                                                         "{target.label()}"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // ── Ability Queue fields (visible only when AbilityQueue is selected)
+                                if draft().display_target == TimerDisplayTarget::AbilityQueue {
+                                    div { class: "form-row-hz",
+                                        label { class: "flex items-center",
+                                            "GCD Secs"
+                                            span { class: "help-icon", title: "Creates a GCD countdown bar when this timer fires. Leave empty for no GCD bar.", "?" }
+                                        }
+                                        input {
+                                            r#type: "number",
+                                            class: "input",
+                                            style: "width: 80px;",
+                                            min: "0",
+                                            max: "10",
+                                            step: "0.1",
+                                            placeholder: "none",
+                                            value: draft().gcd_secs.map(|v| v.to_string()).unwrap_or_default(),
+                                            onchange: move |e| {
+                                                let mut d = draft();
+                                                d.gcd_secs = e.value().parse::<f32>().ok().filter(|&v| v > 0.0);
+                                                draft.set(d);
+                                            }
+                                        }
+                                    }
+                                    div { class: "form-row-hz",
+                                        label { class: "flex items-center",
+                                            "Hold as Ready"
+                                            span { class: "help-icon", title: "When enabled, the timer stays visible as 'READY' after expiring instead of being removed.", "?" }
+                                        }
+                                        input {
+                                            r#type: "checkbox",
+                                            class: "checkbox",
+                                            checked: draft().queue_on_expire,
+                                            onchange: move |e| {
+                                                let mut d = draft();
+                                                d.queue_on_expire = e.checked();
+                                                if !d.queue_on_expire { d.queue_priority = 0; }
+                                                draft.set(d);
+                                            }
+                                        }
+                                    }
+                                    if draft().queue_on_expire {
+                                        div { class: "form-row-hz",
+                                            label { class: "flex items-center",
+                                                "Priority"
+                                                span { class: "help-icon", title: "Sort order for ready entries (0–255, higher = shown first).", "?" }
+                                            }
+                                            input {
+                                                r#type: "number",
+                                                class: "input",
+                                                style: "width: 80px;",
+                                                min: "0",
+                                                max: "255",
+                                                value: draft().queue_priority.to_string(),
+                                                onchange: move |e| {
+                                                    let mut d = draft();
+                                                    d.queue_priority = e.value().parse::<u8>().unwrap_or(0);
+                                                    draft.set(d);
+                                                }
+                                            }
+                                        }
+                                        div { class: "form-row-hz", style: "align-items: flex-start;",
+                                            label { class: "flex items-center", style: "padding-top: 6px;",
+                                                "Clear On"
+                                                span { class: "help-icon", title: "Removes the ready entry when this trigger fires (e.g. ability cast).", "?" }
+                                            }
+                                            if let Some(remove_trigger) = draft().queue_remove_trigger.clone() {
+                                                div { class: "flex-col gap-xs",
+                                                    ComposableTriggerEditor {
+                                                        trigger: remove_trigger.clone(),
+                                                        encounter_data: encounter_data.clone(),
+                                                        on_change: move |t| {
+                                                            let mut d = draft();
+                                                            d.queue_remove_trigger = Some(t);
+                                                            draft.set(d);
+                                                        }
+                                                    }
+                                                    button {
+                                                        class: "btn btn-sm",
+                                                        style: "width: fit-content;",
+                                                        onclick: move |_| {
+                                                            let mut d = draft();
+                                                            d.queue_remove_trigger = None;
+                                                            draft.set(d);
+                                                        },
+                                                        "Remove Clear Trigger"
+                                                    }
+                                                }
+                                            } else {
+                                                div { class: "flex-col gap-xs",
+                                                    span { class: "text-muted text-sm", "(default: combat end)" }
+                                                    button {
+                                                        class: "btn btn-sm",
+                                                        onclick: move |_| {
+                                                            let mut d = draft();
+                                                            d.queue_remove_trigger = Some(Trigger::CombatStart);
+                                                            draft.set(d);
+                                                        },
+                                                        "+ Add Clear Trigger"
                                                     }
                                                 }
                                             }
