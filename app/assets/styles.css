@@ -6004,7 +6004,7 @@ details[open] .collapsible-summary::before {
 
 .effect-edit-grid {
   display: grid;
-  grid-template-columns: 65% 30%;
+  grid-template-columns: minmax(0, 65%) minmax(0, 30%);
   gap: var(--space-md);
 }
 
@@ -6012,6 +6012,8 @@ details[open] .collapsible-summary::before {
   display: flex;
   flex-direction: column;
   gap: 0.6em;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .effect-edit-right {
@@ -6020,10 +6022,25 @@ details[open] .collapsible-summary::before {
   gap: 0.6em;
   border-left: 1px solid var(--border-light);
   padding-left: var(--space-md);
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Cap text inputs and selects so they don't span the full card width */
+.effect-edit-left .form-row-hz input[type="text"],
+.effect-edit-left .form-row-hz select,
+.effect-edit-right .form-row-hz input[type="text"],
+.effect-edit-right .form-row-hz select,
+.timer-edit-left .form-row-hz input[type="text"],
+.timer-edit-left .form-row-hz select,
+.timer-edit-right .form-row-hz input[type="text"],
+.timer-edit-right .form-row-hz select {
+  max-width: 200px;
 }
 
 .effect-edit-right .form-row-hz > label {
-  min-width: 80px;
+  min-width: 70px;
+  flex-shrink: 0;
 }
 
 .effect-id-row {
@@ -6088,7 +6105,7 @@ details[open] .collapsible-summary::before {
 
 .timer-edit-grid {
   display: grid;
-  grid-template-columns: 55% 45%;
+  grid-template-columns: minmax(0, 55%) minmax(0, 45%);
   gap: var(--space-md);
 }
 
@@ -6303,21 +6320,25 @@ details[open] .collapsible-summary::before {
 /* ─── Timer Edit 2-Column Grid ───────────────────────────────────────────────── */
 .timer-edit-grid {
   display: grid;
-  grid-template-columns: 55% 45%;
+  grid-template-columns: minmax(0, 55%) minmax(0, 45%);
   gap: var(--space-md);
 }
 
 .timer-edit-left {
-  /* Main timer settings */
+  min-width: 0;
+  overflow: hidden;
 }
 
 .timer-edit-right {
   border-left: 1px solid var(--border-light);
   padding-left: var(--space-md);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .timer-edit-right .form-row-hz > label {
   min-width: 60px;
+  flex-shrink: 0;
 }
 
 /* ─── Encounter Item Edit 2-Column Grid (phases, counters, challenges) ──────── */

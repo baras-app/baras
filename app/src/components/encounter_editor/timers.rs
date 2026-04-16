@@ -651,7 +651,7 @@ fn TimerEditForm(
                                 input {
                                     class: "input-inline",
                                     r#type: "text",
-                                    style: "width: 200px;",
+                                    style: "flex: 1; min-width: 0;",
                                     value: "{draft().name}",
                                     oninput: move |e| {
                                         let mut d = draft();
@@ -674,7 +674,7 @@ fn TimerEditForm(
                                     input {
                                         class: "input-inline",
                                         r#type: "text",
-                                        style: "width: 200px;",
+                                        style: "flex: 1; min-width: 0;",
                                         placeholder: "(defaults to name)",
                                         value: "{draft().display_text.clone().unwrap_or_default()}",
                                         oninput: move |e| {
@@ -769,7 +769,7 @@ fn TimerEditForm(
                                 input {
                                     r#type: "text",
                                     class: "input-inline",
-                                    style: "width: 140px;",
+                                    style: "flex: 1; min-width: 0;",
                                     placeholder: "(none)",
                                     value: "{draft().icon_ability_id.map(|id| id.to_string()).unwrap_or_default()}",
                                     oninput: move |e| {
@@ -808,7 +808,7 @@ fn TimerEditForm(
                                     }
                                     select {
                                         class: "select",
-                                        style: "width: 120px;",
+                                        style: "flex: 1; min-width: 0;",
                                         onchange: move |e| {
                                             let mut d = draft();
                                             d.display_target = match e.value().as_str() {
@@ -997,7 +997,7 @@ fn TimerEditForm(
                                         rsx! {
                                             select {
                                                 class: "select",
-                                                style: "width: 160px;",
+                                                style: "flex: 1; min-width: 0;",
                                                 onchange: move |e| {
                                                     let mut d = draft();
                                                     d.chains_to = if e.value().is_empty() { None } else { Some(e.value()) };
@@ -1307,7 +1307,7 @@ fn TimerEditForm(
                                 input {
                                     class: "input-inline",
                                     r#type: "text",
-                                    style: "width: 220px;",
+                                    style: "flex: 1; min-width: 0;",
                                     placeholder: "(timer name)",
                                     value: "{draft().alert_text.clone().unwrap_or_default()}",
                                     oninput: move |e| {
@@ -1394,10 +1394,10 @@ fn TimerEditForm(
                             if draft().audio.enabled {
                                 div { class: "form-row-hz mt-sm",
                                     label { "Sound" }
-                                    div { class: "flex items-center gap-xs",
+                                    div { class: "flex items-center gap-xs", style: "flex: 1; min-width: 0;",
                                         select {
                                             class: "select-inline",
-                                            style: "width: 140px;",
+                                            style: "flex: 1; min-width: 0;",
                                             value: "{draft().audio.file.clone().unwrap_or_default()}",
                                             onchange: move |e| {
                                                 let mut d = draft();
@@ -1468,7 +1468,7 @@ fn TimerEditForm(
                                         }
                                         select {
                                             class: "select-inline",
-                                            style: "width: 120px;",
+                                            style: "flex: 1; min-width: 0;",
                                             value: "{draft().audio.offset}",
                                             onchange: move |e| {
                                                 if let Ok(val) = e.value().parse::<u8>() {
@@ -1500,10 +1500,10 @@ fn TimerEditForm(
                                                 "?"
                                             }
                                         }
-                                        div { class: "flex items-center gap-md",
+                                        div { class: "flex items-center gap-md", style: "flex: 1; min-width: 0;",
                                             select {
                                                 class: "select-inline",
-                                                style: "width: 80px;",
+                                                style: "flex: 1; min-width: 0;",
                                                 value: "{draft().audio.countdown_start}",
                                                 onchange: move |e| {
                                                     if let Ok(val) = e.value().parse::<u8>() {
@@ -1519,7 +1519,7 @@ fn TimerEditForm(
                                             }
                                             select {
                                                 class: "select-inline",
-                                                style: "width: 100px;",
+                                                style: "flex: 1; min-width: 0;",
                                                 value: "{draft().audio.countdown_voice.clone().unwrap_or_else(|| \"Amy\".to_string())}",
                                                 onchange: move |e| {
                                                     let mut d = draft();

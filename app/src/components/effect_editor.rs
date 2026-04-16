@@ -1104,7 +1104,7 @@ fn EffectEditForm(
                                     input {
                                         r#type: "text",
                                         class: "input-inline",
-                                        style: "width: 200px;",
+                                        style: "flex: 1; min-width: 0;",
                                         value: "{draft().name}",
                                         oninput: move |e| {
                                             let mut d = draft();
@@ -1121,7 +1121,7 @@ fn EffectEditForm(
                                         input {
                                             r#type: "text",
                                             class: "input-inline",
-                                            style: "width: 200px;",
+                                            style: "flex: 1; min-width: 0;",
                                             placeholder: "{draft().name}",
                                             value: "{draft().display_text.clone().unwrap_or_default()}",
                                             oninput: move |e| {
@@ -1218,7 +1218,7 @@ fn EffectEditForm(
                                         input {
                                             r#type: "text",
                                             class: "input-inline",
-                                            style: "width: 140px;",
+                                            style: "flex: 1; min-width: 0;",
                                             placeholder: "(auto)",
                                             value: "{draft().icon_ability_id.map(|id| id.to_string()).unwrap_or_default()}",
                                             oninput: move |e| {
@@ -1735,7 +1735,7 @@ fn EffectEditForm(
                                     input {
                                         class: "input-inline",
                                         r#type: "text",
-                                        style: "width: 220px;",
+                                        style: "flex: 1; min-width: 0;",
                                         placeholder: "(none)",
                                         value: "{draft().alert_text.clone().unwrap_or_default()}",
                                         oninput: move |e| {
@@ -1821,10 +1821,10 @@ fn EffectEditForm(
                                 if draft().audio.enabled {
                                     div { class: "form-row-hz mt-sm",
                                         label { "Sound" }
-                                        div { class: "flex items-center gap-xs",
+                                        div { class: "flex items-center gap-xs", style: "flex: 1; min-width: 0;",
                                             select {
                                                 class: "select-inline",
-                                                style: "width: 140px;",
+                                                style: "flex: 1; min-width: 0;",
                                                 value: "{draft().audio.file.clone().unwrap_or_default()}",
                                                 onchange: move |e| {
                                                     let mut d = draft();
@@ -1895,7 +1895,7 @@ fn EffectEditForm(
                                             }
                                             select {
                                                 class: "select-inline",
-                                                style: "width: 120px;",
+                                                style: "flex: 1; min-width: 0;",
                                                 value: "{draft().audio.offset}",
                                                 onchange: move |e| {
                                                     if let Ok(val) = e.value().parse::<u8>() {
@@ -1927,10 +1927,10 @@ fn EffectEditForm(
                                                     "?"
                                                 }
                                             }
-                                            div { class: "flex items-center gap-md",
+                                            div { class: "flex items-center gap-md", style: "flex: 1; min-width: 0;",
                                                 select {
                                                     class: "select-inline",
-                                                    style: "width: 80px;",
+                                                    style: "flex: 1; min-width: 0;",
                                                     value: "{draft().audio.countdown_start}",
                                                     onchange: move |e| {
                                                         if let Ok(val) = e.value().parse::<u8>() {
@@ -1946,7 +1946,7 @@ fn EffectEditForm(
                                                 }
                                                 select {
                                                     class: "select-inline",
-                                                    style: "width: 100px;",
+                                                    style: "flex: 1; min-width: 0;",
                                                     value: "{draft().audio.countdown_voice.clone().unwrap_or_else(|| \"Amy\".to_string())}",
                                                     onchange: move |e| {
                                                         let mut d = draft();
@@ -2231,7 +2231,7 @@ fn TriggerAbilitiesEditor(
                 input {
                     r#type: "text",
                     class: "input-inline",
-                    style: "width: 180px;",
+                    style: "flex: 1; min-width: 0;",
                     placeholder: "Ability ID or Name (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),
