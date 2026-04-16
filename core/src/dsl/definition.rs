@@ -351,6 +351,12 @@ pub struct BossEncounterDefinition {
     #[serde(default, alias = "entity", skip_serializing_if = "Vec::is_empty")]
     pub entities: Vec<EntityDefinition>,
 
+    /// Optional trigger that replaces entity-ID-based encounter detection.
+    /// Supported variants: effect_applied, effect_removed, ability_cast, damage_taken.
+    /// When absent, detection falls back to entity class ID matching as usual.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encounter_trigger: Option<super::triggers::Trigger>,
+
     // ─── Mechanics ───────────────────────────────────────────────────────────
     /// Phase definitions
     #[serde(default, alias = "phase", skip_serializing_if = "Vec::is_empty")]
@@ -420,6 +426,7 @@ impl Default for BossEncounterDefinition {
             area_type: AreaType::default(),
             difficulties: Vec::new(),
             entities: Vec::new(),
+            encounter_trigger: None,
             phases: Vec::new(),
             counters: Vec::new(),
             timers: Vec::new(),

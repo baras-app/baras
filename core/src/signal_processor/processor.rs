@@ -598,8 +598,8 @@ impl EventProcessor {
         }
     }
 
-    /// Detect boss encounters based on NPC class IDs.
-    /// When a known boss NPC is first seen in combat, activates the encounter.
+    /// Detect boss encounters via entity class ID or an optional encounter_trigger.
+    /// Entity-based detection runs first; trigger-based detection is a fallback.
     fn handle_boss_detection(
         &self,
         event: &CombatEvent,
@@ -615,108 +615,123 @@ impl EventProcessor {
                 enc.active_boss_idx().is_some(),
                 enc.state == EncounterState::InCombat,
                 !enc.boss_definitions().is_empty(),
-                // Collect registered NPC log_ids for the check below
                 enc.npcs.keys().copied().collect::<Vec<_>>(),
             )
         };
 
-        // Already tracking a boss encounter
-        if has_active_boss {
+        if has_active_boss || !in_combat || !has_definitions {
             return;
         }
 
-        // Only detect bosses when actually in combat
-        if !in_combat {
-            return;
-        }
-
-        // No boss definitions loaded for this area
-        if !has_definitions {
-            return;
-        }
-
-        // Check source and target entities for boss NPC match
-        // Only consider NPCs that are actually registered in the encounter (engaged in combat),
-        // not just appearing in events (e.g., from targeting without engagement)
+        // ─── Entity-based detection ───────────────────────────────────────────
+        // Only consider NPCs registered in the encounter (engaged in combat).
         let entities_to_check = [&event.source_entity, &event.target_entity];
-
         for entity in entities_to_check {
             if entity.entity_type != EntityType::Npc || entity.class_id == 0 {
                 continue;
             }
-
-            // Skip NPCs not registered in the encounter (not actually engaged)
             if !registered_npcs.contains(&entity.log_id) {
                 continue;
             }
-
-            // Try to detect boss encounter from this NPC
             if let Some(idx) = cache.detect_boss_encounter(entity.class_id) {
-                // Get the encounter mutably and extract data from definition
-                let Some(enc) = cache.current_encounter_mut() else {
-                    tracing::error!(
-                        "BUG: encounter missing after detect_boss_encounter in handle_boss_detection"
-                    );
-                    continue;
-                };
-                let def = &enc.boss_definitions()[idx];
-                let challenges = def.challenges.clone();
-                let counters = def.counters.clone();
-                let entities = def.entities.clone();
-                let npc_ids: Vec<i64> = def.boss_npc_ids().collect();
-                let def_id = def.id.clone();
-                let boss_name = def.name.clone();
-                let initial_phase = def.initial_phase().cloned();
-
-                // Set active boss for timer context (HP will be updated later)
-                enc.set_boss(ActiveBoss {
-                    definition_id: def_id.clone(),
-                    name: boss_name.clone(),
-                    entity_id: entity.log_id,
-                    max_hp: 0,
-                    current_hp: 0,
-                });
-
-                // Start challenge tracker (combat already started via EnterCombat)
-                // Pass current difficulty so difficulty-gated challenges are excluded.
-                let current_difficulty = enc.difficulty.as_ref();
-                enc.challenge_tracker.start(
-                    challenges,
-                    entities,
-                    npc_ids.clone(),
-                    event.timestamp,
-                    current_difficulty,
-                );
-                if let Some(ref initial) = initial_phase {
-                    enc.challenge_tracker
-                        .set_phase(&initial.id, event.timestamp);
-                }
-
-                out.push(GameSignal::BossEncounterDetected {
-                    definition_id: def_id.clone(),
-                    boss_name,
-                    definition_idx: idx,
-                    entity_id: entity.log_id,
-                    npc_id: entity.class_id,
-                    boss_npc_class_ids: npc_ids,
-                    timestamp: event.timestamp,
-                });
-
-                // Activate initial phase (CombatStart trigger)
-                if let Some(ref initial) = initial_phase {
-                    enc.set_phase(&initial.id, event.timestamp);
-                    enc.reset_counters_to_initial(&initial.resets_counters, &counters);
-
-                    out.push(GameSignal::PhaseChanged {
-                        boss_id: def_id,
-                        old_phase: None,
-                        new_phase: initial.id.clone(),
-                        timestamp: event.timestamp,
-                    });
-                }
-
+                self.do_activate_boss(idx, entity.log_id, entity.class_id, cache, out, event);
                 return;
             }
+        }
+
+        // ─── Trigger-based detection ──────────────────────────────────────────
+        // Fallback for encounters where entity ID matching isn't reliable.
+        // Uses encounter_trigger (effect_applied / effect_removed / ability_cast / damage_taken).
+        let found_idx = {
+            let Some(enc) = cache.current_encounter() else { return; };
+            let local_player_id = Some(cache.player.id).filter(|&id| id != 0);
+            let defs = enc.boss_definitions_arc();
+            let empty_boss_ids = std::collections::HashSet::new();
+            defs.iter().enumerate().find_map(|(idx, def)| {
+                let trigger = def.encounter_trigger.as_ref()?;
+                if !def.enabled { return None; }
+                let filter_ctx = super::trigger_eval::FilterContext {
+                    entities: &def.entities,
+                    local_player_id,
+                    current_target_id: None,
+                    boss_entity_ids: &empty_boss_ids,
+                };
+                super::trigger_eval::check_event_trigger(trigger, event, Some(&filter_ctx))
+                    .then_some(idx)
+            })
+        };
+
+        if let Some(idx) = found_idx
+            && cache.activate_boss_by_idx(idx)
+        {
+            let (entity_id, npc_id) = (event.source_entity.log_id, event.source_entity.class_id);
+            self.do_activate_boss(idx, entity_id, npc_id, cache, out, event);
+        }
+    }
+
+    /// Shared activation logic for both entity-based and trigger-based detection.
+    /// Assumes the active boss index has already been set on the encounter.
+    fn do_activate_boss(
+        &self,
+        idx: usize,
+        entity_id: i64,
+        npc_id: i64,
+        cache: &mut SessionCache,
+        out: &mut Vec<GameSignal>,
+        event: &CombatEvent,
+    ) {
+        let Some(enc) = cache.current_encounter_mut() else {
+            tracing::error!("BUG: encounter missing in do_activate_boss");
+            return;
+        };
+        let def = &enc.boss_definitions()[idx];
+        let challenges = def.challenges.clone();
+        let counters = def.counters.clone();
+        let entities = def.entities.clone();
+        let npc_ids: Vec<i64> = def.boss_npc_ids().collect();
+        let def_id = def.id.clone();
+        let boss_name = def.name.clone();
+        let initial_phase = def.initial_phase().cloned();
+
+        enc.set_boss(ActiveBoss {
+            definition_id: def_id.clone(),
+            name: boss_name.clone(),
+            entity_id,
+            max_hp: 0,
+            current_hp: 0,
+        });
+
+        let current_difficulty = enc.difficulty.as_ref();
+        enc.challenge_tracker.start(
+            challenges,
+            entities,
+            npc_ids.clone(),
+            event.timestamp,
+            current_difficulty,
+        );
+        if let Some(ref initial) = initial_phase {
+            enc.challenge_tracker.set_phase(&initial.id, event.timestamp);
+        }
+
+        out.push(GameSignal::BossEncounterDetected {
+            definition_id: def_id.clone(),
+            boss_name,
+            definition_idx: idx,
+            entity_id,
+            npc_id,
+            boss_npc_class_ids: npc_ids,
+            timestamp: event.timestamp,
+        });
+
+        if let Some(ref initial) = initial_phase {
+            enc.set_phase(&initial.id, event.timestamp);
+            enc.reset_counters_to_initial(&initial.resets_counters, &counters);
+            out.push(GameSignal::PhaseChanged {
+                boss_id: def_id,
+                old_phase: None,
+                new_phase: initial.id.clone(),
+                timestamp: event.timestamp,
+            });
         }
     }
 

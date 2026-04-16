@@ -335,6 +335,17 @@ impl SessionCache {
         None
     }
 
+    /// Activate a boss encounter by definition index (for trigger-based detection).
+    /// Returns true if activated, false if a boss is already active or no encounter exists.
+    pub fn activate_boss_by_idx(&mut self, idx: usize) -> bool {
+        let Some(enc) = self.current_encounter_mut() else { return false; };
+        if enc.active_boss_idx().is_some() {
+            return false;
+        }
+        enc.set_active_boss_idx(Some(idx));
+        true
+    }
+
     /// Get the currently active boss encounter definition (if any).
     pub fn active_boss_definition(&self) -> Option<&BossEncounterDefinition> {
         self.current_encounter()?.active_boss_definition()

@@ -391,9 +391,31 @@ pub fn check_event_trigger(
             .any(|c| check_event_trigger(c, event, filter_ctx));
     }
 
-    // NOTE: AbilityCast triggers are handled in check_signal_trigger (signal-based),
-    // not here. The signal path has properly resolved targets from encounter state,
-    // whereas the raw CombatEvent has unreliable self-targeting for AbilityActivate.
+    // Check AbilityCast triggers from raw event.
+    // Note: SWTOR logs self as target for most ability activations, so target
+    // filtering is unreliable here. Source matching is always correct.
+    if event.effect.effect_id == crate::game_data::effect_id::ABILITYACTIVATE {
+        let action_id = event.action.action_id as u64;
+        let action_name = crate::context::resolve(event.action.name);
+        if trigger.matches_ability(action_id, Some(action_name))
+            && check_event_filters(trigger, event, filter_ctx)
+        {
+            return true;
+        }
+    }
+
+    // Check DamageTaken triggers from raw event.
+    if event.effect.type_id == crate::game_data::effect_type_id::APPLYEFFECT
+        && event.effect.effect_id == crate::game_data::effect_id::DAMAGE
+    {
+        let action_id = event.action.action_id as u64;
+        let action_name = crate::context::resolve(event.action.name);
+        if trigger.matches_damage_taken(action_id, Some(action_name), event.details.defense_type_id)
+            && check_event_filters(trigger, event, filter_ctx)
+        {
+            return true;
+        }
+    }
 
     // Check EffectApplied triggers
     if event.effect.type_id == effect_type_id::APPLYEFFECT {
