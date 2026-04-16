@@ -941,6 +941,61 @@ pub async fn delete_encounter_item(
     Ok(())
 }
 
+/// Duplicate a timer — clones it with a new ID and " (Copy)" suffix, appends it to the boss.
+#[tauri::command]
+pub async fn duplicate_encounter_timer(
+    app_handle: AppHandle,
+    service: State<'_, ServiceHandle>,
+    timer_id: String,
+    boss_id: String,
+    file_path: String,
+) -> Result<BossTimerDefinition, String> {
+    let file_path_buf = PathBuf::from(&file_path);
+    let mut bosses = load_all_bosses(&app_handle)?;
+
+    let boss_with_path = bosses
+        .iter_mut()
+        .find(|b| b.boss.id == boss_id && b.file_path == file_path_buf)
+        .ok_or_else(|| format!("Boss '{}' not found", boss_id))?;
+
+    let mut new_timer = boss_with_path
+        .boss
+        .timers
+        .iter()
+        .find(|t| t.id == timer_id)
+        .cloned()
+        .ok_or_else(|| format!("Timer '{}' not found", timer_id))?;
+
+    new_timer.name = format!("{} (Copy)", new_timer.name);
+    new_timer.id = generate_dsl_id(&boss_id, &new_timer.name);
+
+    // Ensure uniqueness — append counter if needed
+    let mut candidate = new_timer.id.clone();
+    let mut n = 2u32;
+    while boss_with_path.boss.timers.iter().any(|t| t.id == candidate) {
+        candidate = format!("{}_{}", new_timer.id, n);
+        n += 1;
+    }
+    new_timer.id = candidate;
+
+    boss_with_path.boss.timers.push(new_timer.clone());
+
+    let item = EncounterItem::Timer(new_timer.clone());
+    if let Some(custom_path) = get_custom_path_if_bundled(&file_path_buf, &app_handle) {
+        save_item_to_custom_file(&custom_path, &boss_id, &item)?;
+    } else {
+        let file_bosses: Vec<_> = bosses
+            .iter()
+            .filter(|b| b.file_path == file_path_buf)
+            .map(|b| b.boss.clone())
+            .collect();
+        save_bosses_to_file(&file_bosses, &file_path_buf)?;
+    }
+
+    let _ = service.reload_timer_definitions().await;
+    Ok(new_timer)
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Area Index & Creation Commands
 // ═══════════════════════════════════════════════════════════════════════════════
