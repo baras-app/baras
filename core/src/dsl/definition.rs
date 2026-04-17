@@ -352,10 +352,16 @@ pub struct BossEncounterDefinition {
     pub entities: Vec<EntityDefinition>,
 
     /// Optional trigger that replaces entity-ID-based encounter detection.
-    /// Supported variants: effect_applied, effect_removed, ability_cast, damage_taken.
+    /// Supported variants: effect_applied, effect_removed, ability_cast, damage_taken, threat_modified.
     /// When absent, detection falls back to entity class ID matching as usual.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub encounter_trigger: Option<super::triggers::Trigger>,
+
+    /// Activates this boss if no boss has been detected within this many seconds of combat start.
+    /// Useful for encounters that can only be identified by the absence of another trigger
+    /// (e.g. Dxun 3 add rush fires only when Dxun 2's specific threat_modified value never appears).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub encounter_trigger_fallback_secs: Option<f32>,
 
     // ─── Mechanics ───────────────────────────────────────────────────────────
     /// Phase definitions
@@ -427,6 +433,7 @@ impl Default for BossEncounterDefinition {
             difficulties: Vec::new(),
             entities: Vec::new(),
             encounter_trigger: None,
+            encounter_trigger_fallback_secs: None,
             phases: Vec::new(),
             counters: Vec::new(),
             timers: Vec::new(),

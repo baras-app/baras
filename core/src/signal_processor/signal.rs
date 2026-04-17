@@ -172,6 +172,8 @@ pub enum GameSignal {
         target_name: IStr,
         /// NPC class/template ID of target (0 for players/companions)
         target_npc_id: i64,
+        /// Raw threat value from the combat log event
+        threat: f32,
         timestamp: NaiveDateTime,
     },
 

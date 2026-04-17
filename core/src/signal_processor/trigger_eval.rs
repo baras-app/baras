@@ -314,11 +314,12 @@ pub fn check_signal_trigger(
                 target_entity_type,
                 target_name,
                 target_npc_id,
+                threat,
                 ..
             } = s
             {
                 let ability_name_str = crate::context::resolve(*ability_name);
-                if !trigger.matches_threat_modified(*ability_id as u64, Some(ability_name_str)) {
+                if !trigger.matches_threat_modified(*ability_id as u64, Some(ability_name_str), *threat) {
                     return false;
                 }
                 matches_source_target_filters(
@@ -422,6 +423,20 @@ pub fn check_event_trigger(
         let eff_id = event.effect.effect_id as u64;
         let eff_name = crate::context::resolve(event.effect.effect_name);
         if trigger.matches_effect_applied(eff_id, Some(eff_name))
+            && check_event_filters(trigger, event, filter_ctx)
+        {
+            return true;
+        }
+    }
+
+    // Check ThreatModified triggers from raw event (EVENT type with MODIFYTHREAT/TAUNT effect).
+    if event.effect.type_id == effect_type_id::EVENT
+        && (event.effect.effect_id == crate::game_data::effect_id::MODIFYTHREAT
+            || event.effect.effect_id == crate::game_data::effect_id::TAUNT)
+    {
+        let action_id = event.action.action_id as u64;
+        let action_name = crate::context::resolve(event.action.name);
+        if trigger.matches_threat_modified(action_id, Some(action_name), event.details.threat)
             && check_event_filters(trigger, event, filter_ctx)
         {
             return true;

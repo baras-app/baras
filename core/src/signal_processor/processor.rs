@@ -640,28 +640,75 @@ impl EventProcessor {
         }
 
         // ─── Trigger-based detection ──────────────────────────────────────────
-        // Fallback for encounters where entity ID matching isn't reliable.
-        // Uses encounter_trigger (effect_applied / effect_removed / ability_cast / damage_taken).
-        let found_idx = {
+        // Uses encounter_trigger (effect_applied / effect_removed / ability_cast / damage_taken / threat_modified).
+        // If the definition also has encounter_trigger_fallback_secs, the match is deferred:
+        // the index is marked pending and activation waits for the timeout window to pass
+        // without a more-specific trigger firing. This lets two definitions share the same
+        // event type and distinguish by the presence/absence of a specific value.
+        let (immediate_idx, pending_idx) = {
             let Some(enc) = cache.current_encounter() else { return; };
             let local_player_id = Some(cache.player.id).filter(|&id| id != 0);
             let defs = enc.boss_definitions_arc();
             let empty_boss_ids = std::collections::HashSet::new();
-            defs.iter().enumerate().find_map(|(idx, def)| {
-                let trigger = def.encounter_trigger.as_ref()?;
-                if !def.enabled { return None; }
+            let mut immediate = None;
+            let mut pending = None;
+            for (idx, def) in defs.iter().enumerate() {
+                let Some(trigger) = def.encounter_trigger.as_ref() else { continue };
+                if !def.enabled { continue; }
                 let filter_ctx = super::trigger_eval::FilterContext {
                     entities: &def.entities,
                     local_player_id,
                     current_target_id: None,
                     boss_entity_ids: &empty_boss_ids,
                 };
-                super::trigger_eval::check_event_trigger(trigger, event, Some(&filter_ctx))
-                    .then_some(idx)
+                if super::trigger_eval::check_event_trigger(trigger, event, Some(&filter_ctx)) {
+                    if def.encounter_trigger_fallback_secs.is_some() {
+                        pending = Some(idx);
+                    } else {
+                        immediate = Some(idx);
+                        break;
+                    }
+                }
+            }
+            (immediate, pending)
+        };
+
+        if let Some(idx) = pending_idx {
+            if let Some(enc) = cache.current_encounter_mut() {
+                enc.boss_encounter_triggers_pending.insert(idx);
+            }
+        }
+
+        if let Some(idx) = immediate_idx
+            && cache.activate_boss_by_idx(idx)
+        {
+            let (entity_id, npc_id) = (event.source_entity.log_id, event.source_entity.class_id);
+            self.do_activate_boss(idx, entity_id, npc_id, cache, out, event);
+            return;
+        }
+
+        // ─── Fallback timeout detection ───────────────────────────────────────
+        // Fires after N seconds only if the definition's encounter_trigger was seen
+        // (marked pending above) but no higher-priority trigger claimed the encounter.
+        let fallback_idx = {
+            let Some(enc) = cache.current_encounter() else { return; };
+            if enc.boss_encounter_triggers_pending.is_empty() { return; }
+            let combat_secs = enc.compute_combat_time_secs(event.timestamp).unwrap_or(0.0);
+            let defs = enc.boss_definitions_arc();
+            defs.iter().enumerate().find_map(|(idx, def)| {
+                let threshold = def.encounter_trigger_fallback_secs?;
+                if def.enabled
+                    && combat_secs >= threshold
+                    && enc.boss_encounter_triggers_pending.contains(&idx)
+                {
+                    Some(idx)
+                } else {
+                    None
+                }
             })
         };
 
-        if let Some(idx) = found_idx
+        if let Some(idx) = fallback_idx
             && cache.activate_boss_by_idx(idx)
         {
             let (entity_id, npc_id) = (event.source_entity.log_id, event.source_entity.class_id);
@@ -693,6 +740,7 @@ impl EventProcessor {
         let boss_name = def.name.clone();
         let initial_phase = def.initial_phase().cloned();
 
+        enc.boss_encounter_triggers_pending.clear();
         enc.set_boss(ActiveBoss {
             definition_id: def_id.clone(),
             name: boss_name.clone(),
@@ -1351,6 +1399,7 @@ impl EventProcessor {
             target_entity_type: event.target_entity.entity_type,
             target_name: event.target_entity.name,
             target_npc_id: event.target_entity.class_id,
+            threat: event.details.threat,
             timestamp: event.timestamp,
         });
     }
@@ -1529,11 +1578,12 @@ fn shield_signal_matches(
             if let GameSignal::ThreatModified {
                 ability_id,
                 ability_name,
+                threat,
                 ..
             } = signal
             {
                 let name = resolve(*ability_name);
-                trigger.matches_threat_modified(*ability_id as u64, Some(name))
+                trigger.matches_threat_modified(*ability_id as u64, Some(name), *threat)
             } else {
                 false
             }

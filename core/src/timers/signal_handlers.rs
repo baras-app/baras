@@ -615,6 +615,7 @@ pub(super) fn handle_threat_modified(
     target_type: EntityType,
     target_name: IStr,
     target_npc_id: i64,
+    threat: f32,
     timestamp: NaiveDateTime,
 ) {
     let ability_id = ability_id as u64;
@@ -624,7 +625,7 @@ pub(super) fn handle_threat_modified(
         .definitions_for_kind(TriggerKind::ThreatModified)
         .iter()
         .filter(|d| {
-            d.matches_threat_modified(ability_id, Some(&ability_name_str))
+            d.matches_threat_modified(ability_id, Some(&ability_name_str), threat)
                 && manager.is_definition_active(d, encounter)
                 && manager.matches_source_target_filters(
                     &d.trigger,
@@ -651,13 +652,13 @@ pub(super) fn handle_threat_modified(
         get_entities(encounter),
         source_id, source_type, source_name, source_npc_id,
         target_id, target_type, target_name, target_npc_id,
-        |t| t.matches_threat_modified(ability_id, Some(&ability_name_str)),
+        |t| t.matches_threat_modified(ability_id, Some(&ability_name_str), threat),
     );
     manager.remove_queued_matching_with_source_target(
         get_entities(encounter),
         source_id, source_type, source_name, source_npc_id,
         target_id, target_type, target_name, target_npc_id,
-        |t| t.matches_threat_modified(ability_id, Some(&ability_name_str)),
+        |t| t.matches_threat_modified(ability_id, Some(&ability_name_str), threat),
     );
 }
 

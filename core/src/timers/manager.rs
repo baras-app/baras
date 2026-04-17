@@ -1757,6 +1757,7 @@ impl SignalHandler for TimerManager {
                 target_entity_type,
                 target_name,
                 target_npc_id,
+                threat,
                 timestamp,
             } => {
                 signal_handlers::handle_threat_modified(
@@ -1772,6 +1773,7 @@ impl SignalHandler for TimerManager {
                     *target_entity_type,
                     *target_name,
                     *target_npc_id,
+                    *threat,
                     *timestamp,
                 );
             }

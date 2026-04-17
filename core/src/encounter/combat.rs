@@ -79,6 +79,9 @@ pub struct CombatEncounter {
     boss_definitions: Arc<Vec<BossEncounterDefinition>>,
     /// Index into boss_definitions for active boss (if detected)
     active_boss_idx: Option<usize>,
+    /// Boss def indices whose encounter_trigger fired but are deferred to fallback timeout.
+    /// Used by definitions with both encounter_trigger and encounter_trigger_fallback_secs.
+    pub boss_encounter_triggers_pending: HashSet<usize>,
 
     // ─── Boss State (from BossEncounterState) ───────────────────────────────
     /// Currently detected boss info
@@ -186,6 +189,7 @@ impl CombatEncounter {
             // Boss definitions
             boss_definitions: Arc::new(Vec::new()),
             active_boss_idx: None,
+            boss_encounter_triggers_pending: HashSet::new(),
 
             // Boss state
             active_boss: None,

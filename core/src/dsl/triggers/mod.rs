@@ -150,6 +150,9 @@ pub enum Trigger {
         /// Who received the threat change (default: any)
         #[serde(default = "EntityFilter::default_any")]
         target: EntityFilter,
+        /// Optional exact threat value filter. None matches any value.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        threat_value: Option<f32>,
     },
 
     // ─── HP Thresholds ───────────────────────────────────────────────────────
@@ -349,10 +352,11 @@ impl Trigger {
                 source,
                 target,
             },
-            Self::ThreatModified { abilities, .. } => Self::ThreatModified {
+            Self::ThreatModified { abilities, threat_value, .. } => Self::ThreatModified {
                 abilities,
                 source,
                 target,
+                threat_value,
             },
             Self::TargetSet { selector, .. } => Self::TargetSet { selector, target },
             other => other, // Leave unchanged for triggers without source/target
@@ -454,16 +458,23 @@ impl Trigger {
     }
 
     /// Check if trigger matches a threat modification event.
-    /// Empty `abilities` matches any ability.
-    pub fn matches_threat_modified(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
+    /// Empty `abilities` matches any ability. `threat_value` filters by exact value when set.
+    pub fn matches_threat_modified(
+        &self,
+        ability_id: u64,
+        ability_name: Option<&str>,
+        value: f32,
+    ) -> bool {
         match self {
-            Self::ThreatModified { abilities, .. } => {
-                abilities.is_empty()
-                    || abilities.iter().any(|s| s.matches(ability_id, ability_name))
+            Self::ThreatModified { abilities, threat_value, .. } => {
+                let ability_ok = abilities.is_empty()
+                    || abilities.iter().any(|s| s.matches(ability_id, ability_name));
+                let value_ok = threat_value.map_or(true, |v| (v - value).abs() < 0.5);
+                ability_ok && value_ok
             }
             Self::AnyOf { conditions } => conditions
                 .iter()
-                .any(|c| c.matches_threat_modified(ability_id, ability_name)),
+                .any(|c| c.matches_threat_modified(ability_id, ability_name, value)),
             _ => false,
         }
     }

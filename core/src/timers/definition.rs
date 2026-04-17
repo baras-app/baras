@@ -337,8 +337,8 @@ impl TimerDefinition {
     }
 
     /// Check if this timer triggers on a threat modification event.
-    pub fn matches_threat_modified(&self, ability_id: u64, ability_name: Option<&str>) -> bool {
-        self.trigger.matches_threat_modified(ability_id, ability_name)
+    pub fn matches_threat_modified(&self, ability_id: u64, ability_name: Option<&str>, threat: f32) -> bool {
+        self.trigger.matches_threat_modified(ability_id, ability_name, threat)
     }
 
     /// Check if this timer triggers when healing is taken from an ability.

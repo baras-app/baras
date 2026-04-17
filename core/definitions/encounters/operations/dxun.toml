@@ -126,6 +126,15 @@ difficulties = ["veteran", "master"]
 [[boss]]
 id = "holding_pens"
 name = "Lights Out"
+has_victory_trigger = true
+victory_trigger = { type = "damage_taken", abilities = [
+  4258554563264512,
+], source = "any", target = "any" }
+
+[boss.encounter_trigger]
+type = "threat_modified"
+abilities = [3984986621345792]
+threat_value = 10000.0
 
 [[boss.entities]]
 name = "Czerka Pursuit Droid"
@@ -258,6 +267,11 @@ countdown_start = 0
 [[boss]]
 id = "breach"
 name = "According To Plan"
+encounter_trigger_fallback_secs = 1.0
+
+[boss.encounter_trigger]
+type = "threat_modified"
+abilities = [3984986621345792]
 
 [[boss.entities]]
 name = "Delicious Rampaging Charger"
