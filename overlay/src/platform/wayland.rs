@@ -322,9 +322,12 @@ impl OutputInfo {
     /// Get a stable identifier for this output.
     /// Prefers xdg-output description (includes EDID model info like "LG ULTRAWIDE (HDMI-A-1)"),
     /// falls back to connector name, then model, then synthesized ID.
+    /// Some screen combinations do not contain a unique descirption
+    /// e.g. "Samsung Electric Company LS24D60xU" does not contain a unique identifier on Plasma 6.5.6
     fn id(&self) -> String {
-        if !self.description.is_empty() {
-            // xdg-output description is most robust - includes monitor model + connector
+        if !self.connector_name.is_empty() && !self.description.is_empty() {
+            format!("{} ({})", self.description, self.connector_name)
+        } else if !self.description.is_empty() {
             self.description.clone()
         } else if !self.connector_name.is_empty() {
             self.connector_name.clone()
