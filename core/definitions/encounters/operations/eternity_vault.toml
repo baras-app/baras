@@ -159,6 +159,18 @@ is_alert = true
 trigger = { type = "boss_hp_below", hp_percent = 10.0 }
 color = [255, 50, 50, 255]
 
+[[boss]]
+id = "pylons"
+name = "Pylons"
+difficulties = ["story", "veteran"]
+
+[boss.encounter_trigger]
+type = "ability_cast"
+abilities = [2517271742251008]
+source = "any"
+target = "any"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Infernal Council (no timers needed - simple 1v1 fights)
 # ─────────────────────────────────────────────────────────────────────────────
