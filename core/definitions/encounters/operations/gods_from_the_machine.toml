@@ -1597,6 +1597,12 @@ area_id = 833571547775765
 area_type = "operation"
 difficulties = ["story", "veteran", "master"]
 
+[boss.encounter_trigger]
+type = "effect_applied"
+effects = [4132016236789760]
+source = "any"
+target = "any"
+
 [[boss.entities]]
 name = "Nahut"
 ids = [4108011664572416, 4122949560827904, 4122953855795200, 4122958150762496]
