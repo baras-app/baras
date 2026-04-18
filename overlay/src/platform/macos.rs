@@ -15,8 +15,8 @@ use objc2_foundation::{NSPoint, NSRect, NSSize};
 
 // objc2-app-kit types
 use objc2_app_kit::{
-    NSApplication, NSApplicationActivationPolicy, NSBackingStoreType, NSColor, NSEvent,
-    NSGraphicsContext, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
+    NSBackingStoreType, NSColor, NSEvent, NSGraphicsContext, NSScreen, NSScreenSaverWindowLevel,
+    NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
 };
 
 // Keep core-graphics for CGContext operations
@@ -81,6 +81,10 @@ pub struct BarasOverlayViewIvars {
     mouse_dragged: Cell<bool>,
     mouse_x: Cell<f64>,
     mouse_y: Cell<f64>,
+    // Tracks whether mouse_x/mouse_y have been populated by a real event.
+    // Prevents the default (0.0, 0.0) — a valid window corner — from being
+    // confused with "no mouse data yet".
+    has_mouse_position: Cell<bool>,
     // Global mouse location for drag calculations
     global_mouse_x: Cell<f64>,
     global_mouse_y: Cell<f64>,
@@ -179,6 +183,7 @@ define_class!(
             ivars.mouse_down.set(true);
             ivars.mouse_x.set(loc.x);
             ivars.mouse_y.set(loc.y);
+            ivars.has_mouse_position.set(true);
             ivars.global_mouse_x.set(global_loc.x);
             ivars.global_mouse_y.set(global_loc.y);
         }
@@ -200,6 +205,7 @@ define_class!(
             ivars.mouse_dragged.set(true);
             ivars.mouse_x.set(loc.x);
             ivars.mouse_y.set(loc.y);
+            ivars.has_mouse_position.set(true);
             ivars.global_mouse_x.set(global_loc.x);
             ivars.global_mouse_y.set(global_loc.y);
         }
@@ -212,6 +218,7 @@ define_class!(
 
             ivars.mouse_x.set(loc.x);
             ivars.mouse_y.set(loc.y);
+            ivars.has_mouse_position.set(true);
         }
 
         /// Allow the view to be first responder to receive key/mouse events
@@ -282,10 +289,13 @@ impl BarasOverlayView {
         }
     }
 
-    /// Get current mouse position in view
-    fn mouse_position(&self) -> (f64, f64) {
+    /// Get current mouse position in view, or `None` if no event has landed yet.
+    fn mouse_position(&self) -> Option<(f64, f64)> {
         let ivars = self.ivars();
-        (ivars.mouse_x.get(), ivars.mouse_y.get())
+        ivars
+            .has_mouse_position
+            .get()
+            .then(|| (ivars.mouse_x.get(), ivars.mouse_y.get()))
     }
 }
 
@@ -355,9 +365,9 @@ impl OverlayPlatform for MacOSOverlay {
         let mtm = unsafe { MainThreadMarker::new_unchecked() };
 
         unsafe {
-            // Initialize app if needed - use objc2-app-kit
-            let app = NSApplication::sharedApplication(mtm);
-            app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
+            // Activation policy is owned by the main Tauri app (Regular) — don't
+            // touch it here. Setting it per-overlay would strip the host app's
+            // Dock icon and menu bar.
 
             // Get main screen height for coordinate conversion
             let main_screen = NSScreen::mainScreen(mtm)
@@ -389,28 +399,36 @@ impl OverlayPlatform for MacOSOverlay {
             // This is required for correct memory management when not using a window controller
             window.setReleasedWhenClosed(false);
 
-            // Configure window for overlay behavior
-            // NSMainMenuWindowLevel (24) + 1 = 25
-            window.setLevel(25);
+            // Float above menus, fullscreen game chrome, Mission Control, etc.
+            // NSStatusWindowLevel (25) used to suffice but macOS 15+ moved
+            // system UI above it; NSScreenSaverWindowLevel (1000) is the
+            // canonical ceiling for game overlays (still below the lock
+            // screen and accessibility tech).
+            window.setLevel(NSScreenSaverWindowLevel);
             window.setBackgroundColor(Some(&NSColor::clearColor()));
             window.setOpaque(false);
             window.setHasShadow(false);
             window.setIgnoresMouseEvents(config.click_through);
             window.setAcceptsMouseMovedEvents(true);
 
-            // Prevent window from being hidden when app is deactivated
+            // Follow the user across Spaces, survive fullscreen games, and
+            // stay out of Cmd-Tab / Mission Control / window cycling.
             window.setCollectionBehavior(
                 NSWindowCollectionBehavior::CanJoinAllSpaces
                     | NSWindowCollectionBehavior::Stationary
-                    | NSWindowCollectionBehavior::IgnoresCycle,
+                    | NSWindowCollectionBehavior::IgnoresCycle
+                    | NSWindowCollectionBehavior::Transient
+                    | NSWindowCollectionBehavior::FullScreenAuxiliary,
             );
 
             // Create custom view using our define_class! defined view
             let view = BarasOverlayView::new(rect, mtm);
 
-            // Set view as window's content
+            // Set view as window's content. orderFrontRegardless shows the
+            // overlay without activating the app or stealing key status from
+            // the main Tauri window or the game.
             window.setContentView(Some(&view));
-            window.makeKeyAndOrderFront(None);
+            window.orderFrontRegardless();
 
             let size = (config.width * config.height * 4) as usize;
             let mut overlay = MacOSOverlay {
@@ -577,15 +595,18 @@ impl OverlayPlatform for MacOSOverlay {
 
     fn commit(&mut self) {
         // Convert RGBA to BGRA (tiny-skia already produces premultiplied alpha,
-        // so we just need to swap channels - no additional premultiplication!)
-        for (i, chunk) in self.pixel_data.chunks(4).enumerate() {
-            let offset = i * 4;
-            if chunk.len() == 4 && offset + 3 < self.bgra_buffer.len() {
-                self.bgra_buffer[offset] = chunk[2]; // B
-                self.bgra_buffer[offset + 1] = chunk[1]; // G
-                self.bgra_buffer[offset + 2] = chunk[0]; // R
-                self.bgra_buffer[offset + 3] = chunk[3]; // A
-            }
+        // so we just need to swap channels - no additional premultiplication!).
+        // chunks_exact + zip lets LLVM elide bounds checks and autovectorize
+        // the swizzle; both buffers are always pixel-aligned and equal length.
+        for (src, dst) in self
+            .pixel_data
+            .chunks_exact(4)
+            .zip(self.bgra_buffer.chunks_exact_mut(4))
+        {
+            dst[0] = src[2]; // B
+            dst[1] = src[1]; // G
+            dst[2] = src[0]; // R
+            dst[3] = src[3]; // A
         }
 
         self.view.setNeedsDisplay(true);
@@ -672,13 +693,14 @@ impl OverlayPlatform for MacOSOverlay {
                 }
             }
 
-            // Update resize corner state from current mouse position
-            let (mouse_x, mouse_y) = self.view.mouse_position();
-            if mouse_x != 0.0 || mouse_y != 0.0 {
+            // Update resize corner state from current mouse position (only
+            // once a real mouse event has populated it — (0, 0) is a valid
+            // window corner, not a sentinel).
+            if let Some((mouse_x, mouse_y)) = self.view.mouse_position()
+                && !self.is_resizing
+            {
                 let y = self.height as f64 - mouse_y;
-                if !self.is_resizing {
-                    self.in_resize_corner = self.is_in_resize_corner(mouse_x, y);
-                }
+                self.in_resize_corner = self.is_in_resize_corner(mouse_x, y);
             }
         }
 
