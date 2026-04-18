@@ -165,11 +165,15 @@ name = "Pylons"
 difficulties = ["story", "veteran"]
 
 [boss.encounter_trigger]
-type = "ability_cast"
-abilities = [2517271742251008]
-source = "any"
-target = "any"
-
+type = "any_of"
+conditions = [
+  { type = "ability_cast", abilities = [
+    2517271742251008,
+  ], source = "any", target = "any" },
+  { type = "ability_cast", abilities = [
+    2517263152316416,
+  ], source = "any", target = "any" },
+]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Infernal Council (no timers needed - simple 1v1 fights)
