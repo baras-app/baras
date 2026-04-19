@@ -930,18 +930,28 @@ impl EventProcessor {
                             // Scoped to the entity definition whose end_trigger matched,
                             // so "Melee Add : slot 0" and "Ranged Add : slot 0" are independent
                             // and one firing its end trigger does not deactivate the other.
-                            // Phase/counter/non-NPC triggers still correctly deactivate all
-                            // instances of the matching entity's shields because those trigger
-                            // types iterate all entities in the outer loop independently.
+                            // When the signal is tied to a specific NPC instance
+                            // (effect/damage/etc.), further scope to that log_id so an
+                            // effect_removed on one NPC does not deactivate same-labeled
+                            // shields on other NPCs that share the trigger's effect id.
+                            // Phase/counter/non-NPC triggers have no log_id and still
+                            // deactivate all instances of the matching entity's shields.
                             if shield_signal_matches(&shield.end_trigger, signal, entities) {
+                                let sig_log_id = signal_npc_log_id(signal);
                                 for (log_id, entity_name, idx) in &active_shield_keys {
-                                    if *idx == shield_idx && entity_name == &entity.name {
-                                        changes.push(ShieldChange::Deactivate(
-                                            *log_id,
-                                            entity_name.clone(),
-                                            *idx,
-                                        ));
+                                    if *idx != shield_idx || entity_name != &entity.name {
+                                        continue;
                                     }
+                                    if let Some(sid) = sig_log_id
+                                        && *log_id != sid
+                                    {
+                                        continue;
+                                    }
+                                    changes.push(ShieldChange::Deactivate(
+                                        *log_id,
+                                        entity_name.clone(),
+                                        *idx,
+                                    ));
                                 }
                             }
                         }
