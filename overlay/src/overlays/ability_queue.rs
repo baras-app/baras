@@ -208,10 +208,32 @@ impl AbilityQueueOverlay {
         // ── Collect owned render rows ──────────────────────────────────────────
         let rows: Vec<RenderRow> = {
             let pinned: Vec<_> = self.data.entries.iter().filter(|e| e.is_pinned).collect();
-            let mut queued: Vec<_> = self.data.entries.iter().filter(|e| !e.is_pinned && e.is_queued).collect();
-            let mut active: Vec<_> = self.data.entries.iter().filter(|e| !e.is_pinned && !e.is_queued).collect();
+            let gcd_remaining = pinned.first().map(|e| e.remaining_secs).unwrap_or(0.0);
 
-            queued.sort_by(|x, y| y.queue_priority.cmp(&x.queue_priority));
+            // Active abilities that will become ready before the GCD ends are
+            // promoted into the ready tier — by the time the GCD resolves they
+            // are off cooldown, so show them alongside real queued entries.
+            let mut queued: Vec<_> = Vec::new();
+            let mut active: Vec<_> = Vec::new();
+            for e in self.data.entries.iter().filter(|e| !e.is_pinned) {
+                if e.is_queued || e.remaining_secs < gcd_remaining {
+                    queued.push(e);
+                } else {
+                    active.push(e);
+                }
+            }
+
+            // Promoted abilities (about to come off cooldown inside the
+            // current GCD window) outrank actually-queued entries — they
+            // have a tighter cast window, so cast them first. Within each
+            // group: promoted sorted by remaining_secs asc (soonest first),
+            // real queued by queue_priority desc.
+            queued.sort_by(|x, y| match (x.is_queued, y.is_queued) {
+                (true, true) => y.queue_priority.cmp(&x.queue_priority),
+                (true, false) => std::cmp::Ordering::Greater,
+                (false, true) => std::cmp::Ordering::Less,
+                (false, false) => x.remaining_secs.partial_cmp(&y.remaining_secs).unwrap_or(std::cmp::Ordering::Equal),
+            });
             active.sort_by(|x, y| x.remaining_secs.partial_cmp(&y.remaining_secs).unwrap_or(std::cmp::Ordering::Equal));
 
             let mut rows = Vec::new();
@@ -231,11 +253,24 @@ impl AbilityQueueOverlay {
             }
             for e in &queued {
                 if rendered >= max { break; }
+                // Real queued entries show "READY" with a full bar. Promoted
+                // entries (active abilities finishing inside the GCD window)
+                // keep their countdown text and progress so the user can still
+                // see when they'll come off cooldown — only the slot position
+                // is reserved early, not the label.
+                let (right_text, progress) = if e.is_queued {
+                    ("READY".to_string(), 1.0)
+                } else {
+                    (
+                        baras_types::formatting::format_countdown(e.remaining_secs, "", "0:00", false),
+                        e.progress(),
+                    )
+                };
                 rows.push(RenderRow {
                     kind: RowKind::Ready,
                     name: e.name.clone(),
-                    progress: 1.0,
-                    right_text: "READY".to_string(),
+                    progress,
+                    right_text,
                     bar_color: e.color,
                     icon_ability_id: e.icon_ability_id,
                 });
@@ -260,17 +295,18 @@ impl AbilityQueueOverlay {
         };
 
         // ── Content height ─────────────────────────────────────────────────────
-        // GCD rows use gcd_h + gcd_gap; all others use bar_h + entry_spacing.
-        // Subtract one entry_spacing for the last row (no trailing gap).
+        // The GCD slot is always reserved when anything is visible — even when
+        // no GCD is active a phantom outline is drawn so the ready/countdown
+        // rows below don't shift position when a GCD appears or disappears.
         let gcd_count = rows.iter().filter(|r| matches!(r.kind, RowKind::Gcd)).count();
+        let has_gcd_row = gcd_count > 0;
         let other_count = rows.len() - gcd_count;
         let content_height = if rows.is_empty() {
             0.0
         } else {
-            let gcd_height = gcd_count as f32 * (gcd_h + gcd_gap);
+            let gcd_height = gcd_h + gcd_gap;
             let other_height = other_count as f32 * (bar_h + entry_spacing)
-                - if other_count > 0 { entry_spacing } else { 0.0 }
-                - if gcd_count > 0 && other_count > 0 { 0.0 } else { 0.0 };
+                - if other_count > 0 { entry_spacing } else { 0.0 };
             padding * 2.0 + gcd_height + other_height
         };
 
@@ -286,6 +322,13 @@ impl AbilityQueueOverlay {
         }
 
         let mut y = padding;
+
+        // Phantom GCD outline — keeps the GCD slot reserved so downstream rows
+        // don't shift vertically when the GCD comes and goes between frames.
+        if !has_gcd_row {
+            draw_bar_border(&mut self.frame, padding, y, content_width, gcd_h, bar_radius, GCD_BORDER);
+            y += gcd_h + gcd_gap;
+        }
 
         for (i, row) in rows.iter().enumerate() {
             let is_gcd = matches!(row.kind, RowKind::Gcd);

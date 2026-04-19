@@ -11,6 +11,7 @@
 //!   --timers       - Boss timer overlay with sample countdown bars
 //!   --challenges   - Challenge overlay (vertical, 2-col format)
 //!   --challenges-h - Challenge overlay (horizontal, 3-col with per-second)
+//!   --ability-queue - Ability queue with cycling GCD + ready-tier promotion
 
 use std::env;
 use std::time::{Duration, Instant};
@@ -1662,6 +1663,175 @@ mod examples {
         }
     }
 
+    /// Run the ability queue overlay with a cycling GCD and mixed cooldowns.
+    ///
+    /// Demonstrates:
+    /// - The always-reserved GCD slot (outline stays put while the GCD cycles on/off)
+    /// - Active cooldowns promoted into the READY tier when they'll resolve
+    ///   before the GCD ends
+    pub fn run_ability_queue_overlay() {
+        use baras_overlay::{AbilityQueueConfig, AbilityQueueOverlay, Overlay, OverlayConfig};
+
+        let config = OverlayConfig {
+            x: 300,
+            y: 200,
+            width: 240,
+            height: 260,
+            namespace: "baras-ability-queue".to_string(),
+            click_through: true,
+            target_monitor_id: None,
+        };
+
+        let queue_config = AbilityQueueConfig::default();
+
+        let mut overlay = match AbilityQueueOverlay::new(config, queue_config, 180) {
+            Ok(o) => o,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to create ability queue overlay");
+                return;
+            }
+        };
+
+        let start = Instant::now();
+        let mut last_frame = Instant::now();
+        let frame_duration = Duration::from_millis(100);
+
+        println!("┌─────────────────────────────────────────────────────────────┐");
+        println!("│         Ability Queue Overlay - 3-Tier Priority             │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  Tier 1: GCD (gold border, slot always reserved)            │");
+        println!("│  Tier 2: Ready abilities (light-blue border)                │");
+        println!("│  Tier 3: Active countdowns                                  │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  The GCD cycles on/off — the outline stays put.             │");
+        println!("│  Short cooldowns get promoted to READY when they'll         │");
+        println!("│  resolve before the current GCD ends.                       │");
+        println!("├─────────────────────────────────────────────────────────────┤");
+        println!("│  Drag to move, corner to resize. Ctrl+C to exit.            │");
+        println!("└─────────────────────────────────────────────────────────────┘");
+
+        loop {
+            if !overlay.poll_events() {
+                break;
+            }
+
+            let now = Instant::now();
+            if now.duration_since(last_frame) >= frame_duration {
+                let elapsed = start.elapsed().as_secs_f32();
+                overlay.set_data(build_ability_queue_snapshot(elapsed));
+                overlay.render();
+                last_frame = now;
+            }
+
+            let sleep_ms = if overlay.is_interactive() { 4 } else { 50 };
+            std::thread::sleep(Duration::from_millis(sleep_ms));
+        }
+    }
+
+    /// Build an ability-queue snapshot driven by elapsed time.
+    ///
+    /// GCD cycles every 2.5s (1.5s active + 1.0s gap) so the phantom outline
+    /// is visible for part of every cycle. `Shock` has a 6s cooldown — its
+    /// last ~1.5s of the cycle drop below the GCD remaining and promote it
+    /// into the READY tier.
+    fn build_ability_queue_snapshot(elapsed: f32) -> baras_overlay::AbilityQueueData {
+        use baras_overlay::{AbilityQueueData, AbilityQueueEntry};
+
+        let gcd_cycle = 2.5_f32;
+        let gcd_active = 1.5_f32;
+        let gcd_phase = elapsed % gcd_cycle;
+
+        let mut entries = Vec::new();
+
+        if gcd_phase < gcd_active {
+            entries.push(AbilityQueueEntry {
+                name: "GCD".to_string(),
+                remaining_secs: gcd_active - gcd_phase,
+                total_secs: gcd_active,
+                color: [120, 200, 255, 255],
+                queue_priority: 0,
+                is_pinned: true,
+                is_queued: false,
+                icon_ability_id: None,
+                icon: None,
+            });
+        }
+
+        // Helper: an ability cycles `cooldown` seconds on CD, then sits in
+        // the READY tier for `ready_window` seconds (≈ one GCD's worth of
+        // time before the player casts it), then cycles again. While on CD
+        // it's a tier-3 countdown; while ready it's a tier-2 queued entry
+        // with the given priority.
+        let cycling = |name: &str, color: [u8; 4], cooldown: f32, ready_window: f32, priority: u8| {
+            let total = cooldown + ready_window;
+            let phase = elapsed % total;
+            if phase < cooldown {
+                AbilityQueueEntry {
+                    name: name.to_string(),
+                    remaining_secs: cooldown - phase,
+                    total_secs: cooldown,
+                    color,
+                    queue_priority: 0,
+                    is_pinned: false,
+                    is_queued: false,
+                    icon_ability_id: None,
+                    icon: None,
+                }
+            } else {
+                AbilityQueueEntry {
+                    name: name.to_string(),
+                    remaining_secs: 0.0,
+                    total_secs: cooldown,
+                    color,
+                    queue_priority: priority,
+                    is_pinned: false,
+                    is_queued: true,
+                    icon_ability_id: None,
+                    icon: None,
+                }
+            }
+        };
+
+        // Cycling priority abilities — different cooldowns so the READY tier
+        // is a moving set, with higher-priority recent refreshes bumping
+        // above older ready entries.
+        entries.push(cycling("Shock", [220, 180, 50, 255], 6.0, 1.8, 8));
+        entries.push(cycling("Lightning Strike", [120, 200, 255, 255], 4.0, 1.5, 6));
+        entries.push(cycling("Crushing Darkness", [220, 100, 80, 255], 9.0, 1.8, 7));
+
+        // Long cooldown — always in tier 3 during this demo.
+        let long_cycle = 18.0_f32;
+        let long_remaining = long_cycle - (elapsed % long_cycle);
+        entries.push(AbilityQueueEntry {
+            name: "Recklessness".to_string(),
+            remaining_secs: long_remaining,
+            total_secs: long_cycle,
+            color: [100, 220, 100, 255],
+            queue_priority: 0,
+            is_pinned: false,
+            is_queued: false,
+            icon_ability_id: None,
+            icon: None,
+        });
+
+        // Always-available filler. Lowest priority — when other abilities
+        // enter the ready tier they push this down, since there's never any
+        // pressure to cast it on a specific GCD.
+        entries.push(AbilityQueueEntry {
+            name: "Force Lightning".to_string(),
+            remaining_secs: 0.0,
+            total_secs: 0.0,
+            color: [180, 100, 220, 255],
+            queue_priority: 1,
+            is_pinned: false,
+            is_queued: true,
+            icon_ability_id: None,
+            icon: None,
+        });
+
+        AbilityQueueData { entries }
+    }
+
     /// Standalone combat time overlay that increments every second
     pub fn run_combat_time_overlay() {
         use baras_overlay::{
@@ -1742,6 +1912,7 @@ fn main() {
         "--challenges-h" => examples::run_challenge_overlay_horizontal(),
         "--alerts" => examples::run_alerts_overlay(),
         "--combat-time" => examples::run_combat_time_overlay(),
+        "--ability-queue" => examples::run_ability_queue_overlay(),
         _ => {
             println!("Usage: cargo run -p baras-overlay -- [OPTION]");
             println!();
@@ -1759,6 +1930,7 @@ fn main() {
             );
             println!("  --alerts       Alerts text overlay with fade-out effect");
             println!("  --combat-time  Standalone combat time display");
+            println!("  --ability-queue 3-tier ability queue with cycling GCD and promotion demo");
         }
     }
 }
