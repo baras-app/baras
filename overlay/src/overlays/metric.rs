@@ -148,6 +148,10 @@ pub struct MetricOverlay {
     use_class_color: bool,
     /// Per-archetype color palette
     class_colors: ClassColorConfig,
+    /// Compact signature of last rendered entries (detects no-op updates).
+    /// (value, total_value) per entry is enough — names/order only change on
+    /// join/leave/sort which also shifts the numeric signature.
+    last_sig: Vec<(i64, i64)>,
 }
 
 impl MetricOverlay {
@@ -184,6 +188,7 @@ impl MetricOverlay {
             european_number_format: false,
             use_class_color: false,
             class_colors: ClassColorConfig::default(),
+            last_sig: Vec::new(),
         })
     }
 
@@ -578,8 +583,19 @@ impl MetricOverlay {
 impl Overlay for MetricOverlay {
     fn update_data(&mut self, data: OverlayData) -> bool {
         if let OverlayData::Metrics(entries) = data {
+            // Skip render when numeric state is unchanged (service may emit
+            // DataUpdated more often than values actually tick).
+            let changed = entries.len() != self.last_sig.len()
+                || entries
+                    .iter()
+                    .zip(self.last_sig.iter())
+                    .any(|(e, sig)| e.value != sig.0 || e.total_value != sig.1);
+            if changed {
+                self.last_sig.clear();
+                self.last_sig.extend(entries.iter().map(|e| (e.value, e.total_value)));
+            }
             self.set_entries(entries);
-            true // Metric overlays always render when updated
+            changed
         } else {
             false
         }

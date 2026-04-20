@@ -3,18 +3,14 @@
 //! Displays ability cooldowns as a vertical list of icons with countdown timers.
 //! Shows cooldowns sorted by remaining time with optional ability names.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::{color_from_rgba, scale_icon};
+use crate::utils::{color_from_rgba, shared_scaled_icons};
 use crate::widgets::{colors, ProgressBar};
 use crate::widgets::Header;
-
-/// Cache for pre-scaled icons
-type ScaledIconCache = HashMap<(u64, u32), Vec<u8>>;
 
 /// A single cooldown entry for display
 #[derive(Debug, Clone)]
@@ -132,7 +128,6 @@ pub struct CooldownOverlay {
     config: CooldownConfig,
     background_alpha: u8,
     data: CooldownData,
-    icon_cache: ScaledIconCache,
     /// Last rendered state for dirty checking (icon mode): (ability_id, time_string, charges)
     last_rendered: Vec<(u64, String, u8)>,
     /// Last rendered state for dirty checking (bar mode): (ability_id, time_string, charges, is_ready_state)
@@ -156,7 +151,6 @@ impl CooldownOverlay {
             config,
             background_alpha,
             data: CooldownData::default(),
-            icon_cache: HashMap::new(),
             last_rendered: Vec::new(),
             last_rendered_bar: Vec::new(),
             european_number_format: false,
@@ -183,15 +177,13 @@ impl CooldownOverlay {
             self.frame.scaled(self.config.icon_size as f32) as u32
         };
 
-        // Pre-cache icons at display size
+        // Pre-cache icons at display size in the process-wide shared cache
+        let cache = shared_scaled_icons();
         for entry in &data.entries {
             if let Some(ref icon_arc) = entry.icon {
-                let cache_key = (entry.icon_ability_id, icon_size);
-                if !self.icon_cache.contains_key(&cache_key) {
-                    let (src_w, src_h, ref src_data) = **icon_arc;
-                    let scaled = scale_icon(src_data, src_w, src_h, icon_size);
-                    self.icon_cache.insert(cache_key, scaled);
-                }
+                let (src_w, src_h, ref src_data) = **icon_arc;
+                let _ =
+                    cache.get_or_scale(entry.icon_ability_id, icon_size, src_data, src_w, src_h);
             }
         }
 
@@ -308,11 +300,12 @@ impl CooldownOverlay {
 
             // Draw icon from cache or colored square fallback
             // Only show icon if show_icon is true
-            let cache_key = (entry.icon_ability_id, icon_size_u32);
             let has_icon = if entry.show_icon {
-                if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
+                if let Some(scaled_icon) =
+                    shared_scaled_icons().get(entry.icon_ability_id, icon_size_u32)
+                {
                     self.frame.draw_image(
-                        scaled_icon,
+                        &scaled_icon,
                         icon_size_u32,
                         icon_size_u32,
                         x,
@@ -702,12 +695,13 @@ impl CooldownOverlay {
 
             // Draw icon with glow border
             if has_icon {
-                let cache_key = (entry.icon_ability_id, icon_size_u32);
                 let icon_x = padding + icon_padding;
                 let icon_y = y + icon_padding;
 
-                let icon_drawn = if let Some(scaled) = self.icon_cache.get(&cache_key) {
-                    self.frame.draw_image(scaled, icon_size_u32, icon_size_u32, icon_x, icon_y, icon_size, icon_size);
+                let icon_drawn = if let Some(scaled) =
+                    shared_scaled_icons().get(entry.icon_ability_id, icon_size_u32)
+                {
+                    self.frame.draw_image(&scaled, icon_size_u32, icon_size_u32, icon_x, icon_y, icon_size, icon_size);
                     true
                 } else if let Some(ref icon_arc) = entry.icon {
                     let (img_w, img_h, ref rgba) = **icon_arc;

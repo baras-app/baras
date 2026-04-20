@@ -3,6 +3,9 @@
 //! These are shared across different overlay types.
 //! Number formatting is delegated to `baras_types::formatting` for consistency.
 
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
+
 use tiny_skia::Color;
 
 // Re-export formatting functions from baras-types for convenience
@@ -36,6 +39,59 @@ pub fn format_time(secs: u64) -> String {
 /// Delegates to [`baras_types::formatting::format_duration_f32`].
 pub fn format_duration_short(secs: f32) -> String {
     formatting::format_duration_f32(secs)
+}
+
+/// Process-wide cache of pre-scaled icon RGBA buffers, keyed by
+/// (ability_id, target_size_px). Every overlay thread reads/writes the same
+/// map, so identical icons at identical sizes are scaled once total instead
+/// of once per overlay.
+#[derive(Default)]
+pub struct SharedScaledIconCache {
+    inner: Mutex<HashMap<(u64, u32), Arc<Vec<u8>>>>,
+}
+
+impl SharedScaledIconCache {
+    /// Return the cached scaled icon, scaling and inserting on miss.
+    /// The expensive `scale_icon` call happens OUTSIDE the lock so parallel
+    /// overlay threads don't serialize on scaling work.
+    pub fn get_or_scale(
+        &self,
+        ability_id: u64,
+        target_size: u32,
+        src: &[u8],
+        src_w: u32,
+        src_h: u32,
+    ) -> Arc<Vec<u8>> {
+        let key = (ability_id, target_size);
+        if let Ok(map) = self.inner.lock() {
+            if let Some(arc) = map.get(&key) {
+                return arc.clone();
+            }
+        }
+        let scaled = Arc::new(scale_icon(src, src_w, src_h, target_size));
+        if let Ok(mut map) = self.inner.lock() {
+            // Another thread may have raced us — entry() keeps its version.
+            return map.entry(key).or_insert_with(|| scaled.clone()).clone();
+        }
+        scaled
+    }
+
+    /// Fetch without scaling (render hot path). Returns None if not yet cached.
+    pub fn get(&self, ability_id: u64, target_size: u32) -> Option<Arc<Vec<u8>>> {
+        self.inner.lock().ok()?.get(&(ability_id, target_size)).cloned()
+    }
+}
+
+static SHARED_SCALED_ICONS: OnceLock<SharedScaledIconCache> = OnceLock::new();
+
+/// Global scaled-icon cache shared by every overlay thread.
+///
+/// Previously each overlay kept its own `HashMap<(u64, u32), Vec<u8>>` of
+/// pre-scaled icons; with 8+ overlays displaying the same ability at the same
+/// size, the RGBA buffer was scaled and stored N times. This global cache
+/// scales once and hands out `Arc<Vec<u8>>` references to every overlay.
+pub fn shared_scaled_icons() -> &'static SharedScaledIconCache {
+    SHARED_SCALED_ICONS.get_or_init(SharedScaledIconCache::default)
 }
 
 /// Scale icon to target size using nearest-neighbor sampling (shared across overlays)

@@ -5,16 +5,11 @@
 //! - Tier 2 (middle): Queued/ready entries — light blue border, "READY" label
 //! - Tier 3 (bottom): Active countdown entries — standard progress bar
 
-use std::collections::HashMap;
-
 use super::{AbilityQueueData, Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::{color_from_rgba, scale_icon};
+use crate::utils::{color_from_rgba, shared_scaled_icons};
 use crate::widgets::{colors, ProgressBar};
-
-/// Cache for pre-scaled icons keyed by (ability_id, display_size)
-type ScaledIconCache = HashMap<(u64, u32), Vec<u8>>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
@@ -103,7 +98,6 @@ pub struct AbilityQueueOverlay {
     frame: OverlayFrame,
     config: AbilityQueueConfig,
     data: AbilityQueueData,
-    icon_cache: ScaledIconCache,
 }
 
 impl AbilityQueueOverlay {
@@ -115,7 +109,7 @@ impl AbilityQueueOverlay {
         let mut frame = OverlayFrame::new(window_config, BASE_WIDTH, BASE_HEIGHT)?;
         frame.set_background_alpha(background_alpha);
         frame.set_label("Ability Queue");
-        Ok(Self { frame, config, data: AbilityQueueData::default(), icon_cache: ScaledIconCache::new() })
+        Ok(Self { frame, config, data: AbilityQueueData::default() })
     }
 
     pub fn set_config(&mut self, config: AbilityQueueConfig) {
@@ -131,11 +125,9 @@ impl AbilityQueueOverlay {
         let icon_size = (bar_height - 4.0 * self.frame.scale_factor()).round() as u32;
         for entry in &data.entries {
             if let (Some(ability_id), Some(icon_arc)) = (entry.icon_ability_id, &entry.icon) {
-                let cache_key = (ability_id, icon_size);
-                if !self.icon_cache.contains_key(&cache_key) {
-                    let (src_w, src_h, ref src_data) = **icon_arc;
-                    self.icon_cache.insert(cache_key, scale_icon(src_data, src_w, src_h, icon_size));
-                }
+                let (src_w, src_h, ref src_data) = **icon_arc;
+                let _ = shared_scaled_icons()
+                    .get_or_scale(ability_id, icon_size, src_data, src_w, src_h);
             }
         }
         self.data = data;
@@ -449,10 +441,11 @@ impl AbilityQueueOverlay {
             if let Some(ability_id) = row.icon_ability_id {
                 let icon_x = padding + icon_padding;
                 let icon_y = y + icon_padding;
-                let cache_key = (ability_id, icon_size_u32);
 
-                let icon_drawn = if let Some(scaled) = self.icon_cache.get(&cache_key) {
-                    self.frame.draw_image(scaled, icon_size_u32, icon_size_u32, icon_x, icon_y, icon_size, icon_size);
+                let icon_drawn = if let Some(scaled) =
+                    shared_scaled_icons().get(ability_id, icon_size_u32)
+                {
+                    self.frame.draw_image(&scaled, icon_size_u32, icon_size_u32, icon_x, icon_y, icon_size, icon_size);
                     true
                 } else if let Some(entry) = self.data.entries.iter().find(|e| e.icon_ability_id == Some(ability_id)) {
                     if let Some(ref icon_arc) = entry.icon {
@@ -540,7 +533,7 @@ impl AbilityQueueOverlay {
                 }
                 let has_icon = row
                     .icon_ability_id
-                    .is_some_and(|id| self.icon_cache.contains_key(&(id, icon_size_u32)));
+                    .is_some_and(|id| shared_scaled_icons().get(id, icon_size_u32).is_some());
                 if has_icon {
                     total_w += icon_size + icon_padding;
                 }
@@ -566,9 +559,9 @@ impl AbilityQueueOverlay {
             }
 
             if let Some(ability_id) = row.icon_ability_id {
-                if let Some(scaled) = self.icon_cache.get(&(ability_id, icon_size_u32)) {
+                if let Some(scaled) = shared_scaled_icons().get(ability_id, icon_size_u32) {
                     self.frame.draw_image(
-                        scaled, icon_size_u32, icon_size_u32,
+                        &scaled, icon_size_u32, icon_size_u32,
                         cursor_x, ic_y, icon_size, icon_size,
                     );
                     cursor_x += icon_size + icon_padding;

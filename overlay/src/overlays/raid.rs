@@ -766,19 +766,22 @@ impl RaidOverlay {
 
         self.frame.begin_frame();
 
-        // Render all frames
-        for i in 0..self.frames.len() {
-            let frame_data = self.frames[i].clone();
-            self.render_frame(&frame_data);
+        // Temporarily move frames out of self so we can pass &RaidFrame while
+        // also holding &mut self for drawing. No allocation — Vec header swap only.
+        let frames = std::mem::take(&mut self.frames);
+
+        for frame_data in &frames {
+            self.render_frame(frame_data);
         }
 
         // Overlay the rearrange UI if in that mode
         if self.interaction_mode == InteractionMode::Rearrange {
-            for i in 0..self.frames.len() {
-                let frame_data = self.frames[i].clone();
-                self.render_rearrange_overlay(&frame_data);
+            for frame_data in &frames {
+                self.render_rearrange_overlay(frame_data);
             }
         }
+
+        self.frames = frames;
 
         // Overflow indicator
         self.render_overflow_indicator();

@@ -4,19 +4,15 @@
 //! Each row shows the target name followed by DOT icons with countdowns.
 //! Supports tracking multiple targets (6-8) with automatic pruning.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::color_from_rgba;
+use crate::utils::{color_from_rgba, shared_scaled_icons};
 use crate::widgets::colors;
 use crate::widgets::Header;
-
-/// Cache for pre-scaled icons
-type ScaledIconCache = HashMap<(u64, u32), Vec<u8>>;
 
 /// A single DOT entry on a target
 #[derive(Debug, Clone)]
@@ -130,7 +126,6 @@ pub struct DotTrackerOverlay {
     config: DotTrackerConfig,
     background_alpha: u8,
     data: DotTrackerData,
-    icon_cache: ScaledIconCache,
     /// Last rendered state for dirty checking: Vec of (target_id, Vec of (effect_id, time_string, stacks))
     last_rendered: Vec<(i64, Vec<(u64, String, u8)>)>,
     european_number_format: bool,
@@ -152,7 +147,6 @@ impl DotTrackerOverlay {
             config,
             background_alpha,
             data: DotTrackerData::default(),
-            icon_cache: HashMap::new(),
             last_rendered: Vec::new(),
             european_number_format: false,
         })
@@ -173,16 +167,14 @@ impl DotTrackerOverlay {
     pub fn set_data(&mut self, data: DotTrackerData) {
         let icon_size = self.frame.scaled(self.config.icon_size as f32) as u32;
 
-        // Pre-cache icons at display size
+        // Pre-cache icons at display size in the shared cache
+        let cache = shared_scaled_icons();
         for target in &data.targets {
             for dot in &target.dots {
                 if let Some(ref icon_arc) = dot.icon {
-                    let cache_key = (dot.icon_ability_id, icon_size);
-                    if !self.icon_cache.contains_key(&cache_key) {
-                        let (src_w, src_h, ref src_data) = **icon_arc;
-                        let scaled = scale_icon(src_data, src_w, src_h, icon_size);
-                        self.icon_cache.insert(cache_key, scaled);
-                    }
+                    let (src_w, src_h, ref src_data) = **icon_arc;
+                    let _ =
+                        cache.get_or_scale(dot.icon_ability_id, icon_size, src_data, src_w, src_h);
                 }
             }
         }
@@ -337,11 +329,12 @@ impl DotTrackerOverlay {
             for dot in &target.dots {
                 // Draw icon from cache or colored square fallback
                 // Only show icon if show_icon is true
-                let cache_key = (dot.icon_ability_id, icon_size_u32);
                 let has_icon = if dot.show_icon {
-                    if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
+                    if let Some(scaled_icon) =
+                        shared_scaled_icons().get(dot.icon_ability_id, icon_size_u32)
+                    {
                         self.frame.draw_image(
-                            scaled_icon,
+                            &scaled_icon,
                             icon_size_u32,
                             icon_size_u32,
                             icon_x,
@@ -581,28 +574,6 @@ fn wrap_name(name: &str, max_chars: usize) -> Vec<String> {
     } else {
         lines
     }
-}
-
-/// Scale icon to target size (nearest neighbor for speed)
-fn scale_icon(src: &[u8], src_w: u32, src_h: u32, target_size: u32) -> Vec<u8> {
-    let mut dest = vec![0u8; (target_size * target_size * 4) as usize];
-    let scale_x = src_w as f32 / target_size as f32;
-    let scale_y = src_h as f32 / target_size as f32;
-
-    for dy in 0..target_size {
-        for dx in 0..target_size {
-            let sx = ((dx as f32 * scale_x) as u32).min(src_w - 1);
-            let sy = ((dy as f32 * scale_y) as u32).min(src_h - 1);
-            let src_idx = ((sy * src_w + sx) * 4) as usize;
-            let dest_idx = ((dy * target_size + dx) * 4) as usize;
-
-            dest[dest_idx] = src[src_idx];
-            dest[dest_idx + 1] = src[src_idx + 1];
-            dest[dest_idx + 2] = src[src_idx + 2];
-            dest[dest_idx + 3] = src[src_idx + 3];
-        }
-    }
-    dest
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

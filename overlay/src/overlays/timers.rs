@@ -2,7 +2,6 @@
 //!
 //! Displays countdown timers for boss mechanics, ability cooldowns, etc.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use baras_core::context::TimerOverlayConfig;
@@ -10,11 +9,8 @@ use baras_core::context::TimerOverlayConfig;
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::{color_from_rgba, scale_icon};
+use crate::utils::{color_from_rgba, shared_scaled_icons};
 use crate::widgets::{colors, ProgressBar};
-
-/// Cache for pre-scaled icons to avoid re-scaling every frame
-type ScaledIconCache = HashMap<(u64, u32), Vec<u8>>;
 
 /// A single timer entry for display
 #[derive(Debug, Clone)]
@@ -112,8 +108,6 @@ pub struct TimerOverlay {
     config: TimerOverlayConfig,
     data: TimerData,
     european_number_format: bool,
-    /// Cache for pre-scaled icons keyed by (ability_id, display_size)
-    icon_cache: ScaledIconCache,
 }
 
 impl TimerOverlay {
@@ -133,7 +127,6 @@ impl TimerOverlay {
             config,
             data: TimerData::default(),
             european_number_format: false,
-            icon_cache: ScaledIconCache::new(),
         })
     }
 
@@ -152,14 +145,11 @@ impl TimerOverlay {
         let bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
         let icon_size = (bar_height - 4.0 * self.frame.scale_factor()).round() as u32;
 
+        let cache = shared_scaled_icons();
         for entry in &data.entries {
             if let (Some(ability_id), Some(icon_arc)) = (entry.icon_ability_id, &entry.icon) {
-                let cache_key = (ability_id, icon_size);
-                if !self.icon_cache.contains_key(&cache_key) {
-                    let (src_w, src_h, ref src_data) = **icon_arc;
-                    let scaled = scale_icon(src_data, src_w, src_h, icon_size);
-                    self.icon_cache.insert(cache_key, scaled);
-                }
+                let (src_w, src_h, ref src_data) = **icon_arc;
+                let _ = cache.get_or_scale(ability_id, icon_size, src_data, src_w, src_h);
             }
         }
 
@@ -308,10 +298,11 @@ impl TimerOverlay {
                 if let Some(ability_id) = entry.icon_ability_id {
                     let icon_x = padding + icon_padding;
                     let icon_y = y + icon_padding;
-                    let cache_key = (ability_id, icon_size_u32);
-                    let icon_drawn = if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
+                    let icon_drawn = if let Some(scaled_icon) =
+                        shared_scaled_icons().get(ability_id, icon_size_u32)
+                    {
                         self.frame.draw_image(
-                            scaled_icon,
+                            &scaled_icon,
                             icon_size_u32,
                             icon_size_u32,
                             icon_x,

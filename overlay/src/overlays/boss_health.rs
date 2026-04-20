@@ -89,6 +89,9 @@ pub struct BossHealthOverlay {
     config: BossHealthConfig,
     data: BossHealthData,
     european_number_format: bool,
+    /// (current, max, active_shield_count) per entry — used to skip re-renders
+    /// when HP and shields are unchanged and no boss effects are ticking.
+    last_hp_sig: Vec<(i32, i32, usize)>,
 }
 
 impl BossHealthOverlay {
@@ -107,6 +110,7 @@ impl BossHealthOverlay {
             config,
             data: BossHealthData::default(),
             european_number_format: false,
+            last_hp_sig: Vec::new(),
         })
     }
 
@@ -637,8 +641,25 @@ impl Overlay for BossHealthOverlay {
             if boss_data.entries.is_empty() && !self.config.clear_after_combat {
                 return false;
             }
+
+            // Active effect icons tick every frame — always render to keep
+            // the countdown wipedown smooth.
+            let has_active_effects = boss_data
+                .boss_icons
+                .values()
+                .any(|icons| icons.iter().any(|i| i.remaining_secs > 0.0));
+
+            // Otherwise only render when HP or shield state changed.
+            let new_sig: Vec<(i32, i32, usize)> = boss_data
+                .entries
+                .iter()
+                .map(|e| (e.current, e.max, e.active_shields.len()))
+                .collect();
+            let hp_changed = new_sig != self.last_hp_sig;
+            self.last_hp_sig = new_sig;
+
             self.set_data(boss_data);
-            true
+            has_active_effects || hp_changed
         } else {
             false
         }

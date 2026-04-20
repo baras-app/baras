@@ -3,7 +3,6 @@
 //! Displays triggered alert text in a chat-like window.
 //! Alerts stack from top (newest first) and fade out after their duration.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -12,11 +11,8 @@ use baras_core::context::AlertsOverlayConfig;
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
-use crate::utils::color_from_rgba;
+use crate::utils::{color_from_rgba, shared_scaled_icons};
 use crate::widgets::colors;
-
-/// Cache for pre-scaled icons keyed by (ability_id, display_size_px)
-type ScaledIconCache = HashMap<(u64, u32), Vec<u8>>;
 
 /// A single alert entry for display
 #[derive(Debug, Clone)]
@@ -90,8 +86,6 @@ pub struct AlertsOverlay {
     /// Active alerts (managed internally, newest first)
     entries: Vec<AlertEntry>,
     european_number_format: bool,
-    /// Cache for pre-scaled icons keyed by (ability_id, display_size_px)
-    icon_cache: ScaledIconCache,
 }
 
 impl AlertsOverlay {
@@ -110,7 +104,6 @@ impl AlertsOverlay {
             config,
             entries: Vec::new(),
             european_number_format: false,
-            icon_cache: ScaledIconCache::new(),
         })
     }
 
@@ -130,12 +123,9 @@ impl AlertsOverlay {
         let icon_size = self.frame.scaled(self.config.font_size as f32) as u32;
         for alert in &new_alerts {
             if let (Some(ability_id), Some(icon_arc)) = (alert.icon_ability_id, &alert.icon) {
-                let cache_key = (ability_id, icon_size);
-                if !self.icon_cache.contains_key(&cache_key) {
-                    let (src_w, src_h, ref src_data) = **icon_arc;
-                    let scaled = scale_icon(src_data, src_w, src_h, icon_size);
-                    self.icon_cache.insert(cache_key, scaled);
-                }
+                let (src_w, src_h, ref src_data) = **icon_arc;
+                let _ = shared_scaled_icons()
+                    .get_or_scale(ability_id, icon_size, src_data, src_w, src_h);
             }
         }
 
@@ -181,12 +171,19 @@ impl AlertsOverlay {
         for (text, color) in &previews {
             let shadow = colors::text_shadow();
 
-            if show_icons {
-                // Icon placeholder square
-                let icon_x = padding;
+            // Center the icon+text group to match live render path.
+            let (text_width, _) = self.frame.measure_text_styled(text, font_size, true, false);
+            let group_width = if show_icons {
+                icon_size + icon_gap + text_width
+            } else {
+                text_width
+            };
+            let group_x = ((frame_width - group_width) / 2.0).max(padding);
+
+            let text_x = if show_icons {
                 let icon_y = y - icon_size + (icon_size - font_size) / 2.0;
                 self.frame.fill_rounded_rect(
-                    icon_x,
+                    group_x,
                     icon_y,
                     icon_size,
                     icon_size,
@@ -194,7 +191,7 @@ impl AlertsOverlay {
                     colors::effect_icon_bg(),
                 );
                 self.frame.stroke_rounded_rect_dashed(
-                    icon_x,
+                    group_x,
                     icon_y,
                     icon_size,
                     icon_size,
@@ -204,50 +201,29 @@ impl AlertsOverlay {
                     3.0,
                     2.0,
                 );
-
-                // Text to the right of icon
-                let text_x = padding + icon_size + icon_gap;
-                self.frame.draw_text_styled(
-                    text,
-                    text_x + 1.0,
-                    y + 1.0,
-                    font_size,
-                    shadow,
-                    true,
-                    false,
-                );
-                self.frame.draw_text_styled(
-                    text,
-                    text_x,
-                    y,
-                    font_size,
-                    color_from_rgba(*color),
-                    true,
-                    false,
-                );
+                group_x + icon_size + icon_gap
             } else {
-                let (text_width, _) = self.frame.measure_text_styled(text, font_size, true, false);
-                let text_x = (frame_width - text_width) / 2.0;
+                group_x
+            };
 
-                self.frame.draw_text_styled(
-                    text,
-                    text_x + 1.0,
-                    y + 1.0,
-                    font_size,
-                    shadow,
-                    true,
-                    false,
-                );
-                self.frame.draw_text_styled(
-                    text,
-                    text_x,
-                    y,
-                    font_size,
-                    color_from_rgba(*color),
-                    true,
-                    false,
-                );
-            }
+            self.frame.draw_text_styled(
+                text,
+                text_x + 1.0,
+                y + 1.0,
+                font_size,
+                shadow,
+                true,
+                false,
+            );
+            self.frame.draw_text_styled(
+                text,
+                text_x,
+                y,
+                font_size,
+                color_from_rgba(*color),
+                true,
+                false,
+            );
 
             y += line_height + entry_spacing;
         }
@@ -303,76 +279,61 @@ impl AlertsOverlay {
 
             let has_icon = show_icons && entry.icon_ability_id.is_some() && entry.icon.is_some();
 
-            if has_icon {
-                if let Some(ability_id) = entry.icon_ability_id {
-                    let icon_x = padding;
-                    let icon_y = y - icon_size;
-                    let cache_key = (ability_id, icon_size_u32);
+            // Center the icon+text group horizontally within the overlay.
+            let (text_width, _) =
+                self.frame
+                    .measure_text_styled(&entry.text, font_size, true, false);
+            let group_width = if has_icon {
+                icon_size + icon_gap + text_width
+            } else {
+                text_width
+            };
+            let group_x = ((frame_width - group_width) / 2.0).max(padding);
 
-                    if let Some(scaled_icon) = self.icon_cache.get(&cache_key) {
+            let text_x = if has_icon {
+                let icon_y = y - icon_size;
+                if let Some(ability_id) = entry.icon_ability_id {
+                    if let Some(scaled_icon) =
+                        shared_scaled_icons().get(ability_id, icon_size_u32)
+                    {
                         self.frame.draw_image(
-                            scaled_icon,
+                            &scaled_icon,
                             icon_size_u32,
                             icon_size_u32,
-                            icon_x,
+                            group_x,
                             icon_y,
                             icon_size,
                             icon_size,
                         );
                     } else if let Some(ref icon_arc) = entry.icon {
-                        // Fallback: draw raw (cache miss)
                         let (img_w, img_h, ref rgba) = **icon_arc;
                         self.frame
-                            .draw_image(rgba, img_w, img_h, icon_x, icon_y, icon_size, icon_size);
+                            .draw_image(rgba, img_w, img_h, group_x, icon_y, icon_size, icon_size);
                     }
-
-                    // Text to the right of icon
-                    let text_x = padding + icon_size + icon_gap;
-                    self.frame.draw_text_styled(
-                        &entry.text,
-                        text_x + 1.0,
-                        y + 1.0,
-                        font_size,
-                        shadow,
-                        true,
-                        false,
-                    );
-                    self.frame.draw_text_styled(
-                        &entry.text,
-                        text_x,
-                        y,
-                        font_size,
-                        color_from_rgba(color),
-                        true,
-                        false,
-                    );
                 }
+                group_x + icon_size + icon_gap
             } else {
-                // No icon: center text horizontally
-                let (text_width, _) =
-                    self.frame
-                        .measure_text_styled(&entry.text, font_size, true, false);
-                let text_x = (frame_width - text_width) / 2.0;
+                group_x
+            };
 
-                self.frame.draw_text_styled(
-                    &entry.text,
-                    text_x + 1.0,
-                    y + 1.0,
-                    font_size,
-                    shadow,
-                    true,
-                    false,
-                );
-                self.frame.draw_text_styled(
-                    &entry.text,
-                    text_x,
-                    y,
-                    font_size,
-                    color_from_rgba(color),
-                    true,
-                    false,
-                );
-            }
+            self.frame.draw_text_styled(
+                &entry.text,
+                text_x + 1.0,
+                y + 1.0,
+                font_size,
+                shadow,
+                true,
+                false,
+            );
+            self.frame.draw_text_styled(
+                &entry.text,
+                text_x,
+                y,
+                font_size,
+                color_from_rgba(color),
+                true,
+                false,
+            );
 
             y += line_height + entry_spacing;
         }
@@ -380,32 +341,6 @@ impl AlertsOverlay {
         // End frame (resize indicator, commit)
         self.frame.end_frame();
     }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Icon Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Scale icon to target size using nearest-neighbor sampling
-fn scale_icon(src: &[u8], src_w: u32, src_h: u32, target_size: u32) -> Vec<u8> {
-    let mut dest = vec![0u8; (target_size * target_size * 4) as usize];
-    let scale_x = src_w as f32 / target_size as f32;
-    let scale_y = src_h as f32 / target_size as f32;
-
-    for dy in 0..target_size {
-        for dx in 0..target_size {
-            let sx = ((dx as f32 * scale_x) as u32).min(src_w - 1);
-            let sy = ((dy as f32 * scale_y) as u32).min(src_h - 1);
-            let src_idx = ((sy * src_w + sx) * 4) as usize;
-            let dest_idx = ((dy * target_size + dx) * 4) as usize;
-
-            dest[dest_idx] = src[src_idx];
-            dest[dest_idx + 1] = src[src_idx + 1];
-            dest[dest_idx + 2] = src[src_idx + 2];
-            dest[dest_idx + 3] = src[src_idx + 3];
-        }
-    }
-    dest
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
