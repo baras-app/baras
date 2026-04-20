@@ -47,6 +47,7 @@ fn make_timer(id: &str, name: &str, trigger: TimerTrigger, duration: f32) -> Tim
         queue_on_expire: false,
         queue_priority: 0,
         queue_remove_trigger: None,
+        queue_blocking_timers: Vec::new(),
     }
 }
 

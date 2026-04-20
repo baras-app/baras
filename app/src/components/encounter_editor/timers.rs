@@ -59,6 +59,7 @@ fn default_timer(name: String) -> BossTimerDefinition {
         queue_on_expire: false,
         queue_priority: 0,
         queue_remove_trigger: None,
+        queue_blocking_timers: Vec::new(),
     }
 }
 
@@ -882,31 +883,95 @@ fn TimerEditForm(
                                             onchange: move |e| {
                                                 let mut d = draft();
                                                 d.queue_on_expire = e.checked();
-                                                if !d.queue_on_expire { d.queue_priority = 0; }
                                                 draft.set(d);
                                             }
                                         }
                                     }
-                                    if draft().queue_on_expire {
-                                        div { class: "form-row-hz",
-                                            label { class: "flex items-center",
-                                                "Priority"
-                                                span { class: "help-icon", title: "Sort order for ready entries (0–255, higher = shown first).", "?" }
+                                    div { class: "form-row-hz",
+                                        label { class: "flex items-center",
+                                            "Priority"
+                                            span { class: "help-icon", title: "Sort order for ability queue entries (0–255, higher = shown first). Applies whether the timer holds as ready or expires normally.", "?" }
+                                        }
+                                        input {
+                                            r#type: "number",
+                                            class: "input",
+                                            style: "width: 80px;",
+                                            min: "0",
+                                            max: "255",
+                                            value: draft().queue_priority.to_string(),
+                                            onchange: move |e| {
+                                                let mut d = draft();
+                                                d.queue_priority = e.value().parse::<u8>().unwrap_or(0);
+                                                draft.set(d);
                                             }
-                                            input {
-                                                r#type: "number",
-                                                class: "input",
-                                                style: "width: 80px;",
-                                                min: "0",
-                                                max: "255",
-                                                value: draft().queue_priority.to_string(),
+                                        }
+                                    }
+                                    div { class: "form-row-hz", style: "align-items: flex-start;",
+                                        label { class: "flex items-center", style: "padding-top: 6px;",
+                                            "Blocked By"
+                                            span { class: "help-icon", title: "Timers from this encounter that prevent this entry from appearing as 'next cast' while they're active. OR semantics — any one active blocker blocks the entry.", "?" }
+                                        }
+                                        div { class: "flex-col gap-xs",
+                                            // Current blockers as removable chips
+                                            if !draft().queue_blocking_timers.is_empty() {
+                                                div { class: "flex flex-wrap gap-xs",
+                                                    for (idx, blocker) in draft().queue_blocking_timers.iter().cloned().enumerate() {
+                                                        {
+                                                            rsx! {
+                                                                span { class: "chip",
+                                                                    "{blocker}"
+                                                                    button {
+                                                                        class: "chip-remove",
+                                                                        onclick: move |_| {
+                                                                            let mut d = draft();
+                                                                            d.queue_blocking_timers.remove(idx);
+                                                                            draft.set(d);
+                                                                        },
+                                                                        "×"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            // Dropdown to add a blocker — lists same-encounter timers
+                                            // excluding self and already-selected blockers.
+                                            select {
+                                                class: "select",
+                                                style: "width: 220px;",
                                                 onchange: move |e| {
-                                                    let mut d = draft();
-                                                    d.queue_priority = e.value().parse::<u8>().unwrap_or(0);
-                                                    draft.set(d);
+                                                    let val = e.value();
+                                                    if !val.is_empty() {
+                                                        let mut d = draft();
+                                                        if !d.queue_blocking_timers.contains(&val) {
+                                                            d.queue_blocking_timers.push(val);
+                                                            draft.set(d);
+                                                        }
+                                                    }
+                                                },
+                                                option { value: "", "(add blocker...)" }
+                                                for t in all_timers.iter() {
+                                                    {
+                                                        let self_name = draft().name.clone();
+                                                        let already = draft().queue_blocking_timers.contains(&t.name);
+                                                        let is_self = t.name == self_name;
+                                                        rsx! {
+                                                            if !is_self {
+                                                                option {
+                                                                    value: "{t.name}",
+                                                                    disabled: already,
+                                                                    "{t.name}"
+                                                                    if already { " ✓" }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
+                                    }
+                                    if draft().queue_on_expire {
                                         div { class: "form-row-hz", style: "align-items: flex-start;",
                                             label { class: "flex items-center", style: "padding-top: 6px;",
                                                 "Clear On"

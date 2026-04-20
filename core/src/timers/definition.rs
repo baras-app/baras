@@ -184,6 +184,12 @@ pub struct TimerDefinition {
     /// Trigger that clears a queued entry. Evaluation stubbed as no-op in v1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub queue_remove_trigger: Option<Trigger>,
+
+    /// Names of other timers in the same encounter that block this ability
+    /// from appearing as "next to cast" when any of them is currently active.
+    /// OR semantics — any one active blocker marks this timer as blocked.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub queue_blocking_timers: Vec<String>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

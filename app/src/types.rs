@@ -492,6 +492,10 @@ pub struct BossTimerDefinition {
     /// Trigger that clears a queued/ready entry from the ability queue.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub queue_remove_trigger: Option<Trigger>,
+    /// Names of other timers in the same encounter that block this ability
+    /// from appearing as "next cast" while any of them is active. OR semantics.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub queue_blocking_timers: Vec<String>,
 }
 
 fn default_timer_color() -> [u8; 4] {

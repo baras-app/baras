@@ -1692,6 +1692,9 @@ mod examples {
             }
         };
 
+        // Pre-load icons once (avoid re-reading the zip each frame).
+        let icons = load_demo_icons();
+
         let start = Instant::now();
         let mut last_frame = Instant::now();
         let frame_duration = Duration::from_millis(100);
@@ -1718,7 +1721,7 @@ mod examples {
             let now = Instant::now();
             if now.duration_since(last_frame) >= frame_duration {
                 let elapsed = start.elapsed().as_secs_f32();
-                overlay.set_data(build_ability_queue_snapshot(elapsed));
+                overlay.set_data(build_ability_queue_snapshot(elapsed, &icons));
                 overlay.render();
                 last_frame = now;
             }
@@ -1734,7 +1737,49 @@ mod examples {
     /// is visible for part of every cycle. `Shock` has a 6s cooldown — its
     /// last ~1.5s of the cycle drop below the GCD remaining and promote it
     /// into the READY tier.
-    fn build_ability_queue_snapshot(elapsed: f32) -> baras_overlay::AbilityQueueData {
+    type IconArc = std::sync::Arc<(u32, u32, Vec<u8>)>;
+
+    /// Ability IDs + preloaded icon bytes for the 6 demo abilities. Real
+    /// SWTOR ability IDs — when `icons/icons.csv` + `icons/icons.zip` are
+    /// present in the cwd they resolve to actual in-game icons, otherwise
+    /// the icon is None and the overlay just renders the ability name.
+    struct DemoIcons {
+        shock: (u64, Option<IconArc>),
+        lightning_strike: (u64, Option<IconArc>),
+        crushing_darkness: (u64, Option<IconArc>),
+        thundering_blast: (u64, Option<IconArc>),
+        recklessness: (u64, Option<IconArc>),
+        force_lightning: (u64, Option<IconArc>),
+    }
+
+    fn load_demo_icons() -> DemoIcons {
+        let icon_cache = baras_overlay::icons::IconCache::new(
+            std::path::Path::new("icons/icons.csv"),
+            std::path::Path::new("icons/icons.zip"),
+            200,
+        ).ok();
+
+        let load = |id: u64| -> Option<IconArc> {
+            icon_cache.as_ref().and_then(|c| {
+                c.get_icon(id)
+                    .map(|d| std::sync::Arc::new((d.width, d.height, d.rgba)))
+            })
+        };
+
+        DemoIcons {
+            shock:             (3362023089897472, load(3362023089897472)),
+            lightning_strike:  (3244358165856256, load(3244358165856256)),
+            crushing_darkness: (1460787096846593, load(1460787096846593)),
+            thundering_blast:  (3221088033046528, load(3221088033046528)),
+            recklessness:      (3659741632921600, load(3659741632921600)),
+            force_lightning:   (2022405610405888, load(2022405610405888)),
+        }
+    }
+
+    fn build_ability_queue_snapshot(
+        elapsed: f32,
+        icons: &DemoIcons,
+    ) -> baras_overlay::AbilityQueueData {
         use baras_overlay::{AbilityQueueData, AbilityQueueEntry};
 
         let gcd_cycle = 2.5_f32;
@@ -1752,6 +1797,7 @@ mod examples {
                 queue_priority: 0,
                 is_pinned: true,
                 is_queued: false,
+                is_blocked: false,
                 icon_ability_id: None,
                 icon: None,
             });
@@ -1762,20 +1808,30 @@ mod examples {
         // time before the player casts it), then cycles again. While on CD
         // it's a tier-3 countdown; while ready it's a tier-2 queued entry
         // with the given priority.
-        let cycling = |name: &str, color: [u8; 4], cooldown: f32, ready_window: f32, priority: u8| {
+        // Priority is the ability's static attribute — emit it regardless of
+        // CD/READY state so the overlay's static-position sort stays stable.
+        let cycling = |name: &str,
+                       color: [u8; 4],
+                       cooldown: f32,
+                       ready_window: f32,
+                       priority: u8,
+                       entry: &(u64, Option<IconArc>),
+                       is_blocked: bool| {
             let total = cooldown + ready_window;
             let phase = elapsed % total;
+            let (ability_id, icon) = (entry.0, entry.1.clone());
             if phase < cooldown {
                 AbilityQueueEntry {
                     name: name.to_string(),
                     remaining_secs: cooldown - phase,
                     total_secs: cooldown,
                     color,
-                    queue_priority: 0,
+                    queue_priority: priority,
                     is_pinned: false,
                     is_queued: false,
-                    icon_ability_id: None,
-                    icon: None,
+                    is_blocked,
+                    icon_ability_id: Some(ability_id),
+                    icon,
                 }
             } else {
                 AbilityQueueEntry {
@@ -1786,20 +1842,30 @@ mod examples {
                     queue_priority: priority,
                     is_pinned: false,
                     is_queued: true,
-                    icon_ability_id: None,
-                    icon: None,
+                    is_blocked,
+                    icon_ability_id: Some(ability_id),
+                    icon,
                 }
             }
         };
 
+        // Demo "Lockout" blocker: 4s on, 4s off. While on, Lightning Strike +
+        // Thundering Blast are blocked — you'll see those rows dim and the
+        // gold glow jump to whichever non-blocked ability is next.
+        let lockout_active = ((elapsed / 4.0) as u32) % 2 == 0;
+
         // Cycling priority abilities — different cooldowns so the READY tier
         // is a moving set, with higher-priority recent refreshes bumping
         // above older ready entries.
-        entries.push(cycling("Shock", [220, 180, 50, 255], 6.0, 1.8, 8));
-        entries.push(cycling("Lightning Strike", [120, 200, 255, 255], 4.0, 1.5, 6));
-        entries.push(cycling("Crushing Darkness", [220, 100, 80, 255], 9.0, 1.8, 7));
+        entries.push(cycling("Shock", [220, 180, 50, 255], 6.0, 1.8, 8, &icons.shock, false));
+        entries.push(cycling("Lightning Strike", [120, 200, 255, 255], 4.0, 1.5, 6, &icons.lightning_strike, lockout_active));
+        entries.push(cycling("Crushing Darkness", [220, 100, 80, 255], 9.0, 1.8, 7, &icons.crushing_darkness, false));
+        // Shares priority=6 with Lightning Strike — whenever both are ready
+        // at once both rows glow gold (tied for "next cast" candidate).
+        entries.push(cycling("Thundering Blast", [140, 100, 240, 255], 4.5, 1.6, 6, &icons.thundering_blast, lockout_active));
 
-        // Long cooldown — always in tier 3 during this demo.
+        // Long cooldown — priority 2 so it sits between filler and the
+        // 6-priority bracket regardless of CD state.
         let long_cycle = 18.0_f32;
         let long_remaining = long_cycle - (elapsed % long_cycle);
         entries.push(AbilityQueueEntry {
@@ -1807,16 +1873,16 @@ mod examples {
             remaining_secs: long_remaining,
             total_secs: long_cycle,
             color: [100, 220, 100, 255],
-            queue_priority: 0,
+            queue_priority: 2,
             is_pinned: false,
             is_queued: false,
-            icon_ability_id: None,
-            icon: None,
+            is_blocked: false,
+            icon_ability_id: Some(icons.recklessness.0),
+            icon: icons.recklessness.1.clone(),
         });
 
-        // Always-available filler. Lowest priority — when other abilities
-        // enter the ready tier they push this down, since there's never any
-        // pressure to cast it on a specific GCD.
+        // Always-available filler. Lowest priority — bottom of the static
+        // list. Only glows gold when nothing higher is eligible.
         entries.push(AbilityQueueEntry {
             name: "Force Lightning".to_string(),
             remaining_secs: 0.0,
@@ -1825,8 +1891,9 @@ mod examples {
             queue_priority: 1,
             is_pinned: false,
             is_queued: true,
-            icon_ability_id: None,
-            icon: None,
+            is_blocked: false,
+            icon_ability_id: Some(icons.force_lightning.0),
+            icon: icons.force_lightning.1.clone(),
         });
 
         AbilityQueueData { entries }

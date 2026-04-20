@@ -872,6 +872,7 @@ impl TimerManager {
             role_hidden,
             def.queue_on_expire,
             def.queue_priority,
+            def.queue_blocking_timers.clone(),
         );
         self.active_timers.insert(key, timer);
 

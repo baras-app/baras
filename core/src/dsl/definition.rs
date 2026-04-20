@@ -609,6 +609,12 @@ pub struct BossTimerDefinition {
     /// Trigger that clears a queued/ready entry from the ability queue.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub queue_remove_trigger: Option<crate::timers::TimerTrigger>,
+
+    /// Names of other timers in the same encounter that block this ability
+    /// queue entry from appearing as "next to cast" when any of them is
+    /// currently active (OR semantics).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub queue_blocking_timers: Vec<String>,
 }
 
 impl BossTimerDefinition {
@@ -668,6 +674,7 @@ impl BossTimerDefinition {
             queue_on_expire: self.queue_on_expire,
             queue_priority: self.queue_priority,
             queue_remove_trigger: self.queue_remove_trigger.clone(),
+            queue_blocking_timers: self.queue_blocking_timers.clone(),
         }
     }
 }

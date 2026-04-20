@@ -3230,6 +3230,17 @@ async fn build_timer_data_with_audio(
     let mut entries_b = Vec::new();
     let mut aq_entries: Vec<AbilityQueueEntry> = Vec::new();
 
+    // Pre-collect names of all currently-active (non-queued) timers so we can
+    // mark ability queue entries as blocked when any of their configured
+    // blocking timers is running. Queued timers don't count as "active"
+    // blockers — the block applies while the source timer is ticking down.
+    let active_timer_names: std::collections::HashSet<&str> = timer_mgr
+        .active_timers()
+        .iter()
+        .filter(|t| !t.is_queued)
+        .map(|t| t.name.as_str())
+        .collect();
+
     // GCD tier-1 entry: synthesized from active_gcd if present
     if let Some(gcd) = timer_mgr.active_gcd()
         && let Some(t) = interp_time
@@ -3249,6 +3260,7 @@ async fn build_timer_data_with_audio(
             queue_priority: 255,
             is_pinned: true,
             is_queued: false,
+            is_blocked: false,
             icon_ability_id: None,
             icon: None,
         });
@@ -3301,6 +3313,10 @@ async fn build_timer_data_with_audio(
                 if !timer.is_queued && remaining <= 0.0 {
                     continue;
                 }
+                let is_blocked = timer
+                    .queue_blocking_timers
+                    .iter()
+                    .any(|name| active_timer_names.contains(name.as_str()));
                 aq_entries.push(AbilityQueueEntry {
                     name: timer.name.clone(),
                     remaining_secs: remaining,
@@ -3313,6 +3329,7 @@ async fn build_timer_data_with_audio(
                     queue_priority: timer.queue_priority,
                     is_pinned: false,
                     is_queued: timer.is_queued,
+                    is_blocked,
                     icon_ability_id: timer.icon_ability_id,
                     icon,
                 });

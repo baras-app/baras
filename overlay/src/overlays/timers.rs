@@ -72,6 +72,10 @@ pub struct AbilityQueueEntry {
     pub is_pinned: bool,
     /// True when the timer has expired and is held in ready/queued state.
     pub is_queued: bool,
+    /// True when one or more of this entry's configured blocking timers is
+    /// currently active. Blocked entries are dimmed in the overlay and
+    /// excluded from the "next cast" highlight set.
+    pub is_blocked: bool,
     pub icon_ability_id: Option<u64>,
     pub icon: Option<Arc<(u32, u32, Vec<u8>)>>,
 }

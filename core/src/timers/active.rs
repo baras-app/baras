@@ -114,6 +114,10 @@ pub struct ActiveTimer {
 
     /// Cached from definition: sort priority for queued entries (higher = higher priority).
     pub queue_priority: u8,
+
+    /// Cached from definition: names of other timers in the same encounter
+    /// that block this ability queue entry from being considered ready.
+    pub queue_blocking_timers: Vec<String>,
 }
 
 impl ActiveTimer {
@@ -137,6 +141,7 @@ impl ActiveTimer {
         role_hidden: bool,
         queue_on_expire: bool,
         queue_priority: u8,
+        queue_blocking_timers: Vec<String>,
     ) -> Self {
         let expires_at =
             event_timestamp + chrono::Duration::milliseconds(duration.as_millis() as i64);
@@ -173,6 +178,7 @@ impl ActiveTimer {
             is_queued: false,
             queue_on_expire,
             queue_priority,
+            queue_blocking_timers,
         }
     }
 
