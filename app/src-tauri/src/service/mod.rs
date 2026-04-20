@@ -173,8 +173,11 @@ impl AreaKind {
     }
 
     /// Whether this area type should auto-reset the timer when entered.
+    /// Operations are excluded: the operation timer must not be driven by area
+    /// changes — it starts on first boss pull (or manual start) and stops only
+    /// when the final boss is defeated (or manual stop).
     pub fn auto_resets_on_entry(self) -> bool {
-        matches!(self, AreaKind::Operation | AreaKind::Flashpoint | AreaKind::PvP)
+        matches!(self, AreaKind::Flashpoint | AreaKind::PvP)
     }
 }
 
@@ -562,13 +565,20 @@ impl SignalHandler for CombatSignalHandler {
                             AreaKind::Other => None, // unused below — name preserved
                         };
 
-                        // If entering a timed area (op/FP/PvP): reset the timer for a fresh run.
-                        // This handles requirement 3: auto-clear on new instance.
-                        // Clearing manually_stopped here is intentional — a new area = new run.
-                        if new_kind.auto_resets_on_entry() {
+                        // Entering a timed area (op/FP/PvP): update the display name.
+                        // For FP/PvP: also reset the timer for a fresh run.
+                        // For Operations: do NOT reset — the operation timer must not be
+                        // driven by area changes. It only changes state on first boss pull,
+                        // final boss kill, or explicit user action.
+                        if matches!(
+                            new_kind,
+                            AreaKind::Operation | AreaKind::Flashpoint | AreaKind::PvP
+                        ) {
                             let mut timer = self.shared.operation_timer.lock().unwrap();
-                            timer.reset();
                             timer.operation_name = area_display_name.clone();
+                            if new_kind.auto_resets_on_entry() {
+                                timer.reset();
+                            }
                             drop(timer);
                         }
                         // When returning to open world / fleet, do NOT touch operation_name.
@@ -653,10 +663,17 @@ impl SignalHandler for CombatSignalHandler {
                 // Auto-start operation timer on first boss pull in an operation.
                 // Start directly (not via command channel) to avoid 1-second tick delay.
                 // Only in live mode - historical replays should not drive the timer.
+                //
+                // We reset() before start() so the timer always begins at 0 — this is the
+                // "time from first boss pull" semantic. Area entry no longer resets the
+                // timer for operations, so accumulated time from a previous op's final-boss
+                // auto-stop (which is preserved for display) must be zeroed here before the
+                // next run begins. Safe because we've already verified !manually_stopped.
                 if self.shared.is_live_tailing.load(Ordering::SeqCst) {
                     if matches!(self.current_area_kind, AreaKind::Operation) {
                         let mut timer = self.shared.operation_timer.lock().unwrap();
                         if !timer.is_running() && !timer.manually_stopped {
+                            timer.reset();
                             timer.start();
                             drop(timer);
                             let _ = self.cmd_tx.try_send(ServiceCommand::EmitOperationTimerTick);
