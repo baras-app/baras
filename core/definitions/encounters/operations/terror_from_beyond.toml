@@ -11,8 +11,6 @@ id = 137438992720
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 1: The Writhing Horror
 # ═══════════════════════════════════════════════════════════════════════════════
-# Giant plant boss in the first area. Teleports around, spawns adds.
-# Key mechanics: Teleport (reposition), Male Flopping + Puddle (add spawns)
 
 [[boss]]
 id = "writhing_horror"
@@ -55,9 +53,6 @@ display_target = "timers_a"
 [boss.timer.trigger]
 type = "combat_start"
 
-# -- Teleport --
-# Boss teleports to a random player. First one is faster.
-
 # Initial teleport (20s after combat start)
 [[boss.timer]]
 id = "wh_burrow_cs"
@@ -81,7 +76,6 @@ difficulties = ["veteran", "master"]
 # Spawns a Jealous Male add and creates poison puddles.
 # First spawn at 45s, then every 90s.
 
-# Initial spawn timer (45s after combat start)
 [[boss.timer]]
 id = "wh_jelly_male_cs"
 name = "Jelly Male"
@@ -91,7 +85,6 @@ color = [197, 17, 188, 255]
 difficulties = ["veteran", "master"]
 chains_to = "wh_jelly_male"
 
-# Jelly Male loop (90s interval, self-repeating)
 [[boss.timer]]
 id = "wh_jelly_male"
 name = "Jelly Male"
@@ -106,7 +99,7 @@ timer_id = "wh_jelly_male_cs"
 [[boss.timer]]
 id = "wh_corrosive_slime"
 name = "Corrosive Slime"
-alert_text = "Slime on you"
+alert_text = "Slime on You"
 icon_ability_id = 3010651815411712
 difficulties = ["veteran", "master"]
 is_alert = true
@@ -116,7 +109,7 @@ trigger = { type = "effect_applied", effects = [
 
 [[boss.timer]]
 id = "writhing_horror_adds_spawning"
-name = "Adds spawning"
+name = "Adds Spawn"
 duration_secs = 30.0
 is_alert = true
 color = [255, 128, 0, 255]
@@ -130,7 +123,6 @@ effects = [3010626045607936]
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: The Dread Guard
 # ═══════════════════════════════════════════════════════════════════════════════
-# Council fight: Heirad → Ciphas → Kel'sara. Phase ends when named boss dies.
 
 [[boss]]
 id = "dread_guard"
@@ -454,6 +446,26 @@ ids = [
 is_boss = true
 is_kill_target = true
 
+[[boss.entities.hp_marker]]
+hp_percent = 90.0
+label = "Adds"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_marker]]
+hp_percent = 70.0
+label = "Adds"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_marker]]
+hp_percent = 50.0
+label = "Adds"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_marker]]
+hp_percent = 30.0
+label = "Adds"
+difficulties = ["veteran", "master"]
+
 [[boss.entities]]
 name = "Master Control"
 ids = [
@@ -474,25 +486,40 @@ is_boss = true
 is_kill_target = false
 show_on_hp_overlay = true
 
+[[boss.counters]]
+id = "op_ix_core_deaths"
+name = "Data Cores Destroyed"
+increment_on = { type = "entity_death", selector = ["Data Core"] }
+reset_on = { type = "combat_end" }
+
+[[boss.phases]]
+id = "op_ix_intermission"
+name = "Intermission"
+trigger = { type = "any_of", conditions = [
+  { type = "combat_start" },
+  { type = "counter_reaches", counter_id = "op_ix_core_deaths", value = 8 },
+] }
+
 [[boss.phases]]
 id = "op_ix_blue"
 name = "Blue"
-trigger = { type = "ability_cast", abilities = [3036833936048128] }
+trigger = { type = "ability_cast", abilities = [2979491827679232] }
 
 [[boss.phases]]
 id = "op_ix_orange"
 name = "Orange"
-trigger = { type = "ability_cast", abilities = [3036838231015424] }
+trigger = { type = "counter_reaches", counter_id = "op_ix_core_deaths", value = 2 }
 
 [[boss.phases]]
 id = "op_ix_purple"
 name = "Purple"
-trigger = { type = "ability_cast", abilities = [3036842525982720] }
+trigger = { type = "counter_reaches", counter_id = "op_ix_core_deaths", value = 4 }
 
 [[boss.phases]]
 id = "op_ix_yellow"
 name = "Yellow"
-trigger = { type = "ability_cast", abilities = [3036846820950016] }
+trigger = { type = "counter_reaches", counter_id = "op_ix_core_deaths", value = 6 }
+end_trigger = { type = "counter_reaches", counter_id = "op_ix_core_deaths", value = 8 }
 
 [[boss.phases]]
 id = "op_ix_main"
@@ -542,6 +569,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "op_ix_core_under_10"
 name = "Core under 10%"
+alert_text = "Core Sub-10%"
 is_alert = true
 color = [255, 128, 0, 255]
 difficulties = ["master"]
