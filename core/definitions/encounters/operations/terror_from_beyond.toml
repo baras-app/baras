@@ -626,7 +626,7 @@ abilities = [2998471288160256]
 
 [[boss.timer]]
 id = "op_ix_blue_deletion"
-name = "Blue deletion"
+name = "Blue Deletion"
 is_alert = true
 color = [0, 150, 255, 255]
 icon_ability_id = 2959348431060992
@@ -638,7 +638,7 @@ abilities = [2959348431060992]
 
 [[boss.timer]]
 id = "op_ix_orange_deletion"
-name = "Orange deletion"
+name = "Orange Deletion"
 is_alert = true
 color = [255, 150, 0, 255]
 icon_ability_id = 2959357020995584
@@ -650,7 +650,7 @@ abilities = [2959357020995584]
 
 [[boss.timer]]
 id = "op_ix_purple_deletion"
-name = "Purple deletion"
+name = "Purple Deletion"
 is_alert = true
 color = [150, 0, 255, 255]
 icon_ability_id = 2959361315962880
@@ -662,7 +662,7 @@ abilities = [2959361315962880]
 
 [[boss.timer]]
 id = "op_ix_yellow_deletion"
-name = "Yellow deletion"
+name = "Yellow Deletion"
 is_alert = true
 color = [255, 222, 0, 255]
 icon_ability_id = 2959369905897472
@@ -675,11 +675,6 @@ abilities = [2959369905897472]
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Kephess
 # ═══════════════════════════════════════════════════════════════════════════════
-# Kephess returns! Key mechanics:
-# - Invulnerable: Boss shields, must DPS down the shield
-# - Nanites: 3-cast rotation with different behaviors each cast
-# - Laser Blast: Cone attack after Overcharge
-# - Cascade/Burn: HP threshold phases
 
 [[boss]]
 id = "kephess_the_undying"
@@ -823,7 +818,7 @@ difficulties = ["veteran", "master"]
 # tank has the debuff that makes boss ignore that player
 [[boss.timer]]
 id = "kephess_the_undying_cleanse_feet"
-name = "Cleanse feet"
+name = "Cleanse Feet"
 is_alert = true
 color = [0, 204, 255, 255]
 icon_ability_id = 3012687629910282
@@ -834,9 +829,6 @@ type = "effect_applied"
 effects = [3012687629910282]
 target = "local_player"
 
-# ─── Counter-Based Timers (Rotating Mechanics) ──────────────────────────────────
-# NOTE: counter_condition checks value BEFORE increment (0-based)
-#   value = 0 → first cast, value = 1 → second cast, etc.
 
 # Laser Blast - only fires on FIRST Overcharge cast (counter == 0)
 [[boss.timer]]
@@ -976,7 +968,8 @@ victory_trigger = { type = "any_of", conditions = [
 # ─── Phases ─────────────────────────────────────────────────────────────────────
 [[boss.phases]]
 id = "tfb_phase2"
-name = "Platforms"
+name = "Grasping Tentacles (1st)"
+display_text = "Grasping Tentacles"
 trigger = { type = "npc_appears", selector = [3025233229381632] }
 preceded_by = "tfb_phase1"
 
