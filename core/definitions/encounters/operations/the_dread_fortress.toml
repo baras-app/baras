@@ -492,13 +492,9 @@ duration_secs = 10.0
 color = [33, 224, 221, 255]
 difficulties = ["veteran", "master"]
 
-
-#
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Corruptor Zero
 # ═══════════════════════════════════════════════════════════════════════════════
-# Droid boss with melee and ranged phases.
-# Source: ORBS timer data
 
 [[boss]]
 id = "corruptor_zero"
@@ -570,36 +566,19 @@ color = [219, 96, 28, 255]
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
-id = "corruptor_zero_gravity_ranged_mode"
-name = "Gravity (Ranged Mode)"
-trigger = { type = "effect_applied", effects = [3284760923209990] }
-duration_secs = 60.0
-color = [219, 96, 28, 255]
-difficulties = ["veteran", "master"]
-
-[[boss.timer]]
 id = "corruptor_zero_gravity_ranged_mode_1st"
-name = "Gravity (Ranged Mode 1st)"
-display_text = "Gravity"
-trigger = { type = "npc_appears", selector = ["Corruptor Zero"] }
-duration_secs = 57.5
-color = [219, 96, 28, 255]
+name = "Gravity - Ranged Mode Start"
+display_text = "Anti-Gravity Field"
+icon_ability_id = 3285972103987200
+duration_secs = 60.0
+color = [219, 30, 28, 255]
 difficulties = ["veteran", "master"]
-
-[[boss.timer]]
-id = "corruptor_zero_gravity_delay"
-name = "Gravity Delay"
 trigger = { type = "any_of", conditions = [
-  { type = "ability_cast", abilities = [
-    3321882325549056,
-  ] },
-  { type = "ability_cast", abilities = [
-    3344271990063104,
+  { type = "combat_start" },
+  { type = "effect_applied", effects = [
+    3284760923209990,
   ] },
 ] }
-duration_secs = 11.5
-color = [204, 191, 30, 255]
-difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "corruptor_zero_concussion_mine"
@@ -617,15 +596,64 @@ color = [24, 224, 221, 255]
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
-id = "corruptor_zero_gravity_field"
-name = "Gravity Field"
-trigger = { type = "ability_cast", abilities = [3285972103987200] }
-duration_secs = 33.0
-color = [204, 191, 30, 255]
+id = "corruptor_zero_gravity_delay"
+name = "Gravity Field (Delayed)"
+display_text = "Anti-Gravity Field"
+icon_ability_id = 3285972103987200
+duration_secs = 11.5
+color = [219, 30, 28, 255]
 difficulties = ["veteran", "master"]
 
-#
-#
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3344271990063104]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions]]
+type = "not"
+
+[boss.timer.conditions.conditions.condition]
+type = "timer_time_remaining"
+timer_id = "corruptor_zero_gravity_field"
+operator = "gt"
+value = 11.5
+
+[[boss.timer.conditions.conditions]]
+type = "timer_time_remaining"
+timer_id = "corruptor_zero_beam_melee_mode"
+operator = "gte"
+value = 0.0
+
+[[boss.timer]]
+id = "corruptor_zero_gravity_field"
+name = "Gravity Field (Cooldown)"
+display_text = "Anti-Gravity Field"
+icon_ability_id = 3285972103987200
+duration_secs = 33.0
+color = [219, 30, 28, 255]
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3285972103987200]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "corruptor_zero_gravity_delay"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "corruptor_zero_gravity_ranged_mode"
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 5: Dread Master Brontes
 # ═══════════════════════════════════════════════════════════════════════════════
