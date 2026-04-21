@@ -446,22 +446,22 @@ ids = [
 is_boss = true
 is_kill_target = true
 
-[[boss.entities.hp_marker]]
+[[boss.entities.hp_markers]]
 hp_percent = 90.0
 label = "Adds"
 difficulties = ["veteran", "master"]
 
-[[boss.entities.hp_marker]]
+[[boss.entities.hp_markers]]
 hp_percent = 70.0
 label = "Adds"
 difficulties = ["veteran", "master"]
 
-[[boss.entities.hp_marker]]
+[[boss.entities.hp_markers]]
 hp_percent = 50.0
 label = "Adds"
 difficulties = ["veteran", "master"]
 
-[[boss.entities.hp_marker]]
+[[boss.entities.hp_markers]]
 hp_percent = 30.0
 label = "Adds"
 difficulties = ["veteran", "master"]
@@ -611,7 +611,8 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "op_ix_taunt_for_cheese"
-name = "Taunt for cheese in"
+name = "Cheese Taunt Timer"
+display = "Deletion Taunt Cheese"
 duration_secs = 10.0
 color = [0, 125, 200, 255]
 icon_ability_id = 2959344136093696
