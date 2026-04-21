@@ -49,15 +49,35 @@ decrement_on = { type = "any_of", conditions = [
 ] }
 increment_on = { type = "timer_expires", timer_id = "nefra_rng_add" }
 initial_value = 0
-# ─── Timers ─────────────────────────────────────────────────────────────────────
 
-# -- Voice of the Masters --
-# Raid-wide damage that needs to be healed. First at 15s, then every 30s.
+[[boss.counters]]
+id = "nefra_curse_stacks_local"
+name = "Curse Stacks - Local"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.track_effect_stacks]
+effects = [3342034312102196]
+target = "local_player"
+aggregation = "max"
+
+[boss.counters.increment_on]
+type = "ability_cast"
+abilities = []
+source = "any"
+target = "any"
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+# ─── Timers ─────────────────────────────────────────────────────────────────────
 
 [[boss.timer]]
 id = "nefra_voice_cs"
 name = "Voice"
 trigger = { type = "combat_start" }
+icon_ability_id = 3270007710548233
 duration_secs = 15.0
 color = [29, 153, 20, 255]
 difficulties = ["veteran", "master"]
@@ -67,9 +87,26 @@ chains_to = "nefra_voice"
 id = "nefra_voice"
 name = "Voice"
 trigger = { type = "ability_cast", abilities = [3270007710547968] }
+icon_ability_id = 3270007710548233
 duration_secs = 30.0
 color = [29, 153, 20, 255]
 difficulties = ["veteran", "master"]
+
+[[boss.timer]]
+id = "nefra_local_taunt"
+name = "Local Taunt"
+duration_secs = 30.0
+is_alert = true
+alert_text = "3 Stacks - Taunt!"
+color = [97, 53, 131, 255]
+icon_ability_id = 3342034312102196
+difficulties = ["story", "veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "counter_reaches"
+counter_id = "nefra_curse_stacks_local"
+value = 3
 
 [[boss.timer]]
 id = "nefra_dps_add_1st"
@@ -267,84 +304,84 @@ trigger = { type = "any_of", conditions = [
 
 [[boss.timer]]
 id = "draxus_w1"
-name = "Wave 1"
+name = "Wave 1: Subteroths"
 trigger = { type = "combat_start" }
 duration_secs = 50.0
 color = [33, 151, 18, 255]
-difficulties = ["master"]
+difficulties = ["veteran", "master"]
 cancel_trigger = { type = "timer_started", timer_id = "draxus_w2" }
 
 [[boss.timer]]
 id = "draxus_w2"
-name = "Wave 2"
+name = "Wave 2: Subteroths, Dispatchers"
 trigger = { type = "counter_reaches", counter_id = "draxus_subteroth_count", value = 1 }
 duration_secs = 50.0
 color = [33, 151, 18, 255]
-difficulties = ["master"]
+difficulties = ["veteran", "master"]
 cancel_trigger = { type = "timer_started", timer_id = "draxus_w3" }
 
 [[boss.timer]]
 id = "draxus_w3"
-name = "Wave 3"
+name = "Wave 3: Draxus Returns, Corruptors"
 trigger = { type = "counter_reaches", counter_id = "draxus_dispatcher_count", value = 1 }
 duration_secs = 50.0
 color = [20, 136, 30, 255]
-difficulties = ["master"]
+difficulties = ["veteran", "master"]
 cancel_trigger = { type = "timer_started", timer_id = "draxus_w4" }
 
 [[boss.timer]]
 id = "draxus_w4"
-name = "Wave 4"
+name = "Wave 4: Dismantlers"
 # Entity ID: 3288136767504384
 trigger = { type = "counter_reaches", counter_id = "draxus_corrupter_count", value = 1 }
 duration_secs = 50.0
 color = [20, 136, 22, 255]
-difficulties = ["master"]
+difficulties = ["veteran", "master"]
 cancel_trigger = { type = "timer_started", timer_id = "draxus_w5" }
 
 [[boss.timer]]
 id = "draxus_w5"
-name = "Wave 5"
+name = "Wave 5: Draxus Returns, Bulwarks, Corruptors Back"
 trigger = { type = "counter_reaches", counter_id = "draxus_dismantler_count", value = 1 }
 duration_secs = 50.0
 color = [20, 136, 22, 255]
-difficulties = ["master"]
+difficulties = ["veteran", "master"]
 cancel_trigger = { type = "timer_started", timer_id = "draxus_w6" }
 
 [[boss.timer]]
 id = "draxus_w6"
-name = "Wave 6"
+name = "Wave 6: Dismantlers, Corruptor Back"
 trigger = { type = "counter_reaches", counter_id = "draxus_bulwark_count", value = 1 }
 duration_secs = 50.0
 color = [20, 136, 26, 255]
-difficulties = ["master"]
+difficulties = ["veteran", "master"]
 cancel_trigger = { type = "timer_started", timer_id = "draxus_w7" }
 
 [[boss.timer]]
 id = "draxus_w7"
-name = "Wave 7"
+name = "Wave 7: Guardians"
 trigger = { type = "counter_reaches", counter_id = "draxus_dismantler_count", value = 3 }
 duration_secs = 50.0
 color = [20, 136, 26, 255]
-difficulties = ["master"]
+difficulties = ["veteran", "master"]
 cancel_trigger = { type = "timer_started", timer_id = "draxus_w8" }
 
 [[boss.timer]]
 id = "draxus_w8"
-name = "Wave 8"
+name = "Wave 8: Bulwarks, 4 Corruptors"
 trigger = { type = "counter_reaches", counter_id = "draxus_subteroth_count", value = 13 }
 duration_secs = 50.0
 color = [20, 136, 26, 255]
-difficulties = ["master"]
+difficulties = ["veteran", "master"]
 cancel_trigger = { type = "timer_started", timer_id = "draxus_w9" }
 
 [[boss.timer]]
 id = "draxus_w9"
-name = "Wave 9"
+name = "Wave 9: Draxus and Guardians"
 trigger = { type = "counter_reaches", counter_id = "draxus_bulwark_count", value = 5 }
 duration_secs = 50.0
 color = [20, 136, 26, 255]
-difficulties = ["master"]
+difficulties = ["veteran", "master"]
 cancel_trigger = { type = "counter_reaches", counter_id = "draxus_corrupter_count", value = 10 }
 
 
