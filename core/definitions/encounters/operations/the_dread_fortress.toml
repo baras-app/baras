@@ -304,7 +304,7 @@ trigger = { type = "any_of", conditions = [
 
 [[boss.timer]]
 id = "draxus_w1"
-name = "Wave 1: Subteroths"
+name = "W1: Subteroths"
 trigger = { type = "combat_start" }
 duration_secs = 50.0
 color = [33, 151, 18, 255]
@@ -313,7 +313,7 @@ cancel_trigger = { type = "timer_started", timer_id = "draxus_w2" }
 
 [[boss.timer]]
 id = "draxus_w2"
-name = "Wave 2: Subteroths, Dispatchers"
+name = "W2: Dispatchers"
 trigger = { type = "counter_reaches", counter_id = "draxus_subteroth_count", value = 1 }
 duration_secs = 50.0
 color = [33, 151, 18, 255]
@@ -322,7 +322,7 @@ cancel_trigger = { type = "timer_started", timer_id = "draxus_w3" }
 
 [[boss.timer]]
 id = "draxus_w3"
-name = "Wave 3: Draxus Returns, Corruptors"
+name = "W3: Draxus Returns, Corruptors"
 trigger = { type = "counter_reaches", counter_id = "draxus_dispatcher_count", value = 1 }
 duration_secs = 50.0
 color = [20, 136, 30, 255]
@@ -331,7 +331,7 @@ cancel_trigger = { type = "timer_started", timer_id = "draxus_w4" }
 
 [[boss.timer]]
 id = "draxus_w4"
-name = "Wave 4: Dismantlers"
+name = "W4: Dismantlers"
 # Entity ID: 3288136767504384
 trigger = { type = "counter_reaches", counter_id = "draxus_corrupter_count", value = 1 }
 duration_secs = 50.0
@@ -341,7 +341,7 @@ cancel_trigger = { type = "timer_started", timer_id = "draxus_w5" }
 
 [[boss.timer]]
 id = "draxus_w5"
-name = "Wave 5: Draxus Returns, Bulwarks, Corruptors Back"
+name = "W5: Draxus, Bulwarks"
 trigger = { type = "counter_reaches", counter_id = "draxus_dismantler_count", value = 1 }
 duration_secs = 50.0
 color = [20, 136, 22, 255]
@@ -350,7 +350,7 @@ cancel_trigger = { type = "timer_started", timer_id = "draxus_w6" }
 
 [[boss.timer]]
 id = "draxus_w6"
-name = "Wave 6: Dismantlers, Corruptor Back"
+name = "W6: Dismantlers"
 trigger = { type = "counter_reaches", counter_id = "draxus_bulwark_count", value = 1 }
 duration_secs = 50.0
 color = [20, 136, 26, 255]
@@ -359,7 +359,7 @@ cancel_trigger = { type = "timer_started", timer_id = "draxus_w7" }
 
 [[boss.timer]]
 id = "draxus_w7"
-name = "Wave 7: Guardians"
+name = "W7: Guardians"
 trigger = { type = "counter_reaches", counter_id = "draxus_dismantler_count", value = 3 }
 duration_secs = 50.0
 color = [20, 136, 26, 255]
@@ -368,7 +368,7 @@ cancel_trigger = { type = "timer_started", timer_id = "draxus_w8" }
 
 [[boss.timer]]
 id = "draxus_w8"
-name = "Wave 8: Bulwarks, 4 Corruptors"
+name = "W8: 4 Corruptors"
 trigger = { type = "counter_reaches", counter_id = "draxus_subteroth_count", value = 13 }
 duration_secs = 50.0
 color = [20, 136, 26, 255]
@@ -377,7 +377,7 @@ cancel_trigger = { type = "timer_started", timer_id = "draxus_w9" }
 
 [[boss.timer]]
 id = "draxus_w9"
-name = "Wave 9: Draxus and Guardians"
+name = "W9: Draxus and Guardians"
 trigger = { type = "counter_reaches", counter_id = "draxus_bulwark_count", value = 5 }
 duration_secs = 50.0
 color = [20, 136, 26, 255]
@@ -603,7 +603,7 @@ color = [219, 96, 28, 255]
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
-id = "corruptor_zero_gravity_ranged_mode_1st"
+id = "corruptor_zero_gravity_ranged_mode"
 name = "Gravity - Ranged Mode Start"
 display_text = "Anti-Gravity Field"
 icon_ability_id = 3285972103987200
