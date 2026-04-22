@@ -175,6 +175,24 @@ conditions = [
   ], source = "any", target = "any" },
 ]
 
+[[boss.entities]]
+name = "Adds"
+ids = [
+  1796958482071552,
+  1784022040576000,
+  2021018335969280,
+  2017187225141248,
+  2017191520108544,
+  2021035515838464,
+]
+
+[[boss.timer]]
+id = "pylons_next_wave"
+name = "Next Wave"
+trigger = { type = "npc_appears", selector = ["Adds"] }
+duration_secs = 27.0
+color = [255, 50, 50, 255]
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Infernal Council (no timers needed - simple 1v1 fights)
 # ─────────────────────────────────────────────────────────────────────────────
