@@ -277,6 +277,24 @@ pub enum GameSignal {
         new_value: u32,
         timestamp: NaiveDateTime,
     },
+
+    /// A timer was started (synthesized in the timer feedback loop).
+    TimerStarted {
+        timer_id: String,
+        timestamp: NaiveDateTime,
+    },
+
+    /// A timer expired (synthesized in the timer feedback loop).
+    TimerExpired {
+        timer_id: String,
+        timestamp: NaiveDateTime,
+    },
+
+    /// A timer was canceled (synthesized in the timer feedback loop).
+    TimerCanceled {
+        timer_id: String,
+        timestamp: NaiveDateTime,
+    },
 }
 
 impl GameSignal {
@@ -304,7 +322,10 @@ impl GameSignal {
             | Self::PhaseChanged { timestamp, .. }
             | Self::PhaseEndTriggered { timestamp, .. }
             | Self::CounterChanged { timestamp, .. }
-            | Self::ThreatModified { timestamp, .. } => *timestamp,
+            | Self::ThreatModified { timestamp, .. }
+            | Self::TimerStarted { timestamp, .. }
+            | Self::TimerExpired { timestamp, .. }
+            | Self::TimerCanceled { timestamp, .. } => *timestamp,
         }
     }
 }

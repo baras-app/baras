@@ -109,6 +109,9 @@ fn signal_type_name(signal: &GameSignal) -> &'static str {
         GameSignal::PhaseEndTriggered { .. } => "PhaseEndTriggered",
         GameSignal::CounterChanged { .. } => "CounterChanged",
         GameSignal::ThreatModified { .. } => "ThreatModified",
+        GameSignal::TimerStarted { .. } => "TimerStarted",
+        GameSignal::TimerExpired { .. } => "TimerExpired",
+        GameSignal::TimerCanceled { .. } => "TimerCanceled",
     }
 }
 

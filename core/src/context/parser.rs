@@ -432,6 +432,24 @@ impl ParsingSession {
 
             let mut new_signals = Vec::new();
 
+            // Synthesize timer GameSignals so downstream consumers (notably shield
+            // start/end triggers in check_shield_triggers) can react to timer events.
+            for id in &started_ids {
+                new_signals.push(GameSignal::TimerStarted { timer_id: id.clone(), timestamp });
+            }
+            for id in &expired_ids {
+                new_signals.push(GameSignal::TimerExpired { timer_id: id.clone(), timestamp });
+            }
+            for id in &canceled_ids {
+                new_signals.push(GameSignal::TimerCanceled { timer_id: id.clone(), timestamp });
+            }
+
+            // Run shield triggers against the synthesized timer signals so shields
+            // with timer_expires/started/canceled start_trigger or end_trigger fire.
+            if let Some(cache) = &mut self.session_cache {
+                self.processor.check_shield_triggers(&new_signals, cache);
+            }
+
             // Counter triggers from timer events
             if let Some(cache) = &mut self.session_cache {
                 use crate::signal_processor::check_counter_timer_triggers;

@@ -494,7 +494,8 @@ impl TimerManager {
 
             // Process cancellation chains (timer_canceled triggers)
             for timer_id in self.canceled_this_tick.clone() {
-                self.start_timers_on_cancel(&timer_id, ts);
+                self.start_timers_on_cancel(&timer_id, ts, encounter);
+                self.cancel_timers_on_cancel(&timer_id);
             }
 
             // Populate batch vectors so accessors return tick's events
@@ -1342,16 +1343,69 @@ impl TimerManager {
         }
     }
 
-    pub fn start_timers_on_cancel(&mut self, canceled_timer_id: &str, current_time: NaiveDateTime) {
+    pub fn start_timers_on_cancel(
+        &mut self,
+        canceled_timer_id: &str,
+        current_time: NaiveDateTime,
+        encounter: Option<&crate::encounter::CombatEncounter>,
+    ) {
         let keys_to_start: Vec<_> = self
             .definitions_for_kind(TriggerKind::TimerCanceled)
             .iter()
-            .filter(|d| d.matches_timer_canceled(canceled_timer_id))
+            .filter(|d| {
+                d.matches_timer_canceled(canceled_timer_id)
+                    && self.is_definition_active(d, encounter)
+            })
             .cloned()
             .collect();
 
         for key in keys_to_start {
             self.start_timer(&key, current_time, None);
+        }
+    }
+
+    /// Cancel active timers (and clear queued entries) whose triggers match the canceled timer ID.
+    fn cancel_timers_on_cancel(&mut self, canceled_timer_id: &str) {
+        let keys_to_cancel: Vec<_> = self
+            .active_timers
+            .iter()
+            .filter_map(|(key, timer)| {
+                if let Some(def) = self.definitions.get(&timer.definition_id)
+                    && let Some(ref cancel_trigger) = def.cancel_trigger
+                    && cancel_trigger.matches_timer_canceled(canceled_timer_id)
+                {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for key in keys_to_cancel {
+            self.active_timers.remove(&key);
+            self.canceled_this_tick.push(key.definition_id);
+        }
+
+        // Also remove queued entries whose queue_remove_trigger matches timer canceled
+        let keys_to_remove: Vec<_> = self
+            .active_timers
+            .iter()
+            .filter_map(|(key, timer)| {
+                if timer.is_queued
+                    && let Some(def) = self.definitions.get(&timer.definition_id)
+                    && let Some(ref remove_trigger) = def.queue_remove_trigger
+                    && remove_trigger.matches_timer_canceled(canceled_timer_id)
+                {
+                    Some(key.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for key in keys_to_remove {
+            self.active_timers.remove(&key);
+            self.canceled_this_tick.push(key.definition_id);
         }
     }
 
@@ -1846,7 +1900,8 @@ impl SignalHandler for TimerManager {
         // Process Cancellation Triggers
         if let Some(ts) = self.last_timestamp {
             for timer_id in self.canceled_this_tick.clone() {
-                self.start_timers_on_cancel(&timer_id, ts);
+                self.start_timers_on_cancel(&timer_id, ts, encounter);
+                self.cancel_timers_on_cancel(&timer_id);
             }
         }
 

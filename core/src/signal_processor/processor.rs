@@ -864,7 +864,7 @@ impl EventProcessor {
     /// This runs after Phase 2 signal emission so that all `GameSignal` variants —
     /// including `PhaseChanged`, `CounterChanged`, `TimerExpires`, etc. — are
     /// available for `start_trigger` / `end_trigger` matching.
-    fn check_shield_triggers(&self, signals: &[GameSignal], cache: &mut SessionCache) {
+    pub(crate) fn check_shield_triggers(&self, signals: &[GameSignal], cache: &mut SessionCache) {
         let Some(enc) = cache.current_encounter() else {
             return;
         };
@@ -892,6 +892,20 @@ impl EventProcessor {
             .map(|enc| enc.boss_shields.keys().cloned().collect())
             .unwrap_or_default();
 
+        // Snapshot live NPC instances (log_id, resolved name) so non-NPC-specific
+        // start triggers (timer/phase/counter/combat_start) can activate shields
+        // on every matching live boss instance.
+        let live_npcs: Vec<(i64, String)> = cache
+            .current_encounter()
+            .map(|enc| {
+                enc.npcs
+                    .values()
+                    .filter(|n| !n.is_dead)
+                    .map(|n| (n.log_id, crate::context::resolve(n.name).to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+
         let mut changes: Vec<ShieldChange> = Vec::new();
 
         for signal in signals {
@@ -914,15 +928,30 @@ impl EventProcessor {
                     for entity in entities {
                         for (shield_idx, shield) in entity.shields.iter().enumerate() {
                             // ── Start trigger: activate on the specific NPC instance ──
+                            // For NPC-scoped signals (effect/damage/etc.), activate on
+                            // that exact instance. For non-NPC signals (timer/phase/
+                            // counter/combat_start), activate on every live NPC instance
+                            // matching this entity definition.
                             if shield_signal_matches(&shield.start_trigger, signal, entities) {
+                                let total = shield.effective_total(difficulty);
                                 if let Some(log_id) = signal_npc_log_id(signal) {
-                                    let total = shield.effective_total(difficulty);
                                     changes.push(ShieldChange::Activate(
                                         log_id,
                                         entity.name.clone(),
                                         shield_idx,
                                         total,
                                     ));
+                                } else {
+                                    for (log_id, npc_name) in &live_npcs {
+                                        if npc_name == &entity.name {
+                                            changes.push(ShieldChange::Activate(
+                                                *log_id,
+                                                entity.name.clone(),
+                                                shield_idx,
+                                                total,
+                                            ));
+                                        }
+                                    }
                                 }
                             }
 
@@ -1709,20 +1738,15 @@ fn shield_signal_matches(
         }
 
         Trigger::TimerExpires { timer_id } => {
-            // TimerExpires/Started/Canceled have no corresponding GameSignal currently;
-            // they are only evaluated in the timer system. Always false for shields.
-            let _ = timer_id;
-            false
+            matches!(signal, GameSignal::TimerExpired { timer_id: tid, .. } if tid == timer_id)
         }
 
         Trigger::TimerStarted { timer_id } => {
-            let _ = timer_id;
-            false
+            matches!(signal, GameSignal::TimerStarted { timer_id: tid, .. } if tid == timer_id)
         }
 
         Trigger::TimerCanceled { timer_id } => {
-            let _ = timer_id;
-            false
+            matches!(signal, GameSignal::TimerCanceled { timer_id: tid, .. } if tid == timer_id)
         }
 
         Trigger::TargetSet { selector, .. } => {

@@ -791,9 +791,10 @@ impl Trigger {
 
     /// Check if this trigger contains variants that are unsupported for shields.
     ///
-    /// Shield triggers are evaluated against the post-emission `GameSignal` vec,
-    /// so all signal-producing variants work. `CombatStart` and `TimeElapsed`
-    /// are time-based and never produce a signal, so they will silently never fire.
+    /// Shield triggers are evaluated against the post-emission `GameSignal` vec
+    /// (including synthesized `TimerStarted`/`TimerExpired`/`TimerCanceled` from
+    /// the timer feedback loop). `CombatStart` and `TimeElapsed` are time-based
+    /// and never produce a signal, so they will silently never fire.
     pub fn contains_unsupported_for_shields(&self) -> Option<&'static str> {
         match self {
             Self::CombatStart => Some("combat_start"),
