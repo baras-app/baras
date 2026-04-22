@@ -393,6 +393,13 @@ name = "Olok the Shadow"
 difficulties = ["story", "veteran"]
 
 [[boss.entities]]
+name = "Wealthy Buyer"
+ids = [3067130635354112]
+is_boss = false
+triggers_encounter = true
+is_kill_target = false
+
+[[boss.entities]]
 name = "Olok the Shadow"
 ids = [3154674953748480, 3016445726294016, 3154679248715776, 3154662068846592]
 is_boss = true
@@ -431,6 +438,10 @@ trigger = { type = "ability_cast", abilities = [3131215842377728] }
 duration_secs = 4.5
 color = [29, 224, 221, 255]
 difficulties = ["veteran", "master"]
+
+[[boss.counter]]
+id = "olok_buyer_dead"
+name = "Wealthy Buyer ead"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -665,7 +676,7 @@ name = "Chained Manifestation DPS"
 metric = "damage"
 enabled = true
 color = [255, 100, 100, 255]
-columns = "total_percent"
+columns = "total_per_second"
 
 [[boss.challenge.conditions]]
 type = "phase"
@@ -677,7 +688,6 @@ match = { selector = ["Styrak Chained"] }
 
 [[boss.timer]]
 id = "dread_master_styrak_knockback_1st"
-# orbs_id = "48f2689e-1b35-46cb-a499-9eb0c87aac30"
 name = "Knockback 1st"
 trigger = { type = "npc_appears", selector = [] }
 duration_secs = 20.0
@@ -716,109 +726,3 @@ trigger = { type = "effect_removed", effects = [3148979827113984] }
 cancel_trigger = { type = "entity_death", selector = ["Kell Dragon 1st"] }
 duration_secs = 60.0
 difficulties = ["veteran", "master"]
-
-# -- Dragon Phases
-
-# [[boss.timer]]
-# id = "dread_master_styrak_choke_clone_1st"
-# name = "Choke Clone 1st"
-# trigger = { type = "phase_entered", phase_id = "styrak_dragon" }
-# duration_secs = 52.0
-# color = [224, 29, 167, 255]
-# difficulties = ["veteran", "master"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_charge_clone_1st"
-# name = "Charge Clone 1st"
-# trigger = { type = "phase_entered", phase_id = "styrak_dragon" }
-# duration_secs = 40.0
-# color = [44, 29, 229, 255]
-# difficulties = ["veteran", "master"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_vomit_pool_1st"
-# name = "Vomit Pool 1st"
-# trigger = { type = "phase_entered", phase_id = "styrak_dragon" }
-# duration_secs = 15.0
-# color = [20, 184, 33, 255]
-# difficulties = ["veteran", "master"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_leap_slam_1st"
-# name = "Leap Slam 1st"
-# trigger = { type = "phase_entered", phase_id = "styrak_dragon" }
-# duration_secs = 10.0
-# color = [219, 140, 37, 255]
-# difficulties = ["veteran", "master"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_spines"
-# name = "Spines"
-# trigger = { type = "ability_cast", abilities = [3148979827113984] }
-# cancel_trigger = { type = "phase_ended", phase_id = "styrak_dragon" }
-# duration_secs = 60.0
-# color = [219, 32, 36, 255]
-# difficulties = ["veteran", "master"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_choke_clone_d"
-# name = "Choke Clone D"
-# trigger = { type = "ability_cast", abilities = [3140965418139648] }
-# cancel_trigger = { type = "phase_ended", phase_id = "styrak_dragon" }
-# duration_secs = 60.0
-# color = [224, 29, 167, 255]
-# difficulties = ["veteran", "master"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_knockback_vm"
-# name = "Knockback VM"
-# trigger = { type = "ability_cast", abilities = [3133187232366592] }
-# cancel_trigger = { type = "phase_ended", phase_id = "styrak_dragon" }
-# duration_secs = 60.0
-# color = [140, 32, 219, 255]
-# difficulties = ["veteran"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_knockback"
-# name = "Knockback"
-# trigger = { type = "ability_cast", abilities = [3294763902042112] }
-# cancel_trigger = { type = "phase_ended", phase_id = "styrak_dragon" }
-# duration_secs = 60.0
-# color = [140, 32, 219, 255]
-# difficulties = ["master"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_vomit_pool_16m"
-# name = "Vomit Pool 16m"
-# trigger = { type = "ability_cast", abilities = [3142150829113344] }
-# cancel_trigger = { type = "phase_ended", phase_id = "styrak_dragon" }
-# duration_secs = 15.0
-# color = [20, 184, 33, 255]
-# difficulties = ["veteran", "master"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_vomit_pool_8m_vm"
-# name = "Vomit Pool 8m VM"
-# trigger = { type = "ability_cast", abilities = [3142150829113344] }
-# cancel_trigger = { type = "phase_ended", phase_id = "styrak_dragon" }
-# duration_secs = 12.0
-# color = [20, 184, 33, 255]
-# difficulties = ["veteran"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_leap_slam"
-# name = "Leap Slam"
-# trigger = { type = "ability_cast", abilities = [3141601073299456] }
-# cancel_trigger = { type = "phase_ended", phase_id = "styrak_dragon" }
-# duration_secs = 15.0
-# color = [219, 140, 37, 255]
-# difficulties = ["veteran", "master"]
-#
-# [[boss.timer]]
-# id = "dread_master_styrak_charge_clone"
-# name = "Charge Clone"
-# trigger = { type = "ability_cast", abilities = [3141656907874304] }
-# cancel_trigger = { type = "phase_ended", phase_id = "styrak_dragon" }
-# duration_secs = 40.0
-# color = [44, 29, 229, 255]
-# difficulties = ["veteran", "master"]
