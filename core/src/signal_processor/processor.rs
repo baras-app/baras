@@ -892,16 +892,25 @@ impl EventProcessor {
             .map(|enc| enc.boss_shields.keys().cloned().collect())
             .unwrap_or_default();
 
-        // Snapshot live NPC instances (log_id, resolved name) so non-NPC-specific
-        // start triggers (timer/phase/counter/combat_start) can activate shields
-        // on every matching live boss instance.
-        let live_npcs: Vec<(i64, String)> = cache
+        // Snapshot live NPC instances (log_id, class_id, resolved name) so non-NPC-
+        // specific start triggers (timer/phase/counter/combat_start) can activate
+        // shields on every matching live boss instance. Matching is roster-based
+        // (class_id lookup against entity.ids) with a case-insensitive name
+        // fallback, mirroring EntitySelector::matches_with_roster — this is
+        // locale-independent because IDs are the same across DE/FR/EN clients.
+        let live_npcs: Vec<(i64, i64, String)> = cache
             .current_encounter()
             .map(|enc| {
                 enc.npcs
                     .values()
                     .filter(|n| !n.is_dead)
-                    .map(|n| (n.log_id, crate::context::resolve(n.name).to_string()))
+                    .map(|n| {
+                        (
+                            n.log_id,
+                            n.class_id,
+                            crate::context::resolve(n.name).to_string(),
+                        )
+                    })
                     .collect()
             })
             .unwrap_or_default();
@@ -942,8 +951,17 @@ impl EventProcessor {
                                         total,
                                     ));
                                 } else {
-                                    for (log_id, npc_name) in &live_npcs {
-                                        if npc_name == &entity.name {
+                                    // Roster-based match: prefer class_id lookup
+                                    // against entity.ids (locale-independent). Fall
+                                    // back to case-insensitive name match for entities
+                                    // without configured ids.
+                                    for (log_id, class_id, npc_name) in &live_npcs {
+                                        let matches = if !entity.ids.is_empty() {
+                                            entity.ids.contains(class_id)
+                                        } else {
+                                            npc_name.eq_ignore_ascii_case(&entity.name)
+                                        };
+                                        if matches {
                                             changes.push(ShieldChange::Activate(
                                                 *log_id,
                                                 entity.name.clone(),
