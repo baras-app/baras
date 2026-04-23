@@ -1,72 +1,75 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Battle of Rishi - Flashpoint
+# Lost Island - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
-# 3 bosses, 1 bonus boss
+# 4 bosses, 1 bonus boss
 
 [area]
-name = "Battle of Rishi"
-area_id = 833571547775720
+name = "Lost Island"
+area_id = 833571547775675
 area_type = "flashpoint"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Rarrook & Marko Ka
+# Boss 1: Putrid Shaclaw
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "rarrook_marko"
-name = "Rarrook & Marko Ka"
+id = "putrid_shaclaw"
+name = "Putrid Shaclaw"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Rarrook"
-ids = [3369139850706944, 3533559788732416]
-is_boss = true
-
-[[boss.entities]]
-name = "Marko Ka"
-ids = [3369144145674240, 3533564083699712]
+name = "Putrid Shaclaw"
+ids = [2838853123571712, 2898153737027584]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Master Obai & Lord Vodd
+# Boss 2: LR-5 Sentinel Droid
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "obai_vodd"
-name = "Master Obai & Lord Vodd"
+id = "lr_5_sentinel_droid"
+name = "LR-5 Sentinel Droid"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Master Obai"
-ids = [3369148440641536, 3533581263568896]
-is_boss = true
-
-[[boss.entities]]
-name = "Lord Vodd"
-ids = [3369152735608832, 3533585558536192]
+name = "LR-5 Sentinel Droid"
+ids = [2815832098865152, 2808620848775168]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Shield Squadron Unit 1
+# Boss 3: Project Sav-Rak
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "shield_walker"
-name = "Shield Squadron Unit 1"
+id = "project_sav_rak"
+name = "Project Sav-Rak"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Project Sav-Rak"
+ids = [2802144038092800, 2819585900281856]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: Doctor Lorrick
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "doctor_lorrick"
+name = "Doctor Lorrick"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Shield Squadron Unit 1"
-ids = [3369157030576128]
+name = "Doctor Lorrick"
+ids = [2794163988856832, 2838582540632064, 2809320928444416, 2819959562436608]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Bonus Boss: Commander Mokan
+# Bonus Boss: Transgenic Sample Eleven
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "mokan"
-name = "Commander Mokan"
-difficulties = ["master"]
+id = "transgenic_sample_eleven"
+name = "Transgenic Sample Eleven"
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Commander Mokan"
-ids = [3417131815272448]
+name = "Transgenic Sample Eleven"
+ids = [2835799401824256, 2802509110312960]
 is_boss = true

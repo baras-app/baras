@@ -1,85 +1,116 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Nathema - Flashpoint
+# Directive 7 - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4 bosses, 1 optional boss
+# 6 bosses, 1 bonus boss
 
 [area]
-name = "Nathema"
-area_id = 833571547775764
+name = "Directive 7"
+area_id = 833571547775671
 area_type = "flashpoint"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Voreclaw
+# Boss 1: Detector
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "voreclaw"
-name = "Voreclaw"
+id = "detector"
+name = "Detector"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Voreclaw"
-ids = [4157176155209728]
+name = "Detector"
+ids = [2512014702280704, 1626340906237952]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Ancient Guardian Droid
+# Boss 2: Assassin Droids
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "guardian_droid"
-name = "Ancient Guardian Droid"
+id = "assassin_droids"
+name = "Assassin Droids"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Ancient Guardian Droid"
-ids = [4152640669745152]
+name = "Mentor Assassin Theta"
+ids = [2511958867705856, 746748783886336]
+is_boss = true
+
+[[boss.entities]]
+name = "Mentor Assassin Beta"
+ids = [2511954572738560, 746753078853632]
+is_boss = true
+
+[[boss.entities]]
+name = "Mentor Assassin Zeta"
+ids = [2511963162673152, 746757373820928]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Gemini 16
+# Boss 3: Interrogator
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "gemini"
-name = "Gemini 16"
+id = "interrogator"
+name = "Interrogator"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Gemini 16"
-ids = [4158834012585984]
+name = "Interrogator"
+ids = [2512053356986368, 1627981583745024]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 4: Vinn Atrius & Zildrog
+# Boss 4: Bulwark
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "vin_zil"
-name = "Vinn Atrius & Zildrog"
+id = "bulwark"
+name = "Bulwark"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Bulwark"
+ids = [2511984637509632, 751348693860352]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: Assembler
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "assembler"
+name = "Assembler"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Assembler"
+ids = [2511976047575040, 1628604354002944]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 6: Mentor
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "mentor"
+name = "Mentor"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Vinn Atrius"
-ids = [4158872667291648]
+name = "Mentor"
+ids = [2512100601626624, 743540443316224, 2144842243112960]
 is_boss = true
 
 [[boss.entities]]
-name = "Zildrog"
-ids = [4159276394217472]
+name = "Mentor Core Guardian"
+ids = [892073297313792, 2512083421757440]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Optional Boss: Hands of Zildrog
+# Bonus Boss: Replicator
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "hands_zildrog"
-name = "Hands of Zildrog"
+id = "replicator"
+name = "Replicator"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Hand of Zildrog"
-ids = [4172294440091648]
-is_boss = true
-
-[[boss.entities]]
-name = "Hand of Zildrog"
-ids = [4172298735058944]
+name = "Replicator"
+ids = [1629334498443264, 2512109191561216]
 is_boss = true

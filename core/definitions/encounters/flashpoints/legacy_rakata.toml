@@ -1,61 +1,72 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Legacy of the Rakata - Flashpoint
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3 bosses, 1 bonus boss
+
 [area]
 name = "Legacy of the Rakata"
 area_id = 137438993543
 area_type = "flashpoint"
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 1: Rakata Arena
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-name = "Rakata Arena"
 id = "arena"
+name = "Rakata Arena"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "War Chief Rehkta"
 ids = [3372962371600384, 3491894310993920]
 is_boss = true
-is_kill_target = true
 
 [[boss.entities]]
 name = "Rancor"
 ids = [3491898605961216, 3370608729522176]
 is_boss = true
-is_kill_target = true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 2: Commander Rand
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-name = "Commander Rand"
 id = "rand"
+name = "Commander Rand"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Commander Rand"
 ids = [3373078335717376, 3491885721059328]
 is_boss = true
-is_kill_target = true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 3: Darok & Arkous
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
+id = "darok_arkous"
+name = "Darok & Arkous"
+difficulties = ["story", "veteran", "master"]
+is_final_boss = true
+
+[[boss.entities]]
+name = "Colonel Darok"
+ids = [3491881426092032, 3370617319456768]
+is_boss = true
+
+[[boss.entities]]
+name = "Darth Arkous"
+ids = [3370613024489472, 3491890016026624]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Bonus Boss: Infinite Army Prototype
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "infinite_army_prototype"
 name = "Infinite Army Prototype"
-id = "arena"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Prototype Solider"
 ids = [3493419024384000]
 is_boss = true
-is_kill_target = true
-
-
-[[boss]]
-name = "Darok & Arkous"
-id = "darok_arkous"
-difficulties = ["story", "veteran", "master"]
-
-[[boss.entities]]
-name = "Colonel Darok"
-ids = [3491881426092032, 3370617319456768]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Darth Arkous"
-ids = [3370613024489472, 3491890016026624]
-is_boss = true
-is_kill_target = true

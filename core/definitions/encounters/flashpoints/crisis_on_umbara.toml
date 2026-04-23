@@ -1,72 +1,67 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Battle of Rishi - Flashpoint
+# Crisis on Umbara - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
 # 3 bosses, 1 bonus boss
 
 [area]
-name = "Battle of Rishi"
-area_id = 833571547775720
+name = "Crisis on Umbara"
+area_id = 833571547775775
 area_type = "flashpoint"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Rarrook & Marko Ka
+# Boss 1: Technician Canni & Shadow Assassin Elli-Vaa
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "rarrook_marko"
-name = "Rarrook & Marko Ka"
+id = "technician_canni_elli_vaa"
+name = "Technician Canni & Shadow Assassin Elli-Vaa"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Rarrook"
-ids = [3369139850706944, 3533559788732416]
+name = "Technician Canni"
+ids = [4111507767951360]
 is_boss = true
 
 [[boss.entities]]
-name = "Marko Ka"
-ids = [3369144145674240, 3533564083699712]
+name = "Shadow Assassin Elli-Vaa"
+ids = [4111512062918656]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Master Obai & Lord Vodd
+# Boss 2: Vixian Mauler
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "obai_vodd"
-name = "Master Obai & Lord Vodd"
+id = "vixian_mauler"
+name = "Vixian Mauler"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Master Obai"
-ids = [3369148440641536, 3533581263568896]
-is_boss = true
-
-[[boss.entities]]
-name = "Lord Vodd"
-ids = [3369152735608832, 3533585558536192]
+name = "Vixian Mauler"
+ids = [4112173487882240]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Shield Squadron Unit 1
+# Boss 3: Umbaran Spider Tank
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "shield_walker"
-name = "Shield Squadron Unit 1"
+id = "umbaran_spider_tank"
+name = "Umbaran Spider Tank"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Shield Squadron Unit 1"
-ids = [3369157030576128]
+name = "Umbaran Spider Tank"
+ids = [4112779078270976]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Bonus Boss: Commander Mokan
+# Bonus Boss: Alpha Slybex
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "mokan"
-name = "Commander Mokan"
-difficulties = ["master"]
+id = "alpha_slybex"
+name = "Alpha Slybex"
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Commander Mokan"
-ids = [3417131815272448]
+name = "Alpha Slybex"
+ids = [4121025415479296]
 is_boss = true

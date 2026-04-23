@@ -20,13 +20,11 @@ difficulties = ["story", "veteran", "master"]
 name = "Vulture Squad Unit 02"
 ids = [4257498001309696]
 is_boss = true
-is_kill_target = true
 
 [[boss.entities]]
 name = "Vulture Squad Unit 13"
 ids = [4275957770747904, 4275957770747904]
 is_boss = true
-is_kill_target = true
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -41,7 +39,6 @@ difficulties = ["story", "veteran", "master"]
 name = "Commander Aster"
 ids = [4258021987319808, 4363188556529664]
 is_boss = true
-is_kill_target = true
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -51,12 +48,12 @@ is_kill_target = true
 id = "darth_malgus"
 name = "Darth Malgus"
 difficulties = ["story", "veteran", "master"]
+is_final_boss = true
 
 [[boss.entities]]
 name = "Darth Malgus"
 ids = [4257502296276992]
 is_boss = true
-is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Republic Bonus Boss: Lord Feng and Darth Yun
@@ -70,13 +67,11 @@ difficulties = ["story", "veteran", "master"]
 name = "Darth Yun"
 ids = [4363179966595072, 4257506591244288]
 is_boss = true
-is_kill_target = true
 
 [[boss.entities]]
 name = "Lord Feng"
 ids = [4276941318258688]
 is_boss = true
-is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Imperial Boss 1: R10-X6 Droid (Spider Tank)
@@ -90,7 +85,6 @@ difficulties = ["story", "veteran", "master"]
 name = "R10-X6 Droid"
 ids = [4363141311889408, 4257467936538624]
 is_boss = true
-is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Imperial Boss 2: Master Jakir Halcyon and Seldin
@@ -104,13 +98,11 @@ difficulties = ["story", "veteran", "master"]
 name = "Master Jakir Halcyon"
 ids = [4257442166734848, 4363167081693184]
 is_boss = true
-is_kill_target = true
 
 [[boss.entities]]
 name = "Seldin"
 ids = [4257455051636736, 4363171376660480]
 is_boss = true
-is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Imperial Boss 3: Tau Idair
@@ -119,17 +111,16 @@ is_kill_target = true
 id = "tau_idair"
 name = "Tau Idair"
 difficulties = ["story", "veteran", "master"]
+is_final_boss = true
 
 [[boss.entities]]
 name = "Tau Idair"
 ids = [4257463641571328, 4363175671627776]
 is_boss = true
-is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Imperial Bonus Boss: Commander Rasha
 # ═══════════════════════════════════════════════════════════════════════════════
-
 [[boss]]
 id = "rasha"
 name = "Commander Rasha"
@@ -139,4 +130,3 @@ difficulties = ["master"]
 name = "Commander Rasha"
 ids = [4258185196077056]
 is_boss = true
-is_kill_target = true

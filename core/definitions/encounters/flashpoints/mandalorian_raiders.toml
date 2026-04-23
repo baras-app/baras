@@ -1,72 +1,111 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Battle of Rishi - Flashpoint
+# Mandalorian Raiders - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
-# 3 bosses, 1 bonus boss
+# 3 bosses, 1 bonus boss, Boss 2 has Imperial / Republic variants
 
 [area]
-name = "Battle of Rishi"
-area_id = 833571547775720
+name = "Mandalorian Raiders"
+area_id = 833571547775687
 area_type = "flashpoint"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Rarrook & Marko Ka
+# Boss 1: Braxx the Bloodhound
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "rarrook_marko"
-name = "Rarrook & Marko Ka"
+id = "braxx_the_bloodhound"
+name = "Braxx the Bloodhound"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Rarrook"
-ids = [3369139850706944, 3533559788732416]
+name = "Braxx the Bloodhound"
+ids = [3158428755165184, 2438167034593280]
 is_boss = true
 
 [[boss.entities]]
-name = "Marko Ka"
-ids = [3369144145674240, 3533564083699712]
+name = "Sanguine Salky Hound"
+ids = [3158424460197888, 2438158444658688]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Master Obai & Lord Vodd
+# Boss 2 (Republic): Imperial Boarding Party
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "obai_vodd"
-name = "Master Obai & Lord Vodd"
+id = "imperial_boarding_party"
+name = "Imperial Boarding Party"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Master Obai"
-ids = [3369148440641536, 3533581263568896]
+name = "Vincine"
+ids = [2442462001889280, 3158407280328704]
 is_boss = true
 
 [[boss.entities]]
-name = "Lord Vodd"
-ids = [3369152735608832, 3533585558536192]
+name = "Rotham"
+ids = [3158415870263296, 2442457706921984]
+is_boss = true
+
+[[boss.entities]]
+name = "Kyrenic"
+ids = [2442470591823872, 3158265546407936]
+is_boss = true
+
+[[boss.entities]]
+name = "Andan"
+ids = [3158394395426816, 2442466296856576]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Shield Squadron Unit 1
+# Boss 2 (Imperial): Republic Boarding Party
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "shield_walker"
-name = "Shield Squadron Unit 1"
+id = "republic_boarding_party"
+name = "Republic Boarding Party"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Magnus"
+ids = [3158398690394112, 2442483476725760]
+is_boss = true
+
+[[boss.entities]]
+name = "Ezeraline"
+ids = [2442479181758464, 3158402985361408]
+is_boss = true
+
+[[boss.entities]]
+name = "Keenor"
+ids = [2442487771693056, 3158420165230592]
+is_boss = true
+
+[[boss.entities]]
+name = "Taklan"
+ids = [2442474886791168, 3158411575296000]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 3: Mavrix Varad
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "mavrix_varad"
+name = "Mavrix Varad"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Shield Squadron Unit 1"
-ids = [3369157030576128]
+name = "Mavrix Varad"
+ids = [3172567787503616, 1276069143379968]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Bonus Boss: Commander Mokan
+# Bonus Boss: Gil
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "mokan"
-name = "Commander Mokan"
-difficulties = ["master"]
+id = "gil"
+name = "Gil"
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Commander Mokan"
-ids = [3417131815272448]
+name = "Gil"
+ids = [3250538623795200]
 is_boss = true

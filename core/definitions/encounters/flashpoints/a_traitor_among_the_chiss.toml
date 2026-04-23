@@ -1,7 +1,7 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # A Traitor Among The Chiss - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
-# Chiss flashpoint on Copero. 3 bosses, 1 bonus boss, 1 optional boss
+# 3 bosses, 1 bonus boss, 1 optional boss
 
 [area]
 name = "A Traitor Among The Chiss"
@@ -34,7 +34,6 @@ difficulties = ["story", "veteran", "master"]
 name = "Syndic Zenta"
 ids = [4135314771673088]
 is_boss = true
-is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Valss
@@ -43,12 +42,12 @@ is_kill_target = true
 id = "valss"
 name = "Valss"
 difficulties = ["story", "veteran", "master"]
+is_final_boss = true
 
 [[boss.entities]]
 name = "Valss"
 ids = [4132209510318080]
 is_boss = true
-is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Strike Team Walker
@@ -67,7 +66,6 @@ is_kill_target = true
 # ═══════════════════════════════════════════════════════════════════════════════
 # Optional Boss: Temple Guardian
 # ═══════════════════════════════════════════════════════════════════════════════
-#
 [[boss]]
 id = "temple_cat"
 name = "Temple Guardian"
@@ -77,4 +75,3 @@ difficulties = ["story", "veteran", "master"]
 name = "Temple Cat"
 ids = [4129460731248640]
 is_boss = true
-is_kill_target = true

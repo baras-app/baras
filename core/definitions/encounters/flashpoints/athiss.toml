@@ -1,8 +1,16 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Athiss - Flashpoint
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3 bosses, 1 bonus boss
+
 [area]
 name = "Athiss"
-id = 833571547775683
+area_id = 833571547775683
 area_type = "flashpoint"
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 1: Professor Ley'arsha
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "leyarsha"
 name = "Professor Ley'arsha"
@@ -12,8 +20,10 @@ difficulties = ["story", "veteran", "master"]
 name = "Professor Ley'arsha"
 ids = [1172496007036928, 3158072272879616]
 is_boss = true
-is_kill_target = true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 2: Beast of Vodal Kresh
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "vodal_beast"
 name = "Beast of Vodal Kresh"
@@ -23,19 +33,24 @@ difficulties = ["story", "veteran", "master"]
 name = "Beast of Vodal Kresh"
 ids = [2263129937412096, 3158119517519872]
 is_boss = true
-is_kill_target = true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 3: Prophet of Vodal Kresh
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "vodal_prophet"
 name = "Prophet of Vodal Kresh"
 difficulties = ["story", "veteran", "master"]
+is_final_boss = true
 
 [[boss.entities]]
 name = "Prophet of Vodal Kresh"
 ids = [1172951273570304, 3158123812487168]
 is_boss = true
-is_kill_target = true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Bonus Boss: Ancient Abomination
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "ancient_abomination"
 name = "Ancient Abomination"
@@ -45,4 +60,3 @@ difficulties = ["story", "veteran", "master"]
 name = "Ancient Abomination"
 ids = [3247459132243968]
 is_boss = true
-is_kill_target = true

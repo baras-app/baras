@@ -1,7 +1,7 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # Spirit of Vengeance - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
-# Onslaught expansion flashpoint on Mandalorian vessel. 4 bosses, 1 bonus boss
+# 4 bosses, 1 bonus boss
 
 [area]
 name = "Spirit of Vengeance"
@@ -20,7 +20,6 @@ difficulties = ["story", "veteran", "master"]
 name = "Gorga Brak"
 ids = [4419697441243136]
 is_boss = true
-is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Bask Sunn
@@ -34,7 +33,6 @@ difficulties = ["story", "veteran", "master"]
 name = "Bask Sunn"
 ids = [4419710326145024]
 is_boss = true
-is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Troya Ajak
@@ -48,7 +46,6 @@ difficulties = ["story", "veteran", "master"]
 name = "Troya Ajak"
 ids = [4419714621112320]
 is_boss = true
-is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Heta Kol
@@ -57,6 +54,7 @@ is_kill_target = true
 id = "heta_kol"
 name = "Heta Kol"
 difficulties = ["story", "veteran", "master"]
+is_final_boss = true
 
 [[boss.entities]]
 name = "Heta Kol"
@@ -73,3 +71,12 @@ pushes_at = 33.1
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Goldie
 # ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "goldie"
+name = "Goldie"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Goldie"
+ids = [4434373344493568]
+is_boss = true

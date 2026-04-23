@@ -1,85 +1,106 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Nathema - Flashpoint
+# The False Emperor - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4 bosses, 1 optional boss
+# 6 bosses, 1 bonus boss
 
 [area]
-name = "Nathema"
-area_id = 833571547775764
+name = "The False Emperor"
+area_id = 833571547775673
 area_type = "flashpoint"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Voreclaw
+# Boss 1: Tregg the Destroyer
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "voreclaw"
-name = "Voreclaw"
+id = "tregg_the_destroyer"
+name = "Tregg the Destroyer"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Voreclaw"
-ids = [4157176155209728]
+name = "Tregg the Destroyer"
+ids = [1690314444111872, 2511761299210240]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Ancient Guardian Droid
+# Boss 2: Jindo Krey
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "guardian_droid"
-name = "Ancient Guardian Droid"
+id = "jindo_krey"
+name = "Jindo Krey"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Ancient Guardian Droid"
-ids = [4152640669745152]
+name = "Jindo Krey"
+ids = [2511709759602688, 770959514533888]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Gemini 16
+# Boss 3: Prototype A-14 & Prototype B-16
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "gemini"
-name = "Gemini 16"
+id = "prototypes_a14_b16"
+name = "Prototype A-14 & Prototype B-16"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Gemini 16"
-ids = [4158834012585984]
+name = "Prototype A-14"
+ids = [1790202498514944, 2511718349537280]
+is_boss = true
+
+[[boss.entities]]
+name = "Prototype B-16"
+ids = [1790206793482240, 2511726939471872]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 4: Vinn Atrius & Zildrog
+# Boss 4: HK-47
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "vin_zil"
-name = "Vinn Atrius & Zildrog"
+id = "hk_47"
+name = "HK-47"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "HK-47"
+ids = [770955219566592, 2511701169668096]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: Chondrus Berani
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "chondrus_berani"
+name = "Chondrus Berani"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Chondrus Berani"
+ids = [2511675399864320, 1690331623981056]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 6: Darth Malgus
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "darth_malgus"
+name = "Darth Malgus"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Vinn Atrius"
-ids = [4158872667291648]
-is_boss = true
-
-[[boss.entities]]
-name = "Zildrog"
-ids = [4159276394217472]
+name = "Darth Malgus"
+ids = [770963809501184, 2511688284766208]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Optional Boss: Hands of Zildrog
+# Bonus Boss: Sith Entity
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "hands_zildrog"
-name = "Hands of Zildrog"
+id = "sith_entity"
+name = "Sith Entity"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Hand of Zildrog"
-ids = [4172294440091648]
-is_boss = true
-
-[[boss.entities]]
-name = "Hand of Zildrog"
-ids = [4172298735058944]
+name = "Sith Entity"
+ids = [2158341325324288, 2511744119341056, 2511757004242944, 2145456423436288, 2158349915258880, 1695962326106112, 2511752709275648, 2158354210226176, 2511748414308352, 2511739824373760]
 is_boss = true

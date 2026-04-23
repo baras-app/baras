@@ -1,72 +1,75 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Battle of Rishi - Flashpoint
+# The Esseles - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
-# 3 bosses, 1 bonus boss
+# 4 bosses, 1 bonus boss
 
 [area]
-name = "Battle of Rishi"
-area_id = 833571547775720
+name = "The Esseles"
+area_id = 833571547775678
 area_type = "flashpoint"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Rarrook & Marko Ka
+# Boss 1: Lieutenant Isric
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "rarrook_marko"
-name = "Rarrook & Marko Ka"
+id = "lieutenant_isric"
+name = "Lieutenant Isric"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Rarrook"
-ids = [3369139850706944, 3533559788732416]
-is_boss = true
-
-[[boss.entities]]
-name = "Marko Ka"
-ids = [3369144145674240, 3533564083699712]
+name = "Lieutenant Isric"
+ids = [2510773456732160, 649467774631936]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Master Obai & Lord Vodd
+# Boss 2: Ironfist
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "obai_vodd"
-name = "Master Obai & Lord Vodd"
+id = "ironfist"
+name = "Ironfist"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Master Obai"
-ids = [3369148440641536, 3533581263568896]
-is_boss = true
-
-[[boss.entities]]
-name = "Lord Vodd"
-ids = [3369152735608832, 3533585558536192]
+name = "Ironfist"
+ids = [649484954501120, 2510769161764864]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Shield Squadron Unit 1
+# Boss 3: ISS-7 Guardian Battledroid
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "shield_walker"
-name = "Shield Squadron Unit 1"
+id = "iss_7_guardian_battledroid"
+name = "ISS-7 Guardian Battledroid"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "ISS-7 Guardian Battledroid"
+ids = [653359015002112, 2510777751699456]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: Vokk
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "vokk"
+name = "Vokk"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Shield Squadron Unit 1"
-ids = [3369157030576128]
+name = "Vokk"
+ids = [649472069599232, 2510790636601344]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Bonus Boss: Commander Mokan
+# Bonus Boss: ISS-994 Power Droid
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "mokan"
-name = "Commander Mokan"
+id = "iss_994_power_droid"
+name = "ISS-994 Power Droid"
 difficulties = ["master"]
 
 [[boss.entities]]
-name = "Commander Mokan"
-ids = [3417131815272448]
+name = "ISS-994 Power Droid"
+ids = [1461006140178432]
 is_boss = true

@@ -1,72 +1,67 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Battle of Rishi - Flashpoint
+# Cademimu - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
 # 3 bosses, 1 bonus boss
 
 [area]
-name = "Battle of Rishi"
-area_id = 833571547775720
+name = "Cademimu"
+area_id = 833571547775684
 area_type = "flashpoint"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Rarrook & Marko Ka
+# Boss 1: Officer Xander and EN-4C
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "rarrook_marko"
-name = "Rarrook & Marko Ka"
+id = "officer_xander_en4c"
+name = "Officer Xander and EN-4C"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Rarrook"
-ids = [3369139850706944, 3533559788732416]
+name = "Officer Xander"
+ids = [3210672737353728, 2504232221540352]
 is_boss = true
 
 [[boss.entities]]
-name = "Marko Ka"
-ids = [3369144145674240, 3533564083699712]
+name = "EN-4C"
+ids = [3210668442386432, 2504236516507648]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Master Obai & Lord Vodd
+# Boss 2: Captain Grimyk
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "obai_vodd"
-name = "Master Obai & Lord Vodd"
+id = "captain_grimyk"
+name = "Captain Grimyk"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Master Obai"
-ids = [3369148440641536, 3533581263568896]
-is_boss = true
-
-[[boss.entities]]
-name = "Lord Vodd"
-ids = [3369152735608832, 3533585558536192]
+name = "Captain Grimyk"
+ids = [2503961638600704, 3210677032321024]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Shield Squadron Unit 1
+# Boss 3: General Ortol
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "shield_walker"
-name = "Shield Squadron Unit 1"
+id = "general_ortol"
+name = "General Ortol"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Shield Squadron Unit 1"
-ids = [3369157030576128]
+name = "General Ortol"
+ids = [2506547208912896, 3210659852451840]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Bonus Boss: Commander Mokan
+# Bonus Boss: Garold the Dark One
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "mokan"
-name = "Commander Mokan"
+id = "garold_the_dark_one"
+name = "Garold the Dark One"
 difficulties = ["master"]
 
 [[boss.entities]]
-name = "Commander Mokan"
-ids = [3417131815272448]
+name = "Garold the Dark One"
+ids = [3247463427211264]
 is_boss = true

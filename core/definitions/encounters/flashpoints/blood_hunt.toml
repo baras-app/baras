@@ -1,12 +1,20 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Blood Hunt - Flashpoint
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3 bosses
+
 [area]
 name = "Blood Hunt"
 area_id = 833571547775719
 area_type = "flashpoint"
-difficulties = ["story", "veteran", "master"]
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 1: Kyramla
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "kyramla"
 name = "Kyramla"
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Kyramla"
@@ -14,6 +22,9 @@ ids = [3400982738239488, 3507004005941248]
 is_boss = true
 is_kill_target = true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 2: Valk & Jos
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "valk_jos"
 name = "Valk & Jos"
@@ -23,22 +34,22 @@ difficulties = ["story", "veteran", "master"]
 name = "Jos"
 ids = [3507034070712320, 3384198006046720]
 is_boss = true
-is_kill_target = true
 
 [[boss.entities]]
 name = "Valk"
 ids = [3507029775745024, 3384193711079424]
 is_boss = true
-is_kill_target = true
 
-
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 3: Shae Vizla
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "shae"
 name = "Shae Vizla"
 difficulties = ["story", "veteran", "master"]
+is_final_boss = true
 
 [[boss.entities]]
 name = "Shae Vizla"
 ids = [3507051250581504, 3407807441272832]
 is_boss = true
-is_kill_target = true

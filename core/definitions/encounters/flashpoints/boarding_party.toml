@@ -1,72 +1,98 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Battle of Rishi - Flashpoint
+# Boarding Party - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
-# 3 bosses, 1 bonus boss
+# 5 bosses, 1 bonus boss
 
 [area]
-name = "Battle of Rishi"
-area_id = 833571547775720
+name = "Boarding Party"
+area_id = 833571547775680
 area_type = "flashpoint"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Rarrook & Marko Ka
+# Boss 1: HXI-54 Juggernaut
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "rarrook_marko"
-name = "Rarrook & Marko Ka"
+id = "hxi_54_juggernaut"
+name = "HXI-54 Juggernaut"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Rarrook"
-ids = [3369139850706944, 3533559788732416]
-is_boss = true
-
-[[boss.entities]]
-name = "Marko Ka"
-ids = [3369144145674240, 3533564083699712]
+name = "HXI-54 Juggernaut"
+ids = [745340034613248, 2514497193377792]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Master Obai & Lord Vodd
+# Boss 2: Major Alvena
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "obai_vodd"
-name = "Master Obai & Lord Vodd"
+id = "major_alvena"
+name = "Major Alvena"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Master Obai"
-ids = [3369148440641536, 3533581263568896]
-is_boss = true
-
-[[boss.entities]]
-name = "Lord Vodd"
-ids = [3369152735608832, 3533585558536192]
+name = "Major Alvena"
+ids = [1004464001515520, 2514505783312384]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Shield Squadron Unit 1
+# Boss 3: Sakan Do'nair
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "shield_walker"
-name = "Shield Squadron Unit 1"
+id = "sakan_donair"
+name = "Sakan Do'nair"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Sakan Do'nair"
+ids = [2514522963181568, 739816706670592]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: Lieutenant Menerus
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "lieutenant_menerus"
+name = "Lieutenant Menerus"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Lieutenant Menerus"
+ids = [1005417484255232, 2514501488345088]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: Storm Squad
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "storm_squad"
+name = "Storm Squad"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Shield Squadron Unit 1"
-ids = [3369157030576128]
+name = "Security Chief Massey"
+ids = [957850721452032, 2514535848083456]
+is_boss = true
+
+[[boss.entities]]
+name = "Commander Jorland"
+ids = [2514531553116160, 739825296605184]
+is_boss = true
+
+[[boss.entities]]
+name = "Medical Officer Alon"
+ids = [2514527258148864, 957597318381568]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Bonus Boss: Commander Mokan
+# Bonus Boss: Chief Engineer Kels
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "mokan"
-name = "Commander Mokan"
-difficulties = ["master"]
+id = "chief_engineer_kels"
+name = "Chief Engineer Kels"
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Commander Mokan"
-ids = [3417131815272448]
+name = "Chief Engineer Kels"
+ids = [1004111814197248, 2514488603443200]
 is_boss = true

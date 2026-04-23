@@ -1,85 +1,115 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Nathema - Flashpoint
+# Assault on Tython - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4 bosses, 1 optional boss
+# Full Republic variant, then full Imperial variant. 3 bosses, 1 bonus boss (master only) each.
 
 [area]
-name = "Nathema"
-area_id = 833571547775764
+name = "Assault on Tython"
+area_id = 833571547775709
 area_type = "flashpoint"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Voreclaw
+# Republic Boss 1: Major Travik
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "voreclaw"
-name = "Voreclaw"
+id = "major_travik"
+name = "Major Travik"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Voreclaw"
-ids = [4157176155209728]
+name = "Major Travik"
+ids = [3331296893861888]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Ancient Guardian Droid
+# Republic Boss 2: Lieutenant Kreshin
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "guardian_droid"
-name = "Ancient Guardian Droid"
+id = "lieutenant_kreshin"
+name = "Lieutenant Kreshin"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Ancient Guardian Droid"
-ids = [4152640669745152]
+name = "Lieutenant Kreshin"
+ids = [3465690715521024, 3328904597078016]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Gemini 16
+# Republic Boss 3: Lord Goh
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "gemini"
-name = "Gemini 16"
-difficulties = ["story", "veteran", "master"]
-
-[[boss.entities]]
-name = "Gemini 16"
-ids = [4158834012585984]
-is_boss = true
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Boss 4: Vinn Atrius & Zildrog
-# ═══════════════════════════════════════════════════════════════════════════════
-[[boss]]
-id = "vin_zil"
-name = "Vinn Atrius & Zildrog"
+id = "lord_goh"
+name = "Lord Goh"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Vinn Atrius"
-ids = [4158872667291648]
-is_boss = true
-
-[[boss.entities]]
-name = "Zildrog"
-ids = [4159276394217472]
+name = "Lord Goh"
+ids = [3465699305455616, 3325872350167040]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Optional Boss: Hands of Zildrog
+# Republic Bonus Boss: Republic Commander
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "hands_zildrog"
-name = "Hands of Zildrog"
+id = "republic_commander"
+name = "Republic Commander"
+difficulties = ["master"]
+
+[[boss.entities]]
+name = "Republic Commander"
+ids = [3485688083251200, 3493169916280832]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Imperial Boss 1: Major Imos
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "major_imos"
+name = "Major Imos"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Hand of Zildrog"
-ids = [4172294440091648]
+name = "Major Imos"
+ids = [3465471672188928, 3327405653491712]
 is_boss = true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Imperial Boss 2: Master Liam Dentiri
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "master_liam_dentiri"
+name = "Master Liam Dentiri"
+difficulties = ["story", "veteran", "master"]
+
 [[boss.entities]]
-name = "Hand of Zildrog"
-ids = [4172298735058944]
+name = "Master Liam Dentiri"
+ids = [3465536096698368, 3325902414938112]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Imperial Boss 3: Master Oric Traless
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "master_oric_traless"
+name = "Master Oric Traless"
+difficulties = ["story", "veteran", "master"]
+is_final_boss = true
+
+[[boss.entities]]
+name = "Master Oric Traless"
+ids = [3465579046371328, 3327796495515648]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Imperial Bonus Boss: Imperial Commander
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "imperial_commander"
+name = "Imperial Commander"
+difficulties = ["master"]
+
+[[boss.entities]]
+name = "Imperial Commander"
+ids = [3485696673185792, 3493174211248128]
 is_boss = true

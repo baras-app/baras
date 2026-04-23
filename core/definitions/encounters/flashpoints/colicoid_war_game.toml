@@ -1,0 +1,23 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Colicoid War Game - Flashpoint
+# ═══════════════════════════════════════════════════════════════════════════════
+# 1 boss
+
+[area]
+name = "Colicoid War Game"
+area_id = 833571547775685
+area_type = "flashpoint"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 1: Annihilator 6K-A2
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "annihilator_6k_a2"
+name = "Annihilator 6K-A2"
+difficulties = ["veteran"]
+is_final_boss = true
+
+[[boss.entities]]
+name = "Annihilator 6K-A2"
+ids = [2530019205185536, 1209574459703296]
+is_boss = true

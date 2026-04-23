@@ -1,85 +1,116 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Nathema - Flashpoint
+# The Battle of Ilum - Flashpoint
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4 bosses, 1 optional boss
+# 6 bosses, 1 bonus boss
 
 [area]
-name = "Nathema"
-area_id = 833571547775764
+name = "The Battle of Ilum"
+area_id = 833571547775672
 area_type = "flashpoint"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Voreclaw
+# Boss 1: Gark the Indomitable
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "voreclaw"
-name = "Voreclaw"
+id = "gark_the_indomitable"
+name = "Gark the Indomitable"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Voreclaw"
-ids = [4157176155209728]
+name = "Gark the Indomitable"
+ids = [2511477831368704, 1675608476090368]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Ancient Guardian Droid
+# Boss 2: Drinda Zel & Velasu Graege
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "guardian_droid"
-name = "Ancient Guardian Droid"
+id = "drinda_velasu"
+name = "Drinda Zel & Velasu Graege"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Ancient Guardian Droid"
-ids = [4152640669745152]
+name = "Drinda Zel"
+ids = [2511473536401408, 770938039697408]
+is_boss = true
+
+[[boss.entities]]
+name = "Velasu Graege"
+ids = [770942334664704, 2511490716270592]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Gemini 16
+# Boss 3: Crystal Cutter Droid & Crystal Harvester Droid
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "gemini"
-name = "Gemini 16"
+id = "crystal_droids"
+name = "Crystal Cutter Droid & Crystal Harvester Droid"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Gemini 16"
-ids = [4158834012585984]
+name = "Crystal Cutter Droid"
+ids = [1675690080468992, 2511460651499520]
+is_boss = true
+
+[[boss.entities]]
+name = "Crystal Harvester Droid"
+ids = [1675672900599808, 2511456356532224]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 4: Vinn Atrius & Zildrog
+# Boss 4: Krel Thak
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "vin_zil"
-name = "Vinn Atrius & Zildrog"
+id = "krel_thak"
+name = "Krel Thak"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Krel Thak"
+ids = [770946629632000, 2511486421303296]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: Commander Folex
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "commander_folex"
+name = "Commander Folex"
+difficulties = ["story", "veteran", "master"]
+
+[[boss.entities]]
+name = "Commander Folex"
+ids = [2511439176663040, 1675861879160832]
+is_boss = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 6: Darth Serevin
+# ═══════════════════════════════════════════════════════════════════════════════
+[[boss]]
+id = "darth_serevin"
+name = "Darth Serevin"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Vinn Atrius"
-ids = [4158872667291648]
+name = "Darth Serevin"
+ids = [770925154795520, 2511469241434112]
 is_boss = true
 
 [[boss.entities]]
-name = "Zildrog"
-ids = [4159276394217472]
+name = "Queneth Li"
+ids = [2075646025007104, 2511464946466816]
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Optional Boss: Hands of Zildrog
+# Bonus Boss: Guid Patriarch
 # ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
-id = "hands_zildrog"
-name = "Hands of Zildrog"
+id = "guid_patriarch"
+name = "Guid Patriarch"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Hand of Zildrog"
-ids = [4172294440091648]
-is_boss = true
-
-[[boss.entities]]
-name = "Hand of Zildrog"
-ids = [4172298735058944]
+name = "Guid Patriarch"
+ids = [1618558425497600, 2511482126336000]
 is_boss = true

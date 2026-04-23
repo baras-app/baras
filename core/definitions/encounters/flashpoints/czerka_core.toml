@@ -1,8 +1,16 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Czerka Core Meltdown - Flashpoint
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3 bosses
+
 [area]
 name = "Czerka Core Meltdown"
-id = 137438993342
+area_id = 137438993342
 area_type = "flashpoint"
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 1: Enhanced Vrblther
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "vrblther"
 name = "Enhanced Vrblther"
@@ -12,8 +20,10 @@ difficulties = ["story", "veteran", "master"]
 name = "Enhanced Vrblther"
 ids = [3247278743617536, 3279289134874624]
 is_boss = true
-is_kill_target = true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 2: Enhanced Duneclaw
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "duneclaw"
 name = "Enhanced Duneclaw"
@@ -23,15 +33,17 @@ difficulties = ["story", "veteran", "master"]
 name = "Enhanced Duneclaw"
 ids = [3247274448650240, 3279293429841920]
 is_boss = true
-is_kill_target = true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 3: The Vigilant
+# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "vigilant"
 name = "The Vigilant"
 difficulties = ["story", "veteran", "master"]
+is_final_boss = true
 
 [[boss.entities]]
 name = "The Vigilant"
 ids = [3279310609711104, 3247240088911872]
 is_boss = true
-is_kill_target = true
