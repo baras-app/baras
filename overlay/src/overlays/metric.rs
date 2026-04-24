@@ -413,8 +413,17 @@ impl MetricOverlay {
         let total_sum: i64 = visible_entries.iter().map(|e| e.total_value).sum();
 
         // Icon rendering setup
-        let icon_size = bar_height - 4.0 * self.frame.scale_factor(); // Slightly smaller than bar
-        let icon_padding = 2.0 * self.frame.scale_factor();
+        // Discipline icons render full-height and left-aligned (flush to the bar edge);
+        // class icons render slightly inset to leave breathing room around the silhouette.
+        let is_discipline_icon = self.icon_mode == ClassIconMode::Discipline;
+        let (icon_size, icon_padding) = if is_discipline_icon {
+            (bar_height, 0.0)
+        } else {
+            (
+                bar_height - 4.0 * self.frame.scale_factor(),
+                2.0 * self.frame.scale_factor(),
+            )
+        };
 
         for entry in &visible_entries {
             // Determine fill color: class color > custom entry color > configured bar_color
