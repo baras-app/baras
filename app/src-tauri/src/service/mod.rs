@@ -3292,6 +3292,8 @@ async fn build_timer_data_with_audio(
             is_pinned: true,
             is_queued: false,
             is_blocked: false,
+            countdown_bar: false,
+            hide_from_next: false,
             icon_ability_id: None,
             icon: None,
         });
@@ -3362,6 +3364,8 @@ async fn build_timer_data_with_audio(
                     is_pinned: false,
                     is_queued: timer.is_queued,
                     is_blocked,
+                    countdown_bar: timer.queue_countdown_bar,
+                    hide_from_next: timer.queue_hide_from_next,
                     icon_ability_id: timer.icon_ability_id,
                     icon,
                 });

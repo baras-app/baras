@@ -1798,6 +1798,8 @@ mod examples {
                 is_pinned: true,
                 is_queued: false,
                 is_blocked: false,
+                countdown_bar: false,
+                hide_from_next: false,
                 icon_ability_id: None,
                 icon: None,
             });
@@ -1830,6 +1832,8 @@ mod examples {
                     is_pinned: false,
                     is_queued: false,
                     is_blocked,
+                    countdown_bar: false,
+                    hide_from_next: false,
                     icon_ability_id: Some(ability_id),
                     icon,
                 }
@@ -1843,6 +1847,8 @@ mod examples {
                     is_pinned: false,
                     is_queued: true,
                     is_blocked,
+                    countdown_bar: false,
+                    hide_from_next: false,
                     icon_ability_id: Some(ability_id),
                     icon,
                 }
@@ -1852,7 +1858,31 @@ mod examples {
         // Demo "Lockout" blocker: 4s on, 4s off. While on, Lightning Strike +
         // Thundering Blast are blocked — you'll see those rows dim and the
         // gold glow jump to whichever non-blocked ability is next.
-        let lockout_active = ((elapsed / 4.0) as u32) % 2 == 0;
+        let lockout_cycle = 8.0_f32;
+        let lockout_phase = elapsed % lockout_cycle;
+        let lockout_active = lockout_phase < 4.0;
+
+        // Demo: visible "Lockout" mechanic row. Uses both `countdown_bar` and
+        // `hide_from_next` — a trickling-down timer bar that's never a cast
+        // candidate even though its priority (9) would otherwise outrank every
+        // ability. Proves the flag excludes it from the gold-glow set without
+        // stealing it from real castable abilities beneath it.
+        if lockout_active {
+            entries.push(AbilityQueueEntry {
+                name: "Lockout".to_string(),
+                remaining_secs: 4.0 - lockout_phase,
+                total_secs: 4.0,
+                color: [200, 60, 60, 255],
+                queue_priority: 9,
+                is_pinned: false,
+                is_queued: false,
+                is_blocked: false,
+                countdown_bar: true,
+                hide_from_next: true,
+                icon_ability_id: None,
+                icon: None,
+            });
+        }
 
         // Cycling priority abilities — different cooldowns so the READY tier
         // is a moving set, with higher-priority recent refreshes bumping
@@ -1868,6 +1898,9 @@ mod examples {
         // 6-priority bracket regardless of CD state.
         let long_cycle = 18.0_f32;
         let long_remaining = long_cycle - (elapsed % long_cycle);
+        // Demo: Recklessness uses countdown mode — its bar starts full at
+        // trigger time and trickles down to empty, distinguishing it from the
+        // filling-up progress bars used by the other cooldown entries.
         entries.push(AbilityQueueEntry {
             name: "Recklessness".to_string(),
             remaining_secs: long_remaining,
@@ -1877,6 +1910,8 @@ mod examples {
             is_pinned: false,
             is_queued: false,
             is_blocked: false,
+            countdown_bar: true,
+            hide_from_next: false,
             icon_ability_id: Some(icons.recklessness.0),
             icon: icons.recklessness.1.clone(),
         });
@@ -1892,6 +1927,8 @@ mod examples {
             is_pinned: false,
             is_queued: true,
             is_blocked: false,
+            countdown_bar: false,
+            hide_from_next: false,
             icon_ability_id: Some(icons.force_lightning.0),
             icon: icons.force_lightning.1.clone(),
         });

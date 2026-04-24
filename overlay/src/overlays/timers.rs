@@ -72,6 +72,12 @@ pub struct AbilityQueueEntry {
     /// currently active. Blocked entries are dimmed in the overlay and
     /// excluded from the "next cast" highlight set.
     pub is_blocked: bool,
+    /// When true, this row's bar renders as a trickling-down bar (full → empty
+    /// as the cooldown elapses) instead of the default filling-up progress bar.
+    pub countdown_bar: bool,
+    /// When true, this row is excluded from the "next cast" highlight set —
+    /// used for display-only rows that aren't castable abilities.
+    pub hide_from_next: bool,
     pub icon_ability_id: Option<u64>,
     pub icon: Option<Arc<(u32, u32, Vec<u8>)>>,
 }

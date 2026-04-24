@@ -496,6 +496,16 @@ pub struct BossTimerDefinition {
     /// from appearing as "next cast" while any of them is active. OR semantics.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub queue_blocking_timers: Vec<String>,
+    /// When true, render this timer's ability-queue row as a trickling-down
+    /// bar instead of the default filling-up progress bar. Only applies when
+    /// `display_target = AbilityQueue`.
+    #[serde(default)]
+    pub queue_countdown_bar: bool,
+    /// When true, this timer is never highlighted as the "next cast" in the
+    /// ability queue. Used for display-only entries (incoming debuffs,
+    /// mechanic timers) that aren't castable abilities.
+    #[serde(default)]
+    pub queue_hide_from_next: bool,
 }
 
 fn default_timer_color() -> [u8; 4] {

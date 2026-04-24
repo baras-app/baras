@@ -118,6 +118,14 @@ pub struct ActiveTimer {
     /// Cached from definition: names of other timers in the same encounter
     /// that block this ability queue entry from being considered ready.
     pub queue_blocking_timers: Vec<String>,
+
+    /// Cached from definition: render this timer's ability-queue row as a
+    /// trickling-down bar instead of the default filling-up progress bar.
+    pub queue_countdown_bar: bool,
+
+    /// Cached from definition: never mark this timer as a "next cast"
+    /// candidate. Used for display-only rows that aren't castable abilities.
+    pub queue_hide_from_next: bool,
 }
 
 impl ActiveTimer {
@@ -142,6 +150,8 @@ impl ActiveTimer {
         queue_on_expire: bool,
         queue_priority: u8,
         queue_blocking_timers: Vec<String>,
+        queue_countdown_bar: bool,
+        queue_hide_from_next: bool,
     ) -> Self {
         let expires_at =
             event_timestamp + chrono::Duration::milliseconds(duration.as_millis() as i64);
@@ -179,6 +189,8 @@ impl ActiveTimer {
             queue_on_expire,
             queue_priority,
             queue_blocking_timers,
+            queue_countdown_bar,
+            queue_hide_from_next,
         }
     }
 

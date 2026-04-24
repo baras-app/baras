@@ -615,6 +615,18 @@ pub struct BossTimerDefinition {
     /// currently active (OR semantics).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub queue_blocking_timers: Vec<String>,
+
+    /// When true, render this timer's ability-queue row as a trickling-down
+    /// bar (full → empty as cooldown elapses). Only applies when
+    /// `display_target = AbilityQueue`.
+    #[serde(default)]
+    pub queue_countdown_bar: bool,
+
+    /// When true, this timer is never a "next cast" candidate. Used for
+    /// display-only entries (incoming debuffs, lockout windows, mechanic
+    /// timers) that aren't castable abilities.
+    #[serde(default)]
+    pub queue_hide_from_next: bool,
 }
 
 impl BossTimerDefinition {
@@ -675,6 +687,8 @@ impl BossTimerDefinition {
             queue_priority: self.queue_priority,
             queue_remove_trigger: self.queue_remove_trigger.clone(),
             queue_blocking_timers: self.queue_blocking_timers.clone(),
+            queue_countdown_bar: self.queue_countdown_bar,
+            queue_hide_from_next: self.queue_hide_from_next,
         }
     }
 }

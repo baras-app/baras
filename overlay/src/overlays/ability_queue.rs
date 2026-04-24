@@ -304,7 +304,11 @@ impl AbilityQueueOverlay {
             // excluded entirely.
             let max_eligible_priority = regular
                 .iter()
-                .filter(|e| !e.is_blocked && (e.is_queued || e.remaining_secs < gcd_remaining))
+                .filter(|e| {
+                    !e.is_blocked
+                        && !e.hide_from_next
+                        && (e.is_queued || e.remaining_secs < gcd_remaining)
+                })
                 .map(|e| e.queue_priority)
                 .max();
 
@@ -334,12 +338,17 @@ impl AbilityQueueOverlay {
                     let text = if e.is_blocked { "Blocked" } else { "READY" };
                     (text.to_string(), 1.0)
                 } else {
+                    // `countdown_bar` inverts the fill direction: full at start,
+                    // empty at expiry. Default stays the filling-up progress bar.
+                    let fill = if e.countdown_bar { 1.0 - e.progress() } else { e.progress() };
                     (
                         baras_types::formatting::format_countdown(e.remaining_secs, "", "0:00", false),
-                        e.progress(),
+                        fill,
                     )
                 };
-                let eligible = !e.is_blocked && (e.is_queued || e.remaining_secs < gcd_remaining);
+                let eligible = !e.is_blocked
+                    && !e.hide_from_next
+                    && (e.is_queued || e.remaining_secs < gcd_remaining);
                 let highlighted =
                     eligible && max_eligible_priority == Some(e.queue_priority);
                 rows.push(RenderRow {
@@ -605,10 +614,17 @@ impl AbilityQueueOverlay {
 
         let highlighted: Vec<&RenderRow> = rows.iter().filter(|r| r.highlighted).collect();
 
+        // Compact mode: when 2+ abilities tie for "next cast", drop the names
+        // and show icons only with " OR " between them — names stack up fast
+        // and cause the Next: line to overflow the overlay width. Rows that
+        // don't have an icon available still fall back to their name so they
+        // stay visible.
+        let compact = highlighted.len() >= 2;
+
         // ── Measure pass: compute the total width so we can center the block.
+        let (sep_text, is_compact) = if compact { (" OR ", true) } else { (" / ", false) };
+        let (sep_w, _) = self.frame.measure_text_styled(sep_text, font_size, false, false);
         let mut total_w = label_w + gap;
-        let sep = " / ";
-        let (sep_w, _) = self.frame.measure_text_styled(sep, font_size, false, false);
 
         if highlighted.is_empty() {
             let (dash_w, _) = self.frame.measure_text_styled("—", font_size, false, false);
@@ -622,10 +638,22 @@ impl AbilityQueueOverlay {
                     .icon_ability_id
                     .is_some_and(|id| shared_scaled_icons().get(id, icon_size_u32).is_some());
                 if has_icon {
-                    total_w += icon_size + icon_padding;
+                    total_w += icon_size;
+                    if is_compact {
+                        // Icon + optional initials (2+ word names only).
+                        if let Some(initials) = ability_initials(&row.name) {
+                            let (init_w, _) = self.frame.measure_text_styled(&initials, font_size, true, false);
+                            total_w += icon_padding + init_w;
+                        }
+                    } else {
+                        total_w += icon_padding;
+                        let (name_w, _) = self.frame.measure_text_styled(&row.name, font_size, true, false);
+                        total_w += name_w;
+                    }
+                } else {
+                    let (name_w, _) = self.frame.measure_text_styled(&row.name, font_size, true, false);
+                    total_w += name_w;
                 }
-                let (name_w, _) = self.frame.measure_text_styled(&row.name, font_size, true, false);
-                total_w += name_w;
             }
         }
 
@@ -641,23 +669,47 @@ impl AbilityQueueOverlay {
 
         for (idx, row) in highlighted.iter().enumerate() {
             if idx > 0 {
-                self.frame.draw_text_with_glow(sep, cursor_x, text_y, font_size, font_color, false, false);
+                self.frame.draw_text_with_glow(sep_text, cursor_x, text_y, font_size, font_color, false, false);
                 cursor_x += sep_w;
             }
 
-            if let Some(ability_id) = row.icon_ability_id {
+            let drew_icon = if let Some(ability_id) = row.icon_ability_id {
                 if let Some(scaled) = shared_scaled_icons().get(ability_id, icon_size_u32) {
                     self.frame.draw_image(
                         &scaled, icon_size_u32, icon_size_u32,
                         cursor_x, ic_y, icon_size, icon_size,
                     );
-                    cursor_x += icon_size + icon_padding;
+                    cursor_x += icon_size;
+                    true
+                } else {
+                    false
                 }
-            }
+            } else {
+                false
+            };
 
-            self.frame.draw_text_with_glow(&row.name, cursor_x, text_y, font_size, font_color, true, false);
-            let (name_w, _) = self.frame.measure_text_styled(&row.name, font_size, true, false);
-            cursor_x += name_w;
+            // In compact mode, icons replace names entirely — append initials
+            // (for 2+ word names) right after the icon so the reader can still
+            // disambiguate. Fall back to the full name if no icon rendered or
+            // we're not compact. Single-word names in compact mode stay
+            // icon-only because 1-letter "initials" read as noise.
+            if is_compact && drew_icon {
+                if let Some(initials) = ability_initials(&row.name) {
+                    cursor_x += icon_padding;
+                    self.frame.draw_text_with_glow(&initials, cursor_x, text_y, font_size, font_color, true, false);
+                    let (init_w, _) = self.frame.measure_text_styled(&initials, font_size, true, false);
+                    cursor_x += init_w;
+                }
+            } else if !drew_icon {
+                self.frame.draw_text_with_glow(&row.name, cursor_x, text_y, font_size, font_color, true, false);
+                let (name_w, _) = self.frame.measure_text_styled(&row.name, font_size, true, false);
+                cursor_x += name_w;
+            } else {
+                cursor_x += icon_padding;
+                self.frame.draw_text_with_glow(&row.name, cursor_x, text_y, font_size, font_color, true, false);
+                let (name_w, _) = self.frame.measure_text_styled(&row.name, font_size, true, false);
+                cursor_x += name_w;
+            }
         }
     }
 }
@@ -665,6 +717,22 @@ impl AbilityQueueOverlay {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Compact-mode label for an ability name: uppercase first letter of each
+/// word joined together (e.g. "Lightning Strike" → "LS"). Returns None for
+/// single-word names because single letters read as noise ("Shock" → "S"
+/// adds nothing next to the icon).
+fn ability_initials(name: &str) -> Option<String> {
+    let mut letters = String::new();
+    let mut words = 0;
+    for word in name.split_whitespace() {
+        if let Some(c) = word.chars().next() {
+            letters.extend(c.to_uppercase());
+            words += 1;
+        }
+    }
+    if words >= 2 { Some(letters) } else { None }
+}
 
 /// Scale an RGBA byte color's alpha channel. Used for dimming blocked rows.
 fn apply_dim_alpha(color: [u8; 4], alpha_mul: f32) -> [u8; 4] {

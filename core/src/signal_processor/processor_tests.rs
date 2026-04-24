@@ -649,6 +649,8 @@ fn test_bestia_complete_encounter() {
             queue_priority: 0,
             queue_remove_trigger: None,
             queue_blocking_timers: Vec::new(),
+            queue_countdown_bar: false,
+            queue_hide_from_next: false,
         })
         .collect();
 

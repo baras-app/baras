@@ -190,6 +190,19 @@ pub struct TimerDefinition {
     /// OR semantics — any one active blocker marks this timer as blocked.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub queue_blocking_timers: Vec<String>,
+
+    /// When true, render this timer's ability-queue row as a trickling-down
+    /// bar (full → empty as the cooldown elapses) instead of the default
+    /// filling-up progress bar. Only has an effect when `display_target` is
+    /// `AbilityQueue`.
+    #[serde(default)]
+    pub queue_countdown_bar: bool,
+
+    /// When true, this timer is never a "next cast" candidate even when
+    /// eligible by timing. Useful for display-only rows (incoming debuffs,
+    /// lockout windows, mechanic timers) that the player doesn't cast.
+    #[serde(default)]
+    pub queue_hide_from_next: bool,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

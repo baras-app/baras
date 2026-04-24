@@ -361,6 +361,8 @@ fn convert_to_boss_timer(xml: &XmlConfigTimer) -> BossTimerDefinition {
         queue_priority: 0,
         queue_remove_trigger: None,
         queue_blocking_timers: Vec::new(),
+        queue_countdown_bar: false,
+        queue_hide_from_next: false,
     }
 }
 

@@ -60,6 +60,8 @@ fn default_timer(name: String) -> BossTimerDefinition {
         queue_priority: 0,
         queue_remove_trigger: None,
         queue_blocking_timers: Vec::new(),
+        queue_countdown_bar: false,
+        queue_hide_from_next: false,
     }
 }
 
@@ -824,6 +826,8 @@ fn TimerEditForm(
                                                 d.gcd_secs = None;
                                                 d.queue_priority = 0;
                                                 d.queue_remove_trigger = None;
+                                                d.queue_countdown_bar = false;
+                                                d.queue_hide_from_next = false;
                                             }
                                             draft.set(d);
                                         },
@@ -883,6 +887,38 @@ fn TimerEditForm(
                                             onchange: move |e| {
                                                 let mut d = draft();
                                                 d.queue_on_expire = e.checked();
+                                                draft.set(d);
+                                            }
+                                        }
+                                    }
+                                    div { class: "form-row-hz",
+                                        label { class: "flex items-center",
+                                            "Countdown Mode"
+                                            span { class: "help-icon", title: "Render this timer's bar as a trickling-down bar (full → empty) instead of the default filling-up progress bar used by other entries.", "?" }
+                                        }
+                                        input {
+                                            r#type: "checkbox",
+                                            class: "checkbox",
+                                            checked: draft().queue_countdown_bar,
+                                            onchange: move |e| {
+                                                let mut d = draft();
+                                                d.queue_countdown_bar = e.checked();
+                                                draft.set(d);
+                                            }
+                                        }
+                                    }
+                                    div { class: "form-row-hz",
+                                        label { class: "flex items-center",
+                                            "Don't Show as Next"
+                                            span { class: "help-icon", title: "When enabled, this timer is never highlighted as the 'next cast' — use for display-only entries (incoming debuffs, lockout/mechanic windows) that aren't castable abilities.", "?" }
+                                        }
+                                        input {
+                                            r#type: "checkbox",
+                                            class: "checkbox",
+                                            checked: draft().queue_hide_from_next,
+                                            onchange: move |e| {
+                                                let mut d = draft();
+                                                d.queue_hide_from_next = e.checked();
                                                 draft.set(d);
                                             }
                                         }
