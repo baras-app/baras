@@ -20,6 +20,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Detector"
 ids = [2512014702280704, 1626340906237952]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Assassin Droids
@@ -33,16 +34,19 @@ difficulties = ["story", "veteran", "master"]
 name = "Mentor Assassin Theta"
 ids = [2511958867705856, 746748783886336]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Mentor Assassin Beta"
 ids = [2511954572738560, 746753078853632]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Mentor Assassin Zeta"
 ids = [2511963162673152, 746757373820928]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Interrogator
@@ -56,6 +60,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Interrogator"
 ids = [2512053356986368, 1627981583745024]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Bulwark
@@ -69,6 +74,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Bulwark"
 ids = [2511984637509632, 751348693860352]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 5: Assembler
@@ -96,6 +102,7 @@ is_final_boss = true
 name = "Mentor"
 ids = [2512100601626624, 743540443316224, 2144842243112960]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Mentor Core Guardian"

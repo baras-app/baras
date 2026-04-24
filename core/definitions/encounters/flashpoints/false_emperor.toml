@@ -33,6 +33,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Jindo Krey"
 ids = [2511709759602688, 770959514533888]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Prototype A-14 & Prototype B-16
@@ -64,6 +65,7 @@ difficulties = ["story", "veteran", "master"]
 name = "HK-47"
 ids = [770955219566592, 2511701169668096]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 5: Chondrus Berani
@@ -91,6 +93,7 @@ is_final_boss = true
 name = "Darth Malgus"
 ids = [770963809501184, 2511688284766208]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Sith Entity
@@ -102,5 +105,6 @@ difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Sith Entity"
-ids = [2158341325324288, 2511744119341056, 2511757004242944, 2145456423436288, 2158349915258880, 1695962326106112, 2511752709275648, 2158354210226176, 2511748414308352, 2511739824373760]
+ids = [2511744119341056]
 is_boss = true
+is_kill_target = true

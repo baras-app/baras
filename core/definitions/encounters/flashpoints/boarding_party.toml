@@ -19,6 +19,7 @@ difficulties = ["story", "veteran", "master"]
 [[boss.entities]]
 name = "HXI-54 Juggernaut"
 ids = [745340034613248, 2514497193377792]
+is_kill_target = true
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -45,6 +46,7 @@ difficulties = ["story", "veteran", "master"]
 [[boss.entities]]
 name = "Sakan Do'nair"
 ids = [2514522963181568, 739816706670592]
+is_kill_target = true
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════

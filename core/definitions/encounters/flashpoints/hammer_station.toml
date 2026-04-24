@@ -20,6 +20,7 @@ difficulties = ["story", "veteran", "master"]
 name = "DN-314 Tunneler"
 ids = [3152170987814912, 2276525940408320]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Vorgan the Volcano
@@ -33,16 +34,19 @@ difficulties = ["story", "veteran", "master"]
 name = "Vorgan the Volcano"
 ids = [3152166692847616, 2286223976562688]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Sawbones Gjonfs"
 ids = [3152162397880320, 2286228271529984]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "2R-CH, Torch"
 ids = [3152158102913024, 2286241156431872]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Battlelord Kreshan
@@ -57,6 +61,7 @@ is_final_boss = true
 name = "Battlelord Kreshan"
 ids = [3172554902601728, 3184361767698432]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Asteroid Beast
@@ -69,4 +74,5 @@ difficulties = ["master"]
 [[boss.entities]]
 name = "Asteroid Beast"
 ids = [3251019660132352]
+is_kill_target = true
 is_boss = true

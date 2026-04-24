@@ -20,6 +20,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Professor Ley'arsha"
 ids = [1172496007036928, 3158072272879616]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Beast of Vodal Kresh
@@ -33,6 +34,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Beast of Vodal Kresh"
 ids = [2263129937412096, 3158119517519872]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Prophet of Vodal Kresh
@@ -47,6 +49,7 @@ is_final_boss = true
 name = "Prophet of Vodal Kresh"
 ids = [1172951273570304, 3158123812487168]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Ancient Abomination
@@ -59,4 +62,5 @@ difficulties = ["story", "veteran", "master"]
 [[boss.entities]]
 name = "Ancient Abomination"
 ids = [3247459132243968]
+is_kill_target = true
 is_boss = true

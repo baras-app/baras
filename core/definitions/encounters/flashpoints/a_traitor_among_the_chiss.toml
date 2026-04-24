@@ -34,6 +34,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Syndic Zenta"
 ids = [4135314771673088]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Valss
@@ -48,6 +49,7 @@ is_final_boss = true
 name = "Valss"
 ids = [4132209510318080]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Strike Team Walker
@@ -75,3 +77,4 @@ difficulties = ["story", "veteran", "master"]
 name = "Temple Cat"
 ids = [4129460731248640]
 is_boss = true
+is_kill_target = true

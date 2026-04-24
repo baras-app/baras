@@ -20,6 +20,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Lieutenant Isric"
 ids = [2510773456732160, 649467774631936]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Ironfist
@@ -33,6 +34,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Ironfist"
 ids = [649484954501120, 2510769161764864]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: ISS-7 Guardian Battledroid
@@ -46,6 +48,7 @@ difficulties = ["story", "veteran", "master"]
 name = "ISS-7 Guardian Battledroid"
 ids = [653359015002112, 2510777751699456]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Vokk
@@ -60,6 +63,7 @@ is_final_boss = true
 name = "Vokk"
 ids = [649472069599232, 2510790636601344]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: ISS-994 Power Droid
@@ -72,4 +76,5 @@ difficulties = ["master"]
 [[boss.entities]]
 name = "ISS-994 Power Droid"
 ids = [1461006140178432]
+is_kill_target = true
 is_boss = true

@@ -20,6 +20,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Voreclaw"
 ids = [4157176155209728]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Ancient Guardian Droid
@@ -33,6 +34,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Ancient Guardian Droid"
 ids = [4152640669745152]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Gemini 16
@@ -46,6 +48,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Gemini 16"
 ids = [4158834012585984]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Vinn Atrius & Zildrog
@@ -65,6 +68,7 @@ is_boss = true
 name = "Zildrog"
 ids = [4159276394217472]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Optional Boss: Hands of Zildrog

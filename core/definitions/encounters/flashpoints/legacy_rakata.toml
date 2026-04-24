@@ -20,11 +20,13 @@ difficulties = ["story", "veteran", "master"]
 name = "War Chief Rehkta"
 ids = [3372962371600384, 3491894310993920]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Rancor"
 ids = [3491898605961216, 3370608729522176]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Commander Rand
@@ -38,6 +40,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Commander Rand"
 ids = [3373078335717376, 3491885721059328]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Darok & Arkous
@@ -52,11 +55,13 @@ is_final_boss = true
 name = "Colonel Darok"
 ids = [3491881426092032, 3370617319456768]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Darth Arkous"
 ids = [3370613024489472, 3491890016026624]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Infinite Army Prototype
@@ -69,4 +74,5 @@ difficulties = ["story", "veteran", "master"]
 [[boss.entities]]
 name = "Prototype Solider"
 ids = [3493419024384000]
+is_kill_target = true
 is_boss = true

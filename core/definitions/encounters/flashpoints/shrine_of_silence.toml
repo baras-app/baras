@@ -30,7 +30,7 @@ name = "Voss Mystics"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Corrupted Vorantikus"
+name = "Temu San"
 ids = [4705604824203264, 4705600529235968, 4705596234268672]
 is_boss = true
 

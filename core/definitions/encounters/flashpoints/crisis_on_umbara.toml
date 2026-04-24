@@ -19,11 +19,13 @@ difficulties = ["story", "veteran", "master"]
 [[boss.entities]]
 name = "Technician Canni"
 ids = [4111507767951360]
+is_kill_target = true
 is_boss = true
 
 [[boss.entities]]
 name = "Shadow Assassin Elli-Vaa"
 ids = [4111512062918656]
+is_kill_target = true
 is_boss = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -38,6 +40,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Vixian Mauler"
 ids = [4112173487882240]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Umbaran Spider Tank
@@ -52,6 +55,7 @@ is_final_boss = true
 name = "Umbaran Spider Tank"
 ids = [4112779078270976]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Alpha Slybex
@@ -64,4 +68,5 @@ difficulties = ["story", "veteran", "master"]
 [[boss.entities]]
 name = "Alpha Slybex"
 ids = [4121025415479296]
+is_kill_target = true
 is_boss = true

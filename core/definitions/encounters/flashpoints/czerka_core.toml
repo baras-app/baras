@@ -20,6 +20,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Enhanced Vrblther"
 ids = [3247278743617536, 3279289134874624]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Enhanced Duneclaw
@@ -33,6 +34,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Enhanced Duneclaw"
 ids = [3247274448650240, 3279293429841920]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: The Vigilant
@@ -47,3 +49,4 @@ is_final_boss = true
 name = "The Vigilant"
 ids = [3279310609711104, 3247240088911872]
 is_boss = true
+is_kill_target = true

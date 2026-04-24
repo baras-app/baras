@@ -20,11 +20,13 @@ difficulties = ["story", "veteran", "master"]
 name = "Rarrook"
 ids = [3369139850706944, 3533559788732416]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Marko Ka"
 ids = [3369144145674240, 3533564083699712]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Master Obai & Lord Vodd
@@ -38,11 +40,13 @@ difficulties = ["story", "veteran", "master"]
 name = "Master Obai"
 ids = [3369148440641536, 3533581263568896]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Lord Vodd"
 ids = [3369152735608832, 3533585558536192]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Shield Squadron Unit 1
@@ -57,6 +61,7 @@ is_final_boss = true
 name = "Shield Squadron Unit 1"
 ids = [3369157030576128]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Commander Mokan
@@ -70,3 +75,4 @@ difficulties = ["master"]
 name = "Commander Mokan"
 ids = [3417131815272448]
 is_boss = true
+is_kill_target = true

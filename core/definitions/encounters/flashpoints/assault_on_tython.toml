@@ -20,6 +20,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Major Travik"
 ids = [3331296893861888]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Republic Boss 2: Lieutenant Kreshin
@@ -33,7 +34,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Lieutenant Kreshin"
 ids = [3465690715521024, 3328904597078016]
 is_boss = true
-
+is_kill_target = true
 # ═══════════════════════════════════════════════════════════════════════════════
 # Republic Boss 3: Lord Goh
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -42,12 +43,13 @@ id = "lord_goh"
 name = "Lord Goh"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Lord Goh"
 ids = [3465699305455616, 3325872350167040]
 is_boss = true
-
+is_kill_target = true
 # ═══════════════════════════════════════════════════════════════════════════════
 # Republic Bonus Boss: Republic Commander
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -60,7 +62,7 @@ difficulties = ["master"]
 name = "Republic Commander"
 ids = [3485688083251200, 3493169916280832]
 is_boss = true
-
+is_kill_target = true
 # ═══════════════════════════════════════════════════════════════════════════════
 # Imperial Boss 1: Major Imos
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -73,7 +75,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Major Imos"
 ids = [3465471672188928, 3327405653491712]
 is_boss = true
-
+is_kill_target = true
 # ═══════════════════════════════════════════════════════════════════════════════
 # Imperial Boss 2: Master Liam Dentiri
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -86,6 +88,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Master Liam Dentiri"
 ids = [3465536096698368, 3325902414938112]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Imperial Boss 3: Master Oric Traless
@@ -100,6 +103,7 @@ is_final_boss = true
 name = "Master Oric Traless"
 ids = [3465579046371328, 3327796495515648]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Imperial Bonus Boss: Imperial Commander

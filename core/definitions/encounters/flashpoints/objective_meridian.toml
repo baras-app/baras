@@ -39,6 +39,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Commander Aster"
 ids = [4258021987319808, 4363188556529664]
 is_boss = true
+is_kill_target = true
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -129,4 +130,5 @@ difficulties = ["master"]
 [[boss.entities]]
 name = "Commander Rasha"
 ids = [4258185196077056]
+is_kill_target = true
 is_boss = true

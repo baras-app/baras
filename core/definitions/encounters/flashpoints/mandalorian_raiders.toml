@@ -20,11 +20,13 @@ difficulties = ["story", "veteran", "master"]
 name = "Braxx the Bloodhound"
 ids = [3158428755165184, 2438167034593280]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "Sanguine Salky Hound"
 ids = [3158424460197888, 2438158444658688]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2 (Republic): Imperial Boarding Party

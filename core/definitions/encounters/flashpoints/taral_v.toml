@@ -52,6 +52,7 @@ is_final_boss = true
 name = "General Edikar"
 ids = [2531994890141696]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Lord Hasper

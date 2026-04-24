@@ -20,6 +20,7 @@ difficulties = ["story", "veteran", "master"]
 name = "GXR-5 Sabotage Droid"
 ids = [2509699714908160, 430896888938496]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 1a: Sergeant Boran
@@ -33,6 +34,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Sergeant Boran"
 ids = [2509772729352192, 425970561449984]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Commander Ghulil
@@ -46,6 +48,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Commander Ghulil"
 ids = [2509686830006272, 364857471795200]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Yadira Ban
@@ -60,6 +63,7 @@ is_final_boss = true
 name = "Yadira Ban"
 ids = [365755119960064, 2509777024319488]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: GXR-7 Command Droid
@@ -72,4 +76,5 @@ difficulties = ["story", "veteran", "master"]
 [[boss.entities]]
 name = "GXR-7 Command Droid"
 ids = [1426904099848192, 2509755549483008]
+is_kill_target = true
 is_boss = true

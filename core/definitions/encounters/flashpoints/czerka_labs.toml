@@ -20,6 +20,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Eradicator Droid"
 ids = [3247278743617536, 3245981663494144]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Chief Zokar
@@ -33,6 +34,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Chief Zokar"
 ids = [3245985958461440, 3279302019776512]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Rasmus Blys
@@ -46,4 +48,5 @@ is_final_boss = true
 [[boss.entities]]
 name = "Rasmus Blys"
 ids = [3247210024140800, 3279306314743808]
+is_kill_target = true
 is_boss = true

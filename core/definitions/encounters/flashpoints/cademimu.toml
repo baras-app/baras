@@ -20,11 +20,13 @@ difficulties = ["story", "veteran", "master"]
 name = "Officer Xander"
 ids = [3210672737353728, 2504232221540352]
 is_boss = true
+is_kill_target = true
 
 [[boss.entities]]
 name = "EN-4C"
 ids = [3210668442386432, 2504236516507648]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Captain Grimyk
@@ -38,6 +40,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Captain Grimyk"
 ids = [2503961638600704, 3210677032321024]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: General Ortol
@@ -52,6 +55,7 @@ is_final_boss = true
 name = "General Ortol"
 ids = [2506547208912896, 3210659852451840]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Bonus Boss: Garold the Dark One
@@ -64,4 +68,5 @@ difficulties = ["master"]
 [[boss.entities]]
 name = "Garold the Dark One"
 ids = [3247463427211264]
+is_kill_target = true
 is_boss = true

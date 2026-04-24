@@ -20,6 +20,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Apex Ranphyx"
 ids = [4468097427701760]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Regnant
@@ -33,6 +34,7 @@ difficulties = ["story", "veteran", "master"]
 name = "Regnant"
 ids = [4469132514820096]
 is_boss = true
+is_kill_target = true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Darth Malgus
