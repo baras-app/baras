@@ -608,7 +608,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "corruptor_zero_beam_melee_mode"
 name = "Beam (Melee Mode)"
-name = "Overcharged Beam"
+display_text = "Overcharged Beam"
 trigger = { type = "effect_applied", effects = [3284760923209993] }
 duration_secs = 60.0
 color = [219, 96, 28, 255]
