@@ -400,6 +400,20 @@ triggers_encounter = true
 is_kill_target = false
 
 [[boss.entities]]
+name = "Droid Adds"
+ids = [
+  3016870928056320,
+  3016810798514176,
+  3016819388448768,
+  3129794208202752,
+  3256933830098944,
+  3256946715000832,
+  3256951009968128,
+  3256920945197056,
+]
+is_boss = false
+
+[[boss.entities]]
 name = "Olok the Shadow"
 ids = [3154674953748480, 3016445726294016, 3154679248715776, 3154662068846592]
 is_boss = true
@@ -439,11 +453,73 @@ duration_secs = 4.5
 color = [29, 224, 221, 255]
 difficulties = ["veteran", "master"]
 
-[[boss.counter]]
+[[boss.counters]]
 id = "olok_buyer_dead"
-name = "Wealthy Buyer ead"
+name = "Wealthy Buyer Dead"
+increment_on = { type = "entity_death", selector = ["Wealthy Buyer"] }
 
+[[boss.timer]]
+id = "olok_w2"
+name = "Wave 2"
+display_text = "Next Wave"
+duration_secs = 57.0
+color = [29, 224, 221, 255]
+trigger = { type = "npc_appears", selector = ["Droid Adds"] }
+conditions = [
+  { type = "counter_compare", counter_id = "olok_buyer_dead", operator = "gte", value = 1 },
+]
 
+[[boss.counters]]
+id = "olok_droid_wave"
+name = "Droid Wave"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "timer_started"
+timer_id = "olok_w2"
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.counters]]
+id = "olok_contamination_removed"
+name = "Contamination Removed"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "effect_removed"
+effects = [3143100016886018]
+source = "any"
+target = "any"
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.timer]]
+id = "olok_wave"
+name = "Droid Waves"
+display_text = "Next Wave"
+duration_secs = 63.0
+color = [29, 224, 221, 255]
+trigger = { type = "npc_appears", selector = ["Droid Adds"] }
+conditions = [
+  { type = "counter_compare", counter_id = "olok_contamination_removed", operator = "gte", value = 1 },
+  { type = "counter_compare", counter_id = "olok_droid_wave", operation = "lt", value = 2 },
+]
+
+[[boss.timer]]
+id = "olok_olok_enters"
+name = "Olok Enters"
+duration_secs = 60.0
+color = [29, 224, 221, 255]
+trigger = { type = "timer_expires", timer_id = "olok_wave" }
+conditions = [
+  { type = "counter_compare", counter_id = "olok_droid_wave", operation = "eq", value = 3 },
+]
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 6: Cartel Warlords
 # ═══════════════════════════════════════════════════════════════════════════════
