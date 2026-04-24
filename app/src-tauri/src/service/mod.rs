@@ -3247,16 +3247,30 @@ async fn build_timer_data_with_audio(
     let mut entries_b = Vec::new();
     let mut aq_entries: Vec<AbilityQueueEntry> = Vec::new();
 
-    // Pre-collect names of all currently-active (non-queued) timers so we can
-    // mark ability queue entries as blocked when any of their configured
-    // blocking timers is running. Queued timers don't count as "active"
-    // blockers — the block applies while the source timer is ticking down.
-    let active_timer_names: std::collections::HashSet<&str> = timer_mgr
-        .active_timers()
-        .iter()
-        .filter(|t| !t.is_queued)
-        .map(|t| t.name.as_str())
-        .collect();
+    // Pre-collect remaining-seconds of all currently-active (non-queued) timers
+    // keyed by name so we can mark ability queue entries as blocked only when a
+    // blocker will still be running when the current GCD resolves — a blocker
+    // that expires before the GCD should not stop the ability from being the
+    // next cast. Duplicate names (e.g. same timer on multiple targets) collapse
+    // to the longest remaining, which is the pessimistic blocker.
+    let blocker_remaining: std::collections::HashMap<&str, f32> = {
+        let mut map: std::collections::HashMap<&str, f32> =
+            std::collections::HashMap::new();
+        for t in timer_mgr.active_timers() {
+            if t.is_queued {
+                continue;
+            }
+            let rem = interp_time.map(|ti| t.remaining_secs(ti)).unwrap_or(0.0);
+            map.entry(t.name.as_str())
+                .and_modify(|cur| *cur = cur.max(rem))
+                .or_insert(rem);
+        }
+        map
+    };
+    let gcd_remaining = timer_mgr
+        .active_gcd()
+        .and_then(|g| interp_time.map(|ti| g.remaining_secs(ti)))
+        .unwrap_or(0.0);
 
     // GCD tier-1 entry: synthesized from active_gcd if present
     if let Some(gcd) = timer_mgr.active_gcd()
@@ -3330,10 +3344,11 @@ async fn build_timer_data_with_audio(
                 if !timer.is_queued && remaining <= 0.0 {
                     continue;
                 }
-                let is_blocked = timer
-                    .queue_blocking_timers
-                    .iter()
-                    .any(|name| active_timer_names.contains(name.as_str()));
+                let is_blocked = timer.queue_blocking_timers.iter().any(|name| {
+                    blocker_remaining
+                        .get(name.as_str())
+                        .is_some_and(|&rem| rem > gcd_remaining)
+                });
                 aq_entries.push(AbilityQueueEntry {
                     name: timer.name.clone(),
                     remaining_secs: remaining,
