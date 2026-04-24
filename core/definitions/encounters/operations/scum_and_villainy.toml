@@ -508,17 +508,17 @@ color = [29, 224, 221, 255]
 trigger = { type = "npc_appears", selector = ["Droid Adds"] }
 conditions = [
   { type = "counter_compare", counter_id = "olok_contamination_removed", operator = "gte", value = 1 },
-  { type = "counter_compare", counter_id = "olok_droid_wave", operation = "lt", value = 2 },
+  { type = "counter_compare", counter_id = "olok_droid_wave", operation = "lt", value = 4 },
 ]
 
 [[boss.timer]]
 id = "olok_olok_enters"
 name = "Olok Enters"
-duration_secs = 60.0
+duration_secs = 63.0
 color = [29, 224, 221, 255]
 trigger = { type = "timer_expires", timer_id = "olok_wave" }
 conditions = [
-  { type = "counter_compare", counter_id = "olok_droid_wave", operation = "eq", value = 3 },
+  { type = "counter_compare", counter_id = "olok_droid_wave", operation = "eq", value = 4 },
 ]
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 6: Cartel Warlords
