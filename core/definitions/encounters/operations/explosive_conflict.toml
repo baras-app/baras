@@ -798,7 +798,7 @@ id = "fs_double_destruction_ps"
 name = "Double Destruction Phase Start"
 display_text = "Double Destruction"
 icon_ability_id = 2876691785449472
-trigger = { type = "phase_entered", phase_id = "fs_tanks" }
+trigger = { type = "phase_ended", phase_id = "fs_shield" }
 duration_secs = 15
 color = [219, 28, 29, 255]
 difficulties = ["veteran", "master"]
