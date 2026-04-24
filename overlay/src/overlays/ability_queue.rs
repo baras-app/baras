@@ -53,11 +53,18 @@ const BASE_GCD_GAP: f32 = 6.0;
 const BASE_ENTRY_SPACING: f32 = 4.0;
 const BASE_PADDING: f32 = 6.0;
 const BASE_FONT_SIZE: f32 = 11.0;
+/// Horizontal inset applied on each side of bars that belong to a
+/// tied-priority group, so the bars sit visibly inside the group outline.
+const BASE_GROUP_INSET: f32 = 6.0;
+/// Vertical padding between the group outline and the first/last bar inside it.
+const BASE_GROUP_VPAD: f32 = 3.0;
 
 /// Gold border color for the GCD bar
 const GCD_BORDER: [u8; 4] = [220, 170, 50, 255];
 /// Light blue border color for READY entries (not the highlighted "next" row)
 const READY_BORDER: [u8; 4] = [100, 180, 255, 200];
+/// Neutral gray border wrapping a tied-priority group of entries.
+const GROUP_BORDER: [u8; 4] = [150, 150, 150, 160];
 /// Gold glow color for the ability (or tied group) that would be cast next.
 /// Split across outer halo, main border, and inner tint for a layered glow.
 const NEXT_HALO: [u8; 4] = [255, 210, 90, 140];
@@ -88,6 +95,10 @@ struct RenderRow {
     /// True when a configured blocking timer is active. Blocked rows are
     /// dimmed and excluded from the `highlighted` eligibility set.
     is_blocked: bool,
+    /// Group index for tied-priority runs of 2+ consecutive regular rows.
+    /// None for solo regular rows, GCD rows, and any row that doesn't share
+    /// its queue_priority with another visible row.
+    group_id: Option<usize>,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -260,6 +271,32 @@ impl AbilityQueueOverlay {
                     .then_with(|| x.name.cmp(&y.name))
             });
 
+            // Tag consecutive same-priority runs of size >= 2 with a group_id
+            // so the render pass can inset the bars and draw a shared outline.
+            // Singletons and GCD rows carry None and render as today.
+            let regular_group_ids: Vec<Option<usize>> = {
+                let mut ids = vec![None; regular.len()];
+                let mut next_id = 0usize;
+                let mut i = 0;
+                while i < regular.len() {
+                    let mut j = i + 1;
+                    while j < regular.len()
+                        && regular[j].queue_priority == regular[i].queue_priority
+                    {
+                        j += 1;
+                    }
+                    if j - i >= 2 {
+                        let id = next_id;
+                        next_id += 1;
+                        for slot in ids.iter_mut().take(j).skip(i) {
+                            *slot = Some(id);
+                        }
+                    }
+                    i = j;
+                }
+                ids
+            };
+
             // Determine the "next cast" set — entries eligible to fire on the
             // next GCD resolution (already ready, or coming off CD inside the
             // current GCD window) that tie for the highest priority among the
@@ -285,10 +322,11 @@ impl AbilityQueueOverlay {
                     icon_ability_id: None,
                     highlighted: false,
                     is_blocked: false,
+                    group_id: None,
                 });
                 rendered += 1;
             }
-            for e in &regular {
+            for (idx, e) in regular.iter().enumerate() {
                 if rendered >= max { break; }
                 let (right_text, progress) = if e.is_queued {
                     // Ready rows with a blocker active read "Blocked" instead
@@ -313,6 +351,7 @@ impl AbilityQueueOverlay {
                     icon_ability_id: e.icon_ability_id,
                     highlighted,
                     is_blocked: e.is_blocked,
+                    group_id: regular_group_ids[idx],
                 });
                 rendered += 1;
             }
@@ -330,6 +369,15 @@ impl AbilityQueueOverlay {
         let gcd_count = rows.iter().filter(|r| matches!(r.kind, RowKind::Gcd)).count();
         let has_gcd_row = gcd_count > 0;
         let other_count = rows.len() - gcd_count;
+        // group_ids are allocated contiguously from 0, so max+1 = count.
+        let num_groups = rows
+            .iter()
+            .filter_map(|r| r.group_id)
+            .max()
+            .map(|m| m + 1)
+            .unwrap_or(0);
+        let group_vpad = self.frame.scaled(BASE_GROUP_VPAD);
+        let group_inset = self.frame.scaled(BASE_GROUP_INSET);
         let content_height = if rows.is_empty() {
             0.0
         } else {
@@ -337,7 +385,9 @@ impl AbilityQueueOverlay {
             let next_height = bar_h;
             let spacer_after_next = if other_count > 0 { entry_spacing } else { 0.0 };
             let other_height = if other_count > 0 {
-                other_count as f32 * bar_h + (other_count - 1) as f32 * entry_spacing
+                other_count as f32 * bar_h
+                    + (other_count - 1) as f32 * entry_spacing
+                    + num_groups as f32 * 2.0 * group_vpad
             } else {
                 0.0
             };
@@ -365,6 +415,9 @@ impl AbilityQueueOverlay {
         }
 
         let mut next_section_drawn = false;
+        // Top-edge y of the currently-open group outline, set when entering
+        // the first row of a group and consumed when its last row closes.
+        let mut group_top_y: f32 = 0.0;
 
         for (i, row) in rows.iter().enumerate() {
             let is_gcd = matches!(row.kind, RowKind::Gcd);
@@ -383,6 +436,28 @@ impl AbilityQueueOverlay {
                 y += bar_h + entry_spacing;
                 next_section_drawn = true;
             }
+
+            // Detect group boundaries by comparing against immediate neighbours.
+            // Ties are contiguous after sorting, so this is sufficient.
+            let first_in_group = row.group_id.is_some()
+                && (i == 0 || rows[i - 1].group_id != row.group_id);
+            let last_in_group = row.group_id.is_some()
+                && rows.get(i + 1).and_then(|r| r.group_id) != row.group_id;
+
+            // Opening a group: remember outline top edge and push the row down
+            // by the vertical pad so the outline has breathing room above.
+            if first_in_group {
+                group_top_y = y;
+                y += group_vpad;
+            }
+
+            // Grouped rows are inset horizontally so the outline reads as a
+            // container; non-grouped rows stay at full content width.
+            let (row_x, row_w) = if row.group_id.is_some() {
+                (padding + group_inset, content_width - group_inset * 2.0)
+            } else {
+                (padding, content_width)
+            };
 
             // Blocked rows render with reduced opacity — bar fill, icon, and
             // text all get the same dim multiplier so the row reads as
@@ -403,11 +478,11 @@ impl AbilityQueueOverlay {
                     .with_fill_color(fill_color)
                     .with_bg_color(colors::dps_bar_bg())
                     .with_text_color(row_font_color)
-                    .render(&mut self.frame, padding, y, content_width, row_h, font_size, bar_radius);
+                    .render(&mut self.frame, row_x, y, row_w, row_h, font_size, bar_radius);
 
                 let text = format!("{}  {}", row.name, row.right_text);
                 let (tw, _) = self.frame.measure_text_styled(&text, font_size, true, false);
-                let tx = padding + (content_width - tw).max(0.0) / 2.0;
+                let tx = row_x + (row_w - tw).max(0.0) / 2.0;
                 let text_y = y + row_h / 2.0 + font_size / 3.0;
                 self.frame.draw_text_with_glow(&text, tx, text_y, font_size, font_color, true, false);
             } else {
@@ -423,23 +498,23 @@ impl AbilityQueueOverlay {
                     bar = bar.with_label_offset(icon_size + icon_padding);
                 }
 
-                bar.render(&mut self.frame, padding, y, content_width, row_h, font_size, bar_radius);
+                bar.render(&mut self.frame, row_x, y, row_w, row_h, font_size, bar_radius);
             }
 
             // Highlight layer — gold halo + border + subtle tint for "next cast"
             // candidates. Drawn before the standard READY border so the gold
             // stroke sits on top unchallenged.
             if row.highlighted {
-                draw_highlight_glow(&mut self.frame, padding, y, content_width, row_h, bar_radius);
+                draw_highlight_glow(&mut self.frame, row_x, y, row_w, row_h, bar_radius);
             } else if is_gcd {
-                draw_bar_border(&mut self.frame, padding, y, content_width, row_h, bar_radius, GCD_BORDER);
+                draw_bar_border(&mut self.frame, row_x, y, row_w, row_h, bar_radius, GCD_BORDER);
             } else if is_ready {
-                draw_bar_border(&mut self.frame, padding, y, content_width, row_h, bar_radius, READY_BORDER);
+                draw_bar_border(&mut self.frame, row_x, y, row_w, row_h, bar_radius, READY_BORDER);
             }
 
             // Draw icon
             if let Some(ability_id) = row.icon_ability_id {
-                let icon_x = padding + icon_padding;
+                let icon_x = row_x + icon_padding;
                 let icon_y = y + icon_padding;
 
                 let icon_drawn = if let Some(scaled) =
@@ -472,8 +547,20 @@ impl AbilityQueueOverlay {
                 }
             }
 
-            // Advance y: GCD uses gcd_gap, others use entry_spacing (skip trailing gap on last row)
-            if i + 1 < rows.len() {
+            // Closing a group: advance y past this row plus the closing vpad,
+            // stroke the outline from group_top_y to the new y, then add a
+            // normal entry_spacing if another row follows.
+            if last_in_group {
+                y += row_h + group_vpad;
+                draw_bar_border(
+                    &mut self.frame,
+                    padding, group_top_y, content_width, y - group_top_y,
+                    bar_radius, GROUP_BORDER,
+                );
+                if i + 1 < rows.len() {
+                    y += entry_spacing;
+                }
+            } else if i + 1 < rows.len() {
                 y += row_h + if is_gcd { gcd_gap } else { entry_spacing };
             }
         }
