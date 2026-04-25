@@ -851,207 +851,6 @@ fn TimerEditForm(
                                         }
                                     }
                                 }
-
-                                // ── Ability Queue fields (visible only when AbilityQueue is selected)
-                                if draft().display_target == TimerDisplayTarget::AbilityQueue {
-                                    div { class: "form-row-hz",
-                                        label { class: "flex items-center",
-                                            "GCD Secs"
-                                            span { class: "help-icon", title: "Creates a GCD countdown bar when this timer fires. Leave empty for no GCD bar.", "?" }
-                                        }
-                                        input {
-                                            r#type: "number",
-                                            class: "input",
-                                            style: "width: 80px;",
-                                            min: "0",
-                                            max: "10",
-                                            step: "0.1",
-                                            placeholder: "none",
-                                            value: draft().gcd_secs.map(|v| v.to_string()).unwrap_or_default(),
-                                            onchange: move |e| {
-                                                let mut d = draft();
-                                                d.gcd_secs = e.value().parse::<f32>().ok().filter(|&v| v > 0.0);
-                                                draft.set(d);
-                                            }
-                                        }
-                                    }
-                                    div { class: "form-row-hz",
-                                        label { class: "flex items-center",
-                                            "Hold as Ready"
-                                            span { class: "help-icon", title: "When enabled, the timer stays visible as 'READY' after expiring instead of being removed.", "?" }
-                                        }
-                                        input {
-                                            r#type: "checkbox",
-                                            class: "checkbox",
-                                            checked: draft().queue_on_expire,
-                                            onchange: move |e| {
-                                                let mut d = draft();
-                                                d.queue_on_expire = e.checked();
-                                                draft.set(d);
-                                            }
-                                        }
-                                    }
-                                    div { class: "form-row-hz",
-                                        label { class: "flex items-center",
-                                            "Countdown Mode"
-                                            span { class: "help-icon", title: "Render this timer's bar as a trickling-down bar (full → empty) instead of the default filling-up progress bar used by other entries.", "?" }
-                                        }
-                                        input {
-                                            r#type: "checkbox",
-                                            class: "checkbox",
-                                            checked: draft().queue_countdown_bar,
-                                            onchange: move |e| {
-                                                let mut d = draft();
-                                                d.queue_countdown_bar = e.checked();
-                                                draft.set(d);
-                                            }
-                                        }
-                                    }
-                                    div { class: "form-row-hz",
-                                        label { class: "flex items-center",
-                                            "Don't Show as Next"
-                                            span { class: "help-icon", title: "When enabled, this timer is never highlighted as the 'next cast' — use for display-only entries (incoming debuffs, lockout/mechanic windows) that aren't castable abilities.", "?" }
-                                        }
-                                        input {
-                                            r#type: "checkbox",
-                                            class: "checkbox",
-                                            checked: draft().queue_hide_from_next,
-                                            onchange: move |e| {
-                                                let mut d = draft();
-                                                d.queue_hide_from_next = e.checked();
-                                                draft.set(d);
-                                            }
-                                        }
-                                    }
-                                    div { class: "form-row-hz",
-                                        label { class: "flex items-center",
-                                            "Priority"
-                                            span { class: "help-icon", title: "Sort order for ability queue entries (0–255, higher = shown first). Applies whether the timer holds as ready or expires normally.", "?" }
-                                        }
-                                        input {
-                                            r#type: "number",
-                                            class: "input",
-                                            style: "width: 80px;",
-                                            min: "0",
-                                            max: "255",
-                                            value: draft().queue_priority.to_string(),
-                                            onchange: move |e| {
-                                                let mut d = draft();
-                                                d.queue_priority = e.value().parse::<u8>().unwrap_or(0);
-                                                draft.set(d);
-                                            }
-                                        }
-                                    }
-                                    div { class: "form-row-hz", style: "align-items: flex-start;",
-                                        label { class: "flex items-center", style: "padding-top: 6px;",
-                                            "Blocked By"
-                                            span { class: "help-icon", title: "Timers from this encounter that prevent this entry from appearing as 'next cast' while they're active. OR semantics — any one active blocker blocks the entry.", "?" }
-                                        }
-                                        div { class: "flex-col gap-xs",
-                                            // Current blockers as removable chips
-                                            if !draft().queue_blocking_timers.is_empty() {
-                                                div { class: "flex flex-wrap gap-xs",
-                                                    for (idx, blocker) in draft().queue_blocking_timers.iter().cloned().enumerate() {
-                                                        {
-                                                            rsx! {
-                                                                span { class: "chip",
-                                                                    "{blocker}"
-                                                                    button {
-                                                                        class: "chip-remove",
-                                                                        onclick: move |_| {
-                                                                            let mut d = draft();
-                                                                            d.queue_blocking_timers.remove(idx);
-                                                                            draft.set(d);
-                                                                        },
-                                                                        "×"
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            // Dropdown to add a blocker — lists same-encounter timers
-                                            // excluding self and already-selected blockers.
-                                            select {
-                                                class: "select",
-                                                style: "width: 220px;",
-                                                onchange: move |e| {
-                                                    let val = e.value();
-                                                    if !val.is_empty() {
-                                                        let mut d = draft();
-                                                        if !d.queue_blocking_timers.contains(&val) {
-                                                            d.queue_blocking_timers.push(val);
-                                                            draft.set(d);
-                                                        }
-                                                    }
-                                                },
-                                                option { value: "", "(add blocker...)" }
-                                                for t in all_timers.iter() {
-                                                    {
-                                                        let self_name = draft().name.clone();
-                                                        let already = draft().queue_blocking_timers.contains(&t.name);
-                                                        let is_self = t.name == self_name;
-                                                        rsx! {
-                                                            if !is_self {
-                                                                option {
-                                                                    value: "{t.name}",
-                                                                    disabled: already,
-                                                                    "{t.name}"
-                                                                    if already { " ✓" }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    if draft().queue_on_expire {
-                                        div { class: "form-row-hz", style: "align-items: flex-start;",
-                                            label { class: "flex items-center", style: "padding-top: 6px;",
-                                                "Clear On"
-                                                span { class: "help-icon", title: "Removes the ready entry when this trigger fires (e.g. ability cast).", "?" }
-                                            }
-                                            if let Some(remove_trigger) = draft().queue_remove_trigger.clone() {
-                                                div { class: "flex-col gap-xs",
-                                                    ComposableTriggerEditor {
-                                                        trigger: remove_trigger.clone(),
-                                                        encounter_data: encounter_data.clone(),
-                                                        on_change: move |t| {
-                                                            let mut d = draft();
-                                                            d.queue_remove_trigger = Some(t);
-                                                            draft.set(d);
-                                                        }
-                                                    }
-                                                    button {
-                                                        class: "btn btn-sm",
-                                                        style: "width: fit-content;",
-                                                        onclick: move |_| {
-                                                            let mut d = draft();
-                                                            d.queue_remove_trigger = None;
-                                                            draft.set(d);
-                                                        },
-                                                        "Remove Clear Trigger"
-                                                    }
-                                                }
-                                            } else {
-                                                div { class: "flex-col gap-xs",
-                                                    span { class: "text-muted text-sm", "(default: combat end)" }
-                                                    button {
-                                                        class: "btn btn-sm",
-                                                        onclick: move |_| {
-                                                            let mut d = draft();
-                                                            d.queue_remove_trigger = Some(Trigger::CombatStart);
-                                                            draft.set(d);
-                                                        },
-                                                        "+ Add Clear Trigger"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
@@ -1662,6 +1461,217 @@ fn TimerEditForm(
                                 div { class: "text-xs text-warning mt-xs",
                                     i { class: "fa-solid fa-triangle-exclamation" }
                                     " Disabling a timer may break phases, counters, or other timers that depend on it."
+                                }
+                            }
+                        }
+                    }
+
+                    // ─── Ability Queue Card (only when Display Overlay = Ability Queue) ─
+                    if !draft().is_alert
+                        && draft().display_target == TimerDisplayTarget::AbilityQueue
+                    {
+                        div { class: "form-card",
+                            div { class: "form-card-header",
+                                i { class: "fa-solid fa-list-ol" }
+                                span { "Ability Queue" }
+                            }
+                            div { class: "form-card-content",
+                                div { class: "form-row-hz",
+                                    label { class: "flex items-center",
+                                        "GCD Secs"
+                                        span { class: "help-icon", title: "Creates a GCD countdown bar when this timer fires. Leave empty for no GCD bar.", "?" }
+                                    }
+                                    input {
+                                        r#type: "number",
+                                        class: "input",
+                                        style: "width: 80px;",
+                                        min: "0",
+                                        max: "10",
+                                        step: "0.1",
+                                        placeholder: "none",
+                                        value: draft().gcd_secs.map(|v| v.to_string()).unwrap_or_default(),
+                                        onchange: move |e| {
+                                            let mut d = draft();
+                                            d.gcd_secs = e.value().parse::<f32>().ok().filter(|&v| v > 0.0);
+                                            draft.set(d);
+                                        }
+                                    }
+                                }
+                                div { class: "form-row-hz",
+                                    label { class: "flex items-center",
+                                        "Hold as Ready"
+                                        span { class: "help-icon", title: "When enabled, the timer stays visible as 'READY' after expiring instead of being removed.", "?" }
+                                    }
+                                    input {
+                                        r#type: "checkbox",
+                                        class: "checkbox",
+                                        checked: draft().queue_on_expire,
+                                        onchange: move |e| {
+                                            let mut d = draft();
+                                            d.queue_on_expire = e.checked();
+                                            draft.set(d);
+                                        }
+                                    }
+                                }
+                                div { class: "form-row-hz",
+                                    label { class: "flex items-center",
+                                        "Countdown Mode"
+                                        span { class: "help-icon", title: "Render this timer's bar as a trickling-down bar (full → empty) instead of the default filling-up progress bar used by other entries.", "?" }
+                                    }
+                                    input {
+                                        r#type: "checkbox",
+                                        class: "checkbox",
+                                        checked: draft().queue_countdown_bar,
+                                        onchange: move |e| {
+                                            let mut d = draft();
+                                            d.queue_countdown_bar = e.checked();
+                                            draft.set(d);
+                                        }
+                                    }
+                                }
+                                div { class: "form-row-hz",
+                                    label { class: "flex items-center",
+                                        "Don't Show as Next"
+                                        span { class: "help-icon", title: "When enabled, this timer is never highlighted as the 'next cast' — use for display-only entries (incoming debuffs, lockout/mechanic windows) that aren't castable abilities.", "?" }
+                                    }
+                                    input {
+                                        r#type: "checkbox",
+                                        class: "checkbox",
+                                        checked: draft().queue_hide_from_next,
+                                        onchange: move |e| {
+                                            let mut d = draft();
+                                            d.queue_hide_from_next = e.checked();
+                                            draft.set(d);
+                                        }
+                                    }
+                                }
+                                div { class: "form-row-hz",
+                                    label { class: "flex items-center",
+                                        "Priority"
+                                        span { class: "help-icon", title: "Sort order for ability queue entries (0–255, higher = shown first). Applies whether the timer holds as ready or expires normally.", "?" }
+                                    }
+                                    input {
+                                        r#type: "number",
+                                        class: "input",
+                                        style: "width: 80px;",
+                                        min: "0",
+                                        max: "255",
+                                        value: draft().queue_priority.to_string(),
+                                        onchange: move |e| {
+                                            let mut d = draft();
+                                            d.queue_priority = e.value().parse::<u8>().unwrap_or(0);
+                                            draft.set(d);
+                                        }
+                                    }
+                                }
+                                div { class: "form-row-hz", style: "align-items: flex-start;",
+                                    label { class: "flex items-center", style: "padding-top: 6px;",
+                                        "Blocked By"
+                                        span { class: "help-icon", title: "Timers from this encounter that prevent this entry from appearing as 'next cast' while they're active. OR semantics — any one active blocker blocks the entry.", "?" }
+                                    }
+                                    div { class: "flex-col gap-xs",
+                                        // Current blockers as removable chips
+                                        if !draft().queue_blocking_timers.is_empty() {
+                                            div { class: "flex flex-wrap gap-xs",
+                                                for (idx, blocker) in draft().queue_blocking_timers.iter().cloned().enumerate() {
+                                                    {
+                                                        rsx! {
+                                                            span { class: "chip",
+                                                                "{blocker}"
+                                                                button {
+                                                                    class: "chip-remove",
+                                                                    onclick: move |_| {
+                                                                        let mut d = draft();
+                                                                        d.queue_blocking_timers.remove(idx);
+                                                                        draft.set(d);
+                                                                    },
+                                                                    "×"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        // Dropdown to add a blocker — lists same-encounter timers
+                                        // excluding self and already-selected blockers.
+                                        select {
+                                            class: "select",
+                                            style: "width: 220px;",
+                                            onchange: move |e| {
+                                                let val = e.value();
+                                                if !val.is_empty() {
+                                                    let mut d = draft();
+                                                    if !d.queue_blocking_timers.contains(&val) {
+                                                        d.queue_blocking_timers.push(val);
+                                                        draft.set(d);
+                                                    }
+                                                }
+                                            },
+                                            option { value: "", "(add blocker...)" }
+                                            for t in all_timers.iter() {
+                                                {
+                                                    let self_name = draft().name.clone();
+                                                    let already = draft().queue_blocking_timers.contains(&t.name);
+                                                    let is_self = t.name == self_name;
+                                                    rsx! {
+                                                        if !is_self {
+                                                            option {
+                                                                value: "{t.name}",
+                                                                disabled: already,
+                                                                "{t.name}"
+                                                                if already { " ✓" }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if draft().queue_on_expire {
+                                    div { class: "form-row-hz", style: "align-items: flex-start;",
+                                        label { class: "flex items-center", style: "padding-top: 6px;",
+                                            "Clear On"
+                                            span { class: "help-icon", title: "Removes the ready entry when this trigger fires (e.g. ability cast).", "?" }
+                                        }
+                                        if let Some(remove_trigger) = draft().queue_remove_trigger.clone() {
+                                            div { class: "flex-col gap-xs",
+                                                ComposableTriggerEditor {
+                                                    trigger: remove_trigger.clone(),
+                                                    encounter_data: encounter_data.clone(),
+                                                    on_change: move |t| {
+                                                        let mut d = draft();
+                                                        d.queue_remove_trigger = Some(t);
+                                                        draft.set(d);
+                                                    }
+                                                }
+                                                button {
+                                                    class: "btn btn-sm",
+                                                    style: "width: fit-content;",
+                                                    onclick: move |_| {
+                                                        let mut d = draft();
+                                                        d.queue_remove_trigger = None;
+                                                        draft.set(d);
+                                                    },
+                                                    "Remove Clear Trigger"
+                                                }
+                                            }
+                                        } else {
+                                            div { class: "flex-col gap-xs",
+                                                span { class: "text-muted text-sm", "(default: combat end)" }
+                                                button {
+                                                    class: "btn btn-sm",
+                                                    onclick: move |_| {
+                                                        let mut d = draft();
+                                                        d.queue_remove_trigger = Some(Trigger::CombatStart);
+                                                        draft.set(d);
+                                                    },
+                                                    "+ Add Clear Trigger"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
