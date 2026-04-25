@@ -322,10 +322,21 @@ impl OutputInfo {
     /// Get a stable identifier for this output.
     /// Prefers xdg-output description (includes EDID model info like "LG ULTRAWIDE (HDMI-A-1)"),
     /// falls back to connector name, then model, then synthesized ID.
+    ///
+    /// Some compositors (notably KDE Plasma) omit the connector from the
+    /// description, which collapses identical monitors onto the same id.
+    /// When that happens we append the connector name to disambiguate.
+    /// wlroots-based compositors already include it, so we leave those ids
+    /// untouched to preserve persisted overlay positions.
     fn id(&self) -> String {
         if !self.description.is_empty() {
-            // xdg-output description is most robust - includes monitor model + connector
-            self.description.clone()
+            if !self.connector_name.is_empty()
+                && !self.description.contains(&self.connector_name)
+            {
+                format!("{} ({})", self.description, self.connector_name)
+            } else {
+                self.description.clone()
+            }
         } else if !self.connector_name.is_empty() {
             self.connector_name.clone()
         } else if !self.model.is_empty() {
