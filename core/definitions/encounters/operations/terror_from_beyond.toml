@@ -609,19 +609,6 @@ is_alert = true
 alert_text = "Adds Incoming!"
 difficulties = ["veteran", "master"]
 
-[[boss.timer]]
-id = "op_ix_taunt_for_cheese"
-name = "Cheese Taunt Timer"
-display = "Deletion Taunt Cheese"
-duration_secs = 10.0
-color = [0, 125, 200, 255]
-icon_ability_id = 2959344136093696
-difficulties = ["veteran", "master"]
-
-[boss.timer.trigger]
-type = "ability_cast"
-abilities = [2998471288160256]
-
 # -- Deletion --
 
 [[boss.timer]]
