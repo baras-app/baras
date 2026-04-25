@@ -59,8 +59,11 @@ pub trait AppConfigExt {
 
 impl AppConfigExt for AppConfig {
     fn load() -> Self {
-        match confy::load("baras", "config") {
-            Ok(config) => config,
+        match confy::load::<Self>("baras", "config") {
+            Ok(mut config) => {
+                config.parsely.migrate_legacy();
+                config
+            }
             Err(e) => {
                 tracing::warn!("Failed to load config: {e}");
 

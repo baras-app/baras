@@ -28,6 +28,8 @@ struct ParselyUploadRequest {
     visibility: u8,
     notes: String,
     guild_log: bool,
+    /// Currently selected guild for this upload (None if user has no guilds configured).
+    guild: Option<String>,
 }
 
 /// Global manager for Parsely upload modal
@@ -51,6 +53,7 @@ impl ParselyUploadManager {
             visibility: 1, // Default to Public
             notes: String::new(),
             guild_log: false,
+            guild: None,
         });
     }
 
@@ -76,6 +79,7 @@ impl ParselyUploadManager {
             visibility: 1, // Default to Public
             notes: String::new(),
             guild_log: false,
+            guild: None,
         });
     }
 
@@ -103,18 +107,30 @@ pub fn use_parsely_upload() -> ParselyUploadManager {
 
 /// Parsely upload modal component
 #[component]
-pub fn ParselyUploadModal(guild: String) -> Element {
+pub fn ParselyUploadModal(
+    guilds: Vec<String>,
+    /// Last-selected guild signal. Default for the dropdown on open; written
+    /// back when the user changes the selection so subsequent opens (within
+    /// the same session) default to their most recent pick.
+    mut selected_guild: Signal<Option<String>>,
+) -> Element {
     let mut manager = use_parsely_upload();
     let mut toast = use_toast();
 
     let request = manager.request.read();
     let mut is_uploading = use_signal(|| false);
 
-    let guild_configured = !guild.is_empty();
+    let guild_configured = !guilds.is_empty();
 
     let Some(req) = request.as_ref() else {
         return rsx! {};
     };
+
+    // Resolve which guild the dropdown should show: explicit user pick overrides
+    // the saved last-selected guild, falling back to the first configured guild.
+    let active_guild: Option<String> = req.guild.clone()
+        .or_else(|| selected_guild.read().clone().filter(|g| guilds.iter().any(|x| x == g)))
+        .or_else(|| guilds.first().cloned());
 
     // Get display name for the upload
     let display_name = match &req.upload_type {
@@ -209,6 +225,35 @@ pub fn ParselyUploadModal(guild: String) -> Element {
                         }
                     }
 
+                    // Guild dropdown (only shown when user has configured guilds)
+                    if guild_configured {
+                        div { class: "parsely-upload-guild-select",
+                            label { r#for: "parsely-guild-select", class: "field-header", "Guild" }
+                            select {
+                                id: "parsely-guild-select",
+                                class: "select",
+                                disabled: is_uploading(),
+                                value: active_guild.clone().unwrap_or_default(),
+                                onchange: move |e| {
+                                    let val = e.value();
+                                    let picked = if val.is_empty() { None } else { Some(val) };
+                                    manager.request.write().as_mut().unwrap().guild = picked.clone();
+                                    if picked.is_some() {
+                                        selected_guild.set(picked);
+                                    }
+                                },
+                                for g in guilds.iter() {
+                                    option {
+                                        key: "{g}",
+                                        value: "{g}",
+                                        selected: active_guild.as_deref() == Some(g.as_str()),
+                                        "{g}"
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Guild log checkbox
                     div { class: "parsely-upload-guild-log", style: "text-align: left;",
                         label {
@@ -243,6 +288,9 @@ pub fn ParselyUploadModal(guild: String) -> Element {
                             let upload_req = manager.request.read().clone().unwrap();
                             let visibility = upload_req.visibility;
                             let guild_log = upload_req.guild_log;
+                            // Use the resolved active guild (handles default fallback when
+                            // the user never explicitly picked one).
+                            let guild = upload_req.guild.clone().or_else(|| active_guild.clone());
                             let notes = if upload_req.notes.is_empty() {
                                 None
                             } else {
@@ -264,7 +312,7 @@ pub fn ParselyUploadModal(guild: String) -> Element {
 
                                 let result = match upload_req.upload_type {
                                     ParselyUploadType::File { path, .. } => {
-                                        api::upload_to_parsely(&path, visibility, notes, guild_log).await
+                                        api::upload_to_parsely(&path, visibility, notes, guild_log, guild).await
                                     }
                                     ParselyUploadType::Encounter {
                                         path,
@@ -282,6 +330,7 @@ pub fn ParselyUploadModal(guild: String) -> Element {
                                             visibility,
                                             notes,
                                             guild_log,
+                                            guild,
                                         ).await;
 
                                         // If successful, persist the link

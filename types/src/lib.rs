@@ -2542,8 +2542,50 @@ pub struct ParselySettings {
     pub username: String,
     #[serde(default)]
     pub password: String,
-    #[serde(default)]
+    /// Legacy single-guild field. Older configs stored a single guild here;
+    /// kept for backwards-compatible deserialization. Migrated into `guilds`
+    /// on load and not written back out when empty.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub guild: String,
+    /// All configured guilds the user can upload to.
+    #[serde(default)]
+    pub guilds: Vec<String>,
+    /// Last selected guild (used as the default in the upload modal).
+    #[serde(default)]
+    pub selected_guild: Option<String>,
+}
+
+impl ParselySettings {
+    /// Migrate the legacy `guild: String` field into `guilds` + `selected_guild`.
+    /// Idempotent — safe to call repeatedly.
+    pub fn migrate_legacy(&mut self) {
+        if !self.guild.is_empty() {
+            if !self.guilds.iter().any(|g| g == &self.guild) {
+                self.guilds.push(self.guild.clone());
+            }
+            if self.selected_guild.is_none() {
+                self.selected_guild = Some(self.guild.clone());
+            }
+            self.guild.clear();
+        }
+        // Ensure selected_guild references a known guild (or is None).
+        if let Some(sel) = &self.selected_guild
+            && !self.guilds.iter().any(|g| g == sel)
+        {
+            self.selected_guild = self.guilds.first().cloned();
+        }
+    }
+
+    /// Resolve the active guild for upload. Returns the selected guild if it's
+    /// in the configured list, otherwise the first configured guild, otherwise None.
+    pub fn active_guild(&self) -> Option<&str> {
+        if let Some(sel) = self.selected_guild.as_deref()
+            && self.guilds.iter().any(|g| g == sel)
+        {
+            return Some(sel);
+        }
+        self.guilds.first().map(|s| s.as_str())
+    }
 }
 
 ///

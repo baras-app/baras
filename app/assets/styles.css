@@ -8140,6 +8140,49 @@ details[open] .collapsible-summary::before {
   opacity: 0.5;
 }
 
+.parsely-upload-guild-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+}
+
+.parsely-upload-guild-select select {
+  padding: 0.4em 0.6em;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.9em;
+}
+
+.parsely-upload-guild-select select:focus {
+  border-color: var(--swtor-blue);
+  outline: none;
+}
+
+.parsely-guilds-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  flex: 1;
+}
+
+.parsely-guilds-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+}
+
+.parsely-guilds-add {
+  display: flex;
+  gap: 0.3em;
+}
+
+.parsely-guilds-add input {
+  flex: 1;
+  padding: 0.3em 0.5em;
+}
+
 .parsely-upload-modal .modal-footer {
   display: flex;
   justify-content: flex-end;

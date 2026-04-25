@@ -140,7 +140,9 @@ pub fn App() -> Element {
     // Parsely settings
     let mut parsely_username = use_signal(String::new);
     let mut parsely_password = use_signal(String::new);
-    let mut parsely_guild = use_signal(String::new);
+    let mut parsely_guilds = use_signal(Vec::<String>::new);
+    let mut parsely_selected_guild = use_signal(|| None::<String>);
+    let mut parsely_guild_input = use_signal(String::new);
     let mut parsely_save_status = use_signal(String::new);
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -184,7 +186,8 @@ pub fn App() -> Element {
             european_number_format.set(config.european_number_format);
             parsely_username.set(config.parsely.username);
             parsely_password.set(config.parsely.password);
-            parsely_guild.set(config.parsely.guild);
+            parsely_guilds.set(config.parsely.guilds);
+            parsely_selected_guild.set(config.parsely.selected_guild);
             // Audio settings
             audio_enabled.set(config.audio.enabled);
             audio_volume.set(config.audio.volume);
@@ -2129,12 +2132,79 @@ pub fn App() -> Element {
                                     }
                                 }
                                 div { class: "setting-row",
-                                    label { "Guild" }
-                                    input {
-                                        r#type: "text",
-                                        placeholder: "Optional",
-                                        value: parsely_guild,
-                                        oninput: move |e| parsely_guild.set(e.value())
+                                    label { "Guilds" }
+                                    div { class: "parsely-guilds-field",
+                                        if !parsely_guilds.read().is_empty() {
+                                            div { class: "parsely-guilds-chips",
+                                                for (idx, guild) in parsely_guilds.read().iter().enumerate() {
+                                                    {
+                                                        let name = guild.clone();
+                                                        rsx! {
+                                                            span {
+                                                                key: "{name}-{idx}",
+                                                                class: "chip",
+                                                                "{name}"
+                                                                button {
+                                                                    class: "chip-remove",
+                                                                    title: "Remove guild",
+                                                                    onclick: move |_| {
+                                                                        let mut list = parsely_guilds.write();
+                                                                        list.retain(|g| g != &name);
+                                                                        let still_has_selected = parsely_selected_guild
+                                                                            .read()
+                                                                            .as_deref()
+                                                                            .map(|s| list.iter().any(|g| g == s))
+                                                                            .unwrap_or(false);
+                                                                        if !still_has_selected {
+                                                                            parsely_selected_guild.set(list.first().cloned());
+                                                                        }
+                                                                    },
+                                                                    "×"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        div { class: "parsely-guilds-add",
+                                            input {
+                                                r#type: "text",
+                                                placeholder: "Add a guild...",
+                                                value: parsely_guild_input,
+                                                oninput: move |e| parsely_guild_input.set(e.value()),
+                                                onkeydown: move |e| {
+                                                    if e.key() == Key::Enter {
+                                                        let trimmed = parsely_guild_input.read().trim().to_string();
+                                                        if !trimmed.is_empty()
+                                                            && !parsely_guilds.read().iter().any(|g| g == &trimmed)
+                                                        {
+                                                            parsely_guilds.write().push(trimmed.clone());
+                                                            if parsely_selected_guild.read().is_none() {
+                                                                parsely_selected_guild.set(Some(trimmed));
+                                                            }
+                                                            parsely_guild_input.set(String::new());
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            button {
+                                                class: "btn btn-secondary btn-sm",
+                                                onclick: move |_| {
+                                                    let trimmed = parsely_guild_input.read().trim().to_string();
+                                                    if !trimmed.is_empty()
+                                                        && !parsely_guilds.read().iter().any(|g| g == &trimmed)
+                                                    {
+                                                        parsely_guilds.write().push(trimmed.clone());
+                                                        if parsely_selected_guild.read().is_none() {
+                                                            parsely_selected_guild.set(Some(trimmed));
+                                                        }
+                                                        parsely_guild_input.set(String::new());
+                                                    }
+                                                },
+                                                "Add"
+                                            }
+                                        }
                                     }
                                 }
                                 div { class: "settings-footer",
@@ -2143,13 +2213,16 @@ pub fn App() -> Element {
                                         onclick: move |_| {
                                             let u = parsely_username();
                                             let p = parsely_password();
-                                            let g = parsely_guild();
+                                            let guilds = parsely_guilds.read().clone();
+                                            let selected = parsely_selected_guild.read().clone();
                                             let mut toast = use_toast();
                                             spawn(async move {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.parsely.username = u;
                                                     cfg.parsely.password = p;
-                                                    cfg.parsely.guild = g;
+                                                    cfg.parsely.guild = String::new();
+                                                    cfg.parsely.guilds = guilds;
+                                                    cfg.parsely.selected_guild = selected;
                                                     if let Err(err) = api::update_config(&cfg).await {
                                                         toast.show(format!("Failed to save Parsely settings: {}", err), ToastSeverity::Normal);
                                                     } else {
@@ -2459,7 +2532,10 @@ pub fn App() -> Element {
             }
 
             // Parsely upload modal
-            ParselyUploadModal { guild: parsely_guild() }
+            ParselyUploadModal {
+                guilds: parsely_guilds.read().clone(),
+                selected_guild: parsely_selected_guild,
+            }
 
             // Toast notifications (rendered on top of everything)
             ToastFrame {}

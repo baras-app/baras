@@ -33,6 +33,7 @@ pub async fn upload_to_parsely(
     visibility: u8,
     notes: Option<String>,
     guild_log: bool,
+    guild: Option<String>,
     handle: State<'_, ServiceHandle>,
 ) -> Result<ParselyUploadResponse, String> {
     // Quick metadata check before reading
@@ -70,12 +71,23 @@ pub async fn upload_to_parsely(
         }
     }
 
-    let config = handle.config().await;
+    let mut config = handle.config().await;
     if !config.parsely.username.is_empty() && !config.parsely.password.is_empty() {
         form = form.text("username", config.parsely.username.clone());
         form = form.text("password", config.parsely.password.clone());
-        if !config.parsely.guild.is_empty() {
-            form = form.text("guild", config.parsely.guild.clone());
+        let resolved_guild = resolve_upload_guild(&config.parsely, guild.as_deref());
+        if let Some(g) = resolved_guild.as_deref() {
+            form = form.text("guild", g.to_string());
+        }
+
+        // Persist last-selected guild if user picked one explicitly.
+        if let Some(picked) = guild.as_deref()
+            && !picked.is_empty()
+            && config.parsely.guilds.iter().any(|g| g == picked)
+            && config.parsely.selected_guild.as_deref() != Some(picked)
+        {
+            config.parsely.selected_guild = Some(picked.to_string());
+            handle.update_config(config).await.ok();
         }
     }
 
@@ -103,6 +115,20 @@ pub async fn upload_to_parsely(
     parse_parsely_response(&response_text)
 }
 
+/// Pick the guild to send to Parsely:
+/// 1. Explicit choice from the upload modal (if non-empty and configured).
+/// 2. The user's `selected_guild` (last picked).
+/// 3. None.
+fn resolve_upload_guild(parsely: &baras_types::ParselySettings, picked: Option<&str>) -> Option<String> {
+    if let Some(p) = picked
+        && !p.is_empty()
+        && parsely.guilds.iter().any(|g| g == p)
+    {
+        return Some(p.to_string());
+    }
+    parsely.active_guild().map(str::to_string)
+}
+
 fn gzip_compress_file(path: &std::path::Path) -> std::io::Result<Vec<u8>> {
     let file = std::fs::File::open(path)?;
     let mut reader = BufReader::new(file);
@@ -121,6 +147,7 @@ pub async fn upload_encounter_to_parsely(
     visibility: u8,
     notes: Option<String>,
     guild_log: bool,
+    guild: Option<String>,
     handle: State<'_, ServiceHandle>,
 ) -> Result<ParselyUploadResponse, String> {
     // Extract and compress the relevant lines
@@ -158,12 +185,22 @@ pub async fn upload_encounter_to_parsely(
         }
     }
 
-    let config = handle.config().await;
+    let mut config = handle.config().await;
     if !config.parsely.username.is_empty() && !config.parsely.password.is_empty() {
         form = form.text("username", config.parsely.username.clone());
         form = form.text("password", config.parsely.password.clone());
-        if !config.parsely.guild.is_empty() {
-            form = form.text("guild", config.parsely.guild.clone());
+        let resolved_guild = resolve_upload_guild(&config.parsely, guild.as_deref());
+        if let Some(g) = resolved_guild.as_deref() {
+            form = form.text("guild", g.to_string());
+        }
+
+        if let Some(picked) = guild.as_deref()
+            && !picked.is_empty()
+            && config.parsely.guilds.iter().any(|g| g == picked)
+            && config.parsely.selected_guild.as_deref() != Some(picked)
+        {
+            config.parsely.selected_guild = Some(picked.to_string());
+            handle.update_config(config).await.ok();
         }
     }
 
