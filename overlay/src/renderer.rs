@@ -24,13 +24,24 @@ use tiny_skia::{
 /// to create its own FontSystem, avoiding repeated system font scanning.
 static SHARED_FONT_DB: OnceLock<fontdb::Database> = OnceLock::new();
 
+/// Bundled Inter font (Regular + Bold + Italic) so overlays render with a
+/// consistent typeface across Windows/macOS/Linux without depending on
+/// whichever fonts the host happens to have installed.
+const INTER_REGULAR: &[u8] = include_bytes!("../assets/fonts/Inter-Regular.ttf");
+const INTER_BOLD: &[u8] = include_bytes!("../assets/fonts/Inter-Bold.ttf");
+const INTER_ITALIC: &[u8] = include_bytes!("../assets/fonts/Inter-Italic.ttf");
+
 /// Get a clone of the shared font database.
-/// First call initializes by scanning system fonts; subsequent calls are cheap clones.
+/// First call initializes by scanning system fonts and registering the
+/// bundled Inter faces; subsequent calls are cheap clones.
 fn get_shared_font_db() -> fontdb::Database {
     SHARED_FONT_DB
         .get_or_init(|| {
             let mut db = fontdb::Database::new();
             db.load_system_fonts();
+            db.load_font_data(INTER_REGULAR.to_vec());
+            db.load_font_data(INTER_BOLD.to_vec());
+            db.load_font_data(INTER_ITALIC.to_vec());
             db
         })
         .clone()
@@ -148,7 +159,7 @@ impl Renderer {
         let metrics = Metrics::new(font_size, font_size * 1.2);
         let mut text_buffer = Buffer::new(&mut self.font_system, metrics);
 
-        let mut attrs = Attrs::new().family(Family::Name("Noto Sans"));
+        let mut attrs = Attrs::new().family(Family::Name("Inter"));
         if bold {
             attrs = attrs.weight(Weight::BOLD);
         }

@@ -462,7 +462,8 @@ impl MetricOverlay {
             let mut bar = ProgressBar::new(display_name, progress)
                 .with_fill_color(fill_color)
                 .with_bg_color(bg_color)
-                .with_text_color(font_color);
+                .with_text_color(font_color)
+                .with_text_glow();
 
             if entry.is_local {
                 bar = bar.with_bold_text();

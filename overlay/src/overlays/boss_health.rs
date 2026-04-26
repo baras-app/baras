@@ -60,9 +60,9 @@ const BASE_HEIGHT: f32 = 100.0;
 
 /// Base layout values (at BASE_WIDTH x BASE_HEIGHT)
 const BASE_BAR_HEIGHT: f32 = 20.0;
-const BASE_LABEL_HEIGHT: f32 = 16.0;
+const BASE_LABEL_HEIGHT: f32 = 11.0;
 const BASE_ENTRY_SPACING: f32 = 8.0;
-const BASE_LABEL_BAR_GAP: f32 = 2.0;
+const BASE_LABEL_BAR_GAP: f32 = 1.0;
 const BASE_PADDING: f32 = 8.0;
 const BASE_FONT_SIZE: f32 = 13.0;
 const BASE_LABEL_FONT_SIZE: f32 = 8.5;
@@ -182,12 +182,13 @@ impl BossHealthOverlay {
     /// Calculate compression factor to fit entries in available height
     fn compression_factor(&self, entries: &[OverlayHealthEntry]) -> f32 {
         let height = self.frame.height() as f32;
+        let font_scale = self.config.font_scale.clamp(1.0, 2.0);
         let padding = self.frame.scaled(BASE_PADDING);
         let bar_height = self.frame.scaled(BASE_BAR_HEIGHT);
-        let label_height = self.frame.scaled(BASE_LABEL_HEIGHT);
+        let label_height = self.frame.scaled(BASE_LABEL_HEIGHT) * font_scale;
         let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING);
         let label_bar_gap = self.frame.scaled(BASE_LABEL_BAR_GAP);
-        let label_font_size = self.frame.scaled(BASE_LABEL_FONT_SIZE);
+        let label_font_size = self.frame.scaled(BASE_LABEL_FONT_SIZE) * font_scale;
         let shield_bar_height = self.frame.scaled(BASE_SHIELD_BAR_HEIGHT);
 
         let icon_row_h = Self::icon_row_height(bar_height);
@@ -220,14 +221,13 @@ impl BossHealthOverlay {
 
     /// Pre-compute the total content height for all visible entries.
     fn compute_content_height(&self, entries: &[OverlayHealthEntry], compression: f32) -> f32 {
+        let font_scale = self.config.font_scale.clamp(1.0, 2.0);
         let padding = self.frame.scaled(BASE_PADDING);
         let bar_height = self.frame.scaled(BASE_BAR_HEIGHT) * compression;
-        let label_height = self.frame.scaled(BASE_LABEL_HEIGHT) * compression;
+        let label_height = self.frame.scaled(BASE_LABEL_HEIGHT) * compression * font_scale;
         let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING) * compression;
         let label_bar_gap = self.frame.scaled(BASE_LABEL_BAR_GAP) * compression;
-        let label_font_size = self.frame.scaled(BASE_LABEL_FONT_SIZE)
-            * compression
-            * self.config.font_scale.clamp(1.0, 2.0);
+        let label_font_size = self.frame.scaled(BASE_LABEL_FONT_SIZE) * compression * font_scale;
         let shield_bar_height = self.frame.scaled(BASE_SHIELD_BAR_HEIGHT) * compression;
 
         let icon_row_h = Self::icon_row_height(bar_height);
@@ -313,6 +313,7 @@ impl BossHealthOverlay {
             .with_bg_color(colors::dps_bar_bg())
             .with_text_color(font_color)
             .with_right_text(percent_text)
+            .with_text_glow()
             .render(
                 &mut self.frame,
                 padding,
@@ -373,7 +374,7 @@ impl BossHealthOverlay {
         // Apply compression to entry-specific dimensions
         let padding = self.frame.scaled(BASE_PADDING);
         let bar_height = self.frame.scaled(BASE_BAR_HEIGHT) * compression;
-        let label_height = self.frame.scaled(BASE_LABEL_HEIGHT) * compression;
+        let label_height = self.frame.scaled(BASE_LABEL_HEIGHT) * compression * font_scale;
         let entry_spacing = self.frame.scaled(BASE_ENTRY_SPACING) * compression;
         let label_bar_gap = self.frame.scaled(BASE_LABEL_BAR_GAP) * compression;
         let font_size = self.frame.scaled(BASE_FONT_SIZE) * compression * font_scale;
@@ -477,6 +478,7 @@ impl BossHealthOverlay {
                     .with_fill_color(shield_bar_color())
                     .with_bg_color(colors::dps_bar_bg())
                     .with_text_color(font_color)
+                    .with_text_glow()
                     .render(
                         &mut self.frame,
                         padding,
@@ -506,6 +508,7 @@ impl BossHealthOverlay {
                 .with_bg_color(colors::dps_bar_bg())
                 .with_text_color(font_color)
                 .with_right_text(percent_text)
+                .with_text_glow()
                 .render(
                     &mut self.frame,
                     padding,
