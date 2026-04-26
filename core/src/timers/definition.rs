@@ -95,8 +95,11 @@ pub struct TimerDefinition {
     ///
     /// Backwards-compatible with the legacy `display_target = "..."` single-value
     /// form via a custom deserializer. `"none"` deserializes to an empty Vec.
+    /// When the field is omitted entirely, defaults to `[TimersA]` to match the
+    /// pre-multi-target behavior — many bundled and user definitions never set
+    /// this field and used to render on TimersA via `TimerDisplayTarget::default()`.
     #[serde(
-        default,
+        default = "default_display_targets",
         alias = "display_target",
         deserialize_with = "deserialize_display_targets",
         skip_serializing_if = "Vec::is_empty"
@@ -228,10 +231,19 @@ pub struct TimerConfig {
     pub timers: Vec<TimerDefinition>,
 }
 
+/// Default for `display_targets` when the field is missing from a TOML file.
+/// Returns `[TimersA]` to preserve pre-rename behavior — before this field
+/// became a `Vec`, an absent `display_target` defaulted to `TimersA` via
+/// `TimerDisplayTarget::default()`. Many bundled and user definitions rely
+/// on that implicit default.
+pub fn default_display_targets() -> Vec<TimerDisplayTarget> {
+    vec![TimerDisplayTarget::TimersA]
+}
+
 /// Deserialize `display_targets` accepting either a single bare value
 /// (legacy `display_target = "timers_a"`) or an array
 /// (`display_targets = ["timers_a", "ability_queue"]`).
-/// `None` values are filtered out so empty/unset = no overlay display.
+/// `None` values are filtered out so explicit `"none"` / `[]` = no overlay display.
 pub fn deserialize_display_targets<'de, D>(
     deserializer: D,
 ) -> Result<Vec<TimerDisplayTarget>, D::Error>

@@ -426,10 +426,17 @@ impl TimerDisplayTarget {
     }
 }
 
+/// Default for `display_targets` when the field is missing entirely from
+/// an incoming payload. Returns `[TimersA]` to mirror the pre-rename behavior
+/// (the old singular `display_target` defaulted to `TimersA`).
+fn default_timer_display_targets() -> Vec<TimerDisplayTarget> {
+    vec![TimerDisplayTarget::TimersA]
+}
+
 /// Deserialize `display_targets` accepting either a single bare value
 /// (legacy `display_target = "timers_a"`) or an array
 /// (`display_targets = ["timers_a", "ability_queue"]`).
-/// `None` values are filtered out so empty/unset = no overlay display.
+/// `None` values are filtered out so explicit `"none"` / `[]` = no overlay display.
 fn deserialize_timer_display_targets<'de, D>(
     deserializer: D,
 ) -> Result<Vec<TimerDisplayTarget>, D::Error>
@@ -523,9 +530,10 @@ pub struct BossTimerDefinition {
     pub show_at_secs: f32,
     /// Which overlays should display this timer. Backwards-compatible with
     /// the legacy `display_target = "..."` single-value form via a custom
-    /// deserializer; `"none"` deserializes to an empty Vec.
+    /// deserializer; `"none"` / `[]` deserializes to an empty Vec, while a
+    /// missing field defaults to `[TimersA]` to match pre-rename behavior.
     #[serde(
-        default,
+        default = "default_timer_display_targets",
         alias = "display_target",
         deserialize_with = "deserialize_timer_display_targets",
         skip_serializing_if = "Vec::is_empty"
