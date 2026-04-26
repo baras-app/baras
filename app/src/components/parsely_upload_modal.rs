@@ -39,6 +39,10 @@ struct ParselyUploadRequest {
 #[derive(Clone, Copy)]
 pub struct ParselyUploadManager {
     request: Signal<Option<ParselyUploadRequest>>,
+    /// User's last explicit "None" guild pick. Persists across modal opens
+    /// within the session so subsequent uploads default to no-guild attribution
+    /// the same way a normal guild pick does.
+    no_guild_default: Signal<bool>,
 }
 
 impl ParselyUploadManager {
@@ -46,18 +50,20 @@ impl ParselyUploadManager {
     pub fn new() -> Self {
         Self {
             request: Signal::new(None),
+            no_guild_default: Signal::new(false),
         }
     }
 
     /// Open modal for file upload
     pub fn open_file(&mut self, path: String, filename: String) {
+        let no_guild = *self.no_guild_default.read();
         *self.request.write() = Some(ParselyUploadRequest {
             upload_type: ParselyUploadType::File { path, filename },
             visibility: 1, // Default to Public
             notes: String::new(),
             guild_log: false,
             guild: None,
-            no_guild: false,
+            no_guild,
         });
     }
 
@@ -71,6 +77,7 @@ impl ParselyUploadManager {
         end_line: u64,
         area_entered_line: Option<u64>,
     ) {
+        let no_guild = *self.no_guild_default.read();
         *self.request.write() = Some(ParselyUploadRequest {
             upload_type: ParselyUploadType::Encounter {
                 path,
@@ -84,7 +91,7 @@ impl ParselyUploadManager {
             notes: String::new(),
             guild_log: false,
             guild: None,
-            no_guild: false,
+            no_guild,
         });
     }
 
@@ -133,7 +140,7 @@ pub fn ParselyUploadModal(
 
     // Resolve which guild the dropdown should show: explicit user pick overrides
     // the saved last-selected guild, falling back to the first configured guild.
-    // If the user picked "No Guild", skip the fallback chain so the empty option
+    // If the user picked "None", skip the fallback chain so the empty option
     // stays selected.
     let active_guild: Option<String> = if req.no_guild {
         None
@@ -250,21 +257,23 @@ pub fn ParselyUploadModal(
                                     let mut req = manager.request.write();
                                     let req = req.as_mut().unwrap();
                                     if val.is_empty() {
-                                        // "No Guild" sentinel — opt out of guild attribution.
+                                        // "None" sentinel — opt out of guild attribution.
                                         req.no_guild = true;
                                         req.guild = None;
                                         req.guild_log = false;
+                                        manager.no_guild_default.set(true);
                                     } else {
                                         req.no_guild = false;
                                         req.guild = Some(val.clone());
                                         selected_guild.set(Some(val));
+                                        manager.no_guild_default.set(false);
                                     }
                                 },
                                 option {
                                     key: "__no_guild__",
                                     value: "",
                                     selected: req.no_guild,
-                                    "No Guild"
+                                    "None"
                                 }
                                 for g in guilds.iter() {
                                     option {
@@ -323,7 +332,7 @@ pub fn ParselyUploadModal(
                             let guild_log = upload_req.guild_log && !no_guild;
                             // Use the resolved active guild (handles default fallback when
                             // the user never explicitly picked one). Forced to None when the
-                            // user picked "No Guild".
+                            // user picked "None".
                             let guild = if no_guild {
                                 None
                             } else {
