@@ -574,9 +574,11 @@ pub struct BossTimerDefinition {
     ///
     /// A single timer can be shown on multiple overlays simultaneously.
     /// Backwards-compatible with the legacy `display_target = "..."` single-value
-    /// form. `"none"` deserializes to an empty Vec.
+    /// form. `"none"` / `[]` deserializes to an empty Vec, while a missing field
+    /// defaults to `[TimersA]` to match pre-multi-target behavior — bundled and
+    /// user-authored TOMLs that never set this field used to render on TimersA.
     #[serde(
-        default,
+        default = "crate::timers::default_display_targets",
         alias = "display_target",
         deserialize_with = "crate::timers::deserialize_display_targets",
         skip_serializing_if = "Vec::is_empty"
