@@ -477,12 +477,19 @@ impl ParsingSession {
                     };
                     let mut watermark = 0;
                     for _ in 0..10 {
-                        let w = new_signals.len();
-                        if w == watermark {
+                        if new_signals.len() == watermark {
                             break;
                         }
-                        let slice = &new_signals[watermark..];
-                        watermark = w;
+                        // Snapshot the start of this iteration. Counters need to
+                        // see signals carried in (e.g. PhaseChanged/PhaseEndTriggered
+                        // from check_timer_phase_transitions, CounterChanged from
+                        // check_counter_timer_triggers) AND any new phase signals
+                        // entity_phase_transitions adds below — otherwise reset_on
+                        // / increment_on with PhaseEntered/PhaseEnded/CounterReaches
+                        // never fires for timer-driven transitions.
+                        let iter_start = watermark;
+                        watermark = new_signals.len();
+                        let slice = &new_signals[iter_start..];
 
                         // Phase transitions from counter changes (CounterReaches,
                         // PhaseEntered, PhaseEnded, EntityDeath, NpcAppears, etc.)
@@ -492,11 +499,10 @@ impl ParsingSession {
                             timestamp,
                         ));
 
-                        // Counter reactions to new phase/counter signals
-                        let new_slice = &new_signals[watermark..];
+                        let counter_slice = &new_signals[iter_start..];
                         new_signals.extend(check_counter_signal_triggers(
                             cache,
-                            new_slice,
+                            counter_slice,
                             timestamp,
                         ));
                     }
