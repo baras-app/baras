@@ -867,7 +867,7 @@ impl TimerManager {
             def.show_on_raid_frames,
             def.show_at_secs,
             &audio_with_prefs,
-            def.display_target,
+            def.display_targets.clone(),
             alert_on_expire,
             def.alert_text.clone(),
             role_hidden,

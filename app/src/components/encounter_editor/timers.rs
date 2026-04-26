@@ -52,7 +52,7 @@ fn default_timer(name: String) -> BossTimerDefinition {
         alert_at_secs: None,
         show_on_raid_frames: false,
         show_at_secs: 0.0,
-        display_target: TimerDisplayTarget::TimersA,
+        display_targets: vec![TimerDisplayTarget::TimersA],
         audio: AudioConfig::default(),
         roles: vec!["Tank".into(), "Healer".into(), "Dps".into()],
         gcd_secs: None,
@@ -307,7 +307,14 @@ fn TimerRow(
 
                 // Overlay tag
                 span { class: "timer-col-trigger",
-                    span { class: "tag", "{timer.display_target.label()}" }
+                    {
+                        let targets_label = match timer.display_targets.len() {
+                            0 => "None".to_string(),
+                            1 => timer.display_targets[0].label().to_string(),
+                            n => format!("{n} overlays"),
+                        };
+                        rsx! { span { class: "tag", "{targets_label}" } }
+                    }
                 }
 
                 // Duration / Alert
@@ -800,53 +807,44 @@ fn TimerEditForm(
                             }
 
                             if !draft().is_alert {
+                                // Display Overlays (multi-select: a timer can appear on multiple overlays)
                                 div { class: "form-row-hz",
                                     label { class: "flex items-center",
-                                        "Display Overlay"
+                                        "Display Overlays"
                                         span {
                                             class: "help-icon",
-                                            title: "Sets which overlay displays this timer when triggered",
+                                            title: "Overlays this timer will appear on. Select multiple to show the same timer on more than one overlay.",
                                             "?"
                                         }
                                     }
-                                    select {
-                                        class: "select",
-                                        style: "flex: 1; min-width: 0;",
-                                        onchange: move |e| {
-                                            let mut d = draft();
-                                            d.display_target = match e.value().as_str() {
-                                                "timers_b" => TimerDisplayTarget::TimersB,
-                                                "ability_queue" => TimerDisplayTarget::AbilityQueue,
-                                                "none" => TimerDisplayTarget::None,
-                                                _ => TimerDisplayTarget::TimersA,
-                                            };
-                                            // Clear queue fields when switching away from AbilityQueue
-                                            if d.display_target != TimerDisplayTarget::AbilityQueue {
-                                                d.queue_on_expire = false;
-                                                d.gcd_secs = None;
-                                                d.queue_priority = 0;
-                                                d.queue_remove_trigger = None;
-                                                d.queue_countdown_bar = false;
-                                                d.queue_hide_from_next = false;
-                                            }
-                                            draft.set(d);
-                                        },
-                                        for target in TimerDisplayTarget::all() {
-                                            {
-                                                let value = match target {
-                                                    TimerDisplayTarget::TimersA => "timers_a",
-                                                    TimerDisplayTarget::TimersB => "timers_b",
-                                                    TimerDisplayTarget::AbilityQueue => "ability_queue",
-                                                    TimerDisplayTarget::None => "none",
-                                                };
-                                                let is_selected = draft().display_target == *target;
-                                                rsx! {
-                                                    option {
-                                                        value: "{value}",
-                                                        selected: is_selected,
-                                                        "{target.label()}"
+                                    div { class: "flex flex-wrap gap-sm",
+                                        for target in TimerDisplayTarget::all().iter().filter(|t| !matches!(t, TimerDisplayTarget::None)).copied() {
+                                            label { class: "flex items-center gap-xs text-sm",
+                                                input {
+                                                    r#type: "checkbox",
+                                                    checked: draft().display_targets.contains(&target),
+                                                    onchange: move |e| {
+                                                        let mut d = draft();
+                                                        let is_checked = e.checked();
+                                                        let already_has = d.display_targets.contains(&target);
+                                                        if is_checked && !already_has {
+                                                            d.display_targets.push(target);
+                                                        } else if !is_checked && already_has {
+                                                            d.display_targets.retain(|t| *t != target);
+                                                        }
+                                                        // Clear queue-only fields when AbilityQueue is removed
+                                                        if !d.display_targets.contains(&TimerDisplayTarget::AbilityQueue) {
+                                                            d.queue_on_expire = false;
+                                                            d.gcd_secs = None;
+                                                            d.queue_priority = 0;
+                                                            d.queue_remove_trigger = None;
+                                                            d.queue_countdown_bar = false;
+                                                            d.queue_hide_from_next = false;
+                                                        }
+                                                        draft.set(d);
                                                     }
                                                 }
+                                                span { "{target.label()}" }
                                             }
                                         }
                                     }
@@ -1466,9 +1464,9 @@ fn TimerEditForm(
                         }
                     }
 
-                    // ─── Ability Queue Card (only when Display Overlay = Ability Queue) ─
+                    // ─── Ability Queue Card (only when Ability Queue is selected) ─
                     if !draft().is_alert
-                        && draft().display_target == TimerDisplayTarget::AbilityQueue
+                        && draft().display_targets.contains(&TimerDisplayTarget::AbilityQueue)
                     {
                         div { class: "form-card",
                             div { class: "form-card-header",

@@ -36,7 +36,7 @@ fn make_timer(id: &str, name: &str, trigger: TimerTrigger, duration: f32) -> Tim
         encounters: Vec::new(),
         boss: None,
         boss_definition_id: None,
-        display_target: Default::default(),
+        display_targets: vec![crate::timers::TimerDisplayTarget::TimersA],
         difficulties: Vec::new(),
         group_size: None,
         conditions: Vec::new(),

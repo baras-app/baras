@@ -3,7 +3,7 @@
 //! Definitions are templates loaded from TOML config files that describe
 //! what timers to track and how to display them.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::dsl::AudioConfig;
 use crate::dsl::Condition;
@@ -88,9 +88,20 @@ pub struct TimerDefinition {
     #[serde(default)]
     pub show_on_raid_frames: bool,
 
-    /// Which overlay should display this timer (defaults to TimersA)
-    #[serde(default)]
-    pub display_target: TimerDisplayTarget,
+    /// Which overlays should display this timer.
+    ///
+    /// A single timer can be shown on multiple overlays simultaneously
+    /// (e.g. an ability cooldown can appear on both AbilityQueue and TimersA).
+    ///
+    /// Backwards-compatible with the legacy `display_target = "..."` single-value
+    /// form via a custom deserializer. `"none"` deserializes to an empty Vec.
+    #[serde(
+        default,
+        alias = "display_target",
+        deserialize_with = "deserialize_display_targets",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub display_targets: Vec<TimerDisplayTarget>,
 
     // ─── Alerts ─────────────────────────────────────────────────────────────
     /// When to fire an alert: on timer start, on timer expire, or never.
@@ -217,7 +228,61 @@ pub struct TimerConfig {
     pub timers: Vec<TimerDefinition>,
 }
 
+/// Deserialize `display_targets` accepting either a single bare value
+/// (legacy `display_target = "timers_a"`) or an array
+/// (`display_targets = ["timers_a", "ability_queue"]`).
+/// `None` values are filtered out so empty/unset = no overlay display.
+pub fn deserialize_display_targets<'de, D>(
+    deserializer: D,
+) -> Result<Vec<TimerDisplayTarget>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::{self, SeqAccess, Visitor};
+    use std::fmt;
+
+    struct OneOrMany;
+
+    impl<'de> Visitor<'de> for OneOrMany {
+        type Value = Vec<TimerDisplayTarget>;
+
+        fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("a timer display target string or a list of them")
+        }
+
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+            let t = TimerDisplayTarget::deserialize(de::value::StrDeserializer::<E>::new(v))?;
+            Ok(if matches!(t, TimerDisplayTarget::None) {
+                Vec::new()
+            } else {
+                vec![t]
+            })
+        }
+
+        fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+            self.visit_str(&v)
+        }
+
+        fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+            let mut out = Vec::new();
+            while let Some(item) = seq.next_element::<TimerDisplayTarget>()? {
+                if !matches!(item, TimerDisplayTarget::None) && !out.contains(&item) {
+                    out.push(item);
+                }
+            }
+            Ok(out)
+        }
+    }
+
+    deserializer.deserialize_any(OneOrMany)
+}
+
 impl TimerDefinition {
+    /// Check whether this timer should appear on the given overlay target.
+    pub fn displays_on(&self, target: TimerDisplayTarget) -> bool {
+        self.display_targets.contains(&target)
+    }
+
     /// Check if this timer matches a given ability ID and/or name.
     /// Delegates to unified `Trigger::matches_ability`.
     pub fn matches_ability_with_name(&self, ability_id: u64, ability_name: Option<&str>) -> bool {

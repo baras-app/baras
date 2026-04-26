@@ -3194,7 +3194,8 @@ struct TimerDataBundle {
 
 /// Build timer data with audio events (countdowns and alerts).
 ///
-/// Routes timers to TimersA, TimersB, or AbilityQueue based on `display_target`.
+/// Fans out each timer to all of its `display_targets` (TimersA, TimersB, and/or
+/// AbilityQueue), so a single timer can appear on multiple overlays simultaneously.
 /// Assembles the GCD entry from `active_gcd` and queued entries from timers with
 /// `is_queued = true` (which bypass the `remaining <= 0.0` guard).
 async fn build_timer_data_with_audio(
@@ -3318,59 +3319,57 @@ async fn build_timer_data_with_audio(
             })
         });
 
-        match timer.display_target {
-            TimerDisplayTarget::TimersA | TimerDisplayTarget::TimersB => {
-                if remaining <= 0.0 || !timer.is_visible(remaining) {
-                    continue;
-                }
-                let entry = TimerEntry {
-                    name: timer.name.clone(),
-                    remaining_secs: remaining,
-                    total_secs: if timer.show_at_secs > 0.0 {
-                        timer.show_at_secs
-                    } else {
-                        timer.duration.as_secs_f32()
-                    },
-                    color: timer.color,
-                    icon_ability_id: timer.icon_ability_id,
-                    icon,
-                };
-                if timer.display_target == TimerDisplayTarget::TimersA {
-                    entries_a.push(entry);
-                } else {
-                    entries_b.push(entry);
-                }
+        let total_secs = if timer.show_at_secs > 0.0 {
+            timer.show_at_secs
+        } else {
+            timer.duration.as_secs_f32()
+        };
+
+        // Timers A / B: progress-bar entries. Filtered to active, visible timers.
+        let bar_visible = remaining > 0.0 && timer.is_visible(remaining);
+        if bar_visible
+            && (timer.displays_on(TimerDisplayTarget::TimersA)
+                || timer.displays_on(TimerDisplayTarget::TimersB))
+        {
+            let entry = TimerEntry {
+                name: timer.name.clone(),
+                remaining_secs: remaining,
+                total_secs,
+                color: timer.color,
+                icon_ability_id: timer.icon_ability_id,
+                icon: icon.clone(),
+            };
+            if timer.displays_on(TimerDisplayTarget::TimersA) {
+                entries_a.push(entry.clone());
             }
-            TimerDisplayTarget::AbilityQueue => {
-                // Queued entries (is_queued=true) bypass the remaining <= 0.0 guard
-                if !timer.is_queued && remaining <= 0.0 {
-                    continue;
-                }
-                let is_blocked = timer.queue_blocking_timers.iter().any(|name| {
-                    blocker_remaining
-                        .get(name.as_str())
-                        .is_some_and(|&rem| rem > gcd_remaining)
-                });
-                aq_entries.push(AbilityQueueEntry {
-                    name: timer.name.clone(),
-                    remaining_secs: remaining,
-                    total_secs: if timer.show_at_secs > 0.0 {
-                        timer.show_at_secs
-                    } else {
-                        timer.duration.as_secs_f32()
-                    },
-                    color: timer.color,
-                    queue_priority: timer.queue_priority,
-                    is_pinned: false,
-                    is_queued: timer.is_queued,
-                    is_blocked,
-                    countdown_bar: timer.queue_countdown_bar,
-                    hide_from_next: timer.queue_hide_from_next,
-                    icon_ability_id: timer.icon_ability_id,
-                    icon,
-                });
+            if timer.displays_on(TimerDisplayTarget::TimersB) {
+                entries_b.push(entry);
             }
-            TimerDisplayTarget::None => {}
+        }
+
+        // Ability Queue: queued entries (is_queued=true) bypass the remaining <= 0.0 guard.
+        if timer.displays_on(TimerDisplayTarget::AbilityQueue)
+            && (timer.is_queued || remaining > 0.0)
+        {
+            let is_blocked = timer.queue_blocking_timers.iter().any(|name| {
+                blocker_remaining
+                    .get(name.as_str())
+                    .is_some_and(|&rem| rem > gcd_remaining)
+            });
+            aq_entries.push(AbilityQueueEntry {
+                name: timer.name.clone(),
+                remaining_secs: remaining,
+                total_secs,
+                color: timer.color,
+                queue_priority: timer.queue_priority,
+                is_pinned: false,
+                is_queued: timer.is_queued,
+                is_blocked,
+                countdown_bar: timer.queue_countdown_bar,
+                hide_from_next: timer.queue_hide_from_next,
+                icon_ability_id: timer.icon_ability_id,
+                icon,
+            });
         }
     }
 

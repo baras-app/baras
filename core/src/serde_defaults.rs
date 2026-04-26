@@ -62,12 +62,6 @@ pub fn is_alert_trigger_none(t: &baras_types::AlertTrigger) -> bool {
     *t == baras_types::AlertTrigger::None
 }
 
-/// Skip serializing if TimerDisplayTarget is TimersA (the default)
-pub fn is_default_display_target(t: &crate::timers::TimerDisplayTarget) -> bool {
-    *t == crate::timers::TimerDisplayTarget::TimersA
-}
-
-
 /// Default entity filter for boss timer source/target (matches any entity)
 /// Boss timers need permissive defaults since abilities come from NPCs, not players.
 pub fn default_entity_filter_any() -> crate::effects::EntityFilter {

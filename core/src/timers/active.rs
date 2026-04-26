@@ -97,8 +97,8 @@ pub struct ActiveTimer {
     /// Whether the offset audio has been fired
     audio_offset_fired: bool,
 
-    /// Which overlay should display this timer
-    pub display_target: crate::timers::TimerDisplayTarget,
+    /// Which overlays should display this timer (empty = alerts only).
+    pub display_targets: Vec<crate::timers::TimerDisplayTarget>,
 
     /// Whether this timer is hidden due to role filtering
     /// (still ticks/chains/expires, but produces no visual or audio output)
@@ -143,7 +143,7 @@ impl ActiveTimer {
         show_on_raid_frames: bool,
         show_at_secs: f32,
         audio: &AudioConfig,
-        display_target: crate::timers::TimerDisplayTarget,
+        display_targets: Vec<crate::timers::TimerDisplayTarget>,
         alert_on_expire: bool,
         alert_text: Option<String>,
         role_hidden: bool,
@@ -183,7 +183,7 @@ impl ActiveTimer {
             audio_file: audio.file.clone(),
             audio_offset: audio.offset,
             audio_offset_fired: false,
-            display_target,
+            display_targets,
             role_hidden,
             is_queued: false,
             queue_on_expire,
@@ -238,6 +238,11 @@ impl ActiveTimer {
     pub fn remaining_secs(&self, current_game_time: NaiveDateTime) -> f32 {
         let remaining = self.expires_at.signed_duration_since(current_game_time);
         (remaining.num_milliseconds().max(0) as f32) / 1000.0
+    }
+
+    /// Check whether this timer should appear on the given overlay target.
+    pub fn displays_on(&self, target: crate::timers::TimerDisplayTarget) -> bool {
+        self.display_targets.contains(&target)
     }
 
     /// Check if timer should be visible based on show_at_secs threshold

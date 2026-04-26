@@ -28,7 +28,9 @@ mod signal_handlers;
 mod manager_tests;
 
 pub use active::{ActiveGcd, ActiveTimer, TimerKey};
-pub use definition::{TimerConfig, TimerDefinition, TimerDisplayTarget, TimerTrigger};
+pub use definition::{
+    TimerConfig, TimerDefinition, TimerDisplayTarget, TimerTrigger, deserialize_display_targets,
+};
 pub use error::TimerError;
 pub use manager::{FiredAlert, TimerManager};
 pub use matching::matches_source_target_filters;

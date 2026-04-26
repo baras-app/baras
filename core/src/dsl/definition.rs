@@ -570,12 +570,18 @@ pub struct BossTimerDefinition {
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_zero_f32")]
     pub show_at_secs: f32,
 
-    /// Which overlay should display this timer (defaults to TimersA)
+    /// Which overlays should display this timer.
+    ///
+    /// A single timer can be shown on multiple overlays simultaneously.
+    /// Backwards-compatible with the legacy `display_target = "..."` single-value
+    /// form. `"none"` deserializes to an empty Vec.
     #[serde(
         default,
-        skip_serializing_if = "crate::serde_defaults::is_default_display_target"
+        alias = "display_target",
+        deserialize_with = "crate::timers::deserialize_display_targets",
+        skip_serializing_if = "Vec::is_empty"
     )]
-    pub display_target: crate::timers::TimerDisplayTarget,
+    pub display_targets: Vec<crate::timers::TimerDisplayTarget>,
 
     // ─── Audio ───────────────────────────────────────────────────────────────
     /// Audio configuration (alerts, countdown, custom sounds)
@@ -656,7 +662,7 @@ impl BossTimerDefinition {
             color: self.color,
             show_on_raid_frames: self.show_on_raid_frames,
             show_at_secs: self.show_at_secs,
-            display_target: self.display_target,
+            display_targets: self.display_targets.clone(),
             alert_on: self.alert_on,
             alert_at_secs: self.alert_at_secs,
             alert_text: self.alert_text.clone(),

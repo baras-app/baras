@@ -3,7 +3,7 @@
 //! Contains types used by the Dioxus frontend, including re-exports from
 //! baras-types and frontend-specific types that mirror backend structures.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Re-exports from baras-types (shared with backend)
@@ -426,6 +426,55 @@ impl TimerDisplayTarget {
     }
 }
 
+/// Deserialize `display_targets` accepting either a single bare value
+/// (legacy `display_target = "timers_a"`) or an array
+/// (`display_targets = ["timers_a", "ability_queue"]`).
+/// `None` values are filtered out so empty/unset = no overlay display.
+fn deserialize_timer_display_targets<'de, D>(
+    deserializer: D,
+) -> Result<Vec<TimerDisplayTarget>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::{self, SeqAccess, Visitor};
+    use std::fmt;
+
+    struct OneOrMany;
+
+    impl<'de> Visitor<'de> for OneOrMany {
+        type Value = Vec<TimerDisplayTarget>;
+
+        fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("a timer display target string or a list of them")
+        }
+
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+            let t = TimerDisplayTarget::deserialize(de::value::StrDeserializer::<E>::new(v))?;
+            Ok(if matches!(t, TimerDisplayTarget::None) {
+                Vec::new()
+            } else {
+                vec![t]
+            })
+        }
+
+        fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+            self.visit_str(&v)
+        }
+
+        fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+            let mut out = Vec::new();
+            while let Some(item) = seq.next_element::<TimerDisplayTarget>()? {
+                if !matches!(item, TimerDisplayTarget::None) && !out.contains(&item) {
+                    out.push(item);
+                }
+            }
+            Ok(out)
+        }
+    }
+
+    deserializer.deserialize_any(OneOrMany)
+}
+
 /// Timer definition (mirrors baras_core::dsl::BossTimerDefinition)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BossTimerDefinition {
@@ -472,8 +521,16 @@ pub struct BossTimerDefinition {
     pub show_on_raid_frames: bool,
     #[serde(default)]
     pub show_at_secs: f32,
-    #[serde(default)]
-    pub display_target: TimerDisplayTarget,
+    /// Which overlays should display this timer. Backwards-compatible with
+    /// the legacy `display_target = "..."` single-value form via a custom
+    /// deserializer; `"none"` deserializes to an empty Vec.
+    #[serde(
+        default,
+        alias = "display_target",
+        deserialize_with = "deserialize_timer_display_targets",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub display_targets: Vec<TimerDisplayTarget>,
     #[serde(default)]
     pub audio: AudioConfig,
     /// Role filter: which roles should see this timer (empty vec = hidden for all roles)

@@ -352,7 +352,7 @@ fn convert_to_boss_timer(xml: &XmlConfigTimer) -> BossTimerDefinition {
         alert_at_secs: None,
         show_on_raid_frames: false,
         show_at_secs: 0.0,
-        display_target: Default::default(),
+        display_targets: vec![baras_core::timers::TimerDisplayTarget::TimersA],
         audio: convert_audio(xml),
         per_target: false,
         roles: Vec::new(),
