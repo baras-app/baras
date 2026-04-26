@@ -30,6 +30,9 @@ struct ParselyUploadRequest {
     guild_log: bool,
     /// Currently selected guild for this upload (None if user has no guilds configured).
     guild: Option<String>,
+    /// User explicitly opted out of guild attribution for this upload — overrides
+    /// the default fallback to the last-selected guild.
+    no_guild: bool,
 }
 
 /// Global manager for Parsely upload modal
@@ -54,6 +57,7 @@ impl ParselyUploadManager {
             notes: String::new(),
             guild_log: false,
             guild: None,
+            no_guild: false,
         });
     }
 
@@ -80,6 +84,7 @@ impl ParselyUploadManager {
             notes: String::new(),
             guild_log: false,
             guild: None,
+            no_guild: false,
         });
     }
 
@@ -128,9 +133,15 @@ pub fn ParselyUploadModal(
 
     // Resolve which guild the dropdown should show: explicit user pick overrides
     // the saved last-selected guild, falling back to the first configured guild.
-    let active_guild: Option<String> = req.guild.clone()
-        .or_else(|| selected_guild.read().clone().filter(|g| guilds.iter().any(|x| x == g)))
-        .or_else(|| guilds.first().cloned());
+    // If the user picked "No Guild", skip the fallback chain so the empty option
+    // stays selected.
+    let active_guild: Option<String> = if req.no_guild {
+        None
+    } else {
+        req.guild.clone()
+            .or_else(|| selected_guild.read().clone().filter(|g| guilds.iter().any(|x| x == g)))
+            .or_else(|| guilds.first().cloned())
+    };
 
     // Get display name for the upload
     let display_name = match &req.upload_type {
@@ -236,12 +247,25 @@ pub fn ParselyUploadModal(
                                 value: active_guild.clone().unwrap_or_default(),
                                 onchange: move |e| {
                                     let val = e.value();
-                                    let picked = if val.is_empty() { None } else { Some(val) };
-                                    manager.request.write().as_mut().unwrap().guild = picked.clone();
-                                    if picked.is_some() {
-                                        selected_guild.set(picked);
+                                    let mut req = manager.request.write();
+                                    let req = req.as_mut().unwrap();
+                                    if val.is_empty() {
+                                        // "No Guild" sentinel — opt out of guild attribution.
+                                        req.no_guild = true;
+                                        req.guild = None;
+                                        req.guild_log = false;
+                                    } else {
+                                        req.no_guild = false;
+                                        req.guild = Some(val.clone());
+                                        selected_guild.set(Some(val));
                                     }
                                 },
+                                option {
+                                    key: "__no_guild__",
+                                    value: "",
+                                    selected: req.no_guild,
+                                    "No Guild"
+                                }
                                 for g in guilds.iter() {
                                     option {
                                         key: "{g}",
@@ -255,20 +279,27 @@ pub fn ParselyUploadModal(
                     }
 
                     // Guild log checkbox
-                    div { class: "parsely-upload-guild-log", style: "text-align: left;",
-                        label {
-                            class: if guild_configured { "checkbox-option" } else { "checkbox-option disabled" },
-                            input {
-                                r#type: "checkbox",
-                                checked: req.guild_log,
-                                disabled: is_uploading() || !guild_configured,
-                                onchange: move |e| {
-                                    manager.request.write().as_mut().unwrap().guild_log = e.checked();
+                    {
+                        let guild_log_enabled = guild_configured && !req.no_guild;
+                        rsx! {
+                            div { class: "parsely-upload-guild-log", style: "text-align: left;",
+                                label {
+                                    class: if guild_log_enabled { "checkbox-option" } else { "checkbox-option disabled" },
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: req.guild_log,
+                                        disabled: is_uploading() || !guild_log_enabled,
+                                        onchange: move |e| {
+                                            manager.request.write().as_mut().unwrap().guild_log = e.checked();
+                                        }
+                                    }
+                                    " Tag all participants as guild members"
+                                    if !guild_configured {
+                                        span { class: "guild-log-hint", " (No guild configured)" }
+                                    } else if req.no_guild {
+                                        span { class: "guild-log-hint", " (No guild selected)" }
+                                    }
                                 }
-                            }
-                            " Tag all participants as guild members"
-                            if !guild_configured {
-                                span { class: "guild-log-hint", " (No guild configured)" }
                             }
                         }
                     }
@@ -287,10 +318,17 @@ pub fn ParselyUploadModal(
                         onclick: move |_| {
                             let upload_req = manager.request.read().clone().unwrap();
                             let visibility = upload_req.visibility;
-                            let guild_log = upload_req.guild_log;
+                            let no_guild = upload_req.no_guild;
+                            // guild_log only makes sense with a guild attribution.
+                            let guild_log = upload_req.guild_log && !no_guild;
                             // Use the resolved active guild (handles default fallback when
-                            // the user never explicitly picked one).
-                            let guild = upload_req.guild.clone().or_else(|| active_guild.clone());
+                            // the user never explicitly picked one). Forced to None when the
+                            // user picked "No Guild".
+                            let guild = if no_guild {
+                                None
+                            } else {
+                                upload_req.guild.clone().or_else(|| active_guild.clone())
+                            };
                             let notes = if upload_req.notes.is_empty() {
                                 None
                             } else {
@@ -312,7 +350,7 @@ pub fn ParselyUploadModal(
 
                                 let result = match upload_req.upload_type {
                                     ParselyUploadType::File { path, .. } => {
-                                        api::upload_to_parsely(&path, visibility, notes, guild_log, guild).await
+                                        api::upload_to_parsely(&path, visibility, notes, guild_log, guild, no_guild).await
                                     }
                                     ParselyUploadType::Encounter {
                                         path,
@@ -331,6 +369,7 @@ pub fn ParselyUploadModal(
                                             notes,
                                             guild_log,
                                             guild,
+                                            no_guild,
                                         ).await;
 
                                         // If successful, persist the link

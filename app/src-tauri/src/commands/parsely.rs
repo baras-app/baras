@@ -34,6 +34,7 @@ pub async fn upload_to_parsely(
     notes: Option<String>,
     guild_log: bool,
     guild: Option<String>,
+    no_guild: bool,
     handle: State<'_, ServiceHandle>,
 ) -> Result<ParselyUploadResponse, String> {
     // Quick metadata check before reading
@@ -75,7 +76,7 @@ pub async fn upload_to_parsely(
     if !config.parsely.username.is_empty() && !config.parsely.password.is_empty() {
         form = form.text("username", config.parsely.username.clone());
         form = form.text("password", config.parsely.password.clone());
-        let resolved_guild = resolve_upload_guild(&config.parsely, guild.as_deref());
+        let resolved_guild = resolve_upload_guild(&config.parsely, guild.as_deref(), no_guild);
         if let Some(g) = resolved_guild.as_deref() {
             form = form.text("guild", g.to_string());
         }
@@ -91,7 +92,7 @@ pub async fn upload_to_parsely(
         }
     }
 
-    if guild_log {
+    if guild_log && !no_guild {
         form = form.text("guild-log", "1");
     }
 
@@ -116,10 +117,19 @@ pub async fn upload_to_parsely(
 }
 
 /// Pick the guild to send to Parsely:
-/// 1. Explicit choice from the upload modal (if non-empty and configured).
-/// 2. The user's `selected_guild` (last picked).
-/// 3. None.
-fn resolve_upload_guild(parsely: &baras_types::ParselySettings, picked: Option<&str>) -> Option<String> {
+/// 1. If `no_guild` is set, return None unconditionally — the user explicitly
+///    opted out of guild attribution for this upload.
+/// 2. Explicit choice from the upload modal (if non-empty and configured).
+/// 3. The user's `selected_guild` (last picked).
+/// 4. None.
+fn resolve_upload_guild(
+    parsely: &baras_types::ParselySettings,
+    picked: Option<&str>,
+    no_guild: bool,
+) -> Option<String> {
+    if no_guild {
+        return None;
+    }
     if let Some(p) = picked
         && !p.is_empty()
         && parsely.guilds.iter().any(|g| g == p)
@@ -148,6 +158,7 @@ pub async fn upload_encounter_to_parsely(
     notes: Option<String>,
     guild_log: bool,
     guild: Option<String>,
+    no_guild: bool,
     handle: State<'_, ServiceHandle>,
 ) -> Result<ParselyUploadResponse, String> {
     // Extract and compress the relevant lines
@@ -189,7 +200,7 @@ pub async fn upload_encounter_to_parsely(
     if !config.parsely.username.is_empty() && !config.parsely.password.is_empty() {
         form = form.text("username", config.parsely.username.clone());
         form = form.text("password", config.parsely.password.clone());
-        let resolved_guild = resolve_upload_guild(&config.parsely, guild.as_deref());
+        let resolved_guild = resolve_upload_guild(&config.parsely, guild.as_deref(), no_guild);
         if let Some(g) = resolved_guild.as_deref() {
             form = form.text("guild", g.to_string());
         }
@@ -204,7 +215,7 @@ pub async fn upload_encounter_to_parsely(
         }
     }
 
-    if guild_log {
+    if guild_log && !no_guild {
         form = form.text("guild-log", "1");
     }
 

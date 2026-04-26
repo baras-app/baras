@@ -861,6 +861,7 @@ pub async fn upload_to_parsely(
     notes: Option<String>,
     guild_log: bool,
     guild: Option<String>,
+    no_guild: bool,
 ) -> Result<ParselyUploadResponse, String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "path", &JsValue::from_str(path));
@@ -876,6 +877,7 @@ pub async fn upload_to_parsely(
     } else {
         js_set(&obj, "guild", &JsValue::NULL);
     }
+    js_set(&obj, "noGuild", &JsValue::from_bool(no_guild));
     let result = try_invoke("upload_to_parsely", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse upload response".to_string())
 }
@@ -890,6 +892,7 @@ pub async fn upload_encounter_to_parsely(
     notes: Option<String>,
     guild_log: bool,
     guild: Option<String>,
+    no_guild: bool,
 ) -> Result<ParselyUploadResponse, String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "path", &JsValue::from_str(path));
@@ -912,6 +915,7 @@ pub async fn upload_encounter_to_parsely(
     } else {
         js_set(&obj, "guild", &JsValue::NULL);
     }
+    js_set(&obj, "noGuild", &JsValue::from_bool(no_guild));
     let result = try_invoke("upload_encounter_to_parsely", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse upload response".to_string())
 }
