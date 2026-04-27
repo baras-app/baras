@@ -298,7 +298,6 @@ impl PersonalOverlay {
 
         let label_color = color_from_rgba(self.config.label_color);
         let font_color = color_from_rgba(self.config.font_color);
-        let info_label_color = colors::label_dim();
 
         // Compute content height for dynamic background, accounting for hidden stats
         let mut content_height = padding + font_size;
@@ -363,18 +362,14 @@ impl PersonalOverlay {
             } else {
                 font_color
             };
-            let effective_label_color = if is_info {
-                info_label_color
-            } else {
-                label_color
-            };
 
             if stat.is_compound() {
                 // Compound multi-value row
                 let (label, values) = self.compound_values(*stat);
                 CompoundRow::new(label, values)
-                    .with_label_color(effective_label_color)
+                    .with_label_color(label_color)
                     .with_value_color(value_color)
+                    .with_text_glow()
                     .render(&mut self.frame, padding, y, content_width, row_fs);
             } else {
                 // Single-value row
@@ -399,25 +394,23 @@ impl PersonalOverlay {
                         .frame
                         .measure_text_styled(&value, actual_fs, true, false);
                     let cx = padding + (content_width - fitted_w) * 0.5;
-                    let shadow = crate::widgets::colors::text_shadow();
-                    self.frame.draw_text_styled(
+                    self.frame.draw_text_with_glow(
                         &value,
-                        cx + 1.0,
-                        y + 1.0,
+                        cx,
+                        y,
                         actual_fs,
-                        shadow,
+                        value_color,
                         true,
                         false,
                     );
-                    self.frame
-                        .draw_text_styled(&value, cx, y, actual_fs, value_color, true, false);
                 } else {
                     // Metric single-value rows (APM, Combat Time, etc.)
                     LabeledValue::new(label, value)
-                        .with_label_color(effective_label_color)
+                        .with_label_color(label_color)
                         .with_value_color(value_color)
                         .with_label_bold(false)
                         .with_value_bold(true)
+                        .with_text_glow()
                         .render(&mut self.frame, padding, y, content_width, row_fs);
                 }
             }

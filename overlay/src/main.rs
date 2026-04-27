@@ -1793,7 +1793,7 @@ mod examples {
 
         let start = Instant::now();
         let mut last_frame = Instant::now();
-        let frame_duration = Duration::from_millis(100);
+        let frame_duration = Duration::from_millis(50);
 
         println!("┌─────────────────────────────────────────────────────────────┐");
         println!("│         Ability Queue Overlay - 3-Tier Priority             │");

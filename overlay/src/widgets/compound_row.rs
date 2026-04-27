@@ -42,6 +42,7 @@ pub struct CompoundRow {
     pub values: Vec<CompoundValue>,
     pub label_color: Color,
     pub value_color: Color,
+    pub text_glow: bool,
 }
 
 impl CompoundRow {
@@ -51,6 +52,7 @@ impl CompoundRow {
             values,
             label_color: colors::label_dim(),
             value_color: colors::white(),
+            text_glow: false,
         }
     }
 
@@ -62,6 +64,39 @@ impl CompoundRow {
     pub fn with_value_color(mut self, color: Color) -> Self {
         self.value_color = color;
         self
+    }
+
+    /// Enable full surrounding text glow instead of simple drop shadow
+    pub fn with_text_glow(mut self) -> Self {
+        self.text_glow = true;
+        self
+    }
+
+    fn draw_text(
+        frame: &mut OverlayFrame,
+        text: &str,
+        x: f32,
+        y: f32,
+        font_size: f32,
+        color: Color,
+        bold: bool,
+        glow: bool,
+    ) {
+        if glow {
+            frame.draw_text_with_glow(text, x, y, font_size, color, bold, false);
+        } else {
+            let shadow = colors::text_shadow();
+            frame.draw_text_styled(
+                text,
+                x + SHADOW_OFFSET,
+                y + SHADOW_OFFSET,
+                font_size,
+                shadow,
+                bold,
+                false,
+            );
+            frame.draw_text_styled(text, x, y, font_size, color, bold, false);
+        }
     }
 
     /// Measure the total width needed for all values at a given font size,
@@ -107,28 +142,11 @@ impl CompoundRow {
     /// * `width` - Total width available
     /// * `font_size` - Font size for label and values
     pub fn render(&self, frame: &mut OverlayFrame, x: f32, y: f32, width: f32, font_size: f32) {
-        let shadow = colors::text_shadow();
         let prefix_color = colors::label_dim();
+        let glow = self.text_glow;
 
         // Draw label on left (regular weight, same size as values)
-        frame.draw_text_styled(
-            &self.label,
-            x + SHADOW_OFFSET,
-            y + SHADOW_OFFSET,
-            font_size,
-            shadow,
-            false,
-            false,
-        );
-        frame.draw_text_styled(
-            &self.label,
-            x,
-            y,
-            font_size,
-            self.label_color,
-            false,
-            false,
-        );
+        Self::draw_text(frame, &self.label, x, y, font_size, self.label_color, false, glow);
 
         if self.values.is_empty() {
             return;
@@ -194,66 +212,12 @@ impl CompoundRow {
                 let (space_width, _) =
                     frame.measure_text_styled(" ", value_font_size, false, false);
 
-                // Shadow + prefix (regular weight, dim)
-                frame.draw_text_styled(
-                    prefix,
-                    text_x + SHADOW_OFFSET,
-                    vy + SHADOW_OFFSET,
-                    value_font_size,
-                    shadow,
-                    false,
-                    false,
-                );
-                frame.draw_text_styled(
-                    prefix,
-                    text_x,
-                    vy,
-                    value_font_size,
-                    prefix_color,
-                    false,
-                    false,
-                );
+                Self::draw_text(frame, prefix, text_x, vy, value_font_size, prefix_color, false, glow);
 
-                // Shadow + value (bold, colored)
                 let value_x = text_x + prefix_width + space_width;
-                frame.draw_text_styled(
-                    &cv.value,
-                    value_x + SHADOW_OFFSET,
-                    vy + SHADOW_OFFSET,
-                    value_font_size,
-                    shadow,
-                    true,
-                    false,
-                );
-                frame.draw_text_styled(
-                    &cv.value,
-                    value_x,
-                    vy,
-                    value_font_size,
-                    self.value_color,
-                    true,
-                    false,
-                );
+                Self::draw_text(frame, &cv.value, value_x, vy, value_font_size, self.value_color, true, glow);
             } else {
-                // No prefix — draw the whole value bold and colored
-                frame.draw_text_styled(
-                    &cv.value,
-                    text_x + SHADOW_OFFSET,
-                    vy + SHADOW_OFFSET,
-                    value_font_size,
-                    shadow,
-                    true,
-                    false,
-                );
-                frame.draw_text_styled(
-                    &cv.value,
-                    text_x,
-                    vy,
-                    value_font_size,
-                    self.value_color,
-                    true,
-                    false,
-                );
+                Self::draw_text(frame, &cv.value, text_x, vy, value_font_size, self.value_color, true, glow);
             }
         }
     }
