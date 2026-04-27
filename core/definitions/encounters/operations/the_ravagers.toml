@@ -423,9 +423,7 @@ difficulties = ["veteran"]
 [[boss]]
 id = "master_blaster"
 name = "Master & Blaster"
-difficulties = ["story", "veteran", "master"]
-has_victory_trigger = true
-victory_trigger = { type = "effect_removed", effects = [3391331946725697] }
+area_type = "operation"
 
 [[boss.entities]]
 name = "Blaster"
@@ -439,158 +437,853 @@ ids = [
 is_boss = true
 is_kill_target = true
 
+[[boss.entities.hp_markers]]
+hp_percent = 55.0
+label = "Phase 2"
+difficulties = ["veteran"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 24.0
+label = "Phase 3"
+difficulties = ["veteran"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 10.0
+label = "Self Destruction"
+difficulties = ["veteran"]
+
 [[boss.entities]]
 name = "Master"
 ids = [3391100018491392]
 is_boss = true
 is_kill_target = true
 
-[[boss.phases]]
-id = "master_blaster_main"
-name = "Blaster"
-trigger = { type = "combat_start" }
+[[boss.entities.hp_markers]]
+hp_percent = 51.0
+label = "Phase 3"
+difficulties = ["veteran"]
 
-[[boss.phases]]
-id = "master_blaster_master"
-name = "Master & Blaster"
-trigger = { type = "any_of", conditions = [
-  { type = "npc_appears", selector = [
-    "Master",
-  ] },
-  { type = "effect_removed", effects = [
-    3400759399940096,
-  ] },
-] }
+[[boss.entities.hp_markers]]
+hp_percent = 10.0
+label = "Death"
+difficulties = ["veteran"]
 
 [[boss.phases]]
 id = "master_blaster_rop"
 name = "Rain of Pain"
-trigger = { type = "ability_cast", abilities = [3400759399940096] }
+enabled = true
+difficulties = ["veteran"]
+
+[boss.phases.start_trigger]
+type = "any_of"
+
+[[boss.phases.start_trigger.conditions]]
+type = "ability_cast"
+abilities = [3400759399940096, 3426718182277120]
+source = "any"
+target = "any"
+
+[[boss.phases.start_trigger.conditions]]
+type = "effect_applied"
+effects = [3400759399940096]
+source = "any"
+target = "any"
+
+[[boss.phases]]
+id = "master_blaster_master"
+name = "Master & Blaster"
+enabled = true
+difficulties = ["veteran"]
+
+[boss.phases.start_trigger]
+type = "any_of"
+
+[[boss.phases.start_trigger.conditions]]
+type = "effect_removed"
+effects = [3400759399940096, 3413408078626816]
+source = "any"
+target = "any"
+
+[[boss.phases.start_trigger.conditions]]
+type = "timer_expires"
+timer_id = "master_blaster_rop_d"
+
+[[boss.phases]]
+id = "master_blaster_p2_t"
+name = "Phase 2 (Transition)"
+enabled = true
+difficulties = ["veteran"]
+
+[boss.phases.start_trigger]
+type = "boss_hp_below"
+hp_percent = 55.0
+selector = ["Blaster"]
 
 [[boss.phases]]
 id = "master_blaster_burn"
 name = "Burn"
-trigger = { type = "effect_removed", effects = [3391336241692965] }
-
-[[boss.timer]]
-id = "master_blaster_scatterblast_1st"
-name = "Scatterblast 1st"
-display_text = "Scatterblast"
-trigger = { type = "combat_start" }
-duration_secs = 6.0
-color = [219, 28, 28, 255]
+enabled = true
 difficulties = ["veteran"]
 
-[[boss.timer]]
-id = "master_blaster_ion_cutter"
-name = "Ion Cutter"
-trigger = { type = "ability_cast", abilities = [3397933311459328] }
-duration_secs = 12.0
-color = [33, 224, 219, 255]
-difficulties = ["veteran"]
-chains_to = "master_blaster_fire_wheel"
+[boss.phases.start_trigger]
+type = "effect_removed"
+effects = [3427761859330304]
+source = "any"
+target = "any"
 
-[[boss.timer]]
-id = "master_blaster_fire_wheel"
-name = "Fire Wheel"
-trigger = { type = "manual" }
-duration_secs = 20.0
-color = [224, 131, 33, 255]
+[[boss.phases]]
+id = "master_blaster_main"
+name = "Blaster"
+enabled = true
 difficulties = ["veteran"]
 
-[[boss.timer]]
-id = "master_blaster_scatterblast_m"
-name = "Scatterblast"
-trigger = { type = "ability_cast", abilities = [3421916408840192] }
-duration_secs = 9.0
-color = [219, 28, 28, 255]
+[boss.phases.start_trigger]
+type = "combat_start"
+
+[[boss.phases]]
+id = "master_blaster_p3_t"
+name = "Phase 3 (Transition)"
+enabled = true
 difficulties = ["veteran"]
 
-[[boss.timer]]
-id = "master_blaster_rain_of_pain_1st"
-name = "Rain of Pain 1st"
-display_text = "Rain of Pain"
-trigger = { type = "effect_removed", effects = [3413408078626816] }
-duration_secs = 59.0
-color = [224, 24, 191, 255]
-difficulties = ["veteran"]
+[boss.phases.start_trigger]
+type = "effect_applied"
+effects = [3427761859330304]
+source = "any"
+target = "any"
+
+[[boss.counters]]
+id = "master_blaster_rop_rep_1st_cd_mod"
+name = "Rep CD mod"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "timer_started"
+timer_id = "master_blaster_rep_rop"
+
+[boss.counters.reset_on]
+type = "ability_cast"
+abilities = [3393552444817408]
+source = "any"
+target = "any"
 
 [[boss.timer]]
-id = "master_blaster_scatterblast_p2_1st"
-name = "Scatterblast P2 1st"
-display_text = "Scatterblast"
-trigger = { type = "effect_removed", effects = [3413408078626816] }
-duration_secs = 13.0
-color = [219, 32, 34, 255]
-difficulties = ["veteran"]
+id = "sp_resonant_explosive_probes"
+name = "Resonant Explosive Probes"
+is_alert = true
+color = [255, 128, 0, 255]
+can_be_refreshed = true
+roles = []
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3400772284841984]
+source = "any"
+target = "local_player"
+
+[boss.timer.audio]
+enabled = true
+file = "Alarm.mp3"
 
 [[boss.timer]]
 id = "master_blaster_1st_rop_dmg"
 name = "1st RoP DMG"
 display_text = "RoP DMG"
-trigger = { type = "ability_cast", abilities = [3400759399940096] }
 duration_secs = 11.6
 color = [224, 33, 187, 255]
+icon_ability_id = 3400759399940096
 difficulties = ["veteran"]
-chains_to = "master_blaster_2nd_rop_dmg"
+roles = []
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "master_blaster_rop"
 
 [[boss.timer]]
 id = "master_blaster_2nd_rop_dmg"
 name = "2nd RoP DMG"
 display_text = "RoP DMG"
-trigger = { type = "manual" }
 duration_secs = 9.0
 color = [224, 33, 187, 255]
+icon_ability_id = 3400759399940096
 difficulties = ["veteran"]
-chains_to = "master_blaster_3rd_rop_dmg"
+roles = []
+
+[boss.timer.trigger]
+type = "timer_expires"
+timer_id = "master_blaster_1st_rop_dmg"
 
 [[boss.timer]]
 id = "master_blaster_3rd_rop_dmg"
 name = "3rd RoP DMG"
 display_text = "RoP DMG"
-trigger = { type = "manual" }
 duration_secs = 9.0
 color = [224, 33, 187, 255]
+icon_ability_id = 3400759399940096
 difficulties = ["veteran"]
-chains_to = "master_blaster_rop_shield_down"
+roles = []
+
+[boss.timer.trigger]
+type = "timer_expires"
+timer_id = "master_blaster_2nd_rop_dmg"
 
 [[boss.timer]]
 id = "master_blaster_rop_shield_down"
-name = "RoP Shield Down"
-trigger = { type = "manual" }
+name = "Scatterblast"
 duration_secs = 6.0
-color = [224, 33, 187, 255]
+color = [255, 0, 0, 255]
+icon_ability_id = 3393552444817408
 difficulties = ["veteran"]
-chains_to = "master_blaster_rain_of_pain"
+roles = []
+
+[boss.timer.trigger]
+type = "timer_expires"
+timer_id = "master_blaster_3rd_rop_dmg"
 
 [[boss.timer]]
 id = "master_blaster_rain_of_pain"
 name = "Rain of Pain"
-trigger = { type = "manual" }
 duration_secs = 49.4
 color = [224, 33, 187, 255]
+icon_ability_id = 3400759399940096
 difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "timer_expires"
+timer_id = "master_blaster_rop_shield_down"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "master_blaster_p3_t"
+
+[[boss.timer]]
+id = "master_blaster_rain_of_pain_1st"
+name = "Rain of Pain"
+display_text = "Rain of Pain"
+duration_secs = 59.0
+color = [224, 24, 191, 255]
+icon_ability_id = 3400759399940096
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "effect_removed"
+effects = [3413408078626816]
+source = "any"
+target = "any"
 
 [[boss.timer]]
 id = "master_blaster_scatterblast_p1"
-name = "Scatterblast P1"
+name = "Scatterblast"
 display_text = "Scatterblast"
-trigger = { type = "ability_cast", abilities = [3393552444817408] }
 duration_secs = 9.0
 color = [219, 28, 28, 255]
+icon_ability_id = 3393552444817408
 difficulties = ["veteran"]
-conditions = [{ type = "phase_active", phase_ids = ["master_blaster_main"] }]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3393552444817408]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["master_blaster_main"]
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_p2_t"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "master_blaster_scatterblast_m"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "master_blaster_sb_p1_r"
 
 [[boss.timer]]
 id = "master_blaster_scatterblast_p2"
-name = "Scatterblast P2"
+name = "Scatterblast"
 display_text = "Scatterblast"
-trigger = { type = "ability_cast", abilities = [3393552444817408] }
 duration_secs = 18.0
 color = [220, 42, 39, 255]
+icon_ability_id = 3393552444817408
 difficulties = ["veteran"]
-conditions = [{ type = "phase_active", phase_ids = ["master_blaster_master"] }]
+roles = []
 
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3393552444817408]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["master_blaster_master"]
+
+[[boss.timer.conditions]]
+type = "any_of"
+
+[[boss.timer.conditions.conditions]]
+type = "timer_time_remaining"
+timer_id = "master_blaster_ep_p2"
+operator = "gt"
+value = 18.0
+
+[[boss.timer.conditions.conditions]]
+type = "timer_time_remaining"
+timer_id = "master_blaster_rep_rop"
+operator = "gt"
+value = 18.0
+
+[[boss.timer.conditions.conditions]]
+type = "timer_time_remaining"
+timer_id = "master_blaster_rep_rop"
+operator = "gt"
+value = 18.0
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_rop"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_p3_t"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "master_blaster_sb_p2_r"
+
+[[boss.timer]]
+id = "master_blaster_scatterblast_m"
+name = "Scatterblast"
+duration_secs = 9.0
+color = [219, 28, 28, 255]
+icon_ability_id = 3393552444817408
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3421916408840192]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "master_blaster_p2_t"
+
+[[boss.timer]]
+id = "master_blaster_ep_p1"
+name = "Explosive Probes"
+duration_secs = 25.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3400776579809280
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3400776579809280]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "master_blaster_ep_p1_s"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_p2_t"
+
+[[boss.timer]]
+id = "master_blaster_rm_p1"
+name = "Rocket Mortar"
+duration_secs = 26.0
+color = [238, 255, 0, 255]
+icon_ability_id = 3421916408840192
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3421916408840192]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "master_blaster_p2_t"
+
+[[boss.timer]]
+id = "master_blaster_rm_p1_1st"
+name = "Rocket Mortar"
+duration_secs = 30.0
+color = [251, 255, 0, 255]
+icon_ability_id = 3421916408840192
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "master_blaster_ep_p1_s"
+name = "Explosive Probes"
+duration_secs = 5.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3400776579809280
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3393552444817408]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "not"
+
+[boss.timer.conditions.condition]
+type = "timer_time_remaining"
+timer_id = "master_blaster_ep_p1"
+operator = "gt"
+value = 5.0
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["master_blaster_main"]
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "master_blaster_p2_t"
+
+[[boss.timer]]
+id = "master_blaster_sb_p1_r"
+name = "Scatterblast"
+duration_secs = 2.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3393552444817408
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3400776579809280]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "not"
+
+[boss.timer.conditions.condition]
+type = "timer_time_remaining"
+timer_id = "master_blaster_scatterblast_m"
+operator = "gte"
+value = 0.0
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "master_blaster_p2_t"
+
+[[boss.timer]]
+id = "master_blaster_p2_us"
+name = "Phase 2"
+duration_secs = 8.7
+color = [255, 0, 0, 255]
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3413408078626816]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "master_blaster_scatterblast_1st"
+name = "Scatterblast"
+display_text = "Scatterblast"
+duration_secs = 6.0
+color = [219, 28, 28, 255]
+icon_ability_id = 3393552444817408
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "master_blaster_scatterblast_p2_1st"
+name = "Scatterblast P2"
+display_text = "Scatterblast"
+duration_secs = 14.0
+color = [219, 32, 34, 255]
+icon_ability_id = 3393552444817408
+difficulties = ["veteran"]
+enabled = false
+roles = []
+
+[boss.timer.trigger]
+type = "effect_removed"
+effects = [3413408078626816]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "master_blaster_ion_cutter"
+name = "Ion Cutter"
+duration_secs = 12.0
+color = [33, 224, 219, 255]
+icon_ability_id = 3397190282117120
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3397933311459328]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_rop"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_p3_t"
+
+[[boss.timer]]
+id = "master_blaster_fire_wheel"
+name = "Fire Wheel"
+duration_secs = 30.0
+color = [160, 65, 14, 255]
+icon_ability_id = 3397933311459328
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3397933311459328]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_rop"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_p3_t"
+
+[[boss.timer]]
+id = "master_blaster_epm_p2"
+name = "Electro-Pulse Nova"
+duration_secs = 20.0
+color = [0, 225, 255, 255]
+icon_ability_id = 3420615033749504
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "master_blaster_rop"
+
+[[boss.timer]]
+id = "master_blaster_knock"
+name = "Knock Up"
+duration_secs = 6.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3400772284842287
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3420615033749504]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "master_blaster_epm_p3"
+name = "Electro-Pulse Nova"
+duration_secs = 12.0
+color = [0, 225, 255, 255]
+icon_ability_id = 3420615033749504
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "timer_expires"
+timer_id = "master_blaster_knock"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["master_blaster_burn"]
+
+[[boss.timer]]
+id = "master_blaster_ep_p2"
+name = "Explosive Probes"
+duration_secs = 33.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3415078820904960
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3415078820904960]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "any_of"
+
+[[boss.timer.conditions.conditions]]
+type = "phase_active"
+phase_ids = ["master_blaster_master"]
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "phase_active"
+phase_ids = ["master_blaster_rop"]
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "master_blaster_rop_rep_1st_cd_mod"
+operator = "gte"
+value = 1
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_p3_t"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "master_blaster_ep_p2_s"
+
+[[boss.timer]]
+id = "master_blaster_rm_p2"
+name = "Rocket Mortar"
+duration_secs = 22.0
+color = [255, 234, 0, 255]
+icon_ability_id = 3421916408840192
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3411097386221568]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "master_blaster_p3_t"
+
+[[boss.timer]]
+id = "master_blaster_ep_p2_s"
+name = "Explosive Probes"
+duration_secs = 14.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3415078820904960
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3393552444817408]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "not"
+
+[boss.timer.conditions.condition]
+type = "timer_time_remaining"
+timer_id = "master_blaster_ep_p2"
+operator = "gt"
+value = 14.0
+
+[[boss.timer.conditions]]
+type = "not"
+
+[boss.timer.conditions.condition]
+type = "timer_time_remaining"
+timer_id = "master_blaster_rep_rop"
+operator = "gt"
+value = 14.0
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["master_blaster_master"]
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "master_blaster_p3_t"
+
+[[boss.timer]]
+id = "master_blaster_rop_d"
+name = "Rain of Pain"
+duration_secs = 35.6
+color = [255, 255, 255, 255]
+difficulties = ["veteran"]
+display_target = "none"
+roles = []
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "master_blaster_rop"
+
+[[boss.timer]]
+id = "master_blaster_rep_rop"
+name = "Explosive Probes"
+duration_secs = 23.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3415078820904960
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3415078820904960]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["master_blaster_rop"]
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "master_blaster_rop_rep_1st_cd_mod"
+operator = "eq"
+value = 0
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "master_blaster_ep_p2_s"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_p3_t"
+
+[[boss.timer]]
+id = "master_blaster_sb_p2_r"
+name = "Scatterblast"
+duration_secs = 13.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3393552444817408
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3415078820904960]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "not"
+
+[boss.timer.conditions.condition]
+type = "timer_time_remaining"
+timer_id = "master_blaster_scatterblast_p2"
+operator = "gt"
+value = 13.0
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["master_blaster_master"]
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_rop"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "master_blaster_p3_t"
+
+[[boss.timer]]
+id = "master_blaster_ipw_p3"
+name = "Ion Pulse Wave"
+duration_secs = 9.5
+color = [255, 174, 0, 255]
+icon_ability_id = 3421001580806144
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "damage_taken"
+abilities = [3421001580806144]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "boss_hp_below"
+hp_percent = 10.0
+selector = ["Master"]
+
+[[boss.timer]]
+id = "master_blaster_fw_1st"
+name = "Fire Wheel"
+duration_secs = 8.0
+color = [160, 65, 14, 255]
+icon_ability_id = 3397933311459328
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "effect_removed"
+effects = [3413408078626816]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "master_blaster_fw_rop"
+name = "Fire Wheel"
+duration_secs = 9.0
+color = [160, 65, 14, 255]
+icon_ability_id = 3397933311459328
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "timer_expires"
+timer_id = "master_blaster_3rd_rop_dmg"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 5: Coratanni
