@@ -98,11 +98,14 @@ pub struct TimerDefinition {
     /// When the field is omitted entirely, defaults to `[TimersA]` to match the
     /// pre-multi-target behavior — many bundled and user definitions never set
     /// this field and used to render on TimersA via `TimerDisplayTarget::default()`.
+    ///
+    /// Not skipped on serialize: an explicit empty Vec means "no overlay
+    /// display" and must round-trip as `[]`, otherwise the missing-field
+    /// default would overwrite the user's choice with `[TimersA]`.
     #[serde(
         default = "default_display_targets",
         alias = "display_target",
-        deserialize_with = "deserialize_display_targets",
-        skip_serializing_if = "Vec::is_empty"
+        deserialize_with = "deserialize_display_targets"
     )]
     pub display_targets: Vec<TimerDisplayTarget>,
 
