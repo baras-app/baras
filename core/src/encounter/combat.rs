@@ -449,8 +449,18 @@ impl CombatEncounter {
             .npcs
             .values()
             // Only show NPCs that have taken damage (under 100% HP) to avoid
-            // cluttering the overlay with spawned-but-inactive enemies
-            .filter(|npc| entity_class_ids.contains(&npc.class_id) && npc.current_hp < npc.max_hp)
+            // cluttering the overlay with spawned-but-inactive enemies. Bosses
+            // at full HP are still shown if they have an active shield, so the
+            // shield bar is visible during pre-damage shield phases.
+            .filter(|npc| {
+                if !entity_class_ids.contains(&npc.class_id) {
+                    return false;
+                }
+                if npc.current_hp < npc.max_hp {
+                    return true;
+                }
+                self.boss_shields.keys().any(|(log_id, _, _)| *log_id == npc.log_id)
+            })
             .map(|npc| {
                 // Look up entity definition for hp_markers and shields
                 let entity_def = def.entity_for_id(npc.class_id);
