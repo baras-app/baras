@@ -365,7 +365,12 @@ impl OverlayManager {
             }
             OverlayType::Challenges => {
                 let challenge_config = settings.challenge_overlay.clone();
-                OverlayConfigUpdate::Challenge(challenge_config, settings.challenge_opacity, eu)
+                OverlayConfigUpdate::Challenge(
+                    challenge_config,
+                    settings.challenge_opacity,
+                    eu,
+                    settings.class_icon_mode,
+                )
             }
             OverlayType::Alerts => {
                 let alerts_config = settings.alerts_overlay.clone();

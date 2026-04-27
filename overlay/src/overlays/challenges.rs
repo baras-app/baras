@@ -10,11 +10,14 @@ use baras_core::context::{ChallengeColumns, ChallengeLayout, ChallengeOverlayCon
 use tiny_skia::Color;
 
 use super::{Overlay, OverlayConfigUpdate, OverlayData};
+use crate::class_icons::{
+    get_discipline_icon, get_role_colored_class_icon, get_white_class_icon, Role,
+};
 use crate::frame::OverlayFrame;
 use crate::platform::{OverlayConfig, PlatformError};
 use crate::utils::{color_from_rgba, format_duration_short, truncate_name};
 use crate::widgets::{colors, Footer, ProgressBar};
-use baras_types::formatting;
+use baras_types::{formatting, ClassIconMode};
 
 /// Data for the challenges overlay
 #[derive(Debug, Clone, Default)]
@@ -81,6 +84,14 @@ pub struct PlayerContribution {
     pub percent: f32,
     /// Value per second (if applicable)
     pub per_second: Option<f32>,
+    /// True for the local player — bolded in display, like metric overlays
+    pub is_local: bool,
+    /// Optional class icon name (e.g. "assassin"); rendered when icon_mode is Class
+    pub class_icon: Option<String>,
+    /// Optional discipline icon name (e.g. "lightning"); rendered when icon_mode is Discipline
+    pub discipline_icon: Option<String>,
+    /// Optional role for class-icon tinting (Tank/Healer/Damage)
+    pub role: Option<Role>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -112,6 +123,8 @@ pub struct ChallengeOverlay {
     background_alpha: u8,
     config: ChallengeOverlayConfig,
     european_number_format: bool,
+    /// Mirrors the global `class_icon_mode` used by metric overlays.
+    icon_mode: ClassIconMode,
 }
 
 impl ChallengeOverlay {
@@ -130,6 +143,7 @@ impl ChallengeOverlay {
             background_alpha,
             config,
             european_number_format: false,
+            icon_mode: ClassIconMode::default(),
         })
     }
 
@@ -139,6 +153,10 @@ impl ChallengeOverlay {
 
     pub fn set_config(&mut self, config: ChallengeOverlayConfig) {
         self.config = config;
+    }
+
+    pub fn set_icon_mode(&mut self, mode: ClassIconMode) {
+        self.icon_mode = mode;
     }
 
     pub fn set_background_alpha(&mut self, alpha: u8) {
@@ -478,34 +496,93 @@ impl ChallengeOverlay {
         font_color: Color,
         show_duration: bool,
     ) -> f32 {
-        // Draw challenge name
         let title_y = y + header_font_size;
-        self.frame
-            .draw_text_glowed(&challenge.name, x, title_y, header_font_size, font_color);
+        let scale = self.frame.scale_factor();
+        let gap = 4.0 * scale;
 
-        // Draw duration in smaller font on the right if enabled
-        if show_duration {
-            let duration_str = format!("({})", format_duration_short(challenge.duration_secs));
-            let (duration_width, _) = self.frame.measure_text(&duration_str, duration_font_size);
-            let duration_x = x + width - duration_width;
-            // Align baseline with header text (adjust for smaller font)
-            let duration_y = title_y - (header_font_size - duration_font_size) * 0.3;
-            self.frame.draw_text_glowed(
-                &duration_str,
-                duration_x,
-                duration_y,
-                duration_font_size,
-                font_color,
-            );
+        // Reserve space for the duration text on the right so the title can
+        // either truncate (with ellipsis) or shrink to fit instead of bleeding
+        // underneath the duration on a narrow card.
+        let (duration_str, duration_width, duration_x, duration_y) = if show_duration {
+            let s = format!("({})", format_duration_short(challenge.duration_secs));
+            let (w, _) = self.frame.measure_text(&s, duration_font_size);
+            let dx = x + width - w;
+            let dy = title_y - (header_font_size - duration_font_size) * 0.3;
+            (Some(s), w + gap, dx, dy)
+        } else {
+            (None, 0.0, 0.0, 0.0)
+        };
+
+        let title_max = (width - duration_width).max(0.0);
+
+        // Truncate first; if the ellipsis variant is still too wide for the
+        // available room (very narrow card), step the font size down until it
+        // fits — this keeps long challenge names like "Extraneous Expulsion"
+        // readable instead of clipping into the duration text.
+        let (display_title, display_font_size) =
+            self.fit_header_title(&challenge.name, title_max, header_font_size);
+
+        let baseline_shift = (header_font_size - display_font_size) * 0.3;
+        let display_y = title_y - baseline_shift;
+        self.frame.draw_text_glowed(
+            &display_title,
+            x,
+            display_y,
+            display_font_size,
+            font_color,
+        );
+
+        if let Some(s) = duration_str {
+            self.frame
+                .draw_text_glowed(&s, duration_x, duration_y, duration_font_size, font_color);
         }
+        let _ = duration_width; // silence unused-binding warning when show_duration=false
 
         // Draw separator line
         let sep_y = title_y + spacing + 2.0;
-        let line_height = 0.2 * self.frame.scale_factor();
+        let line_height = 0.2 * scale;
         self.frame
             .fill_rect(x, sep_y, width, line_height, font_color);
 
-        sep_y + spacing + 4.0 * self.frame.scale_factor()
+        sep_y + spacing + 4.0 * scale
+    }
+
+    /// Fit a header title into `max_width` by truncation first, then by
+    /// shrinking the font when truncation alone can't fit a meaningful prefix.
+    fn fit_header_title(
+        &mut self,
+        title: &str,
+        max_width: f32,
+        font_size: f32,
+    ) -> (String, f32) {
+        if max_width <= 0.0 {
+            return (String::new(), font_size);
+        }
+
+        let (full_w, _) = self.frame.measure_text(title, font_size);
+        if full_w <= max_width {
+            return (title.to_string(), font_size);
+        }
+
+        // Try truncation at the requested font size first.
+        let truncated = truncate_to_width(&mut self.frame, title, max_width, font_size);
+        let (trunc_w, _) = self.frame.measure_text(&truncated, font_size);
+        if trunc_w <= max_width && truncated.chars().count() > 3 {
+            return (truncated, font_size);
+        }
+
+        // Truncation can't preserve enough of the name (card is very narrow).
+        // Shrink font in 5% steps down to 70% of original, retrying truncation.
+        let mut size = font_size;
+        for _ in 0..6 {
+            size *= 0.95;
+            let candidate = truncate_to_width(&mut self.frame, title, max_width, size);
+            let (cw, _) = self.frame.measure_text(&candidate, size);
+            if cw <= max_width {
+                return (candidate, size);
+            }
+        }
+        (truncate_to_width(&mut self.frame, title, max_width, size), size)
     }
 
     /// Render player contribution bars for a challenge
@@ -526,6 +603,16 @@ impl ChallengeOverlay {
         let players: Vec<_> = challenge.by_player.iter().take(MAX_PLAYERS).collect();
         let max_value = players.iter().map(|p| p.value).fold(1_i64, |a, b| a.max(b));
 
+        // Icon sizing matches metric.rs: discipline icons fill bar height flush
+        // to the edge, class icons inset slightly so the silhouette has padding.
+        let scale = self.frame.scale_factor();
+        let is_discipline_icon = self.icon_mode == ClassIconMode::Discipline;
+        let (icon_size, icon_padding) = if is_discipline_icon {
+            (bar_height, 0.0)
+        } else {
+            (bar_height - 4.0 * scale, 2.0 * scale)
+        };
+
         for player in &players {
             let display_name = truncate_name(&player.name, MAX_NAME_CHARS);
             let progress = if max_value > 0 {
@@ -540,10 +627,30 @@ impl ChallengeOverlay {
                 Color::from_rgba8(0, 0, 0, 0)
             };
 
+            // Match metric overlays: icon name picked from the configured mode
+            // (discipline falls back to class if no discipline icon is set).
+            let icon_name = match self.icon_mode {
+                ClassIconMode::None => None,
+                ClassIconMode::Class => player.class_icon.as_ref(),
+                ClassIconMode::Discipline => {
+                    player.discipline_icon.as_ref().or(player.class_icon.as_ref())
+                }
+            };
+            let has_icon = icon_name.is_some();
+
             let mut bar = ProgressBar::new(display_name, progress)
                 .with_fill_color(bar_color)
                 .with_bg_color(bg_color)
-                .with_text_color(font_color);
+                .with_text_color(font_color)
+                .with_text_glow();
+
+            if player.is_local {
+                bar = bar.with_bold_text();
+            }
+
+            if has_icon {
+                bar = bar.with_label_offset(icon_size + icon_padding);
+            }
 
             // Use per-challenge columns setting
             let eu = self.european_number_format;
@@ -592,6 +699,33 @@ impl ChallengeOverlay {
                 font_size - 2.0,
                 bar_radius,
             );
+
+            // Draw class/discipline icon on top of the bar — same lookup
+            // semantics as metric.rs: discipline icons are raw, class icons
+            // are role-tinted (or white when no role is known).
+            if let Some(name) = icon_name {
+                let icon = if is_discipline_icon {
+                    get_discipline_icon(name)
+                } else if let Some(role) = player.role {
+                    get_role_colored_class_icon(name, role)
+                } else {
+                    get_white_class_icon(name)
+                };
+                if let Some(icon) = icon {
+                    let icon_x = x + icon_padding;
+                    let icon_y = y + icon_padding;
+                    self.frame.draw_image_with_shadow(
+                        &icon.rgba,
+                        icon.width,
+                        icon.height,
+                        icon_x,
+                        icon_y,
+                        icon_size,
+                        icon_size,
+                    );
+                }
+            }
+
             y += bar_height + bar_spacing;
         }
 
@@ -659,6 +793,43 @@ impl ChallengeOverlay {
     }
 }
 
+/// Truncate `text` to fit within `max_width` at `font_size`, appending `...`
+/// when truncation occurs. Standalone (not a method) so the header fitter can
+/// call it without holding `&mut self` across multiple measure calls.
+fn truncate_to_width(
+    frame: &mut OverlayFrame,
+    text: &str,
+    max_width: f32,
+    font_size: f32,
+) -> String {
+    let (full_w, _) = frame.measure_text(text, font_size);
+    if full_w <= max_width {
+        return text.to_string();
+    }
+    let chars: Vec<char> = text.chars().collect();
+    if chars.is_empty() {
+        return String::new();
+    }
+    let (ellipsis_w, _) = frame.measure_text("...", font_size);
+    if ellipsis_w >= max_width {
+        return "...".to_string();
+    }
+    let avail = max_width - ellipsis_w;
+    let avg_w = full_w / chars.len() as f32;
+    // Slightly conservative initial estimate; back off on overflow.
+    let mut fit = ((avail / avg_w) * 0.9) as usize;
+    fit = fit.min(chars.len()).max(1);
+    loop {
+        let prefix: String = chars[..fit].iter().collect();
+        let candidate = format!("{}...", prefix);
+        let (cw, _) = frame.measure_text(&candidate, font_size);
+        if cw <= max_width || fit <= 1 {
+            return candidate;
+        }
+        fit -= 1;
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Overlay Trait Implementation
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -677,10 +848,12 @@ impl Overlay for ChallengeOverlay {
     }
 
     fn update_config(&mut self, config: OverlayConfigUpdate) {
-        if let OverlayConfigUpdate::Challenge(challenge_config, alpha, european) = config {
+        if let OverlayConfigUpdate::Challenge(challenge_config, alpha, european, icon_mode) = config
+        {
             self.set_config(challenge_config);
             self.set_background_alpha(alpha);
             self.european_number_format = european;
+            self.set_icon_mode(icon_mode);
         }
     }
 

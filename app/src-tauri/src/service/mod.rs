@@ -2827,6 +2827,26 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                 .or(session.last_event_time)
                 .unwrap_or_else(|| chrono::Local::now().naive_local());
 
+            // Lookup map for class/discipline icons from already-computed metrics —
+            // mirrors what create_entries_for_type does for metric overlays so the
+            // challenge bars can render the same icons + bold local player.
+            use baras_core::game_data::Role as GameRole;
+            use baras_overlay::Role as OverlayRole;
+            let player_lookup: std::collections::HashMap<i64, (Option<String>, Option<String>, Option<OverlayRole>)> =
+                metrics
+                    .iter()
+                    .map(|m| {
+                        let class_icon = m.class_icon.clone();
+                        let discipline_icon = m.discipline.map(|d| d.icon_name().to_string());
+                        let role = m.discipline.map(|d| match d.role() {
+                            GameRole::Tank => OverlayRole::Tank,
+                            GameRole::Healer => OverlayRole::Healer,
+                            GameRole::Dps => OverlayRole::Damage,
+                        });
+                        (m.entity_id, (class_icon, discipline_icon, role))
+                    })
+                    .collect();
+
             let entries: Vec<ChallengeEntry> = encounter
                 .challenge_tracker
                 .snapshot_live(current_time)
@@ -2853,6 +2873,11 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                                 0.0
                             };
 
+                            let (class_icon, discipline_icon, role) = player_lookup
+                                .get(&entity_id)
+                                .cloned()
+                                .unwrap_or((None, None, None));
+
                             Some(PlayerContribution {
                                 entity_id,
                                 name,
@@ -2863,6 +2888,10 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                                 } else {
                                     None
                                 },
+                                is_local: entity_id == player_entity_id,
+                                class_icon,
+                                discipline_icon,
+                                role,
                             })
                         })
                         .collect();
@@ -2941,6 +2970,10 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                 .challenges
                 .iter()
                 .map(|cs| {
+                    // Historical fallback: class info isn't persisted in the
+                    // summary, so icons + local-bold are skipped. Live path
+                    // populates these fields; this is the degraded read for
+                    // initial-hydration only.
                     let by_player: Vec<PlayerContribution> = cs
                         .by_player
                         .iter()
@@ -2950,6 +2983,10 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
                             value: p.value,
                             percent: p.percent,
                             per_second: p.per_second,
+                            is_local: false,
+                            class_icon: None,
+                            discipline_icon: None,
+                            role: None,
                         })
                         .collect();
                     ChallengeEntry {
@@ -3348,8 +3385,18 @@ async fn build_timer_data_with_audio(
         }
 
         // Ability Queue: queued entries (is_queued=true) bypass the remaining <= 0.0 guard.
+        // Also treat a queue_on_expire timer that has reached zero but hasn't been
+        // ticked yet as already queued — otherwise the row disappears for one frame
+        // (when remaining hits 0 the `remaining > 0.0` filter drops it) and pops
+        // back as READY on the next tick, causing visible flicker and layout
+        // reflow on the rows below.
+        let pending_queue = timer.queue_on_expire
+            && !timer.is_queued
+            && !timer.can_repeat()
+            && remaining <= 0.0;
+        let display_is_queued = timer.is_queued || pending_queue;
         if timer.displays_on(TimerDisplayTarget::AbilityQueue)
-            && (timer.is_queued || remaining > 0.0)
+            && (display_is_queued || remaining > 0.0)
         {
             let is_blocked = timer.queue_blocking_timers.iter().any(|name| {
                 blocker_remaining
@@ -3363,7 +3410,7 @@ async fn build_timer_data_with_audio(
                 color: timer.color,
                 queue_priority: timer.queue_priority,
                 is_pinned: false,
-                is_queued: timer.is_queued,
+                is_queued: display_is_queued,
                 is_blocked,
                 countdown_bar: timer.queue_countdown_bar,
                 hide_from_next: timer.queue_hide_from_next,

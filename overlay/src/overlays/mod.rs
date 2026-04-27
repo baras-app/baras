@@ -144,8 +144,8 @@ pub enum OverlayConfigUpdate {
     TimersB(TimerOverlayConfig, u8, bool),
     /// Config for effects overlay (+ background alpha, european) - legacy
     Effects(TimerOverlayConfig, u8, bool),
-    /// Config for challenge overlay (+ background alpha, european)
-    Challenge(ChallengeOverlayConfig, u8, bool),
+    /// Config for challenge overlay (+ background alpha, european, class icon mode)
+    Challenge(ChallengeOverlayConfig, u8, bool, ClassIconMode),
     /// Config for alerts overlay (+ background alpha, european)
     Alerts(AlertsOverlayConfig, u8, bool),
     /// Config for Effects A overlay (+ background alpha, european)
