@@ -532,11 +532,14 @@ pub struct BossTimerDefinition {
     /// the legacy `display_target = "..."` single-value form via a custom
     /// deserializer; `"none"` / `[]` deserializes to an empty Vec, while a
     /// missing field defaults to `[TimersA]` to match pre-rename behavior.
+    ///
+    /// Always serialized (no `skip_serializing_if`) so the IPC payload
+    /// preserves an empty Vec — otherwise the backend's `default` re-fills
+    /// it with `[TimersA]` and the user's "no overlay" choice is lost.
     #[serde(
         default = "default_timer_display_targets",
         alias = "display_target",
-        deserialize_with = "deserialize_timer_display_targets",
-        skip_serializing_if = "Vec::is_empty"
+        deserialize_with = "deserialize_timer_display_targets"
     )]
     pub display_targets: Vec<TimerDisplayTarget>,
     #[serde(default)]

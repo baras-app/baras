@@ -691,114 +691,1429 @@ difficulties = ["master"]
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "styrak"
+id = "Styrak_k"
 name = "Dread Master Styrak"
-difficulties = ["story", "veteran"]
-is_final_boss = true
+area_name = "Scum and Villainy"
+area_id = 137438993037
+area_type = "operation"
+difficulties = ["veteran", "master", "story"]
 
 [[boss.entities]]
-name = "Dread Master Styrak"
-ids = [3152441570754560, 3066945951760384, 3152445865721856, 3152407211016192]
-is_boss = true
-is_kill_target = true
-
-[[boss.entities]]
-name = "Styrak Chained"
-ids = [3147154466013184]
-
-[[boss.entities]]
-name = "Kell Dragon 1st"
+name = "Kell Dragon"
 ids = [3067057620910080]
 is_boss = true
+is_kill_target = false
+
+[[boss.entities]]
+name = "Dread Master Styrak"
+ids = [3066945951760384, 3152407211016192, 3152441570754560, 3152445865721856]
+is_boss = true
+triggers_encounter = false
+is_kill_target = true
+
+[[boss.entities.hp_markers]]
+hp_percent = 15.0
+label = "Kell Dragon Ghost"
+difficulties = ["veteran", "master"]
+
+[[boss.entities]]
+name = "Chained Manifestation"
+ids = [3147154466013184]
+is_boss = true
+triggers_encounter = false
+is_kill_target = false
+
+[[boss.entities]]
+name = "Kell Dragon Ghost"
+ids = [3225679353085952]
+is_boss = true
+triggers_encounter = false
+is_kill_target = false
+
+[[boss.entities]]
+name = "Dread Guard"
+ids = [3200283211464704]
+is_boss = false
 triggers_encounter = true
 is_kill_target = false
 
 [[boss.entities]]
-name = "Kell Dragon Burn"
-ids = [3225679353085952]
-is_boss = true
+name = "Dread Guard Officer"
+ids = [3226413792493568]
+is_boss = false
+triggers_encounter = true
 is_kill_target = false
 
 [[boss.phases]]
-id = "styrak_dragon"
-name = "Dragon"
-trigger = { type = "combat_start" }
+id = "styrak_dread_guards"
+name = "Dread Guards"
+difficulties = ["story", "veteran", "master"]
+start_trigger = { type = "combat_start" }
 
 [[boss.phases]]
-id = "styrak_main"
-name = "Styrak"
-trigger = { type = "any_of", conditions = [
-  { type = "entity_death", selector = [
-    "Kell Dragon 1st",
-  ] },
-  { type = "entity_death", selector = [
-    "Styrak Chained",
-  ] },
-] }
-
-[[boss.phases]]
-id = "styrak_chained"
-name = "Chained"
-trigger = { type = "npc_appears", selector = ["Styrak Chained"] }
-
-[[boss.phases]]
-id = "styrak_burn"
-name = "Burn"
-start_trigger = { type = "ability_cast", abilities = [3232512646053888] }
-
-[[boss.challenge]]
-id = "styrak_cm_dps"
-name = "Chained Manifestation DPS"
-metric = "damage"
+id = "Styrak_k_p1"
+name = "Kell Dragon"
 enabled = true
-color = [255, 100, 100, 255]
-columns = "total_per_second"
+difficulties = ["story", "veteran", "master"]
 
-[[boss.challenge.conditions]]
-type = "phase"
-phase_ids = ["styrak_chained"]
+[boss.phases.start_trigger]
+type = "npc_appears"
+selector = [3067057620910080]
 
-[[boss.challenge.conditions]]
-type = "target"
-match = { selector = ["Styrak Chained"] }
+[[boss.phases]]
+id = "styrak_phase_sm"
+name = "Styrak (SM)"
+difficulties = ["story"]
+start_trigger = { type = "entity_death", selector = ["Kell Dragon"] }
 
-[[boss.timer]]
-id = "dread_master_styrak_knockback_1st"
-name = "Knockback 1st"
-trigger = { type = "npc_appears", selector = [] }
-duration_secs = 20.0
-color = [140, 32, 219, 255]
+[[boss.phases]]
+id = "Styrak_k_p2_int"
+name = "Mass Force Storm"
+enabled = true
 difficulties = ["veteran", "master"]
 
-[[boss.timer]]
-id = "dread_master_styrak_knockback_vm"
-name = "Knockback VM"
-trigger = { type = "ability_cast", abilities = [3133187232366592] }
-duration_secs = 60.0
-color = [140, 32, 219, 255]
-difficulties = ["veteran"]
+[boss.phases.start_trigger]
+type = "entity_death"
+selector = [3067057620910080]
+
+[[boss.phases]]
+id = "Styrak_k_p2_stk"
+name = "Styrak"
+enabled = true
+difficulties = ["veteran", "master"]
+
+[boss.phases.start_trigger]
+type = "timer_expires"
+timer_id = "Styrak_k_p2_cnd"
+
+[[boss.phases]]
+id = "Styrak_k_p2_cmf"
+name = "Chained Manifestation"
+enabled = true
+difficulties = ["veteran", "master"]
+
+[boss.phases.start_trigger]
+type = "timer_expires"
+timer_id = "Styrak_k_p2_cmf_t"
+
+[[boss.phases]]
+id = "Styrak_k_p2_lmf"
+name = "Lightning Manifestation"
+enabled = true
+difficulties = ["veteran", "master"]
+
+[boss.phases.start_trigger]
+type = "timer_expires"
+timer_id = "Styrak_k_p2_lmf_t"
+
+[[boss.phases]]
+id = "Styrak_k_p2_stk_r"
+name = " Styrak"
+enabled = true
+difficulties = ["veteran", "master"]
+
+[boss.phases.start_trigger]
+type = "any_of"
+
+[[boss.phases.start_trigger.conditions]]
+type = "timer_expires"
+timer_id = "Styrak_k_st_lmf_rvl"
+
+[[boss.phases.start_trigger.conditions]]
+type = "timer_started"
+timer_id = "Styrak_k_st_lmf_end_8m"
+
+[[boss.phases.start_trigger.conditions]]
+type = "timer_started"
+timer_id = "Styrak_k_st_lmf_end_16m"
+
+[[boss.phases]]
+id = "Styrak_k_p3_gst"
+name = "Kell Dragon Ghost"
+enabled = true
+difficulties = ["veteran", "master"]
+
+[boss.phases.start_trigger]
+type = "npc_appears"
+selector = [3225679353085952]
+
+[[boss.phases]]
+id = "Styrak_k_p3_stk"
+name = "Burn"
+enabled = true
+difficulties = ["veteran", "master"]
+
+[boss.phases.start_trigger]
+type = "entity_death"
+selector = [3225679353085952]
+
+[[boss.counters]]
+id = "Styrak_k_lmf_d_c"
+name = "LMF Death Count"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "entity_death"
+selector = [3142326922772480]
+
+[boss.counters.reset_on]
+type = "ability_cast"
+abilities = [3144513061126144]
+source = "any"
+target = "any"
+
+[[boss.counters]]
+id = "Styrak_k_2nd_thb"
+name = "MM 2nd Thunder Blast"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "damage_taken"
+abilities = [3142262498263040]
+source = "any"
+target = "any"
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.counters]]
+id = "Styrak_k_abl_seq"
+name = "Abilities Sequence"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "any_of"
+
+[[boss.counters.increment_on.conditions]]
+type = "timer_started"
+timer_id = "Styrak_k_st_nm_fp"
+
+[[boss.counters.increment_on.conditions]]
+type = "timer_started"
+timer_id = "Styrak_k_st_fp_nm"
+
+[[boss.counters.increment_on.conditions]]
+type = "timer_started"
+timer_id = "Styrak_k_st_fl_fp"
+
+[[boss.counters.increment_on.conditions]]
+type = "timer_started"
+timer_id = "Styrak_k_st_fl_nm"
+
+[boss.counters.reset_on]
+type = "any_of"
+
+[[boss.counters.reset_on.conditions]]
+type = "timer_expires"
+timer_id = "Styrak_k_st_lmf_rvl"
+
+[[boss.counters.reset_on.conditions]]
+type = "timer_started"
+timer_id = "Styrak_k_st_lmf_end_8m"
+
+[[boss.counters.reset_on.conditions]]
+type = "timer_started"
+timer_id = "Styrak_k_st_lmf_end_16m"
 
 [[boss.timer]]
-id = "dread_master_styrak_knockback"
-name = "Knockback"
-trigger = { type = "ability_cast", abilities = [3294763902042112] }
-duration_secs = 60.0
-color = [140, 32, 219, 255]
-difficulties = ["master"]
+id = "Styrak_k_kd_fer"
+name = "Ferocity"
+color = [153, 57, 198, 255]
+icon_ability_id = 3148992712015872
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+queue_on_expire = true
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p1"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "phase_ended"
+phase_id = "Styrak_k_p2_int"
 
 [[boss.timer]]
-id = "styrak_spines_1st"
+id = "Styrak_k_kd_aa"
+name = "Melee Attack"
+color = [105, 89, 73, 255]
+icon_ability_id = 4386879596134400
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+queue_on_expire = true
+queue_priority = 1
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p1"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_hds_1st"
+name = "Head Swipe 1st"
+display_text = "Head Swipe"
+duration_secs = 6.0
+color = [171, 151, 54, 255]
+icon_ability_id = 3343335687192576
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+queue_on_expire = true
+queue_priority = 2
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p1"
+
+[boss.timer.cancel_trigger]
+type = "ability_cast"
+abilities = [3141635433037824]
+source = "any"
+target = "any"
+
+[boss.timer.queue_remove_trigger]
+type = "ability_cast"
+abilities = [3141635433037824]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_kd_lsl_1st"
+name = "Leap Slam 1st"
+display_text = "Leap Slam"
+duration_secs = 10.0
+color = [180, 30, 14, 255]
+icon_ability_id = 3518046366859264
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+queue_on_expire = true
+queue_priority = 3
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p1"
+
+[boss.timer.cancel_trigger]
+type = "ability_cast"
+abilities = [3141601073299456]
+source = "any"
+target = "any"
+
+[boss.timer.queue_remove_trigger]
+type = "ability_cast"
+abilities = [3141601073299456]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_kd_vpl_1st"
+name = "Vomit Pool 1st"
+display_text = "Vomit Pool"
+duration_secs = 15.0
+color = [224, 79, 0, 255]
+icon_ability_id = 3142150829113344
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+queue_on_expire = true
+queue_priority = 4
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p1"
+
+[boss.timer.cancel_trigger]
+type = "ability_cast"
+abilities = [3142150829113344]
+source = "any"
+target = "any"
+
+[boss.timer.queue_remove_trigger]
+type = "ability_cast"
+abilities = [3142150829113344]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_kd_sps_1st"
 name = "Spines 1st"
 display_text = "Spines"
-trigger = { type = "npc_appears", selector = ["Kell Dragon 1st"] }
-duration_secs = 30.0
+duration_secs = 20.0
+color = [93, 142, 95, 255]
+icon_ability_id = 3148979827113984
 difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+queue_on_expire = true
+queue_priority = 5
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p1"
+
+[boss.timer.cancel_trigger]
+type = "ability_cast"
+abilities = [3148979827113984]
+source = "any"
+target = "any"
+
+[boss.timer.queue_remove_trigger]
+type = "ability_cast"
+abilities = [3148979827113984]
+source = "any"
+target = "any"
 
 [[boss.timer]]
-id = "styrak_spines"
-name = "Spines"
-display_text = "Spines"
-trigger = { type = "effect_removed", effects = [3148979827113984] }
-cancel_trigger = { type = "entity_death", selector = ["Kell Dragon 1st"] }
-duration_secs = 60.0
+id = "Styrak_k_kd_ccl_1st"
+name = "Charge Clone 1st"
+display_text = "Charge Clone"
+duration_secs = 40.0
+color = [194, 131, 236, 255]
+icon_ability_id = 3141661202841600
 difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p1"
+
+[[boss.timer]]
+id = "Styrak_k_kd_hbt_1st"
+name = "Headbutt 1st"
+display_text = "Headbutt"
+duration_secs = 20.0
+color = [12, 167, 128, 255]
+icon_ability_id = 3133187232366592
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+queue_on_expire = true
+queue_priority = 6
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p1"
+
+[boss.timer.cancel_trigger]
+type = "ability_cast"
+abilities = [3133187232366592, 3140965418139648]
+source = "any"
+target = "any"
+
+[boss.timer.queue_remove_trigger]
+type = "ability_cast"
+abilities = [3133187232366592, 3140965418139648]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_kd_skb_1st"
+name = "Knockback Clone"
+duration_secs = 20.0
+color = [17, 74, 187, 255]
+icon_ability_id = 3294845506420736
+difficulties = ["master"]
+display_targets = ["ability_queue"]
+roles = []
+queue_on_expire = true
+queue_priority = 8
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p1"
+
+[boss.timer.cancel_trigger]
+type = "ability_cast"
+abilities = [3294763902042112]
+source = "any"
+target = "any"
+
+[boss.timer.queue_remove_trigger]
+type = "ability_cast"
+abilities = [3294763902042112]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_gcd_1_5"
+name = "GCD 1.5s"
+color = [255, 255, 255, 255]
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+gcd_secs = 1.5
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [
+  3148992712015872,
+  3127595184947200,
+  3127599479914496,
+  3144508766158848,
+  3144513061126144,
+]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_kd_hds"
+name = "Head Swipe"
+duration_secs = 6.0
+color = [171, 151, 54, 255]
+icon_ability_id = 3343335687192576
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+gcd_secs = 1.5
+queue_on_expire = true
+queue_priority = 2
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3141635433037824]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_lsl"
+name = "Leap Slam"
+duration_secs = 15.0
+color = [180, 30, 14, 255]
+icon_ability_id = 3518046366859264
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+gcd_secs = 1.5
+queue_on_expire = true
+queue_priority = 3
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3141601073299456]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_vpl"
+name = "Vomit Pool"
+duration_secs = 10.0
+color = [224, 79, 0, 255]
+icon_ability_id = 3142150829113344
+difficulties = ["master"]
+group_size = 8
+display_targets = ["ability_queue"]
+roles = []
+gcd_secs = 3.0
+queue_on_expire = true
+queue_priority = 4
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3142150829113344]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_vpl_vm"
+name = "Vomit Pool"
+duration_secs = 12.0
+color = [224, 79, 0, 255]
+icon_ability_id = 3142150829113344
+difficulties = ["veteran"]
+group_size = 8
+display_targets = ["ability_queue"]
+roles = []
+gcd_secs = 3.0
+queue_on_expire = true
+queue_priority = 4
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3142150829113344]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_vpl_16m"
+name = "Vomit Pool"
+duration_secs = 15.0
+color = [224, 79, 0, 255]
+icon_ability_id = 3142150829113344
+difficulties = ["master", "veteran"]
+group_size = 16
+display_targets = ["ability_queue"]
+roles = []
+gcd_secs = 3.0
+queue_on_expire = true
+queue_priority = 4
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3142150829113344]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_sps"
+name = "Spines"
+duration_secs = 60.0
+color = [93, 142, 95, 255]
+icon_ability_id = 3148979827113984
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+gcd_secs = 15.0
+queue_on_expire = true
+queue_priority = 5
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3148979827113984]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_ccl"
+name = "Charge Clone"
+duration_secs = 40.0
+color = [194, 131, 236, 255]
+icon_ability_id = 3141661202841600
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3141656907874304]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_hbt"
+name = "Headbutt"
+duration_secs = 40.0
+color = [12, 167, 128, 255]
+icon_ability_id = 3133187232366592
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+gcd_secs = 1.5
+queue_on_expire = true
+queue_priority = 6
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3133187232366592]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "ability_cast"
+abilities = [3140965418139648]
+source = "any"
+target = "any"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "any_of"
+
+[[boss.timer.queue_remove_trigger.conditions]]
+type = "ability_cast"
+abilities = [3140965418139648]
+source = "any"
+target = "any"
+
+[[boss.timer.queue_remove_trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_smn"
+name = "Choke Clone"
+duration_secs = 40.0
+color = [153, 77, 0, 255]
+icon_ability_id = 3141162986635264
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+gcd_secs = 1.5
+queue_on_expire = true
+queue_priority = 7
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3140965418139648]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "ability_cast"
+abilities = [3133187232366592]
+source = "any"
+target = "any"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "any_of"
+
+[[boss.timer.queue_remove_trigger.conditions]]
+type = "ability_cast"
+abilities = [3133187232366592]
+source = "any"
+target = "any"
+
+[[boss.timer.queue_remove_trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_skb"
+name = "Knockback Clone"
+duration_secs = 60.0
+color = [17, 74, 187, 255]
+icon_ability_id = 3294845506420736
+difficulties = ["master"]
+display_targets = ["ability_queue"]
+roles = []
+gcd_secs = 1.5
+queue_on_expire = true
+queue_priority = 8
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3294763902042112]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_smn_hb"
+name = "Choke Clone"
+duration_secs = 30.0
+color = [153, 77, 0, 255]
+icon_ability_id = 3141162986635264
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+queue_on_expire = true
+queue_priority = 7
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3133187232366592]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "ability_cast"
+abilities = [3140965418139648]
+source = "any"
+target = "any"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "any_of"
+
+[[boss.timer.queue_remove_trigger.conditions]]
+type = "ability_cast"
+abilities = [3140965418139648]
+source = "any"
+target = "any"
+
+[[boss.timer.queue_remove_trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_hbt_sm"
+name = "Headbutt"
+duration_secs = 30.0
+color = [12, 167, 128, 255]
+icon_ability_id = 3133187232366592
+difficulties = ["veteran", "master"]
+display_targets = ["ability_queue"]
+roles = []
+queue_on_expire = true
+queue_priority = 6
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3140965418139648]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "ability_cast"
+abilities = [3133187232366592]
+source = "any"
+target = "any"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[boss.timer.queue_remove_trigger]
+type = "any_of"
+
+[[boss.timer.queue_remove_trigger.conditions]]
+type = "ability_cast"
+abilities = [3133187232366592]
+source = "any"
+target = "any"
+
+[[boss.timer.queue_remove_trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_p2_cnd"
+name = "Styrak comes down"
+duration_secs = 7.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3218004246528000
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "damage_taken"
+abilities = [3218004246528000]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["Styrak_k_p2_int"]
+
+[[boss.timer]]
+id = "Styrak_k_st_cmf_1st"
+name = "Chained Manifestation"
+duration_secs = 25.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3144508766158848
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "Styrak_k_p2_cnd"
+
+[[boss.timer.trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_stk_r"
+
+[boss.timer.cancel_trigger]
+type = "ability_cast"
+abilities = [3255757009059840]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_st_lmf_1st"
+name = "Lightning Manifestation"
+duration_secs = 45.0
+color = [191, 15, 194, 255]
+icon_ability_id = 3144513061126144
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "Styrak_k_p2_cnd"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "Styrak_k_st_fpnm_lmf"
+
+[boss.timer.cancel_trigger]
+type = "ability_cast"
+abilities = [3255757009059840]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_p2_cmf_t"
+name = "Phase 2 CMF trigger"
+duration_secs = 1.5
+color = [255, 255, 255, 255]
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+display_targets = ["none"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3144508766158848]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_st_cmf_rvl"
+name = "Styrak Reveals"
+duration_secs = 30.0
+color = [255, 0, 0, 255]
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+roles = []
+
+[boss.timer.trigger]
+type = "timer_expires"
+timer_id = "Styrak_k_p2_cmf_t"
+
+[boss.timer.cancel_trigger]
+type = "entity_death"
+selector = [3147154466013184]
+
+[[boss.timer]]
+id = "Styrak_k_p2_lmf_t"
+name = "Phase 2 LMF trigger"
+duration_secs = 1.5
+color = [255, 255, 255, 255]
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+display_target = "none"
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3144513061126144]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_st_lmf_rvl"
+name = "Styrak Reveals"
+duration_secs = 25.0
+color = [255, 0, 0, 255]
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+roles = []
+
+[boss.timer.trigger]
+type = "timer_expires"
+timer_id = "Styrak_k_p2_lmf_t"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "Styrak_k_st_lmf_end_8m"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "Styrak_k_st_lmf_end_16m"
+
+[[boss.timer]]
+id = "Styrak_k_st_lmf_end_8m"
+name = "Styrak"
+duration_secs = 30.0
+is_alert = true
+color = [255, 255, 255, 255]
+difficulties = ["veteran", "master"]
+group_size = 8
+roles = []
+
+[boss.timer.trigger]
+type = "counter_reaches"
+counter_id = "Styrak_k_lmf_d_c"
+value = 4
+
+[[boss.timer.conditions]]
+type = "timer_time_remaining"
+timer_id = "Styrak_k_st_lmf_rvl"
+operator = "gte"
+value = 0.0
+
+[[boss.timer]]
+id = "Styrak_k_st_lmf_end_16m"
+name = "Styrak"
+duration_secs = 30.0
+is_alert = true
+color = [255, 255, 255, 255]
+difficulties = ["veteran", "master"]
+group_size = 16
+roles = []
+
+[boss.timer.trigger]
+type = "counter_reaches"
+counter_id = "Styrak_k_lmf_d_c"
+value = 8
+
+[[boss.timer.conditions]]
+type = "timer_time_remaining"
+timer_id = "Styrak_k_st_lmf_rvl"
+operator = "gte"
+value = 0.0
+
+[[boss.timer]]
+id = "Styrak_k_st_stw"
+name = "Saber Throw"
+duration_secs = 4.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3232766049124352
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3232766049124352]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "Styrak_k_kd_kbk_1st"
+name = "Headbutt + Spines (1st)"
+display_text = "Headdbutt + Spines"
+duration_secs = 20.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3148979827113984
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p1"
+
+[[boss.timer]]
+id = "Styrak_k_kd_kbk"
+name = "Headbutt + Spines"
+duration_secs = 60.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3148979827113984
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3148979827113984]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_kd_chk"
+name = "Choke Clone"
+duration_secs = 30.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3141162986635264
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3133187232366592]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_int"
+
+[[boss.timer]]
+id = "Styrak_k_st_thb_t_1st_mm"
+name = "Thundering Blast 1st NiM"
+display_text = "Thundering Blast"
+duration_secs = 30.0
+is_alert = true
+color = [146, 48, 181, 255]
+icon_ability_id = 3142262498263040
+difficulties = ["master"]
+roles = []
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_stk"
+
+[[boss.timer.trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_stk_r"
+
+[[boss.timer]]
+id = "Styrak_k_st_thb_t_1st_vm"
+name = "Thundering Blast 1st HM"
+display_text = "Thundering Blast"
+duration_secs = 5.0
+color = [146, 48, 181, 255]
+icon_ability_id = 3142262498263040
+difficulties = ["veteran"]
+roles = []
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_stk"
+
+[[boss.timer]]
+id = "Styrak_k_st_thb_t_2nd_mm"
+name = "Thundering Blast"
+display_text = "Thundering Blast 2nd NiM"
+duration_secs = 6.0
+color = [146, 48, 181, 255]
+icon_ability_id = 3142262498263040
+difficulties = ["master"]
+roles = []
+
+[boss.timer.trigger]
+type = "counter_reaches"
+counter_id = "Styrak_k_2nd_thb"
+value = 1
+
+[[boss.timer]]
+id = "Styrak_k_st_flg_t_1st"
+name = "Force Lightning"
+duration_secs = 10.0
+color = [207, 148, 255, 255]
+icon_ability_id = 3145814436216832
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_stk"
+
+[[boss.timer]]
+id = "Styrak_k_st_fpnm_1st"
+name = "Pull or Nightmare"
+duration_secs = 6.0
+color = [168, 72, 31, 255]
+icon_ability_id = 3145930400333824
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3145814436216832]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["Styrak_k_p2_stk"]
+
+[[boss.timer]]
+id = "Styrak_k_st_nm_fp"
+name = "Nightmare Manifestation"
+duration_secs = 3.0
+color = [77, 16, 127, 255]
+icon_ability_id = 3135077017976832
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3145930400333824]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "Styrak_k_abl_seq"
+operator = "eq"
+value = 0
+
+[[boss.timer]]
+id = "Styrak_k_st_fp_nm"
+name = "Force Pull"
+duration_secs = 3.5
+color = [168, 72, 31, 255]
+icon_ability_id = 3145930400333824
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3135077017976832]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "Styrak_k_abl_seq"
+operator = "eq"
+value = 0
+
+[[boss.timer]]
+id = "Styrak_k_st_tb_nm"
+name = "Thundering Blast"
+duration_secs = 3.5
+color = [146, 48, 181, 255]
+icon_ability_id = 3142262498263040
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3135077017976832]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["Styrak_k_p2_stk"]
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "Styrak_k_abl_seq"
+operator = "eq"
+value = 1
+
+[[boss.timer]]
+id = "Styrak_k_st_tb_fp"
+name = "Thundering Blast"
+duration_secs = 3.0
+color = [146, 48, 181, 255]
+icon_ability_id = 3142262498263040
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3145930400333824]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["Styrak_k_p2_stk"]
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "Styrak_k_abl_seq"
+operator = "eq"
+value = 1
+
+[[boss.timer]]
+id = "Styrak_k_st_fpnm_lmf"
+name = "Pull or Nightmare"
+duration_secs = 5.0
+color = [168, 72, 31, 255]
+icon_ability_id = 3145930400333824
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "phase_entered"
+phase_id = "Styrak_k_p2_stk_r"
+
+[[boss.timer]]
+id = "Styrak_k_st_fl_fp"
+name = "Force Lightning"
+duration_secs = 3.0
+color = [207, 148, 255, 255]
+icon_ability_id = 3145814436216832
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3145930400333824]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["Styrak_k_p2_stk_r"]
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "Styrak_k_abl_seq"
+operator = "eq"
+value = 1
+
+[[boss.timer]]
+id = "Styrak_k_st_fl_nm"
+name = "Force Lightning"
+duration_secs = 3.5
+color = [207, 148, 255, 255]
+icon_ability_id = 3145814436216832
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3135077017976832]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["Styrak_k_p2_stk_r"]
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "Styrak_k_abl_seq"
+operator = "eq"
+value = 1
+
+[[boss.timer]]
+id = "Styrak_k_st_tb_fl"
+name = "Thundering Blast"
+duration_secs = 6.0
+color = [146, 48, 181, 255]
+icon_ability_id = 3142262498263040
+difficulties = ["veteran", "master"]
+roles = []
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3145814436216832]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "Styrak_k_abl_seq"
+operator = "eq"
+value = 2
+
+[[boss.challenges]]
+id = "Styrak_k_chained_dps"
+name = "Chained DPS"
+metric = "damage"
+enabled = true
+color = [245, 0, 0, 255]
+columns = "total_per_second"
+difficulties = ["veteran", "master"]
+
+[[boss.challenges.conditions]]
+type = "counter"
+counter_id = "Styrak_k_chained_appears"
+operator = "eq"
+value = 1
+
+[[boss.challenges.conditions]]
+type = "target"
+
+[boss.challenges.conditions.match]
+selector = ["Chained Manifestation"]
+
+[[boss.counters]]
+id = "Styrak_k_chained_appears"
+name = "Chained Appears"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "npc_appears"
+selector = ["Chained Manifestation"]
+
+[boss.counters.decrement_on]
+type = "entity_death"
+selector = ["Chained Manifestation"]
+
+[boss.counters.reset_on]
+type = "combat_end"
