@@ -354,3 +354,27 @@ trigger = { type = "effect_applied", effects = [
 duration_secs = 10.0
 is_affected_by_alacrity = false
 color = [137, 166, 201, 255]
+version = 1
+
+[[effect]]
+id = "revive_cd"
+name = "Revive cooldown"
+ignore_effect_removed = true
+duration_secs = 300.0
+color = [138, 0, 101, 255]
+display_targets = ["cooldowns"]
+display_source = true
+persist_past_death = true
+
+[effect.trigger]
+type = "effect_applied"
+effects = [
+    808287075303712,
+    812826855735572,
+    807217628447020,
+    814875555135770,
+    2940764107571466,
+    2940854301884684,
+]
+source = "any_player"
+target = "any"
