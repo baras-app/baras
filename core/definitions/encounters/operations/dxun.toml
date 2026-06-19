@@ -86,7 +86,7 @@ trigger = { type = "effect_removed", effects = [
   4250076297822510,
 ], target = "local_player" }
 is_alert = true
-alert_text = "Click flower"
+alert_text = "Flower buff expired"
 color = [25, 158, 229, 255]
 icon_ability_id = 4250076297822510
 difficulties = ["veteran", "master"]
@@ -994,6 +994,10 @@ ids = [4282872668094464, 4350020186800128]
 is_boss = true
 is_kill_target = true
 
+[[boss.entities.hp_markers]]
+hp_percent = 5.0
+label = "Last Ditch"
+
 [[boss.entities.shields]]
 label = "Voltinator"
 start_trigger = { type = "effect_applied", effects = [4310755595780426] }
@@ -1699,6 +1703,8 @@ countdown_start = 0
 id = "apex_vanguard_flares_crafted"
 name = "Flares crafted"
 duration_secs = 45.0
+alert_on = "on_expire"
+alert_text = "Flares ready!"
 color = [200, 0, 150, 255]
 icon_ability_id = 4296410405011456
 difficulties = ["story", "veteran", "master"]
@@ -1713,21 +1719,9 @@ source = "any_player"
 target = "any"
 
 [boss.timer.audio]
-enabled = false
 file = "Alert.mp3"
 offset = 1
 countdown_start = 3
-
-[[boss.timer]]
-id = "apex_vanguard_flares_ready"
-name = "Flares ready"
-is_alert = true
-color = [200, 0, 150, 255]
-difficulties = ["story", "veteran", "master"]
-
-[boss.timer.trigger]
-type = "timer_expires"
-timer_id = "apex_vanguard_flares_crafted"
 
 [[boss.timer]]
 id = "apex_vanguard_bombardment"
