@@ -237,6 +237,7 @@ is_alert = true
 color = [255, 64, 0, 255]
 icon_ability_id = 3302391763959808
 difficulties = ["veteran", "master"]
+display_targets = []
 roles = []
 
 [boss.timer.trigger]
