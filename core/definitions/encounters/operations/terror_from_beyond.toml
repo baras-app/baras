@@ -277,6 +277,8 @@ id = "dg_doom_hm"
 name = "Doom hm"
 display_text = "Doom on you"
 duration_secs = 24.0
+alert_on = "countdown"
+alert_countdown_secs = 3.0
 color = [150, 0, 0, 255]
 icon_ability_id = 3014573120552960
 difficulties = ["veteran"]
@@ -295,6 +297,8 @@ id = "dg_doom_nim"
 name = "Doom nim"
 display_text = "Doom on you"
 duration_secs = 34.0
+alert_on = "countdown"
+alert_countdown_secs = 3.0
 color = [150, 0, 0, 255]
 icon_ability_id = 3014573120552960
 difficulties = ["master"]
@@ -313,6 +317,8 @@ id = "dg_doom_sm"
 name = "Doom"
 trigger = { type = "effect_applied", effects = [3014573120552960] }
 duration_secs = 34.0
+alert_on = "countdown"
+alert_countdown_secs = 3.0
 color = [150, 0, 0, 255]
 icon_ability_id = 3014573120552960
 difficulties = ["story"]
@@ -812,13 +818,15 @@ color = [217, 76, 30, 255]
 [[boss.timer]]
 id = "kephess_sphere_target"
 name = "Targeted by Sphere"
-trigger = { type = "target_set", selector = [
-  3013095651803136,
-], target = "local_player" }
 is_alert = true
 alert_text = "Targeted by sphere!"
 icon_ability_id = 3012825068863746
 color = [195, 30, 222, 255]
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3012825068863746]
+target = "local_player"
 
 # Nanites dropped alert (effect lost)
 [[boss.timer]]
@@ -1018,6 +1026,15 @@ triggers_encounter = true
 name = "Terror (P2)"
 ids = [3025233229381632, 2978340776443904, 302523752434898, 3025241819316224]
 is_boss = true
+
+# -- HP markers
+[[boss.entities.hp_markers]]
+hp_percent = 15.0
+label = "Burn"
+
+[[boss.entities.hp_markers.conditions]]
+type = "phase_active"
+phase_ids = ["tfb_phase2", "the_terror_from_beyond_p2t", "the_terror_from_beyond_p2_intermission", "the_terror_from_beyond_phase2_1"]
 
 [[boss.entities]]
 name = "Grasping Tentacle"
@@ -1303,6 +1320,7 @@ target = "local_player"
 id = "the_terror_from_beyond_1st_adds"
 name = "Adds"
 duration_secs = 15.0
+alert_on = "on_expire"
 color = [0, 138, 60, 255]
 difficulties = ["story", "veteran", "master"]
 
@@ -1325,6 +1343,7 @@ phase_id = "the_terror_from_beyond_p1_intermission"
 id = "tfb_adds"
 name = "Adds"
 duration_secs = 30.0
+alert_on = "on_expire"
 color = [20, 136, 30, 255]
 difficulties = ["veteran", "master"]
 
