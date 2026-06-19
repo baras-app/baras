@@ -99,6 +99,10 @@ ids = [3152463045591040, 3016450021261312, 3152467340558336, 3152458750623744]
 is_boss = true
 is_kill_target = true
 
+[[boss.entities.hp_markers]]
+hp_percent = 20.0	
+label = "Burn"
+
 [[boss.phases]]
 id = "titan_6_main"
 name = "Titan 6"
@@ -192,15 +196,17 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "titan6_huge_grenade_on_you"
-name = "Huge Grenade on you"
+name = "Huge Grenade explosion"
 duration_secs = 7.0
+alert_on = "on_apply"	
+alert_text = "Huge grenade on you"
 color = [255, 200, 0, 255]
 icon_ability_id = 3064205762625536
 difficulties = ["veteran", "master"]
 
 [boss.timer.trigger]
 type = "effect_applied"
-effects = [3064205762625536]
+effects = [3064205762625536, 3255761304027441]
 target = "local_player"
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -281,6 +287,10 @@ name = "Thrasher"
 ids = [3154567579566080, 3045819007631360, 3154571874533376, 3154563284598784]
 is_boss = true
 is_kill_target = true
+
+[[boss.entities.hp_markers]]
+hp_percent = 50.0
+label = "Double adds"
 
 [[boss.timer]]
 id = "thrasher_double_wave"
@@ -740,6 +750,7 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "cartel_warlords_sunder_the_end_vm"
 name = "Sunder The End VM"
+display_text = "Sunder The End"
 trigger = { type = "ability_cast", abilities = [3145926105366528] }
 duration_secs = 20.0
 color = [224, 35, 33, 255]
@@ -749,20 +760,24 @@ difficulties = ["veteran"]
 [[boss.timer]]
 id = "cartel_warlords_sunder_the_end_8m"
 name = "Sunder The End 8m"
+display_text = "Sunder The End"
 trigger = { type = "ability_cast", abilities = [3145926105366528] }
 duration_secs = 16.0
 color = [224, 29, 32, 255]
 icon_ability_id = 3145926105366528
 difficulties = ["master"]
+group_size = 8
 
 [[boss.timer]]
 id = "cartel_warlords_sunder_the_end_16m"
 name = "Sunder The End 16m"
+display_text = "Sunder The End"
 trigger = { type = "ability_cast", abilities = [3145926105366528] }
 duration_secs = 11.0
 color = [219, 31, 28, 255]
 icon_ability_id = 3145926105366528
 difficulties = ["master"]
+group_size = 16
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -872,8 +887,27 @@ enabled = true
 difficulties = ["veteran", "master"]
 
 [boss.phases.start_trigger]
+type = "any_of"
+
+[[boss.phases.start_trigger.conditions]]
 type = "timer_expires"
 timer_id = "Styrak_k_p2_cmf_t"
+
+[[boss.phases.start_trigger.conditions]]
+type = "damage_taken"
+abilities = []
+source = "any"
+
+[boss.phases.start_trigger.conditions.target]
+selector = [3147154466013184]
+
+[boss.phases.end_trigger]
+type = "entity_death"
+selector = [3147154466013184]
+
+[[boss.phases.conditions]]
+type = "phase_active"
+phase_ids = ["Styrak_k_p2_stk_r", "Styrak_k_p2_stk", "Styrak_k_p2_cmf"]
 
 [[boss.phases]]
 id = "Styrak_k_p2_lmf"
@@ -882,8 +916,15 @@ enabled = true
 difficulties = ["veteran", "master"]
 
 [boss.phases.start_trigger]
+type = "any_of"
+
+[[boss.phases.start_trigger.conditions]]
 type = "timer_expires"
 timer_id = "Styrak_k_p2_lmf_t"
+
+[[boss.phases.start_trigger.conditions]]
+type = "phase_ended"
+phase_id = "Styrak_k_p2_cmf"
 
 [[boss.phases]]
 id = "Styrak_k_p2_stk_r"
@@ -938,8 +979,8 @@ type = "entity_death"
 selector = [3142326922772480]
 
 [boss.counters.reset_on]
-type = "ability_cast"
-abilities = [3144513061126144]
+type = "effect_applied"
+effects = [3135077017976832]
 source = "any"
 target = "any"
 
@@ -1802,10 +1843,8 @@ counter_id = "Styrak_k_lmf_d_c"
 value = 4
 
 [[boss.timer.conditions]]
-type = "timer_time_remaining"
-timer_id = "Styrak_k_st_lmf_rvl"
-operator = "gte"
-value = 0.0
+type = "phase_active"
+phase_ids = ["Styrak_k_p2_lmf"]
 
 [[boss.timer]]
 id = "Styrak_k_st_lmf_end_16m"
@@ -1823,10 +1862,8 @@ counter_id = "Styrak_k_lmf_d_c"
 value = 8
 
 [[boss.timer.conditions]]
-type = "timer_time_remaining"
-timer_id = "Styrak_k_st_lmf_rvl"
-operator = "gte"
-value = 0.0
+type = "phase_active"
+phase_ids = ["Styrak_k_p2_lmf"]
 
 [[boss.timer]]
 id = "Styrak_k_st_stw"
