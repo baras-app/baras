@@ -235,6 +235,19 @@ ids = [3273924720721920, 3303401081274368, 3303392491339776, 3303405376241664]
 is_boss = true
 is_kill_target = true
 
+# -- HP markers
+[[boss.entities.hp_markers]]
+hp_percent = 90.0
+label = "Escape"
+
+[[boss.entities.hp_markers]]
+hp_percent = 60.0
+label = "Escape"
+
+[[boss.entities.hp_markers]]
+hp_percent = 30.0
+label = "Escape"
+
 [[boss.entities]]
 name = "Subteroth"
 ids = [3281320654405632]
