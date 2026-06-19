@@ -1003,6 +1003,19 @@ color = [214, 37, 32, 255]
 icon_ability_id = 2853344343228711
 difficulties = ["veteran", "master"]
 
+[[boss.timer]]
+id = "colonel_vorgath_defuse_mine"
+name = "Defuse mine!"
+duration_secs = 30.0
+is_alert = true
+color = [255, 128, 0, 255]
+icon_ability_id = 2851226924351746
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [2851226924351746]
+source = "any"
+target = "local_player"
 # -- HP Threshold Alerts --
 [[boss.timer]]
 id = "cv_hp_95"
