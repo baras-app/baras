@@ -17,6 +17,31 @@ ids = [4494653210492928, 4467247024177152]
 is_boss = true
 is_kill_target = true
 
+# -- Hp markers
+[[boss.entities.hp_markers]]
+hp_percent = 75.0
+label = "Goes up"
+
+[[boss.entities.hp_markers.conditions]]
+type = "phase_active"
+phase_ids = ["ip_main"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 50.0
+label = "Goes up"
+
+[[boss.entities.hp_markers.conditions]]
+type = "phase_active"
+phase_ids = ["ip_main"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 25.0
+label = "Goes up"
+
+[[boss.entities.hp_markers.conditions]]
+type = "phase_active"
+phase_ids = ["ip_main"]
+
 [[boss.entities]]
 name = "Intrusion ID Unit"
 ids = [4470455364747264, 4470446774812672, 4470451069779968, 4470442479845376]
@@ -116,6 +141,9 @@ trigger = { type = "effect_applied", effects = [
   4471271408533778,
 ], target = "local_player" }
 duration_secs = 8.5
+alert_on = "countdown"
+alert_text = "Grenade explosion"
+alert_countdown_secs = 3.0
 color = [200, 0, 0, 255]
 icon_ability_id = 4471271408533778
 difficulties = ["veteran"]
@@ -294,6 +322,8 @@ timer_id = "ip_cpt_4th_intrusion_units"
 id = "ip_cpt_bomb_explosion"
 name = "Bomb explosion"
 duration_secs = 31.0
+alert_on = "countdown"
+alert_countdown_secs = 3.0
 color = [200, 0, 0, 255]
 icon_ability_id = 4470747422523392
 difficulties = ["story", "veteran"]
@@ -493,6 +523,9 @@ name = "Degauss 1st"
 display_text = "Degauss"
 trigger = { type = "combat_start" }
 duration_secs = 63.0
+alert_on = "countdown"
+alert_text = "Degauss"
+alert_countdown_secs = 3.0
 color = [29, 224, 218, 255]
 icon_ability_id = 4472216301338624
 difficulties = ["veteran"]
@@ -583,6 +616,9 @@ value = 2
 id = "watchdog_degauss"
 name = "Degauss"
 display_text = "Degauss"
+alert_on = "countdown"
+alert_text = "Degauss"
+alert_countdown_secs = 3.0
 trigger = { type = "counter_reaches", counter_id = "wd_beam_counter", value = 4 }
 duration_secs = 10.0
 color = [29, 221, 224, 255]
@@ -1614,9 +1650,10 @@ phase_ids = ["dominique_burn"]
 # -- Timers
 [[boss.timer]]
 id = "dominique_orange_circle"
-name = "Orange Circle Local Player"
-is_alert = true
-alert_text = "Orange. Drop down!"
+name = "Orange Circle dropping"
+duration_secs = 8.0
+alert_on = "on_apply"
+alert_text = "Orange on you"
 color = [224, 112, 0, 255]
 icon_ability_id = 4574715695857998
 difficulties = ["story", "veteran"]
@@ -1630,9 +1667,10 @@ target = "local_player"
 
 [[boss.timer]]
 id = "dominique_yellow_circle"
-name = "Yellow Circle Local Player"
-is_alert = true
-alert_text = "Yellow. Knockback Incoming!"
+name = "Yellow Circle knockback"
+duration_secs = 8.0
+alert_on = "on_apply"
+alert_text = "Yellow on you"
 color = [255, 234, 0, 255]
 icon_ability_id = 4574698515988786
 difficulties = ["story", "veteran"]
