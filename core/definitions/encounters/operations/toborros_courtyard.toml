@@ -1,0 +1,244 @@
+[area]
+name = "Toborro's Courtyard"
+area_id = 137438993312
+area_type = "operation"
+
+# ─── Golden Fury ───────────────────────────────────────────────────
+[[boss]]
+id = "golden_fury"
+name = "Golden Fury"
+area_type = "operation"
+difficulties = ["story", "veteran"]
+is_final_boss = true
+
+[[boss.entities]]
+name = "Golden Fury"
+ids = [3210174521147392, 3232735984353280, 3232800408862720, 3232817588731904]
+is_boss = true
+is_kill_target = true
+
+[[boss.entities.hp_markers]]
+hp_percent = 95.0
+label = "Lasers and Adds"
+
+[[boss.entities.hp_markers]]
+hp_percent = 20.0
+label = "Burn"
+
+[[boss.phases]]
+id = "golden_fury_phases_intro"
+name = "Intro"
+enabled = true
+
+[boss.phases.start_trigger]
+type = "combat_start"
+
+[[boss.phases]]
+id = "golden_fury_phases_lasers_adds"
+name = "Lasers and Adds"
+enabled = true
+
+[boss.phases.start_trigger]
+type = "boss_hp_below"
+hp_percent = 95.0
+selector = ["Golden Fury"]
+
+[[boss.phases]]
+id = "golden_fury_phases_burn"
+name = "Burn"
+enabled = true
+
+[boss.phases.start_trigger]
+type = "ability_cast"
+abilities = [3259210162765824]
+source = "any"
+target = "any"
+
+[[boss.counters]]
+id = "golden_fury_massive_lasers_counter"
+name = "Massive Lasers Counter"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "ability_cast"
+abilities = [3258935284858880]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "golden_fury_satellite_strike"
+name = "Satellite Strike"
+duration_secs = 12.0
+color = [129, 61, 156, 255]
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3261155782950912]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "golden_fury_isotope_release"
+name = "Isotope Release"
+duration_secs = 33.0
+color = [133, 19, 32, 255]
+icon_ability_id = 3258853680480256
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3258853680480256]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "golden_fury_isotope5_shielding"
+name = "Isotope-5 Shielding"
+duration_secs = 45.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3258922399957254
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3258922399957254]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "golden_fury_phases_burn"
+
+[[boss.timer]]
+id = "golden_fury_lasers_alert"
+name = "Laser Alert"
+duration_secs = 0.5
+is_alert = true
+alert_text = "Laser incoming!"
+color = [246, 211, 45, 255]
+icon_ability_id = 3258935284858880
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3258922399957254]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "golden_fury_massive_larsers"
+name = "Massive Lasers"
+duration_secs = 3.0
+color = [246, 211, 45, 255]
+icon_ability_id = 3258935284858880
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3258922399957254]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "golden_fury_1st_add_spawn"
+name = "Add Spawn"
+duration_secs = 13.5
+color = [51, 200, 237, 255]
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3258922399957254]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "golden_fury_massive_lasers_counter"
+operator = "eq"
+value = 0
+
+[[boss.timer]]
+id = "golden_fury_add_spawn_sm"
+name = "Add Spawn"
+duration_secs = 45.0
+color = [51, 200, 237, 255]
+difficulties = ["story"]
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3259081313746944]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "golden_fury_massive_lasers_counter"
+operator = "gt"
+value = 0
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "golden_fury_phases_burn"
+
+[[boss.timer]]
+id = "golden_fury_add_spawn_vm_decreasing"
+name = "Add Spawn"
+duration_secs = 44.5
+color = [51, 200, 237, 255]
+difficulties = ["veteran"]
+display_target = "timers_a"
+
+[boss.timer.trigger] 
+type = "ability_cast"
+abilities = [3259081313746944]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "golden_fury_massive_lasers_counter"
+operator = "lte"
+value = 8
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "golden_fury_phases_burn"
+
+[[boss.timer]]
+id = "golden_fury_add_spawn_vm"
+name = "Add Spawn"
+duration_secs = 45.0
+color = [51, 200, 237, 255]
+difficulties = ["veteran"]
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3259081313746944]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "golden_fury_massive_lasers_counter"
+operator = "gt"
+value = 8
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "golden_fury_phases_burn"
+
+[[boss.timer]]
+id = "golden_fury_enrage"
+name = "Enrage"
+duration_secs = 540.0
+color = [134, 94, 60, 255]
+icon_ability_id = 3422521999228928
+show_at_secs = 45.0
+
+[boss.timer.trigger]
+type = "combat_start"
