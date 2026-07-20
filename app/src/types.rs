@@ -147,6 +147,10 @@ pub struct OverlayStatus {
     pub ability_queue_running: bool,
     #[serde(default)]
     pub ability_queue_enabled: bool,
+    #[serde(default)]
+    pub map_running: bool,
+    #[serde(default)]
+    pub map_enabled: bool,
     pub overlays_visible: bool,
     pub move_mode: bool,
     pub rearrange_mode: bool,
@@ -304,6 +308,7 @@ pub enum OverlayType {
     CombatTime,
     OperationTimer,
     AbilityQueue,
+    Map,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

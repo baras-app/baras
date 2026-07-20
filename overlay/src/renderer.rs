@@ -686,7 +686,7 @@ impl Renderer {
         dest_width: f32,
         dest_height: f32,
     ) {
-        if image_data.len() != (image_width * image_height * 4) as usize {
+        if image_data.len() != image_width as usize * image_height as usize * 4 {
             return;
         }
 

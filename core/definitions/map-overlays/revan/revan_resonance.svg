@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <!-- Revan resonance. Grid coord (x,y) == pixel (x,y). -->
+  <!-- translucent red discs -->
+  <circle cx="118.8" cy="137.4" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="140.6" cy="100.5" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="179.0" cy="83.0" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="217.4" cy="100.5" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="239.2" cy="137.4" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="246.0" cy="180.0" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="239.2" cy="222.6" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="217.4" cy="259.5" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="179.0" cy="277.0" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="140.6" cy="259.5" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="118.8" cy="222.6" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="112.0" cy="180.0" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="179.0" cy="135.0" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <circle cx="179.0" cy="225.0" r="14" fill="#e63946" fill-opacity="0.25"/>
+  <!-- clock 1..12 (12=left 3=top 6=right 9=bottom, arc-even) + I3/I9 -->
+  <text x="118.8" y="144.0" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">1</text>
+  <text x="140.6" y="107.0" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">2</text>
+  <text x="179.0" y="89.6" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">3</text>
+  <text x="217.4" y="107.0" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">4</text>
+  <text x="239.2" y="144.0" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">5</text>
+  <text x="246.0" y="186.6" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">6</text>
+  <text x="239.2" y="229.1" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">7</text>
+  <text x="217.4" y="266.1" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">8</text>
+  <text x="179.0" y="283.6" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">9</text>
+  <text x="140.6" y="266.1" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">10</text>
+  <text x="118.8" y="229.1" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">11</text>
+  <text x="112.0" y="186.6" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">12</text>
+  <text x="179.0" y="141.6" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">I3</text>
+  <text x="179.0" y="231.6" text-anchor="middle" font-family="Inter, sans-serif" font-size="18.75" font-weight="bold" fill="#ffffff">I9</text>
+</svg>

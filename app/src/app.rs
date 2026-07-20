@@ -56,6 +56,7 @@ pub fn App() -> Element {
     let mut combat_time_enabled = use_signal(|| false);
     let mut operation_timer_enabled = use_signal(|| false);
     let mut ability_queue_enabled = use_signal(|| false);
+    let mut map_enabled = use_signal(|| false);
     // Operation timer state from Tauri events
     let mut op_timer_secs = use_signal(|| 0u64);
     let mut op_timer_running = use_signal(|| false);
@@ -237,6 +238,7 @@ pub fn App() -> Element {
                 &mut combat_time_enabled,
                 &mut operation_timer_enabled,
                 &mut ability_queue_enabled,
+                &mut map_enabled,
                 &mut overlays_visible,
                 &mut move_mode,
                 &mut rearrange_mode,
@@ -330,7 +332,7 @@ pub fn App() -> Element {
                         &mut effects_a_enabled, &mut effects_b_enabled,
                         &mut cooldowns_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
                         &mut combat_time_enabled, &mut operation_timer_enabled,
-                        &mut ability_queue_enabled,
+                        &mut ability_queue_enabled, &mut map_enabled,
                         &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                 }
             });
@@ -565,6 +567,7 @@ pub fn App() -> Element {
     let combat_time_on = combat_time_enabled();
     let operation_timer_on = operation_timer_enabled();
     let ability_queue_on = ability_queue_enabled();
+    let map_on = map_enabled();
     let any_enabled = enabled_map.values().any(|&v| v)
         || personal_on
         || raid_on
@@ -580,7 +583,8 @@ pub fn App() -> Element {
         || notes_on
         || combat_time_on
         || operation_timer_on
-        || ability_queue_on;
+        || ability_queue_on
+        || map_on;
     let is_visible = overlays_visible();
     let is_move_mode = move_mode();
     let is_rearrange = rearrange_mode();
@@ -860,7 +864,7 @@ pub fn App() -> Element {
                                                 &mut effects_a_enabled, &mut effects_b_enabled,
                                                 &mut cooldowns_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
                                                 &mut combat_time_enabled, &mut operation_timer_enabled,
-                                                &mut ability_queue_enabled,
+                                                &mut ability_queue_enabled, &mut map_enabled,
                                                 &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
                                         }
                                     }
@@ -1575,6 +1579,18 @@ pub fn App() -> Element {
                                         }); },
                                         i { class: "fa-solid fa-layer-group overlay-btn-icon" }
                                         "Ability Queue"
+                                    }
+                                    button {
+                                        class: if map_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                        title: "Displays a map image for the current encounter and phase",
+                                        onclick: move |_| { spawn(async move {
+                                            if api::toggle_overlay(OverlayType::Map, map_on).await {
+                                                map_enabled.set(!map_on);
+                                                profile_dirty.set(true);
+                                            }
+                                        }); },
+                                        i { class: "fa-solid fa-map overlay-btn-icon" }
+                                        "Map"
                                     }
                                 }
                             }
@@ -2770,6 +2786,7 @@ fn apply_status(
     combat_time_enabled: &mut Signal<bool>,
     operation_timer_enabled: &mut Signal<bool>,
     ability_queue_enabled: &mut Signal<bool>,
+    map_enabled: &mut Signal<bool>,
     overlays_visible: &mut Signal<bool>,
     move_mode: &mut Signal<bool>,
     rearrange_mode: &mut Signal<bool>,
@@ -2795,6 +2812,7 @@ fn apply_status(
     combat_time_enabled.set(status.combat_time_enabled);
     operation_timer_enabled.set(status.operation_timer_enabled);
     ability_queue_enabled.set(status.ability_queue_enabled);
+    map_enabled.set(status.map_enabled);
     overlays_visible.set(status.overlays_visible);
     move_mode.set(status.move_mode);
     rearrange_mode.set(status.rearrange_mode);

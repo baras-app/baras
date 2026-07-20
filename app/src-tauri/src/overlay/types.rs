@@ -163,6 +163,8 @@ pub enum OverlayType {
     OperationTimer,
     /// Ability queue overlay (GCD bar + queued/ready + active countdowns)
     AbilityQueue,
+    /// Encounter/phase map overlay (renders an SVG for the current encounter+phase)
+    Map,
 }
 
 impl OverlayType {
@@ -185,6 +187,7 @@ impl OverlayType {
             OverlayType::CombatTime => "combat_time",
             OverlayType::OperationTimer => "operation_timer",
             OverlayType::AbilityQueue => "ability_queue",
+            OverlayType::Map => "map",
         }
     }
 
@@ -207,6 +210,7 @@ impl OverlayType {
             OverlayType::CombatTime => "baras-combat-time".to_string(),
             OverlayType::OperationTimer => "baras-operation-timer".to_string(),
             OverlayType::AbilityQueue => "baras-ability-queue".to_string(),
+            OverlayType::Map => "baras-map".to_string(),
         }
     }
 
@@ -229,6 +233,7 @@ impl OverlayType {
             OverlayType::CombatTime => (400, 100),
             OverlayType::OperationTimer => (400, 160),
             OverlayType::AbilityQueue => (650, 850),
+            OverlayType::Map => (700, 200),
         }
     }
 }

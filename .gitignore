@@ -1,4 +1,6 @@
 /target
+/.cargo/
+/.local/
 **/combat_*.txt
 ref-files
 CLAUDE.local.md

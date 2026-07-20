@@ -148,6 +148,8 @@ pub fn SettingsPanel(
                 config.overlay_settings.combat_time_opacity = new_settings.combat_time_opacity;
                 config.overlay_settings.operation_timer = new_settings.operation_timer.clone();
                 config.overlay_settings.operation_timer_opacity = new_settings.operation_timer_opacity;
+                config.overlay_settings.map = new_settings.map.clone();
+                config.overlay_settings.map_opacity = new_settings.map_opacity;
                 config.overlay_settings.positions = existing_positions;
                 config.overlay_settings.enabled = existing_enabled;
 
@@ -554,6 +556,7 @@ pub fn SettingsPanel(
                         TabButton { label: "Timers B", tab_key: "timers_b", selected_tab: selected_tab, metrics_global_open: metrics_global_open }
                         TabButton { label: "Challenges", tab_key: "challenges", selected_tab: selected_tab, metrics_global_open: metrics_global_open }
                         TabButton { label: "Notes", tab_key: "notes", selected_tab: selected_tab, metrics_global_open: metrics_global_open }
+                        TabButton { label: "Map", tab_key: "map", selected_tab: selected_tab, metrics_global_open: metrics_global_open }
                     }
                 }
                 div { class: "tab-group",
@@ -2312,6 +2315,95 @@ pub fn SettingsPanel(
                                 let mut new_settings = draft_settings();
                                 new_settings.operation_timer = Default::default();
                                 new_settings.operation_timer_opacity = 180;
+                                update_draft(new_settings);
+                            },
+                            i { class: "fa-solid fa-rotate-left" }
+                            span { " Reset to Defaults" }
+                        }
+                    }
+                }
+            } else if tab == "map" {
+                // Map Overlay Settings
+                div { class: "settings-section",
+                    h4 { "Appearance" }
+
+                    OpacitySlider {
+                        label: "Background Opacity",
+                        value: current_settings.map_opacity,
+                        on_change: move |val| {
+                            let mut new_settings = draft_settings();
+                            new_settings.map_opacity = val;
+                            update_draft(new_settings);
+                        },
+                    }
+
+                    div { class: "setting-row",
+                        label { "Preserve Aspect Ratio" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.map.preserve_aspect,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.map.preserve_aspect = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row",
+                        label { "Lock Size" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.map.lock_size,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.map.lock_size = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row",
+                        label { "Width" }
+                        input {
+                            r#type: "number",
+                            min: "50",
+                            max: "2560",
+                            value: "{current_settings.map.width}",
+                            oninput: move |e: Event<FormData>| {
+                                if let Ok(v) = e.value().parse::<u32>() {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.map.width = v.clamp(50, 2560);
+                                    update_draft(new_settings);
+                                }
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row",
+                        label { "Height" }
+                        input {
+                            r#type: "number",
+                            min: "50",
+                            max: "2048",
+                            value: "{current_settings.map.height}",
+                            oninput: move |e: Event<FormData>| {
+                                if let Ok(v) = e.value().parse::<u32>() {
+                                    let mut new_settings = draft_settings();
+                                    new_settings.map.height = v.clamp(50, 2048);
+                                    update_draft(new_settings);
+                                }
+                            }
+                        }
+                    }
+
+                    div { class: "setting-row reset-row",
+                        button {
+                            class: "btn btn-reset",
+                            onclick: move |_| {
+                                let mut new_settings = draft_settings();
+                                new_settings.map = Default::default();
+                                new_settings.map_opacity = 180;
                                 update_draft(new_settings);
                             },
                             i { class: "fa-solid fa-rotate-left" }

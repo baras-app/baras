@@ -4,15 +4,186 @@
 //! Also handles the raid overlay's registry action channel and forwards swap/clear commands
 //! back to the service registry.
 
-use std::sync::Arc;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::overlay::{
     MetricType, OverlayCommand, OverlayManager, OverlayType, SharedOverlayState, create_all_entries,
 };
 use crate::service::{OverlayUpdate, ServiceHandle};
 use crate::state::SharedState;
-use baras_overlay::{OverlayData, RaidRegistryAction};
+use baras_overlay::{MapData, OverlayData, RaidRegistryAction};
 use tokio::sync::mpsc;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Map overlay: encounter/phase/area → SVG file resolution
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The current context that selects which map SVG to show. Set from combat
+/// updates (encounter + phase).
+#[derive(Clone, Default, PartialEq)]
+struct MapContext {
+    encounter: Option<String>,
+    phase: Option<String>,
+}
+
+/// The resolved map: the context it was resolved for plus the SVG source.
+struct MapState {
+    ctx: MapContext,
+    svg: Option<Arc<String>>,
+}
+
+fn map_state() -> &'static Mutex<MapState> {
+    static STATE: OnceLock<Mutex<MapState>> = OnceLock::new();
+    STATE.get_or_init(|| {
+        Mutex::new(MapState {
+            ctx: MapContext::default(),
+            svg: None,
+        })
+    })
+}
+
+/// The bundled `map-overlays` resource directory shipped with the app
+/// (`definitions/map-overlays`), registered once at startup. `None` if the
+/// resource isn't present (e.g. some dev runs) or resolution failed.
+static BUNDLED_MAP_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+/// Register the bundled `map-overlays` resource directory. Call once at startup.
+pub fn init_bundled_map_dir(dir: Option<PathBuf>) {
+    let _ = BUNDLED_MAP_DIR.set(dir);
+}
+
+fn bundled_map_dir() -> Option<&'static Path> {
+    BUNDLED_MAP_DIR.get().and_then(|o| o.as_deref())
+}
+
+/// The user's writable map-overlays directory: `~/.config/baras/map-overlays`.
+fn user_map_dir() -> Option<PathBuf> {
+    Some(dirs::config_dir()?.join("baras").join("map-overlays"))
+}
+
+/// Read a map SVG at relative path `rel`, checking the user directory first (so
+/// users can override) then the bundled resource directory. Reads fresh each
+/// call so edits show up without a restart.
+fn read_map_rel(rel: &Path) -> Option<Arc<String>> {
+    for base in [user_map_dir(), bundled_map_dir().map(Path::to_path_buf)]
+        .into_iter()
+        .flatten()
+    {
+        let path = base.join(rel);
+        match std::fs::read_to_string(&path) {
+            Ok(src) => {
+                tracing::debug!(path = %path.display(), bytes = src.len(), "map: loaded svg");
+                return Some(Arc::new(src));
+            }
+            Err(e) => {
+                tracing::debug!(path = %path.display(), error = %e, "map: candidate not usable");
+            }
+        }
+    }
+    None
+}
+
+/// A slug is safe to use as a single path component only if it can't escape the
+/// map-overlays root. Any characters are allowed in file names *except* the ones
+/// that would traverse directories.
+fn safe_slug(s: &str) -> bool {
+    !s.is_empty() && s != "." && s != ".." && !s.contains(['/', '\\'])
+}
+
+/// Resolve the SVG source for a context. User files override bundled ones, and a
+/// more specific file beats a less specific one:
+///   1. `<encounter>/<phase>.svg`
+///   2. `<encounter>/_default.svg`
+/// Returns `None` when there is no active encounter or no matching file.
+fn resolve_map_svg(ctx: &MapContext) -> Option<Arc<String>> {
+    let Some(enc) = ctx.encounter.as_deref() else {
+        tracing::debug!(phase = ?ctx.phase, "map: no active encounter — no map");
+        return None;
+    };
+    if !safe_slug(enc) {
+        tracing::warn!(encounter = %enc, "map: unsafe encounter slug, ignoring");
+        return None;
+    }
+
+    let mut rels: Vec<PathBuf> = Vec::new();
+    if let Some(phase) = ctx.phase.as_deref() {
+        if safe_slug(phase) {
+            rels.push(Path::new(enc).join(format!("{phase}.svg")));
+        } else {
+            tracing::warn!(phase = %phase, "map: unsafe phase slug, ignoring");
+        }
+    }
+    rels.push(Path::new(enc).join("_default.svg"));
+
+    tracing::debug!(encounter = %enc, phase = ?ctx.phase, ?rels, "map: resolving svg");
+
+    let found = rels.iter().find_map(|rel| read_map_rel(rel));
+    if found.is_none() {
+        tracing::debug!("map: no matching svg found");
+    }
+    found
+}
+
+/// Apply `update` to the current map context, re-reading from disk only when the
+/// context actually changed, and return the SVG to display now.
+fn update_map_context(update: impl FnOnce(&mut MapContext)) -> Option<Arc<String>> {
+    let mut st = match map_state().lock() {
+        Ok(s) => s,
+        Err(_) => return None,
+    };
+    let before = st.ctx.clone();
+    update(&mut st.ctx);
+    if st.ctx != before {
+        tracing::debug!(
+            encounter = ?st.ctx.encounter,
+            phase = ?st.ctx.phase,
+            "map: encounter/phase changed, re-resolving"
+        );
+        st.svg = resolve_map_svg(&st.ctx);
+    }
+    st.svg.clone()
+}
+
+/// Forget the cached map context (e.g. when switching log files).
+fn reset_map_context() {
+    if let Ok(mut st) = map_state().lock() {
+        st.ctx = MapContext::default();
+        st.svg = None;
+    }
+}
+
+/// The SVG for the current encounter, if any. Used to feed a map overlay its
+/// correct map the moment it spawns (rather than waiting for the next update).
+pub fn current_map_svg() -> Option<Arc<String>> {
+    map_state().lock().ok().and_then(|st| st.svg.clone())
+}
+
+/// Load the root-level placeholder shown in edit mode when no specific map
+/// applies: `map-overlays/_default.svg` (user override first, then the bundled
+/// default shipped with the app). Only reads when `edit_mode` is true, and reads
+/// fresh every time — so edits show up on the next switch into edit mode.
+fn root_placeholder_svg(edit_mode: bool) -> Option<Arc<String>> {
+    if !edit_mode {
+        return None;
+    }
+    read_map_rel(Path::new("_default.svg"))
+}
+
+/// Build the payload sent to the map overlay: the current map plus the
+/// edit-mode placeholder (only loaded when `edit_mode` is true).
+fn map_data(svg: Option<Arc<String>>, edit_mode: bool) -> MapData {
+    MapData {
+        svg,
+        placeholder: root_placeholder_svg(edit_mode),
+    }
+}
+
+/// The full map payload for the current context (map + placeholder). Used to
+/// feed the overlay on spawn and when entering edit mode.
+pub fn current_map_data(edit_mode: bool) -> MapData {
+    map_data(current_map_svg(), edit_mode)
+}
 
 /// Spawn the overlay update router task.
 ///
@@ -189,6 +360,30 @@ async fn process_overlay_update(
                             encounter_time_secs: data.encounter_time_secs,
                         },
                     )))
+                    .await;
+            }
+
+            // Feed the map overlay the SVG for the current encounter+phase.
+            // Reads disk only when the (encounter, phase) key changes; the
+            // overlay itself ignores unchanged SVG source.
+            let (map_tx, edit_mode) = {
+                let state = match overlay_state.lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                (state.get_tx(OverlayType::Map).cloned(), state.move_mode)
+            };
+            // Always keep the map context current, even if no map overlay is
+            // running yet (so it can be fed the right map the moment it spawns).
+            let svg = update_map_context(|ctx| {
+                ctx.encounter = data.encounter_slug.clone();
+                ctx.phase = data.phase_slug.clone();
+            });
+            if let Some(tx) = map_tx {
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::Map(map_data(
+                        svg, edit_mode,
+                    ))))
                     .await;
             }
         }
@@ -571,8 +766,16 @@ async fn process_overlay_update(
                     channels.push((tx.clone(), OverlayData::AbilityQueue(Default::default())));
                 }
 
+                // Map overlay (clear the displayed SVG, keep the edit-mode placeholder)
+                if let Some(tx) = state.get_tx(OverlayType::Map) {
+                    channels.push((tx.clone(), OverlayData::Map(map_data(None, state.move_mode))));
+                }
+
                 channels
             }; // Lock released here
+
+            // Forget the cached map so the next encounter/area re-reads from disk.
+            reset_map_context();
 
             // Now send to all channels (outside lock scope)
             for (tx, data) in channels {

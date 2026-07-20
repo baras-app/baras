@@ -87,6 +87,10 @@ pub use overlays::{
     EffectsLayout,
     EffectsOverlay,
     InteractionMode,
+    // Map overlay
+    MapConfig,
+    MapData,
+    MapOverlay,
     MetricEntry,
     MetricOverlay,
     // Notes overlay
