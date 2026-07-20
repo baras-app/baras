@@ -20,6 +20,7 @@ mod dot_tracker;
 mod effects;
 mod enemy_frames;
 mod effects_ab;
+mod map;
 mod metric;
 mod notes;
 mod operation_timer;
@@ -43,6 +44,7 @@ pub use effects::{EffectEntry, EffectsData, EffectsOverlay};
 pub use effects_ab::{
     EffectABEntry, EffectsABConfig, EffectsABData, EffectsABOverlay, EffectsLayout,
 };
+pub use map::{MapConfig, MapData, MapOverlay};
 pub use metric::{MetricData, MetricEntry, MetricOverlay};
 pub use personal::{PersonalOverlay, PersonalStats};
 pub use raid::{
@@ -148,6 +150,8 @@ pub enum OverlayData {
     EnemyFrames(EnemyFramesData),
     /// Recently cast abilities (local player)
     AbilityCast(AbilityCastData),
+    /// Encounter/phase map (raw SVG source, or `None` to clear)
+    Map(MapData),
 }
 
 /// Configuration updates that can be sent to overlays
@@ -198,6 +202,8 @@ pub enum OverlayConfigUpdate {
     EnemyFrames(EnemyFramesConfig, u8, bool),
     /// Config for ability cast overlay (+ background alpha)
     AbilityCast(AbilityCastConfig, u8),
+    /// Config for map overlay (+ background alpha)
+    Map(MapConfig, u8),
 }
 
 /// Position information for an overlay

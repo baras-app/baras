@@ -697,11 +697,15 @@ impl SignalHandler for CombatSignalHandler {
             }
             GameSignal::AreaEntered {
                 area_id,
+                area_name,
                 difficulty_id,
                 timestamp,
                 ..
             } => {
                 // Note: Boss definitions are loaded synchronously in process_event via definition_loader
+                // Log every area transition — useful for discovering the area id/name
+                // when authoring encounter definitions or map files.
+                tracing::debug!(area_id = *area_id, area_name = %area_name, "AreaEntered signal");
                 let current = self.shared.current_area_id.load(Ordering::SeqCst);
                 let is_live = self.shared.is_live_tailing.load(Ordering::SeqCst);
                 if raid_detection::should_reset_on_area_entry(current, *area_id, is_live) {
@@ -3484,6 +3488,11 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
             .map(|(start, now)| (now - start).num_milliseconds() as f32 / 1000.0)
             .unwrap_or(0.0);
 
+        // Raw filesystem slugs for the map overlay (boss definition id + raw phase
+        // id, NOT the display names resolved above).
+        let encounter_slug = encounter.active_boss_definition().map(|def| def.id.clone());
+        let phase_slug = encounter.current_phase.clone();
+
         Some(CombatData {
             metrics,
             player_entity_id,
@@ -3498,6 +3507,8 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
             incoming_damage,
             is_warzone: encounter.is_warzone(),
             enemy_frames,
+            encounter_slug,
+            phase_slug,
         })
     } else if let Some(summary) = cache.encounter_history.summaries().last() {
         // Fallback to historical summary for initial hydration when no live encounter exists
@@ -3603,6 +3614,8 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
             is_warzone: summary.is_warzone,
             // Historical hydration: the match is over, enemy frames are stale
             enemy_frames: Vec::new(),
+            encounter_slug: None,
+            phase_slug: None,
         })
     } else {
         None
@@ -4844,6 +4857,12 @@ pub struct CombatData {
     pub is_warzone: bool,
     /// Enemy player frames (PvP enemy HP overlay); empty outside PvP
     pub enemy_frames: Vec<baras_overlay::EnemyFrame>,
+    /// Filesystem-friendly slug of the active boss definition (e.g. "apex_vanguard"),
+    /// used to locate the map overlay SVG. `None` when no boss is active.
+    pub encounter_slug: Option<String>,
+    /// Filesystem-friendly slug of the current phase (the raw phase id, e.g. "walker_1"),
+    /// used to locate the map overlay SVG. `None` when no phase is active.
+    pub phase_slug: Option<String>,
 }
 
 impl CombatData {

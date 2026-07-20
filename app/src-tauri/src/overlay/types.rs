@@ -188,6 +188,8 @@ pub enum OverlayType {
     EnemyFrames,
     /// Recently cast abilities (local player)
     AbilityCast,
+    /// Encounter/phase map overlay (renders an SVG for the current encounter+phase)
+    Map,
 }
 
 impl OverlayType {
@@ -232,6 +234,7 @@ impl OverlayType {
             OverlayType::AbilityQueue => "ability_queue",
             OverlayType::EnemyFrames => "enemy_frames",
             OverlayType::AbilityCast => "ability_cast",
+            OverlayType::Map => "map",
         }
     }
 
@@ -258,6 +261,7 @@ impl OverlayType {
             OverlayType::AbilityQueue => "baras-ability-queue".to_string(),
             OverlayType::EnemyFrames => "baras-enemy-frames".to_string(),
             OverlayType::AbilityCast => "baras-ability-cast".to_string(),
+            OverlayType::Map => "baras-map".to_string(),
         }
     }
 
@@ -284,6 +288,7 @@ impl OverlayType {
             OverlayType::AbilityQueue => (650, 850),
             OverlayType::EnemyFrames => (900, 200),
             OverlayType::AbilityCast => (50, 800),
+            OverlayType::Map => (700, 200),
         }
     }
 }

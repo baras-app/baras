@@ -3144,6 +3144,45 @@ impl Default for AbilityCastOverlayConfig {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Map Overlay Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Default locked dimension for the map overlay.
+fn default_map_size() -> u32 {
+    400
+}
+
+/// Configuration for the encounter/phase map overlay.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MapOverlayConfig {
+    /// Preserve the SVG's aspect ratio (letterbox + center) instead of
+    /// stretching it to fill the whole window. Defaults to `false` so the map
+    /// fills exactly the area the overlay is sized to.
+    #[serde(default)]
+    pub preserve_aspect: bool,
+    /// When true, hold the overlay at `width` x `height` and prevent drag-resize.
+    #[serde(default)]
+    pub lock_size: bool,
+    /// Locked width (used when `lock_size` is true).
+    #[serde(default = "default_map_size")]
+    pub width: u32,
+    /// Locked height (used when `lock_size` is true).
+    #[serde(default = "default_map_size")]
+    pub height: u32,
+}
+
+impl Default for MapOverlayConfig {
+    fn default() -> Self {
+        Self {
+            preserve_aspect: false,
+            lock_size: false,
+            width: default_map_size(),
+            height: default_map_size(),
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Operation Timer Overlay Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -3382,6 +3421,10 @@ pub struct OverlaySettings {
     pub ability_cast: AbilityCastOverlayConfig,
     #[serde(default = "default_opacity")]
     pub ability_cast_opacity: u8,
+    #[serde(default)]
+    pub map: MapOverlayConfig,
+    #[serde(default = "default_opacity")]
+    pub map_opacity: u8,
     /// Auto-hide overlays when local player is in a conversation
     #[serde(default)]
     pub hide_during_conversations: bool,
@@ -3470,6 +3513,8 @@ impl Default for OverlaySettings {
             enemy_frames_opacity: 180,
             ability_cast: AbilityCastOverlayConfig::default(),
             ability_cast_opacity: 180,
+            map: MapOverlayConfig::default(),
+            map_opacity: 180,
             hide_during_conversations: false,
             hide_when_not_live: false,
         }

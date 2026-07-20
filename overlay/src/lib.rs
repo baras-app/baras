@@ -98,6 +98,10 @@ pub use overlays::{
     EnemyFramesOverlay,
     InteractionMode,
     MetricData,
+    // Map overlay
+    MapConfig,
+    MapData,
+    MapOverlay,
     MetricEntry,
     MetricOverlay,
     // Notes overlay
