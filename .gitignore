@@ -11,3 +11,4 @@ test-log-files/50mb/*.txt
 design/*
 test-log-files/large/*.txt
 .vscode/
+packaging
