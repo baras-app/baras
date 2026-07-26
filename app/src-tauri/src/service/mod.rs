@@ -494,7 +494,9 @@ impl SignalHandler for CombatSignalHandler {
         match signal {
             GameSignal::CombatStarted { .. } => {
                 self.shared.in_combat.store(true, Ordering::SeqCst);
-                let _ = self.trigger_tx.try_send(MetricsTrigger::CombatStarted);
+                if let Err(e) = self.trigger_tx.try_send(MetricsTrigger::CombatStarted) {
+                    warn!("Metrics trigger channel full, dropped CombatStarted: {e}");
+                }
                 let _ = self.session_event_tx.send(SessionEvent::CombatStarted);
                 // Always wipe a stale boss HP bar at the start of a new encounter.
                 // With `clear_after_combat` disabled the bar persists post-combat, but
@@ -514,7 +516,9 @@ impl SignalHandler for CombatSignalHandler {
             }
             GameSignal::CombatEnded { timestamp, success, .. } => {
                 self.shared.in_combat.store(false, Ordering::SeqCst);
-                let _ = self.trigger_tx.try_send(MetricsTrigger::CombatEnded);
+                if let Err(e) = self.trigger_tx.try_send(MetricsTrigger::CombatEnded) {
+                    warn!("Metrics trigger channel full, dropped CombatEnded: {e}");
+                }
                 let _ = self.session_event_tx.send(SessionEvent::CombatEnded);
                 // Clear boss health and timer overlays
                 let _ = self.overlay_tx.try_send(OverlayUpdate::CombatEnded);
@@ -2335,7 +2339,9 @@ impl CombatService {
                         // This ensures frontend gets correct state when it fetches session info
                         if mid_combat_startup {
                             self.shared.in_combat.store(true, std::sync::atomic::Ordering::SeqCst);
-                            let _ = trigger_tx.try_send(MetricsTrigger::CombatStarted);
+                            if let Err(e) = trigger_tx.try_send(MetricsTrigger::CombatStarted) {
+                                warn!("Metrics trigger channel full, dropped CombatStarted: {e}");
+                            }
                             let _ = session_event_tx.send(SessionEvent::CombatStarted);
                         }
                         
@@ -2347,7 +2353,9 @@ impl CombatService {
                         let in_combat = fallback_streaming_parse(&reader, &session, encounters_dir.clone()).await;
                         if in_combat {
                             self.shared.in_combat.store(true, std::sync::atomic::Ordering::SeqCst);
-                            let _ = trigger_tx.try_send(MetricsTrigger::CombatStarted);
+                            if let Err(e) = trigger_tx.try_send(MetricsTrigger::CombatStarted) {
+                                warn!("Metrics trigger channel full, dropped CombatStarted: {e}");
+                            }
                             let _ = session_event_tx.send(SessionEvent::CombatStarted);
                             info!("Detected mid-combat startup (fallback parse)");
                         }
