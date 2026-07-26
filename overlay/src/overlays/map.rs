@@ -167,7 +167,7 @@ fn rasterize(
 type Raster = (u32, u32, Vec<u8>);
 
 /// Which SVG the current raster was produced from.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Active {
     Map,
     Placeholder,
@@ -226,6 +226,13 @@ impl MapOverlay {
         if self.svg_source.as_deref() == svg.as_deref() {
             return false;
         }
+        tracing::debug!(
+            had = self.svg_source.is_some(),
+            now = svg.is_some(),
+            bytes = svg.as_deref().map(|s| s.len()),
+            generation = self.generation + 1,
+            "map.overlay: set_map changed"
+        );
         self.svg_source = svg;
         self.generation = self.generation.wrapping_add(1);
         true
@@ -272,6 +279,9 @@ impl MapOverlay {
 
         let Some(source) = source else {
             // Nothing to show: cancel any in-flight job, clear, draw no background.
+            if self.raster.is_some() || self.raster_id.is_some() || self.pending.is_some() {
+                tracing::debug!(edit_mode, "map.overlay: clearing (no source)");
+            }
             self.raster = None;
             self.raster_id = None;
             self.pending = None;
@@ -287,8 +297,18 @@ impl MapOverlay {
             match rx.try_recv() {
                 Ok(result) => {
                     if *id == want {
+                        // An accepted-but-empty raster means rasterize() bailed
+                        // (e.g. a 0-sized window) — it will be cached as "done"
+                        // and not retried until the source/size/generation changes.
+                        tracing::debug!(
+                            ?want,
+                            empty = result.is_none(),
+                            "map.overlay: raster accepted"
+                        );
                         self.raster = result;
                         self.raster_id = Some(want);
+                    } else {
+                        tracing::debug!(got = ?*id, ?want, "map.overlay: raster rejected (stale)");
                     }
                     self.pending = None;
                 }
@@ -312,6 +332,7 @@ impl MapOverlay {
                     "map: overlay is larger than the display — rasterizing an oversized image"
                 );
             }
+            tracing::debug!(?want, "map.overlay: rasterizing (worker spawn)");
             let (tx, rx) = mpsc::channel();
             let cfg = self.config.clone();
             thread::spawn(move || {

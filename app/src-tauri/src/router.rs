@@ -91,10 +91,24 @@ fn safe_slug(s: &str) -> bool {
     !s.is_empty() && s != "." && s != ".." && !s.contains(['/', '\\'])
 }
 
+/// Phases that share another phase's map file because they play out in the same
+/// physical location. Maps `(encounter, phase)` → the phase whose SVG to reuse,
+/// so several fight phases can show one map without duplicating the file. A real
+/// `<encounter>/<phase>.svg` still takes precedence when present.
+fn phase_map_alias(encounter: &str, phase: &str) -> Option<&'static str> {
+    match (encounter, phase) {
+        // Revan: Resonance transition, Floor 3, and the Machine Core burn are all
+        // the same room, so they share the resonance map.
+        ("revan", "revan_p4") | ("revan", "revan_core") => Some("revan_resonance"),
+        _ => None,
+    }
+}
+
 /// Resolve the SVG source for a context. User files override bundled ones, and a
 /// more specific file beats a less specific one:
 ///   1. `<encounter>/<phase>.svg`
-///   2. `<encounter>/_default.svg`
+///   2. `<encounter>/<aliased-phase>.svg` (shared map, see [`phase_map_alias`])
+///   3. `<encounter>/_default.svg`
 /// Returns `None` when there is no active encounter or no matching file.
 fn resolve_map_svg(ctx: &MapContext) -> Option<Arc<String>> {
     let Some(enc) = ctx.encounter.as_deref() else {
@@ -110,6 +124,11 @@ fn resolve_map_svg(ctx: &MapContext) -> Option<Arc<String>> {
     if let Some(phase) = ctx.phase.as_deref() {
         if safe_slug(phase) {
             rels.push(Path::new(enc).join(format!("{phase}.svg")));
+            // A phase that shares another phase's map falls back to it before
+            // the encounter-wide default.
+            if let Some(alias) = phase_map_alias(enc, phase) {
+                rels.push(Path::new(enc).join(format!("{alias}.svg")));
+            }
         } else {
             tracing::warn!(phase = %phase, "map: unsafe phase slug, ignoring");
         }
