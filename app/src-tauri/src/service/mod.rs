@@ -2144,7 +2144,7 @@ impl CombatService {
             .unwrap_or_else(|p| p.into_inner()) = None;
 
         // Create trigger channel for signal-driven metrics updates (tokio channel - no spawn_blocking needed)
-        let (trigger_tx, mut trigger_rx) = mpsc::channel::<MetricsTrigger>(8);
+        let (trigger_tx, mut trigger_rx) = mpsc::channel::<MetricsTrigger>(128);
         // Create channel for frontend session events (replaces polling).
         // Unbounded tokio channel: `send` is sync (usable from the signal handler)
         // and `recv().await` never parks a runtime worker thread.
@@ -2734,7 +2734,7 @@ impl CombatService {
                 if matches!(trigger, MetricsTrigger::CombatStarted) {
                     // Poll during active combat
                     while shared.in_combat.load(Ordering::SeqCst) {
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(30)).await;
 
                         if let Some(data) = calculate_combat_data(&shared).await
                             && !data.metrics.is_empty()
