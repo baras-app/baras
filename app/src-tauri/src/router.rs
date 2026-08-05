@@ -4,8 +4,11 @@
 //! Also handles the raid overlay's registry action channel and forwards swap/clear commands
 //! back to the service registry.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
+
+use baras_overlay::icons::IconCache;
 
 use crate::overlay::{
     MetricType, OverlayCommand, OverlayManager, OverlayType, SharedOverlayState, create_all_entries,
@@ -191,17 +194,119 @@ fn root_placeholder_svg(edit_mode: bool) -> Option<Arc<String>> {
 
 /// Build the payload sent to the map overlay: the current map plus the
 /// edit-mode placeholder (only loaded when `edit_mode` is true).
-fn map_data(svg: Option<Arc<String>>, edit_mode: bool) -> MapData {
+fn map_data(
+    svg: Option<Arc<String>>,
+    markers: Vec<baras_overlay::ResolvedMarker>,
+    edit_mode: bool,
+) -> MapData {
     MapData {
         svg,
         placeholder: root_placeholder_svg(edit_mode),
+        markers,
+    }
+}
+
+/// Cache of resolved marker asset rasters (icon / svg / png), keyed by content,
+/// so each asset is rasterized/decoded once rather than on every poll.
+fn marker_asset_cache() -> &'static Mutex<HashMap<String, Arc<(u32, u32, Vec<u8>)>>> {
+    static C: OnceLock<Mutex<HashMap<String, Arc<(u32, u32, Vec<u8>)>>>> = OnceLock::new();
+    C.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn cached_asset(
+    key: String,
+    build: impl FnOnce() -> Option<(u32, u32, Vec<u8>)>,
+) -> Option<Arc<(u32, u32, Vec<u8>)>> {
+    if let Ok(cache) = marker_asset_cache().lock()
+        && let Some(a) = cache.get(&key)
+    {
+        return Some(a.clone());
+    }
+    let built = Arc::new(build()?);
+    if let Ok(mut cache) = marker_asset_cache().lock() {
+        cache.insert(key, built.clone());
+    }
+    Some(built)
+}
+
+/// Read a binary map asset (e.g. PNG) by relative path: user dir then bundled.
+fn read_map_bytes(rel: &Path) -> Option<Vec<u8>> {
+    for base in [user_map_dir(), bundled_map_dir().map(Path::to_path_buf)]
+        .into_iter()
+        .flatten()
+    {
+        if let Ok(bytes) = std::fs::read(base.join(rel)) {
+            return Some(bytes);
+        }
+    }
+    None
+}
+
+/// Resolve core marker descriptors into paint-ready overlay markers: text is
+/// filled from the sequence number; icon/svg/image refs become RGBA bytes
+/// (icons via the cache, svg/png read from the map-overlays tree).
+fn resolve_markers(
+    markers: &[baras_core::markers::MarkerRender],
+    icon_cache: Option<&Arc<IconCache>>,
+) -> Vec<baras_overlay::ResolvedMarker> {
+    markers
+        .iter()
+        .map(|m| baras_overlay::ResolvedMarker {
+            x: m.x,
+            y: m.y,
+            elements: m
+                .elements
+                .iter()
+                .filter_map(|el| resolve_element(el, m.number, icon_cache))
+                .collect(),
+        })
+        .collect()
+}
+
+fn resolve_element(
+    el: &baras_core::dsl::MarkerElement,
+    number: u32,
+    icon_cache: Option<&Arc<IconCache>>,
+) -> Option<baras_overlay::ResolvedElement> {
+    use baras_core::dsl::MarkerElement as E;
+    match el {
+        E::Text { text, color, size, offset, anchor } => Some(baras_overlay::ResolvedElement::Text {
+            text: text.clone().unwrap_or_else(|| number.to_string()),
+            color: *color,
+            size: *size,
+            offset: *offset,
+            anchor: *anchor,
+        }),
+        E::Icon { ability_id, size, offset, anchor } => {
+            let image = cached_asset(format!("icon:{ability_id}"), || {
+                icon_cache?
+                    .get_icon(*ability_id as u64)
+                    .map(|d| (d.width, d.height, d.rgba))
+            })?;
+            Some(baras_overlay::ResolvedElement::Image { image, size: *size, offset: *offset, anchor: *anchor })
+        }
+        E::Svg { file, size, offset, anchor } => {
+            let px = (size * 2.0).ceil().max(1.0) as u32;
+            let image = cached_asset(format!("svg:{file}@{px}"), || {
+                let svg = read_map_rel(Path::new(file))?;
+                baras_overlay::rasterize_svg(svg.as_str(), px)
+            })?;
+            Some(baras_overlay::ResolvedElement::Image { image, size: *size, offset: *offset, anchor: *anchor })
+        }
+        E::Image { file, size, offset, anchor } => {
+            let image = cached_asset(format!("image:{file}"), || {
+                let bytes = read_map_bytes(Path::new(file))?;
+                baras_overlay::icons::decode_png_rgba(&bytes)
+            })?;
+            Some(baras_overlay::ResolvedElement::Image { image, size: *size, offset: *offset, anchor: *anchor })
+        }
     }
 }
 
 /// The full map payload for the current context (map + placeholder). Used to
 /// feed the overlay on spawn and when entering edit mode.
 pub fn current_map_data(edit_mode: bool) -> MapData {
-    map_data(current_map_svg(), edit_mode)
+    map_data(current_map_svg(), Vec::new(), edit_mode)
 }
 
 /// Spawn the overlay update router task.
@@ -399,9 +504,10 @@ async fn process_overlay_update(
                 ctx.phase = data.phase_slug.clone();
             });
             if let Some(tx) = map_tx {
+                let markers = resolve_markers(&data.markers, icon_cache);
                 let _ = tx
                     .send(OverlayCommand::UpdateData(OverlayData::Map(map_data(
-                        svg, edit_mode,
+                        svg, markers, edit_mode,
                     ))))
                     .await;
             }
@@ -787,7 +893,7 @@ async fn process_overlay_update(
 
                 // Map overlay (clear the displayed SVG, keep the edit-mode placeholder)
                 if let Some(tx) = state.get_tx(OverlayType::Map) {
-                    channels.push((tx.clone(), OverlayData::Map(map_data(None, state.move_mode))));
+                    channels.push((tx.clone(), OverlayData::Map(map_data(None, Vec::new(), state.move_mode))));
                 }
 
                 channels

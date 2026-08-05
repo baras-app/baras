@@ -18,6 +18,7 @@ use crate::combat_log::{CombatEvent, Entity, EntityType, Position};
 use crate::context::IStr;
 use crate::dsl::{BossEncounterDefinition, CounterCondition, CounterDefinition};
 use crate::game_data::{Difficulty, Discipline, SHIELD_EFFECT_IDS, defense_type, effect_id};
+use crate::markers::{MarkerRender, MarkerTracker};
 use crate::{effect_type_id, is_boss};
 
 use super::challenge::ChallengeTracker;
@@ -79,6 +80,10 @@ pub struct CombatEncounter {
     boss_definitions: Arc<Vec<BossEncounterDefinition>>,
     /// Index into boss_definitions for active boss (if detected)
     active_boss_idx: Option<usize>,
+    /// Map-marker lifecycle tracker, driven per event in log-time.
+    marker_tracker: MarkerTracker,
+    /// Active-boss index the `marker_tracker` was built for (rebuild on change).
+    marker_tracker_boss_idx: Option<usize>,
     /// Boss def indices whose encounter_trigger fired but are deferred to fallback timeout.
     /// Used by definitions with both encounter_trigger and encounter_trigger_fallback_secs.
     pub boss_encounter_triggers_pending: HashSet<usize>,
@@ -208,6 +213,8 @@ impl CombatEncounter {
             // Boss definitions
             boss_definitions: Arc::new(Vec::new()),
             active_boss_idx: None,
+            marker_tracker: MarkerTracker::default(),
+            marker_tracker_boss_idx: None,
             boss_encounter_triggers_pending: HashSet::new(),
 
             // Per-event evaluation caches (rebuilt lazily in refresh_eval_caches)
@@ -312,6 +319,51 @@ impl CombatEncounter {
     /// Get the active boss definition (if a boss is detected)
     pub fn active_boss_definition(&self) -> Option<&BossEncounterDefinition> {
         self.active_boss_idx.map(|idx| &self.boss_definitions[idx])
+    }
+
+    /// Advance the map-marker tracker by one event (log-time). Rebuilds the
+    /// tracker when the active boss changes (incl. first activation), then feeds
+    /// the event. Cheap no-op for fights without markers.
+    pub fn update_markers(&mut self, event: &CombatEvent) {
+        let idx = self.active_boss_idx;
+        if idx != self.marker_tracker_boss_idx {
+            let defs = idx
+                .map(|i| self.boss_definitions[i].map_markers.clone())
+                .unwrap_or_default();
+            self.marker_tracker = MarkerTracker::new(&defs);
+            self.marker_tracker_boss_idx = idx;
+        }
+        if self.marker_tracker.is_empty() {
+            return;
+        }
+        // Move the tracker out so we can also borrow `entities`/`phase` from self.
+        let mut tracker = std::mem::take(&mut self.marker_tracker);
+        let phase = self.current_phase.as_deref();
+        let entities = idx
+            .map(|i| self.boss_definitions[i].entities.as_slice())
+            .unwrap_or(&[]);
+        tracker.on_event(event, entities, phase);
+        self.marker_tracker = tracker;
+    }
+
+    /// Currently-shown map markers, transformed into overlay(map) space via each
+    /// group's calibration and carrying that group's visual elements. Asset refs
+    /// are resolved app-side; the overlay only scales this to the live window.
+    pub fn active_markers(&self) -> Vec<MarkerRender> {
+        let def = self.active_boss_definition();
+        self.marker_tracker
+            .active()
+            .into_iter()
+            .filter_map(|m| {
+                let g = def.and_then(|d| d.map_markers.iter().find(|g| g.id == m.group_id))?;
+                Some(MarkerRender {
+                    x: g.calibration.x.scale * m.x + g.calibration.x.offset,
+                    y: g.calibration.y.scale * m.y + g.calibration.y.offset,
+                    number: m.number,
+                    elements: g.elements.clone(),
+                })
+            })
+            .collect()
     }
 
     /// Set the active boss by definition index

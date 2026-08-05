@@ -7,7 +7,8 @@ use hashbrown::HashSet;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use super::{
-    ChallengeDefinition, Condition, CounterCondition, CounterDefinition, PhaseDefinition, Trigger,
+    ChallengeDefinition, Condition, CounterCondition, CounterDefinition, MapMarkerDefinition,
+    PhaseDefinition, Trigger,
 };
 use crate::dsl::audio::AudioConfig;
 use crate::game_data::Difficulty;
@@ -380,6 +381,10 @@ pub struct BossEncounterDefinition {
     #[serde(default, alias = "challenge", skip_serializing_if = "Vec::is_empty")]
     pub challenges: Vec<ChallengeDefinition>,
 
+    /// Map marker definitions (numbered markers drawn on the map overlay)
+    #[serde(default, alias = "map_marker", skip_serializing_if = "Vec::is_empty")]
+    pub map_markers: Vec<MapMarkerDefinition>,
+
     // ─── Notes ────────────────────────────────────────────────────────────────
     /// User notes for this encounter (Markdown formatted)
     /// Displayed on the Notes overlay when this encounter is active
@@ -438,6 +443,7 @@ impl Default for BossEncounterDefinition {
             counters: Vec::new(),
             timers: Vec::new(),
             challenges: Vec::new(),
+            map_markers: Vec::new(),
             notes: None,
             has_victory_trigger: false,
             victory_trigger: None,

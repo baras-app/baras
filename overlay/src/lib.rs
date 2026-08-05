@@ -91,6 +91,11 @@ pub use overlays::{
     MapConfig,
     MapData,
     MapOverlay,
+    MarkerAnchor,
+    MarkerOffset,
+    ResolvedElement,
+    ResolvedMarker,
+    rasterize_svg,
     MetricEntry,
     MetricOverlay,
     // Notes overlay

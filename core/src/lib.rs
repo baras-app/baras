@@ -6,6 +6,7 @@ pub mod effects;
 pub mod encounter;
 pub mod game_data;
 pub mod icons;
+pub mod markers;
 #[cfg(feature = "query")]
 pub mod query;
 pub mod serde_defaults;

@@ -23,6 +23,7 @@ mod definition;
 mod entity_filter;
 mod error;
 mod loader;
+mod map_marker;
 mod phase;
 pub mod triggers;
 
@@ -34,5 +35,6 @@ pub use definition::*;
 pub use entity_filter::*;
 pub use error::DslError;
 pub use loader::*;
+pub use map_marker::*;
 pub use phase::*;
 pub use triggers::*;

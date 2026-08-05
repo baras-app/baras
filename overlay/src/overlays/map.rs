@@ -68,7 +68,42 @@ pub struct MapData {
     pub svg: Option<Arc<String>>,
     /// Root-level placeholder SVG shown only in edit mode when `svg` is `None`.
     pub placeholder: Option<Arc<String>>,
+    /// Resolved markers to draw on top of the map, in overlay(map) space.
+    pub markers: Vec<ResolvedMarker>,
 }
+
+/// A marker resolved for painting: an overlay(map)-space point and its ordered
+/// visual elements (asset refs already resolved to bytes by the app layer).
+#[derive(Debug, Clone, Default)]
+pub struct ResolvedMarker {
+    pub x: f32,
+    pub y: f32,
+    pub elements: Vec<ResolvedElement>,
+}
+
+/// One resolved, ready-to-paint element of a marker.
+#[derive(Debug, Clone)]
+pub enum ResolvedElement {
+    /// Text drawn with a glow.
+    Text {
+        text: String,
+        color: [u8; 4],
+        /// Element size in overlay(map) units (scaled to the live window on draw).
+        size: f32,
+        offset: MarkerOffset,
+        anchor: MarkerAnchor,
+    },
+    /// A pre-rasterized RGBA image (icon / svg / png), drawn at `size`.
+    Image {
+        image: Arc<(u32, u32, Vec<u8>)>,
+        size: f32,
+        offset: MarkerOffset,
+        anchor: MarkerAnchor,
+    },
+}
+
+/// Re-exported so callers build markers with the same offset/anchor types.
+pub use baras_core::dsl::{Anchor as MarkerAnchor, Offset as MarkerOffset};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layout Constants
@@ -159,6 +194,36 @@ fn rasterize(
     Some((width, height, rgba))
 }
 
+/// Rasterize an SVG document to a `px` × `px` RGBA image (aspect-preserved,
+/// centered) for use as a marker element. Returns `(width, height, rgba)` in
+/// non-premultiplied RGBA, or `None` on parse failure. Called app-side to resolve
+/// `svg` marker elements to bytes the overlay can draw.
+pub fn rasterize_svg(svg: &str, px: u32) -> Option<(u32, u32, Vec<u8>)> {
+    let tree = parse_tree(svg)?;
+    let cfg = MapConfig {
+        preserve_aspect: true,
+        ..MapConfig::default()
+    };
+    rasterize(&tree, &cfg, px, px)
+}
+
+/// Offset of an element box's center from the (offset) marker point, given the
+/// anchor and box size `(w, h)`. Screen y is downward.
+fn anchor_center(anchor: MarkerAnchor, w: f32, h: f32) -> (f32, f32) {
+    let (hx, hy) = (w / 2.0, h / 2.0);
+    match anchor {
+        MarkerAnchor::Center => (0.0, 0.0),
+        MarkerAnchor::Top => (0.0, hy),
+        MarkerAnchor::Bottom => (0.0, -hy),
+        MarkerAnchor::Left => (hx, 0.0),
+        MarkerAnchor::Right => (-hx, 0.0),
+        MarkerAnchor::TopLeft => (hx, hy),
+        MarkerAnchor::TopRight => (-hx, hy),
+        MarkerAnchor::BottomLeft => (hx, -hy),
+        MarkerAnchor::BottomRight => (-hx, -hy),
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Overlay Implementation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,8 +255,13 @@ pub struct MapOverlay {
     /// The currently displayed raster and what it corresponds to.
     raster: Option<Raster>,
     raster_id: Option<RasterId>,
+    /// Intrinsic size (viewBox) of the SVG the current raster came from, used to
+    /// map marker overlay(map)-space coords onto the window.
+    svg_size: Option<(f32, f32)>,
     /// In-flight rasterization job (worker thread) and the id it targets.
-    pending: Option<(RasterId, Receiver<Option<Raster>>)>,
+    pending: Option<(RasterId, Receiver<Option<(Raster, (f32, f32))>>)>,
+    /// Markers to paint over the map (in overlay(map) space), from `MapData`.
+    markers: Vec<ResolvedMarker>,
 }
 
 impl MapOverlay {
@@ -217,7 +287,9 @@ impl MapOverlay {
             generation: 0,
             raster: None,
             raster_id: None,
+            svg_size: None,
             pending: None,
+            markers: Vec::new(),
         })
     }
 
@@ -305,7 +377,13 @@ impl MapOverlay {
                             empty = result.is_none(),
                             "map.overlay: raster accepted"
                         );
-                        self.raster = result;
+                        match result {
+                            Some((r, sz)) => {
+                                self.raster = Some(r);
+                                self.svg_size = Some(sz);
+                            }
+                            None => self.raster = None,
+                        }
                         self.raster_id = Some(want);
                     } else {
                         tracing::debug!(got = ?*id, ?want, "map.overlay: raster rejected (stale)");
@@ -336,7 +414,10 @@ impl MapOverlay {
             let (tx, rx) = mpsc::channel();
             let cfg = self.config.clone();
             thread::spawn(move || {
-                let out = parse_tree(&source).and_then(|t| rasterize(&t, &cfg, width, height));
+                let out = parse_tree(&source).and_then(|t| {
+                    let sz = t.size();
+                    rasterize(&t, &cfg, width, height).map(|r| (r, (sz.width(), sz.height())))
+                });
                 let _ = tx.send(out);
             });
             self.pending = Some((want, rx));
@@ -348,10 +429,101 @@ impl MapOverlay {
             self.frame
                 .draw_image(data, *iw, *ih, 0.0, 0.0, *iw as f32, *ih as f32);
         }
+        // Markers are a separate layer drawn on top of the cached raster every
+        // frame, so a map (SVG) swap never disturbs them.
+        self.draw_markers(width, height);
         if self.pending.is_some() {
             self.draw_loading(width, height);
         }
         self.frame.end_frame();
+    }
+
+    /// Paint the current markers over the map. Markers are in overlay(map) space
+    /// (the SVG's coordinate system); we map them to the window with the same
+    /// transform `rasterize` uses for the map image, so they stay glued to the art.
+    fn draw_markers(&mut self, width: u32, height: u32) {
+        if self.markers.is_empty() {
+            return;
+        }
+        let Some((sw, sh)) = self.svg_size else {
+            return;
+        };
+        if sw <= 0.0 || sh <= 0.0 {
+            return;
+        }
+        let (scale_x, scale_y) = if self.config.preserve_aspect {
+            let s = (width as f32 / sw).min(height as f32 / sh);
+            (s, s)
+        } else {
+            (width as f32 / sw, height as f32 / sh)
+        };
+        let off_x = (width as f32 - sw * scale_x) / 2.0;
+        let off_y = (height as f32 - sh * scale_y) / 2.0;
+        // Uniform scale for element sizes so icons/text aren't distorted by a
+        // non-square window stretch (positions still use the per-axis scale).
+        let s = (scale_x * scale_y).sqrt();
+
+        // Move the list out so the `draw_*` calls can borrow `&mut self.frame`.
+        let markers = std::mem::take(&mut self.markers);
+        for m in &markers {
+            for el in &m.elements {
+                match el {
+                    ResolvedElement::Text {
+                        text,
+                        color,
+                        size,
+                        offset,
+                        anchor,
+                    } => {
+                        let px = off_x + (m.x + offset.x) * scale_x;
+                        let py = off_y + (m.y + offset.y) * scale_y;
+                        let font = (size * s).max(1.0);
+                        let (tw, th) = self.frame.measure_text_styled(text, font, true, false);
+                        let (cx, cy) = anchor_center(*anchor, tw, th);
+                        let x = px + cx - tw / 2.0;
+                        let y = py + cy + th / 2.0; // draw_text y is the baseline
+                        self.frame.draw_text_with_glow(
+                            text,
+                            x,
+                            y,
+                            font,
+                            color_from_rgba(*color),
+                            true,
+                            false,
+                        );
+                    }
+                    ResolvedElement::Image {
+                        image,
+                        size,
+                        offset,
+                        anchor,
+                    } => {
+                        let (iw, ih, rgba) = (image.0, image.1, &image.2);
+                        let d = (size * s).max(1.0);
+                        let px = off_x + (m.x + offset.x) * scale_x;
+                        let py = off_y + (m.y + offset.y) * scale_y;
+                        let (cx, cy) = anchor_center(*anchor, d, d);
+                        let dx = px + cx - d / 2.0;
+                        let dy = py + cy - d / 2.0;
+                        self.frame
+                            .draw_image_with_shadow(rgba, iw, ih, dx, dy, d, d);
+                    }
+                }
+            }
+        }
+        self.markers = markers;
+    }
+
+    /// Replace the marker layer. Returns `true` if it changed enough to warrant a
+    /// repaint (position or element-count change — content bytes rarely change
+    /// without one, and comparing them each update would be wasteful).
+    fn set_markers(&mut self, markers: Vec<ResolvedMarker>) -> bool {
+        let changed = markers.len() != self.markers.len()
+            || markers.iter().zip(&self.markers).any(|(a, b)| {
+                a.x != b.x || a.y != b.y || a.elements.len() != b.elements.len()
+            });
+        self.markers = markers;
+        changed
     }
 
     /// Draw a centered "Loading…" label over the current content.
@@ -374,10 +546,11 @@ impl MapOverlay {
 impl Overlay for MapOverlay {
     fn update_data(&mut self, data: OverlayData) -> bool {
         if let OverlayData::Map(map_data) = data {
-            // Evaluate both so a placeholder change isn't short-circuited away.
+            // Evaluate all so one change isn't short-circuited away.
             let map_changed = self.set_map(map_data.svg);
             let placeholder_changed = self.set_placeholder(map_data.placeholder);
-            map_changed || placeholder_changed
+            let markers_changed = self.set_markers(map_data.markers);
+            map_changed || placeholder_changed || markers_changed
         } else {
             false
         }
