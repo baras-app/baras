@@ -355,6 +355,9 @@ pub enum OverlayUpdate {
     CombatEnded,
     /// Combat metrics for metric and personal overlays
     DataUpdated(CombatData),
+    /// Encounter/phase + markers for the map overlay. Driven at 30ms by the
+    /// effects task, independent of the (500ms) metrics path.
+    MapUpdated(MapUpdate),
     /// Effect data for raid frame overlay (HoTs, debuffs, etc.)
     EffectsUpdated(RaidFrameData),
     /// Boss health data for boss health overlay
@@ -2472,9 +2475,12 @@ impl CombatService {
 
                 // For CombatStarted, start polling during combat
                 if matches!(trigger, MetricsTrigger::CombatStarted) {
-                    // Poll during active combat
+                    // Poll during active combat. Metrics are intentionally slow
+                    // (500ms) — updating them faster is disorienting. The map /
+                    // marker overlay does NOT ride this path; it updates at 30ms
+                    // via the effects task (see `MapUpdated`).
                     while shared.in_combat.load(Ordering::SeqCst) {
-                        tokio::time::sleep(std::time::Duration::from_millis(30)).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
                         if let Some(data) = calculate_combat_data(&shared).await
                             && !data.metrics.is_empty()
@@ -2518,6 +2524,7 @@ impl CombatService {
                 let effects_b_active = shared.effects_b_overlay_active.load(Ordering::Relaxed);
                 let cooldowns_active = shared.cooldowns_overlay_active.load(Ordering::Relaxed);
                 let dot_tracker_active = shared.dot_tracker_overlay_active.load(Ordering::Relaxed);
+                let map_active = shared.map_overlay_active.load(Ordering::Relaxed);
                 let in_combat = shared.in_combat.load(Ordering::Relaxed);
                 let is_live = shared.is_live_tailing.load(Ordering::SeqCst);
 
@@ -2528,7 +2535,8 @@ impl CombatService {
                     || effects_a_active
                     || effects_b_active
                     || cooldowns_active
-                    || dot_tracker_active;
+                    || dot_tracker_active
+                    || map_active;
                 let needs_audio = is_live && (in_combat || raid_active);
 
                 // Adaptive sleep: fast when active, slow when idle
@@ -2556,6 +2564,13 @@ impl CombatService {
                 // Skip processing if nothing needs updating
                 if !any_overlay_active && !needs_audio {
                     continue;
+                }
+
+                // Map overlay: encounter/phase + markers, at the 30ms cadence
+                // (independent of the 500ms metrics path).
+                if map_active {
+                    let update = calculate_map_update(&shared).await;
+                    let _ = overlay_tx.try_send(OverlayUpdate::MapUpdated(update));
                 }
 
                 // Raid frames: send whenever there are effects (or always in rearrange mode)
@@ -2847,6 +2862,28 @@ impl CombatService {
     }
 }
 
+/// Lightweight map-overlay update: encounter/phase slugs and active markers read
+/// straight from the live encounter. No metrics work — runs on the 30ms effects
+/// task so the map/markers stay responsive without speeding up metrics.
+async fn calculate_map_update(shared: &Arc<SharedState>) -> MapUpdate {
+    let session_guard = shared.session.read().await;
+    let Some(session) = session_guard.as_ref() else {
+        return MapUpdate::default();
+    };
+    let session = session.read().await;
+    let Some(cache) = session.session_cache.as_ref() else {
+        return MapUpdate::default();
+    };
+    let Some(encounter) = cache.last_combat_encounter() else {
+        return MapUpdate::default();
+    };
+    MapUpdate {
+        encounter_slug: encounter.active_boss_definition().map(|def| def.id.clone()),
+        phase_slug: encounter.current_phase.clone(),
+        markers: encounter.active_markers(),
+    }
+}
+
 /// Calculate unified combat data for all overlays
 async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> {
     let session_guard = shared.session.read().await;
@@ -3077,12 +3114,6 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
             .map(|(start, now)| (now - start).num_milliseconds() as f32 / 1000.0)
             .unwrap_or(0.0);
 
-        // Raw filesystem slugs for the map overlay (boss definition id + raw phase
-        // id, NOT the display names resolved above).
-        let encounter_slug = encounter.active_boss_definition().map(|def| def.id.clone());
-        let phase_slug = encounter.current_phase.clone();
-        let markers = encounter.active_markers();
-
         Some(CombatData {
             metrics,
             player_entity_id,
@@ -3094,9 +3125,6 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
             challenges,
             current_phase,
             phase_time_secs,
-            encounter_slug,
-            phase_slug,
-            markers,
         })
     } else if let Some(summary) = cache.encounter_history.summaries().last() {
         // Fallback to historical summary for initial hydration when no live encounter exists
@@ -3195,9 +3223,6 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
             challenges,
             current_phase: None,
             phase_time_secs: 0.0,
-            encounter_slug: None,
-            phase_slug: None,
-            markers: Vec::new(),
         })
     } else {
         None
@@ -4232,14 +4257,18 @@ pub struct CombatData {
     pub current_phase: Option<String>,
     /// Time spent in the current phase (seconds)
     pub phase_time_secs: f32,
-    /// Filesystem-friendly slug of the active boss definition (e.g. "apex_vanguard"),
-    /// used to locate the map overlay SVG. `None` when no boss is active.
+}
+
+/// Map-overlay update: which map to show (encounter + phase slugs) plus the
+/// active markers. Produced on the 30ms effects task, independent of the 500ms
+/// metrics path, so the map/markers stay responsive without speeding up metrics.
+#[derive(Debug, Clone, Default)]
+pub struct MapUpdate {
+    /// Filesystem-friendly slug of the active boss definition (locates the SVG).
     pub encounter_slug: Option<String>,
-    /// Filesystem-friendly slug of the current phase (the raw phase id, e.g. "walker_1"),
-    /// used to locate the map overlay SVG. `None` when no phase is active.
+    /// Filesystem-friendly slug of the current phase (locates the SVG).
     pub phase_slug: Option<String>,
-    /// Active map markers for the map overlay: overlay(map)-space points carrying
-    /// their visual elements. Asset refs are resolved in the router.
+    /// Active markers, overlay(map)-space, carrying their visual elements.
     pub markers: Vec<baras_core::markers::MarkerRender>,
 }
 

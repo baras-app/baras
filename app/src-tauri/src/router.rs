@@ -487,9 +487,12 @@ async fn process_overlay_update(
                     .await;
             }
 
-            // Feed the map overlay the SVG for the current encounter+phase.
-            // Reads disk only when the (encounter, phase) key changes; the
-            // overlay itself ignores unchanged SVG source.
+        }
+        OverlayUpdate::MapUpdated(update) => {
+            // Feed the map overlay the SVG for the current encounter+phase plus
+            // the active markers. Driven at 30ms (effects task), independent of
+            // the metrics path. Reads disk only when the (encounter, phase) key
+            // changes; the overlay ignores unchanged SVG source.
             let (map_tx, edit_mode) = {
                 let state = match overlay_state.lock() {
                     Ok(s) => s,
@@ -500,11 +503,11 @@ async fn process_overlay_update(
             // Always keep the map context current, even if no map overlay is
             // running yet (so it can be fed the right map the moment it spawns).
             let svg = update_map_context(|ctx| {
-                ctx.encounter = data.encounter_slug.clone();
-                ctx.phase = data.phase_slug.clone();
+                ctx.encounter = update.encounter_slug.clone();
+                ctx.phase = update.phase_slug.clone();
             });
             if let Some(tx) = map_tx {
-                let markers = resolve_markers(&data.markers, icon_cache);
+                let markers = resolve_markers(&update.markers, icon_cache);
                 let _ = tx
                     .send(OverlayCommand::UpdateData(OverlayData::Map(map_data(
                         svg, markers, edit_mode,

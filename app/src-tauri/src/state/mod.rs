@@ -158,6 +158,8 @@ pub struct SharedState {
     pub cooldowns_overlay_active: AtomicBool,
     /// Whether DOT tracker overlay is currently running
     pub dot_tracker_overlay_active: AtomicBool,
+    /// Whether the map overlay is currently running
+    pub map_overlay_active: AtomicBool,
     /// Whether raid frame rearrange mode is active (bypasses rendering gates)
     pub rearrange_mode: AtomicBool,
 
@@ -195,6 +197,7 @@ impl SharedState {
             // Overlay status flags - updated by OverlayManager
             raid_overlay_active: AtomicBool::new(false),
             boss_health_overlay_active: AtomicBool::new(false),
+            map_overlay_active: AtomicBool::new(false),
             timer_overlay_active: AtomicBool::new(false),
             effects_a_overlay_active: AtomicBool::new(false),
             effects_b_overlay_active: AtomicBool::new(false),
