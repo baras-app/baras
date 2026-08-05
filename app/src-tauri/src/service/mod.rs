@@ -2877,11 +2877,21 @@ async fn calculate_map_update(shared: &Arc<SharedState>) -> MapUpdate {
     let Some(encounter) = cache.last_combat_encounter() else {
         return MapUpdate::default();
     };
-    MapUpdate {
+    let update = MapUpdate {
         encounter_slug: encounter.active_boss_definition().map(|def| def.id.clone()),
         phase_slug: encounter.current_phase.clone(),
         markers: encounter.active_markers(),
+    };
+    if !update.markers.is_empty() {
+        debug!(
+            encounter = ?update.encounter_slug,
+            phase = ?update.phase_slug,
+            marker_count = update.markers.len(),
+            first = ?update.markers.first().map(|m| (m.number, m.x, m.y)),
+            "map update: entity markers"
+        );
     }
+    update
 }
 
 /// Calculate unified combat data for all overlays

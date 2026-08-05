@@ -342,7 +342,18 @@ impl CombatEncounter {
         let entities = idx
             .map(|i| self.boss_definitions[i].entities.as_slice())
             .unwrap_or(&[]);
+        let before = tracker.active().len();
         tracker.on_event(event, entities, phase);
+        let after = tracker.active().len();
+        if before != after {
+            tracing::debug!(
+                before,
+                after,
+                phase = ?phase,
+                timestamp = %event.timestamp,
+                "map markers changed"
+            );
+        }
         self.marker_tracker = tracker;
     }
 

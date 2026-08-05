@@ -474,6 +474,12 @@ pub fn App() -> Element {
                     // Locking saves positions to disk; mark profile dirty
                     if was_move_mode && !status.move_mode {
                         let _ = profile_dirty.try_write().map(|mut w| *w = true);
+                        // Positions/sizes were just persisted on lock — refresh the
+                        // settings UI so the width/height/position fields reflect
+                        // the moved/resized overlays.
+                        if let Some(cfg) = api::get_config().await {
+                            let _ = overlay_settings.try_write().map(|mut w| *w = cfg.overlay_settings);
+                        }
                     }
                 }
             });
