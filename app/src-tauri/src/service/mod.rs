@@ -2492,6 +2492,31 @@ impl CombatService {
             }
         });
 
+        // Spawn a dedicated map-overlay task. The map/marker overlay updates at
+        // 30ms on its OWN loop — isolated from the 500ms metrics path AND the
+        // effects task — so showing the map never spins up the heavy effect/audio
+        // builders or otherwise contends with the parser for the session lock.
+        {
+            let shared = self.shared.clone();
+            let overlay_tx = self.overlay_tx.clone();
+            tokio::spawn(async move {
+                loop {
+                    let active = shared.map_overlay_active.load(Ordering::Relaxed);
+                    tokio::time::sleep(std::time::Duration::from_millis(if active {
+                        30
+                    } else {
+                        500
+                    }))
+                    .await;
+                    if !shared.map_overlay_active.load(Ordering::Relaxed) {
+                        continue;
+                    }
+                    let update = calculate_map_update(&shared).await;
+                    let _ = overlay_tx.try_send(OverlayUpdate::MapUpdated(update));
+                }
+            });
+        }
+
         // Spawn effects + boss health + audio sampling task (polls continuously)
         // Uses adaptive sleep: fast when active, slow (500ms) when idle
         let shared = self.shared.clone();
@@ -2524,19 +2549,18 @@ impl CombatService {
                 let effects_b_active = shared.effects_b_overlay_active.load(Ordering::Relaxed);
                 let cooldowns_active = shared.cooldowns_overlay_active.load(Ordering::Relaxed);
                 let dot_tracker_active = shared.dot_tracker_overlay_active.load(Ordering::Relaxed);
-                let map_active = shared.map_overlay_active.load(Ordering::Relaxed);
                 let in_combat = shared.in_combat.load(Ordering::Relaxed);
                 let is_live = shared.is_live_tailing.load(Ordering::SeqCst);
 
-                // Determine if any work needs to be done
+                // Determine if any work needs to be done. NOTE: the map overlay is
+                // intentionally NOT here — it runs on its own dedicated loop above.
                 let any_overlay_active = raid_active
                     || boss_active
                     || timer_active
                     || effects_a_active
                     || effects_b_active
                     || cooldowns_active
-                    || dot_tracker_active
-                    || map_active;
+                    || dot_tracker_active;
                 let needs_audio = is_live && (in_combat || raid_active);
 
                 // Adaptive sleep: fast when active, slow when idle
@@ -2564,13 +2588,6 @@ impl CombatService {
                 // Skip processing if nothing needs updating
                 if !any_overlay_active && !needs_audio {
                     continue;
-                }
-
-                // Map overlay: encounter/phase + markers, at the 30ms cadence
-                // (independent of the 500ms metrics path).
-                if map_active {
-                    let update = calculate_map_update(&shared).await;
-                    let _ = overlay_tx.try_send(OverlayUpdate::MapUpdated(update));
                 }
 
                 // Raid frames: send whenever there are effects (or always in rearrange mode)
@@ -2866,8 +2883,14 @@ impl CombatService {
 /// straight from the live encounter. No metrics work — runs on the 30ms effects
 /// task so the map/markers stay responsive without speeding up metrics.
 async fn calculate_map_update(shared: &Arc<SharedState>) -> MapUpdate {
-    let session_guard = shared.session.read().await;
-    let Some(session) = session_guard.as_ref() else {
+    // Clone the session Arc and drop the outer guard immediately, so we never
+    // hold the outer session lock across the inner `.await` (which would block
+    // the parser / file-switch writer).
+    let session = {
+        let guard = shared.session.read().await;
+        guard.as_ref().cloned()
+    };
+    let Some(session) = session else {
         return MapUpdate::default();
     };
     let session = session.read().await;
