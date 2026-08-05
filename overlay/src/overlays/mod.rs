@@ -44,7 +44,10 @@ pub use effects::{EffectEntry, EffectsData, EffectsOverlay};
 pub use effects_ab::{
     EffectABEntry, EffectsABConfig, EffectsABData, EffectsABOverlay, EffectsLayout,
 };
-pub use map::{MapConfig, MapData, MapOverlay};
+pub use map::{
+    MapConfig, MapData, MapOverlay, MarkerAnchor, MarkerOffset, ResolvedElement, ResolvedMarker,
+    rasterize_svg,
+};
 pub use metric::{MetricData, MetricEntry, MetricOverlay};
 pub use personal::{PersonalOverlay, PersonalStats};
 pub use raid::{

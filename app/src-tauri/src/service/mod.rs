@@ -3500,6 +3500,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
         // id, NOT the display names resolved above).
         let encounter_slug = encounter.active_boss_definition().map(|def| def.id.clone());
         let phase_slug = encounter.current_phase.clone();
+        let markers = encounter.active_markers();
 
         Some(CombatData {
             metrics,
@@ -3517,6 +3518,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
             enemy_frames,
             encounter_slug,
             phase_slug,
+            markers,
         })
     } else if let Some(summary) = cache.encounter_history.summaries().last() {
         // Fallback to historical summary for initial hydration when no live encounter exists
@@ -3624,6 +3626,7 @@ async fn calculate_combat_data(shared: &Arc<SharedState>) -> Option<CombatData> 
             enemy_frames: Vec::new(),
             encounter_slug: None,
             phase_slug: None,
+            markers: Vec::new(),
         })
     } else {
         None
@@ -4871,6 +4874,9 @@ pub struct CombatData {
     /// Filesystem-friendly slug of the current phase (the raw phase id, e.g. "walker_1"),
     /// used to locate the map overlay SVG. `None` when no phase is active.
     pub phase_slug: Option<String>,
+    /// Active map markers for the map overlay: overlay(map)-space points carrying
+    /// their visual elements. Asset refs are resolved in the router.
+    pub markers: Vec<baras_core::markers::MarkerRender>,
 }
 
 impl CombatData {
