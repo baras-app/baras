@@ -2077,6 +2077,10 @@ impl ServiceHandle {
                 .shared
                 .ability_cast_overlay_active
                 .store(active, Ordering::SeqCst),
+            "map" => self
+                .shared
+                .map_overlay_active
+                .store(active, Ordering::SeqCst),
             _ => {}
         }
     }
