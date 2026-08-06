@@ -344,14 +344,20 @@ impl CombatEncounter {
             .unwrap_or(&[]);
         let before = tracker.active().len();
         tracker.on_event(event, entities, phase);
-        let after = tracker.active().len();
-        if before != after {
+        let active = tracker.active();
+        if active.len() != before {
+            let list = active
+                .iter()
+                .map(|m| format!("{}:({:.1},{:.1})", m.number, m.x, m.y))
+                .collect::<Vec<_>>()
+                .join(" ");
             tracing::debug!(
                 before,
-                after,
+                after = active.len(),
                 phase = ?phase,
                 timestamp = %event.timestamp,
-                "map markers changed"
+                markers = %list,
+                "map markers changed (game space)"
             );
         }
         self.marker_tracker = tracker;

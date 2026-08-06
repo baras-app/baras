@@ -2500,6 +2500,9 @@ impl CombatService {
             let shared = self.shared.clone();
             let overlay_tx = self.overlay_tx.clone();
             tokio::spawn(async move {
+                // Remember the last marker set so we only log on change (this loop
+                // runs ~30/sec while the map is up).
+                let mut last_sig = String::new();
                 loop {
                     let active = shared.map_overlay_active.load(Ordering::Relaxed);
                     tokio::time::sleep(std::time::Duration::from_millis(if active {
@@ -2512,6 +2515,22 @@ impl CombatService {
                         continue;
                     }
                     let update = calculate_map_update(&shared).await;
+                    let sig = update
+                        .markers
+                        .iter()
+                        .map(|m| format!("{}:({:.1},{:.1})", m.number, m.x, m.y))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    if sig != last_sig {
+                        debug!(
+                            encounter = ?update.encounter_slug,
+                            phase = ?update.phase_slug,
+                            count = update.markers.len(),
+                            markers = %sig,
+                            "map markers (overlay space)"
+                        );
+                        last_sig = sig;
+                    }
                     let _ = overlay_tx.try_send(OverlayUpdate::MapUpdated(update));
                 }
             });
@@ -2900,21 +2919,11 @@ async fn calculate_map_update(shared: &Arc<SharedState>) -> MapUpdate {
     let Some(encounter) = cache.last_combat_encounter() else {
         return MapUpdate::default();
     };
-    let update = MapUpdate {
+    MapUpdate {
         encounter_slug: encounter.active_boss_definition().map(|def| def.id.clone()),
         phase_slug: encounter.current_phase.clone(),
         markers: encounter.active_markers(),
-    };
-    if !update.markers.is_empty() {
-        debug!(
-            encounter = ?update.encounter_slug,
-            phase = ?update.phase_slug,
-            marker_count = update.markers.len(),
-            first = ?update.markers.first().map(|m| (m.number, m.x, m.y)),
-            "map update: entity markers"
-        );
     }
-    update
 }
 
 /// Calculate unified combat data for all overlays
