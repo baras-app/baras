@@ -11,6 +11,7 @@
 //! is in flight the overlay keeps drawing the previous image with a "Loading…"
 //! label over it, so the paint loop stays responsive even for large SVGs.
 
+use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, OnceLock};
 use std::thread;
@@ -64,14 +65,25 @@ impl Default for MapConfig {
 /// identical sends are cheap to detect.
 #[derive(Debug, Clone, Default)]
 pub struct MapData {
-    /// Raw SVG document source, or `None` to clear the map.
+    /// Base map source (constant per phase), or `None` to clear the map.
     pub svg: Option<Arc<String>>,
-    /// Timed overlay SVG composited on top of the base while active, or `None`.
-    pub overlay: Option<Arc<String>>,
+    /// The encounter's timed-overlay library; identity (Arc ptr) drives change
+    /// detection so it's only re-warmed when the encounter changes.
+    pub overlay_library: Option<Arc<MapLibrary>>,
+    /// Which library id to composite on top of the base right now, or `None`.
+    pub overlay_id: Option<String>,
     /// Root-level placeholder SVG shown only in edit mode when `svg` is `None`.
     pub placeholder: Option<Arc<String>>,
     /// Resolved markers to draw on top of the map, in overlay(map) space.
     pub markers: Vec<ResolvedMarker>,
+}
+
+/// The encounter's timed-overlay SVG library: `id (svg name) → source`. Sent
+/// whole on encounter change; the overlay pre-rasterizes every entry so that a
+/// timed swap is a cache lookup rather than a rasterization.
+#[derive(Debug, Default)]
+pub struct MapLibrary {
+    pub sources: HashMap<String, Arc<String>>,
 }
 
 /// A marker resolved for painting: an overlay(map)-space point and its ordered
@@ -244,10 +256,6 @@ enum Active {
 /// on any source/config change), which source is active, and the pixel size.
 type RasterId = (u64, Active, u32, u32);
 
-/// Identifies an overlay-layer raster: its source generation and pixel size.
-/// The overlay has a single source (no Map/Placeholder distinction).
-type OverlayRasterId = (u64, u32, u32);
-
 /// Rasterize `source` to a window-sized image on a worker thread. Returns a
 /// receiver for `(raster, intrinsic_size)`, or `None` if it can't be rendered.
 /// Shared by the base and overlay layers so both use the identical transform.
@@ -286,15 +294,16 @@ pub struct MapOverlay {
     svg_size: Option<(f32, f32)>,
     /// In-flight rasterization job (worker thread) and the id it targets.
     pending: Option<(RasterId, Receiver<Option<(Raster, (f32, f32))>>)>,
-    /// Raw SVG source of the active timed overlay (drawn on top of the base).
-    overlay_source: Option<Arc<String>>,
-    /// Bumped whenever the overlay source changes, to invalidate its raster.
-    overlay_generation: u64,
-    /// The currently displayed overlay raster and the id it corresponds to.
-    overlay_raster: Option<Raster>,
-    overlay_raster_id: Option<OverlayRasterId>,
-    /// In-flight overlay rasterization job.
-    overlay_pending: Option<(OverlayRasterId, Receiver<Option<(Raster, (f32, f32))>>)>,
+    /// Current timed-overlay library (Arc ptr identity = change detection).
+    overlay_library: Option<Arc<MapLibrary>>,
+    /// Warm rasters for every library id, keyed by (id, width, height).
+    overlay_cache: HashMap<(String, u32, u32), Raster>,
+    /// In-flight warming jobs, same key.
+    overlay_pending: HashMap<(String, u32, u32), Receiver<Option<(Raster, (f32, f32))>>>,
+    /// Window size the cache was warmed for; a change clears + re-warms it.
+    overlay_dims: Option<(u32, u32)>,
+    /// Which library id to draw on top of the base this frame.
+    active_overlay_id: Option<String>,
     /// Markers to paint over the map (in overlay(map) space), from `MapData`.
     markers: Vec<ResolvedMarker>,
 }
@@ -324,11 +333,11 @@ impl MapOverlay {
             raster_id: None,
             svg_size: None,
             pending: None,
-            overlay_source: None,
-            overlay_generation: 0,
-            overlay_raster: None,
-            overlay_raster_id: None,
-            overlay_pending: None,
+            overlay_library: None,
+            overlay_cache: HashMap::new(),
+            overlay_pending: HashMap::new(),
+            overlay_dims: None,
+            active_overlay_id: None,
             markers: Vec::new(),
         })
     }
@@ -350,13 +359,30 @@ impl MapOverlay {
         true
     }
 
-    /// Replace the timed overlay SVG source. Returns `true` if it changed.
-    fn set_overlay(&mut self, svg: Option<Arc<String>>) -> bool {
-        if self.overlay_source.as_deref() == svg.as_deref() {
+    /// Swap the timed-overlay library. Clears the raster cache when the library
+    /// actually changes (Arc identity), so the new set re-warms. Returns `true`
+    /// if it changed.
+    fn set_overlay_library(&mut self, lib: Option<Arc<MapLibrary>>) -> bool {
+        let changed = match (&self.overlay_library, &lib) {
+            (Some(a), Some(b)) => !Arc::ptr_eq(a, b),
+            (None, None) => false,
+            _ => true,
+        };
+        if changed {
+            self.overlay_library = lib;
+            self.overlay_cache.clear();
+            self.overlay_pending.clear();
+        }
+        changed
+    }
+
+    /// Set which library id is composited on the base right now. Returns `true`
+    /// if it changed.
+    fn set_active_overlay(&mut self, id: Option<String>) -> bool {
+        if self.active_overlay_id == id {
             return false;
         }
-        self.overlay_source = svg;
-        self.overlay_generation = self.overlay_generation.wrapping_add(1);
+        self.active_overlay_id = id;
         true
     }
 
@@ -408,9 +434,8 @@ impl MapOverlay {
             self.raster_id = None;
             self.pending = None;
             // A timed overlay never shows without a base map.
-            self.overlay_raster = None;
-            self.overlay_raster_id = None;
-            self.overlay_pending = None;
+            self.overlay_cache.clear();
+            self.overlay_pending.clear();
             self.frame.begin_frame_with_content_height(0.0);
             self.frame.end_frame();
             return;
@@ -469,41 +494,44 @@ impl MapOverlay {
             self.pending = Some((want, rx));
         }
 
-        // Timed overlay layer: only over a real map (never the placeholder), and
-        // only when a source is set. Same worker/accept/spawn machinery as the
-        // base, its own generation so a base swap doesn't re-rasterize it.
-        let overlay_source = (active == Active::Map)
-            .then(|| self.overlay_source.clone())
-            .flatten();
-        match overlay_source {
-            Some(src) => {
-                let owant: OverlayRasterId = (self.overlay_generation, width, height);
-                if let Some((id, rx)) = &self.overlay_pending {
-                    match rx.try_recv() {
-                        Ok(result) => {
-                            if *id == owant {
-                                self.overlay_raster = result.map(|(r, _sz)| r);
-                                self.overlay_raster_id = Some(owant);
-                            }
-                            self.overlay_pending = None;
-                        }
-                        Err(mpsc::TryRecvError::Empty) => {}
-                        Err(mpsc::TryRecvError::Disconnected) => self.overlay_pending = None,
+        // Timed-overlay layer: pre-warm the whole library at the current size so
+        // the active id is ready before its window opens. Only over a real map.
+        if active == Active::Map {
+            if self.overlay_dims != Some((width, height)) {
+                self.overlay_cache.clear();
+                self.overlay_pending.clear();
+                self.overlay_dims = Some((width, height));
+            }
+            // Collect finished warming jobs into the cache.
+            let mut settled = Vec::new();
+            for (k, rx) in self.overlay_pending.iter() {
+                match rx.try_recv() {
+                    Ok(result) => settled.push((k.clone(), result.map(|(r, _)| r))),
+                    Err(mpsc::TryRecvError::Disconnected) => settled.push((k.clone(), None)),
+                    Err(mpsc::TryRecvError::Empty) => {}
+                }
+            }
+            for (k, raster) in settled {
+                self.overlay_pending.remove(&k);
+                // Cache the result — a failed/empty raster is stored as a 0-sized
+                // sentinel so it isn't respawned every frame (retried on resize).
+                self.overlay_cache
+                    .insert(k, raster.unwrap_or((0, 0, Vec::new())));
+            }
+            // Spawn warming for any id not yet cached or in flight.
+            if let Some(lib) = self.overlay_library.clone() {
+                for (id, src) in &lib.sources {
+                    let key = (id.clone(), width, height);
+                    if !self.overlay_cache.contains_key(&key)
+                        && !self.overlay_pending.contains_key(&key)
+                    {
+                        let rx = spawn_rasterize(src.clone(), self.config.clone(), width, height);
+                        self.overlay_pending.insert(key, rx);
                     }
                 }
-                let opending_matches =
-                    self.overlay_pending.as_ref().is_some_and(|(id, _)| *id == owant);
-                if self.overlay_raster_id != Some(owant) && !opending_matches {
-                    let rx = spawn_rasterize(src, self.config.clone(), width, height);
-                    self.overlay_pending = Some((owant, rx));
-                }
             }
-            None => {
-                // No active overlay: drop any cached raster / in-flight job.
-                self.overlay_raster = None;
-                self.overlay_raster_id = None;
-                self.overlay_pending = None;
-            }
+        } else {
+            self.overlay_pending.clear();
         }
 
         self.frame.begin_frame();
@@ -512,16 +540,22 @@ impl MapOverlay {
             self.frame
                 .draw_image(data, *iw, *ih, 0.0, 0.0, *iw as f32, *ih as f32);
         }
-        // Timed overlay on top of the base: also window-sized and aspect-fit the
-        // same way, so it lines up 1:1 over the base art.
-        if let Some((iw, ih, data)) = &self.overlay_raster {
-            self.frame
-                .draw_image(data, *iw, *ih, 0.0, 0.0, *iw as f32, *ih as f32);
+        // Active timed overlay: drawn from the warm cache, 1:1 over the base art
+        // (also window-sized and aspect-fit the same way).
+        if let Some(id) = self.active_overlay_id.clone() {
+            if let Some((iw, ih, data)) = self.overlay_cache.get(&(id, width, height)) {
+                if *iw > 0 {
+                    self.frame
+                        .draw_image(data, *iw, *ih, 0.0, 0.0, *iw as f32, *ih as f32);
+                }
+            }
         }
         // Markers are a separate layer drawn on top of the cached raster every
         // frame, so a map (SVG) swap never disturbs them.
         self.draw_markers(width, height);
-        if self.pending.is_some() || self.overlay_pending.is_some() {
+        // Only the base rasterization shows "Loading"; overlay warming happens in
+        // the background while the base stays visible.
+        if self.pending.is_some() {
             self.draw_loading(width, height);
         }
         self.frame.end_frame();
@@ -637,10 +671,15 @@ impl Overlay for MapOverlay {
         if let OverlayData::Map(map_data) = data {
             // Evaluate all so one change isn't short-circuited away.
             let map_changed = self.set_map(map_data.svg);
-            let overlay_changed = self.set_overlay(map_data.overlay);
+            let library_changed = self.set_overlay_library(map_data.overlay_library);
+            let overlay_changed = self.set_active_overlay(map_data.overlay_id);
             let placeholder_changed = self.set_placeholder(map_data.placeholder);
             let markers_changed = self.set_markers(map_data.markers);
-            map_changed || overlay_changed || placeholder_changed || markers_changed
+            map_changed
+                || library_changed
+                || overlay_changed
+                || placeholder_changed
+                || markers_changed
         } else {
             false
         }

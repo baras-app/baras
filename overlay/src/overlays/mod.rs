@@ -39,8 +39,8 @@ pub use effects_ab::{
     EffectABEntry, EffectsABConfig, EffectsABData, EffectsABOverlay, EffectsLayout,
 };
 pub use map::{
-    MapConfig, MapData, MapOverlay, MarkerAnchor, MarkerOffset, ResolvedElement, ResolvedMarker,
-    rasterize_svg,
+    MapConfig, MapData, MapLibrary, MapOverlay, MarkerAnchor, MarkerOffset, ResolvedElement,
+    ResolvedMarker, rasterize_svg,
 };
 pub use metric::{MetricEntry, MetricOverlay};
 pub use personal::{PersonalOverlay, PersonalStats};

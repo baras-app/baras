@@ -90,6 +90,7 @@ pub use overlays::{
     // Map overlay
     MapConfig,
     MapData,
+    MapLibrary,
     MapOverlay,
     MarkerAnchor,
     MarkerOffset,

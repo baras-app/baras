@@ -30,16 +30,19 @@ struct MapContext {
     phase: Option<String>,
     /// Core-resolved base map name ([[boss.map]]); wins over the phase-name path.
     base: Option<String>,
-    /// Core-resolved active timed-overlay name, drawn on top of the base.
-    overlay: Option<String>,
 }
 
-/// The resolved map: the context it was resolved for plus the SVG sources.
+/// The resolved map: the base context/source plus the encounter's timed-overlay
+/// library (pre-loaded once per encounter) and the currently-active overlay id.
 struct MapState {
     ctx: MapContext,
     svg: Option<Arc<String>>,
-    /// Timed overlay SVG composited over the base, or `None`.
-    overlay_svg: Option<Arc<String>>,
+    /// Active timed-overlay id (passed straight through to the overlay).
+    overlay_id: Option<String>,
+    /// The encounter's timed-overlay library, sent whole to the overlay.
+    library: Option<Arc<baras_overlay::MapLibrary>>,
+    /// `(encounter, ids)` the library was built for — rebuilt only on change.
+    library_key: Option<(String, Vec<String>)>,
 }
 
 fn map_state() -> &'static Mutex<MapState> {
@@ -48,7 +51,9 @@ fn map_state() -> &'static Mutex<MapState> {
         Mutex::new(MapState {
             ctx: MapContext::default(),
             svg: None,
-            overlay_svg: None,
+            overlay_id: None,
+            library: None,
+            library_key: None,
         })
     })
 }
@@ -137,20 +142,17 @@ fn resolve_phase_svg(enc: &str, phase: Option<&str>) -> Option<Arc<String>> {
     rels.iter().find_map(|rel| read_map_rel(rel))
 }
 
-/// Resolve `(base, overlay)` SVG sources for a context.
-///
-/// The base is an explicit core-resolved `[[boss.map]]` name (`<enc>/<name>.svg`,
-/// then the encounter default) when present, otherwise the phase-name path. The
-/// overlay is a core-resolved timed-frame name with no fallback. Returns
-/// `(None, None)` when there is no active encounter.
-fn resolve_map(ctx: &MapContext) -> (Option<Arc<String>>, Option<Arc<String>>) {
+/// Resolve the base SVG source for a context. An explicit core-resolved
+/// `[[boss.map]]` name wins (`<enc>/<name>.svg`, then the encounter default);
+/// otherwise the phase-name path (with alias). `None` when there's no encounter.
+fn resolve_map(ctx: &MapContext) -> Option<Arc<String>> {
     let Some(enc) = ctx.encounter.as_deref() else {
         tracing::debug!(phase = ?ctx.phase, "map: no active encounter — no map");
-        return (None, None);
+        return None;
     };
     if !safe_slug(enc) {
         tracing::warn!(encounter = %enc, "map: unsafe encounter slug, ignoring");
-        return (None, None);
+        return None;
     }
 
     let base = match ctx.base.as_deref().filter(|s| safe_slug(s)) {
@@ -161,40 +163,31 @@ fn resolve_map(ctx: &MapContext) -> (Option<Arc<String>>, Option<Arc<String>>) {
     if base.is_none() {
         tracing::debug!(encounter = %enc, phase = ?ctx.phase, "map: no matching base svg found");
     }
-
-    let overlay = ctx
-        .overlay
-        .as_deref()
-        .filter(|s| safe_slug(s))
-        .and_then(|name| read_map_rel(&Path::new(enc).join(format!("{name}.svg"))));
-
-    (base, overlay)
+    base
 }
 
-/// Apply `update` to the current map context, re-reading from disk only when the
-/// context actually changed, and return `(base, overlay)` SVGs to display now.
-fn update_map_context(
-    update: impl FnOnce(&mut MapContext),
-) -> (Option<Arc<String>>, Option<Arc<String>>) {
-    let mut st = match map_state().lock() {
-        Ok(s) => s,
-        Err(_) => return (None, None),
-    };
-    let before = st.ctx.clone();
-    update(&mut st.ctx);
-    if st.ctx != before {
-        tracing::debug!(
-            encounter = ?st.ctx.encounter,
-            phase = ?st.ctx.phase,
-            base = ?st.ctx.base,
-            overlay = ?st.ctx.overlay,
-            "map: context changed, re-resolving"
-        );
-        let (base, overlay) = resolve_map(&st.ctx);
-        st.svg = base;
-        st.overlay_svg = overlay;
+/// Build (or reuse) the encounter's timed-overlay library: read each id's SVG
+/// once (user override → bundled) into an `id → source` map. Keyed by
+/// `(encounter, ids)` so it rebuilds only when the encounter or its id set
+/// changes — never on the per-tick map poll.
+fn ensure_library(st: &mut MapState, enc: Option<&str>, ids: &[String]) {
+    let key = enc.map(|e| (e.to_string(), ids.to_vec()));
+    if st.library_key == key {
+        return;
     }
-    (st.svg.clone(), st.overlay_svg.clone())
+    st.library = enc.filter(|e| safe_slug(e)).map(|enc| {
+        let mut sources = HashMap::new();
+        for id in ids {
+            if safe_slug(id) {
+                if let Some(src) = read_map_rel(&Path::new(enc).join(format!("{id}.svg"))) {
+                    sources.insert(id.clone(), src);
+                }
+            }
+        }
+        tracing::debug!(encounter = %enc, count = sources.len(), "map: built overlay library");
+        Arc::new(baras_overlay::MapLibrary { sources })
+    });
+    st.library_key = key;
 }
 
 /// Forget the cached map context (e.g. when switching log files).
@@ -202,17 +195,9 @@ fn reset_map_context() {
     if let Ok(mut st) = map_state().lock() {
         st.ctx = MapContext::default();
         st.svg = None;
-        st.overlay_svg = None;
-    }
-}
-
-/// The base + overlay SVGs for the current encounter, if any. Used to feed a map
-/// overlay its correct map the moment it spawns (rather than waiting for the next
-/// update).
-pub fn current_map_svg() -> (Option<Arc<String>>, Option<Arc<String>>) {
-    match map_state().lock() {
-        Ok(st) => (st.svg.clone(), st.overlay_svg.clone()),
-        Err(_) => (None, None),
+        st.overlay_id = None;
+        st.library = None;
+        st.library_key = None;
     }
 }
 
@@ -227,17 +212,20 @@ fn root_placeholder_svg(edit_mode: bool) -> Option<Arc<String>> {
     read_map_rel(Path::new("_default.svg"))
 }
 
-/// Build the payload sent to the map overlay: the current base map, the active
-/// timed overlay, plus the edit-mode placeholder (only loaded in `edit_mode`).
+/// Build the payload sent to the map overlay: the current base map, the timed-
+/// overlay library + active id, plus the edit-mode placeholder (only loaded in
+/// `edit_mode`).
 fn map_data(
     svg: Option<Arc<String>>,
-    overlay: Option<Arc<String>>,
+    overlay_library: Option<Arc<baras_overlay::MapLibrary>>,
+    overlay_id: Option<String>,
     markers: Vec<baras_overlay::ResolvedMarker>,
     edit_mode: bool,
 ) -> MapData {
     MapData {
         svg,
-        overlay,
+        overlay_library,
+        overlay_id,
         placeholder: root_placeholder_svg(edit_mode),
         markers,
     }
@@ -343,8 +331,11 @@ fn resolve_element(
 /// The full map payload for the current context (map + placeholder). Used to
 /// feed the overlay on spawn and when entering edit mode.
 pub fn current_map_data(edit_mode: bool) -> MapData {
-    let (svg, overlay) = current_map_svg();
-    map_data(svg, overlay, Vec::new(), edit_mode)
+    let (svg, library, overlay_id) = match map_state().lock() {
+        Ok(st) => (st.svg.clone(), st.library.clone(), st.overlay_id.clone()),
+        Err(_) => (None, None, None),
+    };
+    map_data(svg, library, overlay_id, Vec::new(), edit_mode)
 }
 
 /// Spawn the overlay update router task.
@@ -538,19 +529,31 @@ async fn process_overlay_update(
                 };
                 (state.get_tx(OverlayType::Map).cloned(), state.move_mode)
             };
-            // Always keep the map context current, even if no map overlay is
+            // Always keep the map state current, even if no map overlay is
             // running yet (so it can be fed the right map the moment it spawns).
-            let (svg, overlay) = update_map_context(|ctx| {
-                ctx.encounter = update.encounter_slug.clone();
-                ctx.phase = update.phase_slug.clone();
-                ctx.base = update.map_base.clone();
-                ctx.overlay = update.map_overlay.clone();
-            });
+            // Re-resolve the base only when its context changes; rebuild the
+            // library only when the encounter or its id set changes.
+            let (svg, library, overlay_id) = {
+                let mut st = match map_state().lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                let before = st.ctx.clone();
+                st.ctx.encounter = update.encounter_slug.clone();
+                st.ctx.phase = update.phase_slug.clone();
+                st.ctx.base = update.map_base.clone();
+                if st.ctx != before {
+                    st.svg = resolve_map(&st.ctx);
+                }
+                ensure_library(&mut st, update.encounter_slug.as_deref(), &update.library_ids);
+                st.overlay_id = update.map_overlay.clone();
+                (st.svg.clone(), st.library.clone(), st.overlay_id.clone())
+            };
             if let Some(tx) = map_tx {
                 let markers = resolve_markers(&update.markers, icon_cache);
                 let _ = tx
                     .send(OverlayCommand::UpdateData(OverlayData::Map(map_data(
-                        svg, overlay, markers, edit_mode,
+                        svg, library, overlay_id, markers, edit_mode,
                     ))))
                     .await;
             }
@@ -936,7 +939,7 @@ async fn process_overlay_update(
 
                 // Map overlay (clear the displayed SVG, keep the edit-mode placeholder)
                 if let Some(tx) = state.get_tx(OverlayType::Map) {
-                    channels.push((tx.clone(), OverlayData::Map(map_data(None, None, Vec::new(), state.move_mode))));
+                    channels.push((tx.clone(), OverlayData::Map(map_data(None, None, None, Vec::new(), state.move_mode))));
                 }
 
                 channels

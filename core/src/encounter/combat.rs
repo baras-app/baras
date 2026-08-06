@@ -412,6 +412,25 @@ impl CombatEncounter {
         (base, overlay)
     }
 
+    /// All distinct timed-overlay svg names across the active encounter's
+    /// `[[boss.map]]` blocks. This is the library the app pre-loads and the
+    /// overlay pre-rasterizes, so a timed swap is instant. Base maps are excluded
+    /// — they're constant per phase and delivered as a direct source.
+    pub fn map_overlay_library_ids(&self) -> Vec<String> {
+        let Some(def) = self.active_boss_definition() else {
+            return Vec::new();
+        };
+        let mut ids = Vec::new();
+        for m in &def.maps {
+            for f in &m.frames {
+                if !f.svg.is_empty() && !ids.contains(&f.svg) {
+                    ids.push(f.svg.clone());
+                }
+            }
+        }
+        ids
+    }
+
     /// Set the active boss by definition index
     pub fn set_active_boss_idx(&mut self, idx: Option<usize>) {
         self.active_boss_idx = idx;

@@ -2931,6 +2931,7 @@ async fn calculate_map_update(shared: &Arc<SharedState>) -> MapUpdate {
         phase_slug: encounter.current_phase.clone(),
         map_base,
         map_overlay,
+        library_ids: encounter.map_overlay_library_ids(),
         markers: encounter.active_markers(),
     }
 }
@@ -4322,8 +4323,11 @@ pub struct MapUpdate {
     /// Core-resolved base map name ([[boss.map]]); overrides phase-name
     /// resolution when `Some`, else the app falls back to the phase-name file.
     pub map_base: Option<String>,
-    /// Core-resolved active timed-overlay name, composited over the base.
+    /// Active timed-overlay id, selected from the library (composited over base).
     pub map_overlay: Option<String>,
+    /// All timed-overlay ids for the encounter — the library the app pre-loads
+    /// and the overlay pre-rasterizes so swaps are instant.
+    pub library_ids: Vec<String>,
     /// Active markers, overlay(map)-space, carrying their visual elements.
     pub markers: Vec<baras_core::markers::MarkerRender>,
 }
