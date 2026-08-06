@@ -2515,19 +2515,25 @@ impl CombatService {
                         continue;
                     }
                     let update = calculate_map_update(&shared).await;
-                    let sig = update
+                    let markers_sig = update
                         .markers
                         .iter()
                         .map(|m| format!("{}:({:.1},{:.1})", m.number, m.x, m.y))
                         .collect::<Vec<_>>()
                         .join(" ");
+                    let sig = format!(
+                        "{:?}|{:?}|{markers_sig}",
+                        update.map_base, update.map_overlay
+                    );
                     if sig != last_sig {
                         debug!(
                             encounter = ?update.encounter_slug,
                             phase = ?update.phase_slug,
+                            base = ?update.map_base,
+                            overlay = ?update.map_overlay,
                             count = update.markers.len(),
-                            markers = %sig,
-                            "map markers (overlay space)"
+                            markers = %markers_sig,
+                            "map update (overlay space)"
                         );
                         last_sig = sig;
                     }
@@ -2919,9 +2925,12 @@ async fn calculate_map_update(shared: &Arc<SharedState>) -> MapUpdate {
     let Some(encounter) = cache.last_combat_encounter() else {
         return MapUpdate::default();
     };
+    let (map_base, map_overlay) = encounter.resolve_map_frame(session.interpolated_game_time());
     MapUpdate {
         encounter_slug: encounter.active_boss_definition().map(|def| def.id.clone()),
         phase_slug: encounter.current_phase.clone(),
+        map_base,
+        map_overlay,
         markers: encounter.active_markers(),
     }
 }
@@ -4310,6 +4319,11 @@ pub struct MapUpdate {
     pub encounter_slug: Option<String>,
     /// Filesystem-friendly slug of the current phase (locates the SVG).
     pub phase_slug: Option<String>,
+    /// Core-resolved base map name ([[boss.map]]); overrides phase-name
+    /// resolution when `Some`, else the app falls back to the phase-name file.
+    pub map_base: Option<String>,
+    /// Core-resolved active timed-overlay name, composited over the base.
+    pub map_overlay: Option<String>,
     /// Active markers, overlay(map)-space, carrying their visual elements.
     pub markers: Vec<baras_core::markers::MarkerRender>,
 }

@@ -7,8 +7,8 @@ use hashbrown::HashSet;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use super::{
-    ChallengeDefinition, Condition, CounterCondition, CounterDefinition, MapMarkerDefinition,
-    PhaseDefinition, Trigger,
+    ChallengeDefinition, Condition, CounterCondition, CounterDefinition, MapDefinition,
+    MapMarkerDefinition, PhaseDefinition, Trigger,
 };
 use crate::dsl::audio::AudioConfig;
 use crate::game_data::Difficulty;
@@ -385,6 +385,11 @@ pub struct BossEncounterDefinition {
     #[serde(default, alias = "map_marker", skip_serializing_if = "Vec::is_empty")]
     pub map_markers: Vec<MapMarkerDefinition>,
 
+    /// Time-based map definitions ([[boss.map]]): base SVG per phase set plus an
+    /// optional timeline of overlays. Absent phases fall back to phase-name files.
+    #[serde(default, alias = "map", skip_serializing_if = "Vec::is_empty")]
+    pub maps: Vec<MapDefinition>,
+
     // ─── Notes ────────────────────────────────────────────────────────────────
     /// User notes for this encounter (Markdown formatted)
     /// Displayed on the Notes overlay when this encounter is active
@@ -444,6 +449,7 @@ impl Default for BossEncounterDefinition {
             timers: Vec::new(),
             challenges: Vec::new(),
             map_markers: Vec::new(),
+            maps: Vec::new(),
             notes: None,
             has_victory_trigger: false,
             victory_trigger: None,
@@ -936,6 +942,21 @@ impl BossEncounterDefinition {
                             "Shield trigger type will never fire (CombatStart/TimeElapsed are not evaluated for shields)"
                         );
                     }
+                }
+            }
+        }
+
+        // Validate map phase coverage: a phase in two [[boss.map]] blocks is
+        // ambiguous (first match wins), so warn rather than silently pick one.
+        let mut seen_phases: HashSet<&str> = HashSet::new();
+        for map in &self.maps {
+            for p in &map.phases {
+                if !seen_phases.insert(p.as_str()) {
+                    tracing::warn!(
+                        boss = %self.id,
+                        phase = %p,
+                        "Phase listed in more than one [[boss.map]]; first match wins"
+                    );
                 }
             }
         }

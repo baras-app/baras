@@ -383,6 +383,35 @@ impl CombatEncounter {
             .collect()
     }
 
+    /// Resolve the map layers for the current phase and log-time.
+    ///
+    /// Returns `(base, overlay)` svg names. `base` is `None` when no `[[boss.map]]`
+    /// covers the current phase (the app falls back to the phase-name file + alias).
+    /// `overlay` is the active timed frame, or `None`.
+    pub fn resolve_map_frame(
+        &self,
+        current_time: Option<NaiveDateTime>,
+    ) -> (Option<String>, Option<String>) {
+        let Some(def) = self.active_boss_definition() else {
+            return (None, None);
+        };
+        let phase = self.current_phase.as_deref();
+        let Some(map) = def.maps.iter().find(|m| m.applies_to(phase)) else {
+            return (None, None);
+        };
+        let base = map.base().map(str::to_string);
+        let overlay = current_time.and_then(|now| {
+            let elapsed = match map.clock {
+                crate::dsl::MapClock::Phase => self.phase_duration_secs(now),
+                crate::dsl::MapClock::Combat => {
+                    self.duration_ms(Some(now)).unwrap_or(0) as f32 / 1000.0
+                }
+            };
+            map.active_overlay(elapsed).map(str::to_string)
+        });
+        (base, overlay)
+    }
+
     /// Set the active boss by definition index
     pub fn set_active_boss_idx(&mut self, idx: Option<usize>) {
         self.active_boss_idx = idx;
@@ -1675,5 +1704,88 @@ impl CombatEncounter {
 
         stats.sort_by(|a, b| b.dps.cmp(&a.dps));
         Some(stats)
+    }
+}
+
+#[cfg(test)]
+mod map_frame_tests {
+    use super::*;
+    use crate::dsl::{MapClock, MapDefinition, MapFrame};
+
+    fn ts(secs: i64) -> NaiveDateTime {
+        chrono::DateTime::from_timestamp(1_700_000_000 + secs, 0)
+            .unwrap()
+            .naive_utc()
+    }
+
+    fn encounter_with_map(map: MapDefinition) -> CombatEncounter {
+        let mut def = BossEncounterDefinition {
+            id: "revan".into(),
+            ..Default::default()
+        };
+        def.maps.push(map);
+        let mut enc = CombatEncounter::new(1, ProcessingMode::Historical);
+        enc.load_boss_definitions(Arc::new(vec![def]));
+        enc.set_active_boss_idx(Some(0));
+        enc
+    }
+
+    #[test]
+    fn resolves_base_and_active_overlay_by_phase_clock() {
+        let map = MapDefinition {
+            phases: vec!["revan_p4".into()],
+            svg: "revan_resonance".into(),
+            clock: MapClock::Phase,
+            frames: vec![MapFrame {
+                at_secs: 25.0,
+                duration_secs: 4.0,
+                svg: "revan_detonation".into(),
+            }],
+        };
+        let mut enc = encounter_with_map(map);
+        enc.set_phase("revan_p4", ts(0));
+
+        // 26s into the phase: base + active overlay.
+        let (base, overlay) = enc.resolve_map_frame(Some(ts(26)));
+        assert_eq!(base.as_deref(), Some("revan_resonance"));
+        assert_eq!(overlay.as_deref(), Some("revan_detonation"));
+
+        // 10s in: base only, overlay window not yet open.
+        let (base, overlay) = enc.resolve_map_frame(Some(ts(10)));
+        assert_eq!(base.as_deref(), Some("revan_resonance"));
+        assert_eq!(overlay, None);
+    }
+
+    #[test]
+    fn no_map_for_phase_yields_none() {
+        let map = MapDefinition {
+            phases: vec!["revan_p4".into()],
+            svg: "revan_resonance".into(),
+            clock: MapClock::Phase,
+            frames: Vec::new(),
+        };
+        let mut enc = encounter_with_map(map);
+        enc.set_phase("some_other_phase", ts(0));
+        assert_eq!(enc.resolve_map_frame(Some(ts(30))), (None, None));
+    }
+
+    #[test]
+    fn overlay_requires_a_clock_reading() {
+        let map = MapDefinition {
+            phases: Vec::new(), // whole encounter
+            svg: "arena".into(),
+            clock: MapClock::Phase,
+            frames: vec![MapFrame {
+                at_secs: 0.0,
+                duration_secs: 5.0,
+                svg: "flash".into(),
+            }],
+        };
+        let mut enc = encounter_with_map(map);
+        enc.set_phase("p1", ts(0));
+        // No current_time -> base resolves, overlay can't (no elapsed).
+        let (base, overlay) = enc.resolve_map_frame(None);
+        assert_eq!(base.as_deref(), Some("arena"));
+        assert_eq!(overlay, None);
     }
 }
