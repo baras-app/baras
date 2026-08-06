@@ -3125,6 +3125,13 @@ impl OverlaySettings {
     }
 
     pub fn set_position(&mut self, overlay_type: &str, config: OverlayPositionConfig) {
+        // The map overlay mirrors its size into map.{width,height} (what the
+        // settings UI shows and lock_size uses); the generic position store alone
+        // would leave those fields stale after a drag-resize.
+        if overlay_type == "map" {
+            self.map.width = config.width;
+            self.map.height = config.height;
+        }
         self.positions.insert(overlay_type.to_string(), config);
     }
 
