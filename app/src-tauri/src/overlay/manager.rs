@@ -618,7 +618,7 @@ impl OverlayManager {
         if matches!(kind, OverlayType::Map) {
             let _ = tx
                 .send(OverlayCommand::UpdateData(OverlayData::Map(
-                    crate::router::current_map_data(current_move_mode),
+                    crate::map_overlay::current_map_data(current_move_mode),
                 )))
                 .await;
         }
@@ -976,7 +976,7 @@ impl OverlayManager {
         if let Some(ref tx) = map_tx {
             let _ = tx
                 .send(OverlayCommand::UpdateData(OverlayData::Map(
-                    crate::router::current_map_data(new_mode),
+                    crate::map_overlay::current_map_data(new_mode),
                 )))
                 .await;
         }
