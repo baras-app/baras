@@ -558,6 +558,19 @@ remove_after_secs = 30.0
 # One green number per add (the sequence label).
 elements  = [ { type = "text", color = [46, 204, 113, 255], size = 18.0 } ]
 
+# Floor 3 arena map. Shared by the resonance transition, Floor 3, and the Machine
+# Core burn (same room) — replaces the hardcoded phase→map alias in the app.
+# `frames` add timed overlay SVGs drawn on top of the base while their window is
+# active (clock = "phase" measures from phase start). Add a second SVG under
+# map-overlays/revan/ and uncomment to use.
+[[boss.map]]
+phases = ["revan_resonance", "revan_p4", "revan_core"]
+svg    = "revan_resonance"
+# clock  = "phase"
+# frames = [
+#   { at_secs = 25.0, duration_secs = 4.0, svg = "revan_detonation" },
+# ]
+
 # Aberration detonation countdown. Revan casts "Unstable Aberration" to summon a
 # wave; the four adds then detonate at cast +25/+28/+31/+34s (fixed across every
 # wave in the logs). Timer counts down to the first blast — the rest follow 3s
