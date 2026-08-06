@@ -558,6 +558,19 @@ remove_after_secs = 30.0
 # One green number per add (the sequence label).
 elements  = [ { type = "text", color = [46, 204, 113, 255], size = 18.0 } ]
 
+# Aberration detonation countdown. Revan casts "Unstable Aberration" to summon a
+# wave; the four adds then detonate at cast +25/+28/+31/+34s (fixed across every
+# wave in the logs). Timer counts down to the first blast — the rest follow 3s
+# apart. Only fires when the local player logs the summon cast; the map markers
+# above (npc_appears) are the reliable per-add signal.
+[[boss.timer]]
+id = "revan_aberration_detonation"
+name = "Aberration Detonation"
+trigger = { type = "ability_cast", abilities = [3449073487052800] }
+duration_secs = 25.0
+color = [46, 204, 113, 255]
+icon_ability_id = 3449073487052800
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Timers - Phase 1 (Floor 1 - Revan)
 # ═══════════════════════════════════════════════════════════════════════════════
