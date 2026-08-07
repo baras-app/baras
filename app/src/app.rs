@@ -478,6 +478,11 @@ pub fn App() -> Element {
                         // settings UI so the width/height/position fields reflect
                         // the moved/resized overlays.
                         if let Some(cfg) = api::get_config().await {
+                            dioxus_logger::tracing::info!(
+                                map_w = cfg.overlay_settings.map.width,
+                                map_h = cfg.overlay_settings.map.height,
+                                "overlays locked: refreshing overlay_settings from config"
+                            );
                             let _ = overlay_settings.try_write().map(|mut w| *w = cfg.overlay_settings);
                         }
                     }

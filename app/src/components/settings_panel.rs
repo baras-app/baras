@@ -38,6 +38,26 @@ pub fn SettingsPanel(
     let mut has_changes = use_signal(|| false);
     let mut save_status = use_signal(String::new);
 
+    // Adopt external settings changes (e.g. an overlay resized/moved in move mode,
+    // persisted by the backend on lock) into the editable draft — but only when
+    // the user has no unsaved edits here, so an in-progress change is never
+    // clobbered. `settings()` subscribes to prop changes; `has_changes.peek()`
+    // reads the guard without subscribing.
+    use_effect(move || {
+        let incoming = settings();
+        let unsaved = *has_changes.peek();
+        dioxus_logger::tracing::info!(
+            map_w = incoming.map.width,
+            map_h = incoming.map.height,
+            unsaved,
+            "settings_panel: incoming overlay settings — {}",
+            if unsaved { "keeping draft (unsaved edits)" } else { "re-seeding draft" }
+        );
+        if !unsaved {
+            draft_settings.set(incoming);
+        }
+    });
+
     // Debounce counter for live preview - each request gets an ID
     let mut preview_request_id: Signal<u32> = use_signal(|| 0);
 

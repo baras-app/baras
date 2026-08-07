@@ -992,9 +992,18 @@ impl OverlayManager {
 
             let mut config = service.config().await;
             for pos in positions {
-                config
-                    .overlay_settings
-                    .set_position(pos.kind.config_key(), Self::position_to_config(&pos));
+                let key = pos.kind.config_key();
+                let cfg = Self::position_to_config(&pos);
+                if key == "map" {
+                    tracing::info!(
+                        width = cfg.width,
+                        height = cfg.height,
+                        x = cfg.x,
+                        y = cfg.y,
+                        "lock: persisting map overlay geometry (mirrored into map.width/height)"
+                    );
+                }
+                config.overlay_settings.set_position(key, cfg);
             }
             service.update_config(config).await?;
         }
