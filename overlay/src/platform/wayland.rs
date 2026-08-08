@@ -729,6 +729,11 @@ impl WaylandOverlay {
         // Configure the new layer surface
         layer_surface.set_anchor(Anchor::Top | Anchor::Left);
         layer_surface.set_margin(clamped_y, 0, 0, clamped_x);
+        // Position against the full output, not the area left over by other
+        // surfaces' exclusive zones (status bars). x()/y() report margins as
+        // global coordinates, and the raid-frame capture samples the screen at
+        // those coordinates; a bar's reserved strip would shift every capture.
+        layer_surface.set_exclusive_zone(-1);
         layer_surface.set_keyboard_interactivity(KeyboardInteractivity::None);
         layer_surface.set_size(self.state.width, self.state.height);
         surface.commit();
@@ -967,6 +972,11 @@ impl OverlayPlatform for WaylandOverlay {
         // Configure layer surface with output-relative coordinates
         layer_surface.set_anchor(Anchor::Top | Anchor::Left);
         layer_surface.set_margin(margin_y, 0, 0, margin_x);
+        // Position against the full output, not the area left over by other
+        // surfaces' exclusive zones (status bars). x()/y() report margins as
+        // global coordinates, and the raid-frame capture samples the screen at
+        // those coordinates; a bar's reserved strip would shift every capture.
+        layer_surface.set_exclusive_zone(-1);
         layer_surface.set_keyboard_interactivity(KeyboardInteractivity::None);
         layer_surface.set_size(config.width, config.height);
         surface.commit();
@@ -1179,6 +1189,10 @@ impl OverlayPlatform for WaylandOverlay {
     fn commit(&mut self) {
         self.state.copy_pixels_to_shm();
         self.state.commit_frame();
+        // Push the commit to the compositor now instead of at the next poll.
+        // The raid overlay blanks itself and sleeps before a capture; without
+        // this the blank sits in the client buffer and the capture races it.
+        let _ = self.connection.flush();
     }
 
     fn poll_events(&mut self) -> bool {
