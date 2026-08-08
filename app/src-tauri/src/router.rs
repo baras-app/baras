@@ -332,7 +332,17 @@ async fn detect_raid_names(
             candidate_count,
             "Raid name detection could not read any names"
         );
-        let _ = result_tx.send("No names read; check the raid-frame alignment".into());
+        // Health without names means the frames were found but the names sit
+        // above the cells: the grid is placed too low or its cells too short.
+        let msg = if observations
+            .iter()
+            .any(|o| o.hp_value.is_some() || o.hp_percent.is_some())
+        {
+            "Health read but no names; move the grid up so each name is inside its cell"
+        } else {
+            "No names read; check the raid-frame alignment"
+        };
+        let _ = result_tx.send(msg.into());
         return;
     }
 

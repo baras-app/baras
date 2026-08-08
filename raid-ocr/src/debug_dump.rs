@@ -69,6 +69,20 @@ impl DebugDump {
         );
     }
 
+    /// Record where the slot's health bar was found, or how it was made up.
+    pub fn bar(&mut self, slot: u8, bar: Option<(u32, u32)>, inferred: bool) {
+        let _ = match bar {
+            Some((top, height)) if inferred => writeln!(
+                self.notes,
+                "  (slot {slot}: bar borrowed from the grid: top={top} h={height})"
+            ),
+            Some((top, height)) => {
+                writeln!(self.notes, "  bar top={top} h={height}")
+            }
+            None => writeln!(self.notes, "  (slot {slot}: no bar found anywhere in the grid)"),
+        };
+    }
+
     /// Record a slot that produced no bands at all.
     pub fn no_bands(&mut self, slot: u8) {
         let _ = writeln!(self.notes, "  (slot {slot}: no bands detected)");

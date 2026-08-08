@@ -12,6 +12,40 @@ too_many_arguments = "allow"
 [profile.dev.package.datafusion-physical-plan]
 overflow-checks = false
 
+# Dependencies run hot paths (rten inference, tiny-skia/cosmic-text software
+# rendering) that are 10-100x slower unoptimized: in a plain dev build raid OCR
+# took 36s instead of ~0.4s, and overlay rendering starved input polling badly
+# enough that clicks appeared dead during combat. Optimize dependencies only —
+# workspace crates stay at opt-level 0 for fast rebuilds and real debugging.
+[profile.dev.package."*"]
+opt-level = 2
+
+# The ML and rasterization crates specifically want full optimization.
+[profile.dev.package.rten]
+opt-level = 3
+[profile.dev.package.rten-base]
+opt-level = 3
+[profile.dev.package.rten-gemm]
+opt-level = 3
+[profile.dev.package.rten-simd]
+opt-level = 3
+[profile.dev.package.rten-tensor]
+opt-level = 3
+[profile.dev.package.rten-vecmath]
+opt-level = 3
+[profile.dev.package.rten-imageproc]
+opt-level = 3
+[profile.dev.package.ocrs]
+opt-level = 3
+[profile.dev.package.tiny-skia]
+opt-level = 3
+[profile.dev.package.cosmic-text]
+opt-level = 3
+[profile.dev.package.swash]
+opt-level = 3
+[profile.dev.package.rustybuzz]
+opt-level = 3
+
 [profile.release]
 lto = "thin"           # Link-time optimization across crates
 codegen-units = 1      # Better optimization (slower compile)

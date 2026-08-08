@@ -4,6 +4,6 @@ pub mod bands;
 pub mod preprocess;
 pub mod text;
 
-pub use bands::{Band, BandKind, detect_bands, harmonize};
+pub use bands::{Band, BandKind, BarPosition, detect_health_bar, reconcile_bars, slot_bands};
 pub use preprocess::{PreparedCrop, prepare};
 pub use text::parse_health_text;

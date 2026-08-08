@@ -10,7 +10,7 @@ pub mod engine;
 
 pub use debug_dump::DebugDump;
 
-use analysis::{BandKind, detect_bands, harmonize, parse_health_text, prepare};
+use analysis::{BandKind, detect_health_bar, parse_health_text, prepare, reconcile_bars, slot_bands};
 use baras_core::raid_detect::{
     MIN_OCR_NAME_CHARS, MatchConfig, PlayerCandidate, RowAssignment, RowObservation,
 };
@@ -77,39 +77,45 @@ pub fn observe_slots_dumping(
         dump.capture(image);
     }
 
-    // Find every band first so outliers can be corrected across the grid.
+    // Find every bar first, so slots that lost theirs can borrow the grid's.
     let mut slot_images = Vec::with_capacity(slots.len());
-    let mut per_slot_bands = Vec::with_capacity(slots.len());
+    let mut bars = Vec::with_capacity(slots.len());
 
     for &(_, x, y, w, h) in slots {
         match image.crop(x, y, w, h) {
             Some(slot_image) => {
-                per_slot_bands.push(detect_bands(&slot_image));
+                bars.push(detect_health_bar(&slot_image));
                 slot_images.push(Some(slot_image));
             }
             None => {
-                per_slot_bands.push(Vec::new());
+                bars.push(None);
                 slot_images.push(None);
             }
         }
     }
 
-    harmonize(&mut per_slot_bands);
+    let inferred = reconcile_bars(&mut bars);
 
     let mut observations = Vec::new();
 
-    for ((slot_rect, slot_image), slot_bands) in slots.iter().zip(&slot_images).zip(&per_slot_bands)
+    for (((slot_rect, slot_image), bar), inferred) in slots
+        .iter()
+        .zip(&slot_images)
+        .zip(&bars)
+        .zip(&inferred)
     {
         let Some(slot_image) = slot_image else {
             continue;
         };
+        let bands = slot_bands(*bar, *inferred);
 
         if let Some(dump) = dump.as_deref_mut() {
             dump.slot(
                 slot_rect.0,
                 (slot_rect.1, slot_rect.2, slot_rect.3, slot_rect.4),
             );
-            if slot_bands.is_empty() {
+            dump.bar(slot_rect.0, *bar, *inferred);
+            if bands.is_empty() {
                 dump.no_bands(slot_rect.0);
             }
         }
@@ -120,7 +126,7 @@ pub fn observe_slots_dumping(
         };
         let mut saw_anything = false;
 
-        for band in slot_bands {
+        for band in &bands {
             let Some(crop) = prepare(slot_image, band) else {
                 if let Some(dump) = dump.as_deref_mut() {
                     dump.band_skipped(band, "band lies outside the slot");
