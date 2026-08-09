@@ -1525,12 +1525,12 @@ impl RaidOverlay {
             .draw_text_glowed(&text, text_x, text_y, font_size, text_color);
 
         //  Add an indicator that is different from colour, as that might not
-        // be as intuitive.
+        // be as intuitive: ✓ once the name is tied to a log player, ? until.
         if !raid_frame.is_empty() {
             let (label, label_color) = if raid_frame.player_id.is_some() {
-                ("CONF", colors::raid_name_confirmed())
+                ("✓", colors::raid_name_confirmed())
             } else {
-                ("UNCONF", colors::raid_name_provisional())
+                ("?", colors::raid_name_provisional())
             };
             let label_size = font_size * 0.8;
             let (label_w, _) = self.frame.measure_text(label, label_size);
