@@ -64,15 +64,17 @@ use baras_core::context::{
 use baras_overlay::{
     AbilityQueueConfig, AbilityQueueOverlay, AlertsOverlay, BossHealthOverlay, ChallengeOverlay,
     CombatTimeConfig, CombatTimeOverlay, CooldownConfig, CooldownOverlay, DotTrackerConfig,
-    DotTrackerOverlay, EffectsABConfig, EffectsABOverlay, MetricOverlay, NotesConfig, NotesOverlay,
-    OperationTimerConfig, OperationTimerOverlay, Overlay, OverlayConfig, PersonalOverlay,
-    RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction, TimerOverlay,
+    DotTrackerOverlay, EffectsABConfig, EffectsABOverlay, MapConfig, MapOverlay, MetricOverlay,
+    NotesConfig, NotesOverlay, OperationTimerConfig, OperationTimerOverlay, Overlay, OverlayConfig,
+    PersonalOverlay, RaidGridLayout, RaidOverlay, RaidOverlayConfig, RaidRegistryAction,
+    TimerOverlay,
 };
 use baras_types::{
     AbilityQueueOverlayConfig as TypesAbilityQueueConfig, ClassIconMode,
     CombatTimeOverlayConfig as TypesCombatTimeConfig, CooldownTrackerConfig,
     DotTrackerConfig as TypesDotTrackerConfig, EffectsAConfig as TypesEffectsAConfig,
-    EffectsBConfig as TypesEffectsBConfig, NotesOverlayConfig as TypesNotesOverlayConfig,
+    EffectsBConfig as TypesEffectsBConfig, MapOverlayConfig as TypesMapConfig,
+    NotesOverlayConfig as TypesNotesOverlayConfig,
     OperationTimerOverlayConfig as TypesOperationTimerConfig,
 };
 
@@ -1151,6 +1153,54 @@ pub fn create_ability_queue_overlay(
     let factory = move || {
         AbilityQueueOverlay::new(config, overlay_config, background_alpha)
             .map_err(|e| format!("Failed to create ability queue overlay: {}", e))
+    };
+
+    let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;
+
+    Ok(OverlayHandle {
+        tx,
+        handle,
+        kind,
+        registry_action_rx: None,
+    })
+}
+
+/// Create and spawn the encounter/phase map overlay
+pub fn create_map_overlay(
+    position: OverlayPositionConfig,
+    map_config: TypesMapConfig,
+    background_alpha: u8,
+) -> Result<OverlayHandle, String> {
+    // When the size is locked, spawn at the configured size instead of the saved
+    // drag size, so it comes up correct with no resize flash.
+    let (win_w, win_h) = if map_config.lock_size {
+        (map_config.width, map_config.height)
+    } else {
+        (position.width, position.height)
+    };
+
+    let config = OverlayConfig {
+        x: position.x,
+        y: position.y,
+        width: win_w,
+        height: win_h,
+        namespace: "baras-map".to_string(),
+        click_through: true,
+        target_monitor_id: position.monitor_id.clone(),
+    };
+
+    let kind = OverlayType::Map;
+
+    let overlay_config = MapConfig {
+        preserve_aspect: map_config.preserve_aspect,
+        lock_size: map_config.lock_size,
+        width: map_config.width,
+        height: map_config.height,
+    };
+
+    let factory = move || {
+        MapOverlay::new(config, overlay_config, background_alpha)
+            .map_err(|e| format!("Failed to create map overlay: {}", e))
     };
 
     let (tx, handle) = spawn_overlay_with_factory(factory, kind, None)?;

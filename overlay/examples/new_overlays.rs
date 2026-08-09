@@ -10,9 +10,25 @@ use baras_overlay::icons::IconCache;
 use baras_overlay::overlays::{
     CooldownConfig, CooldownData, CooldownEntry, CooldownOverlay, DotEntry, DotTarget,
     DotTrackerConfig, DotTrackerData, DotTrackerOverlay, EffectABEntry, EffectsABConfig,
-    EffectsABData, EffectsABOverlay, EffectsLayout, Overlay, OverlayData,
+    EffectsABData, EffectsABOverlay, EffectsLayout, MapConfig, MapData, MapOverlay, Overlay,
+    OverlayData,
 };
 use baras_overlay::platform::OverlayConfig;
+
+/// Mock map SVG for the map overlay example (a bordered box with an ellipse and
+/// a couple of clock-style markers).
+const MAP_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <rect x="1.5" y="1.5" width="197" height="197" fill="none" stroke="#ffffff" stroke-width="2"/>
+  <ellipse cx="100" cy="100" rx="55" ry="80" fill="#e63946" fill-opacity="0.25" stroke="#e63946" stroke-width="2"/>
+  <circle cx="30" cy="100" r="13" fill="#e63946" fill-opacity="0.25"/>
+  <text x="30" y="105" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#ffffff">12</text>
+  <circle cx="100" cy="16" r="13" fill="#e63946" fill-opacity="0.25"/>
+  <text x="100" y="21" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#ffffff">3</text>
+  <circle cx="170" cy="100" r="13" fill="#e63946" fill-opacity="0.25"/>
+  <text x="170" y="105" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#ffffff">6</text>
+  <circle cx="100" cy="184" r="13" fill="#e63946" fill-opacity="0.25"/>
+  <text x="100" y="189" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#ffffff">9</text>
+</svg>"##;
 
 fn main() {
     println!("Starting new overlays example...");
@@ -91,6 +107,17 @@ fn main() {
         target_monitor_id: None,
     };
 
+    // Map overlay (renders a static SVG stretched to fill the window)
+    let map_config = OverlayConfig {
+        x: 1000,
+        y: 100,
+        width: 240,
+        height: 240,
+        namespace: "map_example".to_string(),
+        click_through: true,
+        target_monitor_id: None,
+    };
+
     // Create overlays with show_effect_names enabled
     let mut buffs_cfg = EffectsABConfig::default();
     buffs_cfg.show_effect_names = true;
@@ -128,6 +155,11 @@ fn main() {
     let mut dots_bar_overlay = DotTrackerOverlay::new(dots_bar_config, dots_bar_cfg, 180)
         .expect("Failed to create bar mode DOT tracker overlay");
 
+    let mut map_overlay = MapOverlay::new(map_config, MapConfig::default(), 180)
+        .expect("Failed to create map overlay");
+    // The map SVG is static, so build it once and reuse it each frame.
+    let map_svg = Arc::new(MAP_SVG.to_string());
+
     // Pre-load icons once (avoid allocations every frame)
     let icons = CachedIcons::load(icon_cache.as_ref());
     let start_time = Instant::now();
@@ -138,6 +170,7 @@ fn main() {
     const TEST_COOLDOWNS: bool = true;
     const TEST_DOTS: bool = true;
     const TEST_DOTS_BAR: bool = true;
+    const TEST_MAP: bool = true;
 
     // Debug: skip rendering to test data update overhead
     const SKIP_RENDER: bool = false;
@@ -197,6 +230,19 @@ fn main() {
                 dots_bar_overlay.render();
             }
             if !dots_bar_overlay.poll_events() {
+                break;
+            }
+        }
+
+        if TEST_MAP {
+            map_overlay.update_data(OverlayData::Map(MapData {
+                svg: Some(map_svg.clone()),
+                placeholder: None,
+            }));
+            if !SKIP_RENDER {
+                map_overlay.render();
+            }
+            if !map_overlay.poll_events() {
                 break;
             }
         }

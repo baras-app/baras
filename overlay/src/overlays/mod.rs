@@ -18,6 +18,7 @@ mod cooldowns;
 mod dot_tracker;
 mod effects;
 mod effects_ab;
+mod map;
 mod metric;
 mod notes;
 mod operation_timer;
@@ -36,6 +37,10 @@ pub use operation_timer::{OperationTimerConfig, OperationTimerData, OperationTim
 pub use effects::{EffectEntry, EffectsData, EffectsOverlay};
 pub use effects_ab::{
     EffectABEntry, EffectsABConfig, EffectsABData, EffectsABOverlay, EffectsLayout,
+};
+pub use map::{
+    MapConfig, MapData, MapLibrary, MapOverlay, MarkerAnchor, MarkerOffset, ResolvedElement,
+    ResolvedMarker, rasterize_svg,
 };
 pub use metric::{MetricEntry, MetricOverlay};
 pub use personal::{PersonalOverlay, PersonalStats};
@@ -122,6 +127,8 @@ pub enum OverlayData {
     OperationTimer(OperationTimerData),
     /// Ability queue (GCD + queued + active countdown entries)
     AbilityQueue(AbilityQueueData),
+    /// Encounter/phase map (raw SVG source, or `None` to clear)
+    Map(MapData),
 }
 
 /// Configuration updates that can be sent to overlays
@@ -164,6 +171,8 @@ pub enum OverlayConfigUpdate {
     OperationTimer(OperationTimerConfig, u8),
     /// Config for ability queue overlay (+ background alpha)
     AbilityQueue(AbilityQueueConfig, u8),
+    /// Config for map overlay (+ background alpha)
+    Map(MapConfig, u8),
 }
 
 /// Position information for an overlay

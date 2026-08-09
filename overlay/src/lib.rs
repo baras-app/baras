@@ -87,6 +87,16 @@ pub use overlays::{
     EffectsLayout,
     EffectsOverlay,
     InteractionMode,
+    // Map overlay
+    MapConfig,
+    MapData,
+    MapLibrary,
+    MapOverlay,
+    MarkerAnchor,
+    MarkerOffset,
+    ResolvedElement,
+    ResolvedMarker,
+    rasterize_svg,
     MetricEntry,
     MetricOverlay,
     // Notes overlay

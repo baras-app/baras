@@ -191,6 +191,12 @@ impl EventProcessor {
             }
         }
 
+        // Advance map markers now that this event's phase transitions are final,
+        // so the phase gate reads the current phase (not the pre-transition one).
+        if let Some(enc) = cache.current_encounter_mut() {
+            enc.update_markers(&event);
+        }
+
         // Boss shield activation/deactivation/depletion.
         // Runs after the full fixed-point loop so phase/counter signals are visible.
         self.check_shield_triggers(&signals, cache);

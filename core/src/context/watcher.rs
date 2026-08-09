@@ -80,7 +80,8 @@ impl DirectoryWatcher {
                 // on files that were previously empty or missing character data
                 for path in event.paths {
                     if is_combat_log(&path) {
-                        tracing::debug!(path = %path.display(), "Log file modified");
+                        // TODO: uncomment when finished testing
+                        // tracing::debug!(path = %path.display(), "Log file modified");
                         return Some(DirectoryEvent::FileModified(path));
                     }
                 }

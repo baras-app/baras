@@ -13,6 +13,7 @@ mod audio;
 mod commands;
 mod hotkeys;
 mod logging;
+mod map_overlay;
 pub mod overlay;
 mod router;
 pub mod service;
@@ -169,6 +170,19 @@ pub fn run() {
 
                 // Store the service handle for commands
                 app.handle().manage(handle.clone());
+
+                // Register the bundled map-overlays resource dir (shipped default
+                // grid + any bundled maps); user files in ~/.config override these.
+                let bundled_map_dir = app
+                    .handle()
+                    .path()
+                    .resolve(
+                        "definitions/map-overlays",
+                        tauri::path::BaseDirectory::Resource,
+                    )
+                    .ok()
+                    .filter(|p| p.exists());
+                map_overlay::init_bundled_map_dir(bundled_map_dir);
 
                 // Spawn the overlay update router (needs service handle for registry updates)
                 spawn_overlay_router(

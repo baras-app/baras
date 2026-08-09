@@ -18,6 +18,7 @@ use crate::combat_log::{CombatEvent, Entity, EntityType, Position};
 use crate::context::IStr;
 use crate::dsl::{BossEncounterDefinition, CounterCondition, CounterDefinition};
 use crate::game_data::{Difficulty, Discipline, SHIELD_EFFECT_IDS, defense_type, effect_id};
+use crate::markers::{MarkerRender, MarkerTracker};
 use crate::{effect_type_id, is_boss};
 
 use super::challenge::ChallengeTracker;
@@ -79,6 +80,10 @@ pub struct CombatEncounter {
     boss_definitions: Arc<Vec<BossEncounterDefinition>>,
     /// Index into boss_definitions for active boss (if detected)
     active_boss_idx: Option<usize>,
+    /// Map-marker lifecycle tracker, driven per event in log-time.
+    marker_tracker: MarkerTracker,
+    /// Active-boss index the `marker_tracker` was built for (rebuild on change).
+    marker_tracker_boss_idx: Option<usize>,
     /// Boss def indices whose encounter_trigger fired but are deferred to fallback timeout.
     /// Used by definitions with both encounter_trigger and encounter_trigger_fallback_secs.
     pub boss_encounter_triggers_pending: HashSet<usize>,
@@ -208,6 +213,8 @@ impl CombatEncounter {
             // Boss definitions
             boss_definitions: Arc::new(Vec::new()),
             active_boss_idx: None,
+            marker_tracker: MarkerTracker::default(),
+            marker_tracker_boss_idx: None,
             boss_encounter_triggers_pending: HashSet::new(),
 
             // Per-event evaluation caches (rebuilt lazily in refresh_eval_caches)
@@ -312,6 +319,116 @@ impl CombatEncounter {
     /// Get the active boss definition (if a boss is detected)
     pub fn active_boss_definition(&self) -> Option<&BossEncounterDefinition> {
         self.active_boss_idx.map(|idx| &self.boss_definitions[idx])
+    }
+
+    /// Advance the map-marker tracker by one event (log-time). Rebuilds the
+    /// tracker when the active boss changes (incl. first activation), then feeds
+    /// the event. Cheap no-op for fights without markers.
+    pub fn update_markers(&mut self, event: &CombatEvent) {
+        let idx = self.active_boss_idx;
+        if idx != self.marker_tracker_boss_idx {
+            let defs = idx
+                .map(|i| self.boss_definitions[i].map_markers.clone())
+                .unwrap_or_default();
+            self.marker_tracker = MarkerTracker::new(&defs);
+            self.marker_tracker_boss_idx = idx;
+        }
+        if self.marker_tracker.is_empty() {
+            return;
+        }
+        // Move the tracker out so we can also borrow `entities`/`phase` from self.
+        let mut tracker = std::mem::take(&mut self.marker_tracker);
+        let phase = self.current_phase.as_deref();
+        let entities = idx
+            .map(|i| self.boss_definitions[i].entities.as_slice())
+            .unwrap_or(&[]);
+        let before = tracker.active().len();
+        tracker.on_event(event, entities, phase);
+        let active = tracker.active();
+        if active.len() != before {
+            let list = active
+                .iter()
+                .map(|m| format!("{}:({:.1},{:.1})", m.number, m.x, m.y))
+                .collect::<Vec<_>>()
+                .join(" ");
+            tracing::debug!(
+                before,
+                after = active.len(),
+                phase = ?phase,
+                timestamp = %event.timestamp,
+                markers = %list,
+                "map markers changed (game space)"
+            );
+        }
+        self.marker_tracker = tracker;
+    }
+
+    /// Currently-shown map markers, transformed into overlay(map) space via each
+    /// group's calibration and carrying that group's visual elements. Asset refs
+    /// are resolved app-side; the overlay only scales this to the live window.
+    pub fn active_markers(&self) -> Vec<MarkerRender> {
+        let def = self.active_boss_definition();
+        self.marker_tracker
+            .active()
+            .into_iter()
+            .filter_map(|m| {
+                let g = def.and_then(|d| d.map_markers.iter().find(|g| g.id == m.group_id))?;
+                Some(MarkerRender {
+                    x: g.calibration.x.scale * m.x + g.calibration.x.offset,
+                    y: g.calibration.y.scale * m.y + g.calibration.y.offset,
+                    number: m.number,
+                    elements: g.elements.clone(),
+                })
+            })
+            .collect()
+    }
+
+    /// Resolve the map layers for the current phase and log-time.
+    ///
+    /// Returns `(base, overlay)` svg names. `base` is `None` when no `[[boss.map]]`
+    /// covers the current phase (the app falls back to the phase-name file + alias).
+    /// `overlay` is the active timed frame, or `None`.
+    pub fn resolve_map_frame(
+        &self,
+        current_time: Option<NaiveDateTime>,
+    ) -> (Option<String>, Option<String>) {
+        let Some(def) = self.active_boss_definition() else {
+            return (None, None);
+        };
+        let phase = self.current_phase.as_deref();
+        let Some(map) = def.maps.iter().find(|m| m.applies_to(phase)) else {
+            return (None, None);
+        };
+        let base = map.base().map(str::to_string);
+        let overlay = current_time.and_then(|now| {
+            let elapsed = match map.clock {
+                crate::dsl::MapClock::Phase => self.phase_duration_secs(now),
+                crate::dsl::MapClock::Combat => {
+                    self.duration_ms(Some(now)).unwrap_or(0) as f32 / 1000.0
+                }
+            };
+            map.active_overlay(elapsed).map(str::to_string)
+        });
+        (base, overlay)
+    }
+
+    /// All distinct timed-overlay svg names across the active encounter's
+    /// `[[boss.map]]` blocks. This is the library the app pre-loads and the
+    /// overlay pre-rasterizes, so a timed swap is instant. Base maps are excluded
+    /// — they're constant per phase and delivered as a direct source.
+    pub fn map_overlay_library_ids(&self) -> Vec<String> {
+        let Some(def) = self.active_boss_definition() else {
+            return Vec::new();
+        };
+        let mut ids = Vec::new();
+        for m in &def.maps {
+            for f in &m.frames {
+                if !f.svg.is_empty() && !ids.contains(&f.svg) {
+                    ids.push(f.svg.clone());
+                }
+            }
+        }
+        ids
     }
 
     /// Set the active boss by definition index
@@ -1606,5 +1723,88 @@ impl CombatEncounter {
 
         stats.sort_by(|a, b| b.dps.cmp(&a.dps));
         Some(stats)
+    }
+}
+
+#[cfg(test)]
+mod map_frame_tests {
+    use super::*;
+    use crate::dsl::{MapClock, MapDefinition, MapFrame};
+
+    fn ts(secs: i64) -> NaiveDateTime {
+        chrono::DateTime::from_timestamp(1_700_000_000 + secs, 0)
+            .unwrap()
+            .naive_utc()
+    }
+
+    fn encounter_with_map(map: MapDefinition) -> CombatEncounter {
+        let mut def = BossEncounterDefinition {
+            id: "revan".into(),
+            ..Default::default()
+        };
+        def.maps.push(map);
+        let mut enc = CombatEncounter::new(1, ProcessingMode::Historical);
+        enc.load_boss_definitions(Arc::new(vec![def]));
+        enc.set_active_boss_idx(Some(0));
+        enc
+    }
+
+    #[test]
+    fn resolves_base_and_active_overlay_by_phase_clock() {
+        let map = MapDefinition {
+            phases: vec!["revan_p4".into()],
+            svg: "revan_resonance".into(),
+            clock: MapClock::Phase,
+            frames: vec![MapFrame {
+                at_secs: 25.0,
+                duration_secs: 4.0,
+                svg: "revan_detonation".into(),
+            }],
+        };
+        let mut enc = encounter_with_map(map);
+        enc.set_phase("revan_p4", ts(0));
+
+        // 26s into the phase: base + active overlay.
+        let (base, overlay) = enc.resolve_map_frame(Some(ts(26)));
+        assert_eq!(base.as_deref(), Some("revan_resonance"));
+        assert_eq!(overlay.as_deref(), Some("revan_detonation"));
+
+        // 10s in: base only, overlay window not yet open.
+        let (base, overlay) = enc.resolve_map_frame(Some(ts(10)));
+        assert_eq!(base.as_deref(), Some("revan_resonance"));
+        assert_eq!(overlay, None);
+    }
+
+    #[test]
+    fn no_map_for_phase_yields_none() {
+        let map = MapDefinition {
+            phases: vec!["revan_p4".into()],
+            svg: "revan_resonance".into(),
+            clock: MapClock::Phase,
+            frames: Vec::new(),
+        };
+        let mut enc = encounter_with_map(map);
+        enc.set_phase("some_other_phase", ts(0));
+        assert_eq!(enc.resolve_map_frame(Some(ts(30))), (None, None));
+    }
+
+    #[test]
+    fn overlay_requires_a_clock_reading() {
+        let map = MapDefinition {
+            phases: Vec::new(), // whole encounter
+            svg: "arena".into(),
+            clock: MapClock::Phase,
+            frames: vec![MapFrame {
+                at_secs: 0.0,
+                duration_secs: 5.0,
+                svg: "flash".into(),
+            }],
+        };
+        let mut enc = encounter_with_map(map);
+        enc.set_phase("p1", ts(0));
+        // No current_time -> base resolves, overlay can't (no elapsed).
+        let (base, overlay) = enc.resolve_map_frame(None);
+        assert_eq!(base.as_deref(), Some("arena"));
+        assert_eq!(overlay, None);
     }
 }

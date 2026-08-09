@@ -191,6 +191,28 @@ async fn process_overlay_update(
                     )))
                     .await;
             }
+
+        }
+        OverlayUpdate::MapUpdated(update) => {
+            // Feed the map overlay the current encounter's map + active markers.
+            // Driven at 30ms (map loop), independent of the metrics path. All
+            // asset resolution/state lives in `map_overlay`; the map state is
+            // updated even when no overlay is running yet, so a later-spawned
+            // overlay is fed the right map immediately.
+            let (map_tx, edit_mode) = {
+                let state = match overlay_state.lock() {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
+                (state.get_tx(OverlayType::Map).cloned(), state.move_mode)
+            };
+            if let Some(data) = crate::map_overlay::build_map_update(&update, icon_cache, edit_mode)
+                && let Some(tx) = map_tx
+            {
+                let _ = tx
+                    .send(OverlayCommand::UpdateData(OverlayData::Map(data)))
+                    .await;
+            }
         }
         OverlayUpdate::EffectsUpdated(raid_data) => {
             // Send raid frame data to raid overlay
@@ -571,8 +593,16 @@ async fn process_overlay_update(
                     channels.push((tx.clone(), OverlayData::AbilityQueue(Default::default())));
                 }
 
+                // Map overlay (clear the displayed SVG, keep the edit-mode placeholder)
+                if let Some(tx) = state.get_tx(OverlayType::Map) {
+                    channels.push((tx.clone(), OverlayData::Map(crate::map_overlay::cleared_map_data(state.move_mode))));
+                }
+
                 channels
             }; // Lock released here
+
+            // Forget the cached map so the next encounter/area re-reads from disk.
+            crate::map_overlay::reset_map_context();
 
             // Now send to all channels (outside lock scope)
             for (tx, data) in channels {

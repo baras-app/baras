@@ -355,6 +355,9 @@ pub enum OverlayUpdate {
     CombatEnded,
     /// Combat metrics for metric and personal overlays
     DataUpdated(CombatData),
+    /// Encounter/phase + markers for the map overlay. Driven at 30ms by the
+    /// effects task, independent of the (500ms) metrics path.
+    MapUpdated(MapUpdate),
     /// Effect data for raid frame overlay (HoTs, debuffs, etc.)
     EffectsUpdated(RaidFrameData),
     /// Boss health data for boss health overlay
@@ -494,7 +497,9 @@ impl SignalHandler for CombatSignalHandler {
         match signal {
             GameSignal::CombatStarted { .. } => {
                 self.shared.in_combat.store(true, Ordering::SeqCst);
-                let _ = self.trigger_tx.try_send(MetricsTrigger::CombatStarted);
+                if let Err(e) = self.trigger_tx.try_send(MetricsTrigger::CombatStarted) {
+                    warn!("Metrics trigger channel full, dropped CombatStarted: {e}");
+                }
                 let _ = self.session_event_tx.send(SessionEvent::CombatStarted);
                 // Always wipe a stale boss HP bar at the start of a new encounter.
                 // With `clear_after_combat` disabled the bar persists post-combat, but
@@ -514,7 +519,9 @@ impl SignalHandler for CombatSignalHandler {
             }
             GameSignal::CombatEnded { timestamp, success, .. } => {
                 self.shared.in_combat.store(false, Ordering::SeqCst);
-                let _ = self.trigger_tx.try_send(MetricsTrigger::CombatEnded);
+                if let Err(e) = self.trigger_tx.try_send(MetricsTrigger::CombatEnded) {
+                    warn!("Metrics trigger channel full, dropped CombatEnded: {e}");
+                }
                 let _ = self.session_event_tx.send(SessionEvent::CombatEnded);
                 // Clear boss health and timer overlays
                 let _ = self.overlay_tx.try_send(OverlayUpdate::CombatEnded);
@@ -624,8 +631,11 @@ impl SignalHandler for CombatSignalHandler {
                     let _ = self.overlay_tx.try_send(OverlayUpdate::ConversationEnded);
                 }
             }
-            GameSignal::AreaEntered { area_id, difficulty_id, .. } => {
+            GameSignal::AreaEntered { area_id, area_name, difficulty_id, .. } => {
                 // Note: Boss definitions are loaded synchronously in process_event via definition_loader
+                // Log every area transition — useful for discovering the area id/name
+                // when authoring encounter definitions or map files.
+                tracing::debug!(area_id = *area_id, area_name = %area_name, "AreaEntered signal");
                 let current = self.shared.current_area_id.load(Ordering::SeqCst);
                 if *area_id != current {
                     self.shared
@@ -1937,7 +1947,7 @@ impl CombatService {
         self.shared.raid_registry.lock().unwrap_or_else(|p| p.into_inner()).clear();
 
         // Create trigger channel for signal-driven metrics updates (tokio channel - no spawn_blocking needed)
-        let (trigger_tx, mut trigger_rx) = mpsc::channel::<MetricsTrigger>(8);
+        let (trigger_tx, mut trigger_rx) = mpsc::channel::<MetricsTrigger>(128);
         // Create channel for frontend session events (replaces polling)
         let (session_event_tx, session_event_rx) = std::sync::mpsc::channel::<SessionEvent>();
 
@@ -2332,7 +2342,9 @@ impl CombatService {
                         // This ensures frontend gets correct state when it fetches session info
                         if mid_combat_startup {
                             self.shared.in_combat.store(true, std::sync::atomic::Ordering::SeqCst);
-                            let _ = trigger_tx.try_send(MetricsTrigger::CombatStarted);
+                            if let Err(e) = trigger_tx.try_send(MetricsTrigger::CombatStarted) {
+                                warn!("Metrics trigger channel full, dropped CombatStarted: {e}");
+                            }
                             let _ = session_event_tx.send(SessionEvent::CombatStarted);
                         }
                         
@@ -2344,7 +2356,9 @@ impl CombatService {
                         let in_combat = fallback_streaming_parse(&reader, &session, encounters_dir.clone()).await;
                         if in_combat {
                             self.shared.in_combat.store(true, std::sync::atomic::Ordering::SeqCst);
-                            let _ = trigger_tx.try_send(MetricsTrigger::CombatStarted);
+                            if let Err(e) = trigger_tx.try_send(MetricsTrigger::CombatStarted) {
+                                warn!("Metrics trigger channel full, dropped CombatStarted: {e}");
+                            }
                             let _ = session_event_tx.send(SessionEvent::CombatStarted);
                             info!("Detected mid-combat startup (fallback parse)");
                         }
@@ -2461,7 +2475,10 @@ impl CombatService {
 
                 // For CombatStarted, start polling during combat
                 if matches!(trigger, MetricsTrigger::CombatStarted) {
-                    // Poll during active combat
+                    // Poll during active combat. Metrics are intentionally slow
+                    // (500ms) — updating them faster is disorienting. The map /
+                    // marker overlay does NOT ride this path; it updates at 30ms
+                    // via the effects task (see `MapUpdated`).
                     while shared.in_combat.load(Ordering::SeqCst) {
                         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
@@ -2474,6 +2491,56 @@ impl CombatService {
                 }
             }
         });
+
+        // Spawn a dedicated map-overlay task. The map/marker overlay updates at
+        // 30ms on its OWN loop — isolated from the 500ms metrics path AND the
+        // effects task — so showing the map never spins up the heavy effect/audio
+        // builders or otherwise contends with the parser for the session lock.
+        {
+            let shared = self.shared.clone();
+            let overlay_tx = self.overlay_tx.clone();
+            tokio::spawn(async move {
+                // Remember the last marker set so we only log on change (this loop
+                // runs ~30/sec while the map is up).
+                let mut last_sig = String::new();
+                loop {
+                    let active = shared.map_overlay_active.load(Ordering::Relaxed);
+                    tokio::time::sleep(std::time::Duration::from_millis(if active {
+                        30
+                    } else {
+                        500
+                    }))
+                    .await;
+                    if !shared.map_overlay_active.load(Ordering::Relaxed) {
+                        continue;
+                    }
+                    let update = calculate_map_update(&shared).await;
+                    let markers_sig = update
+                        .markers
+                        .iter()
+                        .map(|m| format!("{}:({:.1},{:.1})", m.number, m.x, m.y))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    let sig = format!(
+                        "{:?}|{:?}|{markers_sig}",
+                        update.map_base, update.map_overlay
+                    );
+                    if sig != last_sig {
+                        debug!(
+                            encounter = ?update.encounter_slug,
+                            phase = ?update.phase_slug,
+                            base = ?update.map_base,
+                            overlay = ?update.map_overlay,
+                            count = update.markers.len(),
+                            markers = %markers_sig,
+                            "map update (overlay space)"
+                        );
+                        last_sig = sig;
+                    }
+                    let _ = overlay_tx.try_send(OverlayUpdate::MapUpdated(update));
+                }
+            });
+        }
 
         // Spawn effects + boss health + audio sampling task (polls continuously)
         // Uses adaptive sleep: fast when active, slow (500ms) when idle
@@ -2510,7 +2577,8 @@ impl CombatService {
                 let in_combat = shared.in_combat.load(Ordering::Relaxed);
                 let is_live = shared.is_live_tailing.load(Ordering::SeqCst);
 
-                // Determine if any work needs to be done
+                // Determine if any work needs to be done. NOTE: the map overlay is
+                // intentionally NOT here — it runs on its own dedicated loop above.
                 let any_overlay_active = raid_active
                     || boss_active
                     || timer_active
@@ -2833,6 +2901,38 @@ impl CombatService {
         if let Ok(index) = DirectoryIndex::build_index_cached(&PathBuf::from(&log_dir), &cache_path) {
             *self.shared.directory_index.write().await = index;
         }
+    }
+}
+
+/// Lightweight map-overlay update: encounter/phase slugs and active markers read
+/// straight from the live encounter. No metrics work — runs on the 30ms effects
+/// task so the map/markers stay responsive without speeding up metrics.
+async fn calculate_map_update(shared: &Arc<SharedState>) -> MapUpdate {
+    // Clone the session Arc and drop the outer guard immediately, so we never
+    // hold the outer session lock across the inner `.await` (which would block
+    // the parser / file-switch writer).
+    let session = {
+        let guard = shared.session.read().await;
+        guard.as_ref().cloned()
+    };
+    let Some(session) = session else {
+        return MapUpdate::default();
+    };
+    let session = session.read().await;
+    let Some(cache) = session.session_cache.as_ref() else {
+        return MapUpdate::default();
+    };
+    let Some(encounter) = cache.last_combat_encounter() else {
+        return MapUpdate::default();
+    };
+    let (map_base, map_overlay) = encounter.resolve_map_frame(session.interpolated_game_time());
+    MapUpdate {
+        encounter_slug: encounter.active_boss_definition().map(|def| def.id.clone()),
+        phase_slug: encounter.current_phase.clone(),
+        map_base,
+        map_overlay,
+        library_ids: encounter.map_overlay_library_ids(),
+        markers: encounter.active_markers(),
     }
 }
 
@@ -4209,6 +4309,27 @@ pub struct CombatData {
     pub current_phase: Option<String>,
     /// Time spent in the current phase (seconds)
     pub phase_time_secs: f32,
+}
+
+/// Map-overlay update: which map to show (encounter + phase slugs) plus the
+/// active markers. Produced on the 30ms effects task, independent of the 500ms
+/// metrics path, so the map/markers stay responsive without speeding up metrics.
+#[derive(Debug, Clone, Default)]
+pub struct MapUpdate {
+    /// Filesystem-friendly slug of the active boss definition (locates the SVG).
+    pub encounter_slug: Option<String>,
+    /// Filesystem-friendly slug of the current phase (locates the SVG).
+    pub phase_slug: Option<String>,
+    /// Core-resolved base map name ([[boss.map]]); overrides phase-name
+    /// resolution when `Some`, else the app falls back to the phase-name file.
+    pub map_base: Option<String>,
+    /// Active timed-overlay id, selected from the library (composited over base).
+    pub map_overlay: Option<String>,
+    /// All timed-overlay ids for the encounter — the library the app pre-loads
+    /// and the overlay pre-rasterizes so swaps are instant.
+    pub library_ids: Vec<String>,
+    /// Active markers, overlay(map)-space, carrying their visual elements.
+    pub markers: Vec<baras_core::markers::MarkerRender>,
 }
 
 impl CombatData {
