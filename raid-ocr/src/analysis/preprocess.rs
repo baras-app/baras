@@ -5,7 +5,7 @@
 
 use baras_overlay::capture::CapturedImage;
 
-use super::bands::{Band, BandKind, NAME_SCAN_FRACTION};
+use super::bands::{Band, BandKind, name_text_span};
 
 /// Target height for a preprocessed crop. Matches what ocrs' recognition model
 /// is trained on; wider or narrower is fine, shorter is not.
@@ -38,14 +38,17 @@ impl PreparedCrop {
 ///
 /// Returns `None` when the band lies outside the slot or has no area.
 pub fn prepare(slot: &CapturedImage, band: &Band) -> Option<PreparedCrop> {
-    let width = match band.kind {
+    let (left, width) = match band.kind {
+        // Just the text: the frame border and the buff icons read as letters,
+        // and a tight crop magnifies the glyphs more at the model's height.
         BandKind::Name => {
-            ((slot.width as f32 * NAME_SCAN_FRACTION).round() as u32).clamp(1, slot.width.max(1))
+            let (left, right) = name_text_span(slot, band);
+            (left, right.saturating_sub(left).max(1))
         }
-        BandKind::Health => slot.width,
+        BandKind::Health => (0, slot.width),
     };
     let crop = slot.crop(
-        0,
+        left as i32,
         band.top as i32 - PAD_Y,
         width,
         band.height.saturating_add((PAD_Y * 2) as u32),

@@ -120,9 +120,9 @@ pub fn observe_slots_dumping(
         })
         .collect();
 
-    // Names only: the bars were already reconciled, and this cannot tell a seen
-    // bar from a borrowed one.
-    harmonize_names(&mut per_slot_bands);
+    // Names only: the bars were already reconciled. Positions are compared
+    // relative to each slot's bar, so a borrowed bar never acts as an anchor.
+    harmonize_names(&mut per_slot_bands, &bars, &inferred);
 
     // Prepare everything first: crops can only overlap once they all exist.
     // Bands outside their slot stay `None` so readings keep lining up.

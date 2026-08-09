@@ -69,6 +69,17 @@ pub(super) const NAME_SCAN_FRACTION: f32 = 0.75;
 const INK_ABOVE_MEDIAN: u16 = 35;
 /// Floor for the ink threshold, so a nearly black slot does not treat noise as text.
 const MIN_INK_LUMA: u8 = 60;
+/// A column must reach this fraction of the band's brightest ink to count as
+/// text. Measured on live captures the frame border peaks at 30–45% of glyph
+/// brightness, so this excludes it with a wide margin either way.
+const TEXT_PEAK_FRACTION: f32 = 0.65;
+/// Rows probed above the band for the border test.
+const BORDER_PROBE_ROWS: u32 = 3;
+/// Width of the left window that locates the name rows. Icons sit to the right
+/// of the text, so only the leftmost characters are trusted vertically.
+const NAME_ANCHOR_FRACTION: f32 = 0.25;
+/// A column lit down this much of the strip is a border line, not glyphs.
+const VERTICAL_LINE_FRACTION: f32 = 0.7;
 
 fn luma(r: u8, g: u8, b: u8) -> u8 {
     // Integer approximation of Rec. 601 luma; exactness is irrelevant here, the
@@ -259,16 +270,147 @@ fn ink_rows(slot: &CapturedImage, bottom: u32) -> Vec<f32> {
         .collect()
 }
 
-/// The name band: the last run of ink above the bar.
+/// Horizontal span `(left, right)` of the name text within a slot.
 ///
-/// Scanning up from the bar rather than taking the longest run avoids the taller
-/// runs made by role icons and buffs at the top of the frame.
-fn name_band(slot: &CapturedImage, bar_top: u32) -> Option<Band> {
-    let rows = ink_rows(slot, bar_top);
+/// A fixed-width crop drags in two artifacts recognition happily reads as
+/// letters: the frame border at the left edge (an 'I' or 'L' glued onto the
+/// name) and the buff icons to the right ('O', 'OR'). Both are separable
+/// without recognizing anything:
+///
+/// - Brightness: glyph ink is near-white while the border sits at 30–45% of
+///   it, so a threshold referenced to the band's own brightest ink excludes
+///   the border and dim icons outright.
+/// - Extent: the border runs the full cell height where glyphs stop at the
+///   band, so a bright leading column continuing above the band is border.
+///   This covers LOS-dimmed names, whose ink can fall to border brightness.
+/// - Spacing: word spaces are around a third of the glyph height while the
+///   run-out before the icons is several times it; the first gap wider than
+///   the band height ends the name.
+///
+/// A band with no qualifying text keeps the full scan area, so recognition
+/// still gets its chance on anything these measures cannot see.
+pub(super) fn name_text_span(slot: &CapturedImage, band: &Band) -> (u32, u32) {
+    let scan_width =
+        ((slot.width as f32 * NAME_SCAN_FRACTION).round() as u32).clamp(1, slot.width.max(1));
+    let top = band.top.min(slot.height);
+    let bottom = (band.top + band.height).min(slot.height);
+    let ink_floor = ink_threshold(slot);
+
+    // Brightest non-red pixel of each column within the band.
+    let col_peak: Vec<u8> = (0..scan_width)
+        .map(|x| {
+            (top..bottom)
+                .filter_map(|y| slot.pixel(x, y))
+                .filter(|&(r, g, b, _)| !is_bar_red(r, g, b))
+                .map(|(r, g, b, _)| luma(r, g, b))
+                .max()
+                .unwrap_or(0)
+        })
+        .collect();
+
+    let glyph_peak = col_peak.iter().copied().max().unwrap_or(0);
+    if glyph_peak < ink_floor {
+        return (0, scan_width);
+    }
+    let text_luma = ((glyph_peak as f32 * TEXT_PEAK_FRACTION) as u8).max(ink_floor);
+
+    // The border continues above the band; glyphs never do. Every probed row
+    // must be lit: the border is an unbroken vertical line, while frame chrome
+    // higher in the cell has dark rows between itself and the text — without
+    // this a name's own first letter can sit under chrome and be skipped.
+    // Probed only while hunting for the first text column.
+    let probe = top.saturating_sub(BORDER_PROBE_ROWS)..top;
+    let is_border = |x: u32| {
+        !probe.is_empty()
+            && probe.clone().all(|y| {
+                slot.pixel(x, y)
+                    .is_some_and(|(r, g, b, _)| !is_bar_red(r, g, b) && luma(r, g, b) >= ink_floor)
+            })
+    };
+
+    let max_gap = band.height.max(MIN_NAME_HEIGHT);
+    let scan = |start_luma: u8| {
+        let mut left: Option<u32> = None;
+        let mut right = 0u32;
+        for x in 0..scan_width {
+            // The start threshold decides where text BEGINS — the border is far
+            // dimmer than glyph ink. Past that, plain ink extends the name:
+            // LOS-dimmed letters sit well below 65% of an adjacent buff icon's
+            // brightness, and cutting on them splits the name mid-word.
+            if col_peak[x as usize] < ink_floor {
+                continue;
+            }
+            if left.is_some() {
+                if x - right > max_gap {
+                    // Ink on the far side of an over-wide gap is the icon column.
+                    break;
+                }
+                right = x;
+            } else if col_peak[x as usize] >= start_luma && !is_border(x) {
+                left = Some(x);
+                right = x;
+            }
+        }
+        (left, right)
+    };
+
+    // A start deep into the scan area means the relative threshold skipped a
+    // fully dimmed name and latched onto its icons; retry from plain ink.
+    let (mut left, mut right) = scan(text_luma);
+    if left.is_none_or(|l| l > scan_width / 3) {
+        let (dim_left, dim_right) = scan(ink_floor);
+        if dim_left.is_some_and(|l| l <= scan_width / 3) {
+            (left, right) = (dim_left, dim_right);
+        }
+    }
+
+    match left {
+        // Two columns of padding keep the glyphs' antialiased edges.
+        Some(left) => (left.saturating_sub(2), (right + 3).min(scan_width)),
+        None => (0, scan_width),
+    }
+}
+
+/// Row ink profile from the leftmost text columns only.
+///
+/// Icons and markers live to the right of the name, and on small frame styles
+/// they overlap the name's own rows — a full-width profile swallows them and
+/// the band inflates around the icons. The leftmost characters are pure text
+/// in every style, so the vertical extent is measured there. A column lit down
+/// most of the strip is the frame border, not glyphs, and is left out of the
+/// window; without that the border merges every run into one.
+fn anchor_ink_rows(slot: &CapturedImage, bottom: u32) -> Vec<f32> {
+    let ink_luma = ink_threshold(slot);
+    let bottom = bottom.min(slot.height);
+    let width =
+        ((slot.width as f32 * NAME_ANCHOR_FRACTION).round() as u32).clamp(1, slot.width.max(1));
+
+    let lit = |x: u32, y: u32| {
+        slot.pixel(x, y)
+            .is_some_and(|(r, g, b, _)| !is_bar_red(r, g, b) && luma(r, g, b) >= ink_luma)
+    };
+
+    let usable: Vec<u32> = (0..width)
+        .filter(|&x| {
+            let lit_rows = (0..bottom).filter(|&y| lit(x, y)).count();
+            (lit_rows as f32) < bottom.max(1) as f32 * VERTICAL_LINE_FRACTION
+        })
+        .collect();
+    if usable.is_empty() {
+        return Vec::new();
+    }
+
+    (0..bottom)
+        .map(|y| usable.iter().filter(|&&x| lit(x, y)).count() as f32 / usable.len() as f32)
+        .collect()
+}
+
+/// The last run of usable ink above the bar within a row profile.
+fn last_ink_run(rows: &[f32]) -> Option<(u32, u32)> {
     let has_ink = |v: f32| v > MIN_INK_FRACTION && v < MAX_INK_FRACTION;
 
+    let mut found: Option<(u32, u32)> = None;
     let mut end: Option<u32> = None;
-    let mut found = None;
     for (i, &row) in rows.iter().enumerate().rev() {
         if has_ink(row) {
             end.get_or_insert(i as u32 + 1);
@@ -280,8 +422,33 @@ fn name_band(slot: &CapturedImage, bar_top: u32) -> Option<Band> {
             }
         }
     }
-    let (top, height) =
+    let (mut top, mut height) =
         found.or_else(|| end.and_then(|end| (end >= MIN_NAME_HEIGHT).then_some((0, end))))?;
+
+    // Glyph caps over a selection highlight can push a row past
+    // MAX_INK_FRACTION and clip the band's top. Absorb a few such adjacent
+    // rows: it keeps the caps in the crop, and it keeps the border probe above
+    // the band on real background instead of inside the clipped letters.
+    let mut absorbed = 0;
+    while top > 0 && absorbed < 3 && rows[top as usize - 1] > MIN_INK_FRACTION {
+        top -= 1;
+        height += 1;
+        absorbed += 1;
+    }
+
+    Some((top, height))
+}
+
+/// The name band: the last run of ink above the bar.
+///
+/// Scanning up from the bar rather than taking the longest run avoids the taller
+/// runs made by role icons and buffs at the top of the frame. The left-window
+/// profile is tried first so icons sharing the text's rows cannot stretch the
+/// band; the full-width profile remains as fallback for a name whose leftmost
+/// characters were unreadable.
+fn name_band(slot: &CapturedImage, bar_top: u32) -> Option<Band> {
+    let (top, height) = last_ink_run(&anchor_ink_rows(slot, bar_top))
+        .or_else(|| last_ink_run(&ink_rows(slot, bar_top)))?;
 
     Some(Band {
         top,
@@ -319,24 +486,39 @@ pub fn slot_bands(slot: &CapturedImage, bar: Option<BarPosition>, inferred: bool
 // Grid consensus
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Pull clear vertical outliers back to the grid median.
+/// Pull name bands that disagree with the grid back to consensus.
 ///
-/// Names only. The health band is the bar, and [`reconcile_bars`] has already
-/// settled those across the grid — including which slots hold a borrowed position
-/// that must not be recognized. Correcting them a second time here would undo
-/// that, because this function cannot tell a seen bar from an inferred one.
-pub fn harmonize_names(per_slot: &mut [Vec<Band>]) {
+/// Positions are compared relative to each slot's bar, never to the slot's own
+/// pixel grid: the game frames can sit at a slightly different vertical pitch
+/// than the overlay's slots, so absolute positions drift across the rows of a
+/// layout while the gap between a name and its bar stays fixed. Measuring from
+/// the bar cancels the drift — each slot's bar has already absorbed its own
+/// offset and been vetted by [`reconcile_bars`].
+///
+/// Only slots whose bar was actually seen contribute to, or are moved by, the
+/// consensus. A borrowed bar is a hint, not an anchor: the gap to it means
+/// nothing, so an inferred slot's own ink always wins, and such a slot only
+/// inherits a position when it found no name at all.
+pub fn harmonize_names(
+    per_slot: &mut [Vec<Band>],
+    bars: &[Option<BarPosition>],
+    inferred: &[bool],
+) {
     const KIND: BandKind = BandKind::Name;
 
-    // Bottoms, not tops: icons above the text stretch a band upward, never down,
-    // so the bottom is the edge the slots agree on.
+    // (height, gap from name bottom to bar top) per seen-bar slot. Bottoms, not
+    // tops: icons above the text stretch a band upward, never down, so the
+    // bottom is the edge the slots agree on.
     let found: Vec<(u32, u32)> = per_slot
         .iter()
-        .filter_map(|bands| {
+        .zip(bars)
+        .zip(inferred)
+        .filter_map(|((bands, bar), inferred)| {
+            let (bar_top, _) = (*bar).filter(|_| !inferred)?;
             bands
                 .iter()
                 .find(|b| b.kind == KIND)
-                .map(|b| (b.height, b.top + b.height))
+                .map(|b| (b.height, bar_top.saturating_sub(b.top + b.height)))
         })
         .collect();
 
@@ -344,27 +526,27 @@ pub fn harmonize_names(per_slot: &mut [Vec<Band>]) {
         return;
     }
 
-    let heights: Vec<u32> = found.iter().map(|(height, _)| *height).collect();
-    let bottoms: Vec<u32> = found.iter().map(|(_, bottom)| *bottom).collect();
-    let consensus_height = median(heights.iter().copied());
-    let consensus_bottom = median(bottoms.iter().copied());
+    let consensus_height = median(found.iter().map(|&(height, _)| height));
+    let consensus_gap = median(found.iter().map(|&(_, gap)| gap));
     // Scales with the frame size.
     let tolerance = (consensus_height * 2 / 5).max(2);
 
-    if drifting(&bottoms, tolerance) {
-        return;
-    }
-
-    for bands in per_slot.iter_mut() {
+    for ((bands, bar), inferred) in per_slot.iter_mut().zip(bars).zip(inferred) {
+        let Some((bar_top, _)) = *bar else { continue };
         if let Some(band) = bands.iter_mut().find(|b| b.kind == KIND) {
             let bottom = band.top + band.height;
             let too_tall = band.height.abs_diff(consensus_height) > tolerance;
-            let displaced = bottom.abs_diff(consensus_bottom) > tolerance;
+            let displaced =
+                !inferred && bar_top.saturating_sub(bottom).abs_diff(consensus_gap) > tolerance;
 
             // Small variation is row-profile noise and the padding absorbs it. A
             // band that only grew upward keeps its own bottom edge.
             if too_tall || displaced {
-                let anchor = if displaced { consensus_bottom } else { bottom };
+                let anchor = if displaced {
+                    bar_top.saturating_sub(consensus_gap)
+                } else {
+                    bottom
+                };
                 band.top = anchor.saturating_sub(consensus_height);
                 band.height = consensus_height;
             }
@@ -372,32 +554,18 @@ pub fn harmonize_names(per_slot: &mut [Vec<Band>]) {
     }
 
     // A slot with a bar has a player in it, so a missing name is a detection
-    // failure rather than an empty frame.
-    for bands in per_slot.iter_mut() {
+    // failure rather than an empty frame. Place it off the slot's own bar.
+    for (bands, bar) in per_slot.iter_mut().zip(bars) {
+        let Some((bar_top, _)) = *bar else { continue };
         if bands.is_empty() || bands.iter().any(|b| b.kind == KIND) {
             continue;
         }
         bands.push(Band {
-            top: consensus_bottom.saturating_sub(consensus_height),
+            top: bar_top.saturating_sub(consensus_gap + consensus_height),
             height: consensus_height,
             kind: KIND,
         });
     }
-}
-
-/// Whether the bottoms trend one way down the slots instead of scattering.
-///
-/// That is the overlay grid not matching the game's, so the bands really do sit
-/// at different offsets and a consensus would make every slot equally wrong.
-fn drifting(bottoms: &[u32], tolerance: u32) -> bool {
-    let (Some(min), Some(max)) = (bottoms.iter().min(), bottoms.iter().max()) else {
-        return false;
-    };
-    if max - min <= tolerance {
-        return false;
-    }
-    // Strictly, so one slot jumping while the rest agree stays an outlier.
-    bottoms.windows(2).all(|w| w[0] < w[1]) || bottoms.windows(2).all(|w| w[0] > w[1])
 }
 
 /// Lower middle on an even count, so tall bands cannot drag the consensus up
@@ -703,10 +871,17 @@ mod tests {
         }]
     }
 
+    /// Harmonize against a uniform grid of seen bars at (24, 18).
+    fn harmonize(slots: &mut [Vec<Band>]) {
+        let bars = vec![Some((24, 18)); slots.len()];
+        let inferred = vec![false; slots.len()];
+        harmonize_names(slots, &bars, &inferred);
+    }
+
     #[test]
     fn pulls_an_outlier_to_the_consensus() {
         let mut slots = vec![name(10, 6), name(10, 6), name(10, 6), name(30, 6)];
-        harmonize_names(&mut slots);
+        harmonize(&mut slots);
 
         assert_eq!(slots[3][0].top, 10, "outlier should snap to the consensus");
         assert_eq!(slots[0][0].top, 10, "agreeing slots must be left alone");
@@ -715,7 +890,7 @@ mod tests {
     #[test]
     fn leaves_minor_variation_alone() {
         let mut slots = vec![name(10, 6), name(11, 6), name(12, 6)];
-        harmonize_names(&mut slots);
+        harmonize(&mut slots);
 
         assert_eq!(slots[1][0].top, 11);
         assert_eq!(slots[2][0].top, 12);
@@ -740,7 +915,7 @@ mod tests {
             .map(|&(top, height)| name(top, height))
             .collect();
 
-        harmonize_names(&mut slots);
+        harmonize(&mut slots);
 
         for (slot, band) in slots.iter().enumerate() {
             let band = band[0];
@@ -759,24 +934,10 @@ mod tests {
         assert_eq!((slots[6][0].top, slots[6][0].height), (12, 11));
     }
 
-    /// Bands creeping one way are a misaligned overlay, not misdetection.
-    #[test]
-    fn leaves_a_drifting_grid_alone() {
-        let mut slots: Vec<Vec<Band>> = [3, 6, 9, 12, 15, 18]
-            .iter()
-            .map(|&top| name(top, 6))
-            .collect();
-
-        harmonize_names(&mut slots);
-
-        assert_eq!(slots[0][0].top, 3);
-        assert_eq!(slots[5][0].top, 18);
-    }
-
     #[test]
     fn needs_enough_slots_to_have_an_opinion() {
         let mut slots = vec![name(10, 6), name(30, 6)];
-        harmonize_names(&mut slots);
+        harmonize(&mut slots);
 
         assert_eq!(slots[1][0].top, 30, "too few slots to override anything");
     }
@@ -801,7 +962,7 @@ mod tests {
             health(),
             Vec::new(),
         ];
-        harmonize_names(&mut slots);
+        harmonize(&mut slots);
 
         let filled = slots[3]
             .iter()
@@ -846,7 +1007,7 @@ mod tests {
             // Bar inferred: name only, deliberately no health band.
             name(10, 13),
         ];
-        harmonize_names(&mut slots);
+        harmonize(&mut slots);
 
         assert!(
             slots[3].iter().all(|b| b.kind == BandKind::Name),
