@@ -4,7 +4,7 @@ use crate::dsl::triggers::EntitySelectorExt;
 use crate::encounter::combat::ActiveBoss;
 use crate::encounter::EncounterState;
 use crate::game_data::{
-    correct_apply_charges, effect_id, effect_type_id, Discipline, BATTLE_REZ_ABILITY_IDS,
+    correct_apply_charges, effect_id, effect_type_id, Difficulty, Discipline, BATTLE_REZ_ABILITY_IDS,
     DISCIPLINE_ABILITIES, SCRIPTED_REVIVE_EFFECT_IDS,
 };
 use crate::signal_processor::signal::GameSignal;
@@ -47,6 +47,7 @@ impl EventProcessor {
         if let Some(enc) = cache.current_encounter_mut() {
             enc.update_entity_positions(&event);
         }
+        self.check_operation_timer_start(&event, cache, &mut signals);
 
         // AreaEntered and EnterCombat are emitted for the local player. Remember
         // that identity before the entity-ID-sorted discipline batch arrives.
@@ -640,6 +641,32 @@ impl EventProcessor {
                 }
                 _ => {}
             }
+        }
+    }
+
+    /// Emit `OperationTimerStart` the first time a player is logged inside the
+    /// area's `timer_start` region. Cheap: exits on the first `None` until the
+    /// area has a pending start, then only inspects player entities with positions.
+    fn check_operation_timer_start(
+        &self,
+        event: &CombatEvent,
+        cache: &mut SessionCache,
+        out: &mut Vec<GameSignal>,
+    ) {
+        let Some(timer_start) = cache.pending_timer_start() else {
+            return;
+        };
+        let difficulty = Difficulty::from_difficulty_id(cache.current_area.difficulty_id);
+        let crossed = [&event.source_entity, &event.target_entity]
+            .into_iter()
+            .filter(|e| e.entity_type == EntityType::Player && e.log_id != 0)
+            .find(|e| e.position.is_some_and(|p| timer_start.matches(difficulty, p)));
+        if let Some(player) = crossed {
+            cache.mark_timer_start_fired();
+            out.push(GameSignal::OperationTimerStart {
+                entity_id: player.log_id,
+                timestamp: event.timestamp,
+            });
         }
     }
 

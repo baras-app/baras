@@ -467,6 +467,25 @@ impl CombatSignalHandler {
     fn current_area_kind(&self) -> AreaKind {
         AreaKind::from_area_id(self.shared.current_area_id.load(Ordering::SeqCst))
     }
+
+    /// Auto-start the operation timer from 0 if it isn't running and the user
+    /// hasn't stopped it. Starts directly (not via command channel) to avoid the
+    /// 1-second tick delay. Live mode only — historical replays must not drive it.
+    ///
+    /// reset() before start() zeroes time preserved from a previous op's
+    /// final-boss auto-stop (area entry no longer resets operation timers).
+    fn try_auto_start_operation_timer(&self) {
+        if !self.shared.is_live_tailing.load(Ordering::SeqCst) {
+            return;
+        }
+        let mut timer = self.shared.operation_timer.lock().unwrap();
+        if !timer.is_running() && !timer.manually_stopped {
+            timer.reset();
+            timer.start();
+            drop(timer);
+            let _ = self.cmd_tx.try_send(ServiceCommand::EmitOperationTimerTick);
+        }
+    }
 }
 
 impl SignalHandler for CombatSignalHandler {
@@ -824,26 +843,17 @@ impl SignalHandler for CombatSignalHandler {
                     }
                 }
 
-                // Auto-start operation timer on first boss pull in an operation.
-                // Start directly (not via command channel) to avoid 1-second tick delay.
-                // Only in live mode - historical replays should not drive the timer.
-                //
-                // We reset() before start() so the timer always begins at 0 — this is the
-                // "time from first boss pull" semantic. Area entry no longer resets the
-                // timer for operations, so accumulated time from a previous op's final-boss
-                // auto-stop (which is preserved for display) must be zeroed here before the
-                // next run begins. Safe because we've already verified !manually_stopped.
-                if self.shared.is_live_tailing.load(Ordering::SeqCst) {
-                    if matches!(self.current_area_kind(), AreaKind::Operation) {
-                        let mut timer = self.shared.operation_timer.lock().unwrap();
-                        if !timer.is_running() && !timer.manually_stopped {
-                            timer.reset();
-                            timer.start();
-                            drop(timer);
-                            let _ = self.cmd_tx.try_send(ServiceCommand::EmitOperationTimerTick);
-                        }
-                    }
+                // First boss pull: fallback start for operations without a
+                // region-based `timer_start` (or if that region was never logged).
+                if matches!(self.current_area_kind(), AreaKind::Operation) {
+                    self.try_auto_start_operation_timer();
                 }
+            }
+            GameSignal::OperationTimerStart { entity_id, .. } => {
+                // A player crossed the area's achievement start line.
+                // A `[area.timer_start]` region is explicit opt-in, so no area-kind gate.
+                info!(entity_id, "Operation timer start region crossed");
+                self.try_auto_start_operation_timer();
             }
             _ => {}
         }
@@ -1168,6 +1178,15 @@ impl CombatService {
         }
     }
 
+    /// The area's `[area.timer_start]` region, if the definition file declares one.
+    fn load_area_timer_start(&self, area_id: i64) -> Option<baras_core::OperationTimerStart> {
+        let entry = self.area_index.get(&area_id)?;
+        baras_core::boss::load_area_config(&entry.file_path)
+            .ok()
+            .flatten()
+            .and_then(|area| area.timer_start)
+    }
+
     /// Get the path to the timer preferences file
     fn timer_preferences_path() -> Option<std::path::PathBuf> {
         dirs::config_dir().map(|p| p.join("baras").join("timer_preferences.toml"))
@@ -1473,10 +1492,12 @@ impl CombatService {
                                 // Send notes from new area's boss definitions
                                 self.send_notes_from_bosses(&bosses);
                                 // Also load definitions into the session
+                                let timer_start = self.load_area_timer_start(area_id);
                                 let session_guard = self.shared.session.read().await;
                                 if let Some(session) = session_guard.as_ref() {
                                     let mut session = session.write().await;
                                     session.load_boss_definitions(bosses, false);
+                                    session.set_timer_start(area_id, timer_start);
                                 }
                             } else {
                                 // No definitions for this area - clear notes

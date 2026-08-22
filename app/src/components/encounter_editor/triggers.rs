@@ -1078,6 +1078,8 @@ fn PositionConstraintRow(
         PositionAxis::Y => "y",
         PositionAxis::Z => "z",
         PositionAxis::Facing => "facing",
+        PositionAxis::XMinusY => "x_minus_y",
+        PositionAxis::XPlusY => "x_plus_y",
     };
 
     rsx! {
@@ -1110,6 +1112,8 @@ fn PositionConstraintRow(
                         "y" => PositionAxis::Y,
                         "z" => PositionAxis::Z,
                         "facing" => PositionAxis::Facing,
+                        "x_minus_y" => PositionAxis::XMinusY,
+                        "x_plus_y" => PositionAxis::XPlusY,
                         _ => PositionAxis::X,
                     };
                     on_change.call(c);
@@ -1118,6 +1122,8 @@ fn PositionConstraintRow(
                 option { value: "y", selected: axis_name == "y", "Y" }
                 option { value: "z", selected: axis_name == "z", "Z" }
                 option { value: "facing", selected: axis_name == "facing", "Facing" }
+                option { value: "x_minus_y", selected: axis_name == "x_minus_y", "X − Y" }
+                option { value: "x_plus_y", selected: axis_name == "x_plus_y", "X + Y" }
             }
             select {
                 class: "select",

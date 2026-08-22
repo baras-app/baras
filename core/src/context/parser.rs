@@ -7,7 +7,7 @@ use tracing;
 
 use crate::combat_log::{CombatEvent, Reader};
 use crate::context::{AppConfig, parse_log_filename};
-use crate::dsl::BossEncounterDefinition;
+use crate::dsl::{BossEncounterDefinition, OperationTimerStart};
 use crate::effects::{DefinitionSet, EffectTracker};
 use crate::game_data::effect_type_id;
 use crate::signal_processor::{EventProcessor, GameSignal, SignalHandler};
@@ -676,6 +676,13 @@ impl ParsingSession {
             if let Ok(mut timer_mgr) = timer_mgr.lock() {
                 timer_mgr.load_boss_definitions(bosses);
             }
+        }
+    }
+
+    /// Install the area's region-based operation timer start (see `[area.timer_start]`).
+    pub fn set_timer_start(&mut self, area_id: i64, timer_start: Option<OperationTimerStart>) {
+        if let Some(cache) = &mut self.session_cache {
+            cache.set_timer_start(area_id, timer_start);
         }
     }
 

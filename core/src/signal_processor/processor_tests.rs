@@ -100,6 +100,7 @@ fn signal_type_name(signal: &GameSignal) -> &'static str {
         GameSignal::HealingDone { .. } => "HealingDone",
         GameSignal::TargetChanged { .. } => "TargetChanged",
         GameSignal::TargetCleared { .. } => "TargetCleared",
+        GameSignal::OperationTimerStart { .. } => "OperationTimerStart",
         GameSignal::AreaEntered { .. } => "AreaEntered",
         GameSignal::PlayerInitialized { .. } => "PlayerInitialized",
         GameSignal::DisciplineChanged { .. } => "DisciplineChanged",

@@ -3,6 +3,15 @@ name = "Gods from the Machine"
 area_id = 833571547775765
 area_type = "operation"
 
+# "Doom's Delay" timer starts at the entrance teleporter destination (MM only).
+[area.timer_start]
+difficulties = ["master"]
+position = [
+  { entity = "source", axis = "x", op = "between", min = 805.0, max = 825.0 },
+  { entity = "source", axis = "y", op = "between", min = 1825.0, max = 1860.0 },
+  { entity = "source", axis = "z", op = "between", min = 230.0, max = 240.0 },
+]
+
 [[boss]]
 id = "TYTT_K"
 name = "TYTH"

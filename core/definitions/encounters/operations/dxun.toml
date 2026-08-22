@@ -7,6 +7,17 @@
 name = "Dxun"
 id = 833571547775792
 
+# "Arrow" timer starts past the banner in the entrance corridor (MM only).
+# The start line is diagonal: inside the corridor box, crossed means x - y > -490.
+[area.timer_start]
+difficulties = ["master"]
+position = [
+  { entity = "source", axis = "x", op = "between", min = -365.0, max = -325.0 },
+  { entity = "source", axis = "y", op = "between", min = 120.0, max = 165.0 },
+  { entity = "source", axis = "z", op = "between", min = -3.0, max = 3.0 },
+  { entity = "source", axis = "x_minus_y", op = "gt", value = -490.0 },
+]
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 1: Red
 # ═══════════════════════════════════════════════════════════════════════════════

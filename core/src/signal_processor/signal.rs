@@ -204,6 +204,12 @@ pub enum GameSignal {
         timestamp: NaiveDateTime,
     },
 
+    /// A player crossed the area's `[area.timer_start]` region.
+    OperationTimerStart {
+        entity_id: i64,
+        timestamp: NaiveDateTime,
+    },
+
     // Area transitions
     AreaEntered {
         area_id: i64,
@@ -320,6 +326,7 @@ impl GameSignal {
             | Self::HealingDone { timestamp, .. }
             | Self::TargetChanged { timestamp, .. }
             | Self::TargetCleared { timestamp, .. }
+            | Self::OperationTimerStart { timestamp, .. }
             | Self::AreaEntered { timestamp, .. }
             | Self::PlayerInitialized { timestamp, .. }
             | Self::DisciplineChanged { timestamp, .. }

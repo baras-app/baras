@@ -2,6 +2,15 @@
 name = "R-4 Anomaly"
 id = 833571547775799
 
+# "Anomalously Skilled" timer starts at the start line past the elevator (VM only).
+[area.timer_start]
+difficulties = ["veteran"]
+position = [
+  { entity = "source", axis = "x", op = "lt", value = 288.0 },
+  { entity = "source", axis = "y", op = "between", min = 8.0, max = 23.0 },
+  { entity = "source", axis = "z", op = "between", min = 424.0, max = 431.0 },
+]
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 1: IP-CPT
 # ═══════════════════════════════════════════════════════════════════════════════

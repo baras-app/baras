@@ -10,6 +10,8 @@ use super::{
     ChallengeDefinition, Condition, CounterCondition, CounterDefinition, PhaseDefinition, Trigger,
 };
 use crate::dsl::audio::AudioConfig;
+use crate::combat_log::Position;
+use crate::dsl::triggers::{PositionConstraint, matches_position_constraints};
 use crate::game_data::Difficulty;
 use baras_types::AlertTrigger;
 
@@ -63,6 +65,33 @@ pub struct AreaConfig {
     /// Used for UI grouping and determining if NPCs count as "bosses"
     #[serde(default)]
     pub area_type: AreaType,
+
+    /// Where the operation timer starts for achievements that time from a map
+    /// threshold rather than the first boss pull (e.g., Dxun, Gods, R-4).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timer_start: Option<OperationTimerStart>,
+}
+
+/// Region-based operation timer start. Fires once per area visit when any
+/// player's logged position satisfies every constraint. The player's position
+/// is checked regardless of each constraint's `entity` field.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OperationTimerStart {
+    /// Difficulties this applies to ("story", "veteran", "master"). Empty = all.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulties: Vec<String>,
+    /// Coordinate constraints (AND semantics).
+    pub position: Vec<PositionConstraint>,
+}
+
+impl OperationTimerStart {
+    pub fn matches(&self, difficulty: Option<Difficulty>, position: Position) -> bool {
+        matches_position_constraints(&self.position, Some(position), Some(position))
+            && (self.difficulties.is_empty()
+                || difficulty.is_some_and(|d| {
+                    self.difficulties.iter().any(|key| d.matches_config_key(key))
+                }))
+    }
 }
 
 /// Root structure for boss config files (TOML)
@@ -1050,5 +1079,68 @@ impl BossEncounterDefinition {
             }
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod timer_start_tests {
+    use super::*;
+    use std::path::Path;
+
+    fn pos(x: f32, y: f32, z: f32) -> Position {
+        Position { x, y, z, facing: 0.0 }
+    }
+
+    fn timer_start(file: &str) -> OperationTimerStart {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("definitions/encounters/operations")
+            .join(file);
+        crate::dsl::load_area_config(&path)
+            .expect("parse")
+            .and_then(|a| a.timer_start)
+            .expect("[area.timer_start] present")
+    }
+
+    /// Coordinates below are from live logs (see PR feature/dxun-gods-r4-timers).
+    #[test]
+    fn r4_start_line_veteran_only() {
+        let t = timer_start("r4_anomaly.toml");
+        let vm = Some(Difficulty::Veteran8);
+        assert!(t.matches(vm, pos(286.10, 14.86, 427.36)));
+        for safe in [pos(355.53, 17.67, 427.10), pos(292.89, 15.91, 427.10), pos(288.22, 15.46, 427.35)] {
+            assert!(!t.matches(vm, safe));
+        }
+        assert!(!t.matches(vm, pos(257.13, 10.68, 397.45)), "lower elevator level");
+        assert!(!t.matches(Some(Difficulty::Master8), pos(286.10, 14.86, 427.36)));
+        assert!(!t.matches(None, pos(286.10, 14.86, 427.36)));
+    }
+
+    #[test]
+    fn gods_teleporter_master_only() {
+        let t = timer_start("gods_from_the_machine.toml");
+        let mm = Some(Difficulty::Master16);
+        for dest in [pos(815.07, 1837.49, 234.74), pos(815.29, 1850.91, 232.44)] {
+            assert!(t.matches(mm, dest));
+        }
+        for other in [pos(63.84, 1553.43, 229.61), pos(818.56, 1891.32, 232.43)] {
+            assert!(!t.matches(mm, other));
+        }
+        assert!(!t.matches(Some(Difficulty::Story8), pos(815.07, 1837.49, 234.74)));
+    }
+
+    #[test]
+    fn dxun_corridor_master_only() {
+        let t = timer_start("dxun.toml");
+        let mm = Some(Difficulty::Master8);
+        for crossed in [pos(-337.78, 133.43, 0.40), pos(-334.27, 135.01, 0.0), pos(-331.38, 143.21, 1.01)] {
+            assert!(t.matches(mm, crossed));
+        }
+        for safe in [pos(-347.05, 153.49, -0.09), pos(-351.65, 154.32, 0.18), pos(-347.04, 156.62, 0.06)] {
+            assert!(!t.matches(mm, safe));
+        }
+        assert!(!t.matches(Some(Difficulty::Veteran8), pos(-337.78, 133.43, 0.40)));
+        // Inside the corridor box but on the safe side of the diagonal.
+        assert!(!t.matches(mm, pos(-365.0, 148.0, 0.0)));
+        assert!(!t.matches(mm, pos(-340.0, 151.0, 0.0)));
     }
 }

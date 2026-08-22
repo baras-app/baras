@@ -1101,7 +1101,9 @@ pub enum PositionEntity {
     Target,
 }
 
-/// Coordinate axis to compare.
+/// Coordinate axis to compare. The diagonal projections let a constraint
+/// describe a 45° line in the XY plane (e.g. `x - y > -490`), which an
+/// axis-aligned box can only approximate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PositionAxis {
@@ -1109,6 +1111,8 @@ pub enum PositionAxis {
     Y,
     Z,
     Facing,
+    XMinusY,
+    XPlusY,
 }
 
 /// Comparison applied to the axis value.
@@ -1157,6 +1161,8 @@ impl PositionConstraint {
             PositionAxis::Y => pos.y,
             PositionAxis::Z => pos.z,
             PositionAxis::Facing => pos.facing,
+            PositionAxis::XMinusY => pos.x - pos.y,
+            PositionAxis::XPlusY => pos.x + pos.y,
         };
         match self.op {
             PositionOp::Gt { value } => v > value,

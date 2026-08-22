@@ -1,6 +1,6 @@
 use chrono::NaiveDateTime;
 
-use crate::dsl::BossEncounterDefinition;
+use crate::dsl::{BossEncounterDefinition, OperationTimerStart};
 use crate::encounter::entity_info::PlayerInfo;
 use crate::encounter::summary::{create_encounter_summary, EncounterHistory};
 use crate::encounter::{CombatEncounter, EncounterState, OverlayHealthEntry, ProcessingMode};
@@ -35,6 +35,13 @@ pub struct SessionCache {
 
     // Boss encounter definitions (area-scoped, copied into each encounter)
     boss_definitions: Arc<Vec<BossEncounterDefinition>>,
+
+    /// Region-based operation timer start for `current_area` (`None` for
+    /// areas without one). `area_id` guards against stale definitions
+    /// between an area change and its definition reload.
+    timer_start: Option<(i64, OperationTimerStart)>,
+    /// Set once the start signal fires; cleared when a new area is loaded.
+    timer_start_fired: bool,
 
     // NPC tracking (session-scoped)
     /// NPC instance log IDs that have been seen in this session (for NpcFirstSeen signals)
@@ -80,6 +87,8 @@ impl SessionCache {
             next_encounter_id: 0,
             encounter_history: EncounterHistory::new(),
             boss_definitions: Arc::new(Vec::new()),
+            timer_start: None,
+            timer_start_fired: false,
             seen_npc_instances: HashSet::new(),
             player_disciplines: HashMap::new(),
             inferred_discipline_eviction_pending: false,
@@ -286,6 +295,29 @@ impl SessionCache {
     pub fn clear_boss_definitions(&mut self) {
         clear_boss_registry();
         self.boss_definitions = Arc::new(Vec::new());
+        self.timer_start = None;
+    }
+
+    /// Install the area's region-based timer start (called alongside
+    /// `load_boss_definitions` on area entry).
+    pub fn set_timer_start(&mut self, area_id: i64, timer_start: Option<OperationTimerStart>) {
+        self.timer_start = timer_start.map(|t| (area_id, t));
+        self.timer_start_fired = false;
+    }
+
+    /// Pending timer start for the current area, if it hasn't fired yet.
+    pub fn pending_timer_start(&self) -> Option<&OperationTimerStart> {
+        if self.timer_start_fired {
+            return None;
+        }
+        self.timer_start
+            .as_ref()
+            .filter(|(area_id, _)| *area_id == self.current_area.area_id)
+            .map(|(_, t)| t)
+    }
+
+    pub fn mark_timer_start_fired(&mut self) {
+        self.timer_start_fired = true;
     }
 
     /// Load boss definitions for the current area.
