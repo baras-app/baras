@@ -12,27 +12,29 @@ position = [
   { entity = "source", axis = "z", op = "between", min = 230.0, max = 240.0 },
 ]
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 1: Tyth
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [[boss]]
 id = "TYTT_K"
-name = "TYTH"
-area_name = "Gods from the Machine"
-area_id = 833571547775765
-area_type = "operation"
-difficulties = ["veteran", "master", "story"]
+name = "Tyth"
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "TYTH"
+name = "Tyth"
 ids = [4078423634870272, 4078427929837568, 4078419339902976, 4078415044935680]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities.hp_markers]]
 hp_percent = 65.0
-label = "Phase 2 (MM)"
+label = "2nd large Addwave"
+difficulties = ["master"]
 
 [[boss.entities.hp_markers]]
 hp_percent = 25.0
-label = "Phase 3 (BURN)"
+label = "Burn"
 
 [[boss.phases]]
 id = "TYTT_K_p1"
@@ -630,31 +632,39 @@ effects = [4088443793572128]
 source = "any"
 target = "any"
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 2: Aivela & Esne
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [[boss]]
 id = "a&e_k"
-name = "AIVELA & ESNE"
-area_name = "Gods from the Machine"
-area_id = 833571547775765
-area_type = "operation"
+name = "Aivela & Esne"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "AIVELA"
+name = "Aivela"
 ids = [4088525397950464]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities.hp_markers]]
 hp_percent = 72.0
-label = "Phase 3"
+label = "Synergy Protocol"
 
 [[boss.entities.hp_markers]]
 hp_percent = 42.7
-label = "Phase 4"
+label = "Aivela & Esne 2"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 40.0
+label = "Aivela & Esne 2"
+difficulties = ["story"]
 
 [[boss.entities.hp_markers]]
 hp_percent = 7.5
-label = "Shield"
+label = "Empowered Shield"
+difficulties = ["veteran", "master"]
 
 [[boss.entities]]
 name = "Nexus"
@@ -663,30 +673,43 @@ is_boss = true
 is_kill_target = false
 
 [[boss.entities.hp_markers]]
+hp_percent = 50.0
+label = "Aivela & Esne"
+difficulties = ["story", "veteran"]
+
+[[boss.entities.hp_markers]]
 hp_percent = 33.3
-label = "Phase 2"
+label = "Aivela & Esne"
+difficulties = ["master"]
 
 [[boss.entities]]
-name = "ESNE"
+name = "Esne"
 ids = [4088538282852352]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities.hp_markers]]
 hp_percent = 72.0
-label = "Phase 3"
+label = "Synergy Protocol"
 
 [[boss.entities.hp_markers]]
 hp_percent = 42.7
-label = "Phase 4"
+label = "Aivela & Esne 2"
+difficulties = ["veteran", "master"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 40.0
+label = "Aivela & Esne 2"
+difficulties = ["story"]
 
 [[boss.entities.hp_markers]]
 hp_percent = 7.5
-label = "Shield"
+label = "Empowered Shield"
+difficulties = ["veteran", "master"]
 
 [[boss.phases]]
 id = "a&e_k_p1"
-name = "Phase 1"
+name = "Codex"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -694,7 +717,7 @@ type = "combat_start"
 
 [[boss.phases]]
 id = "a&e_k_p2"
-name = "Phase 2"
+name = "Aivela & Esne"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -716,7 +739,7 @@ timer_id = "a&e_k_p2_mm"
 
 [[boss.phases]]
 id = "a&e_k_p3"
-name = "Phase 3"
+name = "Synergy Protocol"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -734,7 +757,7 @@ timer_id = "a&e_k_p3"
 
 [[boss.phases]]
 id = "a&e_k_p4"
-name = "Phase 4"
+name = "Aivela & Esne 2"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -752,7 +775,7 @@ timer_id = "a&e_k_p4"
 
 [[boss.phases]]
 id = "a&e_k_phase_5"
-name = "Phase 5"
+name = "Burn"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -1598,12 +1621,13 @@ counter_id = "a&e_k_e_p4_c"
 operator = "gte"
 value = 1
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 3: Nahut
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [[boss]]
 id = "nahut_k"
-name = "NAHUT"
-area_name = "Gods from the Machine"
-area_id = 833571547775765
-area_type = "operation"
+name = "Nahut"
 difficulties = ["story", "veteran", "master"]
 
 [boss.encounter_trigger]
@@ -1619,6 +1643,16 @@ is_boss = true
 is_kill_target = true
 
 [[boss.entities.hp_markers]]
+hp_percent = 81.95
+label = "Prepare the Field"
+difficulties = ["story"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 86.3
+label = "Prepare the Field"
+difficulties = ["veteran"]
+
+[[boss.entities.hp_markers]]
 hp_percent = 88.33
 label = "Prepare the Field"
 difficulties = ["master"]
@@ -1629,23 +1663,29 @@ label = "Reseed"
 difficulties = ["master"]
 
 [[boss.entities.hp_markers]]
-hp_percent = 65.0
+hp_percent = 63.9
 label = "Couplings"
-difficulties = ["master"]
-
-[[boss.entities.hp_markers]]
-hp_percent = 37.0
-label = "Preburn Shield"
-
-[[boss.entities.hp_markers]]
-hp_percent = 86.3
-label = "Prepare the Field"
-difficulties = ["veteran"]
+difficulties = ["story"]
 
 [[boss.entities.hp_markers]]
 hp_percent = 72.6
 label = "Couplings"
 difficulties = ["veteran"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 65.0
+label = "Couplings"
+difficulties = ["master"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 34.3
+label = "Energy Barrier"
+difficulties = ["story"]
+
+[[boss.entities.hp_markers]]
+hp_percent = 37.0
+label = "Energy Barrier"
+difficulties = ["veteran", "master"]
 
 [[boss.entities.shields]]
 label = "Prepare the Field"
@@ -1690,7 +1730,7 @@ total = 3761172
 
 [[boss.phases]]
 id = "nahut_k_p1_i"
-name = "Phase 1 (Intermission)"
+name = "Intermission"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -1715,7 +1755,7 @@ value = 3
 
 [[boss.phases]]
 id = "nahut_k_p1_p"
-name = "Phase 1 (Pursuit)"
+name = "Pursuit"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -1726,7 +1766,7 @@ target = "any"
 
 [[boss.phases]]
 id = "nahut_k_p2"
-name = "Phase 2 (Couplings)"
+name = "Couplings"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -1742,7 +1782,7 @@ timer_id = "nahut_k_p2_vm"
 
 [[boss.phases]]
 id = "nahut_k_p3"
-name = "Phase 3 (Turrets)"
+name = "Turrets"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -1758,7 +1798,7 @@ timer_id = "nahut_k_p3_t2"
 
 [[boss.phases]]
 id = "nahut_k_p4"
-name = "Phase 4 (Burn)"
+name = "Burn"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2475,22 +2515,24 @@ counter_id = "nahut_k_ps_c"
 operator = "lt"
 value = 2
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: Scyva
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [[boss]]
 id = "SCYVA_K"
-name = "SCYVA"
-area_name = "Gods from the Machine"
-area_id = 833571547775765
-area_type = "operation"
+name = "Scyva"
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "SCYVA"
+name = "Scyva"
 ids = [4108140513591296]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities.hp_markers]]
 hp_percent = 30.0
-label = "Extinction"
+label = "Extinction Protocol"
 
 [[boss.entities.shields]]
 label = "Stabilizing Field"
@@ -2535,7 +2577,7 @@ is_kill_target = false
 
 [[boss.phases]]
 id = "SCYVA_K_p1"
-name = "Phase 1"
+name = "Omega Protocol Droid"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2543,7 +2585,7 @@ type = "combat_start"
 
 [[boss.phases]]
 id = "SCYVA_K_p2"
-name = "Phase 2"
+name = "Catalysts"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2554,7 +2596,7 @@ target = "any"
 
 [[boss.phases]]
 id = "SCYVA_K_p3"
-name = "Phase 3"
+name = "Catalysts (Destack)"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2563,7 +2605,7 @@ timer_id = "SCYVA_K_p3_t"
 
 [[boss.phases]]
 id = "SCYVA_K_p4_i"
-name = "Phase 4 (intro)"
+name = "Scyva Intro"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2578,7 +2620,7 @@ phase_ids = ["SCYVA_K_p3"]
 
 [[boss.phases]]
 id = "SCYVA_K_p4_e"
-name = "Phase 4 (Expansion)"
+name = "Expansion"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2589,7 +2631,7 @@ target = "any"
 
 [[boss.phases]]
 id = "SCYVA_K_p4_c"
-name = "Phase 4 (Contraction)"
+name = "Contraction"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2600,7 +2642,7 @@ target = "any"
 
 [[boss.phases]]
 id = "SCYVA_K_p4_s"
-name = "Phase 4 (Ignition)"
+name = "Ignition"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2611,7 +2653,7 @@ target = "any"
 
 [[boss.phases]]
 id = "SCYVA_K_p5_i"
-name = "Phase 5 (intro)"
+name = "First Extinction"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2622,7 +2664,7 @@ target = "any"
 
 [[boss.phases]]
 id = "SCYVA_K_p5_e"
-name = "Phase 5 (Expansion)"
+name = "Expansion (Extinctionphase)"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2633,7 +2675,7 @@ target = "any"
 
 [[boss.phases]]
 id = "SCYVA_K_p5_c"
-name = "Phase 5 (Contraction)"
+name = "Contraction (Extinction)"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3552,55 +3594,69 @@ roles = []
 type = "phase_entered"
 phase_id = "SCYVA_K_p4_c"
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 5: Izax
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [[boss]]
 id = "IZAX_K"
-name = "IZAX"
-area_name = "Gods from the Machine"
-area_id = 833571547775765
-area_type = "operation"
+name = "Izax"
 difficulties = ["story", "veteran", "master"]
+is_final_boss = true
 
 [[boss.entities]]
-name = "IZAX"
+name = "Izax"
 ids = [4108097563918336]
 is_boss = true
 is_kill_target = false
 
 [[boss.entities.hp_markers]]
+hp_percent = 96.0
+label = "Anchors"
+difficulties = ["story"]
+group_size = 8
+
+[[boss.entities.hp_markers]]
+hp_percent = 95.0
+label = "Anchors"
+difficulties = ["story"]
+group_size = 16
+
+[[boss.entities.hp_markers]]
 hp_percent = 97.0
-label = "Phase 2"
+label = "Anchors"
 difficulties = ["veteran", "master"]
 group_size = 8
 
 [[boss.entities.hp_markers]]
 hp_percent = 96.0
-label = "Phase 2"
+label = "Anchors"
 difficulties = ["veteran", "master"]
 group_size = 16
 
 [[boss.entities.hp_markers]]
+hp_percent = 85.0
+label = "Interrupts"
+difficulties = ["story", "veteran"]
+
+[[boss.entities.hp_markers]]
 hp_percent = 80.0
-label = "Phase 3"
+label = "Interrupts"
 difficulties = ["master"]
 
 [[boss.entities.hp_markers]]
+hp_percent = 65.0
+label = "Augment Droid"
+difficulties = ["story", "veteran"]
+
+[[boss.entities.hp_markers]]
 hp_percent = 60.0
-label = "Phase 4"
+label = "Augment Droid"
 difficulties = ["master"]
 
 [[boss.entities.hp_markers]]
 hp_percent = 35.0
-label = "Phase 5"
-
-[[boss.entities.hp_markers]]
-hp_percent = 85.0
-label = "Phase 3"
-difficulties = ["veteran"]
-
-[[boss.entities.hp_markers]]
-hp_percent = 65.0
-label = "Phase 4"
-difficulties = ["veteran"]
+label = "Missles"
 
 [[boss.entities.shields]]
 label = "Deflector Shield"
@@ -3652,7 +3708,7 @@ is_kill_target = true
 
 [[boss.phases]]
 id = "IZAX_K_p1"
-name = "Phase 1"
+name = "Swipes"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3660,7 +3716,7 @@ type = "combat_start"
 
 [[boss.phases]]
 id = "IZAX_K_p2_a"
-name = "Phase 2 (Anchors)"
+name = "Anchors"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3671,7 +3727,7 @@ target = "any"
 
 [[boss.phases]]
 id = "IZAX_K_p2_sd"
-name = "Phase 2 (Shield down)"
+name = "Anchors (Shield down)"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3682,7 +3738,7 @@ target = "any"
 
 [[boss.phases]]
 id = "IZAX_K_p3_t"
-name = "Phase 3 (Transition)"
+name = "Interrupts (Transition)"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3697,7 +3753,7 @@ phase_ids = ["IZAX_K_p2_a", "IZAX_K_p2_sd"]
 
 [[boss.phases]]
 id = "IZAX_K_p3"
-name = "Phase 3"
+name = "Interrupts"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3713,7 +3769,7 @@ timer_id = "IZAX_K_p3_rep"
 
 [[boss.phases]]
 id = "IZAX_K_p3_int"
-name = "Phase 3 (Intermission)"
+name = "Interrupts (Reposition)"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3724,7 +3780,7 @@ target = "any"
 
 [[boss.phases]]
 id = "IZAX_K_p4_t"
-name = "Phase 4 (Transition)"
+name = "Augment Droid (Transition)"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3750,7 +3806,7 @@ phase_ids = ["IZAX_K_p3", "IZAX_K_p3_int"]
 
 [[boss.phases]]
 id = "IZAX_K_p4"
-name = "Phase 4"
+name = "Augment Droid"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3766,7 +3822,7 @@ timer_id = "IZAX_K_p4_im"
 
 [[boss.phases]]
 id = "IZAX_K_p4_int"
-name = "Phase 4 (Intermission)"
+name = "Augment Droid (Reposition)"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3777,7 +3833,7 @@ target = "any"
 
 [[boss.phases]]
 id = "IZAX_K_p5_t"
-name = "Phase 5 (Transition)"
+name = "Missiles"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3785,17 +3841,8 @@ type = "timer_started"
 timer_id = "IZAX_K_p5"
 
 [[boss.phases]]
-id = "IZAX_K_p6_t"
-name = "Phase 6 (Transition)"
-enabled = true
-
-[boss.phases.start_trigger]
-type = "timer_started"
-timer_id = "IZAX_K_p6"
-
-[[boss.phases]]
 id = "IZAX_K_p5"
-name = "Phase 5"
+name = "Scyva"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3807,8 +3854,17 @@ type = "phase_active"
 phase_ids = ["IZAX_K_p5_t"]
 
 [[boss.phases]]
+id = "IZAX_K_p6_t"
+name = "Burn (Transition)"
+enabled = true
+
+[boss.phases.start_trigger]
+type = "timer_started"
+timer_id = "IZAX_K_p6"
+
+[[boss.phases]]
 id = "IZAX_K_p6"
-name = "Phase 6 (Burn)"
+name = "Burn"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -3825,7 +3881,7 @@ enabled = true
 [boss.phases.start_trigger]
 type = "boss_hp_below"
 hp_percent = 0.00000001
-selector = ["IZAX"]
+selector = ["Izax"]
 
 [[boss.counters]]
 id = "IZAX_K_p_c"
