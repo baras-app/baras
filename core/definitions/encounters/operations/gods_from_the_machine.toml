@@ -13,16 +13,16 @@ position = [
 ]
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Tyth
+# Boss 1: TYTH
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
 id = "TYTT_K"
-name = "Tyth"
+name = "TYTH"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Tyth"
+name = "TYTH"
 ids = [4078423634870272, 4078427929837568, 4078419339902976, 4078415044935680]
 is_boss = true
 is_kill_target = true
@@ -633,16 +633,16 @@ source = "any"
 target = "any"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 2: Aivela & Esne
+# Boss 2: AIVELA & ESNE
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
 id = "a&e_k"
-name = "Aivela & Esne"
+name = "AIVELA & ESNE"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Aivela"
+name = "AIVELA"
 ids = [4088525397950464]
 is_boss = true
 is_kill_target = true
@@ -683,7 +683,7 @@ label = "Aivela & Esne"
 difficulties = ["master"]
 
 [[boss.entities]]
-name = "Esne"
+name = "ESNE"
 ids = [4088538282852352]
 is_boss = true
 is_kill_target = true
@@ -1622,12 +1622,12 @@ operator = "gte"
 value = 1
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Nahut
+# Boss 3: NAHUT
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
 id = "nahut_k"
-name = "Nahut"
+name = "NAHUT"
 difficulties = ["story", "veteran", "master"]
 
 [boss.encounter_trigger]
@@ -1637,7 +1637,7 @@ source = "any"
 target = "any"
 
 [[boss.entities]]
-name = "Nahut"
+name = "NAHUT"
 ids = [4108011664572416, 4122949560827904, 4122953855795200, 4122958150762496]
 is_boss = true
 is_kill_target = true
@@ -1700,7 +1700,8 @@ source = "any"
 target = "any"
 
 [[boss.entities.shields.start_trigger.conditions]]
-type = "combat_start"
+type = "npc_appears"
+selector = ["NAHUT"]
 
 [boss.entities.shields.end_trigger]
 type = "effect_removed"
@@ -2516,16 +2517,16 @@ operator = "lt"
 value = 2
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 4: Scyva
+# Boss 4: SCYVA
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
 id = "SCYVA_K"
-name = "Scyva"
+name = "SCYVA"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Scyva"
+name = "SCYVA"
 ids = [4108140513591296]
 is_boss = true
 is_kill_target = true
@@ -2816,6 +2817,42 @@ timer_id = "SCYVA_K_rad_s"
 
 [boss.counters.reset_on]
 type = "combat_end"
+
+[[boss.counters]]
+id = "scyva_ignite_core_active"
+name = "Ignite Core State"
+enabled = true
+initial_value = 0
+decrement = false
+
+[boss.counters.increment_on]
+type = "effect_applied"
+effects = [4127300362698752]
+
+[boss.counters.decrement_on]
+type = "effect_removed"
+effects = [4131981877051728]
+
+[boss.counters.reset_on]
+type = "combat_end"
+
+[[boss.challenges]]
+id = "scyva_ignite_core_damage"
+name = "Ignite Core Damage"
+metric = "damage_taken"
+enabled = true
+color = [255, 120, 0, 255]
+columns = "per_second_only"
+
+[[boss.challenges.conditions]]
+type = "target"
+match = "boss"
+
+[[boss.challenges.conditions]]
+type = "counter"
+counter_id = "scyva_ignite_core_active"
+operator = "eq"
+value = 1
 
 [[boss.timer]]
 id = "SCYVA_K_p_i"
@@ -3595,17 +3632,17 @@ type = "phase_entered"
 phase_id = "SCYVA_K_p4_c"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 5: Izax
+# Boss 5: IZAX
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
 id = "IZAX_K"
-name = "Izax"
+name = "IZAX"
 difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Izax"
+name = "IZAX"
 ids = [4108097563918336]
 is_boss = true
 is_kill_target = false
@@ -3881,7 +3918,7 @@ enabled = true
 [boss.phases.start_trigger]
 type = "boss_hp_below"
 hp_percent = 0.00000001
-selector = ["Izax"]
+selector = ["IZAX"]
 
 [[boss.counters]]
 id = "IZAX_K_p_c"
@@ -4608,6 +4645,10 @@ type = "effect_removed"
 effects = [4162922821451776]
 source = "any"
 target = "any"
+
+[boss.timer.cancel_trigger]
+type = "phase_entered"
+phase_id = "IZAX_K_p4_t"
 
 [[boss.timer]]
 id = "IZAX_K_p3_it"
