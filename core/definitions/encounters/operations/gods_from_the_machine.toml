@@ -2839,7 +2839,7 @@ type = "combat_end"
 [[boss.challenges]]
 id = "scyva_ignite_core_damage"
 name = "Ignite Core Damage"
-metric = "damage_taken"
+metric = "damage"
 enabled = true
 color = [255, 120, 0, 255]
 columns = "per_second_only"
