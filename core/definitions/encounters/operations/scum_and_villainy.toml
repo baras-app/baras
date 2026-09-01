@@ -83,7 +83,6 @@ duration_secs = 8.0
 color = [39, 32, 219, 255]
 difficulties = ["veteran", "master"]
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Titan 6
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -272,7 +271,6 @@ duration_secs = 32.0
 color = [189, 54, 168, 255]
 difficulties = ["master"]
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Thrasher
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -291,6 +289,7 @@ is_kill_target = true
 [[boss.entities.hp_markers]]
 hp_percent = 50.0
 label = "Double adds"
+difficulties = ["master"]
 
 [[boss.timer]]
 id = "thrasher_double_wave"
@@ -300,11 +299,11 @@ is_alert = true
 alert_text = "Double Wave"
 color = [10, 118, 21, 255]
 icon_ability_id = 3060692479377408
-difficulties = ["veteran", "master"]
+difficulties = ["master"]
 
 [[boss.timer]]
 id = "thrasher_adds_1st"
-name = "Adds 1st"
+name = "1st Adds"
 display_text = "Adds"
 trigger = { type = "combat_start" }
 duration_secs = 15.0
@@ -338,24 +337,100 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "thrasher_knockback_180"
-# orbs_id = "f9f561ab-5e34-43f8-acb8-476aac1b1f11"
 name = "Knockback 180"
 trigger = { type = "ability_cast", abilities = [3045857662337024] }
 duration_secs = 10.5
 color = [33, 224, 220, 255]
 icon_ability_id = 3045857662337024
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "thrasher_knockback_360"
-# orbs_id = "e8d17ac5-e0be-4887-a068-d2b747368deb"
 name = "Knockback 360"
 trigger = { type = "ability_cast", abilities = [3262208049938432] }
 duration_secs = 8.5
 color = [33, 224, 220, 255]
 icon_ability_id = 3045857662337024
-difficulties = ["veteran", "master"]
+difficulties = ["master"]
 
+[[boss.timer]]
+id = "thrasher_stomp"
+name = "Stomp"
+duration_secs = 6.0
+color = [55, 100, 0, 255]
+difficulties = ["story", "veteran", "master"]
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "ability_cast"
+effects = [3045849072402432]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "ability_cast"
+abilities = [3060692479377408]
+source = "any"
+target = "any"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "ability_cast"
+abilities = [3262208049938432]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "thrasher_swipe"
+name = "Swipe"
+duration_secs = 10.0
+color = [55, 0, 150, 255]
+difficulties = ["story", "veteran", "master"]
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "ability_cast"
+effects = [3045844777435136]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "ability_cast"
+abilities = [3060692479377408]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "thrasher_singlewave_lockout"
+name = "Swipe & Stomp"
+duration_secs = 25.0
+color = [150, 180, 50, 255]
+icon_ability_id = 3060692479377408
+difficulties = ["story", "veteran", "master"]
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "ability_cast"
+effects = [3060692479377408]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "thrasher_doublewave_lockout"
+name = "Stomp"
+duration_secs = 38.0
+color = [100, 80, 250, 255]
+icon_ability_id = 3262208049938432
+difficulties = ["master"]
+display_target = "timers_a"
+
+[boss.timer.trigger]
+type = "ability_cast"
+effects = [3262208049938432]
+source = "any"
+target = "any"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: Operations Chief
@@ -425,7 +500,6 @@ duration_secs = 20.0
 color = [12, 133, 17, 255]
 icon_ability_id = 3145707062034432
 difficulties = ["veteran", "master"]
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 5: Olok the Shadow
@@ -589,6 +663,7 @@ queue_hide_from_next = false
 [boss.timer.trigger]
 type = "timer_expires"
 timer_id = "olok_wave_4"
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 6: Cartel Warlords
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -674,7 +749,6 @@ selector = ["Horic", "Sunder", "Garr", "Tuchuk"]
 
 [boss.counters.reset_on]
 type = "combat_end"
-
 
 [[boss.timer]]
 id = "cartel_warlords_horic_spray"
@@ -778,7 +852,6 @@ color = [219, 31, 28, 255]
 icon_ability_id = 3145926105366528
 difficulties = ["master"]
 group_size = 16
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 7: Dread Master Styrak
