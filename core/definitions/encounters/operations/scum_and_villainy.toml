@@ -363,7 +363,7 @@ display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
-effects = [3045849072402432]
+abilities = [3045849072402432]
 source = "any"
 target = "any"
 
@@ -392,7 +392,7 @@ display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
-effects = [3045844777435136]
+abilities = [3045844777435136]
 source = "any"
 target = "any"
 
@@ -413,7 +413,7 @@ display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
-effects = [3060692479377408]
+abilities = [3060692479377408]
 source = "any"
 target = "any"
 
@@ -428,7 +428,7 @@ display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "ability_cast"
-effects = [3262208049938432]
+abilities = [3262208049938432]
 source = "any"
 target = "any"
 
