@@ -228,7 +228,7 @@ id = "hateful_entity_hateful_void"
 name = "Hateful Void"
 trigger = { type = "ability_cast", abilities = [3265820117434368] }
 duration_secs = 10.0
-color = [219, 28, 29, 255]
+color = [134, 94, 60, 255]
 difficulties = ["master"]
 
 [[boss.timer]]
@@ -245,6 +245,7 @@ name = "Grapple"
 trigger = { type = "ability_cast", abilities = [3264750670577664] }
 duration_secs = 20.0
 color = [29, 184, 23, 255]
+icon_ability_id = 3264750670577664
 difficulties = ["master"]
 
 [[boss.timer]]
@@ -261,6 +262,7 @@ name = "Death Mark"
 trigger = { type = "ability_cast", abilities = [3265764282859520] }
 duration_secs = 62.0
 color = [187, 199, 37, 255]
+icon_ability_id = 3265764282859520
 difficulties = ["master"]
 
 [[boss.timer]]
@@ -269,7 +271,20 @@ name = "Awakening"
 trigger = { type = "ability_cast", abilities = [3265794347630592] }
 duration_secs = 32.0
 color = [189, 54, 168, 255]
+icon_ability_id = 3265794347630592
 difficulties = ["master"]
+
+[[boss.timer]]
+id = "hateful_entity_enrage"
+name = "Enrage"
+duration_secs = 480.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3319455669026816
+difficulties = ["master"]
+show_at_secs = 30.0
+
+[boss.timer.trigger]
+type = "combat_start"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: Thrasher
@@ -357,7 +372,7 @@ difficulties = ["master"]
 id = "thrasher_stomp"
 name = "Stomp"
 duration_secs = 6.0
-color = [55, 100, 0, 255]
+color = [246, 211, 45, 255]
 difficulties = ["story", "veteran", "master"]
 display_target = "timers_a"
 
@@ -386,7 +401,7 @@ target = "any"
 id = "thrasher_swipe"
 name = "Swipe"
 duration_secs = 10.0
-color = [55, 0, 150, 255]
+color = [237, 23, 93, 255]
 difficulties = ["story", "veteran", "master"]
 display_target = "timers_a"
 
@@ -406,8 +421,7 @@ target = "any"
 id = "thrasher_singlewave_lockout"
 name = "Swipe & Stomp"
 duration_secs = 25.0
-color = [150, 180, 50, 255]
-icon_ability_id = 3060692479377408
+color = [129, 61, 156, 255]
 difficulties = ["story", "veteran", "master"]
 display_target = "timers_a"
 
@@ -421,8 +435,7 @@ target = "any"
 id = "thrasher_doublewave_lockout"
 name = "Stomp"
 duration_secs = 38.0
-color = [100, 80, 250, 255]
-icon_ability_id = 3262208049938432
+color = [246, 211, 45, 255]
 difficulties = ["master"]
 display_target = "timers_a"
 
@@ -860,10 +873,8 @@ group_size = 16
 [[boss]]
 id = "Styrak_k"
 name = "Dread Master Styrak"
-area_name = "Scum and Villainy"
-area_id = 137438993037
-area_type = "operation"
-difficulties = ["veteran", "master", "story"]
+difficulties = ["story", "veteran", "master"]
+is_final_boss = true
 
 [[boss.entities]]
 name = "Kell Dragon"
