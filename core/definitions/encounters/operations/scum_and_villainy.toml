@@ -6,6 +6,7 @@
 [area]
 name = "Scum and Villainy"
 id = 137438993037
+area_type = "operation"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 1: Dash'Roode
