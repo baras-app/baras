@@ -685,7 +685,7 @@ timer_id = "olok_wave_4"
 [[boss]]
 id = "cartel_warlords"
 name = "Cartel Warlords"
-difficulties = ["story", "veteran"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Horic"
