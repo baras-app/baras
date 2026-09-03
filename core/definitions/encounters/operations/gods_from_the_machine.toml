@@ -2665,7 +2665,7 @@ target = "any"
 
 [[boss.phases]]
 id = "SCYVA_K_p5_e"
-name = "Expansion (Extinctionphase)"
+name = "Expansion (Extinction)"
 enabled = true
 
 [boss.phases.start_trigger]
