@@ -123,7 +123,7 @@ pub async fn preview_sound(
         return Err("No sound file specified".into());
     }
 
-    let volume = handle.config().await.audio.volume;
+    let audio = handle.config().await.audio;
 
     let user_sounds_dir = dirs::config_dir()
         .map(|p| p.join("baras").join("sounds"))
@@ -133,26 +133,7 @@ pub async fn preview_sound(
     let path = resolve_sound_path(&filename, &user_sounds_dir, &bundled_root)
         .ok_or_else(|| format!("Sound file not found: {}", filename))?;
 
-    std::thread::spawn(move || {
-        use rodio::{Decoder, OutputStream, Sink};
-        use std::fs::File;
-        use std::io::BufReader;
-
-        let Ok((_stream, stream_handle)) = OutputStream::try_default() else {
-            return;
-        };
-        let Ok(file) = File::open(&path) else { return };
-        let Ok(source) = Decoder::new(BufReader::new(file)) else {
-            return;
-        };
-        let Ok(sink) = Sink::try_new(&stream_handle) else {
-            return;
-        };
-
-        sink.set_volume(volume as f32 / 100.0);
-        sink.append(source);
-        sink.sleep_until_end();
-    });
+    crate::audio::play(path, audio.volume, audio.normalize_loudness);
 
     Ok(())
 }

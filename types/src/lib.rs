@@ -3295,6 +3295,10 @@ pub struct AudioSettings {
     /// without a voice pack
     #[serde(default = "default_true", alias = "alerts_enabled")]
     pub tts_enabled: bool,
+
+    /// Normalize sound-file loudness.
+    #[serde(default)]
+    pub normalize_loudness: bool,
 }
 
 fn default_audio_volume() -> u8 {
@@ -3307,6 +3311,7 @@ impl Default for AudioSettings {
             enabled: true,
             volume: 80,
             tts_enabled: true,
+            normalize_loudness: false,
         }
     }
 }
