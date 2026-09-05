@@ -3868,6 +3868,13 @@ abilities = [4166341615419392]
 source = "any"
 target = "any"
 
+[[boss.phases.conditions]]
+type = "not"
+
+[boss.phases.conditions.condition]
+type = "phase_active"
+phase_ids = ["IZAX_K_p5_t"]
+
 [[boss.phases]]
 id = "IZAX_K_p5_t"
 name = "Missiles"
