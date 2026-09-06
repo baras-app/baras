@@ -191,8 +191,8 @@ type = "timer_started"
 timer_id = "TYTT_K_m_r"
 
 [[boss.counters]]
-id = "tyth_phase_2_status"
-name = "Phase 2 Status"
+id = "tyth_phases_status"
+name = "Phase Status"
 enabled = true
 initial_value = 0
 decrement = false
@@ -207,6 +207,36 @@ timer_id = "TYTT_K_p2_vm"
 [[boss.counters.increment_on.conditions]]
 type = "timer_started"
 timer_id = "TYTT_K_p2_mm"
+
+[[boss.counters.increment_on.conditions]]
+type = "timer_started"
+timer_id = "TYTT_K_p3"
+
+[[boss.timer]]
+id = "TYTT_K_inv_1st_mm"
+name = "Inversion"
+duration_secs = 21.0
+color = [200, 0, 255, 255]
+icon_ability_id = 4071117895499776
+difficulties = ["veteran", "master"]
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[[boss.timer]]
+id = "TYTT_K_inv"
+name = "Inversion"
+duration_secs = 32.0
+color = [187, 0, 255, 255]
+icon_ability_id = 4071117895499776
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [4071117895500098, 4071117895500102]
+source = "any"
+target = "any"
 
 [[boss.timer]]
 id = "TYTT_K_adds_d_mm"
@@ -277,7 +307,7 @@ type = "any_of"
 
 [[boss.timer.conditions.conditions]]
 type = "counter_compare"
-counter_id = "tyth_phase_2_status"
+counter_id = "tyth_phases_status"
 operator = "eq"
 value = 0
 
@@ -286,7 +316,7 @@ type = "all_of"
 
 [[boss.timer.conditions.conditions.conditions]]
 type = "counter_compare"
-counter_id = "tyth_phase_2_status"
+counter_id = "tyth_phases_status"
 operator = "gte"
 value = 1
 
@@ -335,7 +365,7 @@ value = 2
 [[boss.timer]]
 id = "TYTT_K_adds_s_vm_p2"
 name = "Adds Setup"
-duration_secs = 24.0
+duration_secs = 20.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
 difficulties = ["veteran"]
@@ -353,7 +383,7 @@ timer_id = "TYTT_K_adds_vm"
 
 [[boss.timer.conditions]]
 type = "counter_compare"
-counter_id = "tyth_phase_2_status"
+counter_id = "tyth_phases_status"
 operator = "gte"
 value = 1
 
@@ -366,7 +396,7 @@ value = 1
 [[boss.timer]]
 id = "TYTT_K_adds_s_sm_p2"
 name = "Adds Setup"
-duration_secs = 28.0
+duration_secs = 20.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
 difficulties = ["story"]
@@ -384,7 +414,7 @@ timer_id = "TYTT_K_adds_vm"
 
 [[boss.timer.conditions]]
 type = "counter_compare"
-counter_id = "tyth_phase_2_status"
+counter_id = "tyth_phases_status"
 operator = "gte"
 value = 1
 
@@ -405,7 +435,7 @@ difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
 type = "effect_applied"
-effects = [4088443793572128]
+effects = [4088443793572128, 4088443793572122]
 source = "any"
 target = "any"
 
@@ -420,7 +450,7 @@ difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
 type = "effect_removed"
-effects = [4088443793572128]
+effects = [4088443793572128, 4088443793572122]
 source = "any"
 target = "any"
 
@@ -598,33 +628,6 @@ operator = "eq"
 value = 0
 
 [[boss.timer]]
-id = "TYTT_K_inv_1st_mm"
-name = "Inversion"
-duration_secs = 21.0
-color = [200, 0, 255, 255]
-icon_ability_id = 4071117895499776
-difficulties = ["veteran", "master"]
-
-[boss.timer.trigger]
-type = "phase_entered"
-phase_id = "tyth_phases_magma_droids"
-
-[[boss.timer]]
-id = "TYTT_K_inv"
-name = "Inversion"
-duration_secs = 32.0
-color = [187, 0, 255, 255]
-icon_ability_id = 4071117895499776
-difficulties = ["veteran", "master"]
-can_be_refreshed = true
-
-[boss.timer.trigger]
-type = "effect_applied"
-effects = [4071117895500098, 4071117895500102]
-source = "any"
-target = "any"
-
-[[boss.timer]]
 id = "TYTT_K_p2_vm"
 name = "Phase 2"
 duration_secs = 5.0
@@ -639,7 +642,7 @@ selector = ["TYTH"]
 
 [[boss.timer.conditions]]
 type = "counter_compare"
-counter_id = "tyth_phase_2_status"
+counter_id = "tyth_phases_status"
 operator = "eq"
 value = 0
 
@@ -658,7 +661,7 @@ selector = ["TYTH"]
 
 [[boss.timer.conditions]]
 type = "counter_compare"
-counter_id = "tyth_phase_2_status"
+counter_id = "tyth_phases_status"
 operator = "eq"
 value = 0
 
@@ -678,8 +681,8 @@ selector = ["TYTH"]
 
 [[boss.timer.conditions]]
 type = "counter_compare"
-counter_id = "tyth_phase_2_status"
-operator = "gte"
+counter_id = "tyth_phases_status"
+operator = "eq"
 value = 1
 
 # ═══════════════════════════════════════════════════════════════════════════════
