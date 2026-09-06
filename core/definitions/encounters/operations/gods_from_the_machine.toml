@@ -37,28 +37,38 @@ hp_percent = 25.0
 label = "Burn"
 
 [[boss.phases]]
-id = "TYTT_K_p1"
-name = "Tyth 1"
+id = "tyth_phases_magma_droids"
+name = "Magma Droids"
 enabled = true
+difficulties = ["master"]
 
 [boss.phases.start_trigger]
 type = "combat_start"
 
 [[boss.phases]]
-id = "TYTT_K_p2"
-name = "Tyth 2"
+id = "tyth_phases_tyth_mm"
+name = "Tyth"
 enabled = true
+difficulties = ["master"]
 
 [boss.phases.start_trigger]
-type = "any_of"
+type = "effect_applied"
+effects = [4071117895500098, 4071117895500102]
+source = "any"
+target = "any"
 
-[[boss.phases.start_trigger.conditions]]
-type = "timer_started"
-timer_id = "TYTT_K_p2_vm"
+[[boss.phases.conditions]]
+type = "phase_active"
+phase_ids = ["tyth_phases_magma_droids"]
 
-[[boss.phases.start_trigger.conditions]]
-type = "timer_started"
-timer_id = "TYTT_K_p2_mm"
+[[boss.phases]]
+id = "TYTT_K_p1"
+name = "Tyth"
+enabled = true
+difficulties = ["story", "veteran"]
+
+[boss.phases.start_trigger]
+type = "combat_start"
 
 [[boss.phases]]
 id = "TYTT_K_p3"
@@ -180,54 +190,23 @@ timer_id = "TYTT_K_l_r"
 type = "timer_started"
 timer_id = "TYTT_K_m_r"
 
-[[boss.timer]]
-id = "TYTT_K_inv_1st_mm"
-name = "Inversion"
-duration_secs = 21.0
-color = [200, 0, 255, 255]
-icon_ability_id = 4071117895499776
-difficulties = ["master", "veteran"]
-roles = []
+[[boss.counters]]
+id = "tyth_phase_2_status"
+name = "Phase 2 Status"
+enabled = true
+initial_value = 0
+decrement = false
 
-[boss.timer.trigger]
-type = "phase_entered"
-phase_id = "TYTT_K_p1"
+[boss.counters.increment_on]
+type = "any_of"
 
-[[boss.timer]]
-id = "TYTT_K_p2_vm"
-name = "Phase 2"
-duration_secs = 5.0
-is_alert = true
-color = [255, 0, 0, 255]
-difficulties = ["veteran"]
-roles = []
+[[boss.counters.increment_on.conditions]]
+type = "timer_started"
+timer_id = "TYTT_K_p2_vm"
 
-[boss.timer.trigger]
-type = "boss_hp_below"
-hp_percent = 60.0
-selector = ["TYTH"]
-
-[[boss.timer.conditions]]
-type = "phase_active"
-phase_ids = ["TYTT_K_p1"]
-
-[[boss.timer]]
-id = "TYTT_K_p2_mm"
-name = "Phase 2"
-duration_secs = 5.0
-is_alert = true
-color = [255, 0, 0, 255]
-difficulties = ["master"]
-roles = []
-
-[boss.timer.trigger]
-type = "boss_hp_below"
-hp_percent = 65.0
-selector = ["TYTH"]
-
-[[boss.timer.conditions]]
-type = "phase_active"
-phase_ids = ["TYTT_K_p1"]
+[[boss.counters.increment_on.conditions]]
+type = "timer_started"
+timer_id = "TYTT_K_p2_mm"
 
 [[boss.timer]]
 id = "TYTT_K_adds_d_mm"
@@ -236,7 +215,6 @@ duration_secs = 15.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
 difficulties = ["master"]
-roles = []
 
 [boss.timer.trigger]
 type = "counter_reaches"
@@ -245,55 +223,16 @@ value = 1
 
 [[boss.timer]]
 id = "TYTT_K_adds_d_vm"
-name = "Adds (Double)"
+name = "Adds"
 duration_secs = 12.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
-difficulties = ["veteran"]
-roles = []
+difficulties = ["story", "veteran"]
 
 [boss.timer.trigger]
 type = "counter_reaches"
 counter_id = "TYTT_K_a_w_c"
 value = 1
-
-[[boss.timer]]
-id = "TYTT_K_adds_mm"
-name = "Adds"
-duration_secs = 15.0
-color = [50, 200, 50, 255]
-icon_ability_id = 4076168777039872
-difficulties = ["master"]
-roles = []
-
-[boss.timer.trigger]
-type = "counter_changes"
-counter_id = "TYTT_K_a_w_c"
-
-[[boss.timer.conditions]]
-type = "counter_compare"
-counter_id = "TYTT_K_a_w_c"
-operator = "gte"
-value = 2
-
-[[boss.timer]]
-id = "TYTT_K_adds_vm"
-name = "Adds"
-duration_secs = 12.0
-color = [50, 200, 50, 255]
-icon_ability_id = 4076168777039872
-difficulties = ["veteran"]
-roles = []
-
-[boss.timer.trigger]
-type = "counter_changes"
-counter_id = "TYTT_K_a_w_c"
-
-[[boss.timer.conditions]]
-type = "counter_compare"
-counter_id = "TYTT_K_a_w_c"
-operator = "gte"
-value = 2
 
 [[boss.timer]]
 id = "TYTT_K_adds_s_mm"
@@ -302,7 +241,6 @@ duration_secs = 17.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
 difficulties = ["master"]
-roles = []
 
 [boss.timer.trigger]
 type = "any_of"
@@ -321,8 +259,7 @@ name = "Adds Setup"
 duration_secs = 20.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
-difficulties = ["veteran"]
-roles = []
+difficulties = ["story", "veteran"]
 
 [boss.timer.trigger]
 type = "any_of"
@@ -339,15 +276,19 @@ timer_id = "TYTT_K_adds_vm"
 type = "any_of"
 
 [[boss.timer.conditions.conditions]]
-type = "phase_active"
-phase_ids = ["TYTT_K_p1"]
+type = "counter_compare"
+counter_id = "tyth_phase_2_status"
+operator = "eq"
+value = 0
 
 [[boss.timer.conditions.conditions]]
 type = "all_of"
 
 [[boss.timer.conditions.conditions.conditions]]
-type = "phase_active"
-phase_ids = ["TYTT_K_p2"]
+type = "counter_compare"
+counter_id = "tyth_phase_2_status"
+operator = "gte"
+value = 1
 
 [[boss.timer.conditions.conditions.conditions]]
 type = "counter_compare"
@@ -356,13 +297,48 @@ operator = "eq"
 value = 0
 
 [[boss.timer]]
+id = "TYTT_K_adds_mm"
+name = "Adds"
+duration_secs = 15.0
+color = [50, 200, 50, 255]
+icon_ability_id = 4076168777039872
+difficulties = ["master"]
+
+[boss.timer.trigger]
+type = "counter_changes"
+counter_id = "TYTT_K_a_w_c"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "TYTT_K_a_w_c"
+operator = "gte"
+value = 2
+
+[[boss.timer]]
+id = "TYTT_K_adds_vm"
+name = "Adds"
+duration_secs = 12.0
+color = [50, 200, 50, 255]
+icon_ability_id = 4076168777039872
+difficulties = ["story", "veteran"]
+
+[boss.timer.trigger]
+type = "counter_changes"
+counter_id = "TYTT_K_a_w_c"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "TYTT_K_a_w_c"
+operator = "gte"
+value = 2
+
+[[boss.timer]]
 id = "TYTT_K_adds_s_vm_p2"
 name = "Adds Setup"
 duration_secs = 24.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
 difficulties = ["veteran"]
-roles = []
 
 [boss.timer.trigger]
 type = "any_of"
@@ -376,8 +352,10 @@ type = "timer_expires"
 timer_id = "TYTT_K_adds_vm"
 
 [[boss.timer.conditions]]
-type = "phase_active"
-phase_ids = ["TYTT_K_p2"]
+type = "counter_compare"
+counter_id = "tyth_phase_2_status"
+operator = "gte"
+value = 1
 
 [[boss.timer.conditions]]
 type = "counter_compare"
@@ -386,20 +364,157 @@ operator = "gte"
 value = 1
 
 [[boss.timer]]
-id = "TYTT_K_inv"
-name = "Inversion"
-duration_secs = 32.0
-color = [187, 0, 255, 255]
-icon_ability_id = 4071117895499776
-difficulties = ["veteran", "master"]
-can_be_refreshed = true
-roles = []
+id = "TYTT_K_adds_s_sm_p2"
+name = "Adds Setup"
+duration_secs = 28.0
+color = [50, 200, 50, 255]
+icon_ability_id = 4076168777039872
+difficulties = ["story"]
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "TYTT_K_adds_d_vm"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "TYTT_K_adds_vm"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "tyth_phase_2_status"
+operator = "gte"
+value = 1
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "TYTT_K_a_w_c"
+operator = "gte"
+value = 1
+
+[[boss.timer]]
+id = "TYTT_K_s_u"
+name = "Shield Up"
+duration_secs = 30.0
+is_alert = true
+color = [29, 228, 231, 255]
+icon_ability_id = 4088443793571840
+difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
 type = "effect_applied"
-effects = [4071117895500098, 4071117895500102]
+effects = [4088443793572128]
 source = "any"
 target = "any"
+
+[[boss.timer]]
+id = "TYTT_K_s_d"
+name = "Shield Down"
+duration_secs = 30.0
+is_alert = true
+color = [29, 228, 231, 255]
+icon_ability_id = 4088443793571840
+difficulties = ["story", "veteran", "master"]
+
+[boss.timer.trigger]
+type = "effect_removed"
+effects = [4088443793572128]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "TYTT_K_ew"
+name = "Energy Wave"
+duration_secs = 12.0
+color = [255, 0, 0, 255]
+icon_ability_id = 4081339917664256
+difficulties = ["story", "veteran", "master"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [4081339917664256]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "timer_started"
+timer_id = "TYTT_K_ew_i"
+
+[[boss.timer]]
+id = "TYTT_K_ew_i"
+name = "Energy Wave"
+duration_secs = 9.0
+color = [255, 0, 0, 255]
+icon_ability_id = 4081339917664256
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [4071117895499776]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "not"
+
+[boss.timer.conditions.condition]
+type = "timer_time_remaining"
+timer_id = "TYTT_K_ew"
+operator = "gte"
+value = 9.0
+
+[[boss.timer]]
+id = "TYTT_K_sw"
+name = "Sweep"
+duration_secs = 6.0
+color = [255, 128, 0, 255]
+icon_ability_id = 4086833180836223
+difficulties = ["story", "veteran", "master"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [4080279060742144]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "any_of"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "TYTT_K_ew_i"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "TYTT_K_sw_i"
+
+[[boss.timer]]
+id = "TYTT_K_sw_i"
+name = "Sweep"
+duration_secs = 9.0
+color = [255, 128, 0, 255]
+icon_ability_id = 4086833180836223
+difficulties = ["veteran", "master"]
+can_be_refreshed = true
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [4071117895499776]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "timer_time_remaining"
+timer_id = "TYTT_K_ew"
+operator = "gte"
+value = 9.1
+
+[boss.timer.cancel_trigger]
+type = "timer_started"
+timer_id = "TYTT_K_ew_i"
 
 [[boss.timer]]
 id = "TYTT_K_l_r"
@@ -408,8 +523,7 @@ duration_secs = 30.0
 is_alert = true
 color = [50, 200, 50, 255]
 icon_ability_id = 4086833180836195
-difficulties = ["veteran", "master"]
-roles = []
+difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
 type = "counter_changes"
@@ -434,8 +548,7 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 128, 0, 255]
 icon_ability_id = 4086833180836195
-difficulties = ["veteran", "master"]
-roles = []
+difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
 type = "counter_changes"
@@ -466,8 +579,7 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 0, 0, 255]
 icon_ability_id = 4086833180836195
-difficulties = ["veteran", "master"]
-roles = []
+difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
 type = "counter_changes"
@@ -486,59 +598,78 @@ operator = "eq"
 value = 0
 
 [[boss.timer]]
-id = "TYTT_K_ew"
-name = "Energy Wave"
-duration_secs = 12.0
-color = [255, 0, 0, 255]
-icon_ability_id = 4081339917664256
+id = "TYTT_K_inv_1st_mm"
+name = "Inversion"
+duration_secs = 21.0
+color = [200, 0, 255, 255]
+icon_ability_id = 4071117895499776
 difficulties = ["veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
-type = "ability_cast"
-abilities = [4081339917664256]
-source = "any"
-target = "any"
-
-[boss.timer.cancel_trigger]
-type = "timer_started"
-timer_id = "TYTT_K_ew_i"
+type = "phase_entered"
+phase_id = "tyth_phases_magma_droids"
 
 [[boss.timer]]
-id = "TYTT_K_sw"
-name = "Sweep"
-duration_secs = 6.0
-color = [255, 128, 0, 255]
-icon_ability_id = 4086833180836223
+id = "TYTT_K_inv"
+name = "Inversion"
+duration_secs = 32.0
+color = [187, 0, 255, 255]
+icon_ability_id = 4071117895499776
 difficulties = ["veteran", "master"]
-roles = []
+can_be_refreshed = true
 
 [boss.timer.trigger]
-type = "ability_cast"
-abilities = [4080279060742144]
+type = "effect_applied"
+effects = [4071117895500098, 4071117895500102]
 source = "any"
 target = "any"
 
-[boss.timer.cancel_trigger]
-type = "any_of"
+[[boss.timer]]
+id = "TYTT_K_p2_vm"
+name = "Phase 2"
+duration_secs = 5.0
+is_alert = true
+color = [255, 255, 255, 255]
+difficulties = ["story", "veteran"]
 
-[[boss.timer.cancel_trigger.conditions]]
-type = "timer_started"
-timer_id = "TYTT_K_ew_i"
+[boss.timer.trigger]
+type = "boss_hp_below"
+hp_percent = 60.0
+selector = ["TYTH"]
 
-[[boss.timer.cancel_trigger.conditions]]
-type = "timer_started"
-timer_id = "TYTT_K_sw_i"
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "tyth_phase_2_status"
+operator = "eq"
+value = 0
+
+[[boss.timer]]
+id = "TYTT_K_p2_mm"
+name = "Phase 2"
+duration_secs = 5.0
+is_alert = true
+color = [255, 255, 255, 255]
+difficulties = ["master"]
+
+[boss.timer.trigger]
+type = "boss_hp_below"
+hp_percent = 65.0
+selector = ["TYTH"]
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "tyth_phase_2_status"
+operator = "eq"
+value = 0
 
 [[boss.timer]]
 id = "TYTT_K_p3"
 name = "Phase 3 (Burn)"
 duration_secs = 30.0
 is_alert = true
-color = [255, 0, 0, 255]
+color = [255, 255, 255, 255]
 icon_ability_id = 4071229564649472
-difficulties = ["veteran", "master"]
-roles = []
+difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
 type = "boss_hp_below"
@@ -546,91 +677,10 @@ hp_percent = 25.0
 selector = ["TYTH"]
 
 [[boss.timer.conditions]]
-type = "phase_active"
-phase_ids = ["TYTT_K_p2"]
-
-[[boss.timer]]
-id = "TYTT_K_ew_i"
-name = "Energy Wave"
-duration_secs = 9.0
-color = [255, 0, 0, 255]
-icon_ability_id = 4081339917664256
-difficulties = ["veteran", "master"]
-can_be_refreshed = true
-roles = []
-
-[boss.timer.trigger]
-type = "ability_cast"
-abilities = [4071117895499776]
-source = "any"
-target = "any"
-
-[[boss.timer.conditions]]
-type = "not"
-
-[boss.timer.conditions.condition]
-type = "timer_time_remaining"
-timer_id = "TYTT_K_ew"
+type = "counter_compare"
+counter_id = "tyth_phase_2_status"
 operator = "gte"
-value = 9.0
-
-[[boss.timer]]
-id = "TYTT_K_sw_i"
-name = "Sweep"
-duration_secs = 9.0
-color = [255, 128, 0, 255]
-icon_ability_id = 4086833180836223
-difficulties = ["veteran", "master"]
-can_be_refreshed = true
-roles = []
-
-[boss.timer.trigger]
-type = "ability_cast"
-abilities = [4071117895499776]
-source = "any"
-target = "any"
-
-[[boss.timer.conditions]]
-type = "timer_time_remaining"
-timer_id = "TYTT_K_ew"
-operator = "gte"
-value = 9.1
-
-[boss.timer.cancel_trigger]
-type = "timer_started"
-timer_id = "TYTT_K_ew_i"
-
-[[boss.timer]]
-id = "TYTT_K_s_u"
-name = "Shield UP"
-duration_secs = 30.0
-is_alert = true
-color = [29, 228, 231, 255]
-icon_ability_id = 4088443793571840
-difficulties = ["veteran", "master"]
-roles = []
-
-[boss.timer.trigger]
-type = "effect_applied"
-effects = [4088443793572128]
-source = "any"
-target = "any"
-
-[[boss.timer]]
-id = "TYTT_K_s_d"
-name = "Shield Down"
-duration_secs = 30.0
-is_alert = true
-color = [29, 228, 231, 255]
-icon_ability_id = 4088443793571840
-difficulties = ["veteran", "master"]
-roles = []
-
-[boss.timer.trigger]
-type = "effect_removed"
-effects = [4088443793572128]
-source = "any"
-target = "any"
+value = 1
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: AIVELA & ESNE
