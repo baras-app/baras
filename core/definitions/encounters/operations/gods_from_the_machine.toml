@@ -240,7 +240,7 @@ target = "any"
 
 [[boss.timer]]
 id = "TYTT_K_adds_d_mm"
-name = "Adds (Double)"
+name = "Spawn Double Adds"
 duration_secs = 15.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
@@ -253,7 +253,7 @@ value = 1
 
 [[boss.timer]]
 id = "TYTT_K_adds_d_vm"
-name = "Adds"
+name = "Spawn Adds"
 duration_secs = 12.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
@@ -328,7 +328,7 @@ value = 0
 
 [[boss.timer]]
 id = "TYTT_K_adds_mm"
-name = "Adds"
+name = "Spawn Adds"
 duration_secs = 15.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
@@ -346,7 +346,7 @@ value = 2
 
 [[boss.timer]]
 id = "TYTT_K_adds_vm"
-name = "Adds"
+name = "Spawn Adds"
 duration_secs = 12.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
