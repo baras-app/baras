@@ -1686,6 +1686,18 @@ counter_id = "a&e_k_e_p4_c"
 operator = "gte"
 value = 1
 
+[[boss.timer]]
+id = "a&e_enrage"
+name = "Enrage"
+duration_secs = 540.0
+color = [51, 200, 237, 255]
+icon_ability_id = 4117340333539328
+difficulties = ["master"]
+show_at_secs = 30.0
+
+[boss.timer.trigger]
+type = "combat_start"
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: NAHUT
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2580,6 +2592,18 @@ type = "counter_compare"
 counter_id = "nahut_k_ps_c"
 operator = "lt"
 value = 2
+
+[[boss.timer]]
+id = "nahut_enrage"
+name = "Enrage"
+duration_secs = 515.0
+color = [255, 0, 0, 255]
+icon_ability_id = 4125041209901056
+difficulties = ["master"]
+show_at_secs = 30.0
+
+[boss.timer.trigger]
+type = "combat_start"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 4: SCYVA
@@ -3695,6 +3719,18 @@ roles = []
 [boss.timer.trigger]
 type = "phase_entered"
 phase_id = "SCYVA_K_p4_c"
+
+[[boss.timer]]
+id = "scyva_enrage"
+name = "Enrage"
+duration_secs = 660.0
+color = [255, 0, 0, 255]
+icon_ability_id = 4127278887862571
+difficulties = ["master"]
+show_at_secs = 30.0
+
+[boss.timer.trigger]
+type = "combat_start"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 5: IZAX
