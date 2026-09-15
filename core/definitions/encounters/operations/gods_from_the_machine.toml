@@ -33,6 +33,11 @@ label = "2nd Large Adds"
 difficulties = ["master"]
 
 [[boss.entities.hp_markers]]
+hp_percent = 60.0
+label = "Larger Add Waves"
+difficulties = ["story", "veteran"]
+
+[[boss.entities.hp_markers]]
 hp_percent = 25.0
 label = "Burn"
 
@@ -239,25 +244,30 @@ source = "any"
 target = "any"
 
 [[boss.timer]]
-id = "TYTT_K_adds_d_mm"
-name = "Spawn Double Adds"
+id = "TYTT_K_adds_mm"
+name = "Spawn 4 Adds"
 duration_secs = 15.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
 difficulties = ["master"]
 
 [boss.timer.trigger]
-type = "counter_reaches"
+type = "counter_changes"
 counter_id = "TYTT_K_a_w_c"
-value = 1
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "TYTT_K_a_w_c"
+operator = "gte"
+value = 2
 
 [[boss.timer]]
-id = "TYTT_K_adds_d_vm"
-name = "Spawn Adds"
-duration_secs = 12.0
+id = "TYTT_K_adds_d_mm"
+name = "Spawn 8 Adds"
+duration_secs = 15.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
-difficulties = ["story", "veteran"]
+difficulties = ["master"]
 
 [boss.timer.trigger]
 type = "counter_reaches"
@@ -284,145 +294,121 @@ type = "timer_expires"
 timer_id = "TYTT_K_adds_mm"
 
 [[boss.timer]]
-id = "TYTT_K_adds_s_vm_p1"
-name = "Adds Setup"
-duration_secs = 20.0
-color = [50, 200, 50, 255]
-icon_ability_id = 4076168777039872
-difficulties = ["story", "veteran"]
-
-[boss.timer.trigger]
-type = "any_of"
-
-[[boss.timer.trigger.conditions]]
-type = "timer_expires"
-timer_id = "TYTT_K_adds_d_vm"
-
-[[boss.timer.trigger.conditions]]
-type = "timer_expires"
-timer_id = "TYTT_K_adds_vm"
-
-[[boss.timer.conditions]]
-type = "any_of"
-
-[[boss.timer.conditions.conditions]]
-type = "counter_compare"
-counter_id = "tyth_phases_status"
-operator = "eq"
-value = 0
-
-[[boss.timer.conditions.conditions]]
-type = "all_of"
-
-[[boss.timer.conditions.conditions.conditions]]
-type = "counter_compare"
-counter_id = "tyth_phases_status"
-operator = "gte"
-value = 1
-
-[[boss.timer.conditions.conditions.conditions]]
-type = "counter_compare"
-counter_id = "TYTT_K_a_w_c"
-operator = "eq"
-value = 0
-
-[[boss.timer]]
-id = "TYTT_K_adds_mm"
-name = "Spawn Adds"
-duration_secs = 15.0
-color = [50, 200, 50, 255]
-icon_ability_id = 4076168777039872
-difficulties = ["master"]
-
-[boss.timer.trigger]
-type = "counter_changes"
-counter_id = "TYTT_K_a_w_c"
-
-[[boss.timer.conditions]]
-type = "counter_compare"
-counter_id = "TYTT_K_a_w_c"
-operator = "gte"
-value = 2
-
-[[boss.timer]]
-id = "TYTT_K_adds_vm"
-name = "Spawn Adds"
+id = "tyth_adds_vm_p1"
+name = "Spawn 4 Adds"
 duration_secs = 12.0
-color = [50, 200, 50, 255]
-icon_ability_id = 4076168777039872
-difficulties = ["story", "veteran"]
-
-[boss.timer.trigger]
-type = "counter_changes"
-counter_id = "TYTT_K_a_w_c"
-
-[[boss.timer.conditions]]
-type = "counter_compare"
-counter_id = "TYTT_K_a_w_c"
-operator = "gte"
-value = 2
-
-[[boss.timer]]
-id = "TYTT_K_adds_s_vm_p2"
-name = "Adds Setup"
-duration_secs = 20.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
 difficulties = ["veteran"]
 
 [boss.timer.trigger]
-type = "any_of"
-
-[[boss.timer.trigger.conditions]]
-type = "timer_expires"
-timer_id = "TYTT_K_adds_d_vm"
-
-[[boss.timer.trigger.conditions]]
-type = "timer_expires"
-timer_id = "TYTT_K_adds_vm"
+type = "counter_changes"
+counter_id = "TYTT_K_a_w_c"
 
 [[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "tyth_phases_status"
+operator = "eq"
+value = 0
+
+[[boss.timer]]
+id = "tyth_adds_vm_p2"
+name = "Spawn 5 Adds"
+duration_secs = 12.0
+color = [50, 200, 50, 255]
+icon_ability_id = 4076168777039872
+difficulties = ["veteran"]
+
+[boss.timer.trigger]
+type = "counter_changes"
+counter_id = "TYTT_K_a_w_c"
+
+[[boss.timer.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions]]
 type = "counter_compare"
 counter_id = "tyth_phases_status"
 operator = "gte"
 value = 1
 
-[[boss.timer.conditions]]
+[[boss.timer.conditions.conditions]]
 type = "counter_compare"
 counter_id = "TYTT_K_a_w_c"
 operator = "gte"
 value = 1
 
 [[boss.timer]]
-id = "TYTT_K_adds_s_sm_p2"
+id = "tyth_adds_sm_p1"
+name = "Spawn 3 Adds"
+duration_secs = 12.0
+color = [50, 200, 50, 255]
+icon_ability_id = 4076168777039872
+difficulties = ["story"]
+
+[boss.timer.trigger]
+type = "counter_changes"
+counter_id = "TYTT_K_a_w_c"
+
+[[boss.timer.conditions]]
+type = "counter_compare"
+counter_id = "tyth_phases_status"
+operator = "eq"
+value = 0
+
+[[boss.timer]]
+id = "tyth_adds_sm_p2"
+name = "Spawn 4 Adds"
+duration_secs = 12.0
+color = [50, 200, 50, 255]
+icon_ability_id = 4076168777039872
+difficulties = ["story"]
+
+[boss.timer.trigger]
+type = "counter_changes"
+counter_id = "TYTT_K_a_w_c"
+
+[[boss.timer.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions]]
+type = "counter_compare"
+counter_id = "tyth_phases_status"
+operator = "gte"
+value = 1
+
+[[boss.timer.conditions.conditions]]
+type = "counter_compare"
+counter_id = "TYTT_K_a_w_c"
+operator = "gte"
+value = 1
+
+[[boss.timer]]
+id = "tyth_adds_setup_sm_vm"
 name = "Adds Setup"
 duration_secs = 20.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
-difficulties = ["story"]
+difficulties = ["story", "veteran"]
 
 [boss.timer.trigger]
 type = "any_of"
 
 [[boss.timer.trigger.conditions]]
 type = "timer_expires"
-timer_id = "TYTT_K_adds_d_vm"
+timer_id = "tyth_adds_sm_p1"
 
 [[boss.timer.trigger.conditions]]
 type = "timer_expires"
-timer_id = "TYTT_K_adds_vm"
+timer_id = "tyth_adds_sm_p2"
 
-[[boss.timer.conditions]]
-type = "counter_compare"
-counter_id = "tyth_phases_status"
-operator = "gte"
-value = 1
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "tyth_adds_vm_p1"
 
-[[boss.timer.conditions]]
-type = "counter_compare"
-counter_id = "TYTT_K_a_w_c"
-operator = "gte"
-value = 1
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "tyth_adds_vm_p2"
 
 [[boss.timer]]
 id = "TYTT_K_s_u"
