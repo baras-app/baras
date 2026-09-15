@@ -245,7 +245,7 @@ target = "any"
 
 [[boss.timer]]
 id = "TYTT_K_adds_mm"
-name = "Spawn 4 Adds"
+name = "4 Adds Spawn"
 duration_secs = 15.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
@@ -263,7 +263,7 @@ value = 2
 
 [[boss.timer]]
 id = "TYTT_K_adds_d_mm"
-name = "Spawn 8 Adds"
+name = "8 Adds Spawn"
 duration_secs = 15.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
@@ -295,7 +295,7 @@ timer_id = "TYTT_K_adds_mm"
 
 [[boss.timer]]
 id = "tyth_adds_vm_p1"
-name = "Spawn 4 Adds"
+name = "4 Adds Spawn"
 duration_secs = 12.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
@@ -313,7 +313,7 @@ value = 0
 
 [[boss.timer]]
 id = "tyth_adds_vm_p2"
-name = "Spawn 5 Adds"
+name = "5 Adds Spawn"
 duration_secs = 12.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
@@ -340,7 +340,7 @@ value = 1
 
 [[boss.timer]]
 id = "tyth_adds_sm_p1"
-name = "Spawn 3 Adds"
+name = "3 Adds Spawn"
 duration_secs = 12.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
@@ -358,7 +358,7 @@ value = 0
 
 [[boss.timer]]
 id = "tyth_adds_sm_p2"
-name = "Spawn 4 Adds"
+name = "4 Adds Spawn"
 duration_secs = 12.0
 color = [50, 200, 50, 255]
 icon_ability_id = 4076168777039872
