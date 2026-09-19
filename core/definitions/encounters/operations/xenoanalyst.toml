@@ -1,15 +1,266 @@
 [area]
-name = "Xenoanalyst"
-id = 137438993300
+name = "Gray Secant"
+area_id = 137438993300
+area_type = "operation"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss: Xenoanalyst II
+# ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
-id = "xeno"
-name = "Xenoanalyst"
+id = "xenoanalyst"
+name = "Xenoanalyst II"
 difficulties = ["story", "veteran"]
 is_final_boss = true
 
 [[boss.entities]]
-name = "Xenoanalyst"
+name = "Xenoanalyst II"
 ids = [3213924027596800, 3213928322564096, 3213919732629504, 3153545377349632]
 is_boss = true
 is_kill_target = true
+
+[[boss.entities.hp_markers]]
+hp_percent = 17.0
+label = "Burn"
+difficulties = ["story", "veteran"]
+
+[[boss.phases]]
+id = "xenoanalyst_main_phase"
+name = "Xenoanalyst"
+enabled = true
+difficulties = ["story", "veteran"]
+
+[boss.phases.start_trigger]
+type = "combat_start"
+
+[[boss.phases]]
+id = "xenoanalyst_burn"
+name = "Burn"
+enabled = true
+difficulties = ["story", "veteran"]
+
+[boss.phases.start_trigger]
+type = "effect_removed"
+effects = [3192496435757334]
+source = "any"
+target = "any"
+
+[[boss.phases]]
+id = "xenoanalyst_enrage"
+name = "Enrage"
+enabled = true
+difficulties = ["story", "veteran"]
+
+[boss.phases.start_trigger]
+type = "effect_applied"
+effects = [3192496435757341]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "xenoanalyst_1st_problem_solving_evaluation"
+name = "Problem Solving Evaluation"
+duration_secs = 10.0
+color = [129, 61, 156, 255]
+icon_ability_id = 3156328516157440
+difficulties = ["story", "veteran"]
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[boss.timer.cancel_trigger]
+type = "effect_applied"
+effects = [3192496435757334]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "xenoanalyst_thermal_tolerance_evaluation"
+name = "Thermal Tolerance Evaluation"
+duration_secs = 20.0
+color = [246, 211, 45, 255]
+icon_ability_id = 3156066523152384
+difficulties = ["story", "veteran"]
+
+[boss.timer.trigger]
+type = "effect_removed"
+effects = [3156328516157696]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "effect_applied"
+effects = [3192496435757334, 3192496435757341]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["xenoanalyst_main_phase"]
+
+[[boss.timer]]
+id = "xenoanalyst_environmental_awareness_test"
+name = "Environmental Awareness Test"
+duration_secs = 10.0
+color = [255, 128, 0, 255]
+icon_ability_id = 3190159973548032
+difficulties = ["story", "veteran"]
+can_be_refreshed = true
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "ability_cast"
+abilities = [3156066523152384]
+source = "any"
+target = "any"
+
+[[boss.timer.trigger.conditions]]
+type = "damage_taken"
+abilities = [3156066523152384]
+source = "any"
+target = "any"
+
+[[boss.timer.trigger.conditions]]
+type = "damage_taken"
+abilities = [3156066523152384]
+source = "any"
+target = "any"
+mitigation = ["absorbed", "resist"]
+
+[boss.timer.cancel_trigger]
+type = "effect_applied"
+effects = [3192496435757334, 3192496435757341]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "xenoanalyst_species_comparison"
+name = "Species Comparison"
+duration_secs = 20.0
+color = [134, 94, 60, 255]
+icon_ability_id = 3176918589374464
+difficulties = ["story", "veteran"]
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3161134584562487]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "effect_applied"
+effects = [3192496435757334, 3192496435757341]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "xenoanalyst_species_comparison_alternative"
+name = "Species Comparison"
+duration_secs = 19.0
+color = [134, 94, 60, 255]
+icon_ability_id = 3176918589374464
+difficulties = ["story", "veteran"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3176935769243648]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "effect_applied"
+effects = [3192496435757334, 3192496435757341]
+source = "any"
+target = "any"
+
+[[boss.timer.conditions]]
+type = "phase_active"
+phase_ids = ["xenoanalyst_main_phase"]
+
+[[boss.timer]]
+id = "xenoanalyst_problem_solving_evaluation"
+name = "Problem Solving Evaluation"
+duration_secs = 6.0
+color = [129, 61, 156, 255]
+icon_ability_id = 3156328516157440
+difficulties = ["story", "veteran"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3176918589374464]
+source = "any"
+target = "any"
+
+[boss.timer.cancel_trigger]
+type = "effect_applied"
+effects = [3192496435757334, 3192496435757341]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "xenoanalyst_consoles_unlocked"
+name = "Consoles Unlocked"
+duration_secs = 5.0
+is_alert = true
+color = [51, 200, 237, 255]
+icon_ability_id = 3156328516157696
+difficulties = ["story", "veteran"]
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [3156328516157696]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "xenoanalyst_data_core_unlocked"
+name = "Data Core Unlocked"
+duration_secs = 5.0
+is_alert = true
+color = [46, 194, 126, 255]
+icon_ability_id = 3161134584561664
+difficulties = ["story", "veteran"]
+
+[boss.timer.trigger]
+type = "ability_cast"
+abilities = [3161134584561664]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "xenoanalyst_enrage_sm"
+name = "Enrage"
+duration_secs = 600.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3192496435757337
+difficulties = ["story"]
+show_at_secs = 30.0
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[boss.timer.cancel_trigger]
+type = "effect_applied"
+effects = [3192496435757334]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "xenoanalyst_enrage_vm"
+name = "Enrage"
+duration_secs = 480.0
+color = [255, 0, 0, 255]
+icon_ability_id = 3192496435757347
+difficulties = ["veteran"]
+show_at_secs = 30.0
+
+[boss.timer.trigger]
+type = "combat_start"
+
+[boss.timer.cancel_trigger]
+type = "effect_applied"
+effects = [3192496435757334]
+source = "any"
+target = "any"
