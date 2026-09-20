@@ -3,11 +3,14 @@ name = "Relentless Replication"
 area_id = 945872057669657
 area_type = "operation"
 
-# ─── Propagator Core XR-53 ───────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss: Propagator Core XR-53
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [[boss]]
 id = "propagator_core_xr53"
 name = "Propagator Core XR-53"
-area_type = "operation"
+difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
@@ -219,7 +222,7 @@ type = "combat_start"
 [[boss.timer]]
 id = "propagator_core_xr53_prime_directive"
 name = "Prime Directive"
-duration_secs = 90.0
+duration_secs = 118.0
 color = [129, 61, 156, 255]
 icon_ability_id = 4859643826274304
 difficulties = ["story", "veteran", "master"]
@@ -227,7 +230,7 @@ display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "timer_expires"
-timer_id = "propagator_core_xr53_cleanse_flood_add"
+timer_id = "propagator_core_xr53_lethal_strike_rc"
 
 [[boss.timer]]
 id = "propagator_core_xr53_prepare_for_harvest"
