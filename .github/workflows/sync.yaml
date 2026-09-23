@@ -1,0 +1,62 @@
+name: Sync Fork with Upstream
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # daily at 03:00 UTC — adjust as you like
+  workflow_dispatch:        # lets you trigger it manually too
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Safety: never run this on the upstream repo itself if it's ever forked further
+    if: github.repository != 'UPSTREAM_OWNER/UPSTREAM_REPO'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/UPSTREAM_OWNER/UPSTREAM_REPO.git
+
+      - name: Fetch upstream
+        run: git fetch upstream
+
+      - name: Merge upstream into main
+        id: merge
+        run: |
+          git checkout main
+          if git merge upstream/main --no-edit; then
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            git merge --abort
+          fi
+
+      - name: Push merged changes
+        if: steps.merge.outputs.conflict == 'false'
+        run: git push origin main
+
+      - name: Open issue on conflict
+        if: steps.merge.outputs.conflict == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Fork sync conflict: upstream/main could not be auto-merged" \
+            --body "The scheduled sync-fork workflow found conflicts merging upstream/main into main. Please resolve manually:
+          \`\`\`
+          git fetch upstream
+          git checkout main
+          git merge upstream/main
+          # resolve conflicts, then commit and push
+          \`\`\`"
