@@ -166,6 +166,7 @@ pub fn App() -> Element {
     let mut audio_enabled = use_signal(|| true);
     let mut audio_volume = use_signal(|| 80u8);
     let mut audio_tts_enabled = use_signal(|| true);
+    let mut audio_normalize_loudness = use_signal(|| false);
 
     // Profile state
     let mut profile_names = use_signal(Vec::<String>::new);
@@ -233,6 +234,7 @@ pub fn App() -> Element {
             audio_enabled.set(config.audio.enabled);
             audio_volume.set(config.audio.volume);
             audio_tts_enabled.set(config.audio.tts_enabled);
+            audio_normalize_loudness.set(config.audio.normalize_loudness);
             // UI preferences - now in unified state
             ui_state.write().data_explorer.show_only_bosses = config.show_only_bosses;
             ui_state.write().data_explorer.auto_live = config.data_explorer_auto_live;
@@ -2334,6 +2336,31 @@ pub fn App() -> Element {
                                         " (requires espeak to be installed)"
                                     }
                                     "."
+                                }
+
+                                div { class: "setting-row",
+                                    label { "Loudness Normalization" }
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: audio_normalize_loudness(),
+                                        disabled: !audio_enabled(),
+                                        onchange: move |e| {
+                                            let checked = e.checked();
+                                            audio_normalize_loudness.set(checked);
+                                            let mut toast = use_toast();
+                                            spawn(async move {
+                                                if let Some(mut cfg) = api::get_config().await {
+                                                    cfg.audio.normalize_loudness = checked;
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+                                p { class: "hint",
+                                    "Balances sound volume from files. Does not affect text-to-speech."
                                 }
                             }
 
