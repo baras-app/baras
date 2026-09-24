@@ -154,12 +154,6 @@ abilities = [4824914720718848]
 source = "any"
 target = "any"
 
-#[boss.phases.start_trigger]
-#type = "effect_applied"
-#effects = [4826160261234949, 4826160261234963, 4826160261234960]
-#source = "any"
-#target = "any"
-
 [[boss.phases.conditions]]
 type = "phase_active"
 phase_ids = ["propagator_core_xr53_prime_directive"]
