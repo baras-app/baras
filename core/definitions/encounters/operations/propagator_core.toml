@@ -120,6 +120,50 @@ target = "any"
 [[boss.entities.shields.hp]]
 total = 2000000
 
+[[boss.phases]]
+id = "propagator_core_xr53_intro"
+name = "Propagator Core XR-53"
+enabled = true
+
+[boss.phases.start_trigger]
+type = "combat_start"
+
+[[boss.phases]]
+id = "propagator_core_xr53_prime_directive"
+name = "Prime Directive"
+enabled = true
+
+[boss.phases.start_trigger]
+type = "effect_removed"
+effects = [4844731699822856]
+source = "any"
+target = "any"
+
+[[boss.phases.conditions]]
+type = "phase_active"
+phase_ids = ["propagator_core_xr53_intro", "propagator_core_xr53_main_phase"]
+
+[[boss.phases]]
+id = "propagator_core_xr53_main_phase"
+name = "Propagator Core XR-53"
+enabled = true
+
+[boss.phases.start_trigger]
+type = "damage_taken"
+abilities = [4824914720718848]
+source = "any"
+target = "any"
+
+#[boss.phases.start_trigger]
+#type = "effect_applied"
+#effects = [4826160261234949, 4826160261234963, 4826160261234960]
+#source = "any"
+#target = "any"
+
+[[boss.phases.conditions]]
+type = "phase_active"
+phase_ids = ["propagator_core_xr53_prime_directive"]
+
 [[boss.timer]]
 id = "propagator_core_xr53_lethal_strike"
 name = "Lethal Strike"
