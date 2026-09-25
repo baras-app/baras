@@ -1011,12 +1011,38 @@ label = "Last Ditch"
 
 [[boss.entities.shields]]
 label = "Voltinator"
-start_trigger = { type = "effect_applied", effects = [4310755595780426] }
-end_trigger = { type = "effect_removed", effects = [4310755595780426] }
+start_trigger = { type = "effect_applied", effects = [
+  4310755595780426,
+  4310755595780354,
+  4310755595780404,
+  4310755595780434,
+] }
+end_trigger = { type = "effect_removed", effects = [
+  4310755595780426,
+  4310755595780354,
+  4310755595780404,
+  4310755595780434,
+] }
 
 [[boss.entities.shields.hp]]
+difficulties = ["master"]
+group_size = 8
 total = 1428519
 
+[[boss.entities.shields.hp]]
+difficulties = ["master"]
+group_size = 16
+total = 3576202
+
+[[boss.entities.shields.hp]]
+difficulties = ["veteran"]
+group_size = 8
+total = 1102670
+
+[[boss.entities.shields.hp]]
+difficulties = ["veteran"]
+group_size = 16
+total = 2859828
 
 [[boss.entities]]
 name = "Power Transformer"
@@ -1028,8 +1054,18 @@ is_kill_target = false
 [[boss.counters]]
 id = "apex_voltinator_active"
 name = "Voltinator Active"
-increment_on = { type = "effect_applied", effects = [4310755595780426] }
-decrement_on = { type = "effect_removed", effects = [4310755595780426] }
+increment_on = { type = "effect_applied", effects = [
+  4310755595780426,
+  4310755595780354,
+  4310755595780404,
+  4310755595780434,
+] }
+decrement_on = { type = "effect_removed", effects = [
+  4310755595780426,
+  4310755595780354,
+  4310755595780404,
+  4310755595780434,
+] }
 
 [[boss.counters]]
 id = "apex_vanguard_zone_ready"
@@ -1747,7 +1783,12 @@ display_targets = ["timers_a"]
 
 [boss.timer.trigger]
 type = "effect_removed"
-effects = [4310755595780426, 4310755595780434, 4310755595780354, 4310755595780404]
+effects = [
+  4310755595780426,
+  4310755595780434,
+  4310755595780354,
+  4310755595780404,
+]
 
 [boss.timer.cancel_trigger]
 type = "effect_applied"
