@@ -842,6 +842,21 @@ effects = [4112590099709952]
 source = "any"
 target = "any"
 
+[[boss.challenges]]
+id = "a&e_k_countermeasure_stacks"
+name = "Countermeasure stacks"
+metric = "effect_stacks"
+enabled = true
+columns = "total_only"
+
+[[boss.challenges.conditions]]
+type = "effect"
+effect_ids = [4114162057740686]
+
+[[boss.challenges.conditions]]
+type = "target"
+match = "any_player"
+
 [[boss.counters]]
 id = "a&e_k_rad"
 name = "Radiance Stacks"
@@ -943,6 +958,299 @@ selector = ["ESNE"]
 
 [boss.counters.reset_on]
 type = "combat_end"
+
+
+[[boss.counters]]
+id = "a&e_k_n_glare_polarity"
+name = "N glare polarity"
+enabled = true
+initial_value = 1
+decrement = false
+
+[boss.counters.increment_on]
+type = "any_of"
+
+[[boss.counters.increment_on.conditions]]
+type = "effect_applied"
+effects = [4111258659848486]
+target = "any"
+
+[boss.counters.increment_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.increment_on.conditions.position]]
+entity = "source"
+axis = "y"
+op = "lt"
+value = 2765.0
+
+[[boss.counters.increment_on.conditions]]
+type = "effect_removed"
+effects = [4111258659848484]
+target = "any"
+
+[boss.counters.increment_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.increment_on.conditions.position]]
+entity = "source"
+axis = "y"
+op = "lt"
+value = 2765.0
+
+[boss.counters.decrement_on]
+type = "any_of"
+
+[[boss.counters.decrement_on.conditions]]
+type = "effect_applied"
+effects = [4111258659848484]
+target = "any"
+
+[boss.counters.decrement_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.decrement_on.conditions.position]]
+entity = "source"
+axis = "y"
+op = "lt"
+value = 2765.0
+
+[[boss.counters.decrement_on.conditions]]
+type = "effect_removed"
+effects = [4111258659848486]
+target = "any"
+
+[boss.counters.decrement_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.decrement_on.conditions.position]]
+entity = "source"
+axis = "y"
+op = "lt"
+value = 2765.0
+
+[boss.counters.reset_on]
+type = "timer_expires"
+timer_id = "a&e_k_polarity_reset"
+
+[[boss.counters]]
+id = "a&e_k_s_glare_polarity"
+name = "S glare polarity"
+enabled = true
+initial_value = 1
+decrement = false
+
+[boss.counters.increment_on]
+type = "any_of"
+
+[[boss.counters.increment_on.conditions]]
+type = "effect_applied"
+effects = [4111258659848486]
+target = "any"
+
+[boss.counters.increment_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.increment_on.conditions.position]]
+entity = "source"
+axis = "y"
+op = "gt"
+value = 2810.0
+
+[[boss.counters.increment_on.conditions]]
+type = "effect_removed"
+effects = [4111258659848484]
+target = "any"
+
+[boss.counters.increment_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.increment_on.conditions.position]]
+entity = "source"
+axis = "y"
+op = "gt"
+value = 2810.0
+
+[boss.counters.decrement_on]
+type = "any_of"
+
+[[boss.counters.decrement_on.conditions]]
+type = "effect_applied"
+effects = [4111258659848484]
+target = "any"
+
+[boss.counters.decrement_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.decrement_on.conditions.position]]
+entity = "source"
+axis = "y"
+op = "gt"
+value = 2810.0
+
+[[boss.counters.decrement_on.conditions]]
+type = "effect_removed"
+effects = [4111258659848486]
+target = "any"
+
+[boss.counters.decrement_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.decrement_on.conditions.position]]
+entity = "source"
+axis = "y"
+op = "gt"
+value = 2810.0
+
+[boss.counters.reset_on]
+type = "timer_expires"
+timer_id = "a&e_k_polarity_reset"
+
+[[boss.counters]]
+id = "a&e_k_w_glare_polarity"
+name = "W glare polarity"
+enabled = true
+initial_value = 1
+decrement = false
+
+[boss.counters.increment_on]
+type = "any_of"
+
+[[boss.counters.increment_on.conditions]]
+type = "effect_applied"
+effects = [4111258659848486]
+target = "any"
+
+[boss.counters.increment_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.increment_on.conditions.position]]
+entity = "source"
+axis = "x"
+op = "lt"
+value = 475.0
+
+[[boss.counters.increment_on.conditions]]
+type = "effect_removed"
+effects = [4111258659848484]
+target = "any"
+
+[boss.counters.increment_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.increment_on.conditions.position]]
+entity = "source"
+axis = "x"
+op = "lt"
+value = 475.0
+
+[boss.counters.decrement_on]
+type = "any_of"
+
+[[boss.counters.decrement_on.conditions]]
+type = "effect_applied"
+effects = [4111258659848484]
+target = "any"
+
+[boss.counters.decrement_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.decrement_on.conditions.position]]
+entity = "source"
+axis = "x"
+op = "lt"
+value = 475.0
+
+[[boss.counters.decrement_on.conditions]]
+type = "effect_removed"
+effects = [4111258659848486]
+target = "any"
+
+[boss.counters.decrement_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.decrement_on.conditions.position]]
+entity = "source"
+axis = "x"
+op = "lt"
+value = 475.0
+
+[boss.counters.reset_on]
+type = "timer_expires"
+timer_id = "a&e_k_polarity_reset"
+
+[[boss.counters]]
+id = "a&e_k_e_glare_polarity"
+name = "E glare polarity"
+enabled = true
+initial_value = 1
+decrement = false
+
+[boss.counters.increment_on]
+type = "any_of"
+
+[[boss.counters.increment_on.conditions]]
+type = "effect_applied"
+effects = [4111258659848486]
+target = "any"
+
+[boss.counters.increment_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.increment_on.conditions.position]]
+entity = "source"
+axis = "x"
+op = "gt"
+value = 490.0
+
+[[boss.counters.increment_on.conditions]]
+type = "effect_removed"
+effects = [4111258659848484]
+target = "any"
+
+[boss.counters.increment_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.increment_on.conditions.position]]
+entity = "source"
+axis = "x"
+op = "gt"
+value = 490.0
+
+[boss.counters.decrement_on]
+type = "any_of"
+
+[[boss.counters.decrement_on.conditions]]
+type = "effect_applied"
+effects = [4111258659848484]
+target = "any"
+
+[boss.counters.decrement_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.decrement_on.conditions.position]]
+entity = "source"
+axis = "x"
+op = "gt"
+value = 490.0
+
+[[boss.counters.decrement_on.conditions]]
+type = "effect_removed"
+effects = [4111258659848486]
+target = "any"
+
+[boss.counters.decrement_on.conditions.source]
+selector = [4109914335084544]
+
+[[boss.counters.decrement_on.conditions.position]]
+entity = "source"
+axis = "x"
+op = "gt"
+value = 490.0
+
+[boss.counters.reset_on]
+type = "timer_expires"
+timer_id = "a&e_k_polarity_reset"
 
 [[boss.timer]]
 id = "a&e_k_p2_vm"
@@ -1683,6 +1991,640 @@ show_at_secs = 30.0
 
 [boss.timer.trigger]
 type = "combat_start"
+
+[[boss.timer]]
+id = "a&e_k_polarity_reset"
+name = "polarity reset"
+duration_secs = 3.0
+color = [255, 128, 0, 255]
+difficulties = ["story", "veteran", "master"]
+display_targets = []
+roles = []
+queue_countdown_bar = false
+queue_hide_from_next = false
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "phase_entered"
+phase_id = "a&e_k_p4"
+
+[[boss.timer.trigger.conditions]]
+type = "phase_entered"
+phase_id = "a&e_k_phase_5"
+
+[[boss.timer]]
+id = "a&e_k_wipers_left_hm"
+name = "wipers left hm"
+duration_secs = 30.0
+is_alert = true
+alert_text = "LEFT"
+color = [255, 128, 0, 255]
+difficulties = ["veteran"]
+display_targets = ["timers_a"]
+roles = []
+queue_countdown_bar = false
+queue_hide_from_next = false
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p4"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p4_1st_vm"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p5_1st_c1"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p5_1st_c2"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p5_vm"
+
+[[boss.timer.conditions]]
+type = "any_of"
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer]]
+id = "a&e_k_wipers_right_hm"
+name = "wipers right hm"
+duration_secs = 30.0
+is_alert = true
+alert_text = "RIGHT"
+color = [255, 128, 0, 255]
+difficulties = ["veteran"]
+display_targets = ["timers_a"]
+roles = []
+queue_countdown_bar = false
+queue_hide_from_next = false
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p4"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p4_1st_vm"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p5_vm"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p5_1st_c1"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p5_1st_c2"
+
+[[boss.timer.conditions]]
+type = "any_of"
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer]]
+id = "a&e_k_wipers_left_nim"
+name = "wipers left nim"
+duration_secs = 30.0
+is_alert = true
+alert_text = "LEFT"
+color = [255, 128, 0, 255]
+difficulties = ["master"]
+display_targets = ["timers_a"]
+roles = []
+queue_countdown_bar = false
+queue_hide_from_next = false
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p4"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p4_1st"
+
+[[boss.timer.conditions]]
+type = "any_of"
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer]]
+id = "a&e_k_wipers_right_nim"
+name = "wipers right nim"
+duration_secs = 30.0
+is_alert = true
+alert_text = "RIGHT"
+color = [255, 128, 0, 255]
+difficulties = ["master"]
+display_targets = ["timers_a"]
+roles = []
+queue_countdown_bar = false
+queue_hide_from_next = false
+
+[boss.timer.trigger]
+type = "any_of"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p4"
+
+[[boss.timer.trigger.conditions]]
+type = "timer_expires"
+timer_id = "a&e_k_pf_p4_1st"
+
+[[boss.timer.conditions]]
+type = "any_of"
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_n_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_e_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 2
+
+[[boss.timer.conditions.conditions]]
+type = "all_of"
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_s_glare_polarity"
+operator = "eq"
+value = 0
+
+[[boss.timer.conditions.conditions.conditions]]
+type = "counter_compare"
+counter_id = "a&e_k_w_glare_polarity"
+operator = "eq"
+value = 0
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 3: NAHUT

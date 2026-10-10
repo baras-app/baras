@@ -111,6 +111,22 @@ match = "any_player"
 id = "ip_cpt_stacks"
 name = "Stacks"
 
+[[boss.challenges]]
+id = "ip_cpt_environment_stacks"
+name = "environment stacks"
+metric = "effect_stacks"
+enabled = true
+columns = "total_only"
+
+[[boss.challenges.conditions]]
+type = "effect"
+effect_ids = [4472005847941376]
+
+[[boss.challenges.conditions]]
+type = "target"
+match = "any_player"
+
+
 [boss.counters.increment_on]
 type = "effect_applied"
 
