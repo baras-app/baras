@@ -9,6 +9,7 @@ timed_run_minutes = 120
 # ═══════════════════════════════════════════════════════════════════════════════
 # Zorn & Toth
 # ═══════════════════════════════════════════════════════════════════════════════
+
 [[boss]]
 id = "zorn_toth"
 name = "Zorn & Toth"
@@ -18,20 +19,13 @@ victory_trigger = { type = "entity_death", selector = ["Handler Murdok"] }
 
 [[boss.entities]]
 name = "Handler Murdok"
-ids = [2855809654456320, 2810922951245824, 2855813949423616, 2855818244390912]
+ids = [2810922951245824, 2855809654456320, 2855813949423616, 2855818244390912]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Zorn"
-ids = [
-  2788331423268864,
-  2860770341683200,
-  2857549116211200,
-  2861388816973824,
-  3725115330134016,
-  2857544821243904,
-]
+ids = [2788331423268864, 2857544821243904, 2860770341683200, 2861388816973824]
 is_boss = true
 single_instance = true
 is_kill_target = false
@@ -142,13 +136,7 @@ difficulties = ["veteran", "master"]
 
 [[boss.entities]]
 name = "Toth"
-ids = [
-  2788335718236160,
-  2453173650325504,
-  2860766046715904,
-  2861384522006528,
-  285754911621120,
-]
+ids = [2788335718236160, 2857549116211200, 2860766046715904, 2861384522006528]
 is_boss = true
 single_instance = true
 is_kill_target = false
@@ -256,7 +244,6 @@ value = 1
 hp_percent = 5.0
 label = "Soft Enrage"
 difficulties = ["veteran", "master"]
-
 
 [[boss.counters]]
 id = "zorn_toth_below_90"
@@ -393,7 +380,6 @@ selector = ["Zorn", "Toth"]
 [boss.counters.reset_on]
 type = "combat_end"
 
-
 [[boss.phases]]
 id = "zorn_toth_murdok"
 name = "Handler Murdok"
@@ -446,21 +432,22 @@ type = "combat_start"
 type = "phase_entered"
 phase_id = "zorn_toth_murdok"
 
-
 # -- Timers --
 [[boss.timer]]
 id = "zt_shriek"
 name = "Shriek"
-trigger = { type = "ability_cast", abilities = [2857132504383488] }
+trigger = { type = "ability_cast", abilities = [
+  2792613505662976, 2857132504383488, 2860409564430336, 2877718282633216] }
 duration_secs = 45
 color = [219, 100, 32, 255]
 icon_ability_id = 2857132504383753
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "zt_baradium_heave"
 name = "Baradium Heave"
-trigger = { type = "effect_applied", effects = [2857300008108306] }
+trigger = { type = "effect_applied", effects = [
+  2857300008108306, 2877804181979405] }
 duration_secs = 13
 color = [219, 34, 32, 255]
 icon_ability_id = 2857295713140736
@@ -469,7 +456,8 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "zt_ground_shatter"
 name = "Ground Shatter"
-trigger = { type = "effect_applied", effects = [2857368727584768] }
+trigger = { type = "effect_applied", effects = [
+  2857368727584768, 2877868606488576] }
 duration_secs = 20
 color = [224, 24, 24, 255]
 icon_ability_id = 2857368727584768
@@ -478,7 +466,8 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "zt_smash"
 name = "Smash"
-trigger = { type = "ability_cast", abilities = [2917463909990400] }
+trigger = { type = "ability_cast", abilities = [
+  2917463909990400, 2917472499924992] }
 duration_secs = 15
 color = [32, 219, 215, 255]
 difficulties = ["veteran", "master"]
@@ -489,7 +478,7 @@ id = "zt_baradium_poisoning"
 name = "Baradium Poisoning"
 is_alert = true
 trigger = { type = "effect_applied", effects = [
-  3004561551786240,
+  3004561551786240, 3004587321590019,
 ], target = "local_player" }
 alert_text = "Use Medpack!"
 color = [0, 255, 0, 255]
@@ -501,7 +490,7 @@ id = "zt_weakened"
 name = "Weakened"
 is_alert = true
 trigger = { type = "effect_applied", effects = [
-  2857132504383753,
+  2857132504383753, 2877718282633481,
 ], target = "local_player" }
 alert_text = "Weakened"
 icon_ability_id = 2857132504383753
@@ -512,7 +501,7 @@ id = "zt_fearful"
 name = "Fearful"
 is_alert = true
 trigger = { type = "effect_applied", effects = [
-  2857171159089412,
+  2792604915728664, 2857171159089412, 2860499758743812, 2877791297077508,
 ], target = "local_player" }
 alert_text = "Fearful"
 color = [200, 0, 150, 255]
