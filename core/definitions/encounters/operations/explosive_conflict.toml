@@ -985,6 +985,7 @@ cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 # ═══════════════════════════════════════════════════════════════════════════════
 # Colonel Vorgath
 # ═══════════════════════════════════════════════════════════════════════════════
+
 [[boss]]
 id = "colonel_vorgath"
 name = "Colonel Vorgath"
@@ -996,7 +997,6 @@ ids = [
   2854224811524096,
   2854117437341696,
   2854229106491392,
-  2786080860405760,
   2848692893646848,
 ]
 is_boss = true
@@ -1057,35 +1057,39 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "cv_knockback"
-name = "Knockback"
-trigger = { type = "ability_cast", abilities = [2853275623751680] }
+name = "Concussion Charge"
+trigger = { type = "ability_cast", abilities = [
+  2838702799716352, 2853275623751680, 2853825379565568, 2854044422897664] }
 duration_secs = 15
 color = [224, 108, 24, 255]
 icon_ability_id = 2853275623751680
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "cv_grenade"
-name = "Grenade"
-trigger = { type = "ability_cast", abilities = [2853344343228416] }
+name = "Sticky Grenade"
+trigger = { type = "ability_cast", abilities = [
+  2822600967323648, 2853344343228416, 2853872624205824, 2854100257472512] }
 duration_secs = 15
 color = [214, 37, 32, 255]
 icon_ability_id = 2853344343228711
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "colonel_vorgath_defuse_mine"
-name = "Defuse mine!"
+name = "Mine Defuse Kit Received"
 duration_secs = 30.0
 is_alert = true
 color = [255, 128, 0, 255]
 icon_ability_id = 2851226924351746
+difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
 type = "effect_applied"
-effects = [2851226924351746]
+effects = [2787141717328128, 2851226924351746, 2853726595318023, 2853932753748231]
 source = "any"
 target = "local_player"
+
 # -- HP Threshold Alerts --
 [[boss.timer]]
 id = "cv_hp_95"
@@ -1094,19 +1098,7 @@ is_alert = true
 trigger = { type = "boss_hp_below", hp_percent = 95.0, selector = [
   "Colonel Vorgath",
 ] }
-alert_text = "Threat Drop"
 color = [39, 209, 208, 255]
-difficulties = ["veteran", "master"]
-
-[[boss.timer]]
-id = "cv_hp_80"
-name = "Turrets"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 80.0, selector = [
-  "Colonel Vorgath",
-] }
-alert_text = "Turrets"
-color = [14, 128, 22, 255]
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
@@ -1130,7 +1122,6 @@ duration_secs = 330
 show_at_secs = 120.0
 trigger = { type = "combat_start" }
 cancel_trigger = { type = "phase_entered", phase_id = "cv_vorgath" }
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Warlord Kephess
