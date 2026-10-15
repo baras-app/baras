@@ -8,7 +8,7 @@ timed_run_minutes = 120
 area_type = "operation"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Zorn & Toth
+# Boss 1: Zorn & Toth
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
@@ -403,9 +403,7 @@ duration_secs = 310.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 8
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -416,15 +414,13 @@ phase_id = "zorn_toth_murdok"
 
 [[boss.timer]]
 id = "zorn_toth_drouks_enrage_16"
-name = "Drouks enrage_16m"
+name = "Drouks Enrage 16m"
 display_text = "Drouks Enrage"
 duration_secs = 320.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 16
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -594,7 +590,7 @@ color = [219, 31, 28, 255]
 difficulties = ["veteran", "master"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Firebrand & Stormcaller
+# Boss 2: Firebrand & Stormcaller
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
@@ -749,9 +745,7 @@ duration_secs = 380.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 8
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -764,9 +758,7 @@ duration_secs = 460.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 16
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -776,7 +768,6 @@ type = "combat_start"
 id = "fs_shield_dps"
 name = "Shield DPS"
 metric = "damage"
-enabled = true
 color = [100, 210, 237, 255]
 columns = "total_percent"
 
@@ -983,7 +974,7 @@ difficulties = ["veteran"]
 cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Colonel Vorgath
+# Boss 3: Colonel Vorgath
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
@@ -1124,7 +1115,7 @@ trigger = { type = "combat_start" }
 cancel_trigger = { type = "phase_entered", phase_id = "cv_vorgath" }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Warlord Kephess
+# Boss 4: Warlord Kephess
 # ═══════════════════════════════════════════════════════════════════════════════
 
 [[boss]]
@@ -1307,9 +1298,7 @@ duration_secs = 450.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 8
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -1326,9 +1315,7 @@ duration_secs = 510.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 16
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
