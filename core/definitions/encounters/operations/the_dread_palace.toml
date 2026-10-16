@@ -6,7 +6,7 @@ area_type = "operation"
 [[boss]]
 id = "bestia"
 area_type = "operation"
-name = "Bestia"
+name = "Dread Master Bestia"
 
 [[boss.entities]]
 name = "Dread Master Bestia"
@@ -16,12 +16,12 @@ is_kill_target = true
 
 [[boss.entities.hp_markers]]
 hp_percent = 50.0
-label = "Phase 3"
+label = "Bestia and Monsters"
 difficulties = ["veteran"]
 
 [[boss.entities.hp_markers]]
 hp_percent = 60.0
-label = "Phase 3"
+label = "Bestia and Monsters"
 difficulties = ["master"]
 
 [[boss.entities]]
@@ -262,7 +262,7 @@ target = "any"
 
 [[boss.timer]]
 id = "bestia_sd_swap"
-name = "Tank Swap"
+name = "Swelling Despair Applied"
 duration_secs = 30.0
 is_alert = true
 color = [255, 0, 0, 255]
@@ -528,7 +528,7 @@ target = "local_player"
 
 [[boss.timer]]
 id = "bestia_f1"
-name = "Fling: Monstrosity 1"
+name = "Fling Monstrosity 1"
 duration_secs = 25.0
 color = [0, 113, 219, 255]
 icon_ability_id = 3349894102253568
@@ -543,7 +543,7 @@ target = "any"
 
 [[boss.timer]]
 id = "bestia_f2"
-name = "Fling: Monstrosity 2"
+name = "Fling Monstrosity 2"
 duration_secs = 25.0
 color = [0, 113, 219, 255]
 icon_ability_id = 3349894102253568
@@ -564,7 +564,7 @@ value = 0.0
 
 [[boss.timer]]
 id = "bestia_f3"
-name = "Fling: Monstrosity 3"
+name = "Fling Monstrosity 3"
 duration_secs = 25.0
 color = [0, 113, 219, 255]
 icon_ability_id = 3349894102253568
@@ -624,7 +624,7 @@ value = 0.0
 
 [[boss.timer]]
 id = "bestia_pm1"
-name = "Pulverize: Monstrosity 1"
+name = "Pulverize Monstrosity 1"
 duration_secs = 12.0
 color = [255, 128, 0, 255]
 icon_ability_id = 3302993059381248
@@ -642,7 +642,7 @@ target = "any"
 
 [[boss.timer]]
 id = "bestia_pm2"
-name = "Pulverize: Monstrosity 2"
+name = "Pulverize Monstrosity 2"
 duration_secs = 12.0
 color = [255, 128, 0, 255]
 icon_ability_id = 3302993059381248
@@ -666,7 +666,7 @@ value = 0.0
 
 [[boss.timer]]
 id = "bestia_pm3"
-name = "Pulverize: Monstrosity 3"
+name = "Pulverize Monstrosity 3"
 duration_secs = 12.0
 color = [255, 128, 0, 255]
 icon_ability_id = 3302993059381248
@@ -696,7 +696,7 @@ value = 0.0
 
 [[boss.timer]]
 id = "bestia_pm4"
-name = "Pulverize: Monstrosity 4"
+name = "Pulverize Monstrosity 4"
 duration_secs = 12.0
 color = [255, 128, 0, 255]
 icon_ability_id = 3302993059381248
@@ -733,7 +733,7 @@ value = 0.0
 [[boss]]
 id = "tyrans"
 area_type = "operation"
-name = "Tyrans"
+name = "Dread Master Tyrans"
 
 [[boss.entities]]
 name = "Dread Master Tyrans"
@@ -971,9 +971,9 @@ value = 1
 
 [[boss.timer]]
 id = "tyrans_simp_alert"
-name = "Move Out"
+name = "Simplification Received"
+duration_secs = 30.0
 is_alert = true
-alert_text = "Move Out"
 color = [99, 99, 99, 255]
 icon_ability_id = 3349606339444736
 difficulties = ["veteran", "master"]
@@ -987,7 +987,7 @@ target = "local_player"
 
 [[boss.timer]]
 id = "tyrans_jd"
-name = "Jump Down"
+name = "Marked For Death"
 duration_secs = 30.0
 is_alert = true
 color = [99, 99, 99, 255]
@@ -1003,12 +1003,12 @@ target = "local_player"
 
 [[boss.timer]]
 id = "tyrans_ind"
-name = "Stack for Inferno"
+name = "Inferno Received"
 duration_secs = 30.0
 is_alert = true
 color = [255, 0, 0, 255]
 icon_ability_id = 3298934315286528
-difficulties = ["veteran", "master"]
+difficulties = ["veteran"]
 roles = []
 
 [boss.timer.trigger]
@@ -1019,7 +1019,7 @@ target = "local_player"
 
 [[boss.timer]]
 id = "tyrans_ine"
-name = "Move from inferno"
+name = "Inferno Dropped"
 duration_secs = 30.0
 is_alert = true
 color = [255, 0, 0, 255]
@@ -1068,7 +1068,7 @@ match = "any_player"
 
 [[boss]]
 id = "calphayus"
-name = "Calphayus"
+name = "Dread Master Calphayus"
 area_type = "operation"
 
 [[boss.entities]]
@@ -1092,7 +1092,7 @@ difficulties = ["veteran", "master"]
 
 [[boss.entities.hp_markers]]
 hp_percent = 80.0
-label = "Tree phase"
+label = "Tree Phase"
 difficulties = ["veteran", "master"]
 
 [[boss.entities.hp_markers]]
@@ -1146,7 +1146,7 @@ type = "combat_start"
 
 [[boss.phases]]
 id = "calphayus_p2t"
-name = "Tree phase transition"
+name = "Tree Phase Transition"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -1156,7 +1156,7 @@ selector = ["Dread Master Calphayus"]
 
 [[boss.phases]]
 id = "calphayus_p3t"
-name = "Crystal phase transition"
+name = "Crystal Phase Transition"
 enabled = true
 difficulties = ["veteran", "master"]
 
@@ -1476,7 +1476,7 @@ value = 3
 
 [[boss.timer]]
 id = "calphayus_p4_add"
-name = "Guardian of Knowledge"
+name = "Guardian Of Knowledge"
 duration_secs = 6.0
 color = [50, 200, 50, 255]
 icon_ability_id = 3350594181922816
@@ -1489,7 +1489,7 @@ selector = [3350598476890112]
 
 [[boss.timer]]
 id = "calphayus_p4_he"
-name = "Seed of knowledge expires"
+name = "Seed Of Knowledge Expires"
 duration_secs = 25.5
 color = [255, 0, 0, 255]
 icon_ability_id = 3306252939558912
@@ -1567,7 +1567,7 @@ target = "any"
 
 [[boss]]
 id = "raptus"
-name = "Raptus"
+name = "Dread Master Raptus"
 area_type = "operation"
 
 [[boss.entities]]
@@ -1607,7 +1607,7 @@ type = "combat_start"
 
 [[boss.phases]]
 id = "raptus_p1_t"
-name = "Phase 1 (Intermission)"
+name = "Intermission"
 enabled = true
 difficulties = ["veteran", "master"]
 
@@ -1619,7 +1619,7 @@ target = "any"
 
 [[boss.phases]]
 id = "raptus_p1"
-name = "Phase 1"
+name = "Raptus"
 enabled = true
 difficulties = ["veteran", "master"]
 
@@ -1644,7 +1644,7 @@ value = 2
 
 [[boss.phases]]
 id = "raptus_p2"
-name = "Phase 2"
+name = "Raptus"
 enabled = true
 difficulties = ["veteran", "master"]
 
@@ -1813,7 +1813,7 @@ type = "combat_start"
 
 [[boss.timer]]
 id = "raptus_void_alert"
-name = "Move Out"
+name = "Into The Void Received"
 duration_secs = 30.0
 is_alert = true
 color = [0, 204, 255, 255]
@@ -2371,7 +2371,7 @@ difficulties = ["master", "veteran"]
 
 [[boss.phases]]
 id = "dread_council_p2_brontes_styrak"
-name = "Phase 2 (Transition)"
+name = "Transition"
 enabled = true
 display_text = "Lighning"
 
@@ -2383,7 +2383,7 @@ target = "any"
 
 [[boss.phases]]
 id = "dread_council_p1"
-name = "P1 Council"
+name = "Dread Council"
 enabled = true
 
 [boss.phases.start_trigger]
@@ -2391,7 +2391,7 @@ type = "combat_start"
 
 [[boss.phases]]
 id = "dread_council_p2"
-name = "Phase 2"
+name = "Brontes And Styrak"
 enabled = true
 difficulties = ["veteran", "master"]
 
@@ -2401,7 +2401,7 @@ selector = [3274019210002432, 3303830578003968]
 
 [[boss.phases]]
 id = "dread_council_p3"
-name = "Phase 3"
+name = "Dread Council 2"
 enabled = true
 difficulties = ["veteran", "master"]
 
@@ -2499,7 +2499,7 @@ timer_id = "dread_council_se_tyr"
 
 [[boss.counters]]
 id = "dread_council_p2_fail"
-name = "Phase 2 fail"
+name = "Phase 2 Fail"
 enabled = true
 initial_value = 0
 decrement = false
@@ -2529,7 +2529,7 @@ timer_id = "dread_council_p1_reset"
 
 [[boss.counters]]
 id = "dread_council_p3_c"
-name = "Phase 3 counter"
+name = "Phase 3 Counter"
 enabled = true
 initial_value = 0
 decrement = false
@@ -2760,7 +2760,7 @@ phase_id = "dread_council_p2_brontes_styrak"
 
 [[boss.timer]]
 id = "dread_council_p1_failed"
-name = "Phase 2 transition failed"
+name = "Phase 2 Transition Failed"
 is_alert = true
 color = [255, 0, 0, 255]
 icon_ability_id = 3302670936834312
@@ -2774,7 +2774,7 @@ value = 1
 
 [[boss.timer]]
 id = "dread_council_p1_reset"
-name = "Phase 1 reset"
+name = "Phase 1 Reset"
 duration_secs = 30.0
 is_alert = true
 color = [50, 200, 50, 255]
@@ -3272,7 +3272,7 @@ value = 1
 
 [[boss.timer]]
 id = "dread_council_dm_d"
-name = "Cleanse Death Mark"
+name = "Death Mark Received"
 duration_secs = 30.0
 is_alert = true
 color = [255, 128, 0, 255]
@@ -3293,7 +3293,7 @@ target = "local_player"
 
 [[boss.timer]]
 id = "dread_council_p2_bsa"
-name = "Brontes & Styrak spawns"
+name = "Brontes & Styrak Spawns"
 duration_secs = 9.0
 color = [50, 200, 50, 255]
 icon_ability_id = 3316994652766208
