@@ -70,12 +70,13 @@ impl AudioService {
     pub async fn run(mut self) {
         while let Some(event) = self.event_rx.recv().await {
             // Read settings and extract what we need, then drop the guard
-            let (enabled, tts_enabled, volume) = {
+            let (enabled, tts_enabled, volume, normalize) = {
                 let config = self.shared.config.read().await;
                 (
                     config.audio.enabled,
                     config.audio.tts_enabled,
                     config.audio.volume,
+                    config.audio.normalize_loudness,
                 )
             };
 
@@ -90,14 +91,16 @@ impl AudioService {
                     seconds,
                     voice_pack,
                 } => {
-                    if !self.play_countdown_voice(voice_pack, *seconds, volume) && tts_enabled {
+                    if !self.play_countdown_voice(voice_pack, *seconds, volume, normalize)
+                        && tts_enabled
+                    {
                         self.speak(&format!("{}", seconds), volume);
                     }
                 }
 
                 AudioEvent::Alert { text, custom_sound } => {
                     if let Some(sound_file) = custom_sound {
-                        self.play_custom_sound(sound_file, volume);
+                        self.play_custom_sound(sound_file, volume, normalize);
                     } else if tts_enabled {
                         self.speak(text, volume);
                     }
@@ -143,7 +146,7 @@ impl AudioService {
     ///
     /// Voice packs are subfolders under the `sounds/` directory containing
     /// per-second `1.mp3`, `2.mp3`, ... files.
-    fn play_countdown_voice(&self, voice: &str, seconds: u8, volume: u8) -> bool {
+    fn play_countdown_voice(&self, voice: &str, seconds: u8, volume: u8, normalize: bool) -> bool {
         let filename = format!("{}.mp3", seconds);
         let user_path = self.user_sounds_dir.join(voice).join(&filename);
         let bundled_path = self
@@ -160,33 +163,13 @@ impl AudioService {
             return false;
         };
 
-        let vol = volume;
-        std::thread::spawn(move || {
-            use rodio::{Decoder, OutputStream, Sink};
-            use std::fs::File;
-            use std::io::BufReader;
-
-            let Ok((_stream, stream_handle)) = OutputStream::try_default() else {
-                return;
-            };
-            let Ok(file) = File::open(&path) else { return };
-            let Ok(source) = Decoder::new(BufReader::new(file)) else {
-                return;
-            };
-            let Ok(sink) = Sink::try_new(&stream_handle) else {
-                return;
-            };
-
-            sink.set_volume(vol as f32 / 100.0);
-            sink.append(source);
-            sink.sleep_until_end();
-        });
+        super::play(path, volume, normalize);
         true
     }
 
     /// Play a custom sound file. Accepts folder-relative refs, legacy bare
     /// filenames, or absolute paths — see [`super::resolve_sound_path`].
-    fn play_custom_sound(&self, filename: &str, volume: u8) {
+    fn play_custom_sound(&self, filename: &str, volume: u8, normalize: bool) {
         let Some(path) = super::resolve_sound_path(
             filename,
             &self.user_sounds_dir,
@@ -195,27 +178,7 @@ impl AudioService {
             return;
         };
 
-        let vol = volume;
-        std::thread::spawn(move || {
-            use rodio::{Decoder, OutputStream, Sink};
-            use std::fs::File;
-            use std::io::BufReader;
-
-            let Ok((_stream, stream_handle)) = OutputStream::try_default() else {
-                return;
-            };
-            let Ok(file) = File::open(&path) else { return };
-            let Ok(source) = Decoder::new(BufReader::new(file)) else {
-                return;
-            };
-            let Ok(sink) = Sink::try_new(&stream_handle) else {
-                return;
-            };
-
-            sink.set_volume(vol as f32 / 100.0);
-            sink.append(source);
-            sink.sleep_until_end();
-        });
+        super::play(path, volume, normalize);
     }
 }
 

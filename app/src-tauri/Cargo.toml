@@ -49,6 +49,7 @@ tracing-appender = { workspace = true }
 rolling-file = { workspace = true }
 # Recognition model is downloaded on first use, not bundled.
 baras-raid-ocr = { path = "../../raid-ocr" }
+ebur128 = "0.1.10"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 ashpd = { version = "0.12", default-features = false, features = ["tokio"] }
