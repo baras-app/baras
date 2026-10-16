@@ -4,10 +4,12 @@
 [area]
 name = "Explosive Conflict"
 area_id = 833571547775688
+area_type = "operation"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Zorn & Toth
+# Boss 1: Zorn & Toth
 # ═══════════════════════════════════════════════════════════════════════════════
+
 [[boss]]
 id = "zorn_toth"
 name = "Zorn & Toth"
@@ -17,20 +19,13 @@ victory_trigger = { type = "entity_death", selector = ["Handler Murdok"] }
 
 [[boss.entities]]
 name = "Handler Murdok"
-ids = [2855809654456320, 2810922951245824, 2855813949423616, 2855818244390912]
+ids = [2810922951245824, 2855809654456320, 2855813949423616, 2855818244390912]
 is_boss = true
 is_kill_target = true
 
 [[boss.entities]]
 name = "Zorn"
-ids = [
-  2788331423268864,
-  2860770341683200,
-  2857549116211200,
-  2861388816973824,
-  3725115330134016,
-  2857544821243904,
-]
+ids = [2788331423268864, 2857544821243904, 2860770341683200, 2861388816973824]
 is_boss = true
 single_instance = true
 is_kill_target = false
@@ -141,13 +136,7 @@ difficulties = ["veteran", "master"]
 
 [[boss.entities]]
 name = "Toth"
-ids = [
-  2788335718236160,
-  2453173650325504,
-  2860766046715904,
-  2861384522006528,
-  285754911621120,
-]
+ids = [2788335718236160, 2857549116211200, 2860766046715904, 2861384522006528]
 is_boss = true
 single_instance = true
 is_kill_target = false
@@ -255,7 +244,6 @@ value = 1
 hp_percent = 5.0
 label = "Soft Enrage"
 difficulties = ["veteran", "master"]
-
 
 [[boss.counters]]
 id = "zorn_toth_below_90"
@@ -392,7 +380,6 @@ selector = ["Zorn", "Toth"]
 [boss.counters.reset_on]
 type = "combat_end"
 
-
 [[boss.phases]]
 id = "zorn_toth_murdok"
 name = "Handler Murdok"
@@ -415,9 +402,7 @@ duration_secs = 310.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 8
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -428,15 +413,13 @@ phase_id = "zorn_toth_murdok"
 
 [[boss.timer]]
 id = "zorn_toth_drouks_enrage_16"
-name = "Drouks enrage_16m"
+name = "Drouks Enrage 16m"
 display_text = "Drouks Enrage"
 duration_secs = 320.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 16
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -445,21 +428,22 @@ type = "combat_start"
 type = "phase_entered"
 phase_id = "zorn_toth_murdok"
 
-
 # -- Timers --
 [[boss.timer]]
 id = "zt_shriek"
 name = "Shriek"
-trigger = { type = "ability_cast", abilities = [2857132504383488] }
+trigger = { type = "ability_cast", abilities = [
+  2792613505662976, 2857132504383488, 2860409564430336, 2877718282633216] }
 duration_secs = 45
 color = [219, 100, 32, 255]
 icon_ability_id = 2857132504383753
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "zt_baradium_heave"
 name = "Baradium Heave"
-trigger = { type = "effect_applied", effects = [2857300008108306] }
+trigger = { type = "effect_applied", effects = [
+  2857300008108306, 2877804181979405] }
 duration_secs = 13
 color = [219, 34, 32, 255]
 icon_ability_id = 2857295713140736
@@ -468,7 +452,8 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "zt_ground_shatter"
 name = "Ground Shatter"
-trigger = { type = "effect_applied", effects = [2857368727584768] }
+trigger = { type = "effect_applied", effects = [
+  2857368727584768, 2877868606488576] }
 duration_secs = 20
 color = [224, 24, 24, 255]
 icon_ability_id = 2857368727584768
@@ -477,7 +462,8 @@ difficulties = ["veteran", "master"]
 [[boss.timer]]
 id = "zt_smash"
 name = "Smash"
-trigger = { type = "ability_cast", abilities = [2917463909990400] }
+trigger = { type = "ability_cast", abilities = [
+  2917463909990400, 2917472499924992] }
 duration_secs = 15
 color = [32, 219, 215, 255]
 difficulties = ["veteran", "master"]
@@ -488,7 +474,7 @@ id = "zt_baradium_poisoning"
 name = "Baradium Poisoning"
 is_alert = true
 trigger = { type = "effect_applied", effects = [
-  3004561551786240,
+  3004561551786240, 3004587321590019,
 ], target = "local_player" }
 alert_text = "Use Medpack!"
 color = [0, 255, 0, 255]
@@ -500,7 +486,7 @@ id = "zt_weakened"
 name = "Weakened"
 is_alert = true
 trigger = { type = "effect_applied", effects = [
-  2857132504383753,
+  2857132504383753, 2877718282633481,
 ], target = "local_player" }
 alert_text = "Weakened"
 icon_ability_id = 2857132504383753
@@ -511,7 +497,7 @@ id = "zt_fearful"
 name = "Fearful"
 is_alert = true
 trigger = { type = "effect_applied", effects = [
-  2857171159089412,
+  2792604915728664, 2857171159089412, 2860499758743812, 2877791297077508,
 ], target = "local_player" }
 alert_text = "Fearful"
 color = [200, 0, 150, 255]
@@ -588,12 +574,13 @@ color = [219, 31, 28, 255]
 difficulties = ["veteran", "master"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Firebrand & Stormcaller
+# Boss 2: Firebrand & Stormcaller
 # ═══════════════════════════════════════════════════════════════════════════════
+
 [[boss]]
 id = "firebrand_stormcaller"
 name = "Firebrand & Stormcaller"
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Firebrand"
@@ -742,9 +729,7 @@ duration_secs = 380.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 8
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -757,20 +742,16 @@ duration_secs = 460.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 16
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
-
 
 # -- Challenges --
 [[boss.challenges]]
 id = "fs_shield_dps"
 name = "Shield DPS"
 metric = "damage"
-enabled = true
 color = [100, 210, 237, 255]
 columns = "total_percent"
 
@@ -792,15 +773,15 @@ name = "Firebrand Cleave"
 trigger = { type = "combat_start" }
 duration_secs = 10
 color = [224, 34, 29, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "fs_storm_cleave_cs"
-name = "Storm Cleave"
+name = "Stormcaller Cleave"
 trigger = { type = "combat_start" }
 duration_secs = 5
 color = [117, 33, 224, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "fs_targeted_missile_cs"
@@ -831,30 +812,19 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "firebrand_stormcaller_targeted_by_missile"
-name = "Targeted by missile"
+name = "Targeted By Missile"
 is_alert = true
-alert_text = "Cleanse and move"
 color = [255, 200, 0, 255]
 icon_ability_id = 2876648835776790
-difficulties = ["story", "veteran", "master"]
+difficulties = ["veteran", "master"]
 
 [boss.timer.trigger]
 type = "effect_applied"
-effects = [2876648835776790]
+effects = [2876648835776790, 2876824929435929]
 source = "boss"
 target = "local_player"
 
-
 # -- Ability Timers (refresh on cast) --
-[[boss.timer]]
-id = "fs_mortar_volley"
-name = "Mortar Volley"
-trigger = { type = "ability_cast", abilities = [2815793444159488] }
-duration_secs = 25
-color = [219, 28, 29, 255]
-difficulties = ["veteran", "master"]
-icon_ability_id = 2876678900547584
-
 [[boss.timer]]
 id = "fs_double_destruction_ps"
 name = "Double Destruction Phase Start"
@@ -869,39 +839,43 @@ cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 [[boss.timer]]
 id = "fs_firebrand_cleave"
 name = "Firebrand Cleave"
-trigger = { type = "ability_cast", abilities = [2876653130743808] }
+trigger = { type = "ability_cast", abilities = [
+  2814625213054976, 2876653130743808, 2876829224402944, 2876833519370240] }
 duration_secs = 10
 color = [224, 25, 24, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
 [[boss.timer]]
 id = "fs_densive_systems"
 name = "Defensive Systems"
 icon_ability_id = 2876717555253248
-trigger = { type = "effect_applied", effects = [2876717555253248] }
+trigger = { type = "effect_applied", effects = [
+  2816089796902912, 2876717555253248, 2876958073421824, 2876962368389120] }
 color = [0, 110, 255, 255]
 can_refresh = false
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 duration_secs = 25
 
 [[boss.timer]]
 id = "fs_storm_cleave"
-name = "Storm Cleave"
-trigger = { type = "ability_cast", abilities = [2876687490482176] }
+name = "Stormcaller Cleave"
+trigger = { type = "ability_cast", abilities = [
+  2814629508022272, 2876687490482176, 2876897943879680, 2876902238846976] }
 duration_secs = 10
 color = [117, 33, 224, 255]
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
 [[boss.timer]]
 id = "fs_targeted_missile"
 name = "Targeted Missile"
-trigger = { type = "ability_cast", abilities = [2876648835776512] }
+trigger = { type = "ability_cast", abilities = [
+  2819358267015168, 2876648835776512, 2876820634468352, 2876824929435648] }
 duration_secs = 16
 color = [255, 200, 0, 255]
 icon_ability_id = 2876648835776790
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
 [[boss.timer]]
@@ -918,7 +892,8 @@ cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 [[boss.timer]]
 id = "fs_incinerate_armor"
 name = "Incinerate Armor"
-trigger = { type = "ability_cast", abilities = [2876661720678400] }
+trigger = { type = "ability_cast", abilities = [
+  2876661720678400, 2876850699239424] }
 icon_ability_id = 2876661720678400
 duration_secs = 46
 color = [219, 94, 32, 255]
@@ -928,7 +903,8 @@ cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 [[boss.timer]]
 id = "fs_incinerate_armor_vm"
 name = "Incinerate Armor"
-trigger = { type = "ability_cast", abilities = [2876661720678400] }
+trigger = { type = "ability_cast", abilities = [
+  2876661720678400, 2876850699239424] }
 icon_ability_id = 2876661720678400
 duration_secs = 49
 color = [219, 94, 32, 255]
@@ -939,7 +915,8 @@ cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 id = "fs_double_destruction"
 name = "Double Destruction"
 icon_ability_id = 2876691785449472
-trigger = { type = "ability_cast", abilities = [2876691785449472] }
+trigger = { type = "ability_cast", abilities = [
+  2876691785449472, 2876910828781568] }
 duration_secs = 20
 color = [23, 197, 209, 255]
 difficulties = ["master"]
@@ -949,17 +926,17 @@ cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 id = "fs_double_destruction_vm"
 name = "Double Destruction"
 icon_ability_id = 2876691785449472
-trigger = { type = "ability_cast", abilities = [2876691785449472] }
+trigger = { type = "ability_cast", abilities = [
+  2876691785449472, 2876910828781568] }
 duration_secs = 30
 color = [23, 197, 209, 255]
 difficulties = ["veteran"]
 cancel_trigger = { type = "phase_entered", phase_id = "fs_shield" }
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 3: Colonel Vorgath
+# ═══════════════════════════════════════════════════════════════════════════════
 
-# -- Alerts --
-# ═══════════════════════════════════════════════════════════════════════════════
-# Colonel Vorgath
-# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "colonel_vorgath"
 name = "Colonel Vorgath"
@@ -971,7 +948,6 @@ ids = [
   2854224811524096,
   2854117437341696,
   2854229106491392,
-  2786080860405760,
   2848692893646848,
 ]
 is_boss = true
@@ -1032,35 +1008,39 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "cv_knockback"
-name = "Knockback"
-trigger = { type = "ability_cast", abilities = [2853275623751680] }
+name = "Concussion Charge"
+trigger = { type = "ability_cast", abilities = [
+  2838702799716352, 2853275623751680, 2853825379565568, 2854044422897664] }
 duration_secs = 15
 color = [224, 108, 24, 255]
 icon_ability_id = 2853275623751680
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "cv_grenade"
-name = "Grenade"
-trigger = { type = "ability_cast", abilities = [2853344343228416] }
+name = "Sticky Grenade"
+trigger = { type = "ability_cast", abilities = [
+  2822600967323648, 2853344343228416, 2853872624205824, 2854100257472512] }
 duration_secs = 15
 color = [214, 37, 32, 255]
 icon_ability_id = 2853344343228711
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "colonel_vorgath_defuse_mine"
-name = "Defuse mine!"
+name = "Mine Defuse Kit Received"
 duration_secs = 30.0
 is_alert = true
 color = [255, 128, 0, 255]
 icon_ability_id = 2851226924351746
+difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
 type = "effect_applied"
-effects = [2851226924351746]
+effects = [2787141717328128, 2851226924351746, 2853726595318023, 2853932753748231]
 source = "any"
 target = "local_player"
+
 # -- HP Threshold Alerts --
 [[boss.timer]]
 id = "cv_hp_95"
@@ -1069,19 +1049,7 @@ is_alert = true
 trigger = { type = "boss_hp_below", hp_percent = 95.0, selector = [
   "Colonel Vorgath",
 ] }
-alert_text = "Threat Drop"
 color = [39, 209, 208, 255]
-difficulties = ["veteran", "master"]
-
-[[boss.timer]]
-id = "cv_hp_80"
-name = "Turrets"
-is_alert = true
-trigger = { type = "boss_hp_below", hp_percent = 80.0, selector = [
-  "Colonel Vorgath",
-] }
-alert_text = "Turrets"
-color = [14, 128, 22, 255]
 difficulties = ["veteran", "master"]
 
 [[boss.timer]]
@@ -1106,25 +1074,23 @@ show_at_secs = 120.0
 trigger = { type = "combat_start" }
 cancel_trigger = { type = "phase_entered", phase_id = "cv_vorgath" }
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Boss 4: Warlord Kephess
+# ═══════════════════════════════════════════════════════════════════════════════
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Warlord Kephess
-# ═══════════════════════════════════════════════════════════════════════════════
 [[boss]]
 id = "warlord_kephess"
 name = "Warlord Kephess"
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 is_final_boss = true
 
 [[boss.entities]]
 name = "Warlord Kephess"
 ids = [
   2876550051528704,
-  3618127694790656,
   2876528576692224,
   2876588706234368,
   2800357331697664,
-  2749629472964608,
 ]
 is_boss = true
 is_kill_target = true
@@ -1212,15 +1178,16 @@ trigger = { type = "boss_hp_below", hp_percent = 59.0, selector = [
 [[boss.timer]]
 id = "wk_mighty_leap"
 name = "Mighty Leap"
-trigger = { type = "ability_cast", abilities = [2877069742571520] }
+trigger = { type = "ability_cast", abilities = [
+  2832608241123328, 2877069742571520, 2877190001655808, 2877305965772800] }
 duration_secs = 40
 color = [214, 37, 32, 255]
-icon_ability_id = 2877039677800706
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "warlord_kephess_dot_is_on_you"
-name = "Savage dot is on you"
+name = "Savage Wounding Received"
+is_alert = true
 duration_secs = 8.0
 color = [255, 100, 0, 255]
 icon_ability_id = 2877039677800706
@@ -1228,22 +1195,25 @@ difficulties = ["veteran", "master"]
 
 [boss.timer.trigger]
 type = "effect_applied"
-effects = [2877039677800706]
+effects = [2877039677800706, 2877271606034689]
+source = "any"
 target = "local_player"
 
 [[boss.timer]]
 id = "wk_savage_slash"
-name = "Savage Slash"
-trigger = { type = "ability_cast", abilities = [2877048267735040] }
+name = "Savage Arcing Slash"
+trigger = { type = "ability_cast", abilities = [
+  2854383725314048, 2877048267735040, 2877164231852032, 2877280195969024] }
 duration_secs = 18
 color = [219, 28, 29, 255]
 icon_ability_id = 2877048267735300
-difficulties = ["veteran", "master"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.timer]]
 id = "wk_breath_pull"
 name = "Breath Pull"
-trigger = { type = "effect_applied", effects = [2877078332506112] }
+trigger = { type = "effect_applied", effects = [
+  2877078332506112, 2877314555707392] }
 duration_secs = 6
 color = [224, 168, 33, 255]
 icon_ability_id = 2877078332506112
@@ -1251,16 +1221,16 @@ difficulties = ["master"]
 
 [[boss.timer]]
 id = "warlord_kephess_bomb"
-name = "Bomb"
+name = "Baradium Explosive Pack"
 is_alert = true
-alert_text = "You have the bomb"
+alert_text = "Baradium Bomb Received"
 color = [255, 128, 0, 255]
 icon_ability_id = 2877026792898560
 difficulties = ["story", "veteran", "master"]
 
 [boss.timer.trigger]
 type = "effect_applied"
-effects = [2877026792898560]
+effects = [2794005075066880, 2877026792898560, 2877142757015552, 2877263016099840]
 source = "any"
 target = "local_player"
 
@@ -1281,7 +1251,6 @@ repeats = 1
 trigger = { type = "counter_reaches", counter_id = "wk_trando_spawns", value = 1 }
 difficulties = ["veteran", "master"]
 
-
 [[boss.timer]]
 id = "warlord_kephess_walker_enrage"
 name = "Walker Enrage"
@@ -1289,9 +1258,7 @@ duration_secs = 450.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
 group_size = 8
-enabled = true
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -1307,10 +1274,8 @@ display_text = "Walker Enrage"
 duration_secs = 510.0
 color = [200, 0, 0, 255]
 difficulties = ["veteran", "master"]
-group_size = 8
-enabled = true
+group_size = 16
 show_at_secs = 60.0
-display_target = "timers_a"
 
 [boss.timer.trigger]
 type = "combat_start"
@@ -1327,19 +1292,6 @@ cancel_trigger = { type = "entity_death", selector = ["Baradium Bomber"] }
 duration_secs = 20.0
 icon_ability_id = 2877026792898560
 difficulties = ["veteran", "master"]
-
-[[boss.timer]]
-id = "warlord_kephess_pull_in_soon"
-name = "Pull in soon"
-is_alert = true
-color = [125, 250, 0, 255]
-icon_ability_id = 2877074037538816
-difficulties = ["veteran", "master"]
-
-[boss.timer.trigger]
-type = "boss_hp_below"
-hp_percent = 63.0
-selector = ["Warlord Kephess"]
 
 [[boss.challenge]]
 id = "wk_ch_walker_burn"
