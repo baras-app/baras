@@ -1818,10 +1818,6 @@ type = "any_of"
 [[boss.phases.start_trigger.conditions]]
 type = "combat_start"
 
-#[[boss.phases.start_trigger.conditions]]
-#type = "timer_started"
-#timer_id = "nahut_p1_intermission_trigger"
-
 [[boss.phases.start_trigger.conditions]]
 type = "effect_removed"
 effects = [4126462844076032]
@@ -1888,11 +1884,11 @@ timer_id = "nahut_k_p3_t2"
 
 [[boss.phases.start_trigger.conditions]]
 type = "timer_started"
-timer_id = "nahut_p3_t1_alternative"
+timer_id = "nahut_p3_t1_backup"
 
 [[boss.phases.start_trigger.conditions]]
 type = "timer_started"
-timer_id = "nahut_p3_t2_alternative"
+timer_id = "nahut_p3_t2_backup"
 
 [[boss.phases]]
 id = "nahut_k_p4"
@@ -1937,8 +1933,8 @@ type = "timer_expires"
 timer_id = "nahut_k_gsw_p2"
 
 [[boss.counters.reset_on.conditions]]
-type = "timer_started"
-timer_id = "nahut_shockwave_on_lockout"
+type = "timer_expires"
+timer_id = "nahut_shockwave_after_lockout"
 
 [[boss.counters]]
 id = "nahut_oppressive_gravity_detection"
@@ -1952,7 +1948,7 @@ type = "any_of"
 
 [[boss.counters.increment_on.conditions]]
 type = "timer_expires"
-timer_id = "nahut_k_gsw_p2_1st"
+timer_id = "nahut_p2_opressive_gravity"
 
 [[boss.counters.increment_on.conditions]]
 type = "timer_expires"
@@ -1970,7 +1966,7 @@ decrement = false
 
 [boss.counters.increment_on]
 type = "timer_started"
-timer_id = "nahut_spaghettification_alternative"
+timer_id = "nahut_spaghettification_backup"
 
 [boss.counters.reset_on]
 type = "combat_end"
@@ -2088,8 +2084,6 @@ phase_id = "nahut_k_p1_i"
 type = "phase_entered"
 phase_id = "nahut_k_p2"
 
-
-
 [[boss.timer]]
 id = "nahut_energized_slice_backup"
 name = "Energized Slice"
@@ -2124,6 +2118,13 @@ timer_id = "nahut_k_es"
 operator = "gte"
 value = 0.0
 
+[[boss.timer.conditions]]
+type = "not"
+
+[boss.timer.conditions.condition]
+type = "phase_active"
+phase_ids = ["nahut_k_p1_i", "nahut_k_p2"]
+
 [boss.timer.cancel_trigger]
 type = "any_of"
 
@@ -2134,44 +2135,6 @@ phase_id = "nahut_k_p1_i"
 [[boss.timer.cancel_trigger.conditions]]
 type = "phase_entered"
 phase_id = "nahut_k_p2"
-
-
-#[boss.timer.trigger]
-#type = "any_of"
-
-#[[boss.timer.trigger.conditions]]
-#type = "damage_taken"
-#abilities = [4137075708264448]
-#source = "any"
-#target = "any"
-
-#4137075708264714
-
-#[[boss.timer.trigger.conditions]]
-#type = "damage_taken"
-#abilities = [4137075708264448]
-#source = "any"
-#target = "any"
-#mitigation = ["absorbed", "resist", "shield", "reflected", "immune"]
-
-
-#[[boss.timer.conditions]]
-#type = "not"
-
-#[boss.timer.conditions.condition]
-#type = "timer_time_remaining"
-#timer_id = "nahut_k_es"
-#operator = "gte"
-#value = 0.0
-
-#[[boss.timer.conditions]]
-#type = "not"
-
-#[boss.timer.conditions.condition]
-#type = "phase_active"
-#phase_ids = ["nahut_k_p1_i", "nahut_k_p2"]
-
-
 
 [[boss.timer]]
 id = "nahut_k_adds_p2_1st"
@@ -2227,7 +2190,7 @@ value = 0.0
 
 [[boss.timer.conditions.conditions]]
 type = "timer_time_remaining"
-timer_id = "nahut_spaghettification_alternative"
+timer_id = "nahut_spaghettification_backup"
 operator = "gte"
 value = 0.0
 
@@ -2240,7 +2203,7 @@ timer_id = "nahut_k_p3_t"
 
 [[boss.timer.cancel_trigger.conditions]]
 type = "timer_expires"
-timer_id = "nahut_spaghettification_alternative"
+timer_id = "nahut_spaghettification_backup"
 
 [[boss.timer]]
 id = "nahut_k_r_p2_c"
@@ -2271,7 +2234,7 @@ timer_id = "nahut_k_p3_t"
 
 [[boss.timer.cancel_trigger.conditions]]
 type = "timer_expires"
-timer_id = "nahut_spaghettification_alterantive"
+timer_id = "nahut_spaghettification_backup"
 
 [[boss.timer]]
 id = "nahut_k_r_p2_sw"
@@ -2282,12 +2245,16 @@ icon_ability_id = 4132626122145792
 difficulties = ["veteran", "master"]
 roles = []
 
+#[boss.timer.trigger]
+#type = "timer_expires"
+#timer_id = "nahut_shockwave_after_lockout"
+
 [boss.timer.trigger]
 type = "any_of"
 
 [[boss.timer.trigger.conditions]]
 type = "timer_expires"
-timer_id = "nahut_shockwave_on_lockout"
+timer_id = "nahut_shockwave_after_lockout"
 
 [[boss.timer.trigger.conditions]]
 type = "timer_expires"
@@ -2302,7 +2269,7 @@ timer_id = "nahut_k_p3_t"
 
 [[boss.timer.cancel_trigger.conditions]]
 type = "timer_expires"
-timer_id = "nahut_spaghettification_alterantive"
+timer_id = "nahut_spaghettification_backup"
 
 [[boss.timer]]
 id = "nahut_k_gsw_p2_1st"
@@ -2325,11 +2292,17 @@ counter_id = "nahut_oppressive_gravity_detection"
 operator = "eq"
 value = 0
 
+[boss.timer.cancel_trigger]
+type = "timer_started"
+timer_id = "nahut_k_gsw_p2"
+
 [[boss.timer]]
-id = "nahut_shockwave_on_lockout"
-name = "Gravitic Shockwave On Lockout"
+id = "nahut_shockwave_after_lockout"
+name = "Gravitic Shockwave"
 duration_secs = 0.1
-color = [255, 255, 255, 255]
+alert_on = "on_apply"
+alert_text = "Gravitic Shockwave Incoming"
+color = [255, 128, 0, 255]
 icon_ability_id = 4132991194366212
 difficulties = ["veteran", "master"]
 display_target = "none"
@@ -2388,7 +2361,7 @@ source = "any"
 target = "any"
 
 [[boss.timer]]
-id = "nahut_spaghettification_alternative"
+id = "nahut_spaghettification_backup"
 name = "Spaghettification Check"
 duration_secs = 51.0
 color = [174, 0, 255, 255]
@@ -2503,7 +2476,7 @@ phase_id = "nahut_k_p4"
 
 [[boss.timer]]
 id = "nahut_gsw_pull_in"
-name = "Gravitic Shockwave Pull In"
+name = "Pull In (Gravitic Shockwave)"
 duration_secs = 5.0
 color = [255, 128, 0, 255]
 icon_ability_id = 4132991194366212
@@ -2583,7 +2556,7 @@ mitigation = ["absorbed", "resist"]
 
 [[boss.timer]]
 id = "nahut_k_cn_pw"
-name = "Candle"
+name = "Candle With Power Cell"
 duration_secs = 30.0
 is_alert = true
 color = [50, 200, 50, 255]
@@ -2603,7 +2576,7 @@ value = 1
 
 [[boss.timer]]
 id = "nahut_k_cn_n_pw"
-name = "Candle"
+name = "Candle Without Power Cell"
 duration_secs = 30.0
 is_alert = true
 color = [255, 0, 0, 255]
@@ -2678,21 +2651,6 @@ target = "any"
 type = "phase_entered"
 phase_id = "nahut_k_p2"
 
-#[[boss.timer]]
-#id = "nahut_p1_intermission_trigger"
-#name = "Phase 1 (Intermission)"
-#duration_secs = 5.0
-#color = [255, 255, 255, 255]
-#difficulties = ["story", "veteran", "master"]
-#display_target = "none"
-#enabled = true
-
-#[boss.timer.trigger]
-#type = "effect_removed"
-#effects = [4126462844076032]
-#source = "any"
-#target = "any"
-
 [[boss.timer]]
 id = "nahut_k_p2_transition"
 name = "Phase 2 (Couplings)"
@@ -2708,7 +2666,7 @@ phase_id = "nahut_k_p2"
 
 [[boss.timer]]
 id = "nahut_k_p2_gcd"
-name = "GCD"
+name = "Railgun GCD"
 duration_secs = 5.5
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
@@ -2718,6 +2676,21 @@ roles = []
 [boss.timer.trigger]
 type = "effect_applied"
 effects = [4132626122145792]
+source = "any"
+target = "any"
+
+[[boss.timer]]
+id = "nahut_p2_opressive_gravity"
+name = "P2 Opressive Gravity Detection"
+duration_secs = 2.0
+color = [255, 255, 255, 255]
+difficulties = ["story", "veteran", "master"]
+display_target = "none"
+roles = []
+
+[boss.timer.trigger]
+type = "effect_applied"
+effects = [4134133655667051]
 source = "any"
 target = "any"
 
@@ -2750,7 +2723,7 @@ operator = "eq"
 value = 0
 
 [[boss.timer]]
-id = "nahut_p3_t1_alternative"
+id = "nahut_p3_t1_backup"
 name = "Phase 3 (Turrets)"
 duration_secs = 30.0
 is_alert = true
@@ -2760,7 +2733,7 @@ roles = []
 
 [boss.timer.trigger]
 type = "timer_expires"
-timer_id = "nahut_spaghettification_alternative"
+timer_id = "nahut_spaghettification_backup"
 
 [[boss.timer.conditions]]
 type = "not"
@@ -2806,7 +2779,7 @@ operator = "eq"
 value = 0
 
 [[boss.timer]]
-id = "nahut_p3_t2_alternative"
+id = "nahut_p3_t2_backup"
 name = "Phase 3 (Turrets)"
 duration_secs = 30.0
 is_alert = true
@@ -2823,7 +2796,7 @@ type = "not"
 
 [boss.timer.conditions.condition]
 type = "timer_time_remaining"
-timer_id = "nahut_spaghettification_alternative"
+timer_id = "nahut_spaghettification_backup"
 operator = "gte"
 value = 0.0
 
