@@ -2632,6 +2632,13 @@ counter_id = "nahut_k_h_c"
 operator = "eq"
 value = 1
 
+[[boss.timer.conditions]]
+type = "not"
+
+[boss.timer.conditions.condition]
+type = "phase_active"
+phase_ids = ["nahut_k_p2"]
+
 [[boss.timer]]
 id = "nahut_k_sup"
 name = "Suppressed"
