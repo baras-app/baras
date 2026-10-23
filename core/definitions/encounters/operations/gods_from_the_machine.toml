@@ -2032,7 +2032,6 @@ duration_secs = 8.0
 color = [6, 208, 204, 255]
 icon_ability_id = 4124212281213220
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "phase_entered"
@@ -2045,7 +2044,6 @@ duration_secs = 12.0
 color = [6, 208, 204, 255]
 icon_ability_id = 4124212281213220
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "effect_applied"
@@ -2075,7 +2073,6 @@ duration_secs = 12.0
 color = [255, 0, 0, 255]
 icon_ability_id = 4137075708264448
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -2101,7 +2098,6 @@ duration_secs = 11.0
 color = [255, 0, 0, 255]
 icon_ability_id = 4137075708264448
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "any_of"
@@ -2153,7 +2149,6 @@ duration_secs = 6.5
 color = [50, 200, 50, 255]
 icon_ability_id = 4131810078359821
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -2168,7 +2163,6 @@ duration_secs = 6.0
 color = [255, 0, 0, 255]
 icon_ability_id = 4132626122145792
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -2181,7 +2175,6 @@ duration_secs = 5.0
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
 display_target = "none"
-roles = []
 
 [boss.timer.trigger]
 type = "damage_taken"
@@ -2222,7 +2215,6 @@ duration_secs = 8.0
 color = [255, 0, 0, 255]
 icon_ability_id = 4132626122145792
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "effect_applied"
@@ -2253,7 +2245,6 @@ duration_secs = 4.5
 color = [255, 0, 0, 255]
 icon_ability_id = 4132626122145792
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "any_of"
@@ -2284,7 +2275,6 @@ duration_secs = 16.0
 color = [255, 128, 0, 255]
 icon_ability_id = 4132991194366212
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "effect_applied"
@@ -2312,7 +2302,6 @@ color = [255, 128, 0, 255]
 icon_ability_id = 4132991194366212
 difficulties = ["story", "veteran", "master"]
 display_target = "none"
-roles = []
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -2331,7 +2320,6 @@ duration_secs = 2.5
 color = [255, 128, 0, 255]
 icon_ability_id = 4132991194366212
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "counter_reaches"
@@ -2358,7 +2346,6 @@ duration_secs = 60.0
 color = [174, 0, 255, 255]
 icon_ability_id = 4132961129594880
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -2373,7 +2360,6 @@ duration_secs = 51.0
 color = [174, 0, 255, 255]
 icon_ability_id = 4132961129594880
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "effect_applied"
@@ -2406,7 +2392,6 @@ duration_secs = 10.0
 color = [50, 200, 50, 255]
 icon_ability_id = 3123128418959360
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "phase_entered"
@@ -2419,7 +2404,6 @@ duration_secs = 40.0
 color = [50, 200, 50, 255]
 icon_ability_id = 3123128418959360
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "ability_cast"
@@ -2438,7 +2422,6 @@ duration_secs = 12.0
 color = [6, 208, 204, 255]
 icon_ability_id = 4124212281213220
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "phase_entered"
@@ -2451,7 +2434,6 @@ duration_secs = 15.0
 color = [255, 128, 0, 255]
 icon_ability_id = 4132991194366212
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "phase_entered"
@@ -2464,7 +2446,6 @@ duration_secs = 20.0
 color = [255, 128, 0, 255]
 icon_ability_id = 4132991194366212
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "damage_taken"
@@ -2487,7 +2468,6 @@ duration_secs = 5.0
 color = [255, 128, 0, 255]
 icon_ability_id = 4132991194366212
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "any_of"
@@ -2511,7 +2491,6 @@ duration_secs = 12.0
 color = [255, 128, 0, 255]
 icon_ability_id = 4133906022400000
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "any_of"
@@ -2542,7 +2521,6 @@ color = [255, 128, 0, 255]
 icon_ability_id = 4133906022400000
 difficulties = ["story", "veteran", "master"]
 can_be_refreshed = true
-roles = []
 
 [boss.timer.trigger]
 type = "any_of"
@@ -2558,7 +2536,7 @@ type = "damage_taken"
 abilities = [4133906022400000]
 source = "any"
 target = "any"
-mitigation = ["absorbed", "resist"]
+mitigation = ["absorbed", "resist", "immune"]
 
 [[boss.timer]]
 id = "nahut_k_cn_pw"
@@ -2567,7 +2545,6 @@ duration_secs = 30.0
 is_alert = true
 color = [50, 200, 50, 255]
 difficulties = ["master"]
-roles = []
 
 [boss.timer.trigger]
 type = "counter_reaches"
@@ -2587,7 +2564,6 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 0, 0, 255]
 difficulties = ["master"]
-roles = []
 
 [boss.timer.trigger]
 type = "counter_reaches"
@@ -2607,7 +2583,6 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 0, 0, 255]
 difficulties = ["story", "veteran"]
-roles = []
 
 [boss.timer.trigger]
 type = "counter_reaches"
@@ -2621,7 +2596,6 @@ duration_secs = 60.0
 color = [219, 212, 0, 255]
 icon_ability_id = 4181850742325248
 difficulties = ["master"]
-roles = []
 
 [boss.timer.trigger]
 type = "effect_applied"
@@ -2636,7 +2610,6 @@ duration_secs = 40.0
 color = [219, 212, 0, 255]
 icon_ability_id = 4181850742325248
 difficulties = ["story", "veteran"]
-roles = []
 
 [boss.timer.trigger]
 type = "effect_applied"
@@ -2651,7 +2624,6 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 0, 0, 255]
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "effect_removed"
@@ -2681,7 +2653,6 @@ duration_secs = 16.0
 color = [230, 107, 207, 255]
 difficulties = ["story", "veteran", "master"]
 can_be_refreshed = true
-roles = []
 
 [boss.timer.trigger]
 type = "effect_applied"
@@ -2700,7 +2671,6 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "phase_entered"
@@ -2713,7 +2683,6 @@ duration_secs = 5.5
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
 display_target = "none"
-roles = []
 
 [boss.timer.trigger]
 type = "effect_applied"
@@ -2728,7 +2697,6 @@ duration_secs = 2.0
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
 display_target = "none"
-roles = []
 
 [boss.timer.trigger]
 type = "effect_applied"
@@ -2743,7 +2711,6 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -2771,7 +2738,6 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -2799,7 +2765,6 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -2827,7 +2792,6 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "timer_expires"
@@ -2855,7 +2819,6 @@ duration_secs = 30.0
 is_alert = true
 color = [255, 255, 255, 255]
 difficulties = ["story", "veteran", "master"]
-roles = []
 
 [boss.timer.trigger]
 type = "phase_entered"
