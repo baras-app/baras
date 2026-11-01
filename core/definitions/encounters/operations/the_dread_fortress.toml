@@ -1,36 +1,22 @@
-# ═══════════════════════════════════════════════════════════════════════════════
-# The Dread Fortress - Operation
-# ═══════════════════════════════════════════════════════════════════════════════
-# Dread Fortress - 5 boss operation (Nefra, Draxus, Grob'thok, Corruptor Zero, Brontes)
-# Source: ORBS timer data + manual verification from NiM logs
-
 [area]
 name = "The Dread Fortress"
 id = 137438993402
+area_type = "operation"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 1: Nefra, Who Bars the Way
+# Boss 1: Nefra, Who Bars The Way
 # ═══════════════════════════════════════════════════════════════════════════════
-# Simple boss with periodic raid damage and add spawns.
-# Key mechanics:
-# - Voice of the Masters: Raid-wide damage that must be healed through
-# - DPS/Tank Adds: Spawned periodically, must be killed quickly
-# - Twin Attack: Main rotation ability (used for NiM cleave tracking)
-# - Nightmare Twin Attack: Special cleave mechanic in NiM
 
 [[boss]]
 id = "nefra"
-name = "Nefra, Who Bars the Way"
+name = "Nefra, Who Bars The Way"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Nefra, Who Bars the Way"
+name = "Nefra, Who Bars The Way"
 ids = [3266533082005504, 3303036009054208, 3303031714086912, 3303040304021504]
 is_boss = true
 is_kill_target = true
-
-# ─── Counters ───────────────────────────────────────────────────────────────────
-# NiM uses Twin Attack count to determine when adds/cleave happen
 
 [[boss.counters]]
 id = "nefra_twin_attack_count"
@@ -38,11 +24,11 @@ name = "Twin Attacks"
 increment_on = { type = "ability_cast", abilities = [3342034312101888] }
 reset_on = { type = "ability_cast", abilities = [
   3342167456088064,
-] } # Reset on Nightmare Twin Attack
+] }
 
 [[boss.counters]]
 id = "nefra_rng_add_gate"
-name = "rng_add_gate"
+name = "RNG Add Gate"
 decrement_on = { type = "any_of", conditions = [
   { type = "timer_started", timer_id = "nefra_dps_add" },
   { type = "timer_started", timer_id = "nefra_tank_add" },
@@ -52,7 +38,7 @@ initial_value = 0
 
 [[boss.counters]]
 id = "nefra_curse_stacks_local"
-name = "Curse Stacks - Local"
+name = "Local Curse Stacks"
 enabled = true
 initial_value = 0
 decrement = false
@@ -82,8 +68,6 @@ type = "ability_cast"
 effects = [3342034312102187]
 target = "boss"
 
-# ─── Timers ─────────────────────────────────────────────────────────────────────
-
 [[boss.timer]]
 id = "nefra_voice_cs"
 name = "Voice"
@@ -107,7 +91,7 @@ difficulties = ["veteran", "master"]
 id = "nefra_local_taunt"
 name = "Local Taunt"
 is_alert = true
-alert_text = "3 Stacks - Taunt!"
+alert_text = "3 Stacks"
 color = [150, 0, 0, 255]
 icon_ability_id = 3342034312102196
 difficulties = ["master"]
@@ -119,7 +103,7 @@ value = 3
 
 [[boss.timer]]
 id = "nefra_dps_add_1st"
-name = "DPS Add 1st"
+name = "1st DPS Add"
 display_text = "DPS Add"
 trigger = { type = "combat_start" }
 duration_secs = 30.0
@@ -128,7 +112,7 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "nefra_tank_add_1st"
-name = "TANK Add 1st"
+name = "1st TANK Add"
 display_text = "Tank Add"
 trigger = { type = "combat_start" }
 duration_secs = 45.0
@@ -137,7 +121,7 @@ difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "nefra_dps_add_vm"
-name = "DPS Add VM"
+name = "DPS Add"
 display_text = "DPS Add"
 trigger = { type = "ability_cast", abilities = [3308460552749056] }
 duration_secs = 30.0
@@ -146,7 +130,7 @@ difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "nefra_tank_add_vm"
-name = "TANK Add VM"
+name = "TANK Add"
 display_text = "Tank Add"
 trigger = { type = "ability_cast", abilities = [3308164200005632] }
 duration_secs = 30.0
@@ -155,7 +139,7 @@ difficulties = ["veteran"]
 
 [[boss.timer]]
 id = "nefra_tank_add"
-name = "TANK Add NiM"
+name = "TANK Add"
 display_text = "Tank Add"
 trigger = { type = "ability_cast", abilities = [3308460552749056] }
 duration_secs = 10.0
@@ -167,7 +151,7 @@ conditions = [
 
 [[boss.timer]]
 id = "nefra_dps_add"
-name = "DPS Add NiM"
+name = "DPS Add"
 display_text = "Tank Add"
 trigger = { type = "ability_cast", abilities = [3308164200005632] }
 duration_secs = 10.0
@@ -190,16 +174,13 @@ conditions = [
 
 [[boss.timer]]
 id = "nefra_turn_boss"
-name = "Turn boss"
+name = "Turn Boss"
 duration_secs = 30.0
 is_alert = true
 color = [255, 128, 0, 255]
 icon_ability_id = 3342034312102187
 difficulties = ["veteran", "master"]
 display_targets = ["timers_a"]
-roles = []
-queue_countdown_bar = false
-queue_hide_from_next = false
 
 [boss.timer.trigger]
 type = "counter_reaches"
@@ -211,14 +192,12 @@ id = "nefra_raid_cleave"
 name = "Raid Cleave"
 trigger = { type = "ability_cast", abilities = [3342034312101888] }
 is_alert = true
-alert_text = "Raid Cleave"
 color = [219, 37, 41, 255]
 icon_ability_id = 3342034312102187
 difficulties = ["master"]
 conditions = [
   { type = "counter_compare", counter_id = "nefra_twin_attack_count", operator = "eq", value = 15 },
 ]
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 2: Gate Commander Draxus
@@ -235,7 +214,6 @@ ids = [3273924720721920, 3303401081274368, 3303392491339776, 3303405376241664]
 is_boss = true
 is_kill_target = true
 
-# -- HP markers
 [[boss.entities.hp_markers]]
 hp_percent = 90.0
 label = "Escape"
@@ -268,9 +246,6 @@ name = "Dismantler"
 ids = [3288029393321984, 3281329244340224]
 is_boss = false
 
-
-# ═════ Counters
-
 [[boss.counters]]
 id = "draxus_subteroth_count"
 name = "Subteroth Spawns"
@@ -299,10 +274,6 @@ increment_on = { type = "npc_appears", selector = [
   "Bulwark",
 ] }
 
-
-# Entity ID:
-# ═════ Timers
-# Draxus escapes at HP thresholds, spawning add waves
 [[boss.timer]]
 id = "draxus_grenade"
 name = "Grenade"
@@ -312,9 +283,6 @@ icon_ability_id = 3289043005603840
 duration_secs = 12.0
 color = [204, 182, 30, 255]
 difficulties = ["veteran", "master"]
-
-# -- Suppressive Fire --
-# Channeled attack
 
 [[boss.timer]]
 id = "draxus_suppressive"
@@ -378,7 +346,6 @@ cancel_trigger = { type = "timer_started", timer_id = "draxus_w4" }
 [[boss.timer]]
 id = "draxus_w4"
 name = "W4: Dismantlers"
-# Entity ID: 3288136767504384
 trigger = { type = "counter_reaches", counter_id = "draxus_corrupter_count", value = 1 }
 duration_secs = 50.0
 color = [20, 136, 22, 255]
@@ -436,16 +403,11 @@ icon_ability_id = 3381651090440192
 difficulties = ["veteran", "master"]
 cancel_trigger = { type = "counter_reaches", counter_id = "draxus_corrupter_count", value = 10 }
 
-
-# -- Emergency Shielding --
-# Final phase immunity - alert when applied and removed
-
 [[boss.timer]]
 id = "draxus_shield_on"
 name = "Emergency Shield"
 trigger = { type = "effect_applied", effects = [3321693346988296] }
 is_alert = true
-alert_text = "Draxus Immune"
 color = [29, 224, 219, 255]
 icon_ability_id = 3321693346988296
 difficulties = ["veteran", "master"]
@@ -455,24 +417,21 @@ id = "draxus_shield_off"
 name = "Shield Down - BURN"
 trigger = { type = "effect_removed", effects = [3321693346988296] }
 is_alert = true
-alert_text = "Shield Down!"
 color = [33, 224, 218, 255]
 icon_ability_id = 3321693346988296
 difficulties = ["veteran", "master"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Boss 3: Grob'thok, Who Feeds the Forge
+# Boss 3: Grob'thok, Who Feeds The Forge
 # ═══════════════════════════════════════════════════════════════════════════════
-# Kite fight with lava, adds, and a magnet mechanic.
-# Source: ORBS timer data
 
 [[boss]]
 id = "grobthok"
-name = "Grob'thok"
+name = "Grob'thok, Who Feeds The Forge"
 difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
-name = "Grob'thok"
+name = "Grob'thok, Who Feeds The Forge"
 ids = [3302567857618944, 3302559267684352, 3273929015689216, 3302563562651648]
 is_boss = true
 is_kill_target = true
@@ -482,16 +441,10 @@ name = "Dreadful Ugnaught"
 ids = [3307678868701184]
 is_boss = false
 
-# ─── Timers ─────────────────────────────────────────────────────────────────────
-
-# -- Pipe Smash --
-# Boss smashes pipes to release lava. 60s from start, 63s after each cast.
-
 [[boss.timer]]
 id = "grobthok_pipe_smash_cs"
-name = "Pipe Smash Combat Start"
+name = "Pipe Smash"
 icon_ability_id = 3307601559289856
-display_text = "Pipe Smash"
 trigger = { type = "combat_start" }
 duration_secs = 61.0
 color = [204, 182, 30, 255]
@@ -507,14 +460,11 @@ duration_secs = 63.0
 color = [204, 182, 30, 255]
 difficulties = ["veteran", "master"]
 
-# -- Adds --
-# Spawns at 97% HP, then 25s after each spawn ability.
-
 [[boss.timer]]
 id = "grobthok_adds_hp"
 name = "Adds"
 trigger = { type = "boss_hp_below", hp_percent = 97.0, selector = [
-  "Grob'thok",
+  "Grob'thok, Who Feeds The Forge",
 ] }
 is_alert = true
 alert_text = "Adds Spawning"
@@ -529,16 +479,14 @@ duration_secs = 25.0
 color = [25, 148, 13, 255]
 difficulties = ["veteran", "master"]
 
-# -- Lava
-
 [[boss.timer]]
 id = "grobthok_lava_start"
 name = "First Mining Droid"
 trigger = { type = "boss_hp_below", hp_percent = 95.0, selector = [
-  "Grob'thok",
+  "Grob'thok, Who Feeds The Forge",
 ] }
 is_alert = true
-alert_text = "Lava "
+alert_text = "Lava"
 color = [224, 108, 29, 255]
 icon_ability_id = 3294703772500224
 difficulties = ["veteran", "master"]
@@ -554,13 +502,13 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "grobthok_dot_debuff"
-name = "Mining Droid on Self"
+name = "Mining Droid On Self"
 trigger = { type = "effect_applied", effects = [
   3294703772500224,
 ], target = "local_player" }
 icon_ability_id = 3294703772500224
 is_alert = true
-alert_text = "MINING DROID ON YOU"
+alert_text = "Mining Droid On You"
 color = [224, 108, 29, 255]
 difficulties = ["veteran", "master"]
 
