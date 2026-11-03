@@ -135,7 +135,7 @@ enabled = true
 
 [boss.phases.start_trigger]
 type = "effect_removed"
-effects = [4844731699822856]
+effects = [4859643826274580, 4832156035580328]
 source = "any"
 target = "any"
 
