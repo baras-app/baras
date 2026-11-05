@@ -46,6 +46,11 @@ pub struct PullRow {
     pub discipline_icon: Option<String>,
     pub dps: Option<i64>,
     pub hps: Option<i64>,
+    #[serde(default)]
+    pub ehps: Option<i64>,
+    /// Parsely link: this fight's own upload, else the whole log's
+    #[serde(default)]
+    pub parsely: Option<String>,
     // Pull progress
     pub end_reason: PullEnd,
     /// Lowest boss HP %, only when exactly one boss NPC was tracked (multi-boss

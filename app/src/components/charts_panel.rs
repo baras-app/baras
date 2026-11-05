@@ -9,6 +9,9 @@ use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api::{self, EffectChartData, EffectWindow, HpPoint, TimeRange, TimeSeriesPoint};
 use crate::components::ability_icon::AbilityIcon;
+use crate::components::echarts::{
+    dispose_chart, get_chart, init_chart, next_animation_frame, resize_chart, set_chart_option,
+};
 use crate::utils::js_set;
 use baras_types::formatting;
 
@@ -22,80 +25,10 @@ enum EffectSort {
     Pct,
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ECharts JS Interop
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = echarts, js_name = init)]
-    fn echarts_init(dom: &web_sys::Element) -> JsValue;
-
-    #[wasm_bindgen(js_namespace = echarts, js_name = getInstanceByDom)]
-    fn echarts_get_instance(dom: &web_sys::Element) -> JsValue;
-}
-
-fn init_chart(element_id: &str) -> Option<JsValue> {
-    let window = web_sys::window()?;
-    let document = window.document()?;
-    let element = document.get_element_by_id(element_id)?;
-
-    // Check if instance already exists
-    let existing = echarts_get_instance(&element);
-    if !existing.is_null() && !existing.is_undefined() {
-        return Some(existing);
-    }
-
-    Some(echarts_init(&element))
-}
-
-fn set_chart_option(chart: &JsValue, option: &JsValue) {
-    let set_option = js_sys::Reflect::get(chart, &JsValue::from_str("setOption"))
-        .ok()
-        .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
-
-    if let Some(func) = set_option {
-        let _ = func.call1(chart, option);
-    }
-}
-
-fn resize_chart(chart: &JsValue) {
-    let resize = js_sys::Reflect::get(chart, &JsValue::from_str("resize"))
-        .ok()
-        .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
-
-    if let Some(func) = resize {
-        let _ = func.call0(chart);
-    }
-}
-
 fn resize_all_charts() {
     for id in ["chart-dps", "chart-hps", "chart-dtps", "chart-hp"] {
-        if let Some(window) = web_sys::window()
-            && let Some(document) = window.document()
-            && let Some(element) = document.get_element_by_id(id)
-        {
-            let instance = echarts_get_instance(&element);
-            if !instance.is_null() && !instance.is_undefined() {
-                resize_chart(&instance);
-            }
-        }
-    }
-}
-
-fn dispose_chart(element_id: &str) {
-    if let Some(window) = web_sys::window()
-        && let Some(document) = window.document()
-        && let Some(element) = document.get_element_by_id(element_id)
-    {
-        let instance = echarts_get_instance(&element);
-        if !instance.is_null() && !instance.is_undefined() {
-            let dispose = js_sys::Reflect::get(&instance, &JsValue::from_str("dispose"))
-                .ok()
-                .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
-            if let Some(func) = dispose {
-                let _ = func.call0(&instance);
-            }
+        if let Some(chart) = get_chart(id) {
+            resize_chart(&chart);
         }
     }
 }
@@ -181,14 +114,6 @@ fn build_mark_area_object(
     mark_area
 }
 
-/// Get an already-initialized ECharts instance for `element_id`, or `None`.
-/// Unlike `init_chart`, this never creates a new instance.
-fn get_chart(element_id: &str) -> Option<JsValue> {
-    let element = web_sys::window()?.document()?.get_element_by_id(element_id)?;
-    let existing = echarts_get_instance(&element);
-    (!existing.is_null() && !existing.is_undefined()).then_some(existing)
-}
-
 /// Update ONLY the effect-highlight `markArea` on a chart's burst series (index 0)
 /// via a merging `setOption`, leaving the (expensive) series data untouched. This
 /// is what makes effect-selection changes cheap instead of a full chart rebuild.
@@ -205,18 +130,6 @@ fn apply_effect_markareas(chart: &JsValue, effect_windows: &[(i64, EffectWindow,
 
 /// Await one animation frame — used in place of a fixed sleep to wait for the DOM
 /// to be laid out/painted before initializing charts.
-async fn next_animation_frame() {
-    let promise = js_sys::Promise::new(&mut |resolve, _reject| {
-        if let Some(win) = web_sys::window() {
-            let cb = wasm_bindgen::closure::Closure::once_into_js(move || {
-                let _ = resolve.call0(&JsValue::NULL);
-            });
-            let _ = win.request_animation_frame(cb.unchecked_ref());
-        }
-    });
-    let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
-}
-
 fn build_time_series_option(
     data: &[TimeSeriesPoint],
     secondary_data: Option<&[TimeSeriesPoint]>,

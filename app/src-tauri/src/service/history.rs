@@ -2,6 +2,7 @@
 //! history store (`baras_core::history`). Called after a historical parse
 //! completes, after every live `CombatEnded`, and when a Parsely link lands.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -11,7 +12,7 @@ use tokio::sync::RwLock;
 use tracing::{info, warn};
 
 use baras_core::context::{ParsingSession, resolve};
-use baras_core::history::LogHistory;
+use baras_core::history::{LogHistory, start_ms_of};
 use baras_types::history::BackfillEvent;
 
 use crate::state::SharedState;
@@ -42,6 +43,29 @@ pub async fn persist_pull_history(session: &Arc<RwLock<ParsingSession>>) {
     let history = build_pull_history(&*session.read().await);
     if let Some(history) = history {
         save_in_background(history);
+    }
+}
+
+/// Put the per-fight Parsely links from `library.json` back onto the freshly
+/// parsed summaries, so the Data Explorer offers the link rather than another
+/// upload. Links key by the pull's start time, which survives a re-parse.
+pub async fn restore_parsely_links(session: &Arc<RwLock<ParsingSession>>, shared: &SharedState) {
+    let mut session = session.write().await;
+    let Some(filename) = session.active_file.as_ref().and_then(|p| p.file_name()).and_then(|f| f.to_str()) else {
+        return;
+    };
+    let links: HashMap<i64, String> = {
+        let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        meta.pull_parsely_links(filename).map(|(ms, l)| (ms, l.to_string())).collect()
+    };
+    if links.is_empty() {
+        return;
+    }
+    if let Some(cache) = session.session_cache.as_mut() {
+        let restored = cache.encounter_history.restore_parsely_links(|s| {
+            s.start_time.as_deref().and_then(start_ms_of).and_then(|ms| links.get(&ms).cloned())
+        });
+        info!(restored, known = links.len(), "Restored Parsely links onto parsed encounters");
     }
 }
 

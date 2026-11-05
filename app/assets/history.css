@@ -687,3 +687,45 @@
   font-size: 0.9em;
   color: var(--text-secondary);
 }
+
+/* Overview charts: three across, stacking on narrow panels */
+.history-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.history-chart {
+  height: 190px;
+  min-width: 0;
+  background: var(--bg-mid);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.history-chart.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+/* Chart click → table filter */
+.history-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: var(--space-xs);
+  padding: 0.3em 0.7em;
+  border: 1px solid var(--swtor-blue);
+  border-radius: 4px;
+  background: rgba(74, 158, 255, 0.1);
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.history-pick .btn {
+  margin-left: auto;
+}

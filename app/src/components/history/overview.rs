@@ -7,6 +7,7 @@ use baras_types::formatting;
 use baras_types::history::{BossNode, PullEnd, PullFilter, PullRow, PullSortKey as SortKey};
 
 use super::Backfill;
+use super::charts::{ChartPick, PullCharts};
 use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::use_file_opener;
@@ -69,6 +70,12 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
     let opener = use_file_opener();
 
     let mut selected = use_signal(|| props.state.read().history.selected.clone());
+    // Chart click → table narrowed to that pull or night; cleared with the boss
+    let mut pick = use_signal(|| None::<ChartPick>);
+    use_effect(move || {
+        let _ = selected.read();
+        pick.set(None);
+    });
     let mut expanded = use_signal(|| props.state.read().history.expanded.clone());
     let mut boss_search = use_signal(|| props.state.read().history.boss_search.clone());
     let mut sort_key = use_signal(|| props.state.read().history.sort_key);
@@ -129,8 +136,10 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
         .filter(|r| !r.success)
         .filter_map(|r| r.boss_hp_pct.map(|p| (p, r)))
         .min_by(|a, b| a.0.total_cmp(&b.0));
-    let best_label = if kills > 0 {
-        "Killed".to_string()
+    // Cleared: fastest kill. Otherwise: furthest progress (lowest HP, phase)
+    let fastest_kill = rows.iter().filter(|r| r.success).map(|r| r.duration_seconds).min();
+    let best_label = if let Some(secs) = fastest_kill {
+        formatting::format_duration(secs)
     } else if let Some((pct, r)) = best {
         match &r.phase {
             Some(ph) => format!("{ph} · {} %", formatting::format_decimal(pct, 1, eu)),
@@ -140,11 +149,11 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
         "—".into()
     };
     let avg_secs = if rows.is_empty() { 0 } else { rows.iter().map(|r| r.duration_seconds).sum::<i64>() / rows.len() as i64 };
-    let total_secs: i64 = rows.iter().map(|r| r.duration_seconds).sum();
     let best_dps = rows.iter().filter_map(|r| r.dps).max();
 
     let key = *sort_key.read();
-    let mut visible: Vec<&PullRow> = rows.iter().collect();
+    let picked = pick.read().clone();
+    let mut visible: Vec<&PullRow> = rows.iter().filter(|r| picked.as_ref().is_none_or(|p| p.matches(r))).collect();
     visible.sort_by(|a, b| {
         let ord = match key {
             SortKey::Date => a.timestamp.cmp(&b.timestamp),
@@ -251,10 +260,20 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                 if !rows.is_empty() { span { class: "sub", "{kills * 100 / rows.len()} %" } }
                             }
                         }
-                        div { class: "history-card", div { class: "k", "Best pull" } div { class: "v small", "{best_label}" } }
-                        div { class: "history-card", div { class: "k", "Time in pulls" } div { class: "v", {formatting::format_duration(total_secs)} } }
+                        div { class: "history-card", title: if fastest_kill.is_some() { "Fastest kill" } else { "Furthest progress" },
+                            div { class: "k", if fastest_kill.is_some() { "Best kill" } else { "Best pull" } }
+                            div { class: "v small", "{best_label}" }
+                        }
                         div { class: "history-card", div { class: "k", "Avg pull" } div { class: "v", {formatting::format_duration(avg_secs)} } }
                         div { class: "history-card", div { class: "k", "Your best DPS" } div { class: "v", {fmt_opt(best_dps)} } }
+                    }
+                    PullCharts { pulls, pick, kills_only: filter.read().kills_only }
+                    if let Some(p) = picked.as_ref() {
+                        div { class: "history-pick",
+                            i { class: "fa-solid fa-filter" }
+                            " Showing {p.label(rows)} · {visible.len()} of {rows.len()} pulls"
+                            button { class: "btn btn-xs btn-ghost", title: "Show every pull again", onclick: move |_| pick.set(None), i { class: "fa-solid fa-xmark" } " Clear" }
+                        }
                     }
                     div { class: "pull-history-table-wrap",
                         table { class: "pull-history-table",
@@ -269,6 +288,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                     th { "Discipline" }
                                     th { class: sort_class(SortKey::Dps), onclick: move |_| on_sort(SortKey::Dps), "DPS" }
                                     th { class: sort_class(SortKey::Hps), onclick: move |_| on_sort(SortKey::Hps), "HPS" }
+                                    th { "Parsely" }
                                     th { "Log" }
                                 }
                             }
@@ -301,6 +321,21 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                 }
                                                 td { {fmt_opt(row.dps)} }
                                                 td { {fmt_opt(row.hps)} }
+                                                td {
+                                                    if let Some(link) = row.parsely.clone() {
+                                                        button {
+                                                            class: "btn btn-xs btn-ghost",
+                                                            title: "View on Parsely",
+                                                            onclick: move |_| {
+                                                                let link = link.clone();
+                                                                spawn(async move { api::open_url(&link).await });
+                                                            },
+                                                            i { class: "fa-solid fa-up-right-from-square" }
+                                                        }
+                                                    } else {
+                                                        span { class: "pull-log-missing", title: "Not uploaded to Parsely", "—" }
+                                                    }
+                                                }
                                                 td {
                                                     if let Some(path) = row.path.clone() {
                                                         button {
