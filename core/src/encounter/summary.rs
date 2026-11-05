@@ -138,6 +138,19 @@ impl EncounterHistory {
         &self.summaries
     }
 
+    /// Give summaries without a link the one `link_for` knows (from the
+    /// user's library metadata, after a re-parse). Returns how many were set.
+    pub fn restore_parsely_links(&mut self, link_for: impl Fn(&EncounterSummary) -> Option<String>) -> usize {
+        let mut n = 0;
+        for s in self.summaries.iter_mut().filter(|s| s.parsely_link.is_none()) {
+            if let Some(link) = link_for(s) {
+                s.parsely_link = Some(link);
+                n += 1;
+            }
+        }
+        n
+    }
+
     /// Update the parsely_link for an encounter by its ID
     pub fn set_parsely_link(&mut self, encounter_id: u64, link: String) -> bool {
         if let Some(summary) = self.summaries.iter_mut().find(|s| s.encounter_id == encounter_id) {

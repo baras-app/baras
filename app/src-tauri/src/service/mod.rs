@@ -2519,9 +2519,6 @@ impl CombatService {
                             let _ = trigger_tx.try_send(MetricsTrigger::CombatStarted);
                             let _ = session_event_tx.send(SessionEvent::CombatStarted);
                         }
-                        
-                        // Notify frontend to refresh session info (after in_combat is set)
-                        let _ = self.app_handle.emit("session-updated", "FileLoaded");
                     }
                     Err(e) => {
                         error!(error = %e, "Subprocess output parse failed");
@@ -2584,6 +2581,11 @@ impl CombatService {
             elapsed_ms = timer.elapsed().as_millis() as u64,
             "Parse completed"
         );
+
+        // Re-parsed fights get their recorded Parsely links back, then the
+        // frontend refreshes session info (in_combat is already set above)
+        history::restore_parsely_links(&session, &self.shared).await;
+        let _ = self.app_handle.emit("session-updated", "FileLoaded");
 
         // Check if this live session is actually not-live (game closed, no player,
         // or newest log file is blank). This catches the case where the app starts

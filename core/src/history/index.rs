@@ -271,6 +271,8 @@ fn row_from(log: &LogHistory, p: &PullRecord) -> PullRow {
         discipline_icon: me.and_then(|m| m.discipline.map(|d| d.icon_name().to_string())),
         dps: me.map(|m| m.dps),
         hps: me.map(|m| m.hps),
+        ehps: me.map(|m| m.ehps),
+        parsely: None,
         end_reason: p.end_reason,
         boss_hp_pct: progress
             .filter(|pr| pr.bosses.len() == 1)

@@ -94,14 +94,32 @@ impl LibraryMeta {
         self.log_mut(filename).favorite = favorite;
     }
 
-    /// Pulls of this log that carry their own Parsely link
-    pub fn pull_parsely_count(&self, filename: &str) -> u32 {
+    /// `(start_ms, meta)` for every pull of one log
+    pub fn pulls_of(&self, filename: &str) -> impl Iterator<Item = (i64, &PullMeta)> {
         let prefix = format!("{filename}#");
         self.pulls
             .range(prefix.clone()..)
-            .take_while(|(k, _)| k.starts_with(&prefix))
-            .filter(|(_, m)| m.parsely.is_some())
-            .count() as u32
+            .take_while(move |(k, _)| k.starts_with(&prefix))
+            .filter_map(|(k, m)| k.rsplit_once('#')?.1.parse().ok().map(|ms| (ms, m)))
+    }
+
+    /// Pulls of this log that carry their own Parsely link
+    pub fn pull_parsely_count(&self, filename: &str) -> u32 {
+        self.pull_parsely_links(filename).count() as u32
+    }
+
+    /// `(start_ms, link)` for every pull of one log that was uploaded on its own
+    pub fn pull_parsely_links(&self, filename: &str) -> impl Iterator<Item = (i64, &str)> {
+        self.pulls_of(filename)
+            .filter_map(|(ms, m)| m.parsely.as_ref().map(|p| (ms, p.link.as_str())))
+    }
+
+    /// Link for one pull: its own upload first, else the whole-log upload
+    pub fn parsely_link_for(&self, filename: &str, start_ms: i64) -> Option<&str> {
+        self.pull(filename, start_ms)
+            .and_then(|m| m.parsely.as_ref())
+            .or_else(|| self.log(filename).and_then(|m| m.parsely.as_ref()))
+            .map(|p| p.link.as_str())
     }
 
     pub fn set_log_parsely(&mut self, filename: &str, upload: ParselyUpload) {

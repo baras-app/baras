@@ -110,7 +110,9 @@ impl From<&EncounterSummary> for PullRecord {
             boss_name: s.boss_name.clone(),
             display_name: s.display_name.clone(),
             success: s.success,
-            end_reason: s.end_reason,
+            // Legacy summaries carry no end reason (Unknown); the success flag
+            // is the one fact they do have, so a kill stays a kill
+            end_reason: if s.success { PullEnd::Kill } else { s.end_reason },
             partial: s.partial,
             raid_size: s.raid_size,
             progress: s.progress.clone(),

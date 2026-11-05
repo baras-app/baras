@@ -666,9 +666,15 @@ impl ServiceHandle {
 
     /// Every recorded pull of one boss under `filter`, newest first.
     pub async fn boss_pulls(&self, operation: String, boss: String, filter: PullFilter) -> Vec<PullRow> {
-        self.with_pull_index(move |index| index.pulls(&operation, &boss, &filter))
+        let mut rows = self
+            .with_pull_index(move |index| index.pulls(&operation, &boss, &filter))
             .await
-            .unwrap_or_default()
+            .unwrap_or_default();
+        let meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        for row in &mut rows {
+            row.parsely = meta.parsely_link_for(&row.filename, row.start_ms).map(str::to_string);
+        }
+        rows
     }
 
     /// Backfill pull history for every log in the configured directory

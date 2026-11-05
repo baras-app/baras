@@ -4,6 +4,7 @@
 //! backfill listener both tabs read. Each sub-tab fetches its own data lazily;
 //! the backend keeps every index, this module only ever holds compact rows.
 
+mod charts;
 mod library;
 mod library_delete;
 mod overview;
