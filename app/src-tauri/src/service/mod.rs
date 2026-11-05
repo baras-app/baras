@@ -1456,6 +1456,17 @@ impl CombatService {
 
         self.start_watcher().await;
 
+        // Scan new and out-of-date logs into the history store (worker subprocess, off the loop)
+        if self.shared.config.read().await.auto_scan_history {
+            let shared = self.shared.clone();
+            let app = self.app_handle.clone();
+            tokio::spawn(async move {
+                if let Err(e) = history::run_backfill(shared, app, true).await {
+                    tracing::warn!(error = %e, "Startup history scan did not start");
+                }
+            });
+        }
+
         // Operation timer tick interval - 1 second precision
         let mut op_timer_interval = tokio::time::interval(std::time::Duration::from_secs(1));
         op_timer_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);

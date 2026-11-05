@@ -3489,6 +3489,9 @@ pub struct AppConfig {
     pub auto_delete_small_files: bool,
     #[serde(default)]
     pub auto_delete_old_files: bool,
+    /// Scan new and out-of-date logs into the history store at startup
+    #[serde(default = "default_true")]
+    pub auto_scan_history: bool,
     #[serde(default = "default_retention_days")]
     pub log_retention_days: u32,
     #[serde(default = "default_true")]
@@ -3587,6 +3590,7 @@ impl AppConfig {
             auto_delete_empty_files: false,
             auto_delete_small_files: false,
             auto_delete_old_files: false,
+            auto_scan_history: true,
             log_retention_days: 21,
             minimize_to_tray: false,
             web_overlay_enabled: false,
@@ -3853,10 +3857,23 @@ pub enum MainTab {
     Overlays,
     EncounterBuilder,
     Effects,
-    History,
+    /// The three history views: per-boss pulls, per-run recaps, the log library
+    BossStats,
+    RaidSummaries,
+    LogManagement,
 }
 
 impl MainTab {
+    /// Which history view this tab shows, if any
+    pub fn history_view(self) -> Option<history::HistorySubTab> {
+        match self {
+            MainTab::BossStats => Some(history::HistorySubTab::Overview),
+            MainTab::RaidSummaries => Some(history::HistorySubTab::Operations),
+            MainTab::LogManagement => Some(history::HistorySubTab::Library),
+            _ => None,
+        }
+    }
+
     /// Convert to string ID used in old code
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -3864,7 +3881,9 @@ impl MainTab {
             MainTab::Overlays => "overlays",
             MainTab::EncounterBuilder => "timers",
             MainTab::Effects => "effects",
-            MainTab::History => "history",
+            MainTab::BossStats => "boss_stats",
+            MainTab::RaidSummaries => "raid_summaries",
+            MainTab::LogManagement => "log_management",
         }
     }
 
@@ -3876,7 +3895,9 @@ impl MainTab {
             "overlays" => MainTab::Overlays,
             "timers" => MainTab::EncounterBuilder,
             "effects" => MainTab::Effects,
-            "history" => MainTab::History,
+            "history" | "boss_stats" => MainTab::BossStats,
+            "raid_summaries" => MainTab::RaidSummaries,
+            "log_management" => MainTab::LogManagement,
             _ => MainTab::DataExplorer,
         }
     }

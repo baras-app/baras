@@ -7,12 +7,17 @@ use baras_types::formatting;
 use baras_types::history::{BossNode, PullEnd, PullFilter, PullRow, PullSortKey as SortKey};
 
 use super::Backfill;
+use super::scroll::{save_scroll, use_restore_scroll};
 use super::charts::{ChartPick, PullCharts};
 use super::toolbar::SubsetChips;
 use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::use_file_opener;
 use crate::types::UiSessionState;
+
+const OV_RAIL: &str = "hist-ov-rail";
+const OV_MAIN: &str = "hist-ov-main";
+const OV_TABLE: &str = "hist-ov-table";
 
 #[derive(Props, Clone, PartialEq)]
 pub struct OverviewProps {
@@ -129,6 +134,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
     });
     let pulls_read = pulls.read();
     let rows: &[PullRow] = pulls_read.as_ref().and_then(|p| p.as_deref()).unwrap_or(&[]);
+    use_restore_scroll(&[OV_RAIL, OV_MAIN, OV_TABLE], !loading && (current_node.is_none() || pulls_read.is_some()));
 
     // Header cards
     let kills = rows.iter().filter(|r| r.success).count();
@@ -195,12 +201,12 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                         oninput: move |e| boss_search.set(e.value()),
                     }
                 }
-                div { class: "sidebar-encounter-list",
+                div { id: OV_RAIL, class: "sidebar-encounter-list", onscroll: move |_| save_scroll(OV_RAIL),
                     if !loading && tree.is_empty() {
                         div { class: "sidebar-empty",
                             i { class: "fa-solid fa-clock-rotate-left" }
                             p { "No recorded pulls" }
-                            p { class: "hint", "Widen the filters, or re-scan your logs from the Library tab." }
+                            p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
                         }
                     }
                     for (op, nodes) in tree.iter() {
@@ -246,7 +252,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                 }
             }
 
-            section { class: "pull-history-main",
+            section { id: OV_MAIN, class: "pull-history-main", onscroll: move |_| save_scroll(OV_MAIN),
                 if let Some(node) = current_node {
                     div { class: "pull-history-header",
                         div { class: "pull-history-title",
@@ -277,7 +283,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                             button { class: "btn btn-xs btn-ghost", title: "Show every pull again", onclick: move |_| pick.set(None), i { class: "fa-solid fa-xmark" } " Clear" }
                         }
                     }
-                    div { class: "pull-history-table-wrap",
+                    div { id: OV_TABLE, class: "pull-history-table-wrap", onscroll: move |_| save_scroll(OV_TABLE),
                         table { class: "pull-history-table",
                             thead {
                                 tr {
@@ -348,7 +354,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                     if let Some(path) = row.path.clone() {
                                                         button {
                                                             class: "btn btn-xs btn-ghost",
-                                                            title: "Open this pull in the Data Explorer",
+                                                            title: "Open this pull in Encounter Analysis",
                                                             disabled: opener.busy(),
                                                             onclick: {
                                                                 let encounter_id = row.encounter_id;

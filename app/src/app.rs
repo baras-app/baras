@@ -139,6 +139,7 @@ pub fn App() -> Element {
     let mut auto_delete_empty = use_signal(|| false);
     let mut auto_delete_small = use_signal(|| false);
     let mut auto_delete_old = use_signal(|| false);
+    let mut auto_scan_history = use_signal(|| true);
     let mut retention_days = use_signal(|| 21u32);
     let mut cleanup_status = use_signal(String::new);
 
@@ -216,6 +217,7 @@ pub fn App() -> Element {
             auto_delete_empty.set(config.auto_delete_empty_files);
             auto_delete_small.set(config.auto_delete_small_files);
             auto_delete_old.set(config.auto_delete_old_files);
+            auto_scan_history.set(config.auto_scan_history);
             retention_days.set(config.log_retention_days);
             hide_small_log_files.set(config.hide_small_log_files);
             ocr_debug_dump.set(config.ocr_debug_dump);
@@ -790,8 +792,8 @@ pub fn App() -> Element {
                             }
                         }
                     }
-                    // Live/Historical status + File browser + settings buttons (top-right)
-                    div { class: "header-buttons",
+                    // Live status, overlay controls and the file browser: one centered cluster
+                    div { class: "header-center",
                         // Live/Historical toggle group
                         div { class: "header-live-status",
                             // Watcher status dot
@@ -823,34 +825,7 @@ pub fn App() -> Element {
                                 i { class: "fa-solid fa-rotate" }
                             }
                         }
-                        button {
-                            class: "btn btn-header-files",
-                            title: "Browse log files",
-                            onclick: move |_| {
-                                file_browser_filter.set(String::new());
-                                file_browser_open.set(true);
-                                spawn(async move {
-                                    api::refresh_file_sizes().await;
-                                    let result = api::get_log_files().await;
-                                    if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
-                                        log_files.set(files);
-                                    }
-                                });
-                            },
-                            i { class: "fa-solid fa-folder-open" }
-                        }
-                        button {
-                            class: "btn btn-header-settings",
-                            title: "Settings",
-                            onclick: move |_| general_settings_open.set(true),
-                            i { class: "fa-solid fa-gear" }
-                        }
-                    }
-                } // end header-top-row
-
-                // Navigation + controls row: | live/historical + overlay controls | tabs | file/settings |
-                div { class: "header-nav-row",
-                    // Overlay controls
+                    span { class: "header-controls-divider" }
                     div { class: "header-overlay-controls",
                         button {
                             class: if is_visible { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
@@ -953,20 +928,8 @@ pub fn App() -> Element {
                             }
                         }
                         span { class: "header-controls-divider" }
-                        button {
-                            class: "btn btn-header-overlay btn-header-customize",
-                            title: "Customize overlay appearance",
-                            onclick: move |_| {
-                                let opening = !settings_open();
-                                settings_open.set(opening);
-                                if !opening {
-                                    settings_pos.set(None);
-                                    settings_drag.set(None);
-                                }
-                            },
-                            i { class: "fa-solid fa-screwdriver-wrench" }
-                        }
                     }
+                    span { class: "header-controls-divider" }
 
                     // Resume Live button (when paused/historical)
                     if !live_tailing {
@@ -1014,38 +977,99 @@ pub fn App() -> Element {
                             }
                         }
                     }
+                        button {
+                            class: "btn btn-header-overlay",
+                            title: "Browse log files",
+                            onclick: move |_| {
+                                file_browser_filter.set(String::new());
+                                file_browser_open.set(true);
+                                spawn(async move {
+                                    api::refresh_file_sizes().await;
+                                    let result = api::get_log_files().await;
+                                    if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
+                                        log_files.set(files);
+                                    }
+                                });
+                            },
+                            i { class: "fa-solid fa-folder-open" }
+                        }
+                    }
+                } // end header-top-row
 
-                    // Navigation tabs (centered)
+                // Navigation row: the tabs alone, full width
+                div { class: "header-nav-row",
+                    // Navigation tabs (centered): analysis by widening scope, then configuration
                     div { class: "header-tabs",
                         button {
                             class: if ui_state.read().active_tab == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
+                            title: "One fight at a time, from the loaded log",
                             onclick: move |_| ui_state.write().active_tab = MainTab::DataExplorer,
                             i { class: "fa-solid fa-magnifying-glass-chart" }
-                            span { class: "tab-label", " Data Explorer" }
+                            span { class: "tab-label", " Encounter Analysis" }
                         }
                         button {
+                            class: if ui_state.read().active_tab == MainTab::BossStats { "tab-btn active" } else { "tab-btn" },
+                            title: "One boss across every log",
+                            onclick: move |_| ui_state.write().active_tab = MainTab::BossStats,
+                            i { class: "fa-solid fa-chart-column" }
+                            span { class: "tab-label", " Boss Statistics" }
+                        }
+                        button {
+                            class: if ui_state.read().active_tab == MainTab::RaidSummaries { "tab-btn active" } else { "tab-btn" },
+                            title: "One raid night across every log",
+                            onclick: move |_| ui_state.write().active_tab = MainTab::RaidSummaries,
+                            i { class: "fa-solid fa-dungeon" }
+                            span { class: "tab-label", " Raid Summaries" }
+                        }
+                        span { class: "tab-divider" }
+                        button {
                             class: if ui_state.read().active_tab == MainTab::Overlays { "tab-btn active" } else { "tab-btn" },
+                            title: "Overlay Controls",
                             onclick: move |_| ui_state.write().active_tab = MainTab::Overlays,
                             i { class: "fa-solid fa-layer-group" }
-                            span { class: "tab-label", " Overlays" }
+                            span { class: "tab-label", " Overlay Controls" }
+                        }
+                        button {
+                            class: if settings_open() { "tab-btn active" } else { "tab-btn" },
+                            title: "Overlay Customization",
+                            onclick: move |_| {
+                                let opening = !settings_open();
+                                settings_open.set(opening);
+                                if !opening {
+                                    settings_pos.set(None);
+                                    settings_drag.set(None);
+                                }
+                            },
+                            i { class: "fa-solid fa-screwdriver-wrench" }
+                            span { class: "tab-label", " Overlay Customization" }
                         }
                         button {
                             class: if ui_state.read().active_tab == MainTab::EncounterBuilder { "tab-btn active" } else { "tab-btn" },
+                            title: "Encounter Builder",
                             onclick: move |_| ui_state.write().active_tab = MainTab::EncounterBuilder,
                             i { class: "fa-solid fa-hammer" }
                             span { class: "tab-label", " Encounter Builder" }
                         }
                         button {
                             class: if ui_state.read().active_tab == MainTab::Effects { "tab-btn active" } else { "tab-btn" },
+                            title: "Effects Editor",
                             onclick: move |_| ui_state.write().active_tab = MainTab::Effects,
                             i { class: "fa-solid fa-heart-pulse" }
                             span { class: "tab-label", " Effects Editor" }
                         }
                         button {
-                            class: if ui_state.read().active_tab == MainTab::History { "tab-btn active" } else { "tab-btn" },
-                            onclick: move |_| ui_state.write().active_tab = MainTab::History,
-                            i { class: "fa-solid fa-clock-rotate-left" }
-                            span { class: "tab-label", " History" }
+                            class: if ui_state.read().active_tab == MainTab::LogManagement { "tab-btn active" } else { "tab-btn" },
+                            title: "Scan, archive, delete and tag your logs",
+                            onclick: move |_| ui_state.write().active_tab = MainTab::LogManagement,
+                            i { class: "fa-solid fa-folder-tree" }
+                            span { class: "tab-label", " Log Management" }
+                        }
+                        button {
+                            class: if general_settings_open() { "tab-btn active" } else { "tab-btn" },
+                            title: "App Settings",
+                            onclick: move |_| general_settings_open.set(true),
+                            i { class: "fa-solid fa-gear" }
+                            span { class: "tab-label", " App Settings" }
                         }
                     }
                 }
@@ -1850,10 +1874,11 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // History Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::History {
+                if let Some(view) = ui_state.read().active_tab.history_view() {
                     HistoryPanel {
                         european: *european_number_format.read(),
                         state: ui_state,
+                        view,
                     }
                 }
 
@@ -2039,6 +2064,27 @@ pub fn App() -> Element {
                                             spawn(async move {
                                                 if let Some(mut cfg) = api::get_config().await {
                                                     cfg.auto_delete_small_files = checked;
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+
+                                div { class: "setting-row",
+                                    label { "Scan new logs at startup" }
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: auto_scan_history(),
+                                        onchange: move |e| {
+                                            let checked = e.checked();
+                                            auto_scan_history.set(checked);
+                                            let mut toast = use_toast();
+                                            spawn(async move {
+                                                if let Some(mut cfg) = api::get_config().await {
+                                                    cfg.auto_scan_history = checked;
                                                     if let Err(err) = api::update_config(&cfg).await {
                                                         toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                                     }

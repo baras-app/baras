@@ -6,10 +6,14 @@ use dioxus::prelude::*;
 use baras_types::history::{BackfillEvent, PullFilter, RunSummary};
 
 use super::Backfill;
+use super::scroll::{save_scroll, use_restore_scroll};
 use super::run_detail::RunDetailView;
 use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::types::UiSessionState;
+
+const OPS_RAIL: &str = "hist-ops-rail";
+const OPS_MAIN: &str = "hist-ops-main";
 
 #[derive(Props, Clone, PartialEq)]
 pub struct OperationsProps {
@@ -78,10 +82,15 @@ fn effective(selected: Option<RunKey>, runs: &[&RunSummary]) -> Option<RunKey> {
 pub fn OperationsTab(props: OperationsProps) -> Element {
     let filter = props.filter;
     let mut selected = use_signal(|| props.state.read().history.selected_run.clone());
-    let mut search = use_signal(String::new);
+    let mut search = use_signal(|| props.state.read().history.run_search.clone());
+    // Operations the user has opened in the rail (collapsed by default, like the Overview tree)
+    let mut expanded = use_signal(|| props.state.read().history.run_expanded.clone());
     let mut state = props.state;
     use_effect(move || {
-        state.write().history.selected_run = selected.read().clone();
+        let mut s = state.write();
+        s.history.selected_run = selected.read().clone();
+        s.history.run_search = search.read().clone();
+        s.history.run_expanded = expanded.read().clone();
     });
 
     let mut list = use_resource(move || {
@@ -116,9 +125,8 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
         }
     });
     let known_tags = tags.to_vec();
-    // Operations the user has opened in the rail (collapsed by default, like the Overview tree)
-    let mut expanded = use_signal(|| std::collections::HashSet::<String>::new());
     let groups = group_by_operation(&visible);
+    use_restore_scroll(&[OPS_RAIL, OPS_MAIN], !loading && (current.is_none() || detail.read().is_some()));
 
     rsx! {
         div { class: "pull-history-body",
@@ -132,12 +140,12 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                         oninput: move |e| search.set(e.value()),
                     }
                 }
-                div { class: "sidebar-encounter-list",
+                div { id: OPS_RAIL, class: "sidebar-encounter-list", onscroll: move |_| save_scroll(OPS_RAIL),
                     if !loading && visible.is_empty() {
                         div { class: "sidebar-empty",
                             i { class: "fa-solid fa-dungeon" }
                             p { "No operation runs" }
-                            p { class: "hint", "Widen the filters, or re-scan your logs from the Library tab." }
+                            p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
                         }
                     }
                     for (op, group) in groups.iter() {
@@ -220,7 +228,7 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                 }
             }
 
-            section { class: "pull-history-main",
+            section { id: OPS_MAIN, class: "pull-history-main", onscroll: move |_| save_scroll(OPS_MAIN),
                 RunDetailView {
                     detail,
                     european: props.european,

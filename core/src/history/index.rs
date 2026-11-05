@@ -151,20 +151,11 @@ impl PullIndex {
 
         // (pulls, kills, area_id): the id is for definition order below
         let mut counts: HashMap<(&str, &str), (u32, u32, i64)> = HashMap::new();
-        for log in self.logs.values() {
-            // Run tags are only resolved when the filter asks for one
-            let ranges = (!filter.tag.is_empty()).then(|| log.tag_ranges(catalog, meta));
-            for r in log.rows.iter().filter(|r| matches(r, filter)) {
-                if let Some(ranges) = &ranges
-                    && !tags_at(ranges, r.start_ms).contains(&filter.tag)
-                {
-                    continue;
-                }
-                let e = counts.entry((&r.operation, &r.boss)).or_default();
-                e.0 += 1;
-                e.1 += u32::from(r.success);
-                e.2 = e.2.max(r.area_id);
-            }
+        for r in self.filtered(filter, catalog, meta) {
+            let e = counts.entry((&r.operation, &r.boss)).or_default();
+            e.0 += 1;
+            e.1 += u32::from(r.success);
+            e.2 = e.2.max(r.area_id);
         }
         // Operation order from the definition; bosses it does not know go last, by name
         let order = |area_id: i64, boss: &str| {
@@ -278,6 +269,24 @@ impl PullIndex {
             r.tags = run.tags.clone();
         }
         Some((run, rows))
+    }
+
+    /// Every row passing `filter`, across logs. Run tags are only resolved
+    /// when the filter asks for one.
+    fn filtered(&self, filter: &PullFilter, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<&PullRow> {
+        let mut out = Vec::new();
+        for log in self.logs.values() {
+            let ranges = (!filter.tag.is_empty()).then(|| log.tag_ranges(catalog, meta));
+            for r in log.rows.iter().filter(|r| matches(r, filter)) {
+                if let Some(ranges) = &ranges
+                    && !tags_at(ranges, r.start_ms).contains(&filter.tag)
+                {
+                    continue;
+                }
+                out.push(r);
+            }
+        }
+        out
     }
 
     /// Rows of one log, for library joins (pull/kill counts, dummy-only).

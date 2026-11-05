@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 pub use library::{
     ArchiveReport, ContentTag, DeleteCandidate, DeleteCriteria, DeletePreview, DeleteReport,
-    HistoryStatus, LibraryRow, LogStatus,
+    HistoryStatus, LibraryContent, LibraryRow, LogStatus,
 };
 pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
@@ -164,7 +164,7 @@ pub enum PullSortKey {
     Hps,
 }
 
-/// History sub-tabs. Nights and Stats are planned (see docs/history-dashboard-plan.md).
+/// The history views, each its own main tab (see `MainTab::history_view`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum HistorySubTab {
     #[default]
@@ -176,7 +176,6 @@ pub enum HistorySubTab {
 /// History tab selections kept across tab switches (see `UiSessionState`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct HistoryState {
-    pub sub_tab: HistorySubTab,
     pub filter: PullFilter,
     /// Selected (operation, boss)
     pub selected: Option<(String, String)>,
@@ -188,12 +187,18 @@ pub struct HistoryState {
     pub sort_desc: bool,
     /// Operations rail selection: (filename, first pull start_ms)
     pub selected_run: Option<(String, i64)>,
+    /// Operations rail: opened sections and the search box
+    pub run_expanded: HashSet<String>,
+    pub run_search: String,
+    /// Library filters
+    pub library_search: String,
+    pub library_content: LibraryContent,
+    pub library_favorites: bool,
 }
 
 impl Default for HistoryState {
     fn default() -> Self {
         Self {
-            sub_tab: HistorySubTab::Overview,
             filter: PullFilter::default(),
             selected: None,
             expanded: HashSet::new(),
@@ -201,6 +206,11 @@ impl Default for HistoryState {
             sort_key: PullSortKey::Date,
             sort_desc: true,
             selected_run: None,
+            run_expanded: HashSet::new(),
+            run_search: String::new(),
+            library_search: String::new(),
+            library_content: LibraryContent::default(),
+            library_favorites: false,
         }
     }
 }
