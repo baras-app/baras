@@ -8,12 +8,14 @@ mod raid_registry;
 
 pub use raid_registry::{RaidSlotRegistry, RegisteredPlayer};
 
+use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
 
 use baras_core::context::{AppConfig, DirectoryIndex, LogAreaCache, ParsingSession};
-use baras_core::history::PullIndex;
+use baras_core::history::{LibraryMeta, PullIndex};
 use baras_core::query::QueryContext;
 
 // ─── Centralized Auto-Hide State ─────────────────────────────────────────────
@@ -139,8 +141,15 @@ pub struct SharedState {
     pub raid_registry: Mutex<RaidSlotRegistry>,
     /// Lazily built index over recorded pull history (History tab)
     pub pull_index: Mutex<PullIndex>,
+    /// User-owned log/pull metadata (favorites, tags, notes, Parsely links)
+    pub library_meta: Mutex<LibraryMeta>,
     /// A history backfill subprocess is running
     pub history_backfill_running: AtomicBool,
+    /// Set to stop a running backfill; cleared when it starts
+    pub history_backfill_cancel: AtomicBool,
+    /// Historical opens queued on the service channel but not finished yet,
+    /// so repeated clicks on a slow file do not pile up re-parses
+    pub pending_opens: Mutex<HashSet<PathBuf>>,
     /// Players registered from ability casts, kept as OCR candidates.
     /// `player_disciplines` only learns a player on DisciplineChanged (entering
     /// combat), so pre-combat HOT/buff targets live only here — without this,
@@ -211,7 +220,10 @@ impl SharedState {
             is_live_tailing: AtomicBool::new(true), // Start in live tailing mode
             raid_registry: Mutex::new(RaidSlotRegistry::new(raid_slots)),
             pull_index: Mutex::new(PullIndex::default()),
+            library_meta: Mutex::new(LibraryMeta::load()),
             history_backfill_running: AtomicBool::new(false),
+            history_backfill_cancel: AtomicBool::new(false),
+            pending_opens: Mutex::new(HashSet::new()),
             ability_roster: Mutex::new(baras_core::raid_detect::CandidateSet::new()),
             pvp_ocr_roster_started_at: Mutex::new(None),
             roster_changed: AtomicBool::new(false),

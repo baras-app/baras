@@ -363,19 +363,20 @@ pub async fn refresh_file_sizes() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Open a historical log file (pauses live tailing)
-pub async fn open_historical_file(path: &str) -> Result<(), String> {
-    try_invoke("open_historical_file", build_args("path", &path)).await?;
-    Ok(())
+/// Queue a historical open. `Ok(false)` means that file is already being opened.
+pub async fn open_historical_file(path: &str) -> Result<bool, String> {
+    let result = try_invoke("open_historical_file", build_args("path", &path)).await?;
+    Ok(result.as_bool().unwrap_or(true))
 }
 
 /// Open a historical log and focus `encounter_id` in the Data Explorer once loaded
 /// (backend emits `select-encounter` after the parse completes).
-pub async fn open_historical_encounter(path: &str, encounter_id: u64) -> Result<(), String> {
+pub async fn open_historical_encounter(path: &str, encounter_id: u64) -> Result<bool, String> {
     let args = js_sys::Object::new();
     js_set(&args, "path", &JsValue::from_str(path));
     js_set(&args, "selectEncounter", &JsValue::from_f64(encounter_id as f64));
-    try_invoke("open_historical_file", args.into()).await?;
-    Ok(())
+    let result = try_invoke("open_historical_file", args.into()).await?;
+    Ok(result.as_bool().unwrap_or(true))
 }
 
 /// Resume live tailing mode
@@ -500,9 +501,84 @@ pub async fn get_pull_history_overview(
 
 /// Backfill pull history from every log in the configured directory.
 /// Progress arrives on the `history-backfill` event.
-pub async fn start_history_backfill() -> Result<(), String> {
-    try_invoke("start_history_backfill", JsValue::NULL).await?;
+pub async fn start_history_backfill(stale_only: bool) -> Result<(), String> {
+    try_invoke("start_history_backfill", build_args("staleOnly", &stale_only)).await?;
     Ok(())
+}
+
+/// Stop a running backfill; a `Done { cancelled: true }` event follows
+pub async fn cancel_history_backfill() -> Result<(), String> {
+    try_invoke("cancel_history_backfill", JsValue::NULL).await?;
+    Ok(())
+}
+
+/// History store health: logs, pulls, files needing a re-scan
+pub async fn get_history_status() -> Option<baras_types::history::HistoryStatus> {
+    from_js(invoke("get_history_status", JsValue::NULL).await)
+}
+
+/// Every log with its history and metadata joined, for the Library tab
+pub async fn get_library() -> Option<Vec<baras_types::history::LibraryRow>> {
+    from_js(invoke("get_library", JsValue::NULL).await)
+}
+
+pub async fn set_log_favorite(filename: &str, favorite: bool) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filename", &JsValue::from_str(filename));
+    js_set(&obj, "favorite", &JsValue::from_bool(favorite));
+    let result = try_invoke("set_log_favorite", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Content kinds the user wants kept out of every delete
+pub async fn get_retained_content() -> Option<Vec<baras_types::history::ContentTag>> {
+    from_js(invoke("get_retained_content", JsValue::NULL).await)
+}
+
+pub async fn set_retained_content(retain: &[baras_types::history::ContentTag]) -> Result<bool, String> {
+    let result = try_invoke("set_retained_content", build_args("retain", retain)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Dry run of a criteria delete or archive: which logs would go
+pub async fn preview_log_delete(
+    criteria: &baras_types::history::DeleteCriteria,
+) -> Option<baras_types::history::DeletePreview> {
+    from_js(invoke("preview_log_delete", build_args("criteria", criteria)).await)
+}
+
+/// Delete the confirmed logs (and their caches); favorites and the live log are refused
+pub async fn delete_logs(
+    paths: &[String],
+    keep_history: bool,
+) -> Result<baras_types::history::DeleteReport, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "paths", &serde_wasm_bindgen::to_value(paths).map_err(|e| e.to_string())?);
+    js_set(&obj, "keepHistory", &JsValue::from_bool(keep_history));
+    let result = try_invoke("delete_logs", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Compress the confirmed logs into the archive directory; history stays
+pub async fn archive_logs(paths: &[String]) -> Result<baras_types::history::ArchiveReport, String> {
+    let result = try_invoke("archive_logs", build_args("paths", paths)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Decompress an archived log back into the log directory; returns its path
+pub async fn restore_log(filename: &str) -> Result<String, String> {
+    let result = try_invoke("restore_log", build_args("filename", filename)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Record a whole-file Parsely upload against the log
+pub async fn set_log_parsely_link(path: &str, link: &str, visibility: u8) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "path", &JsValue::from_str(path));
+    js_set(&obj, "link", &JsValue::from_str(link));
+    js_set(&obj, "visibility", &JsValue::from_f64(visibility as f64));
+    let result = try_invoke("set_log_parsely_link", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
 
 /// Every recorded pull of one boss under `filter`, newest first
@@ -966,10 +1042,11 @@ pub async fn upload_encounter_to_parsely(
 }
 
 /// Set the Parsely link for an encounter (persists in backend)
-pub async fn set_encounter_parsely_link(encounter_id: u64, link: &str) -> Result<bool, String> {
+pub async fn set_encounter_parsely_link(encounter_id: u64, link: &str, visibility: u8) -> Result<bool, String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "encounterId", &JsValue::from_f64(encounter_id as f64));
     js_set(&obj, "link", &JsValue::from_str(link));
+    js_set(&obj, "visibility", &JsValue::from_f64(visibility as f64));
     let result = try_invoke("set_encounter_parsely_link", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }

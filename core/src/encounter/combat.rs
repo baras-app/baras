@@ -130,6 +130,11 @@ pub struct CombatEncounter {
     prior_dead_npc_log_ids: HashSet<i64>,
     /// Whether all players are dead (sticky - once true, stays true)
     pub all_players_dead: bool,
+    /// Pull progress for the History tab: phases in entry order with combat
+    /// seconds, player deaths in order, and whether the fight ended by reset.
+    pub phases_seen: Vec<(String, f32)>,
+    pub deaths: Vec<(i64, f32)>,
+    pub ended_by_reset: bool,
     /// Whether the victory trigger has fired (for has_victory_trigger encounters).
     /// Once true, ExitCombat events will be honored.
     pub victory_triggered: bool,
@@ -254,6 +259,9 @@ impl CombatEncounter {
             entity_positions: Arc::new(HashMap::new()),
             prior_dead_npc_log_ids: HashSet::new(),
             all_players_dead: false,
+            phases_seen: Vec::new(),
+            deaths: Vec::new(),
+            ended_by_reset: false,
             victory_triggered: false,
             victory_triggered_at: None,
             local_player_revive_immunity_time: None,
@@ -449,6 +457,7 @@ impl CombatEncounter {
     /// Update HP for a specific entity
     /// Returns `Some((old_hp, new_hp))` if HP changed significantly
     pub fn update_entity_hp(&mut self, npc_id: i64, current: i32, max: i32) -> Option<(f32, f32)> {
+        let combat_secs = self.combat_time_secs;
         let npc = self.npcs.get_mut(&npc_id)?;
 
         // Use current HP as "old" for first readings - prevents false threshold crossings
@@ -462,6 +471,10 @@ impl CombatEncounter {
         }
 
         let new_pct = npc.hp_percent();
+        if new_pct < npc.lowest_hp_pct {
+            npc.lowest_hp_pct = new_pct;
+            npc.lowest_hp_at_secs = combat_secs;
+        }
         if old_percent != new_pct {
             Some((old_percent, new_pct))
         } else {
@@ -624,6 +637,15 @@ impl CombatEncounter {
         self.previous_phase = self.current_phase.take();
         self.current_phase = Some(phase_id.to_string());
         self.phase_started_at = Some(timestamp);
+        let secs = self.combat_secs_at(timestamp);
+        self.phases_seen.push((phase_id.to_string(), secs));
+    }
+
+    /// Seconds since combat started at `timestamp` (0 before EnterCombat).
+    pub fn combat_secs_at(&self, timestamp: NaiveDateTime) -> f32 {
+        self.enter_combat_time
+            .map(|start| (timestamp - start).num_milliseconds().max(0) as f32 / 1000.0)
+            .unwrap_or(0.0)
     }
 
     /// Get the current phase ID
@@ -1143,7 +1165,18 @@ impl CombatEncounter {
     ) {
         match entity_type {
             EntityType::Player => {
+                let secs = self.combat_secs_at(timestamp);
                 if let Some(player) = self.players.get_mut(&entity_id) {
+                    // A synthetic death (0 HP observed) precedes the real Death
+                    // event by a fraction of a second; keep one record per death
+                    // and let the authoritative timestamp win.
+                    if player.is_dead {
+                        if let Some(last) = self.deaths.iter_mut().rev().find(|(id, _)| *id == entity_id) {
+                            last.1 = secs;
+                        }
+                    } else {
+                        self.deaths.push((entity_id, secs));
+                    }
                     player.is_dead = true;
                     player.death_time = Some(timestamp);
                 }

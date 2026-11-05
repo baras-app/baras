@@ -300,6 +300,7 @@ fn handle_in_combat(
 
         if let Some(enc) = cache.current_encounter_mut() {
             enc.exit_combat_time = Some(exit_time);
+            enc.ended_by_reset = true;
             enc.state = EncounterState::PostCombat { exit_time };
             let duration = enc.duration_seconds(None).unwrap_or(0) as f32;
             enc.challenge_tracker.finalize(exit_time, duration);

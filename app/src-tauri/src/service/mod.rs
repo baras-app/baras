@@ -1425,8 +1425,29 @@ impl CombatService {
             drop(config);
 
             if delete_empty || delete_small || retention.is_some() {
+                // The area indexer runs in the background and may not have
+                // populated `shared.area_cache` yet; the on-disk copy is enough
+                // to classify logs for the retention list.
+                let areas = baras_core::context::default_cache_path()
+                    .map(|p| baras_core::context::LogAreaCache::load_from_disk(&p))
+                    .unwrap_or_default();
+                let log_dir = PathBuf::from(self.shared.config.read().await.log_directory.clone());
+                let protected = {
+                    let directory = self.shared.directory_index.read().await;
+                    let mut pulls = self.shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
+                    let _ = pulls.refresh(&log_dir);
+                    let meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+                    let view = baras_core::library::LibraryView {
+                        directory: &directory,
+                        areas: &areas,
+                        pulls: &pulls,
+                        meta: &meta,
+                        live: None,
+                    };
+                    baras_core::library::protected_paths(&view)
+                };
                 let mut index = self.shared.directory_index.write().await;
-                let (empty, small, old) = index.cleanup(delete_empty, delete_small, retention);
+                let (empty, small, old) = index.cleanup(delete_empty, delete_small, retention, &|p| protected.contains(p));
                 if empty > 0 || small > 0 || old > 0 {
                     tracing::info!(empty_deleted = empty, small_deleted = small, old_deleted = old, "Startup log cleanup");
                 }
@@ -1496,7 +1517,8 @@ impl CombatService {
                             }
                             self.emit_operation_timer_tick();
                             // Parse is awaited inline, so "FileLoaded" has fired by now
-                            self.start_tailing(path).await;
+                            self.start_tailing(path.clone()).await;
+                            self.shared.pending_opens.lock().unwrap_or_else(|p| p.into_inner()).remove(&path);
                             if let Some(id) = select_encounter {
                                 let _ = self.app_handle.emit("select-encounter", id);
                             }

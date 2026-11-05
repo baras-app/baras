@@ -67,7 +67,7 @@ pub fn worker_binary_path() -> PathBuf {
 /// Run `baras-parse-worker --backfill` over the configured log directory,
 /// relaying its JSON progress lines to the frontend as `history-backfill`
 /// events. Only one backfill runs at a time.
-pub async fn run_backfill(shared: Arc<SharedState>, app: AppHandle) -> Result<(), String> {
+pub async fn run_backfill(shared: Arc<SharedState>, app: AppHandle, stale_only: bool) -> Result<(), String> {
     if shared
         .history_backfill_running
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
@@ -87,6 +87,9 @@ pub async fn run_backfill(shared: Arc<SharedState>, app: AppHandle) -> Result<()
     if let Some(defs) = definitions_dir {
         cmd.arg(defs);
     }
+    if stale_only {
+        cmd.arg("--stale-only");
+    }
     if let Some(log_path) = dirs::config_dir().map(|p| p.join("baras").join("baras.log")) {
         cmd.env("BARAS_LOG_PATH", log_path);
     }
@@ -101,22 +104,46 @@ pub async fn run_backfill(shared: Arc<SharedState>, app: AppHandle) -> Result<()
         }
     };
     let stdout = child.stdout.take().ok_or("Worker stdout unavailable")?;
+    shared.history_backfill_cancel.store(false, Ordering::SeqCst);
     info!(log_dir = %log_dir.display(), "History backfill started");
 
     tokio::spawn(async move {
+        let started = std::time::Instant::now();
         let mut lines = BufReader::new(stdout).lines();
-        while let Ok(Some(line)) = lines.next_line().await {
-            match serde_json::from_str::<BackfillEvent>(&line) {
-                Ok(event) => {
-                    let _ = app.emit(BACKFILL_EVENT, &event);
+        let mut cancelled = false;
+        loop {
+            // `next_line` is cancel-safe, so polling the flag between lines loses nothing
+            tokio::select! {
+                line = lines.next_line() => match line {
+                    Ok(Some(line)) => match serde_json::from_str::<BackfillEvent>(&line) {
+                        Ok(event) => {
+                            let _ = app.emit(BACKFILL_EVENT, &event);
+                        }
+                        Err(e) => warn!(error = %e, "Unparseable backfill line"),
+                    },
+                    _ => break,
+                },
+                _ = tokio::time::sleep(std::time::Duration::from_millis(250)) => {
+                    if shared.history_backfill_cancel.load(Ordering::SeqCst) {
+                        cancelled = true;
+                        let _ = child.start_kill();
+                        break;
+                    }
                 }
-                Err(e) => warn!(error = %e, "Unparseable backfill line"),
             }
         }
         match child.wait().await {
+            Ok(_) if cancelled => info!("History backfill cancelled"),
             Ok(status) if status.success() => info!("History backfill finished"),
             Ok(status) => warn!(?status, "History backfill exited abnormally"),
             Err(e) => warn!(error = %e, "History backfill wait failed"),
+        }
+        if cancelled {
+            // The worker never got to report, so close the loop for the UI
+            let _ = app.emit(
+                BACKFILL_EVENT,
+                &BackfillEvent::Done { pulls: 0, logs: 0, failed: 0, scanned: 0, skipped: 0, elapsed_secs: started.elapsed().as_secs_f32(), cancelled: true },
+            );
         }
         shared.history_backfill_running.store(false, Ordering::SeqCst);
     });

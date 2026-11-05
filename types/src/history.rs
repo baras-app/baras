@@ -3,9 +3,20 @@
 //! The backend keeps the full per-log summaries; only these compact rows and
 //! aggregates cross IPC.
 
+mod library;
+mod meta;
+mod progress;
+
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
+
+pub use library::{
+    ArchiveReport, ContentTag, DeleteCandidate, DeleteCriteria, DeletePreview, DeleteReport,
+    HistoryStatus, LibraryRow, LogStatus,
+};
+pub use meta::{LogMeta, ParselyUpload, PullMeta};
+pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
 
 /// One recorded pull, reduced to what the History table shows.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -14,6 +25,8 @@ pub struct PullRow {
     /// Log path, present only when the file still exists on disk
     pub path: Option<String>,
     pub encounter_id: u64,
+    /// Stable pull key within the log (combat start, ms); see `PullRecord`
+    pub start_ms: i64,
     pub character: String,
     /// ISO 8601 start time
     pub timestamp: String,
@@ -33,6 +46,16 @@ pub struct PullRow {
     pub discipline_icon: Option<String>,
     pub dps: Option<i64>,
     pub hps: Option<i64>,
+    // Pull progress
+    pub end_reason: PullEnd,
+    /// Lowest boss HP %, only when exactly one boss NPC was tracked (multi-boss
+    /// fights have no single honest number yet)
+    pub boss_hp_pct: Option<f32>,
+    /// Furthest phase name reached
+    pub phase: Option<String>,
+    pub deaths: u16,
+    pub raid_size: u8,
+    pub partial: bool,
 }
 
 /// Pull/kill counts for one boss, used to build the operation → boss tree.
@@ -64,6 +87,9 @@ pub struct PullFilter {
     pub discipline: String,
     /// "Story" | "Veteran" | "Master", matched against the difficulty name
     pub tier: String,
+    /// "8" | "16", matched against the leading player count of the difficulty name
+    #[serde(default)]
+    pub group_size: String,
     pub operations_only: bool,
     pub kills_only: bool,
     /// Inclusive day bounds as `YYYY-MM-DD`; empty = open-ended
@@ -77,8 +103,9 @@ impl Default for PullFilter {
             character: String::new(),
             role: String::new(),
             discipline: String::new(),
-            tier: String::new(),
-            operations_only: true,
+            tier: "Master".into(),
+            group_size: "8".into(),
+            operations_only: false,
             kills_only: false,
             date_from: String::new(),
             date_to: String::new(),
@@ -96,14 +123,21 @@ pub enum PullSortKey {
     Hps,
 }
 
+/// History sub-tabs. Nights and Stats are planned (see docs/history-dashboard-plan.md).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum HistorySubTab {
+    #[default]
+    Overview,
+    Library,
+}
+
 /// History tab selections kept across tab switches (see `UiSessionState`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct HistoryState {
+    pub sub_tab: HistorySubTab,
     pub filter: PullFilter,
     /// Selected (operation, boss)
     pub selected: Option<(String, String)>,
-    /// Per-boss difficulty tab; empty = all
-    pub difficulty: String,
     /// Operation sections the user has opened in the sidebar tree
     pub expanded: HashSet<String>,
     /// Sidebar boss/operation name filter
@@ -115,9 +149,9 @@ pub struct HistoryState {
 impl Default for HistoryState {
     fn default() -> Self {
         Self {
+            sub_tab: HistorySubTab::Overview,
             filter: PullFilter::default(),
             selected: None,
-            difficulty: String::new(),
             expanded: HashSet::new(),
             boss_search: String::new(),
             sort_key: PullSortKey::Date,
@@ -136,12 +170,20 @@ pub enum BackfillEvent {
         total: u32,
         file: String,
         pulls: u32,
+        /// History was already current for this log; no worker was spawned
+        #[serde(default)]
+        skipped: bool,
     },
     Done {
         pulls: u32,
         logs: u32,
         failed: u32,
         scanned: u32,
+        #[serde(default)]
+        skipped: u32,
         elapsed_secs: f32,
+        /// Stopped by the user before every log was scanned
+        #[serde(default)]
+        cancelled: bool,
     },
 }

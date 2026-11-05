@@ -4,7 +4,7 @@
 //! It runs in a separate process so memory fragmentation doesn't affect the main app.
 //!
 //! Usage: baras-parse-worker <file_path> <session_id> <output_dir> [definitions_dir] [--summary-only]
-//!        baras-parse-worker --backfill <log_dir> [definitions_dir]
+//!        baras-parse-worker --backfill <log_dir> [definitions_dir] [--stale-only]
 //!
 //! `--summary-only` skips parquet output (summaries still go to stdout).
 //! `--backfill` records pull history for every log in a directory (see `backfill.rs`).
@@ -566,12 +566,14 @@ fn main() {
     let raw_args: Vec<String> = std::env::args().collect();
 
     if raw_args.get(1).is_some_and(|a| a == "--backfill") {
-        let Some(log_dir) = raw_args.get(2) else {
-            eprintln!("Usage: baras-parse-worker --backfill <log_dir> [definitions_dir]");
+        let stale_only = raw_args.iter().any(|a| a == "--stale-only");
+        let positional: Vec<&String> = raw_args.iter().skip(2).filter(|a| !a.starts_with("--")).collect();
+        let Some(log_dir) = positional.first() else {
+            eprintln!("Usage: baras-parse-worker --backfill <log_dir> [definitions_dir] [--stale-only]");
             std::process::exit(1);
         };
-        let defs = raw_args.get(3).map(PathBuf::from);
-        if let Err(e) = backfill::run(Path::new(log_dir), defs.as_deref()) {
+        let defs = positional.get(1).map(PathBuf::from);
+        if let Err(e) = backfill::run(Path::new(log_dir), defs.as_deref(), stale_only) {
             eprintln!("Backfill failed: {e}");
             std::process::exit(1);
         }
