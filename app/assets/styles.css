@@ -235,6 +235,7 @@ select optgroup {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1em;
   padding: 0.4em 2vw;
 }
 
@@ -382,10 +383,27 @@ select optgroup {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.header-buttons {
+/* Fills the top row right of the logo and centres the toolbar in that space */
+.header-center {
   display: flex;
-  align-items: center;
-  gap: 0.5em;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+}
+
+/* One pill for live status, overlay controls and the file browser */
+.header-center > div,
+.header-center > span,
+.header-center > button {
+  align-self: stretch;
+}
+
+.header-center > :first-child {
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.header-center > :last-child {
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
 
 /* Live/Historical status pill in top-right header area */
@@ -393,11 +411,10 @@ select optgroup {
   display: flex;
   align-items: center;
   gap: 0.35em;
-  padding: 0.3em 0.6em;
+  padding: 0.4em 0.7em;
   background: rgba(0, 0, 0, 0.3);
-  border-radius: var(--radius-lg);
   border: 1px solid rgba(80, 80, 90, 0.3);
-  margin-right: 0.25em;
+  border-right: none;
 }
 
 .header-live-status .status-dot {
@@ -428,8 +445,29 @@ select optgroup {
   gap: 0.45em;
   padding: 0.4em 0.7em;
   background: rgba(0, 0, 0, 0.3);
-  border-radius: var(--radius-lg);
+  border-top: 1px solid rgba(80, 80, 90, 0.3);
+  border-bottom: 1px solid rgba(80, 80, 90, 0.3);
+}
+
+/* The file browser button closes the pill */
+.header-center > .btn-header-overlay {
+  width: auto;
+  height: auto;
+  padding: 0.4em 0.7em;
+  background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(80, 80, 90, 0.3);
+  border-left: none;
+  border-radius: 0;
+}
+
+/* Dividers between the pill's sections */
+.header-center > .header-controls-divider {
+  width: 1px;
+  height: auto;
+  margin: 0;
+  background: rgba(80, 80, 90, 0.3);
+  border-top: 1px solid rgba(80, 80, 90, 0.3);
+  border-bottom: 1px solid rgba(80, 80, 90, 0.3);
 }
 
 .header-profile-dropdown {
@@ -4531,11 +4569,14 @@ a.contributor-name:hover {
   gap: 0.5em;
 }
 
+
 .header-tabs {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.4em;
   flex: 1;
+  min-width: 0;
   justify-content: center;
 }
 
@@ -4589,6 +4630,24 @@ a.contributor-name:hover {
   font-size: 0.95em;
 }
 
+/* Header tabs only (the editors' tab strips share the class): roomier */
+.header-tabs .tab-btn {
+  padding: 0.5em 1.1em;
+  font-size: 0.95em;
+}
+
+.header-tabs .tab-btn i {
+  font-size: 1.05em;
+}
+
+/* Gap between the analysis tabs and the configuration tabs */
+.tab-divider {
+  width: 1px;
+  height: 1.5em;
+  margin: 0 0.6em;
+  background: var(--border-light);
+}
+
 .tab-content {
   flex: 1;
   display: flex;
@@ -4631,11 +4690,29 @@ a.contributor-name:hover {
   }
 }
 
-/* Small: hide tab text labels, show only icons */
-@media (max-width: 850px) {
+/* Nine labelled tabs on their own row need ~1450px; step the size down,
+   then drop the labels (every tab keeps a title tooltip and its icon) */
+@media (max-width: 1550px) {
+  .header-tabs .tab-btn {
+    padding: 0.4em 0.75em;
+    font-size: 0.85em;
+  }
+  .tab-divider {
+    margin: 0 0.3em;
+  }
+}
+
+@media (max-width: 1250px) {
   .tab-btn .tab-label {
     display: none;
   }
+  .header-tabs .tab-btn {
+    padding: 0.4em 0.7em;
+  }
+}
+
+/* Small: compress the overlay controls too */
+@media (max-width: 850px) {
   .tab-btn {
     padding: 0.35em 0.6em;
   }

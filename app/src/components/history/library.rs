@@ -4,35 +4,22 @@
 
 use dioxus::prelude::*;
 
-use baras_types::history::{BackfillEvent, ContentTag, LibraryRow, LogStatus};
+use baras_types::history::{BackfillEvent, ContentTag, LibraryContent, LibraryRow, LogStatus};
 
 use super::Backfill;
 use super::library_delete::DeleteModal;
 use crate::api;
+use super::scroll::{save_scroll, use_restore_scroll};
 use crate::components::{ToastSeverity, use_file_opener, use_toast};
+use crate::types::UiSessionState;
 
-#[derive(Clone, Copy, PartialEq, Default)]
-enum Content {
-    #[default]
-    Any,
-    Kills,
-    Tag(ContentTag),
-}
+const LIB_TABLE: &str = "hist-lib-table";
 
-impl Content {
-    fn label(self) -> &'static str {
-        match self {
-            Content::Any => "Any content",
-            Content::Kills => "Kills only",
-            Content::Tag(t) => t.label(),
-        }
-    }
-}
 
 /// Select options: fixed entries first, then one per content tag
-fn content_options() -> Vec<Content> {
-    let mut v = vec![Content::Any, Content::Kills];
-    v.extend(ContentTag::ALL.iter().map(|t| Content::Tag(*t)));
+fn content_options() -> Vec<LibraryContent> {
+    let mut v = vec![LibraryContent::Any, LibraryContent::Kills];
+    v.extend(ContentTag::ALL.iter().map(|t| LibraryContent::Tag(*t)));
     v
 }
 
@@ -48,11 +35,11 @@ pub fn fmt_bytes(b: u64) -> String {
     }
 }
 
-fn matches(row: &LibraryRow, content: Content, favorites_only: bool, search: &str) -> bool {
+fn matches(row: &LibraryRow, content: LibraryContent, favorites_only: bool, search: &str) -> bool {
     let content_ok = match content {
-        Content::Any => true,
-        Content::Kills => row.kills > 0,
-        Content::Tag(t) => row.content.contains(&t),
+        LibraryContent::Any => true,
+        LibraryContent::Kills => row.kills > 0,
+        LibraryContent::Tag(t) => row.content.contains(&t),
     };
     let search_ok = search.is_empty()
         || row.filename.to_lowercase().contains(search)
@@ -89,7 +76,7 @@ fn status_badge(status: LogStatus) -> (&'static str, &'static str, &'static str)
 }
 
 #[component]
-pub fn LibraryTab(backfill: Backfill) -> Element {
+pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element {
     let mut toast = use_toast();
     let opener = use_file_opener();
     let mut rows = use_resource(|| async move { api::get_library().await.unwrap_or_default() });
@@ -99,14 +86,23 @@ pub fn LibraryTab(backfill: Backfill) -> Element {
         }
     });
 
-    let mut search = use_signal(String::new);
-    let mut content = use_signal(Content::default);
-    let mut favorites_only = use_signal(|| false);
+    // Filters live in the session state so a tab switch keeps them
+    let mut search = use_signal(|| state.read().history.library_search.clone());
+    let mut content = use_signal(|| state.read().history.library_content);
+    let mut favorites_only = use_signal(|| state.read().history.library_favorites);
     let mut show_delete = use_signal(|| false);
+    let mut state = state;
+    use_effect(move || {
+        let mut s = state.write();
+        s.history.library_search = search.read().clone();
+        s.history.library_content = *content.read();
+        s.history.library_favorites = *favorites_only.read();
+    });
 
     let rows_read = rows.read();
     let all: &[LibraryRow] = rows_read.as_deref().unwrap_or(&[]);
     let loading = rows_read.is_none();
+    use_restore_scroll(&[LIB_TABLE], !loading);
 
     let total_bytes: u64 = all.iter().map(|r| r.size).sum();
     let stale = all.iter().filter(|r| r.status == LogStatus::Stale).count();
@@ -215,7 +211,7 @@ pub fn LibraryTab(backfill: Backfill) -> Element {
                 }
             }
 
-            div { class: "pull-history-table-wrap",
+            div { id: LIB_TABLE, class: "pull-history-table-wrap", onscroll: move |_| save_scroll(LIB_TABLE),
                 table { class: "pull-history-table library-table",
                     thead {
                         tr {
@@ -223,7 +219,7 @@ pub fn LibraryTab(backfill: Backfill) -> Element {
                             th { "Date" }
                             th { "Character" }
                             th { "Server" }
-                            th { "Content" }
+                            th { "LibraryContent" }
                             th { "Pulls" }
                             th { "Kills" }
                             th { "Size" }
@@ -303,7 +299,7 @@ pub fn LibraryTab(backfill: Backfill) -> Element {
                                             } else {
                                                 button {
                                                     class: "btn btn-xs btn-ghost",
-                                                    title: "Open in the Data Explorer",
+                                                    title: "Open in Encounter Analysis",
                                                     disabled: opener.busy(),
                                                     onclick: move |_| opener.open(path.clone(), None),
                                                     i { class: "fa-solid fa-eye" }

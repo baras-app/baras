@@ -1,8 +1,9 @@
-//! History tab: cross-session pull history and log library.
+//! History views: Boss Statistics (Overview), Raid Summaries (Operations)
+//! and Log Management (Library), each a main tab of its own.
 //!
-//! Shell with sub-tabs (Overview, Library), a shared filter toolbar, and the
-//! backfill listener both tabs read. Each sub-tab fetches its own data lazily;
-//! the backend keeps every index, this module only ever holds compact rows.
+//! One shell with the shared filter toolbar and the backfill listener every
+//! view reads. Each view fetches its own data lazily; the backend keeps every
+//! index, this module only ever holds compact rows.
 
 mod charts;
 mod library;
@@ -10,12 +11,13 @@ mod library_delete;
 mod operations;
 mod overview;
 mod run_detail;
+mod scroll;
 mod toolbar;
 
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use baras_types::history::{BackfillEvent, HistorySubTab, PullFilter};
+use baras_types::history::{BackfillEvent, HistoryStatus, HistorySubTab, PullFilter};
 
 use crate::api;
 use crate::components::toast::ToastManager;
@@ -32,6 +34,8 @@ pub struct HistoryPanelProps {
     pub european: bool,
     /// Filters and selection persist here across tab switches
     pub state: Signal<UiSessionState>,
+    /// Which view the active main tab maps to
+    pub view: HistorySubTab,
 }
 
 /// Backfill progress shared by both tabs; `None` = idle.
@@ -87,13 +91,10 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
     let mut toast = use_toast();
 
     // Initialised from the cached state, synced back one way (see data_explorer.rs)
-    let mut sub_tab = use_signal(|| props.state.read().history.sub_tab);
     let filter: Signal<PullFilter> = use_signal(|| props.state.read().history.filter.clone());
     let mut state = props.state;
     use_effect(move || {
-        let mut s = state.write();
-        s.history.sub_tab = *sub_tab.read();
-        s.history.filter = filter.read().clone();
+        state.write().history.filter = filter.read().clone();
     });
 
     // Tauri callbacks run outside the Dioxus runtime, so the listener only
@@ -123,30 +124,24 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
         }
     });
 
-    let tab = *sub_tab.read();
+    // Scan bar on the analysis views: logs with no or outdated history, and progress while scanning
+    let mut status = use_resource(|| async move { api::get_history_status().await.unwrap_or_default() });
+    use_effect(move || {
+        if matches!(*backfill.event.read(), Some(BackfillEvent::Done { .. })) {
+            status.restart();
+        }
+    });
+    let pending = status.read().as_ref().map_or(0, |s| s.stale + s.unscanned);
+
+    let tab = props.view;
     rsx! {
         div { class: "history-panel",
-            div { class: "history-head",
-                div { class: "data-tab-selector history-subtabs",
-                    button {
-                        class: if tab == HistorySubTab::Overview { "data-tab active" } else { "data-tab" },
-                        onclick: move |_| sub_tab.set(HistorySubTab::Overview),
-                        "Overview"
-                    }
-                    button {
-                        class: if tab == HistorySubTab::Operations { "data-tab active" } else { "data-tab" },
-                        onclick: move |_| sub_tab.set(HistorySubTab::Operations),
-                        "Operations"
-                    }
-                    button {
-                        class: if tab == HistorySubTab::Library { "data-tab active" } else { "data-tab" },
-                        onclick: move |_| sub_tab.set(HistorySubTab::Library),
-                        "Library"
-                    }
-                    button { class: "data-tab", disabled: true, title: "Coming later", "Stats" }
-                }
-                if tab != HistorySubTab::Library {
+            if tab != HistorySubTab::Library {
+                div { class: "history-head",
                     HistoryToolbar { filter }
+                }
+                if backfill.running() || pending > 0 {
+                    ScanBar { backfill, status }
                 }
             }
             match tab {
@@ -167,8 +162,36 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                     }
                 },
                 HistorySubTab::Library => rsx! {
-                    LibraryTab { backfill }
+                    LibraryTab { state: props.state, backfill }
                 },
+            }
+        }
+    }
+}
+
+/// One line under the toolbar: how many logs the statistics are missing,
+/// with the scan controls the Library has, so nobody has to go looking.
+#[component]
+fn ScanBar(backfill: Backfill, status: Resource<HistoryStatus>) -> Element {
+    let read = status.read();
+    let s = read.as_ref().cloned().unwrap_or_default();
+    let what = match (s.unscanned, s.stale) {
+        (0, n) => format!("{n} logs have out-of-date history"),
+        (n, 0) => format!("{n} logs have not been scanned yet"),
+        (u, st) => format!("{u} logs not scanned yet, {st} out of date"),
+    };
+    rsx! {
+        div { class: "history-scan-bar",
+            if let Some(BackfillEvent::Progress { current, total, file, .. }) = backfill.event.read().as_ref() {
+                i { class: "fa-solid fa-spinner fa-spin" }
+                span {
+                    if *total > 0 { "Scanning {current}/{total} · {file}" } else { "Starting scan…" }
+                }
+                button { class: "btn btn-xs btn-ghost", onclick: move |_| backfill.cancel(), i { class: "fa-solid fa-stop" } " Cancel" }
+            } else {
+                i { class: "fa-solid fa-triangle-exclamation" }
+                span { "{what}; they are missing from these statistics." }
+                button { class: "btn btn-xs", onclick: move |_| backfill.start(true), i { class: "fa-solid fa-rotate" } " Scan now" }
             }
         }
     }

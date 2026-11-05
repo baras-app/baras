@@ -171,7 +171,7 @@ pub fn RunDetailView(
             if let Some(path) = run.path.clone() {
                 button {
                     class: "btn btn-sm btn-ghost",
-                    title: "Open this log in the Data Explorer",
+                    title: "Open this log in Encounter Analysis",
                     disabled: opener.busy(),
                     onclick: move |_| opener.open(path.clone(), None),
                     i { class: "fa-solid fa-eye" }
@@ -183,7 +183,7 @@ pub fn RunDetailView(
         if run.area_id == 0 {
             div { class: "history-pick",
                 i { class: "fa-solid fa-triangle-exclamation" }
-                " This log's history predates area ids, so boss order, clear status and the timed run are unknown. Re-scan it from the Library tab."
+                " This log's history predates area ids, so boss order, clear status and the timed run are unknown. Re-scan it from Log Management."
             }
         }
         div { class: "history-cards",
@@ -217,6 +217,7 @@ pub fn RunDetailView(
                     div { class: "sub",
                         match (t.limit_secs, t.achieved) {
                             (Some(l), Some(true)) => format!("under {}", fmt_secs(i64::from(l))),
+                            (Some(l), Some(false)) if run.kills < run.bosses_total => format!("{}/{} bosses · limit {}", run.kills, run.bosses_total, fmt_secs(i64::from(l))),
                             (Some(l), Some(false)) => format!("over {}", fmt_secs(i64::from(l))),
                             (Some(l), None) => format!("limit {}", fmt_secs(i64::from(l))),
                             (None, _) => if t.from_first_pull { "from first pull".into() } else { "no limit set".into() },
@@ -381,7 +382,7 @@ pub fn RunDetailView(
                                             if let Some(path) = path {
                                                 button {
                                                     class: "btn btn-xs btn-ghost",
-                                                    title: "Open this pull in the Data Explorer",
+                                                    title: "Open this pull in Encounter Analysis",
                                                     disabled: opener.busy(),
                                                     onclick: move |_| opener.open(path.clone(), Some(encounter_id)),
                                                     i { class: "fa-solid fa-eye" }

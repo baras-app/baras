@@ -91,6 +91,11 @@ fn summarize(
         .iter()
         .find(|r| r.success && def.is_some_and(|a| a.is_final(&r.boss)));
     let last_end = g.iter().map(|r| end_ms(r)).max().unwrap_or(first.start_ms);
+    // The in-game timed run needs every required boss down, not just the last one
+    let full_clear = def.is_some_and(|a| {
+        a.bosses_at(&tier_key, size)
+            .all(|b| g.iter().any(|r| r.success && r.boss == b.name))
+    });
 
     let timer = def.and_then(|a| a.timer_at(&tier_key, size)).map(|rule| {
         let start = timer_starts
@@ -106,7 +111,7 @@ fn summarize(
             from_first_pull: start.is_none(),
             elapsed_secs,
             limit_secs: rule.limit_secs,
-            achieved: elapsed_secs.zip(rule.limit_secs).map(|(e, l)| e <= i64::from(l)),
+            achieved: elapsed_secs.zip(rule.limit_secs).map(|(e, l)| full_clear && e <= i64::from(l)),
         }
     });
 

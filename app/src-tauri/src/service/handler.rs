@@ -768,9 +768,22 @@ impl ServiceHandle {
         } else {
             None
         };
-        self.with_pull_index(move |index| index.status(live.as_deref()))
-            .await
-            .unwrap_or_default()
+        let logs: Vec<String> = {
+            let directory = self.shared.directory_index.read().await;
+            directory
+                .entries()
+                .iter()
+                .filter(|e| !e.is_empty && live.as_deref() != Some(e.path.as_path()))
+                .map(|e| e.filename.clone())
+                .collect()
+        };
+        self.with_pull_index(move |index| {
+            let mut status = index.status(live.as_deref());
+            status.unscanned = logs.iter().filter(|f| index.log_info(f).is_none()).count() as u32;
+            status
+        })
+        .await
+        .unwrap_or_default()
     }
 
     async fn active_file_path(&self) -> Option<PathBuf> {

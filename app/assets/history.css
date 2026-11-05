@@ -257,11 +257,27 @@
   gap: var(--space-sm) var(--space-md);
 }
 
-.history-subtabs {
-  margin: 0;
+.history-toolbar {
+  margin-left: 0;
 }
 
-.history-toolbar {
+.history-scan-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.35em 0.7em;
+  border: 1px solid var(--color-warning);
+  border-radius: 4px;
+  background: var(--color-warning-bg);
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.history-scan-bar > i {
+  color: var(--color-warning);
+}
+
+.history-scan-bar .btn {
   margin-left: auto;
 }
 

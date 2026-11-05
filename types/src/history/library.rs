@@ -114,6 +114,9 @@ pub struct HistoryStatus {
     /// History files older than the current store version or whose source
     /// log changed since they were written
     pub stale: u32,
+    /// Logs in the directory with no history file yet
+    #[serde(default)]
+    pub unscanned: u32,
 }
 
 /// Where a log stands in the history store.
@@ -165,4 +168,23 @@ pub struct LibraryRow {
     pub parsely: Option<String>,
     /// Pulls with their own Parsely link
     pub parsely_fights: u32,
+}
+
+/// Library content filter: any log, logs with kills, or logs carrying one tag
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum LibraryContent {
+    #[default]
+    Any,
+    Kills,
+    Tag(ContentTag),
+}
+
+impl LibraryContent {
+    pub fn label(self) -> &'static str {
+        match self {
+            LibraryContent::Any => "Any content",
+            LibraryContent::Kills => "Kills only",
+            LibraryContent::Tag(t) => t.label(),
+        }
+    }
 }
