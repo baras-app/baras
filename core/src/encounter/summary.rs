@@ -3,7 +3,8 @@
 //! Provides persistence of encounter metrics across the current log file session,
 //! classification of encounters by phase type, and human-readable naming.
 
-use hashbrown::HashMap;
+use baras_types::history::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
+use hashbrown::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 use super::CombatEncounter;
@@ -95,6 +96,22 @@ pub struct EncounterSummary {
     /// Link to the uploaded encounter on Parsely (set after successful upload)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parsely_link: Option<String>,
+
+    // ─── Pull Progress (History tab) ─────────────────────────────────────────
+    /// Boss HP / phase progress; None for PvP, dummies and unknown bosses
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub progress: Option<PullProgress>,
+    /// Player deaths in order (all encounter types)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub deaths: Vec<PullDeath>,
+    /// Distinct players seen in combat
+    #[serde(default)]
+    pub raid_size: u8,
+    #[serde(default)]
+    pub end_reason: PullEnd,
+    /// Combat never exited before the log ended (truncated / still writing)
+    #[serde(default)]
+    pub partial: bool,
 }
 
 /// Tracks encounter history for the current log file session
@@ -585,6 +602,78 @@ pub fn create_encounter_summary(
         })
         .collect();
 
+    let progress = encounter.active_boss_definition().map(|def| {
+        let boss_ids: HashSet<i64> = def
+            .entities
+            .iter()
+            .filter(|e| e.is_boss)
+            .flat_map(|e| e.ids.iter().copied())
+            .collect();
+        let mut bosses: Vec<BossHpRecord> = encounter
+            .npcs
+            .values()
+            .filter(|n| n.max_hp > 0 && boss_ids.contains(&n.class_id))
+            .map(|n| BossHpRecord {
+                name: resolve(n.name).to_string(),
+                npc_id: n.class_id,
+                lowest_pct: n.lowest_hp_pct,
+                lowest_at_secs: n.lowest_hp_at_secs,
+                last_pct: n.hp_percent(),
+                dead: n.is_dead || n.current_hp <= 0,
+            })
+            .collect();
+        bosses.sort_by(|a, b| a.lowest_pct.total_cmp(&b.lowest_pct));
+        // Furthest phase by definition order (phases can regress on a reset)
+        let phase_reached = encounter
+            .phases_seen
+            .iter()
+            .filter_map(|(id, _)| def.phases.iter().position(|p| &p.id == id))
+            .max()
+            .map(|i| PhaseRef {
+                id: def.phases[i].id.clone(),
+                name: def.phases[i].name.clone(),
+                index: i as u16,
+            });
+        PullProgress {
+            bosses,
+            phase_reached,
+            phases_seen: encounter.phases_seen.clone(),
+        }
+    });
+    let deaths: Vec<PullDeath> = encounter
+        .deaths
+        .iter()
+        .map(|&(entity_id, secs)| PullDeath {
+            entity_id,
+            name: encounter
+                .players
+                .get(&entity_id)
+                .map(|p| resolve(p.name).to_string())
+                .unwrap_or_default(),
+            secs,
+        })
+        .collect();
+    let success = determine_success(encounter);
+    let partial = encounter.exit_combat_time.is_none();
+    // A boss back at full HP after being damaged is a reset even without the
+    // single-instance detection firing.
+    let hp_reset = progress.as_ref().is_some_and(|p| {
+        !p.bosses.is_empty() && p.bosses.iter().all(|b| b.last_pct >= 99.9 && b.lowest_pct < 99.0)
+    });
+    // Wipe wins over reset: the boss resets to full HP after a wipe, and that
+    // last sample must not relabel the pull.
+    let end_reason = if success {
+        PullEnd::Kill
+    } else if encounter.all_players_dead {
+        PullEnd::Wipe
+    } else if encounter.ended_by_reset || hp_reset {
+        PullEnd::Reset
+    } else if partial {
+        PullEnd::LogEnd
+    } else {
+        PullEnd::Unknown
+    };
+
     Some(EncounterSummary {
         encounter_id: encounter.id,
         display_name,
@@ -596,7 +685,7 @@ pub fn create_encounter_summary(
             .effective_end_time()
             .map(|t| t.format("%Y-%m-%dT%H:%M:%S").to_string()),
         duration_seconds,
-        success: determine_success(encounter),
+        success,
         // Arena rounds surface a tri-state outcome; no team wipe = unknown
         pvp_outcome: (pvp_area_kind(area_id_for_classification) == Some(PvpAreaKind::Arena))
             .then(|| encounter.arena_outcome.unwrap_or(PvpOutcome::Unknown)),
@@ -605,6 +694,7 @@ pub fn create_encounter_summary(
         area_name: encounter_area_name,
         difficulty,
         boss_name,
+        raid_size: player_metrics.len() as u8,
         player_metrics,
         is_phase_start,
         npc_names,
@@ -615,5 +705,9 @@ pub fn create_encounter_summary(
         event_end_line: encounter.last_event_line,
         // Parsely link (set after successful upload)
         parsely_link: None,
+        progress,
+        deaths,
+        end_reason,
+        partial,
     })
 }

@@ -8,7 +8,8 @@ use wasm_bindgen_futures::spawn_local;
 use crate::api::{self, BossNotesInfo};
 use crate::components::{
     ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    HistoryPanel, HotkeyInput, ParselyUploadModal, SettingsPanel, Slider, ToastFrame, ToastSeverity, use_parsely_upload,
+    FileOpenBanner, HistoryPanel, HotkeyInput, ParselyUploadModal, SettingsPanel, Slider, ToastFrame, ToastSeverity,
+    use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
 use crate::components::class_icons::{get_class_icon, get_role_icon};
@@ -19,6 +20,7 @@ use crate::types::{
 
 static CSS: Asset = asset!("/assets/styles.css");
 static DATA_EXPLORER_CSS: Asset = asset!("/assets/data-explorer.css");
+static HISTORY_CSS: Asset = asset!("/assets/history.css");
 static LOGO: Asset = asset!("/assets/logo.png");
 static FONT: Asset = asset!("/assets/StarJedi.ttf");
 
@@ -87,6 +89,7 @@ pub fn App() -> Element {
     let mut active_file = use_signal(String::new);
     let mut is_watching = use_signal(|| false);
     let mut is_live_tailing = use_signal(|| true);
+    let opener = use_file_opener_provider(is_live_tailing);
     let mut session_info = use_signal(|| None::<SessionInfo>);
     let mut session_ended = use_signal(|| false); // True when player logged out but data preserved
 
@@ -289,6 +292,7 @@ pub fn App() -> Element {
             if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
                 && let Some(path) = payload.as_string()
             {
+                opener.loaded(&path);
                 // Use try_write to handle signal being dropped when component unmounts
                 let _ = active_file.try_write().map(|mut w| *w = path);
             }
@@ -680,6 +684,7 @@ pub fn App() -> Element {
     rsx! {
         link { rel: "stylesheet", href: CSS }
         link { rel: "stylesheet", href: DATA_EXPLORER_CSS }
+        link { rel: "stylesheet", href: HISTORY_CSS }
         link { rel: "stylesheet", href: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" }
         style { "@font-face {{ font-family: 'StarJedi'; src: url('{FONT}') format('truetype'); font-display: block; font-weight: normal; font-style: normal; }}" }
 
@@ -1849,7 +1854,6 @@ pub fn App() -> Element {
                     HistoryPanel {
                         european: *european_number_format.read(),
                         state: ui_state,
-                        is_live_tailing,
                     }
                 }
 
@@ -2786,18 +2790,10 @@ pub fn App() -> Element {
                                                 div { class: "file-actions",
                                                     button {
                                                         class: "btn btn-open",
-                                                        disabled: is_empty,
+                                                        disabled: is_empty || opener.busy(),
                                                         onclick: move |_| {
-                                                            let p = path.clone();
-                                                            let mut toast = use_toast();
                                                             file_browser_open.set(false);
-                                                            spawn(async move {
-                                                                if let Err(err) = api::open_historical_file(&p).await {
-                                                                    toast.show(format!("Failed to open log file: {}", err), ToastSeverity::Normal);
-                                                                } else {
-                                                                    is_live_tailing.set(false);
-                                                                }
-                                                            });
+                                                            opener.open(path.clone(), None);
                                                         },
                                                         i { class: "fa-solid fa-eye" }
                                                         " Open"
@@ -2953,6 +2949,7 @@ pub fn App() -> Element {
             }
 
             // Toast notifications (rendered on top of everything)
+            FileOpenBanner {}
             ToastFrame {}
         }
     }

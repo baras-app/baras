@@ -8,7 +8,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use baras_core::history::{LogHistory, history_dir};
+use baras_core::history::{HistoryHeader, LogHistory, history_dir, history_file_for};
 use baras_core::state::ParseWorkerOutput;
 use baras_types::history::BackfillEvent;
 
@@ -19,7 +19,9 @@ fn emit(event: &BackfillEvent) {
     }
 }
 
-pub fn run(log_dir: &Path, definitions_dir: Option<&Path>) -> Result<(), String> {
+/// `stale_only` skips logs whose history file was written by the current
+/// store version from the log exactly as it is on disk (see `HistoryHeader`).
+pub fn run(log_dir: &Path, definitions_dir: Option<&Path>, stale_only: bool) -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     let tmp_out = history_dir().map_err(|e| e.to_string())?.join(".backfill-tmp");
 
@@ -37,11 +39,22 @@ pub fn run(log_dir: &Path, definitions_dir: Option<&Path>) -> Result<(), String>
     files.sort();
 
     let total = files.len();
-    let (mut recorded_logs, mut recorded_pulls, mut failed) = (0usize, 0usize, 0usize);
+    let (mut recorded_logs, mut recorded_pulls, mut failed, mut skipped) = (0usize, 0usize, 0usize, 0usize);
     let started = std::time::Instant::now();
 
     for (i, path) in files.iter().enumerate() {
         let name = path.file_name().and_then(|f| f.to_str()).unwrap_or("?");
+        if stale_only && is_current(path, name) {
+            skipped += 1;
+            emit(&BackfillEvent::Progress {
+                current: (i + 1) as u32,
+                total: total as u32,
+                file: name.to_string(),
+                pulls: 0,
+                skipped: true,
+            });
+            continue;
+        }
         let mut cmd = Command::new(&exe);
         cmd.arg(path).arg("backfill").arg(&tmp_out);
         if let Some(defs) = definitions_dir {
@@ -92,6 +105,7 @@ pub fn run(log_dir: &Path, definitions_dir: Option<&Path>) -> Result<(), String>
                     total: total as u32,
                     file: name.to_string(),
                     pulls: pulls as u32,
+                    skipped: false,
                 });
             }
             Err(e) => {
@@ -104,14 +118,26 @@ pub fn run(log_dir: &Path, definitions_dir: Option<&Path>) -> Result<(), String>
     let _ = std::fs::remove_dir_all(&tmp_out);
     let elapsed_secs = started.elapsed().as_secs_f32();
     eprintln!(
-        "Backfill done: {recorded_pulls} pulls across {recorded_logs} logs, {failed} failed, {total} scanned in {elapsed_secs:.1}s"
+        "Backfill done: {recorded_pulls} pulls across {recorded_logs} logs, {failed} failed, {skipped} skipped, {total} scanned in {elapsed_secs:.1}s"
     );
     emit(&BackfillEvent::Done {
         pulls: recorded_pulls as u32,
         logs: recorded_logs as u32,
         failed: failed as u32,
         scanned: total as u32,
+        skipped: skipped as u32,
         elapsed_secs,
+        cancelled: false,
     });
     Ok(())
+}
+
+/// History file exists, is at the current version, and matches the log's
+/// length and mtime.
+fn is_current(log: &Path, name: &str) -> bool {
+    let Ok(meta) = log.metadata() else { return false };
+    history_file_for(name)
+        .ok()
+        .and_then(|hf| HistoryHeader::read(&hf).ok())
+        .is_some_and(|h| h.is_current(&meta))
 }

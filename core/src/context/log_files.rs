@@ -410,11 +410,13 @@ impl DirectoryIndex {
     }
 
     /// Clean up log files based on settings. Returns (empty_deleted, small_deleted, old_deleted).
+    /// `protected` files (favorites, the live log) are never deleted.
     pub fn cleanup(
         &mut self,
         delete_empty: bool,
         delete_small: bool,
         retention_days: Option<u32>,
+        protected: &dyn Fn(&Path) -> bool,
     ) -> (u32, u32, u32) {
         let mut empty_deleted = 0u32;
         let mut small_deleted = 0u32;
@@ -452,6 +454,9 @@ impl DirectoryIndex {
 
         // Delete files and update index
         for path in to_delete {
+            if protected(&path) {
+                continue;
+            }
             let entry = self.entries.get(&path);
             let was_empty = entry.map(|e| e.is_empty).unwrap_or(false);
             let was_small = entry.map(|e| !e.is_empty && e.file_size < 1_000_000).unwrap_or(false);

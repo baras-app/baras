@@ -8065,6 +8065,25 @@ a.contributor-name:hover {
    Toast Notifications
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* Historical open in progress (see components/file_open.rs) */
+.file-open-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.5em 1em;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background: var(--bg-elevated, #1e1e24);
+  color: var(--text-secondary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
 .toast-container {
   position: fixed;
   bottom: 20px;
@@ -8584,228 +8603,4 @@ a.contributor-name:hover {
 
 .modifier-anyof > .btn-sm {
   align-self: flex-start;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   History Tab (cross-session pull history)
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.pull-history {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
-}
-
-.pull-history-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
-
-.pull-history-toolbar select {
-  min-width: 160px;
-}
-
-.pull-history-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-  font-size: 0.85em;
-  color: var(--text-secondary);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.pull-history-dates {
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-  font-size: 0.85em;
-  color: var(--text-muted);
-}
-
-.pull-history-dates .pull-history-result-tabs {
-  margin-left: 0;
-}
-
-.pull-history-date {
-  width: 9.5em;
-  background: var(--bg-input);
-  color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 0.25em 0.4em;
-  font-size: 0.9em;
-  font-family: var(--font-mono);
-}
-
-.pull-history-date::placeholder {
-  color: var(--text-disabled);
-  font-family: var(--font-family);
-}
-
-.pull-history-count {
-  margin-left: auto;
-  font-size: 0.85em;
-  color: var(--text-muted);
-}
-
-/* Sidebar tree + detail pane, mirrors .data-explorer */
-.pull-history-body {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  gap: 1em;
-}
-
-.pull-tree-count {
-  margin-left: auto;
-  font-size: 0.8em;
-  color: var(--text-disabled);
-  white-space: nowrap;
-}
-
-.pull-history-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.pull-history-header {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-md);
-  padding: 0 var(--space-xs);
-}
-
-.pull-history-title {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-sm);
-  min-width: 0;
-}
-
-.pull-history-title h3 {
-  margin: 0;
-  font-size: 1.05em;
-  color: var(--swtor-blue);
-}
-
-.pull-history-operation {
-  font-size: 0.85em;
-  color: var(--text-muted);
-}
-
-.pull-history-stats {
-  display: flex;
-  gap: 0.4em;
-  font-size: 0.85em;
-  color: var(--text-secondary);
-}
-
-.pull-history-rate {
-  color: var(--text-muted);
-}
-
-.pull-history-result-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  margin-left: auto;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-}
-
-.pull-history-table-wrap {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  background: var(--gradient-panel);
-  border: 1px solid var(--border-accent);
-  border-radius: var(--radius-sm);
-}
-
-.pull-history-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85em;
-}
-
-.pull-history-table th,
-.pull-history-table td {
-  padding: 0.45em 0.7em;
-  text-align: left;
-  vertical-align: middle;
-  white-space: nowrap;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.pull-history-table th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--bg-mid);
-  color: var(--swtor-blue-dim);
-  font-weight: 500;
-}
-
-.pull-history-table th.sortable-header {
-  cursor: pointer;
-  user-select: none;
-}
-
-.pull-history-table th.sorted {
-  color: var(--text-primary);
-}
-
-.pull-history-table th.sorted.desc::after {
-  content: " \25BE";
-}
-
-.pull-history-table th.sorted.asc::after {
-  content: " \25B4";
-}
-
-.pull-history-table tbody tr:hover {
-  background: var(--blue-alpha-8);
-}
-
-.pull-result {
-  padding: 0.1em 0.5em;
-  border-radius: var(--radius-sm);
-  font-size: 0.9em;
-}
-
-.pull-result.kill {
-  color: var(--color-success);
-  background: var(--color-success-bg);
-}
-
-.pull-result.wipe {
-  color: var(--color-error);
-  background: var(--color-error-bg);
-}
-
-.pull-log-missing {
-  color: var(--text-disabled);
-}
-
-.pull-discipline {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-  gap: 0.4em;
-}
-
-.pull-discipline .role-icon,
-.pull-discipline .discipline-icon {
-  width: 16px;
-  height: 16px;
 }

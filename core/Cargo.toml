@@ -29,6 +29,7 @@ lasso = { version = "0.7.3", features = ["multi-threaded"] }
 chrono = { version = "0.4.42", features = ["serde"] }
 phf = { version = "0.13.1", features = ["macros"] }
 dirs = "6.0.0"
+zstd = "0.13"
 encoding_rs = "0.8"
 toml = "0.9"
 arrow = { version = "58", default-features = false, features = ["ipc"] }

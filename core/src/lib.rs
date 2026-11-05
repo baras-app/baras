@@ -6,6 +6,7 @@ pub mod effects;
 pub mod encounter;
 pub mod game_data;
 pub mod history;
+pub mod library;
 pub mod icons;
 #[cfg(feature = "query")]
 pub mod query;
