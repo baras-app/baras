@@ -522,21 +522,24 @@ pub fn App() -> Element {
             // Use spawn_local for JS callbacks (no Dioxus runtime context available)
             spawn_local(async move {
                 if let Some(status) = api::get_overlay_status().await {
-                    // Detect move mode locking (positions saved to disk)
-                    let was_move_mode = move_mode.try_read().map(|r| *r).unwrap_or(false);
                     // Use try_write for signals - safe outside Dioxus runtime context
                     let _ = overlays_visible.try_write().map(|mut w| *w = status.overlays_visible);
                     let _ = move_mode.try_write().map(|mut w| *w = status.move_mode);
                     let _ = rearrange_mode.try_write().map(|mut w| *w = status.rearrange_mode);
                     let _ = auto_hidden.try_write().map(|mut w| *w = status.auto_hidden);
-                    // Locking saves positions to disk; mark profile dirty
-                    if was_move_mode && !status.move_mode {
-                        let _ = profile_dirty.try_write().map(|mut w| *w = true);
-                    }
                 }
             });
         });
         api::tauri_listen("overlay-status-changed", &closure).await;
+        closure.forget();
+    });
+
+    // Backend emits this only when locking persisted a position that actually changed
+    use_future(move || async move {
+        let closure = Closure::new(move |_event: JsValue| {
+            let _ = profile_dirty.try_write().map(|mut w| *w = true);
+        });
+        api::tauri_listen("overlay-positions-changed", &closure).await;
         closure.forget();
     });
 
@@ -850,8 +853,6 @@ pub fn App() -> Element {
                                 if let Ok(new_mode) = api::toggle_move_mode().await {
                                     move_mode.set(new_mode);
                                     if new_mode { rearrange_mode.set(false); }
-                                    // Locking saves positions to disk; mark profile dirty
-                                    if !new_mode { profile_dirty.set(true); }
                                 }
                             }); },
                             i { class: if is_move_mode { "fa-solid fa-lock-open" } else { "fa-solid fa-lock" } }
@@ -1500,8 +1501,6 @@ pub fn App() -> Element {
                                     if let Ok(new_mode) = api::toggle_move_mode().await {
                                         move_mode.set(new_mode);
                                         if new_mode { rearrange_mode.set(false); }
-                                        // Locking saves positions to disk; mark profile dirty
-                                        if !new_mode { profile_dirty.set(true); }
                                     }
                                 }); },
                                 if is_move_mode { i { class: "fa-solid fa-lock-open" } span { " Unlocked" } }

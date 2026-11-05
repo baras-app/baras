@@ -1971,6 +1971,11 @@ impl ServiceHandle {
         let _ = self.app_handle.emit("overlay-status-changed", ());
     }
 
+    /// Emit when locking move mode persisted at least one changed overlay position
+    pub fn emit_overlay_positions_changed(&self) {
+        let _ = self.app_handle.emit("overlay-positions-changed", ());
+    }
+
     /// Get current notes data from loaded boss definitions
     /// Returns the first boss with notes, or None if no notes are available
     pub async fn get_current_notes(&self) -> Option<baras_overlay::NotesData> {
