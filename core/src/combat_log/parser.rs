@@ -1,5 +1,5 @@
 use super::*;
-use crate::context::intern;
+use crate::context::{empty_istr, intern};
 use crate::game_data::{defense_type, effect_id, effect_type_id};
 use chrono::{Days, NaiveDateTime};
 use memchr::memchr_iter;
@@ -78,7 +78,14 @@ impl LogParser {
             target_entity
         };
 
-        let effect = LogParser::parse_effect(effect_segment)?;
+        let mut effect = LogParser::parse_effect(effect_segment)?;
+        // AreaEntered lines end in `(he3000) <v7.0.0b>`: server code, log format
+        if effect.type_id == effect_type_id::AREAENTERED
+            && let Some(open) = details_segment.find("(he")
+            && let Some(len) = details_segment[open..].find(')')
+        {
+            effect.server = intern(&details_segment[open + 1..open + len]);
+        }
         let details = LogParser::parse_details(details_segment, effect.effect_id, effect.type_id)?;
 
         let event = CombatEvent {
@@ -386,6 +393,7 @@ impl LogParser {
             difficulty_id,
             discipline_name,
             discipline_id,
+            server: empty_istr(),
         })
     }
 

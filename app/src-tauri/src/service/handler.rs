@@ -14,7 +14,7 @@ use baras_core::encounter::EncounterState;
 use baras_core::game_data::Discipline;
 use baras_types::history::{
     ArchiveReport, ContentTag, DeleteCriteria, DeletePreview, DeleteReport, HistoryStatus, LibraryRow, LogStatus,
-    ParselyUpload, PullFilter, PullHistoryOverview, PullRow,
+    ParselyUpload, PullFilter, PullHistoryOverview, PullRow, RunDetail, RunList, RunMeta,
 };
 use baras_core::query::{
     AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
@@ -22,7 +22,7 @@ use baras_core::query::{
     EncounterTimeline, EntityBreakdown, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow,
     SortDirection, TimeRange, TimeSeriesPoint,
 };
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use super::{AreaVisitInfo, CombatData, LogFileInfo, ServiceCommand, SessionInfo};
 use crate::state::SharedState;
@@ -231,6 +231,7 @@ impl ServiceHandle {
                         filename: e.filename.clone(),
                         date: e.formatted_datetime(),
                         character: e.character_name.clone(),
+                        server: rows.first().map(|r| r.server.clone()).unwrap_or_default(),
                         size: e.file_size,
                         original_size: None,
                         areas: area_index
@@ -241,7 +242,7 @@ impl ServiceHandle {
                         dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
                         status,
                         favorite: log_meta.is_some_and(|m| m.favorite),
-                        tags: log_meta.map(|m| m.tags.clone()).unwrap_or_default(),
+                        tags: meta.run_tags_for_log(&e.filename),
                         has_note: log_meta.is_some_and(|m| !m.note.is_empty()),
                         parsely: log_meta.and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
                         parsely_fights: meta.pull_parsely_count(&e.filename),
@@ -260,6 +261,7 @@ impl ServiceHandle {
                         .map(|(_, dt)| dt.format("%Y-%m-%d %-H:%M").to_string())
                         .unwrap_or_default(),
                     character: rows.first().map(|r| r.character.clone()),
+                    server: rows.first().map(|r| r.server.clone()).unwrap_or_default(),
                     size: a.compressed_size,
                     original_size: a.original_size,
                     areas: area_index
@@ -270,7 +272,7 @@ impl ServiceHandle {
                     dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
                     status: LogStatus::Archived,
                     favorite: log_meta.is_some_and(|m| m.favorite),
-                    tags: log_meta.map(|m| m.tags.clone()).unwrap_or_default(),
+                    tags: meta.run_tags_for_log(&a.filename),
                     has_note: log_meta.is_some_and(|m| !m.note.is_empty()),
                     parsely: log_meta.and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
                     parsely_fights: meta.pull_parsely_count(&a.filename),
@@ -659,22 +661,90 @@ impl ServiceHandle {
 
     /// Filter options and per-boss pull counts from the history index.
     pub async fn pull_history_overview(&self, filter: PullFilter) -> PullHistoryOverview {
-        self.with_pull_index(move |index| index.overview(&filter))
-            .await
-            .unwrap_or_default()
+        let catalog = self.area_catalog();
+        let shared = self.shared.clone();
+        self.with_pull_index(move |index| {
+            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            index.overview(&filter, &catalog, &meta)
+        })
+        .await
+        .unwrap_or_default()
     }
 
     /// Every recorded pull of one boss under `filter`, newest first.
     pub async fn boss_pulls(&self, operation: String, boss: String, filter: PullFilter) -> Vec<PullRow> {
-        let mut rows = self
-            .with_pull_index(move |index| index.pulls(&operation, &boss, &filter))
-            .await
-            .unwrap_or_default();
-        let meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-        for row in &mut rows {
-            row.parsely = meta.parsely_link_for(&row.filename, row.start_ms).map(str::to_string);
+        let catalog = self.area_catalog();
+        let shared = self.shared.clone();
+        self.with_pull_index(move |index| {
+            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let mut rows = index.pulls(&operation, &boss, &filter, &catalog, &meta);
+            for row in &mut rows {
+                row.parsely = meta.parsely_link_for(&row.filename, row.start_ms).map(str::to_string);
+            }
+            rows
+        })
+        .await
+        .unwrap_or_default()
+    }
+
+    /// Operation runs under `filter`, newest first, with tags and notes.
+    pub async fn operation_runs(&self, filter: PullFilter) -> RunList {
+        let catalog = self.area_catalog();
+        let shared = self.shared.clone();
+        self.with_pull_index(move |index| {
+            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let runs = index.runs(&catalog, &filter, &meta);
+            RunList { runs, tags: meta.run_tags() }
+        })
+        .await
+        .unwrap_or_default()
+    }
+
+    /// One run with its bosses, players and pulls.
+    pub async fn operation_run(&self, filename: String, start_ms: i64) -> Option<RunDetail> {
+        let catalog = self.area_catalog();
+        let shared = self.shared.clone();
+        self.with_pull_index(move |index| {
+            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let (run, rows) = index.run(&filename, start_ms, &catalog, &meta)?;
+            let records = baras_core::history::history_file_for(&filename)
+                .and_then(|p| baras_core::history::LogHistory::load(&p))
+                .map(|l| l.history.pulls)
+                .unwrap_or_default();
+            Some(baras_core::history::run_detail(run, rows, &records, &catalog))
+        })
+        .await
+        .flatten()
+    }
+
+    /// Tags and note for one run; an empty meta removes the entry.
+    pub fn set_run_meta(&self, filename: &str, start_ms: i64, meta: RunMeta) -> bool {
+        let mut store = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        store.set_run(filename, start_ms, meta);
+        match store.save() {
+            Ok(()) => true,
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to save library.json");
+                false
+            }
         }
-        rows
+    }
+
+    /// Definitions are read once per app run; an edited encounter file shows
+    /// up after a restart.
+    fn area_catalog(&self) -> Arc<baras_core::history::AreaCatalog> {
+        self.shared
+            .area_catalog
+            .get_or_init(|| {
+                let bundled = self
+                    .app_handle
+                    .path()
+                    .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
+                    .ok();
+                let user = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+                Arc::new(baras_core::history::AreaCatalog::load(bundled.as_deref(), user.as_deref()))
+            })
+            .clone()
     }
 
     /// Backfill pull history for every log in the configured directory

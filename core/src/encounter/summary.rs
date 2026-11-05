@@ -71,6 +71,12 @@ pub struct EncounterSummary {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub incoming_damage: Vec<super::metrics::IncomingDamageRow>,
     pub area_name: String,
+    /// Definition area id (0 when unknown)
+    #[serde(default)]
+    pub area_id: i64,
+    /// Server code, e.g. `he3000`
+    #[serde(default)]
+    pub server: String,
     pub difficulty: Option<String>,
     pub boss_name: Option<String>,
     pub player_metrics: Vec<PlayerMetrics>,
@@ -705,6 +711,8 @@ pub fn create_encounter_summary(
         is_warzone: pvp_area_kind(area_id_for_classification) == Some(PvpAreaKind::Warzone),
         incoming_damage,
         area_name: encounter_area_name,
+        area_id: area_id_for_classification,
+        server: area.server.clone(),
         difficulty,
         boss_name,
         raid_size: player_metrics.len() as u8,

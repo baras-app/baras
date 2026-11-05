@@ -403,6 +403,33 @@ pub async fn set_log_parsely_link(
 }
 
 #[tauri::command]
+pub async fn get_operation_runs(
+    filter: baras_types::history::PullFilter,
+    handle: State<'_, ServiceHandle>,
+) -> Result<baras_types::history::RunList, String> {
+    Ok(handle.operation_runs(filter).await)
+}
+
+#[tauri::command]
+pub async fn get_operation_run(
+    filename: String,
+    start_ms: i64,
+    handle: State<'_, ServiceHandle>,
+) -> Result<Option<baras_types::history::RunDetail>, String> {
+    Ok(handle.operation_run(filename, start_ms).await)
+}
+
+#[tauri::command]
+pub fn set_run_meta(
+    filename: String,
+    start_ms: i64,
+    meta: baras_types::history::RunMeta,
+    handle: State<'_, ServiceHandle>,
+) -> Result<bool, String> {
+    Ok(handle.set_run_meta(&filename, start_ms, meta))
+}
+
+#[tauri::command]
 pub async fn get_boss_pulls(
     operation: String,
     boss: String,

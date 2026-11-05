@@ -142,6 +142,9 @@ pub struct LibraryRow {
     /// `YYYY-MM-DD HH:MM` local
     pub date: String,
     pub character: Option<String>,
+    /// Server the log was recorded on (from its pulls); empty when unknown
+    #[serde(default)]
+    pub server: String,
     pub size: u64,
     /// Archived rows only: the log's size before compression, when known
     #[serde(default, skip_serializing_if = "Option::is_none")]

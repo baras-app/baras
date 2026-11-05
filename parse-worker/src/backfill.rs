@@ -89,7 +89,7 @@ pub fn run(log_dir: &Path, definitions_dir: Option<&Path>, stale_only: bool) -> 
         };
 
         let character = (!parsed.player.name.is_empty()).then(|| parsed.player.name.clone());
-        let Some(history) = LogHistory::from_summaries(path, character, &parsed.encounters) else {
+        let Some(history) = LogHistory::from_summaries(path, character, &parsed.encounters, &parsed.timer_starts) else {
             continue;
         };
         let pulls = history.pulls.len();

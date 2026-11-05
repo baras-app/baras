@@ -8,6 +8,7 @@ use baras_types::history::{BossNode, PullEnd, PullFilter, PullRow, PullSortKey a
 
 use super::Backfill;
 use super::charts::{ChartPick, PullCharts};
+use super::toolbar::SubsetChips;
 use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::use_file_opener;
@@ -24,7 +25,7 @@ pub struct OverviewProps {
 /// Tree selection: (operation, boss)
 type BossKey = (String, String);
 
-fn short_ts(iso: &str) -> String {
+pub(super) fn short_ts(iso: &str) -> String {
     iso.get(..16).unwrap_or(iso).replacen('T', " ", 1)
 }
 
@@ -48,7 +49,7 @@ fn group_by_operation<'a>(bosses: impl Iterator<Item = &'a BossNode>) -> Vec<(&'
 }
 
 /// Result badge: label and CSS class for one pull
-fn result_badge(row: &PullRow, eu: bool) -> (String, &'static str) {
+pub(super) fn result_badge(row: &PullRow, eu: bool) -> (String, &'static str) {
     match row.end_reason {
         PullEnd::Kill => ("Kill".into(), "pull-result kill"),
         PullEnd::Wipe | PullEnd::Unknown => {
@@ -251,6 +252,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                         div { class: "pull-history-title",
                             h3 { "{node.boss}" }
                             span { class: "pull-history-operation", "{node.operation}" }
+                            SubsetChips { filter }
                         }
                     }
                     div { class: "history-cards",
@@ -288,6 +290,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                     th { "Discipline" }
                                     th { class: sort_class(SortKey::Dps), onclick: move |_| on_sort(SortKey::Dps), "DPS" }
                                     th { class: sort_class(SortKey::Hps), onclick: move |_| on_sort(SortKey::Hps), "HPS" }
+                                    th { "Tags" }
                                     th { "Parsely" }
                                     th { "Log" }
                                 }
@@ -321,6 +324,11 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                 }
                                                 td { {fmt_opt(row.dps)} }
                                                 td { {fmt_opt(row.hps)} }
+                                                td {
+                                                    for t in row.tags.iter() {
+                                                        span { class: "run-tag small", "{t}" }
+                                                    }
+                                                }
                                                 td {
                                                     if let Some(link) = row.parsely.clone() {
                                                         button {

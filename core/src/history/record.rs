@@ -28,6 +28,10 @@ pub struct PullRecord {
     pub duration_secs: i64,
     pub kind: PhaseType,
     pub area_name: String,
+    #[serde(default)]
+    pub area_id: i64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub server: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub difficulty: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -106,6 +110,8 @@ impl From<&EncounterSummary> for PullRecord {
             duration_secs: s.duration_seconds,
             kind: s.encounter_type,
             area_name: s.area_name.clone(),
+            area_id: s.area_id,
+            server: s.server.clone(),
             difficulty: s.difficulty.clone(),
             boss_name: s.boss_name.clone(),
             display_name: s.display_name.clone(),

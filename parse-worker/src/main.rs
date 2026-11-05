@@ -25,7 +25,7 @@ use arrow::datatypes::{DataType, Field, Fields, Schema, TimeUnit};
 use arrow::record_batch::RecordBatch;
 use baras_core::combat_log::{CombatEvent, EntityType, LogParser};
 use baras_core::context::{parse_log_filename, resolve};
-use baras_core::dsl::{build_area_index, load_bosses_with_custom};
+use baras_core::dsl::{build_area_index, load_area_config, load_bosses_with_custom};
 use baras_core::game_data::defense_type;
 use baras_core::signal_processor::{
     check_counter_signal_triggers, check_counter_timer_triggers, check_entity_phase_transitions,
@@ -829,6 +829,9 @@ fn process_and_write_encounters(
                             timer_manager.load_boss_definitions(filtered_bosses);
 
                             cache.load_boss_definitions(bosses, false);
+                            // Region-based timer start, so timed runs are recorded in the history store
+                            let timer_start = load_area_config(&entry.file_path).ok().flatten().and_then(|a| a.timer_start);
+                            cache.set_timer_start(area_id, timer_start);
                         }
                         Err(e) => {
                             tracing::warn!(area_id, error = %e, "Failed to load definitions for area");

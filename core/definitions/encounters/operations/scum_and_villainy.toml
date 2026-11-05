@@ -6,6 +6,7 @@
 [area]
 name = "Scum and Villainy"
 id = 137438993037
+timed_run_minutes = 120
 area_type = "operation"
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -217,6 +218,7 @@ target = "local_player"
 id = "hateful_entity"
 name = "Hateful Entity"
 difficulties = ["master"]
+is_optional_boss = true
 
 [[boss.entities]]
 name = "Hateful Entity"

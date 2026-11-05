@@ -27,7 +27,7 @@ pub fn build_pull_history(session: &ParsingSession) -> Option<LogHistory> {
         .player_initialized
         .then(|| resolve(cache.player.name).to_string())
         .filter(|n| !n.is_empty());
-    LogHistory::from_summaries(path, character, cache.encounter_history.summaries())
+    LogHistory::from_summaries(path, character, cache.encounter_history.summaries(), &cache.timer_starts)
 }
 
 /// Write off the async runtime; failures are logged, never fatal.

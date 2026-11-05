@@ -7,6 +7,9 @@ pub struct AreaInfo {
     pub area_id: i64,
     pub difficulty_id: i64,
     pub difficulty_name: String,
+    /// Server code from the log, e.g. `he3000` (see `game_data::server_name`)
+    #[serde(default)]
+    pub server: String,
     pub entered_at: Option<NaiveDateTime>,
     /// Line number of the AreaEntered event in the combat log.
     /// Used for per-encounter Parsely uploads.

@@ -1,6 +1,7 @@
 [area]
 name = "The Dread Palace"
 area_id = 137438993410
+timed_run_minutes = 60
 area_type = "operation"
 
 [[boss]]

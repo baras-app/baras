@@ -109,6 +109,8 @@ pub struct WorkerAreaInfo {
     pub area_id: i64,
     pub difficulty_id: i64,
     pub difficulty_name: String,
+    #[serde(default)]
+    pub server: String,
     pub entered_at_line: Option<u64>,
     /// Timestamp of the AreaEntered event, used for operation timer backfill on live resume.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -123,6 +125,7 @@ impl WorkerAreaInfo {
             area_id: area.area_id,
             difficulty_id: area.difficulty_id,
             difficulty_name: area.difficulty_name.clone(),
+            server: area.server.clone(),
             entered_at_line: area.entered_at_line,
             entered_at: area.entered_at,
         }
@@ -134,6 +137,7 @@ impl WorkerAreaInfo {
         area.area_id = self.area_id;
         area.difficulty_id = self.difficulty_id;
         area.difficulty_name = self.difficulty_name.clone();
+        area.server = self.server.clone();
         area.entered_at_line = self.entered_at_line;
         area.entered_at = self.entered_at;
     }
@@ -169,6 +173,9 @@ pub struct ParseWorkerOutput {
     /// True if the log file started without an AreaEntered event.
     #[serde(default)]
     pub missing_area: bool,
+    /// Operation timer start crossings, for the pull history store.
+    #[serde(default)]
+    pub timer_starts: Vec<baras_types::history::TimerStart>,
     /// Elapsed time in milliseconds.
     pub elapsed_ms: u128,
 }

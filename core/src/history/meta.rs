@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use baras_types::history::{ContentTag, LogMeta, ParselyUpload, PullMeta};
+use baras_types::history::{ContentTag, LogMeta, ParselyUpload, PullMeta, RunMeta};
 
 pub const META_VERSION: u32 = 1;
 
@@ -21,6 +21,9 @@ pub struct LibraryMeta {
     pub logs: BTreeMap<String, LogMeta>,
     #[serde(default)]
     pub pulls: BTreeMap<String, PullMeta>,
+    /// Operation runs, keyed by `filename#start_ms` of the run's first pull
+    #[serde(default)]
+    pub runs: BTreeMap<String, RunMeta>,
     /// Content the user wants kept: a log holding any of these is never
     /// auto-deleted or bulk-deleted (favorites are the per-log equivalent)
     #[serde(default)]
@@ -58,6 +61,7 @@ impl LibraryMeta {
         self.version = META_VERSION;
         self.logs.retain(|_, m| !m.is_empty());
         self.pulls.retain(|_, m| !m.is_empty());
+        self.runs.retain(|_, m| !m.is_empty());
         let path = meta_path();
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -84,6 +88,45 @@ impl LibraryMeta {
 
     pub fn pull_mut(&mut self, filename: &str, start_ms: i64) -> &mut PullMeta {
         self.pulls.entry(pull_key(filename, start_ms)).or_default()
+    }
+
+    pub fn run(&self, filename: &str, start_ms: i64) -> Option<&RunMeta> {
+        self.runs.get(&pull_key(filename, start_ms))
+    }
+
+    /// Longest run note kept (a one-line summary, not a document)
+    pub const RUN_NOTE_MAX: usize = 140;
+
+    pub fn set_run(&mut self, filename: &str, start_ms: i64, mut meta: RunMeta) {
+        meta.note = meta.note.chars().take(Self::RUN_NOTE_MAX).collect();
+        let key = pull_key(filename, start_ms);
+        if meta.is_empty() {
+            self.runs.remove(&key);
+        } else {
+            self.runs.insert(key, meta);
+        }
+    }
+
+    /// Tags on any run of one log, sorted and deduplicated
+    pub fn run_tags_for_log(&self, filename: &str) -> Vec<String> {
+        let prefix = format!("{filename}#");
+        let mut tags: Vec<String> = self
+            .runs
+            .range(prefix.clone()..)
+            .take_while(|(k, _)| k.starts_with(&prefix))
+            .flat_map(|(_, m)| m.tags.iter().cloned())
+            .collect();
+        tags.sort();
+        tags.dedup();
+        tags
+    }
+
+    /// Every tag used on any run, sorted, for the tag picker
+    pub fn run_tags(&self) -> Vec<String> {
+        let mut tags: Vec<String> = self.runs.values().flat_map(|m| m.tags.iter().cloned()).collect();
+        tags.sort();
+        tags.dedup();
+        tags
     }
 
     pub fn is_favorite(&self, filename: &str) -> bool {
@@ -158,6 +201,7 @@ impl LibraryMeta {
         self.logs.remove(filename);
         let prefix = format!("{filename}#");
         self.pulls.retain(|k, _| !k.starts_with(&prefix));
+        self.runs.retain(|k, _| !k.starts_with(&prefix));
     }
 }
 
