@@ -5,7 +5,7 @@
 use dioxus::prelude::*;
 use wasm_bindgen::{JsCast, prelude::*};
 
-use crate::api::{self, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn, GroupedEntityNames, SortDirection, TimeRange};
+use crate::api::{self, CombatLogFilters, CombatLogFindMatch, CombatLogRow, CombatLogSortColumn, GroupedEntityNames, NpcSpawn, SortDirection, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
 use crate::components::mirror_names::{display_id, display_name};
 use crate::types::CombatLogSessionState;
@@ -108,6 +108,54 @@ fn readable_event_type(row: &CombatLogRow) -> &'static str {
     }
 }
 
+/// Name a Source/Target filter refers to: `id:N` resolves to its spawn's name so the
+/// main dropdown keeps showing the NPC while the spawn picker narrows it.
+fn filter_base_name(filter: &Option<String>, spawns: &[NpcSpawn]) -> Option<String> {
+    let f = filter.as_deref()?;
+    match f.strip_prefix("id:").and_then(|v| v.parse::<i64>().ok()) {
+        Some(id) => spawns.iter().find(|s| s.id == id).map(|s| s.name.clone()),
+        None => Some(f.to_string()),
+    }
+}
+
+fn format_mmss(secs: f32) -> String {
+    format!("@{}:{:02}", (secs as i32) / 60, (secs as i32) % 60)
+}
+
+/// Second-level dropdown that appears only when the filter names an NPC with several
+/// spawns: "All spawns" (the name) or one instance (`id:N`).
+#[component]
+fn SpawnPicker(filter: Signal<Option<String>>, spawns: Vec<NpcSpawn>) -> Element {
+    let Some(name) = filter_base_name(&filter.read(), &spawns) else { return rsx! {} };
+    let mine: Vec<&NpcSpawn> = spawns.iter().filter(|s| s.name == name).collect();
+    if mine.is_empty() {
+        return rsx! {};
+    }
+    let current = filter.read().clone().unwrap_or_default();
+    rsx! {
+        select {
+            class: "log-filter-select spawn-picker",
+            title: "Spawn of {name}",
+            value: "{current}",
+            onchange: move |e| filter.set(Some(e.value())),
+            option { value: "{name}", "All spawns ({mine.len()})" }
+            for sp in mine.iter() {
+                option { value: "id:{sp.id}", "{format_mmss(sp.first_hit_secs)}" }
+            }
+        }
+    }
+}
+
+/// Dropdown value that pins an entity: `id:N` when that NPC has several spawns
+/// (so the dropdown has a matching option), otherwise its name.
+fn entity_filter_value(name: &str, id: i64, spawns: &[NpcSpawn]) -> String {
+    if spawns.iter().any(|s| s.id == id) {
+        format!("id:{id}")
+    } else {
+        name.to_string()
+    }
+}
+
 /// Format entity HP + coordinates for the hover tooltip; empty when unavailable.
 fn entity_tooltip(
     hp: i32,
@@ -116,8 +164,12 @@ fn entity_tooltip(
     y: Option<f32>,
     z: Option<f32>,
     facing: Option<f32>,
+    instance_id: i64,
 ) -> String {
-    let mut parts = Vec::with_capacity(2);
+    let mut parts = Vec::with_capacity(3);
+    if instance_id != 0 {
+        parts.push(format!("id: {instance_id}"));
+    }
     if max_hp > 0 {
         let pct = hp as f32 / max_hp as f32 * 100.0;
         parts.push(format!("hp: {hp} / {max_hp} ({pct:.1}%)"));
@@ -277,6 +329,8 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
     // Context menu state for right-click "Set as range start/end"
     let mut context_menu_pos = use_signal(|| None::<(f64, f64)>);
     let mut context_menu_time = use_signal(|| 0.0f32);
+    // Row under the cursor when the menu opened (for the entity filter items)
+    let mut context_menu_row = use_signal(|| None::<CombatLogRow>);
     // Capture selection text at right-click time (before menu click clears it)
     let mut context_menu_selection = use_signal(String::new);
 
@@ -812,7 +866,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                 // Source filter
                 select {
                     class: "log-filter-select",
-                    value: source_filter.read().as_deref().unwrap_or(""),
+                    value: filter_base_name(&source_filter.read(), &sources_grouped.npc_spawns).unwrap_or_default(),
                     onchange: move |e| {
                         let val = e.value();
                         source_filter.set(if val.is_empty() { None } else { Some(val) });
@@ -835,11 +889,12 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         }
                     }
                 }
+                SpawnPicker { filter: source_filter, spawns: sources_grouped.npc_spawns.clone() }
 
                 // Target filter
                 select {
                     class: "log-filter-select",
-                    value: target_filter.read().as_deref().unwrap_or(""),
+                    value: filter_base_name(&target_filter.read(), &targets_grouped.npc_spawns).unwrap_or_default(),
                     onchange: move |e| {
                         let val = e.value();
                         target_filter.set(if val.is_empty() { None } else { Some(val) });
@@ -862,12 +917,13 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         }
                     }
                 }
+                SpawnPicker { filter: target_filter, spawns: targets_grouped.npc_spawns.clone() }
 
                 // Search input (filter)
                 input {
                     class: "log-search",
                     r#type: "text",
-                    placeholder: "Filter... (AND, OR, NOT, parens)",
+                    placeholder: "Filter... (AND, OR, NOT, parens, id:N)",
                     value: "{search_text}",
                     oninput: move |e| search_text.set(e.value()),
                 }
@@ -1175,12 +1231,14 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         for row in visible_rows.iter() {
                             {
                             let row_time = row.time_secs;
+                            let row_for_menu = row.clone();
                             rsx! {
                             div {
                                 key: "{row.row_idx}",
                                 class: "{row_class(&row, highlighted_row_idx)}",
                                 oncontextmenu: move |e: MouseEvent| {
                                     e.prevent_default();
+                                    context_menu_row.set(Some(row_for_menu.clone()));
                                     // Capture selection now before menu interaction clears it
                                     let sel = js_sys::eval("window.getSelection()?.toString() || ''")
                                         .ok()
@@ -1198,7 +1256,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                                     }
                                 }
                                 div { class: "log-cell log-source", style: "width: {col_source}px; min-width: {col_source}px;",
-                                    title: "{entity_tooltip(row.source_hp, row.source_max_hp, row.source_x, row.source_y, row.source_z, row.source_facing)}",
+                                    title: "{entity_tooltip(row.source_hp, row.source_max_hp, row.source_x, row.source_y, row.source_z, row.source_facing, row.source_id)}",
                                     if show_ids_val && row.source_class_id != 0 {
                                         span { class: "log-id-prefix", "[{row.source_class_id}] " }
                                     }
@@ -1208,7 +1266,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                                     "{readable_event_type(&row)}"
                                 }
                                 div { class: "log-cell log-target", style: "width: {col_target}px; min-width: {col_target}px;",
-                                    title: "{entity_tooltip(row.target_hp, row.target_max_hp, row.target_x, row.target_y, row.target_z, row.target_facing)}",
+                                    title: "{entity_tooltip(row.target_hp, row.target_max_hp, row.target_x, row.target_y, row.target_z, row.target_facing, row.target_id)}",
                                     if show_ids_val && row.target_class_id != 0 {
                                         span { class: "log-id-prefix", "[{row.target_class_id}] " }
                                     }
@@ -1284,6 +1342,36 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                             context_menu_pos.set(None);
                         },
                         "Copy selection"
+                    }
+                    if let Some(r) = context_menu_row.read().as_ref() {
+                        {
+                            let src_val = entity_filter_value(&r.source_name, r.source_id, &sources_grouped.npc_spawns);
+                            let tgt_val = entity_filter_value(&r.target_name, r.target_id, &targets_grouped.npc_spawns);
+                            let src_label = if src_val.starts_with("id:") { "this instance".to_string() } else { r.source_name.clone() };
+                            let tgt_label = if tgt_val.starts_with("id:") { "this instance".to_string() } else { r.target_name.clone() };
+                            rsx! {
+                                if !r.source_name.is_empty() {
+                                    div {
+                                        class: "context-menu-item",
+                                        onclick: move |_| {
+                                            source_filter.set(Some(src_val.clone()));
+                                            context_menu_pos.set(None);
+                                        },
+                                        "Filter source: {src_label}"
+                                    }
+                                }
+                                if !r.target_name.is_empty() {
+                                    div {
+                                        class: "context-menu-item",
+                                        onclick: move |_| {
+                                            target_filter.set(Some(tgt_val.clone()));
+                                            context_menu_pos.set(None);
+                                        },
+                                        "Filter target: {tgt_label}"
+                                    }
+                                }
+                            }
+                        }
                     }
                     if props.on_range_change.is_some() {
                         div {

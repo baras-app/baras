@@ -167,6 +167,9 @@ pub struct EntityBreakdown {
     pub entity_type: String, // "Player", "Npc", "Companion"
     pub total_value: f64,
     pub abilities_used: i64,
+    /// First combat second this entity acted (distinguishes same-named NPC spawns)
+    #[serde(default)]
+    pub first_hit_secs: Option<f32>,
 }
 
 /// Which side of a PvP match a player is on, relative to the local player.
@@ -497,6 +500,11 @@ pub struct CombatLogRow {
     pub source_class_id: i64,
     /// Target entity class_id for Show IDs feature (consistent across encounters)
     pub target_class_id: i64,
+    /// Per-spawn instance ids (what `id:` filters match on)
+    #[serde(default)]
+    pub source_id: i64,
+    #[serde(default)]
+    pub target_id: i64,
     /// Entity HP as reported on this line (0 when the entity has no HP data)
     #[serde(default)]
     pub source_hp: i32,
@@ -541,6 +549,16 @@ pub struct CombatLogFilters {
     pub other: bool,
 }
 
+/// One NPC spawn, for names that occur with several instance ids in an encounter.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NpcSpawn {
+    pub name: String,
+    /// Log instance id (`source_id` / `target_id`)
+    pub id: i64,
+    /// First combat second this spawn appeared
+    pub first_hit_secs: f32,
+}
+
 /// Entity names grouped by type for combat log filter dropdowns.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupedEntityNames {
@@ -548,6 +566,9 @@ pub struct GroupedEntityNames {
     pub friendly: Vec<String>,
     /// NPCs/enemies
     pub npcs: Vec<String>,
+    /// Per-instance rows for NPC names that appear more than once (ordered by first hit)
+    #[serde(default)]
+    pub npc_spawns: Vec<NpcSpawn>,
 }
 
 /// A match result from the combat log find feature.
@@ -4001,6 +4022,9 @@ pub struct DataExplorerState {
     pub view_mode: ViewMode,
     /// Selected source entity for detailed breakdown
     pub selected_source: Option<String>,
+    /// Instance id of the selected source when it is one NPC spawn among same-named copies.
+    /// `None` for players (and NPCs selected by name), which keeps queries name-keyed.
+    pub selected_source_id: Option<i64>,
     /// Breakdown mode toggles
     pub breakdown_mode: BreakdownMode,
     /// Players-only filter
@@ -4031,6 +4055,7 @@ impl Default for DataExplorerState {
             selected_encounter: None,
             view_mode: ViewMode::default(),
             selected_source: None,
+            selected_source_id: None,
             breakdown_mode: BreakdownMode::ability_only(),
             show_players_only: true,
             show_only_bosses: false,
@@ -4052,6 +4077,7 @@ impl DataExplorerState {
     pub fn reset_session(&mut self) {
         self.selected_encounter = None;
         self.selected_source = None;
+        self.selected_source_id = None;
         self.time_range = TimeRange::default();
         self.selected_rotation_anchor = None;
         // Preserve: show_only_bosses, view_mode, breakdown_mode, show_players_only,

@@ -46,6 +46,16 @@ fn sql_escape(s: &str) -> String {
     s.replace('\'', "''")
 }
 
+/// Predicate for an entity selector on one side of an event (`prefix` is
+/// "source" or "target"). A selector is a plain entity name, or `id:<instance>`
+/// to pin a single NPC spawn among same-named copies.
+fn entity_match_sql(prefix: &str, selector: &str) -> String {
+    match selector.strip_prefix("id:").and_then(|v| v.trim().parse::<i64>().ok()) {
+        Some(id) => format!("{prefix}_id = {id}"),
+        None => format!("{prefix}_name = '{}'", sql_escape(selector)),
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Query Context (shared across queries to avoid repeated allocation)
 // ─────────────────────────────────────────────────────────────────────────────

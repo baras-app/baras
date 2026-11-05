@@ -20,6 +20,7 @@ pub async fn query_breakdown(
     tab: DataTab,
     encounter_idx: Option<u32>,
     entity_name: Option<String>,
+    entity_id: Option<i64>,
     time_range: Option<TimeRange>,
     entity_types: Option<Vec<String>>,
     breakdown_mode: Option<BreakdownMode>,
@@ -30,6 +31,7 @@ pub async fn query_breakdown(
             tab,
             encounter_idx,
             entity_name,
+            entity_id,
             time_range,
             entity_types,
             breakdown_mode,
@@ -340,11 +342,12 @@ pub async fn query_damage_taken_summary(
     handle: State<'_, ServiceHandle>,
     encounter_idx: Option<u32>,
     entity_name: String,
+    entity_id: Option<i64>,
     time_range: Option<TimeRange>,
     entity_types: Option<Vec<String>>,
 ) -> Result<DamageTakenSummary, String> {
     handle
-        .query_damage_taken_summary(encounter_idx, entity_name, time_range, entity_types)
+        .query_damage_taken_summary(encounter_idx, entity_name, entity_id, time_range, entity_types)
         .await
 }
 

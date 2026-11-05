@@ -342,6 +342,62 @@
   opacity: 0.7;
 }
 
+/* Collapsible group of same-named NPC spawns: the caret is a real button-sized
+   hit box so a click reliably toggles instead of selecting the row */
+.entity-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.6em;
+  height: 1.6em;
+  margin-right: 0.1em;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, transform 0.1s;
+}
+
+.entity-caret i {
+  transition: transform 0.15s;
+}
+
+.entity-caret.expanded i {
+  transform: rotate(90deg);
+}
+
+.entity-caret:hover {
+  background: rgba(255, 200, 50, 0.15);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.entity-caret:active {
+  transform: scale(0.9);
+}
+
+/* Group rows show the caret instead of the sword prefix */
+.entity-row.group .entity-name::before {
+  content: none;
+}
+
+.entity-group-count {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  margin-left: 0.3em;
+}
+
+.entity-row.spawn {
+  padding: 0.3em 0.75em 0.3em 2em;
+}
+
+.entity-row.spawn .entity-name::before {
+  content: "↳ ";
+}
+
 .entity-row.npc .entity-name::before {
   content: "⚔ ";
   opacity: 0.5;
@@ -1667,6 +1723,10 @@
   align-items: center;
 }
 
+.log-filter-select.spawn-picker {
+  max-width: 9em;
+}
+
 .log-filter-select {
   padding: 4px 8px;
   background: var(--bg-tertiary);
@@ -2233,13 +2293,13 @@
   border: 1px solid var(--border-subtle, #444);
   border-radius: var(--radius-sm, 4px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  padding: 4px 0;
-  min-width: 160px;
-  font-size: 12px;
+  padding: 2px 0;
+  min-width: 120px;
+  font-size: 11px;
 }
 
 .context-menu-item {
-  padding: 6px 12px;
+  padding: 3px 10px;
   cursor: pointer;
   color: var(--text-primary, #e0e0e0);
   transition: background var(--transition-fast, 0.1s);

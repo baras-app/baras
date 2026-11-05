@@ -149,6 +149,18 @@ impl Parser {
 }
 
 fn term_to_sql(term: &str) -> String {
+    // `id:123` / `src_id:123` / `tgt_id:123` pin an exact instance id instead of a
+    // substring match, so a short id can't match inside a longer one.
+    let id_term = |prefix: &str| term.strip_prefix(prefix).and_then(|v| v.parse::<i64>().ok());
+    if let Some(id) = id_term("src_id:") {
+        return format!("source_id = {id}");
+    }
+    if let Some(id) = id_term("tgt_id:") {
+        return format!("target_id = {id}");
+    }
+    if let Some(id) = id_term("id:") {
+        return format!("(source_id = {id} OR target_id = {id})");
+    }
     let escaped = sql_escape(term).to_lowercase();
     format!(
         "(LOWER(source_name) LIKE '%{0}%' OR LOWER(target_name) LIKE '%{0}%' OR LOWER(ability_name) LIKE '%{0}%' OR LOWER(effect_name) LIKE '%{0}%' OR CAST(ability_id AS VARCHAR) LIKE '%{0}%' OR CAST(effect_id AS VARCHAR) LIKE '%{0}%' OR CAST(source_id AS VARCHAR) LIKE '%{0}%' OR CAST(target_id AS VARCHAR) LIKE '%{0}%' OR CAST(source_class_id AS VARCHAR) LIKE '%{0}%' OR CAST(target_class_id AS VARCHAR) LIKE '%{0}%')",
@@ -197,6 +209,16 @@ mod tests {
     fn empty_input() {
         assert_eq!(build_search_clause(""), "1=1");
         assert_eq!(build_search_clause("   "), "1=1");
+    }
+
+    #[test]
+    fn instance_id_terms() {
+        assert_eq!(build_search_clause("id:42"), "(source_id = 42 OR target_id = 42)");
+        assert_eq!(build_search_clause("src_id:42"), "source_id = 42");
+        assert_eq!(build_search_clause("tgt_id:42 AND NOT src_id:7"),
+            "(target_id = 42 AND (NOT source_id = 7))");
+        // Non-numeric suffix falls back to a substring term
+        assert_eq!(build_search_clause("id:abc"), t("id:abc"));
     }
 
     #[test]

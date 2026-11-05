@@ -597,6 +597,7 @@ impl ServiceHandle {
         tab: DataTab,
         encounter_idx: Option<u32>,
         entity_name: Option<String>,
+        entity_id: Option<i64>,
         time_range: Option<TimeRange>,
         entity_types: Option<Vec<String>>,
         breakdown_mode: Option<BreakdownMode>,
@@ -634,6 +635,7 @@ impl ServiceHandle {
             .query_breakdown(
                 tab,
                 entity_name.as_deref(),
+                entity_id,
                 time_range.as_ref(),
                 types_ref.as_deref(),
                 breakdown_mode.as_ref(),
@@ -647,6 +649,7 @@ impl ServiceHandle {
         &self,
         encounter_idx: Option<u32>,
         entity_name: String,
+        entity_id: Option<i64>,
         time_range: Option<TimeRange>,
         entity_types: Option<Vec<String>>,
     ) -> Result<DamageTakenSummary, String> {
@@ -679,6 +682,7 @@ impl ServiceHandle {
             .query()
             .query_damage_taken_summary(
                 &entity_name,
+                entity_id,
                 time_range.as_ref(),
                 types_ref.as_deref(),
             )

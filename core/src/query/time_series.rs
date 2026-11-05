@@ -6,9 +6,9 @@ use super::*;
 struct TimeSeriesConfig<'a> {
     /// Column to sum ("dmg_amount" or "heal_amount")
     value_column: &'static str,
-    /// Column to filter by entity ("source_name" or "target_name")
-    entity_column: &'static str,
-    /// Optional entity name filter
+    /// Which side of the event the entity is on ("source" or "target")
+    entity: &'static str,
+    /// Optional entity selector: a name, or `id:<instance>` for one NPC spawn
     entity_filter: Option<&'a str>,
     /// Exclude self-damage (source_id == target_id) from aggregation.
     /// Only set for outgoing damage, matching the breakdown/overview pattern.
@@ -25,7 +25,6 @@ impl EncounterQuery<'_> {
     ) -> Result<Vec<TimeSeriesPoint>, String> {
         let bucket_secs = (bucket_ms as f64 / 1000.0).max(1.0);
         let value_col = config.value_column;
-        let entity_col = config.entity_column;
 
         // Base conditions for time range (used for bounds calculation)
         let mut tr_conditions = vec!["combat_time_secs IS NOT NULL".to_string()];
@@ -39,8 +38,8 @@ impl EncounterQuery<'_> {
         if config.exclude_self_damage {
             entity_conditions.push("source_id != target_id".to_string());
         }
-        if let Some(name) = config.entity_filter {
-            entity_conditions.push(format!("{} = '{}'", entity_col, sql_escape(name)));
+        if let Some(sel) = config.entity_filter {
+            entity_conditions.push(entity_match_sql(config.entity, sel));
         }
         let entity_filter = format!("WHERE {}", entity_conditions.join(" AND "));
 
@@ -101,7 +100,7 @@ ORDER BY time_series.bucket_start_ms
             bucket_ms,
             TimeSeriesConfig {
                 value_column: "dmg_amount",
-                entity_column: "source_name",
+                entity: "source",
                 entity_filter: source_name,
                 exclude_self_damage: true,
             },
@@ -121,7 +120,7 @@ ORDER BY time_series.bucket_start_ms
             bucket_ms,
             TimeSeriesConfig {
                 value_column: "heal_amount",
-                entity_column: "source_name",
+                entity: "source",
                 entity_filter: source_name,
                 exclude_self_damage: false,
             },
@@ -141,7 +140,7 @@ ORDER BY time_series.bucket_start_ms
             bucket_ms,
             TimeSeriesConfig {
                 value_column: "heal_effective",
-                entity_column: "source_name",
+                entity: "source",
                 entity_filter: source_name,
                 exclude_self_damage: false,
             },
@@ -161,7 +160,7 @@ ORDER BY time_series.bucket_start_ms
             bucket_ms,
             TimeSeriesConfig {
                 value_column: "heal_effective",
-                entity_column: "target_name",
+                entity: "target",
                 entity_filter: target_name,
                 exclude_self_damage: false,
             },
@@ -181,7 +180,7 @@ ORDER BY time_series.bucket_start_ms
             bucket_ms,
             TimeSeriesConfig {
                 value_column: "dmg_amount",
-                entity_column: "target_name",
+                entity: "target",
                 entity_filter: target_name,
                 exclude_self_damage: false,
             },
@@ -211,11 +210,14 @@ ORDER BY time_series.bucket_start_ms
         }
         let tr_filter = format!("WHERE {}", tr_conditions.join(" AND "));
 
+        // Without a selector every row qualifies, matching the old COALESCE(NULL, col) = col trick
+        let (src_match, tgt_match) = match entity_name {
+            Some(sel) => (entity_match_sql("source", sel), entity_match_sql("target", sel)),
+            None => ("TRUE".to_string(), "TRUE".to_string()),
+        };
         let mut entity_conditions = tr_conditions.clone();
-        if let Some(name) = entity_name {
-            let escaped = sql_escape(name);
-            entity_conditions
-                .push(format!("(source_name = '{escaped}' OR target_name = '{escaped}')"));
+        if entity_name.is_some() {
+            entity_conditions.push(format!("({src_match} OR {tgt_match})"));
         }
         let entity_filter = format!("WHERE {}", entity_conditions.join(" AND "));
 
@@ -239,23 +241,23 @@ hp_events AS (
         CAST(FLOOR(combat_time_secs / {bucket_secs}) * {bucket_secs} * 1000 AS BIGINT) as bucket_start_ms,
         line_number,
         CASE
-            WHEN source_name = COALESCE({entity_param}, source_name) AND source_max_hp > 0
+            WHEN {src_match} AND source_max_hp > 0
                 THEN CAST(source_hp AS DOUBLE) * 100.0 / CAST(source_max_hp AS DOUBLE)
-            WHEN target_name = COALESCE({entity_param}, target_name) AND target_max_hp > 0
+            WHEN {tgt_match} AND target_max_hp > 0
                 THEN CAST(target_hp AS DOUBLE) * 100.0 / CAST(target_max_hp AS DOUBLE)
             ELSE NULL
         END as hp_pct,
         CASE
-            WHEN source_name = COALESCE({entity_param}, source_name) AND source_max_hp > 0
+            WHEN {src_match} AND source_max_hp > 0
                 THEN source_hp
-            WHEN target_name = COALESCE({entity_param}, target_name) AND target_max_hp > 0
+            WHEN {tgt_match} AND target_max_hp > 0
                 THEN target_hp
             ELSE NULL
         END as current_hp,
         CASE
-            WHEN source_name = COALESCE({entity_param}, source_name) AND source_max_hp > 0
+            WHEN {src_match} AND source_max_hp > 0
                 THEN source_max_hp
-            WHEN target_name = COALESCE({entity_param}, target_name) AND target_max_hp > 0
+            WHEN {tgt_match} AND target_max_hp > 0
                 THEN target_max_hp
             ELSE NULL
         END as max_hp
@@ -280,10 +282,7 @@ SELECT
 FROM time_series
 LEFT JOIN ranked ON time_series.bucket_start_ms = ranked.bucket_start_ms AND ranked.rn = 1
 ORDER BY time_series.bucket_start_ms
-            "#,
-                entity_param = entity_name
-                    .map(|n| format!("'{}'", sql_escape(n)))
-                    .unwrap_or_else(|| "NULL".to_string()),
+            "#
             ))
             .await?;
 

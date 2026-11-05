@@ -41,6 +41,15 @@ fn build_args<T: Serialize + ?Sized>(key: &str, value: &T) -> JsValue {
     obj.into()
 }
 
+/// Set an optional entity instance id. Log ids are ~15 digits, well inside f64's exact range,
+/// same as the ability/effect ids sent elsewhere in this file.
+fn js_set_entity_id(obj: &JsValue, entity_id: Option<i64>) {
+    match entity_id {
+        Some(id) => js_set(obj, "entityId", &JsValue::from_f64(id as f64)),
+        None => js_set(obj, "entityId", &JsValue::NULL),
+    }
+}
+
 /// Deserialize a JsValue into a type, returning None on failure (no console logging)
 fn from_js<T: serde::de::DeserializeOwned>(value: JsValue) -> Option<T> {
     serde_wasm_bindgen::from_value(value).ok()
@@ -1017,7 +1026,7 @@ pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch,
     CombatLogRow, CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap,
     DeathRecapEventKind, EffectChartData, EffectWindow,
-    EncounterTimeline, EntityBreakdown, GroupedEntityNames, HpPoint, NpcHealthRow,
+    EncounterTimeline, EntityBreakdown, GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn,
     PhaseSegment, PlayerDeath, PvpFaction, RaidOverviewRow, RotationAnalysis,
     SortDirection, TimeRange, TimeSeriesPoint,
 };
@@ -1031,6 +1040,7 @@ pub async fn query_breakdown(
     tab: DataTab,
     encounter_idx: Option<u32>,
     entity_name: Option<&str>,
+    entity_id: Option<i64>,
     time_range: Option<&TimeRange>,
     entity_types: Option<&[&str]>,
     breakdown_mode: Option<&BreakdownMode>,
@@ -1049,6 +1059,7 @@ pub async fn query_breakdown(
     } else {
         js_set(&obj, "entityName", &JsValue::NULL);
     }
+    js_set_entity_id(&obj, entity_id);
     if let Some(tr) = time_range {
         let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
         js_set(&obj, "timeRange", &tr_js);
@@ -1628,6 +1639,7 @@ pub async fn query_death_recap(
 pub async fn query_damage_taken_summary(
     encounter_idx: Option<u32>,
     entity_name: &str,
+    entity_id: Option<i64>,
     time_range: Option<&TimeRange>,
     entity_types: Option<&[&str]>,
 ) -> Option<DamageTakenSummary> {
@@ -1638,6 +1650,7 @@ pub async fn query_damage_taken_summary(
         js_set(&obj, "encounterIdx", &JsValue::NULL);
     }
     js_set(&obj, "entityName", &JsValue::from_str(entity_name));
+    js_set_entity_id(&obj, entity_id);
     if let Some(tr) = time_range {
         let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
         js_set(&obj, "timeRange", &tr_js);

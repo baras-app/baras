@@ -864,6 +864,8 @@ pub struct ChartsPanelProps {
     pub time_range: TimeRange,
     /// Shared selected player signal (synced with Detailed tabs)
     pub selected_source: Signal<Option<String>>,
+    /// Instance id when the selection is one NPC spawn among same-named copies
+    pub selected_source_id: Signal<Option<i64>>,
     /// European number format (swaps `.` and `,`)
     #[props(default)]
     pub european: bool,
@@ -892,8 +894,13 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
         encounter_idx_signal.set(props.encounter_idx);
     }
 
-    // Entity selection — shared with Detailed tabs via parent signal
-    let selected_entity = props.selected_source;
+    // Entity selection — shared with Detailed tabs via parent signal.
+    // Queries take a selector string: the name, or `id:<n>` to pin one NPC spawn.
+    let selected_entity = use_memo(move || {
+        let name = (props.selected_source)();
+        let id = (props.selected_source_id)();
+        name.map(|n| id.map_or(n, |id| format!("id:{id}")))
+    });
 
     // Chart visibility toggles
     let mut show_dps = use_signal(|| true);
