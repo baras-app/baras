@@ -199,6 +199,9 @@ impl EffectsABOverlay {
     /// Update the config
     pub fn set_config(&mut self, config: EffectsABConfig) {
         self.config = config;
+        // Force re-render — a layout/config change invalidates the dirty-check state
+        self.last_rendered.clear();
+        self.last_rendered_bar.clear();
     }
 
     /// Update background alpha
@@ -763,11 +766,13 @@ impl EffectsABOverlay {
             // Build label: optional name + optional source.
             // When an icon is present the stack count is drawn inside the icon
             // (like the icon layouts); otherwise it's prefixed to the label text.
+            // Name is optional, but always shown when there's no icon to
+            // identify the effect.
             let mut label = String::new();
             if effect.stacks > 0 && !has_icon {
                 label.push_str(&format!("{}x ", effect.stacks));
             }
-            if self.config.show_effect_names || label.is_empty() {
+            if self.config.show_effect_names || !has_icon {
                 let text = if !effect.display_text.is_empty() { &effect.display_text } else { &effect.name };
                 label.push_str(text);
             }
@@ -1271,11 +1276,15 @@ impl EffectsABOverlay {
 
         self.frame.begin_frame();
 
-        let previews = [
-            ("3x Effect Name", "12.3", 0.75_f32),
-            ("Effect Name", "45.0", 0.40_f32),
-            ("2x Effect Name (Source)", "8.5", 0.10_f32),
-        ];
+        let previews = if self.config.show_effect_names {
+            [
+                ("3x Effect Name", "12.3", 0.75_f32),
+                ("Effect Name", "45.0", 0.40_f32),
+                ("2x Effect Name (Source)", "8.5", 0.10_f32),
+            ]
+        } else {
+            [("3x", "12.3", 0.75_f32), ("", "45.0", 0.40_f32), ("2x", "8.5", 0.10_f32)]
+        };
 
         let window_height = self.frame.height() as f32;
         let n = previews.len() as f32;
