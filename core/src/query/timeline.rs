@@ -2,6 +2,10 @@
 
 use super::*;
 
+/// Max gap between combat start and first phase assignment that is treated as
+/// detection lag rather than a real unphased interval.
+const PHASE_LAG_SNAP_SECS: f32 = 5.0;
+
 impl EncounterQuery<'_> {
     /// Get encounter timeline with phase segments (handles repeated phases).
     pub async fn encounter_timeline(&self) -> Result<EncounterTimeline, String> {
@@ -70,6 +74,15 @@ impl EncounterQuery<'_> {
                     end_secs: ends[i],
                 });
             }
+        }
+
+        // Boss detection (and thus the first phase assignment) typically lags combat
+        // start by a few seconds. Snap the opening segment to 0 so the timeline
+        // doesn't show a sliver of unassigned time before the first phase.
+        if let Some(first) = phases.first_mut()
+            && first.start_secs <= PHASE_LAG_SNAP_SECS
+        {
+            first.start_secs = 0.0;
         }
 
         Ok(EncounterTimeline {
