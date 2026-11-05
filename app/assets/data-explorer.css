@@ -2058,10 +2058,10 @@
 
 .log-clear-filters {
   padding: 4px 10px;
-  background: hsl(45, 40%, 18%);
-  border: 1px solid hsl(45, 50%, 35%);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  color: hsl(45, 90%, 75%);
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -2069,9 +2069,38 @@
 }
 
 .log-clear-filters:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* Lit up while any filter diverges from its default; the animation replays
+   each time the class is (re)applied, giving a flash on the transition */
+.log-clear-filters.active {
+  background: hsl(45, 40%, 18%);
+  border-color: hsl(45, 50%, 35%);
+  color: hsl(45, 90%, 75%);
+  animation: clear-filters-flash 0.5s ease-out;
+}
+
+.log-clear-filters.active:hover {
   background: var(--accent-gold);
   color: var(--bg-primary);
   border-color: var(--accent-gold);
+}
+
+@keyframes clear-filters-flash {
+  0% {
+    background: var(--accent-gold);
+    color: var(--bg-primary);
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 8px rgba(255, 200, 50, 0.6);
+  }
+  100% {
+    background: hsl(45, 40%, 18%);
+    color: hsl(45, 90%, 75%);
+    border-color: hsl(45, 50%, 35%);
+    box-shadow: none;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

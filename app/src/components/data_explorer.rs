@@ -2473,6 +2473,13 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                                         let name = name.clone();
                                                                         move |e: MouseEvent| {
                                                                             e.stop_propagation();
+                                                                            if member_selected {
+                                                                                // A pinned spawn keeps the group open; fall back to the
+                                                                                // aggregate selection so the group can collapse
+                                                                                on_source_click(name.clone(), None);
+                                                                                expanded_entity_groups.write().remove(&name);
+                                                                                return;
+                                                                            }
                                                                             let mut set = expanded_entity_groups.write();
                                                                             if !set.remove(&name) {
                                                                                 set.insert(name.clone());

@@ -741,6 +741,10 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
 
     let sources_grouped = source_names.read().clone();
     let targets_grouped = target_names.read().clone();
+    let filters_active = source_filter.read().is_some()
+        || target_filter.read().is_some()
+        || !search_text.read().is_empty()
+        || !(filter_damage() && filter_healing() && filter_actions() && filter_effects() && filter_other());
     let show_ids_val = *show_ids.read();
     let absolute_time = *show_absolute_time.read();
     let highlighted_row_idx = *highlighted_row.read();
@@ -928,9 +932,9 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                     oninput: move |e| search_text.set(e.value()),
                 }
 
-                // Clear all filters button
+                // Clear all filters button: muted until something diverges from the defaults
                 button {
-                    class: "log-clear-filters",
+                    class: if filters_active { "log-clear-filters active" } else { "log-clear-filters" },
                     r#type: "button",
                     title: "Reset all filters to defaults",
                     onclick: move |_| {
