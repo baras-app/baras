@@ -2176,7 +2176,7 @@ impl Default for PersonalOverlayConfig {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Position configuration for an overlay
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OverlayPositionConfig {
     pub x: i32,
     pub y: i32,
