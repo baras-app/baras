@@ -6,6 +6,7 @@
 mod library;
 mod meta;
 mod progress;
+mod runs;
 
 use std::collections::HashSet;
 
@@ -17,6 +18,7 @@ pub use library::{
 };
 pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
+pub use runs::{RunBoss, RunDetail, RunList, RunMeta, RunPlayer, RunSummary, RunTimer, TimerStart, iso_to_ms};
 
 /// One recorded pull, reduced to what the History table shows.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -31,6 +33,18 @@ pub struct PullRow {
     /// ISO 8601 start time
     pub timestamp: String,
     pub operation: String,
+    /// Definition area id; 0 in files written before it was recorded
+    #[serde(default)]
+    pub area_id: i64,
+    /// Server display name ("Star Forge"); empty when unknown
+    #[serde(default)]
+    pub server: String,
+    /// Patch live on the pull's date ("7.9"), from the date table
+    #[serde(default)]
+    pub game_version: String,
+    /// Tags of the operation run this pull belongs to
+    #[serde(default)]
+    pub tags: Vec<String>,
     pub boss: String,
     pub difficulty: String,
     pub success: bool,
@@ -59,6 +73,9 @@ pub struct PullRow {
     /// Furthest phase name reached
     pub phase: Option<String>,
     pub deaths: u16,
+    /// Logging character's own deaths
+    #[serde(default)]
+    pub my_deaths: u16,
     pub raid_size: u8,
     pub partial: bool,
 }
@@ -80,6 +97,14 @@ pub struct PullHistoryOverview {
     pub disciplines: Vec<String>,
     /// Sorted by operation then boss; training dummy parses last
     pub bosses: Vec<BossNode>,
+    /// Every run tag in use (unfiltered), for the toolbar
+    #[serde(default)]
+    pub tags: Vec<String>,
+    /// Servers and patches seen in any pull (unfiltered)
+    #[serde(default)]
+    pub servers: Vec<String>,
+    #[serde(default)]
+    pub versions: Vec<String>,
 }
 
 /// Row filter applied server-side to both the tree and the pull list.
@@ -100,6 +125,14 @@ pub struct PullFilter {
     /// Inclusive day bounds as `YYYY-MM-DD`; empty = open-ended
     pub date_from: String,
     pub date_to: String,
+    /// Only pulls / runs carrying this run tag
+    #[serde(default)]
+    pub tag: String,
+    /// Server display name and patch, as shown on rows; empty = any
+    #[serde(default)]
+    pub server: String,
+    #[serde(default)]
+    pub game_version: String,
 }
 
 impl Default for PullFilter {
@@ -114,6 +147,9 @@ impl Default for PullFilter {
             kills_only: false,
             date_from: String::new(),
             date_to: String::new(),
+            tag: String::new(),
+            server: String::new(),
+            game_version: String::new(),
         }
     }
 }
@@ -133,6 +169,7 @@ pub enum PullSortKey {
 pub enum HistorySubTab {
     #[default]
     Overview,
+    Operations,
     Library,
 }
 
@@ -149,6 +186,8 @@ pub struct HistoryState {
     pub boss_search: String,
     pub sort_key: PullSortKey,
     pub sort_desc: bool,
+    /// Operations rail selection: (filename, first pull start_ms)
+    pub selected_run: Option<(String, i64)>,
 }
 
 impl Default for HistoryState {
@@ -161,6 +200,7 @@ impl Default for HistoryState {
             boss_search: String::new(),
             sort_key: PullSortKey::Date,
             sort_desc: true,
+            selected_run: None,
         }
     }
 }

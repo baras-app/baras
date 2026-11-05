@@ -1,6 +1,7 @@
 [area]
 name = "Gods from the Machine"
 area_id = 833571547775765
+timed_run_minutes = 90
 area_type = "operation"
 
 # "Doom's Delay" timer starts at the entrance teleporter destination (MM only).

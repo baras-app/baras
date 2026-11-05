@@ -222,6 +222,7 @@ pub fn LibraryTab(backfill: Backfill) -> Element {
                             th { "File" }
                             th { "Date" }
                             th { "Character" }
+                            th { "Server" }
                             th { "Content" }
                             th { "Pulls" }
                             th { "Kills" }
@@ -233,7 +234,7 @@ pub fn LibraryTab(backfill: Backfill) -> Element {
                     }
                     tbody {
                         if !loading && visible.is_empty() {
-                            tr { td { colspan: "10", class: "library-empty", "No logs match." } }
+                            tr { td { colspan: "11", class: "library-empty", "No logs match." } }
                         }
                         for row in visible.iter() {
                             {
@@ -246,9 +247,19 @@ pub fn LibraryTab(backfill: Backfill) -> Element {
                                 let restore_name = row.filename.clone();
                                 rsx! {
                                     tr { key: "{row.filename}",
-                                        td { class: "library-file", "{row.filename}" }
+                                        td { class: "library-file",
+                                            "{row.filename}"
+                                            if !row.tags.is_empty() {
+                                                div { class: "library-tags",
+                                                    for t in row.tags.iter() {
+                                                        span { class: "run-tag small", "{t}" }
+                                                    }
+                                                }
+                                            }
+                                        }
                                         td { "{row.date}" }
                                         td { {row.character.clone().unwrap_or_else(|| "—".into())} }
+                                        td { if row.server.is_empty() { "—" } else { "{row.server}" } }
                                         td { class: "library-areas", title: "{row.areas.join(\" · \")}",
                                             if row.content.is_empty() {
                                                 span { class: "pull-log-missing", "—" }

@@ -582,6 +582,26 @@ pub async fn set_log_parsely_link(path: &str, link: &str, visibility: u8) -> Res
 }
 
 /// Every recorded pull of one boss under `filter`, newest first
+pub async fn get_operation_runs(filter: &baras_types::history::PullFilter) -> Option<baras_types::history::RunList> {
+    from_js(invoke("get_operation_runs", build_args("filter", filter)).await)
+}
+
+pub async fn get_operation_run(filename: &str, start_ms: i64) -> Option<baras_types::history::RunDetail> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filename", &JsValue::from_str(filename));
+    js_set(&obj, "startMs", &JsValue::from_f64(start_ms as f64));
+    from_js(invoke("get_operation_run", obj.into()).await).flatten()
+}
+
+pub async fn set_run_meta(filename: &str, start_ms: i64, meta: &baras_types::history::RunMeta) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filename", &JsValue::from_str(filename));
+    js_set(&obj, "startMs", &JsValue::from_f64(start_ms as f64));
+    js_set(&obj, "meta", &serde_wasm_bindgen::to_value(meta).unwrap_or(JsValue::NULL));
+    let result = try_invoke("set_run_meta", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
 pub async fn get_boss_pulls(
     operation: &str,
     boss: &str,

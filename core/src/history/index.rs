@@ -11,9 +11,15 @@ use std::time::SystemTime;
 
 use hashbrown::{HashMap, HashSet};
 
-use baras_types::history::{BossNode, HistoryStatus, PullFilter, PullHistoryOverview, PullRow};
+use baras_types::history::{
+    BossNode, HistoryStatus, PullFilter, PullHistoryOverview, PullRow, RunSummary, TimerStart,
+};
 
+use super::catalog::AreaCatalog;
+use super::meta::LibraryMeta;
 use super::record::PullRecord;
+use super::runs::{apply_meta, run_matches, runs_of_log};
+use crate::game_data::{game_version_at, server_name};
 use super::store::{HISTORY_VERSION, HistoryHeader, LogHistory, history_file_name};
 use super::{DUMMY_GROUP, history_dir};
 use crate::encounter::PhaseType;
@@ -26,6 +32,7 @@ struct IndexedLog {
     /// changed. Decided at load time from the file header.
     stale: bool,
     rows: Vec<PullRow>,
+    timer_starts: Vec<TimerStart>,
 }
 
 /// What a refresh found that the caller may want to act on.
@@ -87,6 +94,7 @@ impl PullIndex {
                             log_path,
                             stale,
                             rows,
+                            timer_starts: history.timer_starts,
                         },
                     );
                 }
@@ -96,7 +104,27 @@ impl PullIndex {
             }
         }
         self.logs.retain(|name, _| seen.contains(name));
+        self.backfill_area_ids();
         Ok(report)
+    }
+
+    /// Files written before area ids were recorded carry 0. The same area
+    /// name in any re-scanned log tells us the id, which gives those rows
+    /// definition order and run detection without waiting for their re-scan.
+    fn backfill_area_ids(&mut self) {
+        let known: HashMap<String, i64> = self
+            .rows()
+            .filter(|r| r.area_id != 0)
+            .map(|r| (r.operation.clone(), r.area_id))
+            .collect();
+        if known.is_empty() {
+            return;
+        }
+        for row in self.logs.values_mut().flat_map(|l| l.rows.iter_mut()).filter(|r| r.area_id == 0) {
+            if let Some(id) = known.get(&row.operation) {
+                row.area_id = *id;
+            }
+        }
     }
 
     /// Health line for the Library header. `live` is the log being tailed,
@@ -114,58 +142,142 @@ impl PullIndex {
     }
 
     /// Filter option lists (unfiltered) plus per-boss pull/kill counts under `filter`.
-    pub fn overview(&self, filter: &PullFilter) -> PullHistoryOverview {
+    pub fn overview(&self, filter: &PullFilter, catalog: &AreaCatalog, meta: &LibraryMeta) -> PullHistoryOverview {
         let characters = distinct(self.rows().map(|r| r.character.as_str()));
         let disciplines = distinct(self.rows().filter_map(|r| r.discipline.as_deref()));
+        let servers = distinct(self.rows().map(|r| r.server.as_str()).filter(|s| !s.is_empty()));
+        let mut versions = distinct(self.rows().map(|r| r.game_version.as_str()).filter(|s| !s.is_empty()));
+        versions.reverse();
 
-        let mut counts: HashMap<(&str, &str), (u32, u32)> = HashMap::new();
-        for r in self.rows().filter(|r| matches(r, filter)) {
-            let e = counts.entry((&r.operation, &r.boss)).or_default();
-            e.0 += 1;
-            e.1 += u32::from(r.success);
+        // (pulls, kills, area_id): the id is for definition order below
+        let mut counts: HashMap<(&str, &str), (u32, u32, i64)> = HashMap::new();
+        for log in self.logs.values() {
+            // Run tags are only resolved when the filter asks for one
+            let ranges = (!filter.tag.is_empty()).then(|| log.tag_ranges(catalog, meta));
+            for r in log.rows.iter().filter(|r| matches(r, filter)) {
+                if let Some(ranges) = &ranges
+                    && !tags_at(ranges, r.start_ms).contains(&filter.tag)
+                {
+                    continue;
+                }
+                let e = counts.entry((&r.operation, &r.boss)).or_default();
+                e.0 += 1;
+                e.1 += u32::from(r.success);
+                e.2 = e.2.max(r.area_id);
+            }
         }
-        let mut bosses: Vec<BossNode> = counts
+        // Operation order from the definition; bosses it does not know go last, by name
+        let order = |area_id: i64, boss: &str| {
+            catalog
+                .area(area_id)
+                .and_then(|a| a.bosses.iter().position(|b| b.name == boss))
+                .unwrap_or(usize::MAX)
+        };
+        let mut keyed: Vec<(usize, BossNode)> = counts
             .into_iter()
-            .map(|((operation, boss), (pulls, kills))| BossNode {
-                operation: operation.to_string(),
-                boss: boss.to_string(),
-                pulls,
-                kills,
+            .map(|((operation, boss), (pulls, kills, area_id))| {
+                (
+                    order(area_id, boss),
+                    BossNode {
+                        operation: operation.to_string(),
+                        boss: boss.to_string(),
+                        pulls,
+                        kills,
+                    },
+                )
             })
             .collect();
-        bosses.sort_by(|a, b| {
-            (a.operation == DUMMY_GROUP, &a.operation, &a.boss).cmp(&(
+        keyed.sort_by(|(oa, a), (ob, b)| {
+            (a.operation == DUMMY_GROUP, &a.operation, oa, &a.boss).cmp(&(
                 b.operation == DUMMY_GROUP,
                 &b.operation,
+                ob,
                 &b.boss,
             ))
         });
+        let bosses: Vec<BossNode> = keyed.into_iter().map(|(_, n)| n).collect();
         PullHistoryOverview {
             characters,
             disciplines,
             bosses,
+            tags: meta.run_tags(),
+            servers,
+            versions,
         }
     }
 
     /// Every pull of one boss under `filter`, newest first, with `path` set
     /// when the log exists.
-    pub fn pulls(&self, operation: &str, boss: &str, filter: &PullFilter) -> Vec<PullRow> {
+    pub fn pulls(
+        &self,
+        operation: &str,
+        boss: &str,
+        filter: &PullFilter,
+        catalog: &AreaCatalog,
+        meta: &LibraryMeta,
+    ) -> Vec<PullRow> {
         let mut out = Vec::new();
         for log in self.logs.values() {
             let mut exists = None;
+            let mut ranges = None;
             for r in log
                 .rows
                 .iter()
                 .filter(|r| r.operation == operation && r.boss == boss && matches(r, filter))
             {
+                let ranges = ranges.get_or_insert_with(|| log.tag_ranges(catalog, meta));
+                let tags = tags_at(ranges, r.start_ms);
+                if !filter.tag.is_empty() && !tags.contains(&filter.tag) {
+                    continue;
+                }
                 let exists = *exists.get_or_insert_with(|| log.log_path.is_file());
                 let mut row = r.clone();
                 row.path = exists.then(|| log.log_path.to_string_lossy().into_owned());
+                row.tags = tags.to_vec();
                 out.push(row);
             }
         }
         out.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
         out
+    }
+
+    /// Operation runs under `filter`, newest first, with the user's tags and
+    /// note attached by `meta`.
+    pub fn runs(&self, catalog: &AreaCatalog, filter: &PullFilter, meta: &LibraryMeta) -> Vec<RunSummary> {
+        let mut out: Vec<RunSummary> = self
+            .logs
+            .values()
+            .flat_map(|log| log.runs(catalog, meta))
+            .filter(|r| run_matches(r, filter))
+            .collect();
+        out.sort_by(|a, b| b.started.cmp(&a.started));
+        out
+    }
+
+    /// One run by its key, with its rows in order (for the detail view).
+    pub fn run(
+        &self,
+        log_filename: &str,
+        start_ms: i64,
+        catalog: &AreaCatalog,
+        meta: &LibraryMeta,
+    ) -> Option<(RunSummary, Vec<PullRow>)> {
+        let log = self.logs.get(history_file_name(log_filename).as_str())?;
+        let run = log.runs(catalog, meta).into_iter().find(|r| r.start_ms == start_ms)?;
+        let end = run.start_ms + run.span_secs * 1000;
+        let mut rows: Vec<PullRow> = log
+            .rows
+            .iter()
+            .filter(|r| r.is_operation && r.start_ms >= run.start_ms && r.start_ms <= end)
+            .filter(|r| r.area_id == run.area_id && r.difficulty == run.difficulty)
+            .cloned()
+            .collect();
+        rows.sort_by_key(|r| r.start_ms);
+        for r in &mut rows {
+            r.path = run.path.clone();
+            r.tags = run.tags.clone();
+        }
+        Some((run, rows))
     }
 
     /// Rows of one log, for library joins (pull/kill counts, dummy-only).
@@ -183,6 +295,34 @@ impl PullIndex {
     fn rows(&self) -> impl Iterator<Item = &PullRow> {
         self.logs.values().flat_map(|l| l.rows.iter())
     }
+}
+
+impl IndexedLog {
+    /// Runs with the user's tags and note attached
+    fn runs(&self, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<RunSummary> {
+        let path = self.log_path.is_file().then(|| self.log_path.to_string_lossy().into_owned());
+        let mut runs = runs_of_log(&self.rows, &self.timer_starts, path.as_deref(), catalog);
+        for r in &mut runs {
+            apply_meta(r, meta.run(&r.filename, r.start_ms).cloned());
+        }
+        runs
+    }
+
+    /// `(start_ms, end_ms, tags)` per run, for tagging pulls
+    fn tag_ranges(&self, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<(i64, i64, Vec<String>)> {
+        self.runs(catalog, meta)
+            .into_iter()
+            .filter(|r| !r.tags.is_empty())
+            .map(|r| (r.start_ms, r.start_ms + r.span_secs * 1000, r.tags))
+            .collect()
+    }
+}
+
+fn tags_at(ranges: &[(i64, i64, Vec<String>)], start_ms: i64) -> &[String] {
+    ranges
+        .iter()
+        .find(|(s, e, _)| start_ms >= *s && start_ms <= *e)
+        .map_or(&[], |(_, _, t)| t.as_slice())
 }
 
 /// Old store version, or the log on disk no longer matches the header. A
@@ -210,6 +350,8 @@ fn matches(r: &PullRow, f: &PullFilter) -> bool {
         && (f.group_size.is_empty() || r.difficulty.split(' ').next() == Some(f.group_size.as_str()))
         && (!f.operations_only || r.is_operation)
         && (!f.kills_only || r.success)
+        && (f.server.is_empty() || r.server == f.server)
+        && (f.game_version.is_empty() || r.game_version == f.game_version)
         && in_date_range(&r.timestamp, f)
 }
 
@@ -260,6 +402,10 @@ fn row_from(log: &LogHistory, p: &PullRecord) -> PullRow {
             p.start_time.clone()
         },
         operation,
+        area_id: p.area_id,
+        server: server_name(&p.server).to_string(),
+        game_version: game_version_at(p.start_time.get(..10).unwrap_or("")).to_string(),
+        tags: Vec::new(),
         boss,
         difficulty: p.difficulty.clone().unwrap_or_else(|| "-".into()),
         success: p.success,
@@ -279,6 +425,7 @@ fn row_from(log: &LogHistory, p: &PullRecord) -> PullRow {
             .map(|pr| pr.bosses[0].lowest_pct),
         phase: progress.and_then(|pr| pr.phase_reached.as_ref().map(|ph| ph.name.clone())),
         deaths: p.deaths.len() as u16,
+        my_deaths: p.deaths.iter().filter(|d| d.name == character).count() as u16,
         raid_size: p.raid_size,
         partial: p.partial,
         character,
@@ -303,11 +450,14 @@ mod tests {
         let warm = t.elapsed();
         let t = std::time::Instant::now();
         let filter = PullFilter::default();
-        let overview = index.overview(&filter);
+        let (catalog, meta) = (AreaCatalog::default(), LibraryMeta::default());
+        let overview = index.overview(&filter, &catalog, &meta);
         let pulls = index.pulls(
             &overview.bosses[0].operation,
             &overview.bosses[0].boss,
             &filter,
+            &catalog,
+            &meta,
         );
         let query = t.elapsed();
         println!(

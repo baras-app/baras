@@ -143,6 +143,8 @@ pub struct SharedState {
     pub pull_index: Mutex<PullIndex>,
     /// User-owned log/pull metadata (favorites, tags, notes, Parsely links)
     pub library_meta: Mutex<LibraryMeta>,
+    /// Boss order, final bosses and timed-run rules per area, built on first use
+    pub area_catalog: std::sync::OnceLock<Arc<baras_core::history::AreaCatalog>>,
     /// A history backfill subprocess is running
     pub history_backfill_running: AtomicBool,
     /// Set to stop a running backfill; cleared when it starts
@@ -221,6 +223,7 @@ impl SharedState {
             raid_registry: Mutex::new(RaidSlotRegistry::new(raid_slots)),
             pull_index: Mutex::new(PullIndex::default()),
             library_meta: Mutex::new(LibraryMeta::load()),
+            area_catalog: std::sync::OnceLock::new(),
             history_backfill_running: AtomicBool::new(false),
             history_backfill_cancel: AtomicBool::new(false),
             pending_opens: Mutex::new(HashSet::new()),

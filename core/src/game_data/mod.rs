@@ -8,6 +8,7 @@ mod flashpoint_bosses;
 mod flashpoints;
 mod interrupt_abilities;
 mod lair_bosses;
+mod patches;
 mod mirror_abilities;
 mod pvp_instance;
 mod raid_bosses;
@@ -41,3 +42,5 @@ pub use shield_absorbs::{SHIELD_INFO, ShieldInfo, get_shield_info, is_known_shie
 pub use attack_types::ATTACK_TYPES;
 pub use off_gcd_abilities::OFF_GCD_ABILITIES;
 pub use shield_effects::SHIELD_EFFECT_IDS;
+
+pub use patches::{game_version_at, server_name};

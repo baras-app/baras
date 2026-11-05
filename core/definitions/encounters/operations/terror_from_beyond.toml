@@ -7,6 +7,7 @@
 [area]
 name = "Terror From Beyond"
 id = 137438992720
+timed_run_minutes = 120
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 1: The Writhing Horror
@@ -1625,6 +1626,7 @@ selector = ["Tunneling Tentacle"]
 id = "dreadful"
 name = "Dreadful Entity"
 difficulties = ["master"]
+is_optional_boss = true
 
 [[boss.entities]]
 name = "Dreadful Entity"

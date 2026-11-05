@@ -1,6 +1,7 @@
 [area]
 name = "R-4 Anomaly"
 id = 833571547775799
+timed_run_minutes = 40
 
 # "Anomalously Skilled" timer starts at the start line past the elevator (VM only).
 [area.timer_start]

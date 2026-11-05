@@ -8,10 +8,38 @@ use wasm_bindgen::prelude::*;
 use baras_types::history::PullFilter;
 
 use crate::api;
+use crate::components::class_icons::get_role_icon;
 
-const ROLES: [(&str, &str); 3] = [("Tank", "Tank"), ("Healer", "Healer"), ("Dps", "DPS")];
-const TIERS: [&str; 3] = ["Master", "Veteran", "Story"];
-const SIZES: [&str; 2] = ["8", "16"];
+/// Roles: filter value, label, role icon file (see `class_icons::get_role_icon`)
+const ROLES: [(&str, &str, &str); 3] = [("Tank", "Tank", "icon_tank.png"), ("Healer", "Healer", "icon_heal.png"), ("Dps", "DPS", "icon_dps.png")];
+/// Difficulty tiers: value, icon, CSS class (colours shared with the Library chips)
+const TIERS: [(&str, &str, &str); 3] = [
+    ("Story", "fa-solid fa-book-open", "tier-story"),
+    ("Veteran", "fa-solid fa-shield-halved", "tier-veteran"),
+    ("Master", "fa-solid fa-skull", "tier-master"),
+];
+/// Group sizes: value, icon
+const SIZES: [(&str, &str); 2] = [("8", "fa-solid fa-user-group"), ("16", "fa-solid fa-people-group")];
+
+/// The difficulty subset in view, as coloured chips (for section headers)
+#[component]
+pub fn SubsetChips(filter: Signal<PullFilter>) -> Element {
+    let f = filter.read();
+    let tier = TIERS.iter().find(|(t, _, _)| *t == f.tier);
+    let size = SIZES.iter().find(|(s, _)| *s == f.group_size);
+    rsx! {
+        span { class: "history-subset",
+            match tier {
+                Some((t, icon, class)) => rsx! { span { class: "subset-chip {class}", i { class: "{icon}" } " {t}" } },
+                None => rsx! { span { class: "subset-chip any", "Any difficulty" } },
+            }
+            match size {
+                Some((s, icon)) => rsx! { span { class: "subset-chip size", i { class: "{icon}" } " {s}-man" } },
+                None => rsx! { span { class: "subset-chip any", "Any size" } },
+            }
+        }
+    }
+}
 /// Quick date-range presets: label and days back (None = start of this year)
 const DATE_PRESETS: [(&str, Option<i32>); 4] = [("7d", Some(7)), ("30d", Some(30)), ("90d", Some(90)), ("Year", None)];
 
@@ -32,10 +60,12 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>) -> Element {
         api::get_pull_history_overview(&PullFilter::default()).await.unwrap_or_default()
     });
     let options = options.read();
-    let (characters, disciplines): (&[String], &[String]) = options
-        .as_ref()
-        .map(|o| (o.characters.as_slice(), o.disciplines.as_slice()))
-        .unwrap_or((&[], &[]));
+    let o = options.as_ref();
+    let characters: &[String] = o.map_or(&[], |o| o.characters.as_slice());
+    let disciplines: &[String] = o.map_or(&[], |o| o.disciplines.as_slice());
+    let tags: &[String] = o.map_or(&[], |o| o.tags.as_slice());
+    let servers: &[String] = o.map_or(&[], |o| o.servers.as_slice());
+    let versions: &[String] = o.map_or(&[], |o| o.versions.as_slice());
 
     let mut set = move |update: fn(&mut PullFilter, String), value: String| update(&mut filter.write(), value);
     let f = filter.read().clone();
@@ -50,28 +80,53 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>) -> Element {
                     option { value: "{c}", "{c}" }
                 }
             }
-            select {
-                value: "{f.tier}",
-                onchange: move |e| set(|f, v| f.tier = v, e.value()),
-                for t in TIERS {
-                    option { value: "{t}", "{t}" }
+            // Difficulty and size as segmented, coloured toggles: the subset in
+            // view should be readable at a glance, not buried in a select
+            div { class: "history-seg", title: "Difficulty",
+                button {
+                    class: if f.tier.is_empty() { "seg active any" } else { "seg" },
+                    onclick: move |_| filter.write().tier.clear(),
+                    "Any"
                 }
-                option { value: "", "Any difficulty" }
-            }
-            select {
-                value: "{f.group_size}",
-                onchange: move |e| set(|f, v| f.group_size = v, e.value()),
-                for s in SIZES {
-                    option { value: "{s}", "{s}-man" }
+                for (t, icon, class) in TIERS {
+                    button {
+                        class: if f.tier == t { "seg active {class}" } else { "seg {class}" },
+                        onclick: move |_| filter.write().tier = t.to_string(),
+                        i { class: "{icon}" }
+                        " {t}"
+                    }
                 }
-                option { value: "", "Any size" }
             }
-            select {
-                value: "{f.role}",
-                onchange: move |e| set(|f, v| f.role = v, e.value()),
-                option { value: "", "Any role" }
-                for (value, label) in ROLES {
-                    option { value: "{value}", "{label}" }
+            div { class: "history-seg", title: "Group size",
+                button {
+                    class: if f.group_size.is_empty() { "seg active any" } else { "seg" },
+                    onclick: move |_| filter.write().group_size.clear(),
+                    "Any"
+                }
+                for (s, icon) in SIZES {
+                    button {
+                        class: if f.group_size == s { "seg active size" } else { "seg size" },
+                        onclick: move |_| filter.write().group_size = s.to_string(),
+                        i { class: "{icon}" }
+                        " {s}"
+                    }
+                }
+            }
+            div { class: "history-seg", title: "Your role on the pull",
+                button {
+                    class: if f.role.is_empty() { "seg active any" } else { "seg" },
+                    onclick: move |_| filter.write().role.clear(),
+                    "Any"
+                }
+                for (value, label, icon) in ROLES {
+                    button {
+                        class: if f.role == value { "seg active role" } else { "seg role" },
+                        onclick: move |_| filter.write().role = value.to_string(),
+                        if let Some(src) = get_role_icon(icon) {
+                            img { class: "role-icon", src: *src, alt: "" }
+                        }
+                        " {label}"
+                    }
                 }
             }
             select {
@@ -80,6 +135,40 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>) -> Element {
                 option { value: "", "Any discipline" }
                 for d in disciplines.iter() {
                     option { value: "{d}", "{d}" }
+                }
+            }
+            if servers.len() > 1 || !f.server.is_empty() {
+                select {
+                    title: "Server the log was recorded on",
+                    value: "{f.server}",
+                    onchange: move |e| set(|f, v| f.server = v, e.value()),
+                    option { value: "", "Any server" }
+                    for s in servers.iter() {
+                        option { value: "{s}", "{s}" }
+                    }
+                }
+            }
+            if versions.len() > 1 || !f.game_version.is_empty() {
+                select {
+                    title: "Game patch live at the time of the pull",
+                    value: "{f.game_version}",
+                    onchange: move |e| set(|f, v| f.game_version = v, e.value()),
+                    option { value: "", "Any patch" }
+                    for v in versions.iter() {
+                        option { value: "{v}", "Patch {v}" }
+                    }
+                }
+            }
+            if !tags.is_empty() || !f.tag.is_empty() {
+                select {
+                    class: if f.tag.is_empty() { "" } else { "history-tag-active" },
+                    title: "Only pulls and runs with this tag",
+                    value: "{f.tag}",
+                    onchange: move |e| set(|f, v| f.tag = v, e.value()),
+                    option { value: "", "Any tag" }
+                    for t in tags.iter() {
+                        option { value: "{t}", "{t}" }
+                    }
                 }
             }
             label { class: "history-toggle",

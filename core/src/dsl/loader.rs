@@ -413,6 +413,9 @@ pub fn merge_boss_definition(base: &mut BossEncounterDefinition, custom: BossEnc
     if custom.is_final_boss {
         base.is_final_boss = true;
     }
+    if custom.is_optional_boss {
+        base.is_optional_boss = true;
+    }
 }
 
 /// Generic merge helper: replace matching IDs, append new ones

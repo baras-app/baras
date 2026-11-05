@@ -4,6 +4,7 @@
 [area]
 name = "Explosive Conflict"
 area_id = 833571547775688
+timed_run_minutes = 120
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Zorn & Toth

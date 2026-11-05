@@ -6,9 +6,11 @@
 //! over every file; `meta` is the separate user-owned store (favorites, tags,
 //! notes, Parsely links) that a re-parse never rewrites.
 
+mod catalog;
 mod index;
 mod meta;
 mod record;
+mod runs;
 mod store;
 
 use std::path::PathBuf;
@@ -16,7 +18,9 @@ use std::path::PathBuf;
 use crate::encounter::PhaseType;
 use crate::encounter::summary::EncounterSummary;
 
+pub use catalog::AreaCatalog;
 pub use index::{PullIndex, RefreshReport};
+pub use runs::{difficulty_parts, run_detail};
 pub use meta::{LibraryMeta, meta_path, now_iso, pull_key};
 pub use record::{ChallengeLine, PullRecord, RosterLine, start_ms_of};
 pub use store::{

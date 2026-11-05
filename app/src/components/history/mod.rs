@@ -7,7 +7,9 @@
 mod charts;
 mod library;
 mod library_delete;
+mod operations;
 mod overview;
+mod run_detail;
 mod toolbar;
 
 use dioxus::prelude::*;
@@ -21,6 +23,7 @@ use crate::components::{ToastSeverity, use_toast};
 use crate::types::UiSessionState;
 
 use library::LibraryTab;
+use operations::OperationsTab;
 use overview::OverviewTab;
 use toolbar::HistoryToolbar;
 
@@ -131,20 +134,32 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                         "Overview"
                     }
                     button {
+                        class: if tab == HistorySubTab::Operations { "data-tab active" } else { "data-tab" },
+                        onclick: move |_| sub_tab.set(HistorySubTab::Operations),
+                        "Operations"
+                    }
+                    button {
                         class: if tab == HistorySubTab::Library { "data-tab active" } else { "data-tab" },
                         onclick: move |_| sub_tab.set(HistorySubTab::Library),
                         "Library"
                     }
-                    button { class: "data-tab", disabled: true, title: "Coming later", "Nights" }
                     button { class: "data-tab", disabled: true, title: "Coming later", "Stats" }
                 }
-                if tab == HistorySubTab::Overview {
+                if tab != HistorySubTab::Library {
                     HistoryToolbar { filter }
                 }
             }
             match tab {
                 HistorySubTab::Overview => rsx! {
                     OverviewTab {
+                        european: props.european,
+                        state: props.state,
+                        filter,
+                        backfill,
+                    }
+                },
+                HistorySubTab::Operations => rsx! {
+                    OperationsTab {
                         european: props.european,
                         state: props.state,
                         filter,

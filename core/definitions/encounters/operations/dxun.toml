@@ -6,6 +6,7 @@
 [area]
 name = "Dxun"
 id = 833571547775792
+timed_run_minutes = 90
 
 # "Arrow" timer starts past the banner in the entrance corridor (MM only).
 # The start line is diagonal: inside the corridor box, crossed means x - y > -485.
