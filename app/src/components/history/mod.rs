@@ -7,7 +7,8 @@
 
 mod charts;
 mod library;
-mod library_delete;
+mod library_cleanup;
+mod library_meta;
 mod operations;
 mod overview;
 mod run_detail;
@@ -162,7 +163,7 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                     }
                 },
                 HistorySubTab::Library => rsx! {
-                    LibraryTab { state: props.state, backfill }
+                    LibraryTab { state: props.state, backfill, status }
                 },
             }
         }

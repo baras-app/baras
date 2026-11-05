@@ -6,8 +6,8 @@
 //! the one place that knows all of them, so deleting a log leaves nothing
 //! dangling and nothing precious (favorites, the live log) is ever touched.
 //!
-//! Removal is two-step: `preview` is a pure dry run over the indexes, then
-//! `delete` or `archive` acts on the exact paths the user confirmed.
+//! Removal is two-step: `plan` is a pure dry run of the cleanup rules over
+//! the indexes, then `execute` acts on exactly what the plan listed.
 
 mod archive;
 
@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use chrono::NaiveDate;
 
 use baras_types::history::{
-    ContentTag, DeleteCandidate, DeleteCriteria, DeletePreview, DeleteReport, PullRow,
+    CleanupCandidate, CleanupPlan, CleanupReport, ContentTag, DeleteReport, LogCleanup, PullRow,
 };
 
 pub use archive::{ArchivedLog, archive, archive_dir, archived_logs, restore};
@@ -60,7 +60,7 @@ fn area_tag(area: &FileAreaEntry) -> ContentTag {
 
 /// True when the log must be kept under `retain`. A non-empty log that has
 /// not been area-indexed yet is unknown, so it is kept until it has been.
-pub fn is_retained(tags: &[ContentTag], indexed: bool, size: u64, retain: &[ContentTag]) -> bool {
+fn is_retained(tags: &[ContentTag], indexed: bool, size: u64, retain: &[ContentTag]) -> bool {
     if retain.is_empty() {
         return false;
     }
@@ -70,26 +70,7 @@ pub fn is_retained(tags: &[ContentTag], indexed: bool, size: u64, retain: &[Cont
     tags.iter().any(|t| retain.contains(t))
 }
 
-/// Every log the automatic cleanup must leave alone: the live log, favorites,
-/// and logs holding retained content (or not yet classified).
-pub fn protected_paths(view: &LibraryView<'_>) -> std::collections::HashSet<PathBuf> {
-    let retain = &view.meta.retain;
-    view.directory
-        .entries()
-        .into_iter()
-        .filter(|e| {
-            if view.live.is_some_and(|l| l == e.path) || view.meta.is_favorite(&e.filename) {
-                return true;
-            }
-            let area_index = view.areas.get(&e.path);
-            let tags = content_tags(area_index, view.pulls.rows_for(&e.filename));
-            is_retained(&tags, area_index.is_some(), e.file_size, retain)
-        })
-        .map(|e| e.path.clone())
-        .collect()
-}
-
-/// Read-only view of every index a preview joins.
+/// Read-only view of every index a plan joins.
 pub struct LibraryView<'a> {
     pub directory: &'a DirectoryIndex,
     pub areas: &'a LogAreaCache,
@@ -99,29 +80,36 @@ pub struct LibraryView<'a> {
     pub live: Option<&'a Path>,
 }
 
-/// Dry run: which logs `criteria` would remove. A log is a candidate when it
-/// holds no kept content and passes every enabled narrowing filter.
-pub fn preview(
-    view: &LibraryView<'_>,
-    criteria: &DeleteCriteria,
-    today: NaiveDate,
-) -> DeletePreview {
-    let mut out = DeletePreview::default();
+enum Action {
+    Archive,
+    Delete,
+}
+
+/// Which rule, if any, a log of this age and size falls under. Deletion wins
+/// over archival; the size rule leaves today's logs alone since the game may
+/// still come back to one.
+fn rule_for(rules: &LogCleanup, age_days: i64, size: u64) -> Option<Action> {
+    if rules.delete_after_days.is_some_and(|d| age_days > i64::from(d)) {
+        return Some(Action::Delete);
+    }
+    if rules.delete_smaller_than > 0 && size < rules.delete_smaller_than && age_days >= 1 {
+        return Some(Action::Delete);
+    }
+    if rules.archive_after_days.is_some_and(|d| age_days > i64::from(d)) {
+        return Some(Action::Archive);
+    }
+    None
+}
+
+/// Dry run: what `rules` would archive and delete today. The live log,
+/// favorites and retained content are counted, not listed.
+pub fn plan(view: &LibraryView<'_>, rules: &LogCleanup, today: NaiveDate) -> CleanupPlan {
+    let mut out = CleanupPlan::default();
     for entry in view.directory.entries() {
-        let area_index = view.areas.get(&entry.path);
-        let content = content_tags(area_index, view.pulls.rows_for(&entry.filename));
-        if is_retained(&content, area_index.is_some(), entry.file_size, &criteria.keep) {
-            out.kept += 1;
+        let age = today.signed_duration_since(entry.date).num_days();
+        let Some(action) = rule_for(rules, age, entry.file_size) else {
             continue;
-        }
-        if criteria.smaller_than.is_some_and(|n| entry.file_size >= n) {
-            continue;
-        }
-        if let Some(days) = criteria.older_than_days
-            && today.signed_duration_since(entry.date).num_days() <= i64::from(days)
-        {
-            continue;
-        }
+        };
         if view.live.is_some_and(|l| l == entry.path) {
             out.skipped_live += 1;
             continue;
@@ -130,17 +118,50 @@ pub fn preview(
             out.skipped_favorites += 1;
             continue;
         }
-        out.total_bytes += entry.file_size;
-        out.files.push(DeleteCandidate {
+        let area_index = view.areas.get(&entry.path);
+        let content = content_tags(area_index, view.pulls.rows_for(&entry.filename));
+        if is_retained(&content, area_index.is_some(), entry.file_size, &view.meta.retain) {
+            out.kept += 1;
+            continue;
+        }
+        let candidate = CleanupCandidate {
             path: entry.path.to_string_lossy().into_owned(),
             filename: entry.filename.clone(),
             date: entry.date.to_string(),
             size: entry.file_size,
             content,
-        });
+        };
+        match action {
+            Action::Archive => {
+                out.archive_bytes += entry.file_size;
+                out.archive.push(candidate);
+            }
+            Action::Delete => {
+                out.delete_bytes += entry.file_size;
+                out.delete.push(candidate);
+            }
+        }
     }
-    out.files.sort_by(|a, b| b.size.cmp(&a.size));
+    out.archive.sort_by(|a, b| b.size.cmp(&a.size));
+    out.delete.sort_by(|a, b| b.size.cmp(&a.size));
     out
+}
+
+/// Carry out a plan: archive first, then delete. History rows always stay,
+/// so pulls from removed logs remain in the statistics as "log missing".
+pub fn execute(lib: &mut LibraryMut<'_>, plan: &CleanupPlan) -> CleanupReport {
+    let paths = |c: &[CleanupCandidate]| c.iter().map(|f| PathBuf::from(&f.path)).collect::<Vec<_>>();
+    let archived = archive(lib, &paths(&plan.archive));
+    let deleted = delete(lib, &paths(&plan.delete), true);
+    let mut failed = archived.failed;
+    failed.extend(deleted.failed);
+    CleanupReport {
+        archived: archived.archived,
+        deleted: deleted.deleted,
+        bytes_freed: deleted.bytes_freed + archived.bytes_before.saturating_sub(archived.bytes_after),
+        bytes_archived: archived.bytes_after,
+        failed,
+    }
 }
 
 /// Everything that must be touched to delete logs. Mutable so the indexes

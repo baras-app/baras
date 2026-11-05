@@ -13,8 +13,8 @@ use baras_core::context::{AppConfig, AppConfigExt, resolve};
 use baras_core::encounter::EncounterState;
 use baras_core::game_data::Discipline;
 use baras_types::history::{
-    ArchiveReport, ContentTag, DeleteCriteria, DeletePreview, DeleteReport, HistoryStatus, LibraryRow, LogStatus,
-    ParselyUpload, PullFilter, PullHistoryOverview, PullRow, RunDetail, RunList, RunMeta,
+    CleanupPlan, CleanupReport, ContentTag, HistoryStatus, LibraryRow, LogStatus, ParselyUpload, PullFilter,
+    PullHistoryOverview, PullRow, RunDetail, RunList, RunMeta,
 };
 use baras_core::query::{
     AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
@@ -24,7 +24,7 @@ use baras_core::query::{
 };
 use tauri::{AppHandle, Emitter, Manager};
 
-use super::{AreaVisitInfo, CombatData, LogFileInfo, ServiceCommand, SessionInfo};
+use super::{AreaVisitInfo, CombatData, LogFileInfo, ServiceCommand, SessionInfo, cleanup};
 use crate::state::SharedState;
 
 /// Handle to communicate with the combat service and query state
@@ -147,38 +147,15 @@ impl ServiceHandle {
         index.len()
     }
 
-    /// Clean up log files based on provided settings. Returns (empty_deleted, small_deleted, old_deleted).
-    pub async fn cleanup_logs(
-        &self,
-        delete_empty: bool,
-        delete_small: bool,
-        retention_days: Option<u32>,
-    ) -> (u32, u32, u32) {
-        let protected = self.protected_paths().await;
-        let mut index = self.shared.directory_index.write().await;
-        index.cleanup(delete_empty, delete_small, retention_days, &|p| protected.contains(p))
+    /// Dry run of the saved cleanup rules. Nothing is touched.
+    pub async fn preview_log_cleanup(&self) -> CleanupPlan {
+        let live = cleanup::live_path(&self.shared).await;
+        cleanup::plan(&self.shared, live.as_deref()).await
     }
 
-    /// Live log, favorites and retained content, as the cleanup must skip them.
-    pub async fn protected_paths(&self) -> std::collections::HashSet<PathBuf> {
-        let live = self.active_file_path().await;
-        let log_dir = PathBuf::from(self.config().await.log_directory);
-        let shared = self.shared.clone();
-        let directory = self.shared.directory_index.read().await;
-        let areas = self.shared.area_cache.read().await;
-        tokio::task::block_in_place(|| {
-            let mut pulls = shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
-            let _ = pulls.refresh(&log_dir);
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-            let view = baras_core::library::LibraryView {
-                directory: &directory,
-                areas: &areas,
-                pulls: &pulls,
-                meta: &meta,
-                live: live.as_deref(),
-            };
-            baras_core::library::protected_paths(&view)
-        })
+    /// Archive and delete whatever the saved rules select right now.
+    pub async fn run_log_cleanup(&self) -> CleanupReport {
+        cleanup::run(&self.shared, &self.app_handle).await
     }
 
     pub async fn retained_content(&self) -> Vec<ContentTag> {
@@ -242,8 +219,9 @@ impl ServiceHandle {
                         dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
                         status,
                         favorite: log_meta.is_some_and(|m| m.favorite),
-                        tags: meta.run_tags_for_log(&e.filename),
-                        has_note: log_meta.is_some_and(|m| !m.note.is_empty()),
+                        tags: log_meta.map(|m| m.tags.clone()).unwrap_or_default(),
+                        run_tags: meta.run_tags_for_log(&e.filename),
+                        note: log_meta.map(|m| m.note.clone()).unwrap_or_default(),
                         parsely: log_meta.and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
                         parsely_fights: meta.pull_parsely_count(&e.filename),
                     }
@@ -272,8 +250,9 @@ impl ServiceHandle {
                     dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
                     status: LogStatus::Archived,
                     favorite: log_meta.is_some_and(|m| m.favorite),
-                    tags: meta.run_tags_for_log(&a.filename),
-                    has_note: log_meta.is_some_and(|m| !m.note.is_empty()),
+                    tags: log_meta.map(|m| m.tags.clone()).unwrap_or_default(),
+                    run_tags: meta.run_tags_for_log(&a.filename),
+                    note: log_meta.map(|m| m.note.clone()).unwrap_or_default(),
                     parsely: log_meta.and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
                     parsely_fights: meta.pull_parsely_count(&a.filename),
                     filename: a.filename,
@@ -293,77 +272,17 @@ impl ServiceHandle {
         true
     }
 
-    /// Dry run of a criteria delete over the directory, history and metadata
-    /// indexes. Nothing is touched.
-    pub async fn preview_log_delete(&self, criteria: DeleteCriteria) -> DeletePreview {
-        let live = self.active_file_path().await;
-        let log_dir = PathBuf::from(self.config().await.log_directory);
-        let shared = self.shared.clone();
-        let directory = self.shared.directory_index.read().await;
-        let areas = self.shared.area_cache.read().await;
-        tokio::task::block_in_place(|| {
-            let mut pulls = shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
-            if let Err(e) = pulls.refresh(&log_dir) {
-                tracing::warn!(error = %e, "Failed to refresh pull history index");
-            }
-            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-            let view = baras_core::library::LibraryView {
-                directory: &directory,
-                areas: &areas,
-                pulls: &pulls,
-                meta: &meta,
-                live: live.as_deref(),
-            };
-            baras_core::library::preview(&view, &criteria, chrono::Local::now().date_naive())
-        })
-    }
-
-    /// Delete the confirmed logs and every artifact they own, then persist the
-    /// directory and area caches. The live log and favorites are refused.
-    pub async fn delete_logs(&self, paths: Vec<PathBuf>, keep_history: bool) -> DeleteReport {
-        let live = self.active_file_path().await;
-        let mut directory = self.shared.directory_index.write().await;
-        let mut areas = self.shared.area_cache.write().await;
-        let report = {
-            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-            let mut lib = baras_core::library::LibraryMut {
-                directory: &mut directory,
-                areas: &mut areas,
-                meta: &mut meta,
-                live: live.as_deref(),
-            };
-            let report = baras_core::library::delete(&mut lib, &paths, keep_history);
-            if let Err(e) = meta.save() {
+    /// The user's tags and note on one log.
+    pub fn set_log_meta(&self, filename: &str, tags: Vec<String>, note: &str) -> bool {
+        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        meta.set_log_meta(filename, tags, note);
+        match meta.save() {
+            Ok(()) => true,
+            Err(e) => {
                 tracing::warn!(error = %e, "Failed to save library.json");
+                false
             }
-            report
-        };
-        if report.deleted > 0 {
-            self.save_log_caches(&directory, &areas);
         }
-        report
-    }
-
-    /// Compress the confirmed logs into `~/.config/baras/archive` and remove
-    /// the originals; history and notes stay. The live log and favorites are refused.
-    pub async fn archive_logs(&self, paths: Vec<PathBuf>) -> ArchiveReport {
-        let live = self.active_file_path().await;
-        let mut directory = self.shared.directory_index.write().await;
-        let mut areas = self.shared.area_cache.write().await;
-        let report = {
-            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-            let mut lib = baras_core::library::LibraryMut {
-                directory: &mut directory,
-                areas: &mut areas,
-                meta: &mut meta,
-                live: live.as_deref(),
-            };
-            baras_core::library::archive(&mut lib, &paths)
-        };
-        if report.archived > 0 {
-            self.save_log_caches(&directory, &areas);
-        }
-        report
     }
 
     /// Decompress an archived log back into the log directory.
@@ -381,22 +300,8 @@ impl ServiceHandle {
             };
             baras_core::library::restore(&mut lib, &log_dir, &filename).map_err(|e| e.to_string())?
         };
-        self.save_log_caches(&directory, &areas);
+        cleanup::save_log_caches(&self.app_handle, &directory, &areas);
         Ok(restored)
-    }
-
-    /// Persist the directory and area caches after the log set changed, and
-    /// tell the frontend.
-    fn save_log_caches(&self, directory: &baras_core::context::DirectoryIndex, areas: &baras_core::context::LogAreaCache) {
-        if let Some(path) = baras_core::context::DirectoryIndex::default_cache_path() {
-            directory.save_cache(&path);
-        }
-        if let Some(path) = baras_core::context::default_cache_path()
-            && let Err(e) = areas.save_to_disk(&path)
-        {
-            tracing::warn!(error = %e, "Failed to save area cache");
-        }
-        let _ = self.app_handle.emit("log-files-changed", ());
     }
 
     /// Refresh file sizes in the directory index (fast stat-only, no re-parsing)

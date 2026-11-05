@@ -377,9 +377,6 @@
   max-width: 360px;
 }
 
-.library-spacer {
-  flex: 1;
-}
 
 .library-table td {
   white-space: nowrap;
@@ -489,11 +486,11 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Delete-by-criteria modal
+   Run-cleanup modal
    ───────────────────────────────────────────────────────────────────────── */
 
-.modal-content.library-delete {
-  width: 640px;
+.modal-content.library-cleanup {
+  width: 680px;
   max-width: 95vw;
 }
 
@@ -504,25 +501,15 @@
   padding: var(--space-md);
 }
 
-.library-criteria {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.4em var(--space-md);
+.library-action {
+  font-size: 0.8em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-.library-criteria label {
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-  font-size: 0.9em;
-}
-
-.library-criteria .library-keep {
-  grid-column: 1 / -1;
-  margin-top: 0.3em;
-  padding-top: 0.5em;
-  border-top: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
+.library-action.delete {
+  color: var(--color-error);
 }
 
 .library-num {
@@ -535,11 +522,6 @@
   font: inherit;
 }
 
-.library-criteria-hint {
-  margin: 0;
-  font-size: 0.8em;
-  color: var(--text-muted);
-}
 
 .library-preview {
   padding: 0.4em 0.7em;
@@ -589,23 +571,69 @@
   color: var(--text-muted);
 }
 
-.library-retain {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4em;
-  padding: 0.6em 0.7em;
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.03);
+.library-manage {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-sm);
 }
 
-.library-retain-head {
+@media (max-width: 1100px) {
+  .library-manage {
+    grid-template-columns: 1fr;
+  }
+}
+
+.library-manage .run-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5em;
+  margin-top: 0;
+  padding: 0.8em 1em 1em;
+  background: var(--bg-mid);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.library-manage .library-retain-tags {
+  justify-content: center;
+}
+
+.library-rule {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.4em;
+}
+
+.library-num:disabled {
+  opacity: 0.4;
+}
+
+.library-manage .history-pick {
+  margin: 0;
+}
+
+.library-manage .library-retain-title {
+  margin-top: 0.3em;
+}
+
+.library-actions-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin-top: auto;
+  padding-top: 0.4em;
+}
+
+.library-actions-center .btn {
+  padding: 0.5em 1.2em;
+  font-size: 0.95em;
 }
 
 .library-retain-title {
+  margin-top: 0.3em;
   font-size: 0.8em;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -640,81 +668,7 @@
   margin: 0;
 }
 
-/* Delete-or-archive: explanation cards and the delete confirm footer */
-.library-choice {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-sm);
-}
-
-.library-choice-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4em;
-  padding: 0.8em 0.9em;
-  border: 1px solid var(--border-medium);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
-  font: inherit;
-  font-size: 0.85em;
-  text-align: center;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-
-.library-choice-card strong {
-  font-size: 1.1em;
-  color: var(--text-primary);
-}
-
-.library-choice-card:hover:not(:disabled) {
-  border-color: var(--swtor-blue);
-  background: rgba(74, 158, 255, 0.1);
-}
-
-.library-choice-card.danger {
-  border-color: var(--color-error-border);
-}
-
-.library-choice-card.danger strong {
-  color: var(--color-error);
-}
-
-.library-choice-card.danger:hover:not(:disabled) {
-  border-color: var(--color-error);
-  background: var(--color-error-bg);
-}
-
-.library-choice-card:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.modal-footer.library-confirm {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.5em;
-  border-top: 2px solid rgba(220, 80, 80, 0.5);
-  background: rgba(220, 80, 80, 0.06);
-}
-
-.library-confirm-text {
-  font-weight: 600;
-  color: var(--color-error, #e06c6c);
-}
-
-.library-confirm .library-keep {
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-  font-size: 0.9em;
-  color: var(--text-secondary);
-}
-
-.library-confirm-actions {
+.modal-footer.library-confirm-actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-sm);
@@ -1004,11 +958,58 @@
   color: var(--swtor-blue-bright);
 }
 
-.library-tags {
+/* Inline tag and note editors in the Log Management table */
+.library-tag-cell {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.3em;
-  margin-top: 2px;
+  min-width: 10em;
+}
+
+.run-tag.small.muted {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+.library-tag-input {
+  width: 4.5em;
+  padding: 0 6px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.8em;
+}
+
+.library-tag-input:focus {
+  width: 9em;
+  border-style: solid;
+  outline: none;
+}
+
+.library-note {
+  width: 14em;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.85em;
+  text-overflow: ellipsis;
+}
+
+.library-note:hover,
+.library-note:focus {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+  outline: none;
+}
+
+.library-parsely-cell {
+  white-space: nowrap;
 }
 
 .pull-history-table .run-tag.small {

@@ -4,6 +4,7 @@
 //! - SharedState: Arc-wrapped state readable by Tauri commands (in crate::state)
 //! - ServiceHandle: For sending commands + accessing shared state
 //! - CombatService: Background task that processes commands and updates shared state
+mod cleanup;
 mod directory;
 mod handler;
 mod history;
@@ -1412,48 +1413,6 @@ impl CombatService {
 
     /// Run the service event loop
     pub async fn run(mut self) {
-        // Auto-cleanup log files on startup based on user settings
-        {
-            let config = self.shared.config.read().await;
-            let delete_empty = config.auto_delete_empty_files;
-            let delete_small = config.auto_delete_small_files;
-            let retention = if config.auto_delete_old_files {
-                Some(config.log_retention_days)
-            } else {
-                None
-            };
-            drop(config);
-
-            if delete_empty || delete_small || retention.is_some() {
-                // The area indexer runs in the background and may not have
-                // populated `shared.area_cache` yet; the on-disk copy is enough
-                // to classify logs for the retention list.
-                let areas = baras_core::context::default_cache_path()
-                    .map(|p| baras_core::context::LogAreaCache::load_from_disk(&p))
-                    .unwrap_or_default();
-                let log_dir = PathBuf::from(self.shared.config.read().await.log_directory.clone());
-                let protected = {
-                    let directory = self.shared.directory_index.read().await;
-                    let mut pulls = self.shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
-                    let _ = pulls.refresh(&log_dir);
-                    let meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-                    let view = baras_core::library::LibraryView {
-                        directory: &directory,
-                        areas: &areas,
-                        pulls: &pulls,
-                        meta: &meta,
-                        live: None,
-                    };
-                    baras_core::library::protected_paths(&view)
-                };
-                let mut index = self.shared.directory_index.write().await;
-                let (empty, small, old) = index.cleanup(delete_empty, delete_small, retention, &|p| protected.contains(p));
-                if empty > 0 || small > 0 || old > 0 {
-                    tracing::info!(empty_deleted = empty, small_deleted = small, old_deleted = old, "Startup log cleanup");
-                }
-            }
-        }
-
         self.start_watcher().await;
 
         // Scan new and out-of-date logs into the history store (worker subprocess, off the loop)
@@ -2037,6 +1996,8 @@ impl CombatService {
                     });
                     let _ = app_handle.emit("log-files-changed", ());
                     info!("Background index backfill complete");
+                    // The index is complete and the live log known: apply the cleanup rules
+                    rt.block_on(cleanup::run(&shared, &app_handle));
                 }
                 Err(e) => {
                     error!(error = %e, "Background index backfill failed");

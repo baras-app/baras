@@ -402,7 +402,7 @@ select optgroup {
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
 }
 
-.header-center > :last-child {
+.header-center > .header-center-files {
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
 
@@ -449,15 +449,37 @@ select optgroup {
   border-bottom: 1px solid rgba(80, 80, 90, 0.3);
 }
 
-/* The file browser button closes the pill */
-.header-center > .btn-header-overlay {
-  width: auto;
-  height: auto;
-  padding: 0.4em 0.7em;
+/* Session actions (resume live, unsaved profile) and the file browser
+   button are segments of the same pill; their contents keep their own size */
+.header-center-files {
+  display: flex;
+  align-items: center;
+  padding: 0.3em 0.6em;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(80, 80, 90, 0.3);
   border-left: none;
-  border-radius: 0;
+}
+
+/* Session actions follow the pill; hidden items still reserve their width */
+.header-center-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  margin-left: 0.8em;
+}
+
+.header-center-actions > .is-hidden {
+  visibility: hidden;
+}
+
+.header-center .btn-resume-live {
+  padding: 0.35em 0.7em;
+  font-size: 0.8em;
+}
+
+.header-center .header-unsaved-hint {
+  padding: 0.3em 0.6em;
+  font-size: 0.75em;
 }
 
 /* Dividers between the pill's sections */
@@ -4561,6 +4583,8 @@ a.contributor-name:hover {
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* Navigation + controls row below branding */
+
+
 .header-nav-row {
   display: flex;
   align-items: center;
@@ -4568,7 +4592,6 @@ a.contributor-name:hover {
   border-bottom: 1px solid var(--border-subtle);
   gap: 0.5em;
 }
-
 
 .header-tabs {
   display: flex;
@@ -4690,8 +4713,8 @@ a.contributor-name:hover {
   }
 }
 
-/* Nine labelled tabs on their own row need ~1450px; step the size down,
-   then drop the labels (every tab keeps a title tooltip and its icon) */
+/* Nine labelled tabs on one row need ~1450px: step the size down first,
+   then drop the labels (every tab keeps its icon and a title tooltip) */
 @media (max-width: 1550px) {
   .header-tabs .tab-btn {
     padding: 0.4em 0.75em;

@@ -3483,17 +3483,12 @@ pub const WEB_OVERLAY_URL: &str = "http://127.0.0.1:47684/overlay";
 pub struct AppConfig {
     #[serde(default)]
     pub log_directory: String,
+    /// Automatic log housekeeping (see Log Management)
     #[serde(default)]
-    pub auto_delete_empty_files: bool,
-    #[serde(default)]
-    pub auto_delete_small_files: bool,
-    #[serde(default)]
-    pub auto_delete_old_files: bool,
+    pub log_cleanup: history::LogCleanup,
     /// Scan new and out-of-date logs into the history store at startup
     #[serde(default = "default_true")]
     pub auto_scan_history: bool,
-    #[serde(default = "default_retention_days")]
-    pub log_retention_days: u32,
     #[serde(default = "default_true")]
     pub minimize_to_tray: bool,
     /// Serve the currently visible native overlays on a loopback-only web page.
@@ -3569,10 +3564,6 @@ fn default_ocr_debug_max_dumps() -> u32 {
     100
 }
 
-fn default_retention_days() -> u32 {
-    21
-}
-
 fn default_alacrity() -> f32 {
     7.5
 }
@@ -3587,11 +3578,8 @@ impl AppConfig {
     pub fn with_log_directory(log_directory: String) -> Self {
         Self {
             log_directory,
-            auto_delete_empty_files: false,
-            auto_delete_small_files: false,
-            auto_delete_old_files: false,
+            log_cleanup: history::LogCleanup::default(),
             auto_scan_history: true,
-            log_retention_days: 21,
             minimize_to_tray: false,
             web_overlay_enabled: false,
             overlay_settings: OverlaySettings::default(),
