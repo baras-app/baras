@@ -47,7 +47,8 @@ sudo apt-get install -y \
   librsvg2-dev \
   patchelf \
   libxdo-dev \
-  libasound2-dev
+  libasound2-dev \
+  libpipewire-0.3-dev
 ```
 
 ### Development
