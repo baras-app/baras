@@ -1470,6 +1470,20 @@ impl CombatEncounter {
         }
         None
     }
+
+    /// A battle rez only makes sense on a dead player. If the caster's tracked
+    /// target is not a dead player, the TargetSet was stale or lost (the game
+    /// drops state-change lines during brief log stalls, e.g. after a fall
+    /// death). When the local player is the only dead player, the rez is theirs.
+    pub fn battle_rez_implies_local(&self, caster_id: i64, local_id: i64) -> bool {
+        let target_is_dead_player = self
+            .get_current_target(caster_id)
+            .and_then(|tid| self.players.get(&tid))
+            .is_some_and(|p| p.is_dead);
+        !target_is_dead_player
+            && self.players.get(&local_id).is_some_and(|p| p.is_dead)
+            && self.players.values().filter(|p| p.is_dead).count() == 1
+    }
     // ═══════════════════════════════════════════════════════════════════════
     // Effect Instances
     // ═══════════════════════════════════════════════════════════════════════

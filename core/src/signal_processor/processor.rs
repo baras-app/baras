@@ -1335,19 +1335,17 @@ impl EventProcessor {
         if eid == effect_id::ABILITYACTIVATE
             && BATTLE_REZ_ABILITY_IDS.contains(&event.action.action_id)
         {
-            if let Some(enc) = cache.current_encounter() {
-                let targets_local = enc
-                    .get_current_target(event.source_entity.log_id)
-                    .is_some_and(|tid| tid == cache.player.id);
-                if targets_local {
-                    if let Some(enc) = cache.current_encounter_mut() {
-                        enc.battle_rez_pending = true;
-                        tracing::debug!(
-                            "[BATTLE_REZ] Pending battle rez on local player at {}",
-                            event.timestamp
-                        );
-                    }
-                }
+            let caster = event.source_entity.log_id;
+            let local = cache.player.id;
+            if let Some(enc) = cache.current_encounter_mut()
+                && (enc.get_current_target(caster) == Some(local)
+                    || enc.battle_rez_implies_local(caster, local))
+            {
+                enc.battle_rez_pending = true;
+                tracing::debug!(
+                    "[BATTLE_REZ] Pending battle rez on local player at {}",
+                    event.timestamp
+                );
             }
             return;
         }
