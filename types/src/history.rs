@@ -13,8 +13,8 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 pub use library::{
-    ArchiveReport, ContentTag, DeleteCandidate, DeleteCriteria, DeletePreview, DeleteReport,
-    HistoryStatus, LibraryContent, LibraryRow, LogStatus,
+    ArchiveReport, CleanupCandidate, CleanupPlan, CleanupReport, ContentTag, DeleteReport,
+    HistoryStatus, LOG_NOTE_MAX, LibraryContent, LibraryRow, LogCleanup, LogStatus,
 };
 pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};

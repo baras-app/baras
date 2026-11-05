@@ -1,16 +1,20 @@
-//! Library sub-tab: every log (including archived ones) with its history and
-//! metadata, store health, re-scan controls, favorites, criteria-based
-//! deletion or archival, and restore.
+//! Log Management: every log (including archived ones) with its history and
+//! metadata, the automatic cleanup and history store controls, favorites and
+//! restore.
 
 use dioxus::prelude::*;
 
-use baras_types::history::{BackfillEvent, ContentTag, LibraryContent, LibraryRow, LogStatus};
+use baras_types::history::{BackfillEvent, ContentTag, HistoryStatus, LibraryContent, LibraryRow, LogStatus};
+
+use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::*;
 
 use super::Backfill;
-use super::library_delete::DeleteModal;
-use crate::api;
+use super::library_cleanup::CleanupPanel;
+use super::library_meta::{LogNoteCell, LogTagsCell, TAG_OPTIONS};
 use super::scroll::{save_scroll, use_restore_scroll};
-use crate::components::{ToastSeverity, use_file_opener, use_toast};
+use crate::api;
+use crate::components::{ToastSeverity, use_file_opener, use_parsely_upload, use_toast};
 use crate::types::UiSessionState;
 
 const LIB_TABLE: &str = "hist-lib-table";
@@ -45,7 +49,8 @@ fn matches(row: &LibraryRow, content: LibraryContent, favorites_only: bool, sear
         || row.filename.to_lowercase().contains(search)
         || row.character.as_deref().is_some_and(|c| c.to_lowercase().contains(search))
         || row.areas.iter().any(|a| a.to_lowercase().contains(search))
-        || row.tags.iter().any(|t| t.to_lowercase().contains(search));
+        || row.tags.iter().chain(row.run_tags.iter()).any(|t| t.to_lowercase().contains(search))
+        || row.note.to_lowercase().contains(search);
     content_ok && (!favorites_only || row.favorite) && search_ok
 }
 
@@ -76,12 +81,30 @@ fn status_badge(status: LogStatus) -> (&'static str, &'static str, &'static str)
 }
 
 #[component]
-pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element {
+pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Resource<HistoryStatus>) -> Element {
     let mut toast = use_toast();
     let opener = use_file_opener();
+    let mut uploader = use_parsely_upload();
     let mut rows = use_resource(|| async move { api::get_library().await.unwrap_or_default() });
     use_effect(move || {
         if matches!(*backfill.event.read(), Some(BackfillEvent::Done { .. })) {
+            rows.restart();
+        }
+    });
+    // The upload modal announces a finished file upload on the window; the
+    // callback runs outside the Dioxus runtime, so it only bumps a signal.
+    let mut uploads = use_signal(|| 0u32);
+    use_future(move || async move {
+        let closure = Closure::<dyn FnMut()>::new(move || {
+            let _ = uploads.try_write().map(|mut w| *w += 1);
+        });
+        if let Some(w) = web_sys::window() {
+            let _ = w.add_event_listener_with_callback("parsely-upload-complete", closure.as_ref().unchecked_ref());
+        }
+        closure.forget();
+    });
+    use_effect(move || {
+        if *uploads.read() > 0 {
             rows.restart();
         }
     });
@@ -90,7 +113,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element 
     let mut search = use_signal(|| state.read().history.library_search.clone());
     let mut content = use_signal(|| state.read().history.library_content);
     let mut favorites_only = use_signal(|| state.read().history.library_favorites);
-    let mut show_delete = use_signal(|| false);
     let mut state = state;
     use_effect(move || {
         let mut s = state.write();
@@ -105,7 +127,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element 
     use_restore_scroll(&[LIB_TABLE], !loading);
 
     let total_bytes: u64 = all.iter().map(|r| r.size).sum();
-    let stale = all.iter().filter(|r| r.status == LogStatus::Stale).count();
     // Archived: count, compressed bytes, and what compression saved (where the frame says)
     let (archived, archived_bytes, archived_saved) = all
         .iter()
@@ -114,16 +135,20 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element 
             (n + 1, b + r.size, saved + r.original_size.map_or(0, |o| o.saturating_sub(r.size)))
         });
 
+    // Every tag in use, for the tag inputs' completion list
+    let mut known_tags: Vec<&str> = all.iter().flat_map(|r| r.tags.iter().chain(r.run_tags.iter())).map(String::as_str).collect();
+    known_tags.sort_unstable();
+    known_tags.dedup();
+
+    let status_read = status.read();
+    let hs = status_read.as_ref().cloned().unwrap_or_default();
+    let pending = hs.stale + hs.unscanned;
+
     let q = search.read().to_lowercase();
     let visible: Vec<&LibraryRow> = all
         .iter()
         .filter(|r| matches(r, *content.read(), *favorites_only.read(), &q))
         .collect();
-    let running = backfill.running();
-    let progress = match *backfill.event.read() {
-        Some(BackfillEvent::Progress { current, total, .. }) if total > 0 => format!(" {current}/{total}"),
-        _ => String::new(),
-    };
 
     rsx! {
         div { class: "library",
@@ -138,13 +163,17 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element 
                         div { class: "sub", "saved {fmt_bytes(archived_saved)}" }
                     }
                 }
-                if stale > 0 {
-                    div { class: "history-card warn", title: "History for these logs is from an older version or older log bytes",
-                        div { class: "k", i { class: "fa-solid fa-triangle-exclamation" } " Needs re-scan" }
-                        div { class: "v warn", "{stale}" }
+                div { class: "history-card", div { class: "k", "Logs scanned" } div { class: "v", "{hs.logs}" } }
+                div { class: "history-card", div { class: "k", "Pulls recorded" } div { class: "v", "{hs.pulls}" } }
+                if pending > 0 {
+                    div { class: "history-card warn", title: "Logs with no history yet, or history from an older version",
+                        div { class: "k", i { class: "fa-solid fa-triangle-exclamation" } " Needs scan" }
+                        div { class: "v warn", "{pending}" }
                     }
                 }
             }
+
+            CleanupPanel { backfill, status, on_changed: move |_| rows.restart() }
 
             div { class: "library-actions",
                 input {
@@ -171,43 +200,11 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element 
                     }
                     " Favorites"
                 }
-                span { class: "library-spacer" }
-                if running {
-                    span { class: "library-scan-progress",
-                        i { class: "fa-solid fa-spinner fa-spin" }
-                        " Scanning{progress}"
-                    }
-                    button {
-                        class: "btn btn-sm btn-ghost",
-                        title: "Stop after the current log; logs already scanned keep their history",
-                        onclick: move |_| backfill.cancel(),
-                        i { class: "fa-solid fa-stop" }
-                        " Cancel"
-                    }
-                } else {
-                    button {
-                        class: "btn btn-sm btn-ghost",
-                        disabled: stale == 0,
-                        title: "Re-parse only the logs whose history is missing or out of date",
-                        onclick: move |_| backfill.start(true),
-                        i { class: "fa-solid fa-rotate" }
-                        " Re-scan stale ({stale})"
-                    }
-                    button {
-                        class: "btn btn-sm btn-ghost",
-                        title: "Re-parse every log in the directory",
-                        onclick: move |_| backfill.start(false),
-                        i { class: "fa-solid fa-database" }
-                        " Rebuild all"
-                    }
-                }
-                button {
-                    class: "btn btn-sm btn-ghost",
-                    disabled: running,
-                    title: "Pick logs by content, then archive or delete them",
-                    onclick: move |_| show_delete.set(true),
-                    i { class: "fa-solid fa-broom" }
-                    " Clean up…"
+            }
+
+            datalist { id: TAG_OPTIONS,
+                for t in known_tags.iter() {
+                    option { value: "{t}" }
                 }
             }
 
@@ -219,7 +216,9 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element 
                             th { "Date" }
                             th { "Character" }
                             th { "Server" }
-                            th { "LibraryContent" }
+                            th { "Content" }
+                            th { "Tags" }
+                            th { "Note" }
                             th { "Pulls" }
                             th { "Kills" }
                             th { "Size" }
@@ -230,7 +229,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element 
                     }
                     tbody {
                         if !loading && visible.is_empty() {
-                            tr { td { colspan: "11", class: "library-empty", "No logs match." } }
+                            tr { td { colspan: "13", class: "library-empty", "No logs match." } }
                         }
                         for row in visible.iter() {
                             {
@@ -241,18 +240,10 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element 
                                 let copy_path = row.path.clone();
                                 let archived = row.status == LogStatus::Archived;
                                 let restore_name = row.filename.clone();
+                                let (upload_path, upload_name) = (row.path.clone(), row.filename.clone());
                                 rsx! {
                                     tr { key: "{row.filename}",
-                                        td { class: "library-file",
-                                            "{row.filename}"
-                                            if !row.tags.is_empty() {
-                                                div { class: "library-tags",
-                                                    for t in row.tags.iter() {
-                                                        span { class: "run-tag small", "{t}" }
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        td { class: "library-file", "{row.filename}" }
                                         td { "{row.date}" }
                                         td { {row.character.clone().unwrap_or_else(|| "—".into())} }
                                         td { if row.server.is_empty() { "—" } else { "{row.server}" } }
@@ -267,17 +258,42 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element 
                                                 span { class: "library-area-names", {row.areas.join(" · ")} }
                                             }
                                         }
+                                        td {
+                                            LogTagsCell {
+                                                filename: row.filename.clone(),
+                                                tags: row.tags.clone(),
+                                                run_tags: row.run_tags.clone(),
+                                                note: row.note.clone(),
+                                                on_change: move |_| rows.restart(),
+                                            }
+                                        }
+                                        td {
+                                            LogNoteCell {
+                                                filename: row.filename.clone(),
+                                                tags: row.tags.clone(),
+                                                note: row.note.clone(),
+                                                on_change: move |_| rows.restart(),
+                                            }
+                                        }
                                         td { "{row.pulls}" }
                                         td { "{row.kills}" }
                                         td { {fmt_bytes(row.size)} }
                                         td { span { class: "{badge_class}", title: "{badge_title}", "{badge}" } }
-                                        td {
+                                        td { class: "library-parsely-cell",
                                             if let Some(link) = row.parsely.clone() {
                                                 a { class: "library-parsely", href: "{link}", target: "_blank", title: "Open on Parsely", i { class: "fa-solid fa-up-right-from-square" } }
-                                            } else if row.parsely_fights > 0 {
-                                                span { class: "library-parsely-count", title: "Fights with their own Parsely link", "{row.parsely_fights} fights" }
-                                            } else {
+                                            } else if archived {
                                                 span { class: "pull-log-missing", "—" }
+                                            } else {
+                                                if row.parsely_fights > 0 {
+                                                    span { class: "library-parsely-count", title: "Fights with their own Parsely link", "{row.parsely_fights} fights" }
+                                                }
+                                                button {
+                                                    class: "btn btn-xs btn-ghost",
+                                                    title: "Upload this log to Parsely",
+                                                    onclick: move |_| uploader.open_file(upload_path.clone(), upload_name.clone()),
+                                                    i { class: "fa-solid fa-cloud-arrow-up" }
+                                                }
                                             }
                                         }
                                         td { class: "library-row-actions",
@@ -333,16 +349,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill) -> Element 
                             }
                         }
                     }
-                }
-            }
-
-            if *show_delete.read() {
-                DeleteModal {
-                    on_close: move |_| show_delete.set(false),
-                    on_deleted: move |_| {
-                        show_delete.set(false);
-                        rows.restart();
-                    },
                 }
             }
         }

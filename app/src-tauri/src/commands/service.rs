@@ -44,16 +44,6 @@ pub async fn get_log_file_count(handle: State<'_, ServiceHandle>) -> Result<usiz
 }
 
 #[tauri::command]
-pub async fn cleanup_logs(
-    handle: State<'_, ServiceHandle>,
-    delete_empty: bool,
-    delete_small: bool,
-    retention_days: Option<u32>,
-) -> Result<(u32, u32, u32), String> {
-    Ok(handle.cleanup_logs(delete_empty, delete_small, retention_days).await)
-}
-
-#[tauri::command]
 pub async fn refresh_file_sizes(handle: State<'_, ServiceHandle>) -> Result<(), String> {
     handle.refresh_file_sizes().await;
     Ok(())
@@ -348,6 +338,16 @@ pub async fn set_log_favorite(
 }
 
 #[tauri::command]
+pub fn set_log_meta(
+    filename: String,
+    tags: Vec<String>,
+    note: String,
+    handle: State<'_, ServiceHandle>,
+) -> Result<bool, String> {
+    Ok(handle.set_log_meta(&filename, tags, &note))
+}
+
+#[tauri::command]
 pub async fn get_retained_content(
     handle: State<'_, ServiceHandle>,
 ) -> Result<Vec<baras_types::history::ContentTag>, String> {
@@ -363,28 +363,17 @@ pub async fn set_retained_content(
 }
 
 #[tauri::command]
-pub async fn preview_log_delete(
-    criteria: baras_types::history::DeleteCriteria,
+pub async fn preview_log_cleanup(
     handle: State<'_, ServiceHandle>,
-) -> Result<baras_types::history::DeletePreview, String> {
-    Ok(handle.preview_log_delete(criteria).await)
+) -> Result<baras_types::history::CleanupPlan, String> {
+    Ok(handle.preview_log_cleanup().await)
 }
 
 #[tauri::command]
-pub async fn delete_logs(
-    paths: Vec<std::path::PathBuf>,
-    keep_history: bool,
+pub async fn run_log_cleanup(
     handle: State<'_, ServiceHandle>,
-) -> Result<baras_types::history::DeleteReport, String> {
-    Ok(handle.delete_logs(paths, keep_history).await)
-}
-
-#[tauri::command]
-pub async fn archive_logs(
-    paths: Vec<std::path::PathBuf>,
-    handle: State<'_, ServiceHandle>,
-) -> Result<baras_types::history::ArchiveReport, String> {
-    Ok(handle.archive_logs(paths).await)
+) -> Result<baras_types::history::CleanupReport, String> {
+    Ok(handle.run_log_cleanup().await)
 }
 
 #[tauri::command]

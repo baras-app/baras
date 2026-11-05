@@ -136,12 +136,6 @@ pub fn App() -> Element {
     // Log management state
     let mut log_dir_size = use_signal(|| 0u64);
     let mut log_file_count = use_signal(|| 0usize);
-    let mut auto_delete_empty = use_signal(|| false);
-    let mut auto_delete_small = use_signal(|| false);
-    let mut auto_delete_old = use_signal(|| false);
-    let mut auto_scan_history = use_signal(|| true);
-    let mut retention_days = use_signal(|| 21u32);
-    let mut cleanup_status = use_signal(String::new);
 
     // Application settings
     let mut minimize_to_tray = use_signal(|| true);
@@ -214,11 +208,6 @@ pub fn App() -> Element {
                     active_profile.set(Some("Default".to_string()));
                 }
             }
-            auto_delete_empty.set(config.auto_delete_empty_files);
-            auto_delete_small.set(config.auto_delete_small_files);
-            auto_delete_old.set(config.auto_delete_old_files);
-            auto_scan_history.set(config.auto_scan_history);
-            retention_days.set(config.log_retention_days);
             hide_small_log_files.set(config.hide_small_log_files);
             ocr_debug_dump.set(config.ocr_debug_dump);
             ocr_debug_max_dumps.set(config.ocr_debug_max_dumps);
@@ -792,7 +781,7 @@ pub fn App() -> Element {
                             }
                         }
                     }
-                    // Live status, overlay controls and the file browser: one centered cluster
+                    // Live status, overlay controls and the file browser: left-aligned, full row
                     div { class: "header-center",
                         // Live/Historical toggle group
                         div { class: "header-live-status",
@@ -930,11 +919,29 @@ pub fn App() -> Element {
                         span { class: "header-controls-divider" }
                     }
                     span { class: "header-controls-divider" }
-
-                    // Resume Live button (when paused/historical)
-                    if !live_tailing {
+                    div { class: "header-center-files",
                         button {
-                            class: "btn-resume-live",
+                            class: "btn btn-header-overlay",
+                            title: "Browse log files",
+                            onclick: move |_| {
+                                file_browser_filter.set(String::new());
+                                file_browser_open.set(true);
+                                spawn(async move {
+                                    api::refresh_file_sizes().await;
+                                    let result = api::get_log_files().await;
+                                    if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
+                                        log_files.set(files);
+                                    }
+                                });
+                            },
+                            i { class: "fa-solid fa-folder-open" }
+                        }
+                    }
+                    // Session actions: return to live, save a changed profile. Sits after
+                    // the pill; always laid out (hidden when idle) so the width is reserved.
+                    div { class: "header-center-actions",
+                        button {
+                            class: if live_tailing { "btn-resume-live is-hidden" } else { "btn-resume-live" },
                             title: "Resume live tailing",
                             onclick: move |_| {
                                 let mut toast = use_toast();
@@ -949,11 +956,9 @@ pub fn App() -> Element {
                             span { class: "resume-live-label", "Resume Live " }
                             i { class: "fa-solid fa-play" }
                         }
-                    }
 
-                    // Profile unsaved changes hint (header)
-                    if profile_dirty() {
-                        span { class: "header-unsaved-hint",
+                        // Profile unsaved changes hint (header)
+                        span { class: if profile_dirty() { "header-unsaved-hint" } else { "header-unsaved-hint is-hidden" },
                             i { class: "fa-solid fa-circle-info" }
                             " Unsaved"
                             button {
@@ -977,28 +982,12 @@ pub fn App() -> Element {
                             }
                         }
                     }
-                        button {
-                            class: "btn btn-header-overlay",
-                            title: "Browse log files",
-                            onclick: move |_| {
-                                file_browser_filter.set(String::new());
-                                file_browser_open.set(true);
-                                spawn(async move {
-                                    api::refresh_file_sizes().await;
-                                    let result = api::get_log_files().await;
-                                    if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
-                                        log_files.set(files);
-                                    }
-                                });
-                            },
-                            i { class: "fa-solid fa-folder-open" }
-                        }
                     }
                 } // end header-top-row
 
                 // Navigation row: the tabs alone, full width
                 div { class: "header-nav-row",
-                    // Navigation tabs (centered): analysis by widening scope, then configuration
+                    // Navigation tabs: analysis by widening scope, then configuration; wraps to a second line
                     div { class: "header-tabs",
                         button {
                             class: if ui_state.read().active_tab == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
@@ -2013,16 +2002,6 @@ pub fn App() -> Element {
                                         " Browse"
                                     }
                                 }
-                                if watching {
-                                    div { class: "directory-status",
-                                        span { class: "status-dot status-on" }
-                                        span { "Watching for new log files" }
-                                    }
-                                }
-                            }
-
-                            div { class: "settings-section",
-                                h4 { "Log Management" }
                                 {
                                     let count = log_file_count();
                                     let size_mb = log_dir_size() as f64 / 1_000_000.0;
@@ -2030,138 +2009,10 @@ pub fn App() -> Element {
                                         p { class: "hint", "{count} files • {size_mb:.1} MB" }
                                     }
                                 }
-
-                                div { class: "setting-row",
-                                    label { "Auto-delete empty files" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: auto_delete_empty(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            auto_delete_empty.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.auto_delete_empty_files = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-
-                                div { class: "setting-row",
-                                    label { "Auto-delete small files (<1MB)" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: auto_delete_small(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            auto_delete_small.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.auto_delete_small_files = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-
-                                div { class: "setting-row",
-                                    label { "Scan new logs at startup" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: auto_scan_history(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            auto_scan_history.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.auto_scan_history = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-
-                                div { class: "setting-row",
-                                    label { "Delete old files" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: auto_delete_old(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            auto_delete_old.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.auto_delete_old_files = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-
-                                div { class: "setting-row",
-                                    label { "Retention days" }
-                                    input {
-                                        r#type: "number",
-                                        min: "7",
-                                        max: "365",
-                                        value: "{retention_days()}",
-                                        onchange: move |e| {
-                                            if let Ok(days) = e.value().parse::<u32>() {
-                                                let days = days.clamp(7, 365);
-                                                retention_days.set(days);
-                                                let mut toast = use_toast();
-                                                spawn(async move {
-                                                    if let Some(mut cfg) = api::get_config().await {
-                                                        cfg.log_retention_days = days;
-                                                        if let Err(err) = api::update_config(&cfg).await {
-                                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                        }
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-
-                                div { class: "settings-footer",
-                                    button {
-                                        class: "btn btn-control",
-                                        onclick: move |_| {
-                                            let del_empty = auto_delete_empty();
-                                            let del_small = auto_delete_small();
-                                            let del_old = auto_delete_old();
-                                            let days = retention_days();
-                                            spawn(async move {
-                                                cleanup_status.set("Cleaning...".to_string());
-                                                let retention = if del_old { Some(days) } else { None };
-                                                let (empty, small, old) = api::cleanup_logs(del_empty, del_small, retention).await;
-                                                cleanup_status.set(format!("Deleted {} empty, {} small, {} old files", empty, small, old));
-                                                log_dir_size.set(api::get_log_directory_size().await);
-                                                log_file_count.set(api::get_log_file_count().await);
-                                            });
-                                        },
-                                        i { class: "fa-solid fa-broom" }
-                                        " Clean Now"
-                                    }
-                                    if !cleanup_status().is_empty() {
-                                        span { class: "save-status", "{cleanup_status}" }
+                                if watching {
+                                    div { class: "directory-status",
+                                        span { class: "status-dot status-on" }
+                                        span { "Watching for new log files" }
                                     }
                                 }
                             }

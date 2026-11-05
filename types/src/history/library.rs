@@ -1,7 +1,10 @@
-//! Log library management: criteria-based deletion or archival with a
-//! dry-run preview, and the history store health line.
+//! Log library management: the automatic cleanup rules with their dry-run
+//! plan, and the history store health line.
 
 use serde::{Deserialize, Serialize};
+
+/// Longest log or run note kept: a one-line summary, not a document.
+pub const LOG_NOTE_MAX: usize = 140;
 
 /// What kind of content a log holds, derived from the areas it visited and
 /// the pulls recorded in it. A log usually carries several.
@@ -49,27 +52,38 @@ impl ContentTag {
     }
 }
 
-/// Which logs a bulk delete or archive targets. A log is a candidate when
-/// none of its content is in `keep` and it passes every enabled narrowing
-/// filter. Favorites and the live log are always skipped.
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-pub struct DeleteCriteria {
-    /// Logs holding any of these are never candidates. Starts from the saved
-    /// retention list; the user unticks what they want to remove.
+/// Automatic log housekeeping, run once the directory index is loaded at
+/// startup and on demand from Log Management. Favorites, the live log and
+/// logs holding retained content (`LibraryMeta::retain`) are never touched.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LogCleanup {
+    /// Delete logs smaller than this many bytes (not from today); 0 = off
+    #[serde(default = "default_small_log_bytes")]
+    pub delete_smaller_than: u64,
+    /// Archive logs whose date is older than this many days; None = off
     #[serde(default)]
-    pub keep: Vec<ContentTag>,
-    /// Only files smaller than this many bytes
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub smaller_than: Option<u64>,
-    /// Only files whose log date is older than this many days
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub older_than_days: Option<u32>,
-    /// Delete only: keep the per-log history JSON so pulls stay in the dashboard
-    pub keep_history: bool,
+    pub archive_after_days: Option<u32>,
+    /// Delete logs whose date is older than this many days; None = off
+    #[serde(default)]
+    pub delete_after_days: Option<u32>,
+}
+
+fn default_small_log_bytes() -> u64 {
+    1_048_576
+}
+
+impl Default for LogCleanup {
+    fn default() -> Self {
+        Self {
+            delete_smaller_than: default_small_log_bytes(),
+            archive_after_days: None,
+            delete_after_days: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DeleteCandidate {
+pub struct CleanupCandidate {
     pub path: String,
     pub filename: String,
     /// `YYYY-MM-DD`
@@ -78,15 +92,34 @@ pub struct DeleteCandidate {
     pub content: Vec<ContentTag>,
 }
 
-/// Dry-run result shown before the user confirms.
+/// Dry run of the cleanup rules: what would be archived and deleted right now.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-pub struct DeletePreview {
-    pub files: Vec<DeleteCandidate>,
-    pub total_bytes: u64,
-    /// Logs left alone because they hold kept content (or are not yet classified)
+pub struct CleanupPlan {
+    pub archive: Vec<CleanupCandidate>,
+    pub delete: Vec<CleanupCandidate>,
+    pub archive_bytes: u64,
+    pub delete_bytes: u64,
+    /// Logs a rule matched but that hold retained content (or are not yet classified)
     pub kept: u32,
     pub skipped_favorites: u32,
     pub skipped_live: u32,
+}
+
+impl CleanupPlan {
+    pub fn is_empty(&self) -> bool {
+        self.archive.is_empty() && self.delete.is_empty()
+    }
+}
+
+/// What a cleanup run actually did.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct CleanupReport {
+    pub archived: u32,
+    pub deleted: u32,
+    pub bytes_freed: u64,
+    /// Compressed size of what was archived
+    pub bytes_archived: u64,
+    pub failed: Vec<String>,
 }
 
 /// What a confirmed delete actually did.
@@ -162,8 +195,14 @@ pub struct LibraryRow {
     pub dummy_only: bool,
     pub status: LogStatus,
     pub favorite: bool,
+    /// The user's own tags on this log
     pub tags: Vec<String>,
-    pub has_note: bool,
+    /// Tags on runs recorded in this log (read-only here)
+    #[serde(default)]
+    pub run_tags: Vec<String>,
+    /// One-line note, at most `LOG_NOTE_MAX` characters
+    #[serde(default)]
+    pub note: String,
     /// Whole-file Parsely link
     pub parsely: Option<String>,
     /// Pulls with their own Parsely link

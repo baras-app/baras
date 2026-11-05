@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use baras_types::history::{ContentTag, LogMeta, ParselyUpload, PullMeta, RunMeta};
+use baras_types::history::{ContentTag, LOG_NOTE_MAX, LogMeta, ParselyUpload, PullMeta, RunMeta};
 
 pub const META_VERSION: u32 = 1;
 
@@ -94,11 +94,8 @@ impl LibraryMeta {
         self.runs.get(&pull_key(filename, start_ms))
     }
 
-    /// Longest run note kept (a one-line summary, not a document)
-    pub const RUN_NOTE_MAX: usize = 140;
-
     pub fn set_run(&mut self, filename: &str, start_ms: i64, mut meta: RunMeta) {
-        meta.note = meta.note.chars().take(Self::RUN_NOTE_MAX).collect();
+        meta.note = meta.note.chars().take(LOG_NOTE_MAX).collect();
         let key = pull_key(filename, start_ms);
         if meta.is_empty() {
             self.runs.remove(&key);
@@ -127,6 +124,16 @@ impl LibraryMeta {
         tags.sort();
         tags.dedup();
         tags
+    }
+
+    /// The user's tags and one-line note on a log. Tags are deduplicated and
+    /// the note capped; `save` drops the entry once nothing is left.
+    pub fn set_log_meta(&mut self, filename: &str, mut tags: Vec<String>, note: &str) {
+        tags.retain(|t| !t.trim().is_empty());
+        tags.dedup();
+        let log = self.log_mut(filename);
+        log.tags = tags;
+        log.note = note.trim().chars().take(LOG_NOTE_MAX).collect();
     }
 
     pub fn is_favorite(&self, filename: &str) -> bool {

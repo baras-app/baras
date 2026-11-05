@@ -339,20 +339,6 @@ pub async fn get_log_files() -> JsValue {
     invoke("get_log_files", JsValue::NULL).await
 }
 
-/// Clean up log files. Returns (empty_deleted, small_deleted, old_deleted).
-pub async fn cleanup_logs(delete_empty: bool, delete_small: bool, retention_days: Option<u32>) -> (u32, u32, u32) {
-    let args = js_sys::Object::new();
-    js_set(&args, "deleteEmpty", &JsValue::from_bool(delete_empty));
-    js_set(&args, "deleteSmall", &JsValue::from_bool(delete_small));
-    if let Some(days) = retention_days {
-        js_set(&args, "retentionDays", &JsValue::from_f64(days as f64));
-    } else {
-        js_set(&args, "retentionDays", &JsValue::NULL);
-    }
-    let result = invoke("cleanup_logs", args.into()).await;
-    from_js(result).unwrap_or((0, 0, 0))
-}
-
 /// Refresh file sizes in the directory index (fast stat-only)
 pub async fn refresh_file_sizes() {
     let _ = invoke("refresh_file_sizes", JsValue::NULL).await;
@@ -530,6 +516,16 @@ pub async fn set_log_favorite(filename: &str, favorite: bool) -> Result<bool, St
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
 
+/// The user's tags and one-line note on a log
+pub async fn set_log_meta(filename: &str, tags: &[String], note: &str) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filename", &JsValue::from_str(filename));
+    js_set(&obj, "tags", &serde_wasm_bindgen::to_value(tags).map_err(|e| e.to_string())?);
+    js_set(&obj, "note", &JsValue::from_str(note));
+    let result = try_invoke("set_log_meta", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
 /// Content kinds the user wants kept out of every delete
 pub async fn get_retained_content() -> Option<Vec<baras_types::history::ContentTag>> {
     from_js(invoke("get_retained_content", JsValue::NULL).await)
@@ -540,28 +536,14 @@ pub async fn set_retained_content(retain: &[baras_types::history::ContentTag]) -
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
 
-/// Dry run of a criteria delete or archive: which logs would go
-pub async fn preview_log_delete(
-    criteria: &baras_types::history::DeleteCriteria,
-) -> Option<baras_types::history::DeletePreview> {
-    from_js(invoke("preview_log_delete", build_args("criteria", criteria)).await)
+/// Dry run of the saved cleanup rules: what would be archived and deleted now
+pub async fn preview_log_cleanup() -> Option<baras_types::history::CleanupPlan> {
+    from_js(invoke("preview_log_cleanup", JsValue::NULL).await)
 }
 
-/// Delete the confirmed logs (and their caches); favorites and the live log are refused
-pub async fn delete_logs(
-    paths: &[String],
-    keep_history: bool,
-) -> Result<baras_types::history::DeleteReport, String> {
-    let obj = js_sys::Object::new();
-    js_set(&obj, "paths", &serde_wasm_bindgen::to_value(paths).map_err(|e| e.to_string())?);
-    js_set(&obj, "keepHistory", &JsValue::from_bool(keep_history));
-    let result = try_invoke("delete_logs", obj.into()).await?;
-    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
-}
-
-/// Compress the confirmed logs into the archive directory; history stays
-pub async fn archive_logs(paths: &[String]) -> Result<baras_types::history::ArchiveReport, String> {
-    let result = try_invoke("archive_logs", build_args("paths", paths)).await?;
+/// Archive and delete whatever the saved rules select right now
+pub async fn run_log_cleanup() -> Result<baras_types::history::CleanupReport, String> {
+    let result = try_invoke("run_log_cleanup", JsValue::NULL).await?;
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
 
