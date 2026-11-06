@@ -135,7 +135,8 @@ fn summarize(
         started: first.timestamp.clone(),
         ended: iso_of(last_end),
         pulls: g.len() as u32,
-        kills: g.iter().filter(|r| r.success).count() as u32,
+        // Matches `bosses_total`: optional encounters never count as a boss kill
+        kills: g.iter().filter(|r| r.success && !def.is_some_and(|a| a.is_optional(&r.boss))).count() as u32,
         bosses_total: def.map_or(0, |a| a.bosses_at(&tier_key, size).count() as u32),
         cleared: final_kill.is_some(),
         deaths: g.iter().map(|r| u32::from(r.deaths)).sum(),

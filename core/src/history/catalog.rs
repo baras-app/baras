@@ -66,6 +66,11 @@ impl AreaDef {
         self.bosses.iter().any(|b| b.is_final && b.name == boss_name)
     }
 
+    /// Bonus boss or trash gauntlet (R4's Hallway): killing it is not a boss kill
+    pub fn is_optional(&self, boss_name: &str) -> bool {
+        self.bosses.iter().any(|b| b.optional && b.name == boss_name)
+    }
+
     pub fn timer_at(&self, tier: &str, size: u8) -> Option<&TimerRule> {
         self.timer.as_ref().filter(|t| t.applies_to(tier, size))
     }
