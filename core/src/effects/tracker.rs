@@ -672,6 +672,7 @@ impl EffectTracker {
                 effect.show_at_secs = def.show_at_secs;
                 effect.show_icon = def.show_icon;
                 effect.display_source = def.display_source;
+                effect.show_target = def.show_target;
                 effect.cooldown_ready_secs = def.cooldown_ready_secs;
 
                 // Alert properties
@@ -1311,6 +1312,7 @@ impl EffectTracker {
                     def.show_at_secs,
                     def.show_icon,
                     def.display_source,
+                    def.show_target,
                     def.cooldown_ready_secs,
                     &def.audio,
                     def.alert_text.clone(),
@@ -1428,6 +1430,7 @@ impl EffectTracker {
             show_at_secs: f32,
             show_icon: bool,
             display_source: bool,
+            show_target: bool,
             cooldown_ready_secs: f32,
             audio: crate::dsl::AudioConfig,
             alert_text: Option<String>,
@@ -1515,6 +1518,7 @@ impl EffectTracker {
                     show_at_secs: def.show_at_secs,
                     show_icon: def.show_icon,
                     display_source: def.display_source,
+                    show_target: def.show_target,
                     cooldown_ready_secs: def.cooldown_ready_secs,
                     audio: def.audio.clone(),
                     alert_text: def.alert_text.clone(),
@@ -1655,6 +1659,7 @@ impl EffectTracker {
                     def.show_at_secs,
                     def.show_icon,
                     def.display_source,
+                    def.show_target,
                     def.cooldown_ready_secs,
                     &def.audio,
                     def.alert_text,
@@ -2066,6 +2071,7 @@ impl EffectTracker {
                     def.show_at_secs,
                     def.show_icon,
                     def.display_source,
+                    def.show_target,
                     def.cooldown_ready_secs,
                     &def.audio,
                     def.alert_text.clone(),
@@ -2206,6 +2212,7 @@ impl EffectTracker {
                     def.show_at_secs,
                     def.show_icon,
                     def.display_source,
+                    def.show_target,
                     def.cooldown_ready_secs,
                     &def.audio,
                     def.alert_text.clone(),
@@ -2363,6 +2370,7 @@ impl EffectTracker {
                     def.show_at_secs,
                     def.show_icon,
                     def.display_source,
+                    def.show_target,
                     def.cooldown_ready_secs,
                     &def.audio,
                     def.alert_text.clone(),
@@ -2576,6 +2584,7 @@ impl EffectTracker {
                     def.show_at_secs,
                     def.show_icon,
                     def.display_source,
+                    def.show_target,
                     def.cooldown_ready_secs,
                     &def.audio,
                     def.alert_text.clone(),

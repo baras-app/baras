@@ -181,6 +181,13 @@ pub struct EffectDefinition {
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
     pub display_source: bool,
 
+    /// Whether to display the target entity name on personal overlays
+    /// (e.g. taunt/guard target). Suppressed when the target is the source.
+    /// Named `show_target` because `display_target` is a legacy alias of
+    /// `display_targets`.
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
+    pub show_target: bool,
+
     /// Uptime tracking: pin this effect's icon on its overlay whenever the
     /// local player's discipline matches, rendered desaturated while the
     /// effect is not active (e.g. tank guard, sniper cover). Requires a

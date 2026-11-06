@@ -54,6 +54,8 @@ pub struct EffectABEntry {
     pub show_icon: bool,
     /// Whether to display the source entity name
     pub display_source: bool,
+    /// Whether to display the target entity name
+    pub show_target: bool,
     /// Max total duration budget in seconds (from modifier max_duration_secs).
     pub max_total_secs: Option<f32>,
     /// Remaining seconds until the absolute max cap expires.
@@ -68,6 +70,11 @@ pub struct EffectABEntry {
 }
 
 impl EffectABEntry {
+    /// Source/target annotation, if any flag is set and the name is known
+    fn entity_label(&self) -> Option<String> {
+        super::entity_label(self.display_source, &self.source_name, self.show_target, &self.target_name)
+    }
+
     /// Progress as 0.0 (expired) to 1.0 (full)
     pub fn progress(&self) -> f32 {
         if self.total_secs <= 0.0 {
@@ -439,10 +446,10 @@ impl EffectsABOverlay {
                 text_y_offset = name_font_size + 2.0;
             }
 
-            // Source name below effect name
-            if effect.display_source && !effect.source_name.is_empty() {
+            // Source/target label below effect name
+            if let Some(label) = effect.entity_label() {
                 let source_font_size = font_size * 0.75;
-                let source = truncate_name(&effect.source_name, 10);
+                let source = truncate_name(&label, 16);
                 let source_width = self.frame.measure_text(&source, source_font_size).0;
                 let source_x = x + (icon_size - source_width) / 2.0;
                 let source_y = y + icon_size + source_font_size + 2.0 + text_y_offset;
@@ -635,11 +642,11 @@ impl EffectsABOverlay {
                     colors::white(),
                 );
 
-                // Source name below effect name
-                if effect.display_source && !effect.source_name.is_empty() {
+                // Source/target label below effect name
+                if let Some(label) = effect.entity_label() {
                     let source_font_size = font_size * 0.8;
                     self.frame.draw_text_glowed(
-                        &effect.source_name,
+                        &label,
                         text_x,
                         name_y + font_size + 2.0,
                         source_font_size,
@@ -647,11 +654,11 @@ impl EffectsABOverlay {
                     );
                 }
             } else {
-                // Source name centered to the right of icon
-                if effect.display_source && !effect.source_name.is_empty() {
+                // Source/target label centered to the right of icon
+                if let Some(label) = effect.entity_label() {
                     let source_font_size = font_size * 0.8;
                     self.frame.draw_text_glowed(
-                        &effect.source_name,
+                        &label,
                         text_x,
                         text_y + font_size / 3.0,
                         source_font_size,
@@ -776,8 +783,8 @@ impl EffectsABOverlay {
                 let text = if !effect.display_text.is_empty() { &effect.display_text } else { &effect.name };
                 label.push_str(text);
             }
-            if effect.display_source && !effect.source_name.is_empty() {
-                label.push_str(&format!(" ({})", effect.source_name));
+            if let Some(entity) = effect.entity_label() {
+                label.push_str(&format!(" ({entity})"));
             }
 
             // Inactive uptime entries render as an empty gray bar

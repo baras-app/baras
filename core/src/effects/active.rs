@@ -99,6 +99,9 @@ pub struct ActiveEffect {
     /// Whether to display the source entity name on personal overlays
     pub display_source: bool,
 
+    /// Whether to display the target entity name on personal overlays
+    pub show_target: bool,
+
     /// Seconds to show "Ready" state after cooldown ends (0 = disabled)
     pub cooldown_ready_secs: f32,
 
@@ -173,6 +176,7 @@ impl ActiveEffect {
         show_at_secs: f32,
         show_icon: bool,
         display_source: bool,
+        show_target: bool,
         cooldown_ready_secs: f32,
         audio: &crate::dsl::AudioConfig,
         alert_text: Option<String>,
@@ -203,6 +207,7 @@ impl ActiveEffect {
             show_at_secs,
             show_icon,
             display_source,
+            show_target,
             cooldown_ready_secs,
             audio_played: false,
             countdown_announced: [false; 10],

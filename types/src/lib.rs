@@ -2760,12 +2760,6 @@ pub struct CooldownTrackerConfig {
     /// Sort by remaining time
     #[serde(default = "default_true")]
     pub sort_by_remaining: bool,
-    /// Show source name
-    #[serde(default)]
-    pub show_source_name: bool,
-    /// Show target of ability (for targeted CDs like taunts)
-    #[serde(default)]
-    pub show_target_name: bool,
     /// Show header title above overlay
     #[serde(default)]
     pub show_header: bool,
@@ -2804,8 +2798,6 @@ impl Default for CooldownTrackerConfig {
             max_display: 10,
             show_ability_names: true,
             sort_by_remaining: true,
-            show_source_name: false,
-            show_target_name: false,
             show_header: false,
             font_scale: 1.0,
             dynamic_background: false,
@@ -2855,6 +2847,10 @@ pub struct DotTrackerConfig {
     /// When true, entries stack from the bottom of the overlay window
     #[serde(default)]
     pub stack_from_bottom: bool,
+    /// Flush DOT icons against the right edge of the window instead of
+    /// starting them after the name column (icon layout only)
+    #[serde(default)]
+    pub right_align_icons: bool,
     /// Render DOTs as stacked progress bars grouped under target names
     #[serde(default)]
     pub layout_bar: bool,
@@ -2890,6 +2886,7 @@ impl Default for DotTrackerConfig {
             font_scale: 1.0,
             dynamic_background: false,
             stack_from_bottom: false,
+            right_align_icons: false,
             layout_bar: false,
             show_border: true,
             border_color: default_overlay_border_color(),

@@ -41,11 +41,18 @@ pub struct CooldownEntry {
     pub show_icon: bool,
     /// Whether to display the source entity name
     pub display_source: bool,
+    /// Whether to display the target entity name
+    pub show_target: bool,
     /// Whether cooldown is in "ready" state (remaining <= cooldown_ready_secs)
     pub is_in_ready_state: bool,
 }
 
 impl CooldownEntry {
+    /// Source/target annotation, if any flag is set and the name is known
+    fn entity_label(&self) -> Option<String> {
+        super::entity_label(self.display_source, &self.source_name, self.show_target, &self.target_name)
+    }
+
     /// Progress as 0.0 (just started) to 1.0 (ready)
     pub fn progress(&self) -> f32 {
         if self.total_secs <= 0.0 {
@@ -79,8 +86,6 @@ pub struct CooldownConfig {
     pub max_display: u8,
     pub show_ability_names: bool,
     pub sort_by_remaining: bool,
-    pub show_source_name: bool,
-    pub show_target_name: bool,
     /// Show header title above overlay
     pub show_header: bool,
     /// Font scale multiplier (0.3 - 3.0, default 1.0)
@@ -106,8 +111,6 @@ impl Default for CooldownConfig {
             max_display: 10,
             show_ability_names: true,
             sort_by_remaining: true,
-            show_source_name: false,
-            show_target_name: false,
             show_header: false,
             font_scale: 1.0,
             dynamic_background: true,
@@ -456,12 +459,12 @@ impl CooldownOverlay {
                     ready_text_color,
                 );
 
-                // Source name inline to the right of countdown
-                if entry.display_source && !entry.source_name.is_empty() {
+                // Source/target label inline to the right of countdown
+                if let Some(label) = entry.entity_label() {
                     let source_font_size = font_size * 0.8;
                     let time_width = self.frame.measure_text(&time_text, time_font_size).0;
                     self.frame.draw_text_glowed(
-                        &entry.source_name,
+                        &label,
                         text_x + time_width + padding,
                         time_y,
                         source_font_size,
@@ -480,12 +483,12 @@ impl CooldownOverlay {
                 self.frame
                     .draw_text_glowed(&time_text, text_x, time_y, font_size, time_color);
 
-                // Source name inline to the right of countdown
-                if entry.display_source && !entry.source_name.is_empty() {
+                // Source/target label inline to the right of countdown
+                if let Some(label) = entry.entity_label() {
                     let source_font_size = font_size * 0.8;
                     let time_width = self.frame.measure_text(&time_text, font_size).0;
                     self.frame.draw_text_glowed(
-                        &entry.source_name,
+                        &label,
                         text_x + time_width + padding,
                         time_y,
                         source_font_size,
@@ -757,8 +760,8 @@ impl CooldownOverlay {
             if self.config.show_ability_names || !has_icon {
                 label.push_str(&entry.name);
             }
-            if entry.display_source && !entry.source_name.is_empty() {
-                label.push_str(&format!(" ({})", entry.source_name));
+            if let Some(entity) = entry.entity_label() {
+                label.push_str(&format!(" ({entity})"));
             }
 
             let right_text = entry.format_time(self.european_number_format);

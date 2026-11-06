@@ -46,6 +46,7 @@ fn make_effect(
         icon_ability_id: None,
         show_icon: true,
         display_source: false,
+        show_target: false,
         track_uptime: false,
         track_uptime_after_first: false,
         stack_priority: false,

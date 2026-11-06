@@ -235,6 +235,7 @@ fn default_effect(name: String) -> EffectListItem {
         icon_ability_id: None,
         show_icon: true,
         display_source: false,
+        show_target: false,
         track_uptime: false,
         track_uptime_after_first: false,
         stack_priority: false,
@@ -1308,6 +1309,26 @@ fn EffectEditForm(
                                                 span {
                                                     class: "help-icon",
                                                     title: "Show who applied this effect on the overlay",
+                                                    "?"
+                                                }
+                                            }
+                                        }
+                                        label {
+                                            class: "flex items-center gap-xs text-sm",
+                                            input {
+                                                r#type: "checkbox",
+                                                checked: draft().show_target,
+                                                onchange: move |e| {
+                                                    let mut d = draft();
+                                                    d.show_target = e.checked();
+                                                    draft.set(d);
+                                                }
+                                            }
+                                            span { class: "flex items-center",
+                                                "Display Target"
+                                                span {
+                                                    class: "help-icon",
+                                                    title: "Show who this effect targets (hidden when the target is the source)",
                                                     "?"
                                                 }
                                             }

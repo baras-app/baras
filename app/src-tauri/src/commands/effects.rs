@@ -62,6 +62,8 @@ pub struct EffectListItem {
     pub show_icon: bool,
     pub display_source: bool,
     #[serde(default)]
+    pub show_target: bool,
+    #[serde(default)]
     pub track_uptime: bool,
     #[serde(default)]
     pub track_uptime_after_first: bool,
@@ -139,6 +141,7 @@ impl EffectListItem {
             icon_ability_id: def.icon_ability_id,
             show_icon: def.show_icon,
             display_source: def.display_source,
+            show_target: def.show_target,
             track_uptime: def.track_uptime,
             track_uptime_after_first: def.track_uptime_after_first,
             stack_priority: def.stack_priority,
@@ -207,6 +210,7 @@ impl EffectListItem {
             cooldown_ready_secs: self.cooldown_ready_secs,
             show_icon: self.show_icon,
             display_source: self.display_source,
+            show_target: self.show_target,
             track_uptime: self.track_uptime,
             track_uptime_after_first: self.track_uptime_after_first,
             stack_priority: self.stack_priority,

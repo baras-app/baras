@@ -281,6 +281,7 @@ fn make_effect(
         icon: icon.clone(),
         show_icon: true,
         display_source: false,
+        show_target: false,
         max_total_secs: None,
         max_remaining_secs: None,
         inactive: false,
@@ -354,6 +355,7 @@ fn create_mock_cooldowns(elapsed: f32, icons: &CachedIcons) -> CooldownData {
         icon: icon.clone(),
         show_icon: true,
         display_source: false,
+        show_target: false,
         is_in_ready_state: remaining_secs <= 0.0,
     };
 

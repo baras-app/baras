@@ -1,37 +1,21 @@
-# v2026.9.30
+# v2026.11.6
 
-Hotfix.
+## Data Explorer
 
-- Fix capitalization issue causing HOTs definitions to fail to parse.
-- Remove blocking job preventing encounter from not being properly finalized in certain contexts.
+- Improved ability to select single instances of duplicate NPCs
+- Right clicking a line on the combat log now gives the option to filter the logs by the selected line's source or target (including individual NPC instance)
+- Suppressed small 0-3 second gap between the start of the fight and the start of the first phase from the phase timeline
 
-# v2026.9.29
+## Bugfixes
 
-BARAS has surpassed 2000 downloads! Thank you for helping make this the widest SWTOR raiding companion app.
+- Linux users should no longer be prompted to give OCR permissions every time the application starts
+- An issue with DOT tracker mis-attributing targets when refreshing dots while multi-dotting has been fixed. This was primarily affecting Scorch.
+- Toggling on/off ability names will now work properly when the Cooldowns/Effects overlays are in bar mode
+- The "Saved" prompt will now only show if an overlay has actually been moved when in move mode
 
-## History Page
+## Definitions
 
-A new tab called the _History_ tab has been added to the application. This page shows a summary of all pulls across multiple game sessions.
-
-## New Features
-
-- Ability Cast Overlay - A new overlay that shows abilities cast by the local player. Useful for streaming or recording VODs.
-- Data Explorer mirror abilities - (English Only) the data explorer can now be toggled to show abilities names/icons as their Imperial/Republic mirror class.
-
-## Encounter Definitions
-
-- Fix EC Minefield enrage timers now show for the proper difficulties
-- Apex Voltinator shield now shows on all difficulties and group sizes
-- Hallway now shows as a distinct encounter in R4
-- XR-53 SM and HM prime directive timers should now be accurate
-- Xenoanalyst encounter definition reworked
-- Updates to Gods encounter definitions
-- The effects for tracking "others" Kolto Shell/ Trauma Probe now only show if the local player is a Mercenary/Commando healer
-
-## Other
-
-- Improved memory management when using OCR on Linux distributions
-  Thanks to:
-
-- Chriseli (encounter definition edits)
-- Swampert (extraction code for mirror ability matching)
+- EC 16M Ability and boss IDs have been added
+- Updated definition formatting for EC, DF, DP
+- Added challenges for Countermeasure stacks in A&E and floor stacks in IP-CPT
+- Lady Dominique burn challenge now shows per-scond amount and more closely matches the parsely challenge number

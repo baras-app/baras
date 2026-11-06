@@ -475,6 +475,7 @@ impl OverlayManager {
                     font_scale: cfg.font_scale,
                     dynamic_background: cfg.dynamic_background,
                     stack_from_bottom: cfg.stack_from_bottom,
+                    right_align_icons: cfg.right_align_icons,
                     layout_bar: cfg.layout_bar,
                     show_border: cfg.show_border,
                     border_color: cfg.border_color,

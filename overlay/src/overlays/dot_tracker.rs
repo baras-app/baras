@@ -87,6 +87,8 @@ pub struct DotTrackerConfig {
     pub dynamic_background: bool,
     /// When true, target rows stack from the bottom of the overlay window
     pub stack_from_bottom: bool,
+    /// Flush DOT icons against the right edge of the window (icon layout only)
+    pub right_align_icons: bool,
     /// Render DOTs as stacked progress bars grouped under target names
     pub layout_bar: bool,
     /// When true (and in bar layout), draw an outline around each entry
@@ -109,6 +111,7 @@ impl Default for DotTrackerConfig {
             font_scale: 1.0,
             dynamic_background: true,
             stack_from_bottom: false,
+            right_align_icons: false,
             layout_bar: false,
             show_border: true,
             border_color: [128, 128, 128, 255],
@@ -229,6 +232,24 @@ impl DotTrackerOverlay {
         } else {
             self.render_icon_mode();
         }
+    }
+
+    /// Starting x for a row's icon run. Left-aligned runs begin at the end of
+    /// the name column; right-aligned runs end at the window's right edge but
+    /// never start before the name column, so wide runs degrade to left-aligned.
+    fn icon_run_start_x(
+        &self,
+        count: usize,
+        icon_size: f32,
+        icon_spacing: f32,
+        name_end_x: f32,
+        padding: f32,
+    ) -> f32 {
+        if !self.config.right_align_icons || count == 0 {
+            return name_end_x;
+        }
+        let run_width = count as f32 * icon_size + (count - 1) as f32 * icon_spacing;
+        (self.frame.width() as f32 - padding - run_width).max(name_end_x)
     }
 
     /// Render icon mode (rows of target name + DOT icons)
@@ -381,8 +402,14 @@ impl DotTrackerOverlay {
                 );
             }
 
-            // DOT icons after name
-            let mut icon_x = x + name_width;
+            // DOT icons after name (or flushed right)
+            let mut icon_x = self.icon_run_start_x(
+                target.dots.len(),
+                icon_size,
+                icon_spacing,
+                x + name_width,
+                padding,
+            );
 
             for dot in &target.dots {
                 // Draw icon from cache or colored square fallback
@@ -934,8 +961,9 @@ impl DotTrackerOverlay {
                 );
             }
 
-            // DOT icons after name
-            let mut icon_x = x + name_width;
+            // DOT icons after name (or flushed right)
+            let mut icon_x =
+                self.icon_run_start_x(dots.len(), icon_size, icon_spacing, x + name_width, padding);
 
             for time_text in dots {
                 // Placeholder icon background

@@ -4398,6 +4398,7 @@ fn active_to_ab_entry(
         icon: load_ab_icon(icon_cache, effect.icon_ability_id),
         show_icon: effect.show_icon,
         display_source: effect.display_source,
+        show_target: effect.show_target && effect.target_entity_id != effect.source_entity_id,
         max_total_secs,
         max_remaining_secs,
         inactive: false,
@@ -4474,6 +4475,7 @@ async fn build_effects_ab_data(
                     icon: load_ab_icon(icon_cache, icon_id),
                     show_icon: def.show_icon,
                     display_source: false,
+                    show_target: false,
                     max_total_secs: None,
                     max_remaining_secs: None,
                     inactive: true,
@@ -4587,6 +4589,8 @@ async fn build_cooldowns_data(
                 icon,
                 show_icon: effect.show_icon,
                 display_source: effect.display_source,
+                show_target: effect.show_target
+                    && effect.target_entity_id != effect.source_entity_id,
                 is_in_ready_state,
             })
         })

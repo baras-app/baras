@@ -2558,6 +2558,19 @@ pub fn SettingsPanel(
                         }
                     }
                     div { class: "setting-row",
+                        label { "Right-Align Icons (icon layout)" }
+                        input {
+                            r#type: "checkbox",
+                            checked: current_settings.dot_tracker.right_align_icons,
+                            disabled: current_settings.dot_tracker.layout_bar,
+                            onchange: move |e: Event<FormData>| {
+                                let mut new_settings = draft_settings();
+                                new_settings.dot_tracker.right_align_icons = e.checked();
+                                update_draft(new_settings);
+                            }
+                        }
+                    }
+                    div { class: "setting-row",
                         label { "Gradient Bars (bar layout)" }
                         input {
                             r#type: "checkbox",

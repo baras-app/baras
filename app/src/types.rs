@@ -972,6 +972,9 @@ pub struct EffectListItem {
     /// Display source entity name on personal overlays
     #[serde(default)]
     pub display_source: bool,
+    /// Display target entity name on personal overlays
+    #[serde(default)]
+    pub show_target: bool,
     /// Pin on overlay for matching disciplines; desaturated while inactive
     #[serde(default)]
     pub track_uptime: bool,

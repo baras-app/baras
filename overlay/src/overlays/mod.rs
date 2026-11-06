@@ -316,3 +316,21 @@ pub trait Overlay: 'static {
         false
     }
 }
+
+/// Source/target annotation for personal overlays (Effects A/B/C, Cooldowns).
+/// Both → `Source → Target`; target only → `T: Target`; source only → `Source`.
+pub(crate) fn entity_label(
+    display_source: bool,
+    source: &str,
+    show_target: bool,
+    target: &str,
+) -> Option<String> {
+    let src = display_source && !source.is_empty();
+    let tgt = show_target && !target.is_empty();
+    match (src, tgt) {
+        (true, true) => Some(format!("{source} → {target}")),
+        (true, false) => Some(source.to_string()),
+        (false, true) => Some(format!("T: {target}")),
+        (false, false) => None,
+    }
+}
