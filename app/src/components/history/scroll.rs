@@ -44,3 +44,44 @@ pub fn use_restore_scroll(ids: &'static [&'static str], ready: bool) {
         });
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Incremental rendering
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Rows a long list renders at first, and adds per step
+pub const PAGE: usize = 100;
+
+/// Cap on a long list in the scroll container `id`: `PAGE` rows, then
+/// another page each time the user nears the bottom. `key` names what the
+/// list was built from (filter, selection, sort); a new key starts over.
+#[derive(Clone, Copy, PartialEq)]
+pub struct Paged {
+    state: Signal<(String, usize)>,
+}
+
+pub fn use_paged(key: &str) -> Paged {
+    Paged { state: use_signal(|| (key.to_string(), PAGE)) }
+}
+
+impl Paged {
+    pub fn limit(&self, key: &str) -> usize {
+        let s = self.state.read();
+        if s.0 == key { s.1 } else { PAGE }
+    }
+
+    /// `onscroll` body: remember the offset and grow the cap near the bottom
+    pub fn on_scroll(mut self, id: &'static str, key: &str, total: usize) {
+        save_scroll(id);
+        let limit = self.limit(key);
+        if limit < total
+            && element(id).is_some_and(|el| el.scroll_top() + el.client_height() >= el.scroll_height() - 400)
+        {
+            self.state.set((key.to_string(), limit + PAGE));
+        }
+    }
+
+    pub fn show_all(mut self, key: &str) {
+        self.state.set((key.to_string(), usize::MAX));
+    }
+}

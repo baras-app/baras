@@ -51,6 +51,8 @@ pub struct PullRow {
     pub duration_seconds: i64,
     /// Raid content (operations); false for flashpoints, world bosses, dummies
     pub is_operation: bool,
+    #[serde(default)]
+    pub is_flashpoint: bool,
     // Logging character's own numbers on this pull
     pub discipline: Option<String>,
     /// "Tank" | "Healer" | "Dps"
@@ -120,7 +122,9 @@ pub struct PullFilter {
     /// "8" | "16", matched against the leading player count of the difficulty name
     #[serde(default)]
     pub group_size: String,
-    pub operations_only: bool,
+    /// Flashpoint pulls and runs alongside operations (off: operations only)
+    #[serde(default)]
+    pub flashpoints: bool,
     pub kills_only: bool,
     /// Inclusive day bounds as `YYYY-MM-DD`; empty = open-ended
     pub date_from: String,
@@ -143,7 +147,7 @@ impl Default for PullFilter {
             discipline: String::new(),
             tier: "Master".into(),
             group_size: "8".into(),
-            operations_only: false,
+            flashpoints: false,
             kills_only: false,
             date_from: String::new(),
             date_to: String::new(),

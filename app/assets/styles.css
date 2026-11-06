@@ -383,27 +383,10 @@ select optgroup {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Fills the top row right of the logo and centres the toolbar in that space */
-.header-center {
+.header-buttons {
   display: flex;
-  justify-content: center;
-  flex: 1;
-  min-width: 0;
-}
-
-/* One pill for live status, overlay controls and the file browser */
-.header-center > div,
-.header-center > span,
-.header-center > button {
-  align-self: stretch;
-}
-
-.header-center > :first-child {
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-}
-
-.header-center > .header-center-files {
-  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  align-items: center;
+  gap: 0.5em;
 }
 
 /* Live/Historical status pill in top-right header area */
@@ -411,10 +394,11 @@ select optgroup {
   display: flex;
   align-items: center;
   gap: 0.35em;
-  padding: 0.4em 0.7em;
+  padding: 0.3em 0.6em;
   background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(80, 80, 90, 0.3);
-  border-right: none;
+  margin-right: 0.25em;
 }
 
 .header-live-status .status-dot {
@@ -445,51 +429,8 @@ select optgroup {
   gap: 0.45em;
   padding: 0.4em 0.7em;
   background: rgba(0, 0, 0, 0.3);
-  border-top: 1px solid rgba(80, 80, 90, 0.3);
-  border-bottom: 1px solid rgba(80, 80, 90, 0.3);
-}
-
-/* Session actions (resume live, unsaved profile) and the file browser
-   button are segments of the same pill; their contents keep their own size */
-.header-center-files {
-  display: flex;
-  align-items: center;
-  padding: 0.3em 0.6em;
-  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(80, 80, 90, 0.3);
-  border-left: none;
-}
-
-/* Session actions follow the pill; hidden items still reserve their width */
-.header-center-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.6em;
-  margin-left: 0.8em;
-}
-
-.header-center-actions > .is-hidden {
-  visibility: hidden;
-}
-
-.header-center .btn-resume-live {
-  padding: 0.35em 0.7em;
-  font-size: 0.8em;
-}
-
-.header-center .header-unsaved-hint {
-  padding: 0.3em 0.6em;
-  font-size: 0.75em;
-}
-
-/* Dividers between the pill's sections */
-.header-center > .header-controls-divider {
-  width: 1px;
-  height: auto;
-  margin: 0;
-  background: rgba(80, 80, 90, 0.3);
-  border-top: 1px solid rgba(80, 80, 90, 0.3);
-  border-bottom: 1px solid rgba(80, 80, 90, 0.3);
 }
 
 .header-profile-dropdown {
@@ -583,6 +524,25 @@ select optgroup {
   color: #f0c860 !important;
   border-color: rgba(212, 168, 73, 0.4) !important;
   background: rgba(212, 168, 73, 0.12) !important;
+}
+
+/* Big entry point to the same modal on the Overlays tab: the header
+   customize button's gold, at panel-button size */
+.btn-customize-overlays {
+  align-self: flex-start;
+  margin-bottom: 0.75vh;
+  gap: 0.5em;
+  font-size: 1.05em;
+  font-weight: 600;
+  color: #d4a849;
+  border-color: rgba(212, 168, 73, 0.4);
+  background: rgba(212, 168, 73, 0.08);
+}
+
+.btn-customize-overlays:hover:not(:disabled) {
+  color: #f0c860;
+  border-color: rgba(212, 168, 73, 0.6);
+  background: rgba(212, 168, 73, 0.15);
 }
 
 /* Profile unsaved hint (compact, in header nav row) */
@@ -4583,8 +4543,6 @@ a.contributor-name:hover {
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* Navigation + controls row below branding */
-
-
 .header-nav-row {
   display: flex;
   align-items: center;
@@ -4593,14 +4551,19 @@ a.contributor-name:hover {
   gap: 0.5em;
 }
 
+/* Sunken tray centred in the leftover row width, so the tabs read as one control */
 .header-tabs {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.4em;
-  flex: 1;
+  margin: 0 auto;
   min-width: 0;
-  justify-content: center;
+  padding: 0.35em;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(80, 80, 90, 0.3);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
 .tab-btn {
@@ -4655,20 +4618,75 @@ a.contributor-name:hover {
 
 /* Header tabs only (the editors' tab strips share the class): roomier */
 .header-tabs .tab-btn {
-  padding: 0.5em 1.1em;
-  font-size: 0.95em;
-}
-
-.header-tabs .tab-btn i {
+  padding: 0.6em 1.3em;
   font-size: 1.05em;
 }
 
-/* Gap between the analysis tabs and the configuration tabs */
-.tab-divider {
-  width: 1px;
-  height: 1.5em;
-  margin: 0 0.6em;
-  background: var(--border-light);
+.header-tabs .tab-btn i {
+  font-size: 1.1em;
+}
+
+/* Header menus: a tab-styled button that drops a list of views */
+.nav-menu {
+  position: relative;
+}
+
+.nav-menu-caret {
+  margin-left: 0.3em;
+  font-size: 0.7em;
+  opacity: 0.7;
+}
+
+.nav-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.nav-menu-list {
+  position: absolute;
+  top: calc(100% + 0.35em);
+  left: 0;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  min-width: 13em;
+  padding: 0.35em;
+  background: var(--swtor-bg-mid);
+  border: 1px solid var(--border-accent-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.nav-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.5em 0.8em;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.85em;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nav-menu-item i {
+  width: 1.2em;
+  text-align: center;
+}
+
+.nav-menu-item:hover {
+  background: var(--blue-alpha-8);
+  color: var(--text-primary);
+}
+
+.nav-menu-item.active {
+  color: var(--swtor-blue-bright);
 }
 
 .tab-content {
@@ -4713,19 +4731,16 @@ a.contributor-name:hover {
   }
 }
 
-/* Nine labelled tabs on one row need ~1450px: step the size down first,
-   then drop the labels (every tab keeps its icon and a title tooltip) */
-@media (max-width: 1550px) {
+/* Seven labelled tabs beside the overlay controls need ~1500px: step the
+   size down first, then drop the labels (every tab keeps its icon and a title) */
+@media (max-width: 1600px) {
   .header-tabs .tab-btn {
-    padding: 0.4em 0.75em;
-    font-size: 0.85em;
-  }
-  .tab-divider {
-    margin: 0 0.3em;
+    padding: 0.5em 1em;
+    font-size: 0.95em;
   }
 }
 
-@media (max-width: 1250px) {
+@media (max-width: 1350px) {
   .tab-btn .tab-label {
     display: none;
   }

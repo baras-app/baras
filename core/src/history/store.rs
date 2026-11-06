@@ -195,16 +195,11 @@ impl LogHistory {
         history_file_for(&self.filename)
     }
 
-    /// Write atomically (tmp + rename). A log with no recordable pulls
-    /// removes any stale file left from an earlier parse.
+    /// Write atomically (tmp + rename). A log with no recordable pulls still
+    /// gets a file: the header is what marks it scanned, otherwise it would
+    /// count as unscanned after every scan.
     pub fn save(&self) -> std::io::Result<()> {
         let path = self.file()?;
-        if self.pulls.is_empty() {
-            return match std::fs::remove_file(&path) {
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-                other => other,
-            };
-        }
         let tmp = path.with_extension("json.tmp");
         let bytes = serde_json::to_vec(self).map_err(std::io::Error::other)?;
         std::fs::write(&tmp, bytes)?;

@@ -25,7 +25,9 @@ pub enum ContentTag {
 }
 
 impl ContentTag {
-    pub const ALL: [ContentTag; 9] = [
+    /// The tags offered as filters and retention choices; `Other` and
+    /// `Empty` exist only so classification always yields something
+    pub const ALL: [ContentTag; 7] = [
         ContentTag::MasterOps,
         ContentTag::VeteranOps,
         ContentTag::StoryOps,
@@ -33,8 +35,6 @@ impl ContentTag {
         ContentTag::VeteranFlashpoint,
         ContentTag::Pvp,
         ContentTag::Dummy,
-        ContentTag::Other,
-        ContentTag::Empty,
     ];
 
     pub fn label(self) -> &'static str {

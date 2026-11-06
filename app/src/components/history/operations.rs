@@ -6,7 +6,8 @@ use dioxus::prelude::*;
 use baras_types::history::{BackfillEvent, PullFilter, RunSummary};
 
 use super::Backfill;
-use super::scroll::{save_scroll, use_restore_scroll};
+use super::scroll::{PAGE, save_scroll, use_restore_scroll};
+use super::toolbar::HistoryToolbar;
 use super::run_detail::RunDetailView;
 use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
@@ -85,6 +86,8 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
     let mut search = use_signal(|| props.state.read().history.run_search.clone());
     // Operations the user has opened in the rail (collapsed by default, like the Overview tree)
     let mut expanded = use_signal(|| props.state.read().history.run_expanded.clone());
+    // Operations whose every run is listed; others show the newest PAGE
+    let mut unfolded = use_signal(std::collections::HashSet::<String>::new);
     let mut state = props.state;
     use_effect(move || {
         let mut s = state.write();
@@ -101,6 +104,24 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
     use_effect(move || {
         if matches!(*backfill.event.read(), Some(BackfillEvent::Done { .. })) {
             list.restart();
+        }
+    });
+
+    // Nothing picked (first visit, or the pick fell out of the filter): take
+    // the newest run and open its operation so the highlighted row is visible
+    use_effect(move || {
+        let read = list.read();
+        let Some(l) = read.as_ref() else { return };
+        let q = search.read().to_lowercase();
+        let visible: Vec<&RunSummary> = l.runs.iter().filter(|r| run_hit(r, &q)).collect();
+        let picked = selected.read().clone();
+        if let Some(key) = effective(picked.clone(), &visible)
+            && picked.as_ref() != Some(&key)
+        {
+            if let Some(run) = visible.iter().find(|r| key_of(r) == key) {
+                expanded.write().insert(run.operation.clone());
+            }
+            selected.set(Some(key));
         }
     });
 
@@ -131,6 +152,7 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
     rsx! {
         div { class: "pull-history-body",
             aside { class: "explorer-sidebar",
+                HistoryToolbar { filter, runs: true }
                 div { class: "sidebar-search",
                     input {
                         class: "boss-search-input",
@@ -154,6 +176,8 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                             // A search opens every group so hits are visible
                             let is_collapsed = query.is_empty() && !expanded.read().contains(*op);
                             let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
+                            let cap = if unfolded.read().contains(*op) { group.len() } else { group.len().min(PAGE) };
+                            let unfold_key = op.to_string();
                             rsx! {
                                 div {
                                     class: "sidebar-section-header",
@@ -168,7 +192,7 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                     span { class: "section-count", "{group.len()}" }
                                 }
                                 if !is_collapsed {
-                                    for r in group.iter() {
+                                    for r in group[..cap].iter() {
                                         {
                                             let key = key_of(r);
                                             let is_selected = current.as_ref() == Some(&key);
@@ -202,12 +226,9 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                         if r.cleared {
                                             span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
                                         }
-                                        if let Some(t) = r.timer.as_ref() {
-                                            match t.achieved {
-                                                Some(true) => rsx! { span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } } },
-                                                Some(false) => rsx! { span { class: "run-badge timer-miss", title: "Timed run missed", i { class: "fa-solid fa-stopwatch" } } },
-                                                None => rsx! {},
-                                            }
+                                        // A missed timer shows nothing; only the achievement is worth a badge
+                                        if r.timer.as_ref().is_some_and(|t| t.achieved == Some(true)) {
+                                            span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }
                                         }
                                     }
                                     if !r.tags.is_empty() {
@@ -219,6 +240,13 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                     }
                                 }
                                             }
+                                        }
+                                    }
+                                    if cap < group.len() {
+                                        div { class: "sidebar-encounter-item run-more",
+                                            onclick: move |_| { unfolded.write().insert(unfold_key.clone()); },
+                                            i { class: "fa-solid fa-angles-down" }
+                                            " Show {group.len() - cap} more"
                                         }
                                     }
                                 }

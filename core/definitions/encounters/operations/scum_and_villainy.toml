@@ -524,7 +524,7 @@ difficulties = ["veteran", "master"]
 [[boss]]
 id = "olok"
 name = "Olok the Shadow"
-difficulties = ["story", "veteran"]
+difficulties = ["story", "veteran", "master"]
 
 [[boss.entities]]
 name = "Wealthy Buyer"

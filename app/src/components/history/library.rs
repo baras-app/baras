@@ -12,7 +12,7 @@ use wasm_bindgen::prelude::*;
 use super::Backfill;
 use super::library_cleanup::CleanupPanel;
 use super::library_meta::{LogNoteCell, LogTagsCell, TAG_OPTIONS};
-use super::scroll::{save_scroll, use_restore_scroll};
+use super::scroll::{use_paged, use_restore_scroll};
 use crate::api;
 use crate::components::{ToastSeverity, use_file_opener, use_parsely_upload, use_toast};
 use crate::types::UiSessionState;
@@ -86,6 +86,12 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
     let opener = use_file_opener();
     let mut uploader = use_parsely_upload();
     let mut rows = use_resource(|| async move { api::get_library().await.unwrap_or_default() });
+    let mut status = status;
+    // (path, filename) of the log awaiting delete confirmation
+    let mut confirm_delete = use_signal(|| None::<(String, String)>);
+    // (filename, note cell) whose tag and note editors are mounted; every
+    // other row shows plain text, so the table stays light
+    let mut editing = use_signal(|| None::<(String, bool)>);
     use_effect(move || {
         if matches!(*backfill.event.read(), Some(BackfillEvent::Done { .. })) {
             rows.restart();
@@ -149,6 +155,13 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
         .iter()
         .filter(|r| matches(r, *content.read(), *favorites_only.read(), &q))
         .collect();
+    // Rows render a page at a time; a filter change starts over
+    let page_key = format!("{q}|{:?}|{}", *content.read(), *favorites_only.read());
+    let paged = use_paged(&page_key);
+    let limit = paged.limit(&page_key);
+    let shown = visible.len().min(limit);
+    let scroll_key = page_key.clone();
+    let total = visible.len();
 
     rsx! {
         div { class: "library",
@@ -166,9 +179,9 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                 div { class: "history-card", div { class: "k", "Logs scanned" } div { class: "v", "{hs.logs}" } }
                 div { class: "history-card", div { class: "k", "Pulls recorded" } div { class: "v", "{hs.pulls}" } }
                 if pending > 0 {
-                    div { class: "history-card warn", title: "Logs with no history yet, or history from an older version",
-                        div { class: "k", i { class: "fa-solid fa-triangle-exclamation" } " Needs scan" }
-                        div { class: "v warn", "{pending}" }
+                    div { class: "history-card", title: "Logs with no history yet, or history from an older version",
+                        div { class: "k", "Needs scan" }
+                        div { class: "v", "{pending}" }
                     }
                 }
             }
@@ -208,7 +221,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                 }
             }
 
-            div { id: LIB_TABLE, class: "pull-history-table-wrap", onscroll: move |_| save_scroll(LIB_TABLE),
+            div { id: LIB_TABLE, class: "pull-history-table-wrap", onscroll: move |_| paged.on_scroll(LIB_TABLE, &scroll_key, total),
                 table { class: "pull-history-table library-table",
                     thead {
                         tr {
@@ -231,9 +244,12 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                         if !loading && visible.is_empty() {
                             tr { td { colspan: "13", class: "library-empty", "No logs match." } }
                         }
-                        for row in visible.iter() {
+                        for row in visible[..shown].iter() {
                             {
                                 let (badge, badge_class, badge_title) = status_badge(row.status);
+                                let area_names = row.areas.join(" · ");
+                                let editor = editing.read().as_ref().filter(|(f, _)| *f == row.filename).map(|(_, note)| *note);
+                                let (edit_tags, edit_note) = (row.filename.clone(), row.filename.clone());
                                 let filename = row.filename.clone();
                                 let favorite = row.favorite;
                                 let path = row.path.clone();
@@ -241,13 +257,15 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                                 let archived = row.status == LogStatus::Archived;
                                 let restore_name = row.filename.clone();
                                 let (upload_path, upload_name) = (row.path.clone(), row.filename.clone());
+                                let (delete_path, delete_name) = (row.path.clone(), row.filename.clone());
+                                let live = row.status == LogStatus::Live;
                                 rsx! {
                                     tr { key: "{row.filename}",
                                         td { class: "library-file", "{row.filename}" }
                                         td { "{row.date}" }
                                         td { {row.character.clone().unwrap_or_else(|| "—".into())} }
                                         td { if row.server.is_empty() { "—" } else { "{row.server}" } }
-                                        td { class: "library-areas", title: "{row.areas.join(\" · \")}",
+                                        td { class: "library-areas", title: "{area_names}",
                                             if row.content.is_empty() {
                                                 span { class: "pull-log-missing", "—" }
                                             }
@@ -255,24 +273,50 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                                                 span { class: "lib-tag {tag_class(*t)}", {t.label()} }
                                             }
                                             if !row.areas.is_empty() {
-                                                span { class: "library-area-names", {row.areas.join(" · ")} }
+                                                span { class: "library-area-names", "{area_names}" }
                                             }
                                         }
                                         td {
-                                            LogTagsCell {
-                                                filename: row.filename.clone(),
-                                                tags: row.tags.clone(),
-                                                run_tags: row.run_tags.clone(),
-                                                note: row.note.clone(),
-                                                on_change: move |_| rows.restart(),
+                                            if let Some(note_focus) = editor {
+                                                LogTagsCell {
+                                                    filename: row.filename.clone(),
+                                                    tags: row.tags.clone(),
+                                                    run_tags: row.run_tags.clone(),
+                                                    note: row.note.clone(),
+                                                    focus: !note_focus,
+                                                    on_change: move |_| rows.restart(),
+                                                }
+                                            } else {
+                                                div { class: "library-tag-cell static", title: "Click to edit tags",
+                                                    onclick: move |_| editing.set(Some((edit_tags.clone(), false))),
+                                                    for t in row.tags.iter() {
+                                                        span { class: "run-tag small", "{t}" }
+                                                    }
+                                                    for t in row.run_tags.iter().filter(|t| !row.tags.contains(*t)) {
+                                                        span { class: "run-tag small muted", title: "Tag on a run in this log", "{t}" }
+                                                    }
+                                                    if row.tags.is_empty() {
+                                                        span { class: "library-add-hint", "+ tag" }
+                                                    }
+                                                }
                                             }
                                         }
                                         td {
-                                            LogNoteCell {
-                                                filename: row.filename.clone(),
-                                                tags: row.tags.clone(),
-                                                note: row.note.clone(),
-                                                on_change: move |_| rows.restart(),
+                                            if let Some(note_focus) = editor {
+                                                LogNoteCell {
+                                                    filename: row.filename.clone(),
+                                                    tags: row.tags.clone(),
+                                                    note: row.note.clone(),
+                                                    focus: note_focus,
+                                                    on_change: move |_| rows.restart(),
+                                                }
+                                            } else {
+                                                div {
+                                                    class: if row.note.is_empty() { "library-note static empty" } else { "library-note static" },
+                                                    title: "{row.note}",
+                                                    onclick: move |_| editing.set(Some((edit_note.clone(), true))),
+                                                    if row.note.is_empty() { "Note…" } else { "{row.note}" }
+                                                }
                                             }
                                         }
                                         td { "{row.pulls}" }
@@ -343,10 +387,64 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                                                 },
                                                 if favorite { "★" } else { "☆" }
                                             }
+                                            button {
+                                                class: "btn btn-xs btn-ghost lib-delete",
+                                                title: if live { "The live log cannot be deleted" } else { "Delete this log and all of its data" },
+                                                disabled: live,
+                                                onclick: move |_| confirm_delete.set(Some((delete_path.clone(), delete_name.clone()))),
+                                                i { class: "fa-solid fa-trash" }
+                                            }
                                         }
                                     }
                                 }
                             }
+                        }
+                        if shown < total {
+                            tr {
+                                td { colspan: "13", class: "library-empty",
+                                    "{shown} of {total} shown · scroll for more "
+                                    button { class: "btn btn-xs btn-ghost", onclick: move |_| paged.show_all(&page_key), "Show all" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some((path, filename)) = confirm_delete.read().clone() {
+            div { class: "modal-overlay", onclick: move |_| confirm_delete.set(None),
+                div { class: "modal-content library-cleanup", onclick: move |e| e.stop_propagation(),
+                    div { class: "modal-header",
+                        h3 { "Delete log" }
+                        button { class: "btn btn-xs btn-ghost", onclick: move |_| confirm_delete.set(None), i { class: "fa-solid fa-xmark" } }
+                    }
+                    div { class: "library-delete-body",
+                        div { class: "library-preview warn",
+                            strong { "{filename}" }
+                            " The file, its pull history, tags, notes and Parsely links are removed. This cannot be undone."
+                        }
+                    }
+                    div { class: "modal-footer library-confirm-actions",
+                        button { class: "btn btn-sm", onclick: move |_| confirm_delete.set(None), "Cancel" }
+                        button {
+                            class: "btn btn-sm btn-danger",
+                            onclick: move |_| {
+                                let path = path.clone();
+                                confirm_delete.set(None);
+                                spawn(async move {
+                                    match api::delete_log(&path).await {
+                                        Ok(r) if r.failed.is_empty() => {
+                                            toast.show(format!("Deleted, freed {}", fmt_bytes(r.bytes_freed)), ToastSeverity::Normal);
+                                            rows.restart();
+                                            status.restart();
+                                        }
+                                        Ok(_) => toast.show("Could not delete this log", ToastSeverity::Normal),
+                                        Err(err) => toast.show(format!("Delete failed: {err}"), ToastSeverity::Normal),
+                                    }
+                                });
+                            },
+                            "Delete permanently"
                         }
                     }
                 }

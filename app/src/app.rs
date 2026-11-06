@@ -8,7 +8,7 @@ use wasm_bindgen_futures::spawn_local;
 use crate::api::{self, BossNotesInfo};
 use crate::components::{
     ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    FileOpenBanner, HistoryPanel, HotkeyInput, ParselyUploadModal, SettingsPanel, Slider, ToastFrame, ToastSeverity,
+    FileOpenBanner, HistoryPanel, HotkeyInput, NavMenu, ParselyUploadModal, SettingsPanel, Slider, ToastFrame, ToastSeverity,
     use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
@@ -784,8 +784,8 @@ pub fn App() -> Element {
                             }
                         }
                     }
-                    // Live status, overlay controls and the file browser: left-aligned, full row
-                    div { class: "header-center",
+                    // Live/Historical status + File browser + settings buttons (top-right)
+                    div { class: "header-buttons",
                         // Live/Historical toggle group
                         div { class: "header-live-status",
                             // Watcher status dot
@@ -817,7 +817,34 @@ pub fn App() -> Element {
                                 i { class: "fa-solid fa-rotate" }
                             }
                         }
-                    span { class: "header-controls-divider" }
+                        button {
+                            class: "btn btn-header-files",
+                            title: "Browse log files",
+                            onclick: move |_| {
+                                file_browser_filter.set(String::new());
+                                file_browser_open.set(true);
+                                spawn(async move {
+                                    api::refresh_file_sizes().await;
+                                    let result = api::get_log_files().await;
+                                    if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
+                                        log_files.set(files);
+                                    }
+                                });
+                            },
+                            i { class: "fa-solid fa-folder-open" }
+                        }
+                        button {
+                            class: "btn btn-header-settings",
+                            title: "Settings",
+                            onclick: move |_| general_settings_open.set(true),
+                            i { class: "fa-solid fa-gear" }
+                        }
+                    }
+                } // end header-top-row
+
+                // Navigation + controls row: | overlay controls | tabs |
+                div { class: "header-nav-row",
+                    // Overlay controls
                     div { class: "header-overlay-controls",
                         button {
                             class: if is_visible { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
@@ -918,31 +945,25 @@ pub fn App() -> Element {
                             }
                         }
                         span { class: "header-controls-divider" }
-                    }
-                    span { class: "header-controls-divider" }
-                    div { class: "header-center-files",
                         button {
-                            class: "btn btn-header-overlay",
-                            title: "Browse log files",
+                            class: "btn btn-header-overlay btn-header-customize",
+                            title: "Customize overlay appearance",
                             onclick: move |_| {
-                                file_browser_filter.set(String::new());
-                                file_browser_open.set(true);
-                                spawn(async move {
-                                    api::refresh_file_sizes().await;
-                                    let result = api::get_log_files().await;
-                                    if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
-                                        log_files.set(files);
-                                    }
-                                });
+                                let opening = !settings_open();
+                                settings_open.set(opening);
+                                if !opening {
+                                    settings_pos.set(None);
+                                    settings_drag.set(None);
+                                }
                             },
-                            i { class: "fa-solid fa-folder-open" }
+                            i { class: "fa-solid fa-screwdriver-wrench" }
                         }
                     }
-                    // Session actions: return to live, save a changed profile. Sits after
-                    // the pill; always laid out (hidden when idle) so the width is reserved.
-                    div { class: "header-center-actions",
+
+                    // Resume Live button (when paused/historical)
+                    if !live_tailing {
                         button {
-                            class: if live_tailing { "btn-resume-live is-hidden" } else { "btn-resume-live" },
+                            class: "btn-resume-live",
                             title: "Resume live tailing",
                             onclick: move |_| {
                                 let mut toast = use_toast();
@@ -957,9 +978,11 @@ pub fn App() -> Element {
                             span { class: "resume-live-label", "Resume Live " }
                             i { class: "fa-solid fa-play" }
                         }
+                    }
 
-                        // Profile unsaved changes hint (header)
-                        span { class: if profile_dirty() { "header-unsaved-hint" } else { "header-unsaved-hint is-hidden" },
+                    // Profile unsaved changes hint (header)
+                    if profile_dirty() {
+                        span { class: "header-unsaved-hint",
                             i { class: "fa-solid fa-circle-info" }
                             " Unsaved"
                             button {
@@ -983,83 +1006,41 @@ pub fn App() -> Element {
                             }
                         }
                     }
-                    }
-                } // end header-top-row
 
-                // Navigation row: the tabs alone, full width
-                div { class: "header-nav-row",
-                    // Navigation tabs: analysis by widening scope, then configuration; wraps to a second line
+                    // Navigation (centered): live view and overlays as tabs, the editors and history behind menus
                     div { class: "header-tabs",
                         button {
                             class: if ui_state.read().active_tab == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
                             title: "One fight at a time, from the loaded log",
                             onclick: move |_| ui_state.write().active_tab = MainTab::DataExplorer,
                             i { class: "fa-solid fa-magnifying-glass-chart" }
-                            span { class: "tab-label", " Encounter Analysis" }
+                            span { class: "tab-label", " Data Explorer" }
                         }
-                        button {
-                            class: if ui_state.read().active_tab == MainTab::BossStats { "tab-btn active" } else { "tab-btn" },
-                            title: "One boss across every log",
-                            onclick: move |_| ui_state.write().active_tab = MainTab::BossStats,
-                            i { class: "fa-solid fa-chart-column" }
-                            span { class: "tab-label", " Boss Statistics" }
-                        }
-                        button {
-                            class: if ui_state.read().active_tab == MainTab::RaidSummaries { "tab-btn active" } else { "tab-btn" },
-                            title: "One raid night across every log",
-                            onclick: move |_| ui_state.write().active_tab = MainTab::RaidSummaries,
-                            i { class: "fa-solid fa-dungeon" }
-                            span { class: "tab-label", " Raid Summaries" }
-                        }
-                        span { class: "tab-divider" }
                         button {
                             class: if ui_state.read().active_tab == MainTab::Overlays { "tab-btn active" } else { "tab-btn" },
-                            title: "Overlay Controls",
+                            title: "Enable, arrange and customize overlays",
                             onclick: move |_| ui_state.write().active_tab = MainTab::Overlays,
                             i { class: "fa-solid fa-layer-group" }
-                            span { class: "tab-label", " Overlay Controls" }
+                            span { class: "tab-label", " Overlays" }
                         }
-                        button {
-                            class: if settings_open() { "tab-btn active" } else { "tab-btn" },
-                            title: "Overlay Customization",
-                            onclick: move |_| {
-                                let opening = !settings_open();
-                                settings_open.set(opening);
-                                if !opening {
-                                    settings_pos.set(None);
-                                    settings_drag.set(None);
-                                }
-                            },
-                            i { class: "fa-solid fa-screwdriver-wrench" }
-                            span { class: "tab-label", " Overlay Customization" }
+                        NavMenu {
+                            label: "Timers & Effects",
+                            icon: "fa-solid fa-stopwatch",
+                            items: vec![
+                                (MainTab::EncounterBuilder, "fa-solid fa-hammer", "Encounter Builder", "Boss timers, phases and triggers"),
+                                (MainTab::Effects, "fa-solid fa-heart-pulse", "Effects Editor", "Tracked buffs, debuffs and alerts"),
+                            ],
+                            state: ui_state,
                         }
-                        button {
-                            class: if ui_state.read().active_tab == MainTab::EncounterBuilder { "tab-btn active" } else { "tab-btn" },
-                            title: "Encounter Builder",
-                            onclick: move |_| ui_state.write().active_tab = MainTab::EncounterBuilder,
-                            i { class: "fa-solid fa-hammer" }
-                            span { class: "tab-label", " Encounter Builder" }
-                        }
-                        button {
-                            class: if ui_state.read().active_tab == MainTab::Effects { "tab-btn active" } else { "tab-btn" },
-                            title: "Effects Editor",
-                            onclick: move |_| ui_state.write().active_tab = MainTab::Effects,
-                            i { class: "fa-solid fa-heart-pulse" }
-                            span { class: "tab-label", " Effects Editor" }
-                        }
-                        button {
-                            class: if ui_state.read().active_tab == MainTab::LogManagement { "tab-btn active" } else { "tab-btn" },
-                            title: "Scan, archive, delete and tag your logs",
-                            onclick: move |_| ui_state.write().active_tab = MainTab::LogManagement,
-                            i { class: "fa-solid fa-folder-tree" }
-                            span { class: "tab-label", " Log Management" }
-                        }
-                        button {
-                            class: if general_settings_open() { "tab-btn active" } else { "tab-btn" },
-                            title: "App Settings",
-                            onclick: move |_| general_settings_open.set(true),
-                            i { class: "fa-solid fa-gear" }
-                            span { class: "tab-label", " App Settings" }
+                        NavMenu {
+                            label: "Historical",
+                            icon: "fa-solid fa-clock-rotate-left",
+                            items: vec![
+                                (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
+                                (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", "One raid night across every log"),
+                                (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
+                            ],
+                            state: ui_state,
                         }
                     }
                 }
@@ -1473,6 +1454,21 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 if ui_state.read().active_tab == MainTab::Overlays {
                     section { class: "overlay-controls",
+                        // The appearance editor lives in a modal; this is its front door
+                        button {
+                            class: "btn btn-lg btn-customize-overlays",
+                            title: "Fonts, colours, sizes and layout of every overlay",
+                            onclick: move |_| {
+                                let opening = !settings_open();
+                                settings_open.set(opening);
+                                if !opening {
+                                    settings_pos.set(None);
+                                    settings_drag.set(None);
+                                }
+                            },
+                            i { class: "fa-solid fa-screwdriver-wrench" }
+                            " Customize Overlays"
+                        }
                         // Controls
                         h4 { class: "subsection-title", "Controls" }
                         div { class: "settings-controls",
