@@ -1691,11 +1691,15 @@ target = "local_player"
 id = "dominique_burn"
 name = "Burn"
 metric = "damage"
-columns = "total_percent"
+columns = "total_per_second"
 
 [[boss.challenges.conditions]]
 type = "phase"
 phase_ids = ["dominique_burn"]
+
+[[boss.challenges.conditions]]
+type = "target"
+match = "boss"
 
 # -- Timers
 [[boss.timer]]
