@@ -194,6 +194,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     let all_visible_picked = !visible.is_empty() && visible.iter().all(|r| selected.read().contains(&r.path));
     let visible_paths: Vec<String> = visible.iter().map(|r| r.path.clone()).collect();
     let cleaning = matches!(*cleanup.read(), Some(CleanupEvent::Progress { .. }));
+    let has_live = all.iter().any(|r| r.status == LogStatus::Live);
 
     rsx! {
         div { class: "library",
@@ -218,7 +219,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                 }
             }
 
-            CleanupPanel { backfill, cleanup, status, on_changed: move |_| rows.restart() }
+            CleanupPanel { state, backfill, cleanup, status, on_changed: move |_| rows.restart() }
 
             div { class: "library-actions",
                 input {
@@ -244,6 +245,20 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                         onchange: move |e| favorites_only.set(e.checked()),
                     }
                     " Favorites"
+                }
+                if has_live {
+                    button {
+                        class: "btn btn-xs lib-jump-live",
+                        title: "Clear the filters and scroll to the log being tailed (always the first row)",
+                        onclick: move |_| {
+                            search.set(String::new());
+                            content.set(LibraryContent::Any);
+                            favorites_only.set(false);
+                            super::scroll::scroll_to_top(LIB_TABLE);
+                        },
+                        span { class: "lib-live-dot" }
+                        " Live log"
+                    }
                 }
                 if !picked.is_empty() {
                     div { class: "library-bulk",
@@ -362,7 +377,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                 let (delete_path, delete_name) = (row.path.clone(), row.filename.clone());
                                 let live = row.status == LogStatus::Live;
                                 rsx! {
-                                    tr { key: "{row.filename}", class: if picked_row { "picked" } else { "" },
+                                    tr { key: "{row.filename}", class: if picked_row { "picked" } else if live { "live" } else { "" },
                                         td { class: "library-pick",
                                             input {
                                                 r#type: "checkbox",

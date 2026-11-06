@@ -11,6 +11,7 @@ use super::Backfill;
 use super::library::{fmt_bytes, tag_class};
 use crate::api;
 use crate::components::{ToastSeverity, use_toast};
+use crate::types::UiSessionState;
 
 const MB: f64 = 1_048_576.0;
 const PREVIEW_ROWS: usize = 200;
@@ -28,7 +29,7 @@ async fn save_auto_scan(on: bool) -> Result<(), String> {
 }
 
 #[component]
-pub fn CleanupPanel(backfill: Backfill, cleanup: Signal<Option<CleanupEvent>>, status: Resource<HistoryStatus>, on_changed: EventHandler<()>) -> Element {
+pub fn CleanupPanel(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Signal<Option<CleanupEvent>>, status: Resource<HistoryStatus>, on_changed: EventHandler<()>) -> Element {
     let mut toast = use_toast();
     let mut rules = use_signal(LogCleanup::default);
     let mut auto_scan = use_signal(|| true);
@@ -101,8 +102,14 @@ pub fn CleanupPanel(backfill: Backfill, cleanup: Signal<Option<CleanupEvent>>, s
     };
 
     rsx! {
-        details { class: "library-settings", open: true,
+        details { class: "library-settings", open: state.read().history.library_settings_open,
             summary { class: "collapsible-summary", title: "Show or hide cleanup and scan settings",
+                onclick: move |e| {
+                    // Controlled: the browser would toggle the attribute itself
+                    e.prevent_default();
+                    let mut s = state.write();
+                    s.history.library_settings_open = !s.history.library_settings_open;
+                },
                 i { class: "fa-solid fa-sliders summary-icon" }
                 "Management settings"
             }

@@ -473,6 +473,30 @@
   background: var(--blue-alpha-8);
 }
 
+/* The log being tailed: pinned first by the backend, tinted so it reads at a glance */
+.library-table tr.live td {
+  background: var(--color-success-bg);
+}
+
+.library-table tr.live td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-success);
+}
+
+.lib-jump-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  color: var(--color-success);
+}
+
+.lib-live-dot {
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 6px var(--color-success);
+}
+
 
 .library-table td {
   white-space: nowrap;
@@ -942,6 +966,7 @@
 
 .run-badge.cleared { color: var(--color-success); background: var(--color-success-bg); }
 .run-badge.timer-ok { color: var(--swtor-gold); background: rgba(201, 162, 39, 0.08); }
+.run-time.ok { color: var(--color-success); }
 
 .run-tags {
   display: flex;

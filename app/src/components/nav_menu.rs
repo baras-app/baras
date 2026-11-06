@@ -12,19 +12,45 @@ pub type NavItem = (MainTab, &'static str, &'static str, &'static str);
 #[component]
 pub fn NavMenu(label: &'static str, icon: &'static str, items: Vec<NavItem>, state: Signal<UiSessionState>) -> Element {
     let mut open = use_signal(|| false);
+    // Last destination picked from this menu: one click on the button goes
+    // straight back to it; the list is for switching
+    let mut last = use_signal(|| items[0].0);
+    let tabs: Vec<MainTab> = items.iter().map(|(t, ..)| *t).collect();
+    use_effect(move || {
+        let t = state.read().active_tab;
+        if tabs.contains(&t) {
+            last.set(t);
+        }
+    });
     let active_tab = state.read().active_tab;
     let current = items.iter().find(|(t, ..)| *t == active_tab);
     let (btn_icon, btn_label) = current.map_or((icon, label), |(_, i, l, _)| (*i, *l));
+    let in_menu = current.is_some();
+    let last_label = items.iter().find(|(t, ..)| *t == *last.read()).map_or(label, |(_, _, l, _)| *l);
 
     rsx! {
         div { class: "nav-menu",
             button {
-                class: if current.is_some() { "tab-btn active" } else { "tab-btn" },
-                title: "{label}",
-                onclick: move |_| open.toggle(),
+                class: if in_menu { "tab-btn active" } else { "tab-btn" },
+                title: if in_menu { "{label}" } else { "{last_label} · use the arrow for the other views" },
+                onclick: move |_| {
+                    if in_menu {
+                        open.toggle();
+                    } else {
+                        state.write().active_tab = *last.read();
+                    }
+                },
                 i { class: "{btn_icon}" }
                 span { class: "tab-label", " {btn_label}" }
-                i { class: "fa-solid fa-chevron-down nav-menu-caret" }
+                span {
+                    class: "nav-menu-caret",
+                    title: "{label}",
+                    onclick: move |e| {
+                        e.stop_propagation();
+                        open.toggle();
+                    },
+                    i { class: "fa-solid fa-chevron-down" }
+                }
             }
             if *open.read() {
                 // Click anywhere else closes the list

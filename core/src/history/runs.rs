@@ -97,23 +97,24 @@ fn summarize(
             .all(|b| g.iter().any(|r| r.success && r.boss == b.name))
     });
 
-    let timer = def.and_then(|a| a.timer_at(&tier_key, size)).map(|rule| {
-        let start = timer_starts
-            .iter()
-            .filter(|t| t.area_id == first.area_id)
-            .filter_map(|t| start_ms_of(&t.time))
-            .filter(|&ms| ms <= first.start_ms && prev_end.is_none_or(|p| ms > p))
-            .max();
-        let started = start.unwrap_or(first.start_ms);
-        let elapsed_secs = final_kill.map(|k| (end_ms(k) - started) / 1000);
-        RunTimer {
-            started: iso_of(started),
-            from_first_pull: start.is_none(),
-            elapsed_secs,
-            limit_secs: rule.limit_secs,
-            achieved: elapsed_secs.zip(rule.limit_secs).map(|(e, l)| full_clear && e <= i64::from(l)),
-        }
-    });
+    // Every run gets a clock: from the timer start line (else the first pull)
+    // to the final kill, or to the last pull's end when the run was not cleared
+    let start = timer_starts
+        .iter()
+        .filter(|t| t.area_id == first.area_id)
+        .filter_map(|t| start_ms_of(&t.time))
+        .filter(|&ms| ms <= first.start_ms && prev_end.is_none_or(|p| ms > p))
+        .max();
+    let started = start.unwrap_or(first.start_ms);
+    let elapsed_secs = (final_kill.map_or(last_end, |k| end_ms(k)) - started) / 1000;
+    let limit_secs = def.and_then(|a| a.timer_at(&tier_key, size)).and_then(|r| r.limit_secs);
+    let timer = RunTimer {
+        started: iso_of(started),
+        from_first_pull: start.is_none(),
+        elapsed_secs,
+        limit_secs,
+        achieved: limit_secs.map(|l| full_clear && elapsed_secs <= i64::from(l)),
+    };
 
     let played = g.iter().find(|r| r.discipline.is_some()).unwrap_or(&first);
     RunSummary {

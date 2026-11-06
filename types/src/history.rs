@@ -198,6 +198,8 @@ pub struct HistoryState {
     pub library_search: String,
     pub library_content: LibraryContent,
     pub library_favorites: bool,
+    /// Library: the cleanup/scan settings panel is unfolded
+    pub library_settings_open: bool,
 }
 
 impl Default for HistoryState {
@@ -215,6 +217,7 @@ impl Default for HistoryState {
             library_search: String::new(),
             library_content: LibraryContent::default(),
             library_favorites: false,
+            library_settings_open: false,
         }
     }
 }

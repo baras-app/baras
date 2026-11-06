@@ -4631,10 +4631,18 @@ a.contributor-name:hover {
   position: relative;
 }
 
+/* The caret is its own click target: it opens the list without navigating */
 .nav-menu-caret {
   margin-left: 0.3em;
+  padding: 0.25em 0.3em;
+  border-radius: var(--radius-sm);
   font-size: 0.7em;
   opacity: 0.7;
+}
+
+.nav-menu-caret:hover {
+  opacity: 1;
+  background: var(--blue-alpha-8);
 }
 
 .nav-menu-backdrop {

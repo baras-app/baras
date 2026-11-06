@@ -12,7 +12,7 @@ use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::{ToastSeverity, use_file_opener, use_toast};
 
-fn fmt_secs(secs: i64) -> String {
+pub(super) fn fmt_secs(secs: i64) -> String {
     formatting::format_duration(secs.max(0))
 }
 
@@ -26,10 +26,9 @@ fn clock(iso: &str) -> &str {
 #[component]
 fn RunTimeline(detail: RunDetail) -> Element {
     let run = &detail.run;
-    let start_ms = run
-        .timer
-        .as_ref()
-        .filter(|t| !t.from_first_pull)
+    // The clock's own start only when a start line was crossed
+    let timed = (!run.timer.from_first_pull).then_some(&run.timer);
+    let start_ms = timed
         .and_then(|t| baras_types::history::iso_to_ms(&t.started))
         .unwrap_or(run.start_ms);
     let end_ms = detail
@@ -65,11 +64,7 @@ fn RunTimeline(detail: RunDetail) -> Element {
     let ticks: Vec<(f64, String)> = (0..=total_secs / step)
         .map(|i| (pct(i * step * 1000), fmt_secs(i * step)))
         .collect();
-    let clock_start = run
-        .timer
-        .as_ref()
-        .filter(|t| !t.from_first_pull)
-        .map_or(run.started.as_str(), |t| t.started.as_str());
+    let clock_start = timed.map_or(run.started.as_str(), |t| t.started.as_str());
 
     rsx! {
         div { class: "run-timeline",
@@ -198,24 +193,23 @@ pub fn RunDetailView(
             div { class: "history-card", div { class: "k", "Between pulls" }
                 div { class: "v", {fmt_secs(between)} }
             }
-            if let Some(t) = run.timer.as_ref() {
-                div {
-                    class: match t.achieved { Some(true) => "history-card ok", Some(false) => "history-card warn", None => "history-card" },
-                    title: if t.from_first_pull { "No start line crossing was logged; the clock runs from the first pull" } else { "Clock from the timer start line" },
-                    div { class: "k", i { class: "fa-solid fa-stopwatch" } " Timed run" }
-                    div { class: "v",
-                        match t.elapsed_secs {
-                            Some(s) => fmt_secs(s),
-                            None => "—".to_string(),
-                        }
-                    }
-                    div { class: "sub",
-                        match (t.limit_secs, t.achieved) {
-                            (Some(l), Some(true)) => format!("under {}", fmt_secs(i64::from(l))),
-                            (Some(l), Some(false)) if run.kills < run.bosses_total => format!("{}/{} bosses · limit {}", run.kills, run.bosses_total, fmt_secs(i64::from(l))),
-                            (Some(l), Some(false)) => format!("over {}", fmt_secs(i64::from(l))),
-                            (Some(l), None) => format!("limit {}", fmt_secs(i64::from(l))),
-                            (None, _) => if t.from_first_pull { "from first pull".into() } else { "no limit set".into() },
+            {
+                let t = &run.timer;
+                let achieved = t.achieved == Some(true);
+                rsx! {
+                    div {
+                        class: if achieved { "history-card ok" } else { "history-card" },
+                        title: if t.from_first_pull { "No start line crossing was logged; the clock runs from the first pull" } else { "Clock from the timer start line" },
+                        div { class: "k", i { class: "fa-solid fa-stopwatch" } " Time" }
+                        div { class: if achieved { "v ok" } else { "v" }, {fmt_secs(t.elapsed_secs)} }
+                        div { class: "sub",
+                            match t.limit_secs {
+                                Some(l) if achieved => format!("under {}", fmt_secs(i64::from(l))),
+                                Some(l) if run.kills < run.bosses_total => format!("{}/{} bosses · limit {}", run.kills, run.bosses_total, fmt_secs(i64::from(l))),
+                                Some(l) => format!("over {}", fmt_secs(i64::from(l))),
+                                None if run.cleared => "to the final kill".to_string(),
+                                None => "to the last pull".to_string(),
+                            }
                         }
                     }
                 }

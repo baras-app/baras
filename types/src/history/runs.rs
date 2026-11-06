@@ -58,11 +58,13 @@ pub struct RunTimer {
     pub started: String,
     /// No start region was crossed (or recorded); the clock runs from the first pull
     pub from_first_pull: bool,
-    /// Clock at the final-boss kill; None while the run is not cleared
-    pub elapsed_secs: Option<i64>,
-    /// Achievement limit from the area definition, when known
+    /// Clock at the final-boss kill, or at the last pull's end while the run
+    /// is not cleared
+    pub elapsed_secs: i64,
+    /// Achievement limit from the area definition; None when the area has no
+    /// timed run
     pub limit_secs: Option<u32>,
-    /// `elapsed <= limit`, when both are known
+    /// Full clear within the limit; None when there is no limit
     pub achieved: Option<bool>,
 }
 
@@ -109,7 +111,7 @@ pub struct RunSummary {
     /// Seconds in boss combat / from first pull start to last pull end
     pub pull_secs: i64,
     pub span_secs: i64,
-    pub timer: Option<RunTimer>,
+    pub timer: RunTimer,
     #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default)]

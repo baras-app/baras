@@ -18,6 +18,14 @@ fn element(id: &str) -> Option<web_sys::Element> {
     web_sys::window()?.document()?.get_element_by_id(id)
 }
 
+/// Scroll the container with `id` back to its first row
+pub fn scroll_to_top(id: &'static str) {
+    if let Some(el) = element(id) {
+        el.set_scroll_top(0);
+        OFFSETS.with(|o| o.borrow_mut().insert(id, 0));
+    }
+}
+
 /// `onscroll` handler body for the element with `id`
 pub fn save_scroll(id: &'static str) {
     if let Some(el) = element(id) {

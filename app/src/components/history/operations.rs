@@ -8,7 +8,7 @@ use baras_types::history::{BackfillEvent, PullFilter, RunSummary};
 use super::Backfill;
 use super::scroll::{PAGE, save_scroll, use_restore_scroll};
 use super::toolbar::HistoryToolbar;
-use super::run_detail::RunDetailView;
+use super::run_detail::{RunDetailView, fmt_secs};
 use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::types::UiSessionState;
@@ -215,9 +215,11 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                     }
                                     div { class: "run-item-meta",
                                         span { "{date}" }
-                                        if let Some(d) = r.discipline.as_deref() {
-                                            span { "·" }
-                                            span { "{d}" }
+                                        span { "·" }
+                                        span {
+                                            class: if r.timer.achieved == Some(true) { "run-time ok" } else { "run-time" },
+                                            title: if r.cleared { "Time to the final kill" } else { "Time to the last pull" },
+                                            {fmt_secs(r.timer.elapsed_secs)}
                                         }
                                         span { "·" }
                                         span { title: "kills / bosses",
@@ -227,7 +229,7 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                             span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
                                         }
                                         // A missed timer shows nothing; only the achievement is worth a badge
-                                        if r.timer.as_ref().is_some_and(|t| t.achieved == Some(true)) {
+                                        if r.timer.achieved == Some(true) {
                                             span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }
                                         }
                                     }

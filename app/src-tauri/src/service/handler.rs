@@ -257,6 +257,13 @@ impl ServiceHandle {
                     filename: a.filename,
                 });
             }
+            // Live log first, then newest first; the filename carries the
+            // timestamp in sortable form for raw and archived logs alike
+            rows_out.sort_by(|a, b| {
+                (b.status == LogStatus::Live)
+                    .cmp(&(a.status == LogStatus::Live))
+                    .then_with(|| b.filename.cmp(&a.filename))
+            });
             rows_out
         })
     }
