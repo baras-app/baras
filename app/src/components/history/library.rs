@@ -127,6 +127,12 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
         });
         api::tauri_listen("log-files-changed", &closure).await;
         closure.forget();
+        // Opening a historical log or resuming live tailing moves the pin
+        let closure = Closure::new(move |_: JsValue| {
+            let _ = changes.try_write().map(|mut w| *w += 1);
+        });
+        api::tauri_listen("session-updated", &closure).await;
+        closure.forget();
     });
     use_effect(move || {
         if *changes.read() > 0 {
@@ -183,18 +189,18 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     let total = visible.len();
 
     // Bulk bar: what the ticked rows allow. Raw logs archive, archives
-    // restore, anything but the live log deletes.
+    // restore, anything but the open log deletes.
     let picked: Vec<&LibraryRow> = {
         let sel = selected.read();
         all.iter().filter(|r| sel.contains(&r.path)).collect()
     };
-    let can_archive: Vec<String> = picked.iter().filter(|r| !r.status.is_archived() && r.status != LogStatus::Live).map(|r| r.path.clone()).collect();
+    let can_archive: Vec<String> = picked.iter().filter(|r| !r.status.is_archived() && !r.open).map(|r| r.path.clone()).collect();
     let can_restore: Vec<String> = picked.iter().filter(|r| r.status.is_archived()).map(|r| r.filename.clone()).collect();
-    let can_delete: Vec<(String, String)> = picked.iter().filter(|r| r.status != LogStatus::Live).map(|r| (r.path.clone(), r.filename.clone())).collect();
+    let can_delete: Vec<(String, String)> = picked.iter().filter(|r| !r.open).map(|r| (r.path.clone(), r.filename.clone())).collect();
     let all_visible_picked = !visible.is_empty() && visible.iter().all(|r| selected.read().contains(&r.path));
     let visible_paths: Vec<String> = visible.iter().map(|r| r.path.clone()).collect();
     let cleaning = matches!(*cleanup.read(), Some(CleanupEvent::Progress { .. }));
-    let has_live = all.iter().any(|r| r.status == LogStatus::Live);
+    let has_open = all.iter().any(|r| r.open);
 
     rsx! {
         div { class: "library",
@@ -246,18 +252,18 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                     }
                     " Favorites"
                 }
-                if has_live {
+                if has_open {
                     button {
-                        class: "btn btn-xs lib-jump-live",
-                        title: "Clear the filters and scroll to the log being tailed (always the first row)",
+                        class: "btn btn-xs lib-jump-open",
+                        title: "Clear the filters and scroll to the log that is open right now (always the first row)",
                         onclick: move |_| {
                             search.set(String::new());
                             content.set(LibraryContent::Any);
                             favorites_only.set(false);
                             super::scroll::scroll_to_top(LIB_TABLE);
                         },
-                        span { class: "lib-live-dot" }
-                        " Live log"
+                        i { class: "fa-solid fa-location-crosshairs" }
+                        " Open log"
                     }
                 }
                 if !picked.is_empty() {
@@ -375,9 +381,15 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                 let restore_name = row.filename.clone();
                                 let (upload_path, upload_name) = (row.path.clone(), row.filename.clone());
                                 let (delete_path, delete_name) = (row.path.clone(), row.filename.clone());
-                                let live = row.status == LogStatus::Live;
+                                let open = row.open;
+                                let row_class = match (picked_row, open, row.status == LogStatus::Live) {
+                                    (true, ..) => "picked",
+                                    (false, true, true) => "open live",
+                                    (false, true, false) => "open",
+                                    _ => "",
+                                };
                                 rsx! {
-                                    tr { key: "{row.filename}", class: if picked_row { "picked" } else if live { "live" } else { "" },
+                                    tr { key: "{row.filename}", class: "{row_class}",
                                         td { class: "library-pick",
                                             input {
                                                 r#type: "checkbox",
@@ -516,8 +528,8 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                             }
                                             button {
                                                 class: "btn btn-xs btn-ghost lib-delete",
-                                                title: if live { "The live log cannot be deleted" } else { "Delete this log and all of its data" },
-                                                disabled: live,
+                                                title: if open { "The open log cannot be deleted" } else { "Delete this log and all of its data" },
+                                                disabled: open,
                                                 onclick: move |_| confirm_delete.set(Some(vec![(delete_path.clone(), delete_name.clone())])),
                                                 i { class: "fa-solid fa-trash" }
                                             }

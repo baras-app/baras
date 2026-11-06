@@ -174,7 +174,8 @@ impl ServiceHandle {
 
     /// Every log in the directory with its history and metadata joined.
     pub async fn library(&self) -> Vec<LibraryRow> {
-        let live = self.active_file_path().await;
+        let open = self.active_file_path().await;
+        let tailing = self.shared.is_live_tailing.load(std::sync::atomic::Ordering::SeqCst);
         let log_dir = PathBuf::from(self.config().await.log_directory);
         let shared = self.shared.clone();
         let directory = self.shared.directory_index.read().await;
@@ -188,7 +189,8 @@ impl ServiceHandle {
                 .map(|e| {
                     let info = pulls.log_info(&e.filename);
                     let rows = info.map_or(&[][..], |(r, _)| r);
-                    let status = if live.as_deref() == Some(e.path.as_path()) {
+                    let is_open = open.as_deref() == Some(e.path.as_path());
+                    let status = if is_open && tailing {
                         LogStatus::Live
                     } else {
                         match info {
@@ -215,6 +217,7 @@ impl ServiceHandle {
                         kills: rows.iter().filter(|r| r.success).count() as u32,
                         dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
                         status,
+                        open: is_open,
                         favorite: log_meta.is_some_and(|m| m.favorite),
                         tags: log_meta.map(|m| m.tags.clone()).unwrap_or_default(),
                         run_tags: meta.run_tags_for_log(&e.filename),
@@ -248,6 +251,7 @@ impl ServiceHandle {
                     kills: rows.iter().filter(|r| r.success).count() as u32,
                     dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
                     status,
+                    open: false,
                     favorite: log_meta.is_some_and(|m| m.favorite),
                     tags: log_meta.map(|m| m.tags.clone()).unwrap_or_default(),
                     run_tags: meta.run_tags_for_log(&a.filename),
@@ -257,13 +261,9 @@ impl ServiceHandle {
                     filename: a.filename,
                 });
             }
-            // Live log first, then newest first; the filename carries the
+            // The open log first, then newest first; the filename carries the
             // timestamp in sortable form for raw and archived logs alike
-            rows_out.sort_by(|a, b| {
-                (b.status == LogStatus::Live)
-                    .cmp(&(a.status == LogStatus::Live))
-                    .then_with(|| b.filename.cmp(&a.filename))
-            });
+            rows_out.sort_by(|a, b| b.open.cmp(&a.open).then_with(|| b.filename.cmp(&a.filename)));
             rows_out
         })
     }

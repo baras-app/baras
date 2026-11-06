@@ -221,16 +221,20 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                             title: if r.cleared { "Time to the final kill" } else { "Time to the last pull" },
                                             {fmt_secs(r.timer.elapsed_secs)}
                                         }
-                                        span { "·" }
-                                        span { title: "kills / bosses",
-                                            if r.bosses_total > 0 { "{r.kills}/{r.bosses_total}" } else { "{r.kills} kills" }
-                                        }
-                                        if r.cleared {
-                                            span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
-                                        }
-                                        // A missed timer shows nothing; only the achievement is worth a badge
-                                        if r.timer.achieved == Some(true) {
-                                            span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }
+                                        // Outcome sits at the right edge, under the tier badge. A full
+                                        // clear replaces the kill count; partial runs show how far they got
+                                        span { class: "run-outcome",
+                                            // A missed timer shows nothing; only the achievement is worth a badge
+                                            if r.timer.achieved == Some(true) {
+                                                span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }
+                                            }
+                                            if r.cleared {
+                                                span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
+                                            } else {
+                                                span { class: "run-badge", title: "kills / bosses",
+                                                    if r.bosses_total > 0 { "{r.kills}/{r.bosses_total}" } else { "{r.kills} kills" }
+                                                }
+                                            }
                                         }
                                     }
                                     if !r.tags.is_empty() {

@@ -473,28 +473,29 @@
   background: var(--blue-alpha-8);
 }
 
-/* The log being tailed: pinned first by the backend, tinted so it reads at a glance */
-.library-table tr.live td {
+/* The open log: pinned first by the backend and tinted so it reads at a
+   glance; blue for a historical open, green while it is being tailed */
+.library-table tr.open td {
+  background: var(--blue-alpha-8);
+}
+
+.library-table tr.open td:first-child {
+  box-shadow: inset 3px 0 0 var(--swtor-blue);
+}
+
+.library-table tr.open.live td {
   background: var(--color-success-bg);
 }
 
-.library-table tr.live td:first-child {
+.library-table tr.open.live td:first-child {
   box-shadow: inset 3px 0 0 var(--color-success);
 }
 
-.lib-jump-live {
+.lib-jump-open {
   display: inline-flex;
   align-items: center;
   gap: 0.4em;
-  color: var(--color-success);
-}
-
-.lib-live-dot {
-  width: 0.55em;
-  height: 0.55em;
-  border-radius: 50%;
-  background: var(--color-success);
-  box-shadow: 0 0 6px var(--color-success);
+  color: var(--swtor-blue-bright);
 }
 
 
@@ -967,6 +968,18 @@
 .run-badge.cleared { color: var(--color-success); background: var(--color-success-bg); }
 .run-badge.timer-ok { color: var(--swtor-gold); background: rgba(201, 162, 39, 0.08); }
 .run-time.ok { color: var(--color-success); }
+
+/* Right-aligned outcome group, flush with the tier badge on the row above */
+.run-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  margin-left: auto;
+}
+
+.run-outcome .run-badge {
+  padding: 1px 6px;
+}
 
 .run-tags {
   display: flex;
