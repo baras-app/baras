@@ -127,17 +127,15 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                     }
                 }
             }
-            if !runs {
-                div { class: "history-seg", title: "Your role on the pull",
-                    for (value, label, icon) in ROLES {
-                        button {
-                            class: if f.role == value { "seg active role" } else { "seg role" },
-                            onclick: move |_| toggle(|f| &mut f.role, value),
-                            if let Some(src) = get_role_icon(icon) {
-                                img { class: "role-icon", src: *src, alt: "" }
-                            }
-                            " {label}"
+            div { class: "history-seg", title: if runs { "Your role on the run" } else { "Your role on the pull" },
+                for (value, label, icon) in ROLES {
+                    button {
+                        class: if f.role == value { "seg active role" } else { "seg role" },
+                        onclick: move |_| toggle(|f| &mut f.role, value),
+                        if let Some(src) = get_role_icon(icon) {
+                            img { class: "role-icon", src: *src, alt: "" }
                         }
+                        " {label}"
                     }
                 }
             }
@@ -151,56 +149,37 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
         }
         if *more.read() {
             div { class: "history-toolbar secondary",
+                // Switches first, then the dropdowns, then the date range
+                div { class: "history-switches",
+                    label { class: "toggle-switch-label history-switch",
+                        span { class: "toggle-switch",
+                            input {
+                                r#type: "checkbox",
+                                checked: f.kills_only,
+                                onchange: move |e| filter.write().kills_only = e.checked(),
+                            }
+                            span { class: "toggle-slider" }
+                        }
+                        span { class: "toggle-text", if runs { "Full clears only" } else { "Kills only" } }
+                    }
+                    label { class: "toggle-switch-label history-switch", title: "Flashpoint bosses and runs alongside operations",
+                        span { class: "toggle-switch",
+                            input {
+                                r#type: "checkbox",
+                                checked: f.flashpoints,
+                                onchange: move |e| filter.write().flashpoints = e.checked(),
+                            }
+                            span { class: "toggle-slider" }
+                        }
+                        span { class: "toggle-text", "Include flashpoints" }
+                    }
+                }
                 select {
                     value: "{f.character}",
                     onchange: move |e| set(|f, v| f.character = v, e.value()),
                     option { value: "", "All characters" }
                     for c in characters.iter() {
                         option { value: "{c}", "{c}" }
-                    }
-                }
-                label { class: "history-toggle",
-                    input {
-                        r#type: "checkbox",
-                        checked: f.kills_only,
-                        onchange: move |e| filter.write().kills_only = e.checked(),
-                    }
-                    if runs { " Full clears only" } else { " Kills only" }
-                }
-                label { class: "history-toggle", title: "Flashpoint bosses and runs alongside operations",
-                    input {
-                        r#type: "checkbox",
-                        checked: f.flashpoints,
-                        onchange: move |e| filter.write().flashpoints = e.checked(),
-                    }
-                    " Include flashpoints"
-                }
-                div { class: "pull-history-result-tabs", title: "Date range",
-                    button {
-                        class: if f.date_from.is_empty() && f.date_to.is_empty() { "filter-tab active" } else { "filter-tab" },
-                        onclick: move |_| {
-                            let mut w = filter.write();
-                            w.date_from.clear();
-                            w.date_to.clear();
-                        },
-                        "All"
-                    }
-                    for (label, days) in DATE_PRESETS {
-                        {
-                            let start = preset_start(days);
-                            let active = f.date_to.is_empty() && f.date_from == start;
-                            rsx! {
-                                button {
-                                    class: if active { "filter-tab active" } else { "filter-tab" },
-                                    onclick: move |_| {
-                                        let mut w = filter.write();
-                                        w.date_from = start.clone();
-                                        w.date_to.clear();
-                                    },
-                                    "{label}"
-                                }
-                            }
-                        }
                     }
                 }
                 select {
@@ -245,23 +224,53 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                         }
                     }
                 }
-                div { class: "history-dates",
-                    input {
-                        r#type: "text",
-                        class: "pull-history-date",
-                        placeholder: "from YYYY-MM-DD",
-                        maxlength: "10",
-                        value: "{f.date_from}",
-                        onchange: move |e| set(|f, v| f.date_from = v, e.value()),
+                div { class: "history-range", title: "Date range",
+                    div { class: "pull-history-result-tabs",
+                        button {
+                            class: if f.date_from.is_empty() && f.date_to.is_empty() { "filter-tab active" } else { "filter-tab" },
+                            onclick: move |_| {
+                                let mut w = filter.write();
+                                w.date_from.clear();
+                                w.date_to.clear();
+                            },
+                            "All"
+                        }
+                        for (label, days) in DATE_PRESETS {
+                            {
+                                let start = preset_start(days);
+                                let active = f.date_to.is_empty() && f.date_from == start;
+                                rsx! {
+                                    button {
+                                        class: if active { "filter-tab active" } else { "filter-tab" },
+                                        onclick: move |_| {
+                                            let mut w = filter.write();
+                                            w.date_from = start.clone();
+                                            w.date_to.clear();
+                                        },
+                                        "{label}"
+                                    }
+                                }
+                            }
+                        }
                     }
-                    span { "–" }
-                    input {
-                        r#type: "text",
-                        class: "pull-history-date",
-                        placeholder: "to YYYY-MM-DD",
-                        maxlength: "10",
-                        value: "{f.date_to}",
-                        onchange: move |e| set(|f, v| f.date_to = v, e.value()),
+                    div { class: "history-dates",
+                        input {
+                            r#type: "text",
+                            class: "pull-history-date",
+                            placeholder: "from YYYY-MM-DD",
+                            maxlength: "10",
+                            value: "{f.date_from}",
+                            onchange: move |e| set(|f, v| f.date_from = v, e.value()),
+                        }
+                        span { "–" }
+                        input {
+                            r#type: "text",
+                            class: "pull-history-date",
+                            placeholder: "to YYYY-MM-DD",
+                            maxlength: "10",
+                            value: "{f.date_to}",
+                            onchange: move |e| set(|f, v| f.date_to = v, e.value()),
+                        }
                     }
                 }
             }

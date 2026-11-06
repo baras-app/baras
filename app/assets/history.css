@@ -42,6 +42,27 @@
   color: var(--text-muted);
 }
 
+/* "More filters": the switches share one row above the dropdowns */
+.history-switches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em 1.1em;
+}
+
+.history-switch {
+  font-size: 0.8em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Presets with the typed dates directly under them */
+.history-range {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
 .history-toolbar .pull-history-result-tabs {
   margin-left: 0;
 }

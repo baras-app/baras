@@ -125,6 +125,7 @@ fn summarize(
         character: first.character.clone(),
         discipline: played.discipline.clone(),
         discipline_icon: played.discipline_icon.clone(),
+        role: played.role.clone(),
         role_icon: played.role_icon.clone(),
         server: first.server.clone(),
         game_version: first.game_version.clone(),
@@ -151,11 +152,14 @@ fn summarize(
     }
 }
 
-/// Toolbar filter applied to a run: role and discipline do not apply;
-/// "kills only" means cleared runs; group size is an operations thing.
+/// Toolbar filter applied to a run: role and discipline are the ones the
+/// logging character played; "kills only" means cleared runs; group size
+/// is an operations thing.
 pub(super) fn run_matches(run: &RunSummary, f: &PullFilter) -> bool {
     let day = run.started.get(..10).unwrap_or(&run.started);
     (f.character.is_empty() || run.character == f.character)
+        && (f.role.is_empty() || run.role.as_deref() == Some(f.role.as_str()))
+        && (f.discipline.is_empty() || run.discipline.as_deref() == Some(f.discipline.as_str()))
         && (f.flashpoints || !run.is_flashpoint)
         && (f.tier.is_empty() || run.tier == f.tier)
         && (f.group_size.is_empty() || run.is_flashpoint || run.group_size.to_string() == f.group_size)

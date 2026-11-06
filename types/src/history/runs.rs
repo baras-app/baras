@@ -84,6 +84,9 @@ pub struct RunSummary {
     /// Logging character's discipline on this run, with icon names
     pub discipline: Option<String>,
     pub discipline_icon: Option<String>,
+    /// "Tank" | "Healer" | "Dps"
+    #[serde(default)]
+    pub role: Option<String>,
     pub role_icon: Option<String>,
     /// Server display name and patch live at the time
     #[serde(default)]
