@@ -68,6 +68,7 @@ pub(super) fn tag_class(t: ContentTag) -> &'static str {
         ContentTag::VeteranOps | ContentTag::VeteranFlashpoint => "hm",
         ContentTag::StoryOps => "sm",
         ContentTag::Pvp => "pvp",
+        ContentTag::WorldBoss => "wb",
         ContentTag::Dummy | ContentTag::Other | ContentTag::Empty => "misc",
     }
 }

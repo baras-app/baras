@@ -17,8 +17,11 @@ pub enum ContentTag {
     VeteranOps,
     MasterOps,
     Pvp,
+    /// World and lair boss pulls (open-world areas carry no difficulty id,
+    /// so this comes from the recorded pulls, not the area index)
+    WorldBoss,
     Dummy,
-    /// Open world, world bosses, unknown difficulty
+    /// Open world, unknown difficulty
     Other,
     /// No areas visited and nothing recorded
     Empty,
@@ -27,12 +30,13 @@ pub enum ContentTag {
 impl ContentTag {
     /// The tags offered as filters and retention choices; `Other` and
     /// `Empty` exist only so classification always yields something
-    pub const ALL: [ContentTag; 7] = [
+    pub const ALL: [ContentTag; 8] = [
         ContentTag::MasterOps,
         ContentTag::VeteranOps,
         ContentTag::StoryOps,
         ContentTag::MasterFlashpoint,
         ContentTag::VeteranFlashpoint,
+        ContentTag::WorldBoss,
         ContentTag::Pvp,
         ContentTag::Dummy,
     ];
@@ -45,6 +49,7 @@ impl ContentTag {
             ContentTag::VeteranOps => "VM Ops",
             ContentTag::MasterOps => "NiM Ops",
             ContentTag::Pvp => "PvP",
+            ContentTag::WorldBoss => "World Boss",
             ContentTag::Dummy => "Dummy",
             ContentTag::Other => "Other",
             ContentTag::Empty => "Empty",

@@ -668,6 +668,7 @@
 .lib-tag.hm { color: #e8c060; background: rgba(220, 160, 40, 0.12); }
 .lib-tag.sm { color: var(--color-success); background: var(--color-success-bg); }
 .lib-tag.pvp { color: var(--swtor-blue-bright); background: rgba(74, 158, 255, 0.15); }
+.lib-tag.wb { color: #c58ee8; background: rgba(170, 110, 230, 0.14); }
 .lib-tag.misc { color: var(--text-muted); }
 
 .library-area-names {

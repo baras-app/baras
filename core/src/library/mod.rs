@@ -35,6 +35,11 @@ pub fn content_tags(areas: Option<&FileAreaIndex>, rows: &[PullRow]) -> Vec<Cont
     if rows.iter().any(|r| r.operation == DUMMY_GROUP) {
         tags.push(ContentTag::Dummy);
     }
+    // Pulls are only recorded for defined bosses and dummies, so a recorded
+    // pull that is neither raid, flashpoint nor dummy is a world/lair boss
+    if rows.iter().any(|r| !r.is_operation && !r.is_flashpoint && r.operation != DUMMY_GROUP) {
+        tags.push(ContentTag::WorldBoss);
+    }
     if tags.is_empty() {
         tags.push(ContentTag::Empty);
     }
