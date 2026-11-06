@@ -26,6 +26,10 @@ pub struct PullRow {
     pub filename: String,
     /// Log path, present only when the file still exists on disk
     pub path: Option<String>,
+    /// No path because the log is compressed in the archive; restoring it
+    /// brings the path back
+    #[serde(default)]
+    pub archived: bool,
     pub encounter_id: u64,
     /// Stable pull key within the log (combat start, ms); see `PullRecord`
     pub start_ms: i64,

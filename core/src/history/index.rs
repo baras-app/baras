@@ -221,9 +221,14 @@ impl PullIndex {
                 if !filter.tag.is_empty() && !tags.contains(&filter.tag) {
                     continue;
                 }
-                let exists = *exists.get_or_insert_with(|| log.log_path.is_file());
+                // One stat per log: on disk, else in the archive
+                let (exists, archived) = *exists.get_or_insert_with(|| {
+                    let on_disk = log.log_path.is_file();
+                    (on_disk, !on_disk && crate::library::archived_log(&r.filename).is_some())
+                });
                 let mut row = r.clone();
                 row.path = exists.then(|| log.log_path.to_string_lossy().into_owned());
+                row.archived = archived;
                 row.tags = tags.to_vec();
                 out.push(row);
             }
@@ -266,6 +271,7 @@ impl PullIndex {
         rows.sort_by_key(|r| r.start_ms);
         for r in &mut rows {
             r.path = run.path.clone();
+            r.archived = run.archived;
             r.tags = run.tags.clone();
         }
         Some((run, rows))
@@ -405,6 +411,7 @@ fn row_from(log: &LogHistory, p: &PullRecord) -> PullRow {
     PullRow {
         filename: log.filename.clone(),
         path: None,
+        archived: false,
         encounter_id: p.encounter_id,
         start_ms: p.start_ms,
         timestamp: if p.start_time.is_empty() {
