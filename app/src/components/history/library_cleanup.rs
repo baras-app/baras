@@ -109,6 +109,7 @@ pub fn CleanupPanel(backfill: Backfill, cleanup: Signal<Option<CleanupEvent>>, s
             div { class: "library-manage",
             div { class: "run-section",
                 h4 { "Automatic cleanup" }
+                div { class: "library-rules",
                 RuleRow {
                     on: r.delete_smaller_than > 0,
                     text: "Delete logs smaller than",
@@ -169,15 +170,18 @@ pub fn CleanupPanel(backfill: Backfill, cleanup: Signal<Option<CleanupEvent>>, s
                         }
                     },
                 }
-                span { class: "library-retain-title", "Never delete logs containing" }
-                div { class: "library-retain-tags",
-                    for tag in ContentTag::ALL {
-                        {
-                            let on = retain.read().contains(&tag);
-                            rsx! {
-                                label { class: if on { "lib-tag-toggle on lib-tag {tag_class(tag)}" } else { "lib-tag-toggle" },
-                                    input { r#type: "checkbox", checked: on, onchange: move |e| toggle_retain(tag, e.checked()) }
-                                    {tag.label()}
+                }
+                div { class: "library-retain",
+                    span { class: "library-retain-title", "Never delete logs containing" }
+                    div { class: "library-retain-tags",
+                        for tag in ContentTag::ALL {
+                            {
+                                let on = retain.read().contains(&tag);
+                                rsx! {
+                                    label { class: if on { "lib-tag-toggle on" } else { "lib-tag-toggle" },
+                                        input { r#type: "checkbox", checked: on, onchange: move |e| toggle_retain(tag, e.checked()) }
+                                        {tag.label()}
+                                    }
                                 }
                             }
                         }

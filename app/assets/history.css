@@ -730,10 +730,38 @@
   margin: 0;
 }
 
+/* Rules share one grid so the checkboxes, inputs and units line up */
+.library-rules {
+  display: grid;
+  grid-template-columns: max-content 5.5em max-content;
+  align-items: center;
+  column-gap: 0.5em;
+  row-gap: 0.35em;
+}
+
 .library-rule {
-  display: flex;
+  display: contents;
+}
+
+.library-rule .history-toggle {
+  display: inline-flex;
   align-items: center;
   gap: 0.4em;
+  margin: 0;
+}
+
+.library-rule .history-toggle input {
+  margin: 0;
+}
+
+.library-rule .library-num {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.library-rule > .hint {
+  margin: 0;
+  line-height: 1;
 }
 
 .library-num:disabled {
@@ -759,6 +787,22 @@
 
 .library-actions-center .btn {
   font-weight: 600;
+}
+
+/* Retention sits in its own box between the rules and the hint */
+.library-retain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+  margin-top: 0.4em;
+  padding: 0.5em 0.7em 0.6em;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.library-manage .library-retain .library-retain-title {
+  margin-top: 0;
 }
 
 .library-retain-title {
@@ -794,9 +838,11 @@
   border-color: var(--border-medium);
 }
 
-/* Lit: the .lib-tag colour rules supply text and tint; the rim follows */
+/* Lit: one accent for every tag, so on/off reads at a glance */
 .lib-tag-toggle.on {
-  border-color: currentColor;
+  color: var(--swtor-blue);
+  border-color: var(--swtor-blue);
+  background: var(--blue-alpha-8);
 }
 
 .lib-tag-toggle input {
