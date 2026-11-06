@@ -18,6 +18,13 @@ codegen-units = 1      # Better optimization (slower compile)
 panic = "abort"        # No unwinding overhead
 strip = "symbols"      # Strip symbols from release binaries (smaller, no runtime cost)
 
+# dx builds the frontend with this profile. wasm-bindgen reads custom sections
+# that `strip` removes under LLVM 23 (rustc 1.99+); wasm-opt shrinks the
+# output afterwards, so stripping here buys nothing.
+[profile.wasm-release]
+inherits = "release"
+strip = false
+
 [workspace.dependencies]
 # Pin swash to 0.2.6: version 0.2.8 has a hinting cache bug where LRU-evicted
 # entries keep stale size/coords fields, causing glyphs to be hinted at the
