@@ -1353,7 +1353,7 @@ difficulties = ["veteran", "master"]
 
 [[boss.timer]]
 id = "warlord_kephess_pull_in_soon"
-name = "Pull in soon"
+name = "Pull In Soon"
 is_alert = true
 color = [125, 250, 0, 255]
 icon_ability_id = 2877074037538816
