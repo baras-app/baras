@@ -210,58 +210,62 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
     };
     let fmt_opt = move |n: Option<i64>| n.map(|v| formatting::format_compact(v, eu)).unwrap_or_else(|| "-".into());
 
+    let collapsed = props.state.read().history.sidebar_collapsed;
     rsx! {
         div { class: "pull-history-body",
-            aside { class: "explorer-sidebar",
-                HistoryToolbar { filter, runs: false }
-                div { class: "sidebar-search",
-                    input {
-                        class: "boss-search-input",
-                        r#type: "text",
-                        placeholder: "Filter bosses...",
-                        value: "{boss_search}",
-                        oninput: move |e| boss_search.set(e.value()),
-                    }
-                }
-                div { id: OV_RAIL, class: "sidebar-encounter-list", onscroll: move |_| save_scroll(OV_RAIL),
-                    if !loading && tree.is_empty() {
-                        div { class: "sidebar-empty",
-                            i { class: "fa-solid fa-clock-rotate-left" }
-                            p { "No recorded pulls" }
-                            p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
+            aside { class: if collapsed { "explorer-sidebar collapsed" } else { "explorer-sidebar" },
+                super::SidebarHeader { state: props.state, icon: "fa-solid fa-skull", title: "Bosses" }
+                if !collapsed {
+                    HistoryToolbar { filter, runs: false }
+                    div { class: "sidebar-search",
+                        input {
+                            class: "boss-search-input",
+                            r#type: "text",
+                            placeholder: "Filter bosses...",
+                            value: "{boss_search}",
+                            oninput: move |e| boss_search.set(e.value()),
                         }
                     }
-                    for (op, nodes) in tree.iter() {
-                        {
-                            let op_key = op.to_string();
-                            let is_collapsed = search.is_empty() && !expanded.read().contains(*op);
-                            let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
-                            let op_pulls: u32 = nodes.iter().map(|n| n.pulls).sum();
-                            rsx! {
-                                div {
-                                    class: "sidebar-section-header",
-                                    onclick: move |_| {
-                                        let mut set = expanded.write();
-                                        if !set.remove(&op_key) {
-                                            set.insert(op_key.clone());
-                                        }
-                                    },
-                                    i { class: "fa-solid {chevron} collapse-icon" }
-                                    span { class: "section-area", "{op}" }
-                                    span { class: "section-count", "{op_pulls}" }
-                                }
-                                if !is_collapsed {
-                                    for node in nodes.iter() {
-                                        {
-                                            let key = (node.operation.clone(), node.boss.clone());
-                                            let is_selected = current.as_ref() == Some(&key);
-                                            rsx! {
-                                                div {
-                                                    class: if is_selected { "sidebar-encounter-item selected" } else { "sidebar-encounter-item" },
-                                                    onclick: move |_| selected.set(Some(key.clone())),
-                                                    div { class: "encounter-main",
-                                                        span { class: "encounter-name", "{node.boss}" }
-                                                        span { class: "pull-tree-count", title: "pulls · kills", "{node.pulls} · {node.kills}" }
+                    div { id: OV_RAIL, class: "sidebar-encounter-list", onscroll: move |_| save_scroll(OV_RAIL),
+                        if !loading && tree.is_empty() {
+                            div { class: "sidebar-empty",
+                                i { class: "fa-solid fa-clock-rotate-left" }
+                                p { "No recorded pulls" }
+                                p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
+                            }
+                        }
+                        for (op, nodes) in tree.iter() {
+                            {
+                                let op_key = op.to_string();
+                                let is_collapsed = search.is_empty() && !expanded.read().contains(*op);
+                                let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
+                                let op_pulls: u32 = nodes.iter().map(|n| n.pulls).sum();
+                                rsx! {
+                                    div {
+                                        class: "sidebar-section-header",
+                                        onclick: move |_| {
+                                            let mut set = expanded.write();
+                                            if !set.remove(&op_key) {
+                                                set.insert(op_key.clone());
+                                            }
+                                        },
+                                        i { class: "fa-solid {chevron} collapse-icon" }
+                                        span { class: "section-area", "{op}" }
+                                        span { class: "section-count", "{op_pulls}" }
+                                    }
+                                    if !is_collapsed {
+                                        for node in nodes.iter() {
+                                            {
+                                                let key = (node.operation.clone(), node.boss.clone());
+                                                let is_selected = current.as_ref() == Some(&key);
+                                                rsx! {
+                                                    div {
+                                                        class: if is_selected { "sidebar-encounter-item selected" } else { "sidebar-encounter-item" },
+                                                        onclick: move |_| selected.set(Some(key.clone())),
+                                                        div { class: "encounter-main",
+                                                            span { class: "encounter-name", "{node.boss}" }
+                                                            span { class: "pull-tree-count", title: "pulls · kills", "{node.pulls} · {node.kills}" }
+                                                        }
                                                     }
                                                 }
                                             }

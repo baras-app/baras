@@ -2405,6 +2405,16 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         items.sort_by(|a, b| {
                                             b.0.total_value.partial_cmp(&a.0.total_value).unwrap_or(std::cmp::Ordering::Equal)
                                         });
+                                        // Spawns within a group read chronologically (earliest first);
+                                        // ones never seen hitting sort last
+                                        for (_, members) in items.iter_mut() {
+                                            members.sort_by(|a, b| {
+                                                a.first_hit_secs
+                                                    .unwrap_or(f32::INFINITY)
+                                                    .partial_cmp(&b.first_hit_secs.unwrap_or(f32::INFINITY))
+                                                    .unwrap_or(std::cmp::Ordering::Equal)
+                                            });
+                                        }
                                         // For Rotation/Usage: overview DPS for non-healers, EHPS for healers
                                         // For Detailed tabs: entity total_value / duration
                                         let row_values = |entity: &EntityBreakdown, is_npc: bool| -> (f64, &'static str, &'static str) {

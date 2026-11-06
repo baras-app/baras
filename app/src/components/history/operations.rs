@@ -149,110 +149,114 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
     let groups = group_by_operation(&visible);
     use_restore_scroll(&[OPS_RAIL, OPS_MAIN], !loading && (current.is_none() || detail.read().is_some()));
 
+    let collapsed = props.state.read().history.sidebar_collapsed;
     rsx! {
         div { class: "pull-history-body",
-            aside { class: "explorer-sidebar",
-                HistoryToolbar { filter, runs: true }
-                div { class: "sidebar-search",
-                    input {
-                        class: "boss-search-input",
-                        r#type: "text",
-                        placeholder: "Search tags, operation, character…",
-                        value: "{search}",
-                        oninput: move |e| search.set(e.value()),
-                    }
-                }
-                div { id: OPS_RAIL, class: "sidebar-encounter-list", onscroll: move |_| save_scroll(OPS_RAIL),
-                    if !loading && visible.is_empty() {
-                        div { class: "sidebar-empty",
-                            i { class: "fa-solid fa-dungeon" }
-                            p { "No operation runs" }
-                            p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
+            aside { class: if collapsed { "explorer-sidebar collapsed" } else { "explorer-sidebar" },
+                super::SidebarHeader { state: props.state, icon: "fa-solid fa-dungeon", title: "Runs" }
+                if !collapsed {
+                    HistoryToolbar { filter, runs: true }
+                    div { class: "sidebar-search",
+                        input {
+                            class: "boss-search-input",
+                            r#type: "text",
+                            placeholder: "Search tags, operation, character…",
+                            value: "{search}",
+                            oninput: move |e| search.set(e.value()),
                         }
                     }
-                    for (op, group) in groups.iter() {
-                        {
-                            let op_key = op.to_string();
-                            // A search opens every group so hits are visible
-                            let is_collapsed = query.is_empty() && !expanded.read().contains(*op);
-                            let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
-                            let cap = if unfolded.read().contains(*op) { group.len() } else { group.len().min(PAGE) };
-                            let unfold_key = op.to_string();
-                            rsx! {
-                                div {
-                                    class: "sidebar-section-header",
-                                    onclick: move |_| {
-                                        let mut set = expanded.write();
-                                        if !set.remove(&op_key) {
-                                            set.insert(op_key.clone());
-                                        }
-                                    },
-                                    i { class: "fa-solid {chevron} collapse-icon" }
-                                    span { class: "section-area", "{op}" }
-                                    span { class: "section-count", "{group.len()}" }
-                                }
-                                if !is_collapsed {
-                                    for r in group[..cap].iter() {
-                                        {
-                                            let key = key_of(r);
-                                            let is_selected = current.as_ref() == Some(&key);
-                                            let date = r.started.get(..10).unwrap_or(&r.started);
-                                            rsx! {
-                                                div {
-                                                    class: if is_selected { "sidebar-encounter-item run-item selected" } else { "sidebar-encounter-item run-item" },
-                                    onclick: move |_| selected.set(Some(key.clone())),
-                                    div { class: "encounter-main",
-                                        span { class: "encounter-name run-who",
-                                            if let Some(icon) = r.role_icon.as_deref().and_then(get_role_icon) {
-                                                img { class: "role-icon", src: *icon, alt: "" }
+                    div { id: OPS_RAIL, class: "sidebar-encounter-list", onscroll: move |_| save_scroll(OPS_RAIL),
+                        if !loading && visible.is_empty() {
+                            div { class: "sidebar-empty",
+                                i { class: "fa-solid fa-dungeon" }
+                                p { "No operation runs" }
+                                p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
+                            }
+                        }
+                        for (op, group) in groups.iter() {
+                            {
+                                let op_key = op.to_string();
+                                // A search opens every group so hits are visible
+                                let is_collapsed = query.is_empty() && !expanded.read().contains(*op);
+                                let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
+                                let cap = if unfolded.read().contains(*op) { group.len() } else { group.len().min(PAGE) };
+                                let unfold_key = op.to_string();
+                                rsx! {
+                                    div {
+                                        class: "sidebar-section-header",
+                                        onclick: move |_| {
+                                            let mut set = expanded.write();
+                                            if !set.remove(&op_key) {
+                                                set.insert(op_key.clone());
                                             }
-                                            if let Some(icon) = r.discipline_icon.as_deref().and_then(get_class_icon) {
-                                                img { class: "discipline-icon", src: *icon, alt: "" }
-                                            }
-                                            span { title: "{r.discipline.clone().unwrap_or_default()}", "{r.character}" }
-                                        }
-                                        span { class: "{tier_class(&r.tier)}", {tier_label(r)} }
+                                        },
+                                        i { class: "fa-solid {chevron} collapse-icon" }
+                                        span { class: "section-area", "{op}" }
+                                        span { class: "section-count", "{group.len()}" }
                                     }
-                                    div { class: "run-item-meta",
-                                        span { "{date}" }
-                                        span { "·" }
-                                        span {
-                                            class: if r.timer.achieved == Some(true) { "run-time ok" } else { "run-time" },
-                                            title: if r.cleared { "Time to the final kill" } else { "Time to the last pull" },
-                                            {fmt_secs(r.timer.elapsed_secs)}
-                                        }
-                                        // Outcome sits at the right edge, under the tier badge. A full
-                                        // clear replaces the kill count; partial runs show how far they got
-                                        span { class: "run-outcome",
-                                            // A missed timer shows nothing; only the achievement is worth a badge
-                                            if r.timer.achieved == Some(true) {
-                                                span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }
+                                    if !is_collapsed {
+                                        for r in group[..cap].iter() {
+                                            {
+                                                let key = key_of(r);
+                                                let is_selected = current.as_ref() == Some(&key);
+                                                let date = r.started.get(..10).unwrap_or(&r.started);
+                                                rsx! {
+                                                    div {
+                                                        class: if is_selected { "sidebar-encounter-item run-item selected" } else { "sidebar-encounter-item run-item" },
+                                        onclick: move |_| selected.set(Some(key.clone())),
+                                        div { class: "encounter-main",
+                                            span { class: "encounter-name run-who",
+                                                if let Some(icon) = r.role_icon.as_deref().and_then(get_role_icon) {
+                                                    img { class: "role-icon", src: *icon, alt: "" }
+                                                }
+                                                if let Some(icon) = r.discipline_icon.as_deref().and_then(get_class_icon) {
+                                                    img { class: "discipline-icon", src: *icon, alt: "" }
+                                                }
+                                                span { title: "{r.discipline.clone().unwrap_or_default()}", "{r.character}" }
                                             }
-                                            if r.cleared {
-                                                span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
-                                            } else {
-                                                span { class: "run-badge", title: "kills / bosses",
-                                                    if r.bosses_total > 0 { "{r.kills}/{r.bosses_total}" } else { "{r.kills} kills" }
+                                            span { class: "{tier_class(&r.tier)}", {tier_label(r)} }
+                                        }
+                                        div { class: "run-item-meta",
+                                            span { "{date}" }
+                                            span { "·" }
+                                            span {
+                                                class: if r.timer.achieved == Some(true) { "run-time ok" } else { "run-time" },
+                                                title: if r.cleared { "Time to the final kill" } else { "Time to the last pull" },
+                                                {fmt_secs(r.timer.elapsed_secs)}
+                                            }
+                                            // Outcome sits at the right edge, under the tier badge. A full
+                                            // clear replaces the kill count; partial runs show how far they got
+                                            span { class: "run-outcome",
+                                                // A missed timer shows nothing; only the achievement is worth a badge
+                                                if r.timer.achieved == Some(true) {
+                                                    span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }
+                                                }
+                                                if r.cleared {
+                                                    span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
+                                                } else {
+                                                    span { class: "run-badge", title: "kills / bosses",
+                                                        if r.bosses_total > 0 { "{r.kills}/{r.bosses_total}" } else { "{r.kills} kills" }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if !r.tags.is_empty() {
+                                            div { class: "run-item-meta",
+                                                for t in r.tags.iter() {
+                                                    span { class: "run-tag small", "{t}" }
                                                 }
                                             }
                                         }
                                     }
-                                    if !r.tags.is_empty() {
-                                        div { class: "run-item-meta",
-                                            for t in r.tags.iter() {
-                                                span { class: "run-tag small", "{t}" }
+                                                }
                                             }
                                         }
-                                    }
-                                }
+                                        if cap < group.len() {
+                                            div { class: "sidebar-encounter-item run-more",
+                                                onclick: move |_| { unfolded.write().insert(unfold_key.clone()); },
+                                                i { class: "fa-solid fa-angles-down" }
+                                                " Show {group.len() - cap} more"
                                             }
-                                        }
-                                    }
-                                    if cap < group.len() {
-                                        div { class: "sidebar-encounter-item run-more",
-                                            onclick: move |_| { unfolded.write().insert(unfold_key.clone()); },
-                                            i { class: "fa-solid fa-angles-down" }
-                                            " Show {group.len() - cap} more"
                                         }
                                     }
                                 }
