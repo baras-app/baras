@@ -440,6 +440,39 @@
   max-width: 360px;
 }
 
+/* Bulk bar: appears at the end of the filter row once a row is ticked */
+.library-bulk {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35em;
+  margin-left: auto;
+  padding: 0.2em 0.5em;
+  border: 1px solid var(--border-accent-medium);
+  border-radius: var(--radius-sm);
+  background: var(--blue-alpha-8);
+}
+
+.library-bulk-count {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  margin-right: 0.3em;
+}
+
+.library-bulk .lib-delete:hover:not(:disabled) {
+  color: var(--color-error);
+}
+
+.library-table .library-pick {
+  width: 1.6em;
+  padding-right: 0;
+  text-align: center;
+}
+
+.library-table tr.picked td {
+  background: var(--blue-alpha-8);
+}
+
 
 .library-table td {
   white-space: nowrap;
@@ -541,6 +574,11 @@
 .lib-status.archived {
   color: var(--swtor-blue);
   background: rgba(79, 165, 230, 0.12);
+}
+
+.lib-status.archived.stale {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
 }
 
 .library-parsely {

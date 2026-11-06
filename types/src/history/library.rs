@@ -168,6 +168,14 @@ pub enum LogStatus {
     NoHistory,
     /// Compressed into the archive directory; restore to open
     Archived,
+    /// Archived, and its history is from an older store version
+    ArchivedStale,
+}
+
+impl LogStatus {
+    pub fn is_archived(self) -> bool {
+        matches!(self, LogStatus::Archived | LogStatus::ArchivedStale)
+    }
 }
 
 /// One log in the Library table: directory index + area cache + history

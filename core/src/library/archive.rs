@@ -69,6 +69,25 @@ impl ArchivedLog {
     }
 }
 
+/// Remove half-written files a killed run left behind: `.zst.tmp` in the
+/// archive and `.restoring` in `log_dir`. Call at startup, before any
+/// archive or restore is in flight.
+pub fn sweep_partial(log_dir: &Path) {
+    let stray = |dir: PathBuf, ext: &str| {
+        let Ok(read) = fs::read_dir(dir) else { return };
+        for e in read.flatten() {
+            let path = e.path();
+            if path.extension().and_then(|x| x.to_str()) == Some(ext) && fs::remove_file(&path).is_ok() {
+                tracing::info!(path = %path.display(), "Removed partial file");
+            }
+        }
+    };
+    if let Ok(dir) = archive_dir() {
+        stray(dir, "tmp");
+    }
+    stray(log_dir.to_path_buf(), "restoring");
+}
+
 /// The archive of `filename`, if one exists.
 pub fn archived_log(filename: &str) -> Option<ArchivedLog> {
     ArchivedLog::from_path(archive_dir().ok()?.join(format!("{filename}.{EXT}")))

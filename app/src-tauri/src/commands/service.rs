@@ -382,11 +382,19 @@ pub async fn restore_log(filename: String, handle: State<'_, ServiceHandle>) -> 
 }
 
 #[tauri::command]
-pub async fn delete_log(
-    path: std::path::PathBuf,
+pub async fn delete_logs(
+    paths: Vec<std::path::PathBuf>,
     handle: State<'_, ServiceHandle>,
 ) -> Result<baras_types::history::DeleteReport, String> {
-    Ok(handle.delete_log(path).await)
+    Ok(handle.delete_logs(paths).await)
+}
+
+#[tauri::command]
+pub async fn archive_logs(
+    paths: Vec<std::path::PathBuf>,
+    handle: State<'_, ServiceHandle>,
+) -> Result<baras_types::history::CleanupReport, String> {
+    Ok(handle.archive_logs(paths).await)
 }
 
 #[tauri::command]

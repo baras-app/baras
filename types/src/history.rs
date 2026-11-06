@@ -246,3 +246,18 @@ pub enum BackfillEvent {
         cancelled: bool,
     },
 }
+
+/// Progress of a cleanup run (startup or "Run cleanup now") on the
+/// `log-cleanup` event: one `Progress` per file, then `Done`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "event", rename_all = "snake_case")]
+pub enum CleanupEvent {
+    Progress {
+        current: u32,
+        total: u32,
+        file: String,
+    },
+    Done {
+        report: CleanupReport,
+    },
+}

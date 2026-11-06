@@ -5,7 +5,7 @@
 
 use dioxus::prelude::*;
 
-use baras_types::history::{BackfillEvent, CleanupPlan, ContentTag, HistoryStatus, LogCleanup};
+use baras_types::history::{BackfillEvent, CleanupEvent, CleanupPlan, ContentTag, HistoryStatus, LogCleanup};
 
 use super::Backfill;
 use super::library::{fmt_bytes, tag_class};
@@ -28,7 +28,7 @@ async fn save_auto_scan(on: bool) -> Result<(), String> {
 }
 
 #[component]
-pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_changed: EventHandler<()>) -> Element {
+pub fn CleanupPanel(backfill: Backfill, cleanup: Signal<Option<CleanupEvent>>, status: Resource<HistoryStatus>, on_changed: EventHandler<()>) -> Element {
     let mut toast = use_toast();
     let mut rules = use_signal(LogCleanup::default);
     let mut auto_scan = use_signal(|| true);
@@ -56,6 +56,15 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
             plan.restart();
         }
     });
+    use_effect(move || {
+        if matches!(*cleanup.read(), Some(CleanupEvent::Done { .. })) {
+            plan.restart();
+        }
+    });
+    let cleaning = match &*cleanup.read() {
+        Some(CleanupEvent::Progress { current, total, file }) => Some(format!("{current}/{total} {file}")),
+        _ => None,
+    };
 
     let mut set_rules = move |r: LogCleanup| {
         rules.set(r.clone());
@@ -180,18 +189,23 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
                 if let Some(p) = p && !p.is_empty() {
                     div { class: "history-pick",
                         i { class: "fa-solid fa-broom" }
-                        span {
-                            "Right now: archive {p.archive.len()} files ({fmt_bytes(p.archive_bytes)}), delete {p.delete.len()} files ({fmt_bytes(p.delete_bytes)}). Kept {p.kept} by content."
-                        }
+                        span { "Right now: {describe(p)}. Kept {p.kept} by content." }
                     }
                 }
                 div { class: "library-actions-center",
-                    button {
-                        class: "btn btn-lg btn-primary",
-                        disabled: p.is_none_or(|p| p.is_empty()),
-                        onclick: move |_| show_confirm.set(true),
-                        i { class: "fa-solid fa-broom" }
-                        " Run cleanup now…"
+                    if let Some(progress) = cleaning {
+                        span { class: "library-scan-progress",
+                            i { class: "fa-solid fa-spinner fa-spin" }
+                            " Cleaning {progress}"
+                        }
+                    } else {
+                        button {
+                            class: "btn btn-lg btn-primary",
+                            disabled: p.is_none_or(|p| p.is_empty()),
+                            onclick: move |_| show_confirm.set(true),
+                            i { class: "fa-solid fa-broom" }
+                            " Run cleanup now…"
+                        }
                     }
                 }
             }
@@ -298,6 +312,29 @@ fn RuleRow(
     }
 }
 
+fn is_archive(path: &str) -> bool {
+    path.ends_with(".zst")
+}
+
+/// "archive 12 files (1.2 GB), delete 3 files and 4 archives (300 MB)"
+fn describe(p: &CleanupPlan) -> String {
+    let archives = p.delete.iter().filter(|f| is_archive(&f.path)).count();
+    let files = p.delete.len() - archives;
+    let mut parts = Vec::new();
+    if !p.archive.is_empty() {
+        parts.push(format!("archive {} files ({})", p.archive.len(), fmt_bytes(p.archive_bytes)));
+    }
+    if !p.delete.is_empty() {
+        let what = match (files, archives) {
+            (f, 0) => format!("{f} files"),
+            (0, a) => format!("{a} archives"),
+            (f, a) => format!("{f} files and {a} archives"),
+        };
+        parts.push(format!("delete {what} ({})", fmt_bytes(p.delete_bytes)));
+    }
+    parts.join(", ")
+}
+
 /// The exact files the rules select right now, and one confirmation.
 #[component]
 fn CleanupModal(plan: CleanupPlan, on_close: EventHandler<()>, on_done: EventHandler<()>) -> Element {
@@ -305,7 +342,7 @@ fn CleanupModal(plan: CleanupPlan, on_close: EventHandler<()>, on_done: EventHan
     let mut busy = use_signal(|| false);
     let archive_n = plan.archive.len();
     let delete_n = plan.delete.len();
-    let delete_bytes = plan.delete_bytes;
+    let summary = describe(&plan);
     let rows: Vec<(&str, &baras_types::history::CleanupCandidate)> = plan
         .archive
         .iter()
@@ -339,8 +376,8 @@ fn CleanupModal(plan: CleanupPlan, on_close: EventHandler<()>, on_done: EventHan
                 }
                 div { class: "library-delete-body",
                     div { class: "library-preview warn",
-                        strong { "Archive {archive_n} files, delete {delete_n} files ({fmt_bytes(delete_bytes)})" }
-                        " Archived logs can be restored from the table below; deleted logs cannot."
+                        strong { "{summary}" }
+                        " Archived logs can be restored from the table below; deleted logs and archives cannot."
                     }
                     div { class: "library-preview-list",
                         table { class: "pull-history-table",
@@ -348,7 +385,9 @@ fn CleanupModal(plan: CleanupPlan, on_close: EventHandler<()>, on_done: EventHan
                             tbody {
                                 for (action, f) in rows.iter().take(PREVIEW_ROWS) {
                                     tr { key: "{f.path}",
-                                        td { class: if *action == "delete" { "library-action delete" } else { "library-action" }, "{action}" }
+                                        td { class: if *action == "delete" { "library-action delete" } else { "library-action" },
+                                            if *action == "delete" && is_archive(&f.path) { "delete archive" } else { "{action}" }
+                                        }
                                         td { "{f.filename}" }
                                         td {
                                             for t in f.content.iter() {

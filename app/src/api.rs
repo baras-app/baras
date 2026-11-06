@@ -553,9 +553,15 @@ pub async fn restore_log(filename: &str) -> Result<String, String> {
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
 
-/// Delete a log (or archive) and every artifact it owns; refused for the live log
-pub async fn delete_log(path: &str) -> Result<baras_types::history::DeleteReport, String> {
-    let result = try_invoke("delete_log", build_args("path", path)).await?;
+/// Delete logs (or archives) and every artifact they own; refused for the live log
+pub async fn delete_logs(paths: &[String]) -> Result<baras_types::history::DeleteReport, String> {
+    let result = try_invoke("delete_logs", build_args("paths", paths)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Compress logs into the archive; progress arrives on the `log-cleanup` event
+pub async fn archive_logs(paths: &[String]) -> Result<baras_types::history::CleanupReport, String> {
+    let result = try_invoke("archive_logs", build_args("paths", paths)).await?;
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
 

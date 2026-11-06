@@ -1997,6 +1997,7 @@ impl CombatService {
                     let _ = app_handle.emit("log-files-changed", ());
                     info!("Background index backfill complete");
                     // The index is complete and the live log known: apply the cleanup rules
+                    baras_core::library::sweep_partial(&backfill_dir);
                     rt.block_on(cleanup::run(&shared, &app_handle));
                 }
                 Err(e) => {

@@ -2,9 +2,11 @@
 //! metadata, the automatic cleanup and history store controls, favorites and
 //! restore.
 
+use std::collections::HashSet;
+
 use dioxus::prelude::*;
 
-use baras_types::history::{BackfillEvent, ContentTag, HistoryStatus, LibraryContent, LibraryRow, LogStatus};
+use baras_types::history::{BackfillEvent, CleanupEvent, ContentTag, HistoryStatus, LibraryContent, LibraryRow, LogStatus};
 
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
@@ -77,18 +79,21 @@ fn status_badge(status: LogStatus) -> (&'static str, &'static str, &'static str)
         LogStatus::Stale => ("re-scan", "lib-status stale", "History is from an older version or older log bytes"),
         LogStatus::NoHistory => ("—", "lib-status none", "Never scanned, or nothing recordable"),
         LogStatus::Archived => ("archived", "lib-status archived", "Compressed in the archive; restore to open"),
+        LogStatus::ArchivedStale => ("archived · re-scan", "lib-status archived stale", "Archived; its history is from an older version and the next scan refreshes it"),
     }
 }
 
 #[component]
-pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Resource<HistoryStatus>) -> Element {
+pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Signal<Option<CleanupEvent>>, status: Resource<HistoryStatus>) -> Element {
     let mut toast = use_toast();
     let opener = use_file_opener();
     let mut uploader = use_parsely_upload();
     let mut rows = use_resource(|| async move { api::get_library().await.unwrap_or_default() });
     let mut status = status;
-    // (path, filename) of the log awaiting delete confirmation
-    let mut confirm_delete = use_signal(|| None::<(String, String)>);
+    // (path, filename) of the logs awaiting delete confirmation
+    let mut confirm_delete = use_signal(|| None::<Vec<(String, String)>>);
+    // Paths ticked for a bulk action
+    let mut selected = use_signal(HashSet::<String>::new);
     // (filename, note cell) whose tag and note editors are mounted; every
     // other row shows plain text, so the table stays light
     let mut editing = use_signal(|| None::<(String, bool)>);
@@ -97,20 +102,33 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
             rows.restart();
         }
     });
-    // The upload modal announces a finished file upload on the window; the
-    // callback runs outside the Dioxus runtime, so it only bumps a signal.
-    let mut uploads = use_signal(|| 0u32);
+    use_effect(move || {
+        if matches!(*cleanup.read(), Some(CleanupEvent::Done { .. })) {
+            rows.restart();
+            status.restart();
+            selected.set(HashSet::new());
+        }
+    });
+    // The upload modal announces a finished upload on the window and the
+    // backend announces every log added or removed (cleanup, watcher). Both
+    // callbacks run outside the Dioxus runtime, so they only bump a signal.
+    let mut changes = use_signal(|| 0u32);
     use_future(move || async move {
         let closure = Closure::<dyn FnMut()>::new(move || {
-            let _ = uploads.try_write().map(|mut w| *w += 1);
+            let _ = changes.try_write().map(|mut w| *w += 1);
         });
         if let Some(w) = web_sys::window() {
             let _ = w.add_event_listener_with_callback("parsely-upload-complete", closure.as_ref().unchecked_ref());
         }
         closure.forget();
+        let closure = Closure::new(move |_: JsValue| {
+            let _ = changes.try_write().map(|mut w| *w += 1);
+        });
+        api::tauri_listen("log-files-changed", &closure).await;
+        closure.forget();
     });
     use_effect(move || {
-        if *uploads.read() > 0 {
+        if *changes.read() > 0 {
             rows.restart();
         }
     });
@@ -136,7 +154,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
     // Archived: count, compressed bytes, and what compression saved (where the frame says)
     let (archived, archived_bytes, archived_saved) = all
         .iter()
-        .filter(|r| r.status == LogStatus::Archived)
+        .filter(|r| r.status.is_archived())
         .fold((0u32, 0u64, 0u64), |(n, b, saved), r| {
             (n + 1, b + r.size, saved + r.original_size.map_or(0, |o| o.saturating_sub(r.size)))
         });
@@ -163,6 +181,19 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
     let scroll_key = page_key.clone();
     let total = visible.len();
 
+    // Bulk bar: what the ticked rows allow. Raw logs archive, archives
+    // restore, anything but the live log deletes.
+    let picked: Vec<&LibraryRow> = {
+        let sel = selected.read();
+        all.iter().filter(|r| sel.contains(&r.path)).collect()
+    };
+    let can_archive: Vec<String> = picked.iter().filter(|r| !r.status.is_archived() && r.status != LogStatus::Live).map(|r| r.path.clone()).collect();
+    let can_restore: Vec<String> = picked.iter().filter(|r| r.status.is_archived()).map(|r| r.filename.clone()).collect();
+    let can_delete: Vec<(String, String)> = picked.iter().filter(|r| r.status != LogStatus::Live).map(|r| (r.path.clone(), r.filename.clone())).collect();
+    let all_visible_picked = !visible.is_empty() && visible.iter().all(|r| selected.read().contains(&r.path));
+    let visible_paths: Vec<String> = visible.iter().map(|r| r.path.clone()).collect();
+    let cleaning = matches!(*cleanup.read(), Some(CleanupEvent::Progress { .. }));
+
     rsx! {
         div { class: "library",
             div { class: "history-cards",
@@ -186,7 +217,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                 }
             }
 
-            CleanupPanel { backfill, status, on_changed: move |_| rows.restart() }
+            CleanupPanel { backfill, cleanup, status, on_changed: move |_| rows.restart() }
 
             div { class: "library-actions",
                 input {
@@ -213,6 +244,57 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                     }
                     " Favorites"
                 }
+                if !picked.is_empty() {
+                    div { class: "library-bulk",
+                        span { class: "library-bulk-count", "{picked.len()} selected" }
+                        button {
+                            class: "btn btn-xs",
+                            disabled: can_archive.is_empty() || cleaning,
+                            title: "Compress the selected logs into the archive",
+                            onclick: move |_| {
+                                let paths = can_archive.clone();
+                                spawn(async move {
+                                    if let Err(err) = api::archive_logs(&paths).await {
+                                        toast.show(format!("Archive failed: {err}"), ToastSeverity::Normal);
+                                    }
+                                });
+                            },
+                            i { class: "fa-solid fa-box-archive" }
+                            " Archive {can_archive.len()}"
+                        }
+                        button {
+                            class: "btn btn-xs",
+                            disabled: can_restore.is_empty() || cleaning,
+                            title: "Decompress the selected archives back into the log directory",
+                            onclick: move |_| {
+                                let names = can_restore.clone();
+                                spawn(async move {
+                                    let mut failed = 0;
+                                    for name in &names {
+                                        if api::restore_log(name).await.is_err() {
+                                            failed += 1;
+                                        }
+                                    }
+                                    let msg = if failed == 0 { format!("Restored {} logs", names.len()) } else { format!("Restored {} logs, {failed} failed", names.len() - failed) };
+                                    toast.show(msg, ToastSeverity::Normal);
+                                    selected.set(HashSet::new());
+                                    rows.restart();
+                                });
+                            },
+                            i { class: "fa-solid fa-box-open" }
+                            " Restore {can_restore.len()}"
+                        }
+                        button {
+                            class: "btn btn-xs lib-delete",
+                            disabled: can_delete.is_empty() || cleaning,
+                            title: "Delete the selected logs and all of their data",
+                            onclick: move |_| confirm_delete.set(Some(can_delete.clone())),
+                            i { class: "fa-solid fa-trash" }
+                            " Delete {can_delete.len()}"
+                        }
+                        button { class: "btn btn-xs btn-ghost", onclick: move |_| selected.set(HashSet::new()), "Clear" }
+                    }
+                }
             }
 
             datalist { id: TAG_OPTIONS,
@@ -225,6 +307,23 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                 table { class: "pull-history-table library-table",
                     thead {
                         tr {
+                            th { class: "library-pick",
+                                input {
+                                    r#type: "checkbox",
+                                    title: "Select every listed log",
+                                    checked: all_visible_picked,
+                                    onchange: move |e| {
+                                        let mut sel = selected.write();
+                                        if e.checked() {
+                                            sel.extend(visible_paths.iter().cloned());
+                                        } else {
+                                            for p in &visible_paths {
+                                                sel.remove(p);
+                                            }
+                                        }
+                                    },
+                                }
+                            }
                             th { "File" }
                             th { "Date" }
                             th { "Character" }
@@ -242,7 +341,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                     }
                     tbody {
                         if !loading && visible.is_empty() {
-                            tr { td { colspan: "13", class: "library-empty", "No logs match." } }
+                            tr { td { colspan: "14", class: "library-empty", "No logs match." } }
                         }
                         for row in visible[..shown].iter() {
                             {
@@ -254,13 +353,25 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                                 let favorite = row.favorite;
                                 let path = row.path.clone();
                                 let copy_path = row.path.clone();
-                                let archived = row.status == LogStatus::Archived;
+                                let archived = row.status.is_archived();
+                                let pick_path = row.path.clone();
+                                let picked_row = selected.read().contains(&row.path);
                                 let restore_name = row.filename.clone();
                                 let (upload_path, upload_name) = (row.path.clone(), row.filename.clone());
                                 let (delete_path, delete_name) = (row.path.clone(), row.filename.clone());
                                 let live = row.status == LogStatus::Live;
                                 rsx! {
-                                    tr { key: "{row.filename}",
+                                    tr { key: "{row.filename}", class: if picked_row { "picked" } else { "" },
+                                        td { class: "library-pick",
+                                            input {
+                                                r#type: "checkbox",
+                                                checked: picked_row,
+                                                onchange: move |e| {
+                                                    let mut sel = selected.write();
+                                                    if e.checked() { sel.insert(pick_path.clone()); } else { sel.remove(&pick_path); }
+                                                },
+                                            }
+                                        }
                                         td { class: "library-file", "{row.filename}" }
                                         td { "{row.date}" }
                                         td { {row.character.clone().unwrap_or_else(|| "—".into())} }
@@ -391,7 +502,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                                                 class: "btn btn-xs btn-ghost lib-delete",
                                                 title: if live { "The live log cannot be deleted" } else { "Delete this log and all of its data" },
                                                 disabled: live,
-                                                onclick: move |_| confirm_delete.set(Some((delete_path.clone(), delete_name.clone()))),
+                                                onclick: move |_| confirm_delete.set(Some(vec![(delete_path.clone(), delete_name.clone())])),
                                                 i { class: "fa-solid fa-trash" }
                                             }
                                         }
@@ -401,7 +512,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                         }
                         if shown < total {
                             tr {
-                                td { colspan: "13", class: "library-empty",
+                                td { colspan: "14", class: "library-empty",
                                     "{shown} of {total} shown · scroll for more "
                                     button { class: "btn btn-xs btn-ghost", onclick: move |_| paged.show_all(&page_key), "Show all" }
                                 }
@@ -412,17 +523,33 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
             }
         }
 
-        if let Some((path, filename)) = confirm_delete.read().clone() {
+        if let Some(targets) = confirm_delete.read().clone() {
             div { class: "modal-overlay", onclick: move |_| confirm_delete.set(None),
                 div { class: "modal-content library-cleanup", onclick: move |e| e.stop_propagation(),
                     div { class: "modal-header",
-                        h3 { "Delete log" }
+                        h3 { if targets.len() == 1 { "Delete log" } else { "Delete {targets.len()} logs" } }
                         button { class: "btn btn-xs btn-ghost", onclick: move |_| confirm_delete.set(None), i { class: "fa-solid fa-xmark" } }
                     }
                     div { class: "library-delete-body",
                         div { class: "library-preview warn",
-                            strong { "{filename}" }
-                            " The file, its pull history, tags, notes and Parsely links are removed. This cannot be undone."
+                            if targets.len() == 1 {
+                                strong { "{targets[0].1}" }
+                                " The file, its pull history, tags, notes and Parsely links are removed. This cannot be undone."
+                            } else {
+                                strong { "{targets.len()} logs" }
+                                " Each file, its pull history, tags, notes and Parsely links are removed. This cannot be undone."
+                            }
+                        }
+                        if targets.len() > 1 {
+                            div { class: "library-preview-list",
+                                table { class: "pull-history-table",
+                                    tbody {
+                                        for (_, name) in targets.iter() {
+                                            tr { key: "{name}", td { "{name}" } }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     div { class: "modal-footer library-confirm-actions",
@@ -430,16 +557,20 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, status: Res
                         button {
                             class: "btn btn-sm btn-danger",
                             onclick: move |_| {
-                                let path = path.clone();
+                                let paths: Vec<String> = targets.iter().map(|(p, _)| p.clone()).collect();
                                 confirm_delete.set(None);
                                 spawn(async move {
-                                    match api::delete_log(&path).await {
+                                    match api::delete_logs(&paths).await {
                                         Ok(r) if r.failed.is_empty() => {
-                                            toast.show(format!("Deleted, freed {}", fmt_bytes(r.bytes_freed)), ToastSeverity::Normal);
+                                            toast.show(format!("Deleted {}, freed {}", r.deleted, fmt_bytes(r.bytes_freed)), ToastSeverity::Normal);
+                                            selected.set(HashSet::new());
                                             rows.restart();
                                             status.restart();
                                         }
-                                        Ok(_) => toast.show("Could not delete this log", ToastSeverity::Normal),
+                                        Ok(r) => {
+                                            toast.show(format!("Deleted {}, {} could not be deleted", r.deleted, r.failed.len()), ToastSeverity::Normal);
+                                            rows.restart();
+                                        }
                                         Err(err) => toast.show(format!("Delete failed: {err}"), ToastSeverity::Normal),
                                     }
                                 });

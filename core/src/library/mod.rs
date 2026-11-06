@@ -18,7 +18,7 @@ use chrono::NaiveDate;
 
 use baras_types::history::{CleanupCandidate, CleanupPlan, ContentTag, DeleteReport, LogCleanup, PullRow};
 
-pub use archive::{ArchivedLog, Compressed, archive_dir, archived_log, archived_logs, commit, compress_log, restore};
+pub use archive::{ArchivedLog, Compressed, archive_dir, archived_log, archived_logs, commit, compress_log, restore, sweep_partial};
 
 use crate::context::{DirectoryIndex, FileAreaEntry, FileAreaIndex, LogAreaCache, parse_log_filename};
 use crate::game_data::{Difficulty, is_pvp_area};

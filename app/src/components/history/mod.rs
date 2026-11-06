@@ -19,7 +19,7 @@ mod toolbar;
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use baras_types::history::{BackfillEvent, HistoryStatus, HistorySubTab, PullFilter};
+use baras_types::history::{BackfillEvent, CleanupEvent, HistoryStatus, HistorySubTab, PullFilter};
 
 use crate::api;
 use crate::components::toast::ToastManager;
@@ -125,6 +125,31 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
         }
     });
 
+    // Cleanup progress (startup or on demand) for Log Management, same shape
+    let cleanup: Signal<Option<CleanupEvent>> = use_signal(|| None);
+    use_future(move || async move {
+        let mut cleanup = cleanup;
+        let closure = Closure::new(move |ev: JsValue| {
+            let Ok(payload) = js_sys::Reflect::get(&ev, &JsValue::from_str("payload")) else {
+                return;
+            };
+            if let Ok(parsed) = serde_wasm_bindgen::from_value::<CleanupEvent>(payload) {
+                let _ = cleanup.try_write().map(|mut w| *w = Some(parsed));
+            }
+        });
+        api::tauri_listen("log-cleanup", &closure).await;
+        closure.forget();
+    });
+    use_effect(move || {
+        if let Some(CleanupEvent::Done { report: r }) = &*cleanup.read() {
+            let failed = if r.failed.is_empty() { String::new() } else { format!(", {} failed", r.failed.len()) };
+            toast.show(
+                format!("Archived {} and deleted {} logs, freed {}{failed}", r.archived, r.deleted, library::fmt_bytes(r.bytes_freed)),
+                ToastSeverity::Normal,
+            );
+        }
+    });
+
     // Scan bar on the analysis views: logs with no or outdated history, and progress while scanning
     let mut status = use_resource(|| async move { api::get_history_status().await.unwrap_or_default() });
     use_effect(move || {
@@ -164,7 +189,7 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                     }
                 },
                 HistorySubTab::Library => rsx! {
-                    LibraryTab { state: props.state, backfill, status }
+                    LibraryTab { state: props.state, backfill, cleanup, status }
                 },
             }
         }

@@ -226,7 +226,9 @@ impl ServiceHandle {
                 .collect();
             // Archived logs are no longer in the directory; the areas moved with them
             for a in baras_core::library::archived_logs() {
-                let rows = pulls.rows_for(&a.filename);
+                let info = pulls.log_info(&a.filename);
+                let rows = info.map_or(&[][..], |(r, _)| r);
+                let status = if info.is_some_and(|(_, stale)| stale) { LogStatus::ArchivedStale } else { LogStatus::Archived };
                 let log_meta = meta.log(&a.filename);
                 let area_index = areas.get(&a.path);
                 rows_out.push(LibraryRow {
@@ -245,7 +247,7 @@ impl ServiceHandle {
                     pulls: rows.len() as u32,
                     kills: rows.iter().filter(|r| r.success).count() as u32,
                     dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
-                    status: LogStatus::Archived,
+                    status,
                     favorite: log_meta.is_some_and(|m| m.favorite),
                     tags: log_meta.map(|m| m.tags.clone()).unwrap_or_default(),
                     run_tags: meta.run_tags_for_log(&a.filename),
@@ -304,29 +306,30 @@ impl ServiceHandle {
     /// Delete one log (or archive) with everything it owns: history, notes,
     /// tags, Parsely links, caches. A favorite is unmarked first since the
     /// user asked for exactly this file; the live log is refused.
-    pub async fn delete_log(&self, path: PathBuf) -> baras_types::history::DeleteReport {
+    /// Delete logs (raw or archived) with everything they own, favorites
+    /// included: a deliberate delete outranks the favorite guard.
+    pub async fn delete_logs(&self, paths: Vec<PathBuf>) -> baras_types::history::DeleteReport {
         let live = self.active_file_path().await;
-        let mut directory = self.shared.directory_index.write().await;
-        let mut areas = self.shared.area_cache.write().await;
-        let report = {
-            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-            if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
-                meta.set_favorite(name.strip_suffix(".zst").unwrap_or(name), false);
+        let report = cleanup::with_library(&self.shared, live.as_deref(), |lib| {
+            for name in paths.iter().filter_map(|p| p.file_name().and_then(|f| f.to_str())) {
+                lib.meta.set_favorite(name.strip_suffix(".zst").unwrap_or(name), false);
             }
-            let mut lib = baras_core::library::LibraryMut {
-                directory: &mut directory,
-                areas: &mut areas,
-                meta: &mut meta,
-                live: live.as_deref(),
-            };
-            let report = baras_core::library::delete(&mut lib, std::slice::from_ref(&path), false);
-            if let Err(e) = meta.save() {
+            let report = baras_core::library::delete(lib, &paths, false);
+            if let Err(e) = lib.meta.save() {
                 tracing::warn!(error = %e, "Failed to save library.json");
             }
             report
-        };
+        })
+        .await;
+        let directory = self.shared.directory_index.read().await;
+        let areas = self.shared.area_cache.read().await;
         cleanup::save_log_caches(&self.app_handle, &directory, &areas);
         report
+    }
+
+    /// Compress logs into the archive, with progress on the cleanup event.
+    pub async fn archive_logs(&self, paths: Vec<PathBuf>) -> baras_types::history::CleanupReport {
+        cleanup::apply(&self.shared, &self.app_handle, &paths, &[]).await
     }
 
     /// Refresh file sizes in the directory index (fast stat-only, no re-parsing)
