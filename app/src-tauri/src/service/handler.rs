@@ -180,10 +180,7 @@ impl ServiceHandle {
         let directory = self.shared.directory_index.read().await;
         let areas = self.shared.area_cache.read().await;
         tokio::task::block_in_place(|| {
-            let mut pulls = shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
-            if let Err(e) = pulls.refresh(&log_dir) {
-                tracing::warn!(error = %e, "Failed to refresh pull history index");
-            }
+            let pulls = cleanup::pull_index(&shared, &log_dir);
             let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
             let mut rows_out: Vec<LibraryRow> = directory
                 .entries()
@@ -302,6 +299,34 @@ impl ServiceHandle {
         };
         cleanup::save_log_caches(&self.app_handle, &directory, &areas);
         Ok(restored)
+    }
+
+    /// Delete one log (or archive) with everything it owns: history, notes,
+    /// tags, Parsely links, caches. A favorite is unmarked first since the
+    /// user asked for exactly this file; the live log is refused.
+    pub async fn delete_log(&self, path: PathBuf) -> baras_types::history::DeleteReport {
+        let live = self.active_file_path().await;
+        let mut directory = self.shared.directory_index.write().await;
+        let mut areas = self.shared.area_cache.write().await;
+        let report = {
+            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
+                meta.set_favorite(name.strip_suffix(".zst").unwrap_or(name), false);
+            }
+            let mut lib = baras_core::library::LibraryMut {
+                directory: &mut directory,
+                areas: &mut areas,
+                meta: &mut meta,
+                live: live.as_deref(),
+            };
+            let report = baras_core::library::delete(&mut lib, std::slice::from_ref(&path), false);
+            if let Err(e) = meta.save() {
+                tracing::warn!(error = %e, "Failed to save library.json");
+            }
+            report
+        };
+        cleanup::save_log_caches(&self.app_handle, &directory, &areas);
+        report
     }
 
     /// Refresh file sizes in the directory index (fast stat-only, no re-parsing)
@@ -721,18 +746,7 @@ impl ServiceHandle {
         let log_dir = PathBuf::from(self.config().await.log_directory);
         let shared = self.shared.clone();
         tokio::task::spawn_blocking(move || {
-            let mut index = shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
-            match index.refresh(&log_dir) {
-                Ok(report) if !report.legacy_parsely.is_empty() => {
-                    let mut meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
-                    let links = report.legacy_parsely.iter().map(|(f, ms, l)| (f.as_str(), *ms, l.as_str()));
-                    if meta.merge_legacy_parsely(links) && let Err(e) = meta.save() {
-                        tracing::warn!(error = %e, "Failed to save migrated Parsely links");
-                    }
-                }
-                Ok(_) => {}
-                Err(e) => tracing::warn!(error = %e, "Failed to refresh pull history index"),
-            }
+            let index = cleanup::pull_index(&shared, &log_dir);
             query(&index)
         })
         .await

@@ -7,9 +7,9 @@ use baras_types::formatting;
 use baras_types::history::{BossNode, PullEnd, PullFilter, PullRow, PullSortKey as SortKey};
 
 use super::Backfill;
-use super::scroll::{save_scroll, use_restore_scroll};
+use super::scroll::{save_scroll, use_paged, use_restore_scroll};
 use super::charts::{ChartPick, PullCharts};
-use super::toolbar::SubsetChips;
+use super::toolbar::{HistoryToolbar, SubsetChips};
 use crate::api;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::components::use_file_opener;
@@ -108,6 +108,20 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
         }
     });
 
+    // Nothing picked (first visit, or the pick fell out of the filter): take
+    // the first boss and open its operation so the highlighted row is visible
+    use_effect(move || {
+        let read = overview.read();
+        let Some(o) = read.as_ref() else { return };
+        let picked = selected.read().clone();
+        if let Some(key) = effective_selection(picked.clone(), &o.bosses)
+            && picked.as_ref() != Some(&key)
+        {
+            expanded.write().insert(key.0.clone());
+            selected.set(Some(key));
+        }
+    });
+
     let overview_read = overview.read();
     let loading = overview_read.is_none();
     let bosses: &[BossNode] = overview_read.as_ref().map(|o| o.bosses.as_slice()).unwrap_or(&[]);
@@ -155,8 +169,9 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
     } else {
         "—".into()
     };
-    let avg_secs = if rows.is_empty() { 0 } else { rows.iter().map(|r| r.duration_seconds).sum::<i64>() / rows.len() as i64 };
-    let best_dps = rows.iter().filter_map(|r| r.dps).max();
+    // Average time to kill: clears only; wipes would drag it toward the wipe point
+    let avg_ttk = (kills > 0).then(|| rows.iter().filter(|r| r.success).map(|r| r.duration_seconds).sum::<i64>() / kills as i64);
+    let max_dps = rows.iter().filter_map(|r| r.dps).max();
 
     let key = *sort_key.read();
     let picked = pick.read().clone();
@@ -170,6 +185,12 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
         };
         if *sort_desc.read() { ord.reverse() } else { ord }
     });
+    // The table renders a page at a time; a new boss, filter, pick or sort starts over
+    let page_key = format!("{current:?}|{key:?}|{}|{}|{}", *sort_desc.read(), rows.len(), visible.len());
+    let paged = use_paged(&page_key);
+    let shown = visible.len().min(paged.limit(&page_key));
+    let total = visible.len();
+    let scroll_key = page_key.clone();
     let mut on_sort = move |key: SortKey| {
         if *sort_key.read() == key {
             sort_desc.toggle();
@@ -192,6 +213,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
     rsx! {
         div { class: "pull-history-body",
             aside { class: "explorer-sidebar",
+                HistoryToolbar { filter, runs: false }
                 div { class: "sidebar-search",
                     input {
                         class: "boss-search-input",
@@ -269,11 +291,14 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                             }
                         }
                         div { class: "history-card", title: if fastest_kill.is_some() { "Fastest kill" } else { "Furthest progress" },
-                            div { class: "k", if fastest_kill.is_some() { "Best kill" } else { "Best pull" } }
+                            div { class: "k", "Best" }
                             div { class: "v small", "{best_label}" }
                         }
-                        div { class: "history-card", div { class: "k", "Avg pull" } div { class: "v", {formatting::format_duration(avg_secs)} } }
-                        div { class: "history-card", div { class: "k", "Your best DPS" } div { class: "v", {fmt_opt(best_dps)} } }
+                        div { class: "history-card", title: "Average time to kill across clears",
+                            div { class: "k", "Avg TTK" }
+                            div { class: "v", {avg_ttk.map(formatting::format_duration).unwrap_or_else(|| "—".into())} }
+                        }
+                        div { class: "history-card", title: "Your highest DPS on a pull", div { class: "k", "Max DPS" } div { class: "v", {fmt_opt(max_dps)} } }
                     }
                     PullCharts { pulls, pick, kills_only: filter.read().kills_only }
                     if let Some(p) = picked.as_ref() {
@@ -283,7 +308,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                             button { class: "btn btn-xs btn-ghost", title: "Show every pull again", onclick: move |_| pick.set(None), i { class: "fa-solid fa-xmark" } " Clear" }
                         }
                     }
-                    div { id: OV_TABLE, class: "pull-history-table-wrap", onscroll: move |_| save_scroll(OV_TABLE),
+                    div { id: OV_TABLE, class: "pull-history-table-wrap", onscroll: move |_| paged.on_scroll(OV_TABLE, &scroll_key, total),
                         table { class: "pull-history-table",
                             thead {
                                 tr {
@@ -302,7 +327,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                 }
                             }
                             tbody {
-                                for row in visible.iter() {
+                                for row in visible[..shown].iter() {
                                     {
                                         let (label, class) = result_badge(row, eu);
                                         rsx! {
@@ -367,6 +392,14 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                     }
                                                 }
                                             }
+                                        }
+                                    }
+                                }
+                                if shown < total {
+                                    tr {
+                                        td { colspan: "12", class: "library-empty",
+                                            "{shown} of {total} shown · scroll for more "
+                                            button { class: "btn btn-xs btn-ghost", onclick: move |_| paged.show_all(&page_key), "Show all" }
                                         }
                                     }
                                 }

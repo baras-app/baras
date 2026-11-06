@@ -87,6 +87,8 @@ pub struct RunSummary {
     /// Area display name (definition name when known, else the log's area name)
     pub operation: String,
     pub area_id: i64,
+    #[serde(default)]
+    pub is_flashpoint: bool,
     /// Difficulty as logged, e.g. "8 Player Master"
     pub difficulty: String,
     /// "Story" | "Veteran" | "Master" | ""

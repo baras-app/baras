@@ -1,5 +1,6 @@
 //! Inline editors for a log's own tags and one-line note in the Log
-//! Management table. The backend holds the meta, so every save sends both.
+//! Management table, mounted for the one row being edited. The backend
+//! holds the meta, so every save sends both.
 
 use dioxus::prelude::*;
 
@@ -27,6 +28,8 @@ pub fn LogTagsCell(
     tags: Vec<String>,
     run_tags: Vec<String>,
     note: String,
+    /// Mounted by a click on this cell: the tag input takes the caret
+    focus: bool,
     on_change: EventHandler<()>,
 ) -> Element {
     let toast = use_toast();
@@ -75,6 +78,7 @@ pub fn LogTagsCell(
                 r#type: "text",
                 list: TAG_OPTIONS,
                 placeholder: "+ tag",
+                autofocus: focus,
                 value: "{input}",
                 oninput: move |e| input.set(e.value()),
                 onchange: {
@@ -87,11 +91,12 @@ pub fn LogTagsCell(
 }
 
 #[component]
-pub fn LogNoteCell(filename: String, tags: Vec<String>, note: String, on_change: EventHandler<()>) -> Element {
+pub fn LogNoteCell(filename: String, tags: Vec<String>, note: String, focus: bool, on_change: EventHandler<()>) -> Element {
     let toast = use_toast();
     rsx! {
         input {
             class: "library-note",
+            autofocus: focus,
             r#type: "text",
             maxlength: "{LOG_NOTE_MAX}",
             placeholder: "Note…",

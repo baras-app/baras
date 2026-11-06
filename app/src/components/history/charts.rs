@@ -1,5 +1,5 @@
 //! Per-boss charts for the Overview: your DPS and EHPS on every pull, and
-//! pulls per raid night. Options are built as JSON and applied through the
+//! pulls per raid session. Options are built as JSON and applied through the
 //! shared ECharts helpers; the rows come from the same resource as the
 //! table, so the charts follow the selection and filters for free. Clicking
 //! a point or bar publishes a `ChartPick` the table narrows itself to.
@@ -259,7 +259,7 @@ fn nights_option(rows: &[PullRow]) -> Option<Value> {
             }
         })
         .collect();
-    let mut opt = base_option("Pulls per night");
+    let mut opt = base_option("Pulls per session");
     opt["xAxis"] = pull_axis(labels);
     opt["yAxis"] = json!({ "type": "value", "minInterval": 1, "axisLabel": { "color": "#888" }, "splitLine": { "lineStyle": { "color": "#2a2a30" } } });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
@@ -282,8 +282,8 @@ fn chronological(pulls: &Resource<Option<Vec<PullRow>>>) -> Vec<PullRow> {
 /// meaningless, so the third slot shows time to kill instead.
 fn options(rows: &[PullRow], kills_only: bool) -> [(&'static str, Option<Value>); 3] {
     [
-        (DPS_ID, metric_option(rows, "Your DPS per pull", "#e74c3c", |r| r.dps)),
-        (EHPS_ID, metric_option(rows, "Your EHPS per pull", "#2ecc71", |r| r.ehps)),
+        (DPS_ID, metric_option(rows, "DPS per pull", "#e74c3c", |r| r.dps)),
+        (EHPS_ID, metric_option(rows, "EHPS per pull", "#2ecc71", |r| r.ehps)),
         (NIGHTS_ID, if kills_only { ttk_option(rows) } else { nights_option(rows) }),
     ]
 }

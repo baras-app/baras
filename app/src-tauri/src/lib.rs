@@ -309,6 +309,7 @@ pub fn run() {
             commands::preview_log_cleanup,
             commands::run_log_cleanup,
             commands::restore_log,
+            commands::delete_log,
             // File browser commands
             commands::open_historical_file,
             commands::resume_live_tailing,

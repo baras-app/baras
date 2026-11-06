@@ -178,6 +178,8 @@ impl LibraryMut<'_> {
     /// a favorite, or a path without a usable name.
     fn removable<'p>(&self, path: &'p Path) -> Option<&'p str> {
         let filename = path.file_name()?.to_str()?;
+        // An archived log is addressed by its archive path
+        let filename = filename.strip_suffix(".zst").unwrap_or(filename);
         (!(self.live.is_some_and(|l| l == path) || self.meta.is_favorite(filename)))
             .then_some(filename)
     }

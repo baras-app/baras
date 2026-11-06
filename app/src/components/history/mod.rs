@@ -1,9 +1,10 @@
 //! History views: Boss Statistics (Overview), Raid Summaries (Operations)
 //! and Log Management (Library), each a main tab of its own.
 //!
-//! One shell with the shared filter toolbar and the backfill listener every
-//! view reads. Each view fetches its own data lazily; the backend keeps every
-//! index, this module only ever holds compact rows.
+//! One shell with the shared filter (rendered by each view in its sidebar)
+//! and the backfill listener every view reads. Each view fetches its own
+//! data lazily; the backend keeps every index, this module only ever holds
+//! compact rows.
 
 mod charts;
 mod library;
@@ -28,7 +29,6 @@ use crate::types::UiSessionState;
 use library::LibraryTab;
 use operations::OperationsTab;
 use overview::OverviewTab;
-use toolbar::HistoryToolbar;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct HistoryPanelProps {
@@ -132,18 +132,19 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
             status.restart();
         }
     });
-    let pending = status.read().as_ref().map_or(0, |s| s.stale + s.unscanned);
+    // The bar earns its space only while a scan runs or when there is no
+    // history at all; a few logs missing from the statistics are the
+    // Library's business, not a banner on every view
+    let no_history = status
+        .read()
+        .as_ref()
+        .is_some_and(|s| s.pulls == 0 && s.stale + s.unscanned > 0);
 
     let tab = props.view;
     rsx! {
         div { class: "history-panel",
-            if tab != HistorySubTab::Library {
-                div { class: "history-head",
-                    HistoryToolbar { filter }
-                }
-                if backfill.running() || pending > 0 {
-                    ScanBar { backfill, status }
-                }
+            if tab != HistorySubTab::Library && (backfill.running() || no_history) {
+                ScanBar { backfill, status }
             }
             match tab {
                 HistorySubTab::Overview => rsx! {
@@ -170,8 +171,8 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
     }
 }
 
-/// One line under the toolbar: how many logs the statistics are missing,
-/// with the scan controls the Library has, so nobody has to go looking.
+/// One line under the toolbar while a scan runs, or when nothing has been
+/// scanned yet, with the scan controls the Library has.
 #[component]
 fn ScanBar(backfill: Backfill, status: Resource<HistoryStatus>) -> Element {
     let read = status.read();
@@ -190,8 +191,8 @@ fn ScanBar(backfill: Backfill, status: Resource<HistoryStatus>) -> Element {
                 }
                 button { class: "btn btn-xs btn-ghost", onclick: move |_| backfill.cancel(), i { class: "fa-solid fa-stop" } " Cancel" }
             } else {
-                i { class: "fa-solid fa-triangle-exclamation" }
-                span { "{what}; they are missing from these statistics." }
+                i { class: "fa-solid fa-circle-info" }
+                span { "{what}; scan them to fill in these statistics." }
                 button { class: "btn btn-xs", onclick: move |_| backfill.start(true), i { class: "fa-solid fa-rotate" } " Scan now" }
             }
         }

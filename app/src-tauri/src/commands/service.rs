@@ -382,6 +382,14 @@ pub async fn restore_log(filename: String, handle: State<'_, ServiceHandle>) -> 
 }
 
 #[tauri::command]
+pub async fn delete_log(
+    path: std::path::PathBuf,
+    handle: State<'_, ServiceHandle>,
+) -> Result<baras_types::history::DeleteReport, String> {
+    Ok(handle.delete_log(path).await)
+}
+
+#[tauri::command]
 pub async fn set_log_parsely_link(
     path: std::path::PathBuf,
     link: String,

@@ -48,7 +48,7 @@ pub(super) fn runs_of_log(
     path: Option<&str>,
     catalog: &AreaCatalog,
 ) -> Vec<RunSummary> {
-    let mut sorted: Vec<&PullRow> = rows.iter().filter(|r| r.is_operation).collect();
+    let mut sorted: Vec<&PullRow> = rows.iter().filter(|r| r.is_operation || r.is_flashpoint).collect();
     sorted.sort_by_key(|r| r.start_ms);
 
     let mut groups: Vec<Vec<&PullRow>> = Vec::new();
@@ -128,6 +128,7 @@ fn summarize(
         game_version: first.game_version.clone(),
         operation: def.map_or_else(|| first.operation.clone(), |a| a.name.clone()),
         area_id: first.area_id,
+        is_flashpoint: first.is_flashpoint,
         difficulty: first.difficulty.clone(),
         tier: tier.to_string(),
         group_size: size,
@@ -147,13 +148,14 @@ fn summarize(
     }
 }
 
-/// Toolbar filter applied to a run: role, discipline and "operations only"
-/// do not apply; "kills only" means cleared runs.
+/// Toolbar filter applied to a run: role and discipline do not apply;
+/// "kills only" means cleared runs; group size is an operations thing.
 pub(super) fn run_matches(run: &RunSummary, f: &PullFilter) -> bool {
     let day = run.started.get(..10).unwrap_or(&run.started);
     (f.character.is_empty() || run.character == f.character)
+        && (f.flashpoints || !run.is_flashpoint)
         && (f.tier.is_empty() || run.tier == f.tier)
-        && (f.group_size.is_empty() || run.group_size.to_string() == f.group_size)
+        && (f.group_size.is_empty() || run.is_flashpoint || run.group_size.to_string() == f.group_size)
         && (!f.kills_only || run.cleared)
         && (f.tag.is_empty() || run.tags.contains(&f.tag))
         && (f.server.is_empty() || run.server == f.server)

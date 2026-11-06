@@ -77,9 +77,6 @@ fn RunTimeline(detail: RunDetail) -> Element {
                 for (i, (w, class, title)) in segs.iter().enumerate() {
                     div { key: "{i}", class: "run-seg {class}", style: "flex-basis: {w}%", title: "{title}" }
                 }
-                for (left, _) in ticks.iter() {
-                    div { class: "run-tick-line", style: "left: {left}%" }
-                }
             }
             div { class: "run-timeline-ticks",
                 for (left, label) in ticks.iter() {
@@ -201,8 +198,6 @@ pub fn RunDetailView(
             div { class: "history-card", div { class: "k", "Between pulls" }
                 div { class: "v", {fmt_secs(between)} }
             }
-            div { class: "history-card", div { class: "k", "Group deaths" } div { class: "v", "{run.deaths}" } }
-            div { class: "history-card", div { class: "k", "Your deaths" } div { class: "v", "{run.my_deaths}" } }
             if let Some(t) = run.timer.as_ref() {
                 div {
                     class: match t.achieved { Some(true) => "history-card ok", Some(false) => "history-card warn", None => "history-card" },

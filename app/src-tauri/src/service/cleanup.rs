@@ -7,11 +7,32 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use baras_core::context::{DirectoryIndex, LogAreaCache};
+use baras_core::history::PullIndex;
 use baras_core::library::{LibraryMut, LibraryView};
 use baras_types::history::{CleanupPlan, CleanupReport};
 use tauri::{AppHandle, Emitter};
 
 use crate::state::SharedState;
+
+/// The pull index, brought up to date with the history directory. Links
+/// found in pre-metadata history files are moved into library.json on the
+/// way, so the one pass that loads a file never drops them. Locks the index,
+/// then briefly the metadata: every caller takes them in that order.
+pub fn pull_index<'a>(shared: &'a SharedState, log_dir: &Path) -> std::sync::MutexGuard<'a, PullIndex> {
+    let mut index = shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
+    match index.refresh(log_dir) {
+        Ok(report) if !report.legacy_parsely.is_empty() => {
+            let mut meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let links = report.legacy_parsely.iter().map(|(f, ms, l)| (f.as_str(), *ms, l.as_str()));
+            if meta.merge_legacy_parsely(links) && let Err(e) = meta.save() {
+                tracing::warn!(error = %e, "Failed to save migrated Parsely links");
+            }
+        }
+        Ok(_) => {}
+        Err(e) => tracing::warn!(error = %e, "Failed to refresh pull history index"),
+    }
+    index
+}
 
 /// The log being tailed, if any.
 pub async fn live_path(shared: &SharedState) -> Option<PathBuf> {
@@ -37,10 +58,7 @@ pub async fn plan(shared: &Arc<SharedState>, live: Option<&Path>) -> CleanupPlan
     });
     let shared = shared.clone();
     tokio::task::block_in_place(|| {
-        let mut pulls = shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
-        if let Err(e) = pulls.refresh(&log_dir) {
-            tracing::warn!(error = %e, "Failed to refresh pull history index");
-        }
+        let pulls = pull_index(&shared, &log_dir);
         let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
         let view = LibraryView {
             directory: &directory,

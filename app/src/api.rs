@@ -553,6 +553,12 @@ pub async fn restore_log(filename: &str) -> Result<String, String> {
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
 
+/// Delete a log (or archive) and every artifact it owns; refused for the live log
+pub async fn delete_log(path: &str) -> Result<baras_types::history::DeleteReport, String> {
+    let result = try_invoke("delete_log", build_args("path", path)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
 /// Record a whole-file Parsely upload against the log
 pub async fn set_log_parsely_link(path: &str, link: &str, visibility: u8) -> Result<bool, String> {
     let obj = js_sys::Object::new();

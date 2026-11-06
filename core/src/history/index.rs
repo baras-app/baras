@@ -259,7 +259,7 @@ impl PullIndex {
         let mut rows: Vec<PullRow> = log
             .rows
             .iter()
-            .filter(|r| r.is_operation && r.start_ms >= run.start_ms && r.start_ms <= end)
+            .filter(|r| (r.is_operation || r.is_flashpoint) && r.start_ms >= run.start_ms && r.start_ms <= end)
             .filter(|r| r.area_id == run.area_id && r.difficulty == run.difficulty)
             .cloned()
             .collect();
@@ -356,8 +356,8 @@ fn matches(r: &PullRow, f: &PullFilter) -> bool {
         && (f.role.is_empty() || r.role.as_deref() == Some(f.role.as_str()))
         && (f.discipline.is_empty() || r.discipline.as_deref() == Some(f.discipline.as_str()))
         && (f.tier.is_empty() || r.difficulty.contains(f.tier.as_str()))
-        && (f.group_size.is_empty() || r.difficulty.split(' ').next() == Some(f.group_size.as_str()))
-        && (!f.operations_only || r.is_operation)
+        && (f.group_size.is_empty() || r.is_flashpoint || r.difficulty.split(' ').next() == Some(f.group_size.as_str()))
+        && (f.flashpoints || !r.is_flashpoint)
         && (!f.kills_only || r.success)
         && (f.server.is_empty() || r.server == f.server)
         && (f.game_version.is_empty() || r.game_version == f.game_version)
@@ -420,6 +420,7 @@ fn row_from(log: &LogHistory, p: &PullRecord) -> PullRow {
         success: p.success,
         duration_seconds: p.duration_secs,
         is_operation: p.kind == PhaseType::Raid,
+        is_flashpoint: p.kind == PhaseType::Flashpoint,
         discipline: me.and_then(|m| m.discipline_name.clone()),
         role: me.and_then(|m| m.discipline.map(|d| format!("{:?}", d.role()))),
         role_icon: me.and_then(|m| m.discipline.map(|d| d.role().icon_name().to_string())),

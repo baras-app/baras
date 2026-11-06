@@ -42,7 +42,7 @@
   color: var(--text-muted);
 }
 
-.pull-history-dates .pull-history-result-tabs {
+.history-toolbar .pull-history-result-tabs {
   margin-left: 0;
 }
 
@@ -250,31 +250,20 @@
    Shell
    ───────────────────────────────────────────────────────────────────────── */
 
-.history-head {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-md);
-}
-
-.history-toolbar {
-  margin-left: 0;
-}
-
 .history-scan-bar {
   display: flex;
   align-items: center;
   gap: 0.6em;
   padding: 0.35em 0.7em;
-  border: 1px solid var(--color-warning);
+  border: 1px solid var(--border-accent-medium);
   border-radius: 4px;
-  background: var(--color-warning-bg);
+  background: var(--blue-alpha-8);
   font-size: 0.85em;
   color: var(--text-secondary);
 }
 
 .history-scan-bar > i {
-  color: var(--color-warning);
+  color: var(--swtor-blue);
 }
 
 .history-scan-bar .btn {
@@ -283,6 +272,73 @@
 
 .history-toolbar select {
   min-width: 0;
+}
+
+/* The toolbar sits at the top of each view's sidebar, stacked: every
+   control spans the rail, segmented buttons share the width equally */
+.explorer-sidebar .history-toolbar {
+  flex-direction: column;
+  /* A wrapped column would spill extra items into a second column past the rail */
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  align-items: stretch;
+  min-width: 0;
+  gap: var(--space-sm);
+  padding: 0.75em 0.75em 0;
+}
+
+.explorer-sidebar .history-toolbar > * {
+  min-width: 0;
+}
+
+.explorer-sidebar .history-toolbar .history-dates .pull-history-date {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.explorer-sidebar .history-toolbar.secondary {
+  padding-top: var(--space-sm);
+  padding-bottom: 0.75em;
+  margin-top: var(--space-xs);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.explorer-sidebar .history-toolbar .history-seg .seg {
+  padding: 0.45em 0.5em;
+}
+
+.explorer-sidebar .history-more {
+  justify-content: center;
+  padding: 0.45em;
+}
+
+/* Sized by their label, then sharing the slack: equal thirds would clip
+   the widest one when the rail is narrow */
+.explorer-sidebar .history-toolbar .history-seg .seg {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.explorer-sidebar .history-toolbar .pull-history-result-tabs .filter-tab {
+  flex: 1;
+}
+
+
+.history-more {
+  gap: 0.35em;
+}
+
+.history-more-count {
+  padding: 0 0.45em;
+  border-radius: 8px;
+  background: var(--swtor-blue);
+  color: #fff;
+  font-size: 0.85em;
+  font-weight: 600;
 }
 
 .history-cards {
@@ -426,6 +482,10 @@
   border-radius: 4px;
 }
 
+.library-row-actions .lib-delete:hover:not(:disabled) {
+  color: var(--color-error);
+}
+
 .library-row-actions .lib-star:hover {
   background: rgba(255, 255, 255, 0.06);
 }
@@ -559,8 +619,8 @@
   color: var(--text-secondary);
 }
 
-.lib-tag.nim { color: var(--swtor-gold); background: rgba(201, 162, 39, 0.15); }
-.lib-tag.hm { color: var(--swtor-orange); background: rgba(255, 140, 66, 0.15); }
+.lib-tag.nim { color: #f08080; background: rgba(220, 60, 60, 0.12); }
+.lib-tag.hm { color: #e8c060; background: rgba(220, 160, 40, 0.12); }
 .lib-tag.sm { color: var(--color-success); background: var(--color-success-bg); }
 .lib-tag.pvp { color: var(--swtor-blue-bright); background: rgba(74, 158, 255, 0.15); }
 .lib-tag.misc { color: var(--text-muted); }
@@ -586,18 +646,43 @@
 .library-manage .run-section {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5em;
+  gap: 0.4em;
+  /* Children stretch so the chip and button rows have a width to wrap at */
+  min-width: 0;
   margin-top: 0;
-  padding: 0.8em 1em 1em;
+  padding: 0.6em 0.9em 0.8em;
   background: var(--bg-mid);
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
-  text-align: center;
 }
 
-.library-manage .library-retain-tags {
-  justify-content: center;
+.library-manage .run-section h4 {
+  margin-bottom: 0.1em;
+}
+
+/* Both panels fold under one header (chevron from .collapsible-summary) */
+.library-settings > summary {
+  padding: 0.45em 0.75em;
+  font-size: 0.95em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-mid);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.library-settings > summary:hover {
+  color: var(--text-primary);
+  border-color: var(--border-accent-medium);
+  background: var(--blue-alpha-8);
+}
+
+.library-settings[open] > summary {
+  margin-bottom: var(--space-sm);
+}
+
+.library-manage .run-section > .hint {
+  margin: 0;
 }
 
 .library-rule {
@@ -621,15 +706,14 @@
 .library-actions-center {
   display: flex;
   align-items: center;
-  justify-content: center;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   margin-top: auto;
-  padding-top: 0.4em;
+  padding-top: 0.6em;
 }
 
 .library-actions-center .btn {
-  padding: 0.5em 1.2em;
-  font-size: 0.95em;
+  font-weight: 600;
 }
 
 .library-retain-title {
@@ -647,25 +731,31 @@
 }
 
 .lib-tag-toggle {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.3em;
-  padding: 2px 8px;
+  margin: 0;
+  padding: 3px 10px;
   border: 1px solid var(--border-light);
   border-radius: 12px;
   font-size: 0.85em;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--text-muted);
   cursor: pointer;
+  user-select: none;
 }
 
+.lib-tag-toggle:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-medium);
+}
+
+/* Lit: the .lib-tag colour rules supply text and tint; the rim follows */
 .lib-tag-toggle.on {
-  border-color: var(--swtor-gold);
-  color: var(--swtor-gold);
-  background: rgba(201, 162, 39, 0.12);
+  border-color: currentColor;
 }
 
 .lib-tag-toggle input {
-  margin: 0;
+  display: none;
 }
 
 .modal-footer.library-confirm-actions {
@@ -759,8 +849,7 @@
 }
 
 .run-badge.cleared { color: var(--color-success); background: var(--color-success-bg); }
-.run-badge.timer-ok { color: var(--swtor-gold); background: rgba(201, 162, 39, 0.15); }
-.run-badge.timer-miss { color: var(--text-muted); }
+.run-badge.timer-ok { color: var(--swtor-gold); background: rgba(201, 162, 39, 0.08); }
 
 .run-tags {
   display: flex;
@@ -860,15 +949,6 @@
   overflow: hidden;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.04);
-}
-
-.run-tick-line {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: rgba(0, 0, 0, 0.45);
-  pointer-events: none;
 }
 
 .run-timeline-ticks {
@@ -1008,6 +1088,43 @@
   outline: none;
 }
 
+/* Rail item that lists the rest of a long operation group */
+.run-item.run-more,
+.sidebar-encounter-item.run-more {
+  justify-content: center;
+  gap: 0.4em;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.sidebar-encounter-item.run-more:hover {
+  color: var(--text-secondary);
+}
+
+/* Rows not being edited show plain text that turns into the editor on click */
+.library-tag-cell.static {
+  cursor: text;
+  min-height: 1.4em;
+}
+
+.library-add-hint {
+  padding: 0 6px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.library-note.static {
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: text;
+}
+
+.library-note.static.empty {
+  color: var(--text-muted);
+}
+
 .library-parsely-cell {
   white-space: nowrap;
 }
@@ -1043,11 +1160,11 @@
 .history-seg .seg:last-child { border-right: none; }
 .history-seg .seg:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.04); }
 
-.history-seg .seg.active.any { color: var(--text-primary); background: rgba(255, 255, 255, 0.08); }
-.history-seg .seg.active.tier-story { color: #fff; background: rgba(46, 204, 113, 0.35); box-shadow: inset 0 -2px 0 var(--color-success); }
-.history-seg .seg.active.tier-veteran { color: #fff; background: rgba(255, 140, 66, 0.35); box-shadow: inset 0 -2px 0 var(--swtor-orange); }
-.history-seg .seg.active.tier-master { color: #fff; background: rgba(201, 162, 39, 0.4); box-shadow: inset 0 -2px 0 var(--swtor-gold); }
-.history-seg .seg.active.size { color: #fff; background: rgba(74, 158, 255, 0.35); box-shadow: inset 0 -2px 0 var(--swtor-blue-bright); }
+.history-seg .seg.active { color: var(--text-primary); background: rgba(255, 255, 255, 0.06); }
+.history-seg .seg.active.tier-story { box-shadow: inset 0 -2px 0 var(--color-success); }
+.history-seg .seg.active.tier-veteran { box-shadow: inset 0 -2px 0 #e8c060; }
+.history-seg .seg.active.tier-master { box-shadow: inset 0 -2px 0 #f08080; }
+.history-seg .seg.active.size { box-shadow: inset 0 -2px 0 var(--swtor-blue-bright); }
 
 .history-subset {
   display: inline-flex;
@@ -1067,8 +1184,8 @@
 }
 
 .subset-chip.tier-story { color: var(--color-success); background: rgba(46, 204, 113, 0.18); }
-.subset-chip.tier-veteran { color: var(--swtor-orange); background: rgba(255, 140, 66, 0.18); }
-.subset-chip.tier-master { color: var(--swtor-gold); background: rgba(201, 162, 39, 0.2); }
+.subset-chip.tier-veteran { color: #e8c060; background: rgba(220, 160, 40, 0.15); }
+.subset-chip.tier-master { color: #f08080; background: rgba(220, 60, 60, 0.15); }
 .subset-chip.size { color: var(--swtor-blue-bright); background: rgba(74, 158, 255, 0.18); }
 .subset-chip.any { color: var(--text-muted); background: rgba(255, 255, 255, 0.06); font-weight: 500; }
 
@@ -1079,4 +1196,4 @@
 }
 
 .history-seg .seg.role.active img { opacity: 1; }
-.history-seg .seg.active.role { color: #fff; background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 -2px 0 var(--text-secondary); }
+.history-seg .seg.active.role { box-shadow: inset 0 -2px 0 var(--text-secondary); }

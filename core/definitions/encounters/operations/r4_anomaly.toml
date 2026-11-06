@@ -1558,6 +1558,8 @@ phase_id = "kanoth_p4"
 id = "hallway"
 name = "Hallway"
 difficulties = ["story", "veteran", "master"]
+# A trash gauntlet, not a boss: never part of a clear or the timed run
+is_optional_boss = true
 
 [[boss.entities]]
 name = "Attractor"

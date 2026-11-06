@@ -92,7 +92,12 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
     };
 
     rsx! {
-        div { class: "library-manage",
+        details { class: "library-settings", open: true,
+            summary { class: "collapsible-summary", title: "Show or hide cleanup and scan settings",
+                i { class: "fa-solid fa-sliders summary-icon" }
+                "Management settings"
+            }
+            div { class: "library-manage",
             div { class: "run-section",
                 h4 { "Automatic cleanup" }
                 RuleRow {
@@ -161,7 +166,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
                         {
                             let on = retain.read().contains(&tag);
                             rsx! {
-                                label { class: if on { "lib-tag-toggle on" } else { "lib-tag-toggle" },
+                                label { class: if on { "lib-tag-toggle on lib-tag {tag_class(tag)}" } else { "lib-tag-toggle" },
                                     input { r#type: "checkbox", checked: on, onchange: move |e| toggle_retain(tag, e.checked()) }
                                     {tag.label()}
                                 }
@@ -182,7 +187,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
                 }
                 div { class: "library-actions-center",
                     button {
-                        class: "btn",
+                        class: "btn btn-lg btn-primary",
                         disabled: p.is_none_or(|p| p.is_empty()),
                         onclick: move |_| show_confirm.set(true),
                         i { class: "fa-solid fa-broom" }
@@ -192,7 +197,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
             }
 
             div { class: "run-section",
-                h4 { "Historical Data" }
+                h4 { "Historical data" }
                 p { class: "hint",
                     "Boss Statistics and Raid Summaries are built from scanned logs. Rebuilding re-parses every log; favorites, tags and notes are kept."
                 }
@@ -219,7 +224,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
                             " Scanning{progress}"
                         }
                         button {
-                            class: "btn btn-ghost",
+                            class: "btn btn-lg",
                             title: "Stop after the current log; logs already scanned keep their history",
                             onclick: move |_| backfill.cancel(),
                             i { class: "fa-solid fa-stop" }
@@ -227,7 +232,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
                         }
                     } else {
                         button {
-                            class: "btn",
+                            class: "btn btn-lg btn-primary",
                             disabled: pending == 0,
                             title: "Parse only the logs whose history is missing or out of date",
                             onclick: move |_| backfill.start(true),
@@ -235,7 +240,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
                             " Scan missing ({pending})"
                         }
                         button {
-                            class: "btn btn-ghost",
+                            class: "btn btn-lg",
                             title: "Re-parse every log in the directory and recompute the statistics",
                             onclick: move |_| backfill.start(false),
                             i { class: "fa-solid fa-database" }
@@ -243,6 +248,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
                         }
                     }
                 }
+            }
             }
         }
 
