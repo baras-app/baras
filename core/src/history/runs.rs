@@ -120,6 +120,7 @@ fn summarize(
     RunSummary {
         filename: first.filename.clone(),
         path: path.map(str::to_string),
+        archived: false,
         start_ms: first.start_ms,
         character: first.character.clone(),
         discipline: played.discipline.clone(),

@@ -1037,7 +1037,7 @@ pub fn App() -> Element {
                             icon: "fa-solid fa-clock-rotate-left",
                             items: vec![
                                 (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
-                                (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", "One raid night across every log"),
+                                (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", ""),
                                 (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
                             ],
                             state: ui_state,

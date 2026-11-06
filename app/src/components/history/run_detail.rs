@@ -162,12 +162,40 @@ pub fn RunDetailView(
             }
             if let Some(path) = run.path.clone() {
                 button {
-                    class: "btn btn-sm btn-ghost",
+                    class: "btn btn-sm btn-primary",
                     title: "Open this log in Encounter Analysis",
                     disabled: opener.busy(),
                     onclick: move |_| opener.open(path.clone(), None),
                     i { class: "fa-solid fa-eye" }
                     " Open log"
+                }
+            } else if run.archived {
+                button {
+                    class: "btn btn-sm btn-primary",
+                    title: "This log is archived: restore it to the log directory, then open it in Encounter Analysis",
+                    disabled: opener.busy(),
+                    onclick: {
+                        let filename = run.filename.clone();
+                        move |_| {
+                            let filename = filename.clone();
+                            spawn(async move {
+                                match api::restore_log(&filename).await {
+                                    Ok(path) => {
+                                        on_change.call(());
+                                        opener.open(path, None);
+                                    }
+                                    Err(err) => toast.show(format!("Restore failed: {err}"), ToastSeverity::Normal),
+                                }
+                            });
+                        }
+                    },
+                    i { class: "fa-solid fa-box-open" }
+                    " Restore & open"
+                }
+            } else {
+                span { class: "pull-history-operation", title: "The log file was deleted; its pulls stay in the statistics",
+                    i { class: "fa-solid fa-file-circle-xmark" }
+                    " Log missing"
                 }
             }
         }

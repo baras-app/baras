@@ -74,6 +74,10 @@ pub struct RunSummary {
     pub filename: String,
     /// Log path, present only when the file still exists on disk
     pub path: Option<String>,
+    /// No path because the log is compressed in the archive; restoring it
+    /// brings the path back
+    #[serde(default)]
+    pub archived: bool,
     /// `start_ms` of the first pull: the run's stable key
     pub start_ms: i64,
     pub character: String,

@@ -310,8 +310,11 @@ impl IndexedLog {
     /// Runs with the user's tags and note attached
     fn runs(&self, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<RunSummary> {
         let path = self.log_path.is_file().then(|| self.log_path.to_string_lossy().into_owned());
+        let archived = path.is_none()
+            && self.rows.first().is_some_and(|r| crate::library::archived_log(&r.filename).is_some());
         let mut runs = runs_of_log(&self.rows, &self.timer_starts, path.as_deref(), catalog);
         for r in &mut runs {
+            r.archived = archived;
             apply_meta(r, meta.run(&r.filename, r.start_ms).cloned());
         }
         runs

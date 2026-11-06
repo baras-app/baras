@@ -802,9 +802,12 @@
   margin-top: 0.3em;
 }
 
+/* Section actions: centered, and the buttons share the row's width so
+   "Rebuild all" and "Scan missing" fill the whitespace under the settings */
 .library-actions-center {
   display: flex;
   align-items: center;
+  justify-content: center;
   flex-wrap: wrap;
   gap: var(--space-sm);
   margin-top: auto;
@@ -812,7 +815,20 @@
 }
 
 .library-actions-center .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+  flex: 1 1 12em;
+  max-width: 22em;
+  padding: var(--space-md) var(--space-lg);
+  font-size: 1.05em;
   font-weight: 600;
+}
+
+.library-actions-center .library-scan-progress {
+  flex: 1 1 100%;
+  text-align: center;
 }
 
 /* Retention sits in its own box between the rules and the hint */
