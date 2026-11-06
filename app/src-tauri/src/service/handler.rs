@@ -8,19 +8,23 @@ use std::sync::atomic::Ordering;
 use tokio::sync::mpsc;
 
 use baras_core::EncounterSummary;
+use baras_core::history::{now_iso, start_ms_of};
 use baras_core::context::{AppConfig, AppConfigExt, resolve};
 use baras_core::encounter::EncounterState;
 use baras_core::game_data::Discipline;
-use baras_types::history::{PullFilter, PullHistoryOverview, PullRow};
+use baras_types::history::{
+    CleanupPlan, CleanupReport, ContentTag, HistoryStatus, LibraryRow, LogStatus, ParselyUpload, PullFilter,
+    PullHistoryOverview, PullRow, RunDetail, RunList, RunMeta,
+};
 use baras_core::query::{
     AbilityBreakdown, BreakdownMode, CombatLogFilters, CombatLogFindMatch, CombatLogRow,
     CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectWindow,
     EncounterTimeline, EntityBreakdown, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow,
     SortDirection, TimeRange, TimeSeriesPoint,
 };
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
-use super::{AreaVisitInfo, CombatData, LogFileInfo, ServiceCommand, SessionInfo};
+use super::{AreaVisitInfo, CombatData, LogFileInfo, ServiceCommand, SessionInfo, cleanup};
 use crate::state::SharedState;
 
 /// Handle to communicate with the combat service and query state
@@ -143,15 +147,186 @@ impl ServiceHandle {
         index.len()
     }
 
-    /// Clean up log files based on provided settings. Returns (empty_deleted, small_deleted, old_deleted).
-    pub async fn cleanup_logs(
-        &self,
-        delete_empty: bool,
-        delete_small: bool,
-        retention_days: Option<u32>,
-    ) -> (u32, u32, u32) {
-        let mut index = self.shared.directory_index.write().await;
-        index.cleanup(delete_empty, delete_small, retention_days)
+    /// Dry run of the saved cleanup rules. Nothing is touched.
+    pub async fn preview_log_cleanup(&self) -> CleanupPlan {
+        let live = cleanup::live_path(&self.shared).await;
+        cleanup::plan(&self.shared, live.as_deref()).await
+    }
+
+    /// Archive and delete whatever the saved rules select right now.
+    pub async fn run_log_cleanup(&self) -> CleanupReport {
+        cleanup::run(&self.shared, &self.app_handle).await
+    }
+
+    pub async fn retained_content(&self) -> Vec<ContentTag> {
+        self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner()).retain.clone()
+    }
+
+    pub async fn set_retained_content(&self, retain: Vec<ContentTag>) -> bool {
+        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        meta.retain = retain;
+        if let Err(e) = meta.save() {
+            tracing::warn!(error = %e, "Failed to save library.json");
+            return false;
+        }
+        true
+    }
+
+    /// Every log in the directory with its history and metadata joined.
+    pub async fn library(&self) -> Vec<LibraryRow> {
+        let live = self.active_file_path().await;
+        let log_dir = PathBuf::from(self.config().await.log_directory);
+        let shared = self.shared.clone();
+        let directory = self.shared.directory_index.read().await;
+        let areas = self.shared.area_cache.read().await;
+        tokio::task::block_in_place(|| {
+            let pulls = cleanup::pull_index(&shared, &log_dir);
+            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let mut rows_out: Vec<LibraryRow> = directory
+                .entries()
+                .into_iter()
+                .map(|e| {
+                    let info = pulls.log_info(&e.filename);
+                    let rows = info.map_or(&[][..], |(r, _)| r);
+                    let status = if live.as_deref() == Some(e.path.as_path()) {
+                        LogStatus::Live
+                    } else {
+                        match info {
+                            Some((_, true)) => LogStatus::Stale,
+                            Some((_, false)) => LogStatus::Indexed,
+                            None => LogStatus::NoHistory,
+                        }
+                    };
+                    let log_meta = meta.log(&e.filename);
+                    let area_index = areas.get(&e.path);
+                    LibraryRow {
+                        content: baras_core::library::content_tags(area_index, rows),
+                        path: e.path.to_string_lossy().into_owned(),
+                        filename: e.filename.clone(),
+                        date: e.formatted_datetime(),
+                        character: e.character_name.clone(),
+                        server: rows.first().map(|r| r.server.clone()).unwrap_or_default(),
+                        size: e.file_size,
+                        original_size: None,
+                        areas: area_index
+                            .map(|a| a.areas.iter().map(|x| x.display_name()).collect())
+                            .unwrap_or_default(),
+                        pulls: rows.len() as u32,
+                        kills: rows.iter().filter(|r| r.success).count() as u32,
+                        dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
+                        status,
+                        favorite: log_meta.is_some_and(|m| m.favorite),
+                        tags: log_meta.map(|m| m.tags.clone()).unwrap_or_default(),
+                        run_tags: meta.run_tags_for_log(&e.filename),
+                        note: log_meta.map(|m| m.note.clone()).unwrap_or_default(),
+                        parsely: log_meta.and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
+                        parsely_fights: meta.pull_parsely_count(&e.filename),
+                    }
+                })
+                .collect();
+            // Archived logs are no longer in the directory; the areas moved with them
+            for a in baras_core::library::archived_logs() {
+                let rows = pulls.rows_for(&a.filename);
+                let log_meta = meta.log(&a.filename);
+                let area_index = areas.get(&a.path);
+                rows_out.push(LibraryRow {
+                    content: baras_core::library::content_tags(area_index, rows),
+                    path: a.path.to_string_lossy().into_owned(),
+                    date: baras_core::context::parse_log_filename(&a.filename)
+                        .map(|(_, dt)| dt.format("%Y-%m-%d %-H:%M").to_string())
+                        .unwrap_or_default(),
+                    character: rows.first().map(|r| r.character.clone()),
+                    server: rows.first().map(|r| r.server.clone()).unwrap_or_default(),
+                    size: a.compressed_size,
+                    original_size: a.original_size,
+                    areas: area_index
+                        .map(|a| a.areas.iter().map(|x| x.display_name()).collect())
+                        .unwrap_or_default(),
+                    pulls: rows.len() as u32,
+                    kills: rows.iter().filter(|r| r.success).count() as u32,
+                    dummy_only: !rows.is_empty() && rows.iter().all(|r| !r.is_operation && r.operation == baras_core::history::DUMMY_GROUP),
+                    status: LogStatus::Archived,
+                    favorite: log_meta.is_some_and(|m| m.favorite),
+                    tags: log_meta.map(|m| m.tags.clone()).unwrap_or_default(),
+                    run_tags: meta.run_tags_for_log(&a.filename),
+                    note: log_meta.map(|m| m.note.clone()).unwrap_or_default(),
+                    parsely: log_meta.and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
+                    parsely_fights: meta.pull_parsely_count(&a.filename),
+                    filename: a.filename,
+                });
+            }
+            rows_out
+        })
+    }
+
+    pub async fn set_log_favorite(&self, filename: String, favorite: bool) -> bool {
+        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        meta.set_favorite(&filename, favorite);
+        if let Err(e) = meta.save() {
+            tracing::warn!(error = %e, "Failed to save library.json");
+            return false;
+        }
+        true
+    }
+
+    /// The user's tags and note on one log.
+    pub fn set_log_meta(&self, filename: &str, tags: Vec<String>, note: &str) -> bool {
+        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        meta.set_log_meta(filename, tags, note);
+        match meta.save() {
+            Ok(()) => true,
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to save library.json");
+                false
+            }
+        }
+    }
+
+    /// Decompress an archived log back into the log directory.
+    pub async fn restore_log(&self, filename: String) -> Result<PathBuf, String> {
+        let log_dir = PathBuf::from(self.config().await.log_directory);
+        let mut directory = self.shared.directory_index.write().await;
+        let mut areas = self.shared.area_cache.write().await;
+        let restored = {
+            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let mut lib = baras_core::library::LibraryMut {
+                directory: &mut directory,
+                areas: &mut areas,
+                meta: &mut meta,
+                live: None,
+            };
+            baras_core::library::restore(&mut lib, &log_dir, &filename).map_err(|e| e.to_string())?
+        };
+        cleanup::save_log_caches(&self.app_handle, &directory, &areas);
+        Ok(restored)
+    }
+
+    /// Delete one log (or archive) with everything it owns: history, notes,
+    /// tags, Parsely links, caches. A favorite is unmarked first since the
+    /// user asked for exactly this file; the live log is refused.
+    pub async fn delete_log(&self, path: PathBuf) -> baras_types::history::DeleteReport {
+        let live = self.active_file_path().await;
+        let mut directory = self.shared.directory_index.write().await;
+        let mut areas = self.shared.area_cache.write().await;
+        let report = {
+            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
+                meta.set_favorite(name.strip_suffix(".zst").unwrap_or(name), false);
+            }
+            let mut lib = baras_core::library::LibraryMut {
+                directory: &mut directory,
+                areas: &mut areas,
+                meta: &mut meta,
+                live: live.as_deref(),
+            };
+            let report = baras_core::library::delete(&mut lib, std::slice::from_ref(&path), false);
+            if let Err(e) = meta.save() {
+                tracing::warn!(error = %e, "Failed to save library.json");
+            }
+            report
+        };
+        cleanup::save_log_caches(&self.app_handle, &directory, &areas);
+        report
     }
 
     /// Refresh file sizes in the directory index (fast stat-only, no re-parsing)
@@ -376,41 +551,190 @@ impl ServiceHandle {
         cache.encounter_history.summaries().to_vec()
     }
 
-    /// Set the Parsely link for a specific encounter
-    pub async fn set_encounter_parsely_link(&self, encounter_id: u64, link: String) -> bool {
+    /// Set the Parsely link for a specific encounter: on the live summary (so
+    /// the Data Explorer shows it now) and in `library.json` keyed by the
+    /// pull's stable start time (so a re-parse cannot lose it).
+    pub async fn set_encounter_parsely_link(&self, encounter_id: u64, link: String, visibility: u8) -> bool {
         let session_guard = self.shared.session.read().await;
         let Some(session) = session_guard.as_ref() else {
             return false;
         };
         let mut session = session.write().await;
+        let filename = session
+            .active_file
+            .as_ref()
+            .and_then(|p| p.file_name())
+            .and_then(|f| f.to_str())
+            .map(str::to_string);
         let Some(cache) = session.session_cache.as_mut() else {
             return false;
         };
 
-        let updated = cache.encounter_history.set_parsely_link(encounter_id, link);
-        if updated && let Some(history) = super::history::build_pull_history(&session) {
-            super::history::save_in_background(history);
+        let start_ms = cache
+            .encounter_history
+            .summaries()
+            .iter()
+            .find(|s| s.encounter_id == encounter_id)
+            .and_then(|s| s.start_time.as_deref())
+            .and_then(start_ms_of);
+        let updated = cache.encounter_history.set_parsely_link(encounter_id, link.clone());
+        if updated && let (Some(filename), Some(start_ms)) = (filename, start_ms) {
+            let upload = ParselyUpload { link, uploaded_at: now_iso(), source_len: None, visibility };
+            let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            meta.set_pull_parsely(&filename, start_ms, upload);
+            if let Err(e) = meta.save() {
+                tracing::warn!(error = %e, "Failed to save library.json");
+            }
         }
         updated
     }
 
     /// Filter options and per-boss pull counts from the history index.
     pub async fn pull_history_overview(&self, filter: PullFilter) -> PullHistoryOverview {
-        self.with_pull_index(move |index| index.overview(&filter))
-            .await
-            .unwrap_or_default()
+        let catalog = self.area_catalog();
+        let shared = self.shared.clone();
+        self.with_pull_index(move |index| {
+            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            index.overview(&filter, &catalog, &meta)
+        })
+        .await
+        .unwrap_or_default()
     }
 
     /// Every recorded pull of one boss under `filter`, newest first.
     pub async fn boss_pulls(&self, operation: String, boss: String, filter: PullFilter) -> Vec<PullRow> {
-        self.with_pull_index(move |index| index.pulls(&operation, &boss, &filter))
-            .await
-            .unwrap_or_default()
+        let catalog = self.area_catalog();
+        let shared = self.shared.clone();
+        self.with_pull_index(move |index| {
+            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let mut rows = index.pulls(&operation, &boss, &filter, &catalog, &meta);
+            for row in &mut rows {
+                row.parsely = meta.parsely_link_for(&row.filename, row.start_ms).map(str::to_string);
+            }
+            rows
+        })
+        .await
+        .unwrap_or_default()
     }
 
-    /// Backfill pull history for every log in the configured directory (background).
-    pub async fn start_history_backfill(&self) -> Result<(), String> {
-        super::history::run_backfill(self.shared.clone(), self.app_handle.clone()).await
+    /// Operation runs under `filter`, newest first, with tags and notes.
+    pub async fn operation_runs(&self, filter: PullFilter) -> RunList {
+        let catalog = self.area_catalog();
+        let shared = self.shared.clone();
+        self.with_pull_index(move |index| {
+            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let runs = index.runs(&catalog, &filter, &meta);
+            RunList { runs, tags: meta.run_tags() }
+        })
+        .await
+        .unwrap_or_default()
+    }
+
+    /// One run with its bosses, players and pulls.
+    pub async fn operation_run(&self, filename: String, start_ms: i64) -> Option<RunDetail> {
+        let catalog = self.area_catalog();
+        let shared = self.shared.clone();
+        self.with_pull_index(move |index| {
+            let meta = shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+            let (run, rows) = index.run(&filename, start_ms, &catalog, &meta)?;
+            let records = baras_core::history::history_file_for(&filename)
+                .and_then(|p| baras_core::history::LogHistory::load(&p))
+                .map(|l| l.history.pulls)
+                .unwrap_or_default();
+            Some(baras_core::history::run_detail(run, rows, &records, &catalog))
+        })
+        .await
+        .flatten()
+    }
+
+    /// Tags and note for one run; an empty meta removes the entry.
+    pub fn set_run_meta(&self, filename: &str, start_ms: i64, meta: RunMeta) -> bool {
+        let mut store = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        store.set_run(filename, start_ms, meta);
+        match store.save() {
+            Ok(()) => true,
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to save library.json");
+                false
+            }
+        }
+    }
+
+    /// Definitions are read once per app run; an edited encounter file shows
+    /// up after a restart.
+    fn area_catalog(&self) -> Arc<baras_core::history::AreaCatalog> {
+        self.shared
+            .area_catalog
+            .get_or_init(|| {
+                let bundled = self
+                    .app_handle
+                    .path()
+                    .resolve("definitions/encounters", tauri::path::BaseDirectory::Resource)
+                    .ok();
+                let user = dirs::config_dir().map(|p| p.join("baras").join("definitions").join("encounters"));
+                Arc::new(baras_core::history::AreaCatalog::load(bundled.as_deref(), user.as_deref()))
+            })
+            .clone()
+    }
+
+    /// Backfill pull history for every log in the configured directory
+    /// (background). `stale_only` skips logs whose history is already current.
+    pub async fn start_history_backfill(&self, stale_only: bool) -> Result<(), String> {
+        super::history::run_backfill(self.shared.clone(), self.app_handle.clone(), stale_only).await
+    }
+
+    /// Ask a running backfill to stop; it reports `Done { cancelled: true }`.
+    pub fn cancel_history_backfill(&self) {
+        if self.shared.history_backfill_running.load(std::sync::atomic::Ordering::SeqCst) {
+            self.shared.history_backfill_cancel.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+
+    /// History store health: logs, pulls, and files needing a re-scan. The
+    /// live log is always behind its history file and is not counted.
+    pub async fn history_status(&self) -> HistoryStatus {
+        let live = if self.shared.is_live_tailing.load(std::sync::atomic::Ordering::SeqCst) {
+            self.active_file_path().await
+        } else {
+            None
+        };
+        let logs: Vec<String> = {
+            let directory = self.shared.directory_index.read().await;
+            directory
+                .entries()
+                .iter()
+                .filter(|e| !e.is_empty && live.as_deref() != Some(e.path.as_path()))
+                .map(|e| e.filename.clone())
+                .collect()
+        };
+        self.with_pull_index(move |index| {
+            let mut status = index.status(live.as_deref());
+            status.unscanned = logs.iter().filter(|f| index.log_info(f).is_none()).count() as u32;
+            status
+        })
+        .await
+        .unwrap_or_default()
+    }
+
+    async fn active_file_path(&self) -> Option<PathBuf> {
+        let guard = self.shared.session.read().await;
+        let session = guard.as_ref()?;
+        session.read().await.active_file.clone()
+    }
+
+    /// Record a whole-file Parsely upload against the log in `library.json`.
+    pub async fn set_log_parsely_link(&self, path: PathBuf, link: String, visibility: u8) -> bool {
+        let Some(filename) = path.file_name().and_then(|f| f.to_str()) else {
+            return false;
+        };
+        let source_len = std::fs::metadata(&path).ok().map(|m| m.len());
+        let upload = ParselyUpload { link, uploaded_at: now_iso(), source_len, visibility };
+        let mut meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
+        meta.set_log_parsely(filename, upload);
+        if let Err(e) = meta.save() {
+            tracing::warn!(error = %e, "Failed to save library.json");
+        }
+        true
     }
 
     /// Refresh the index against disk (mtime-based, cheap when unchanged) and query it
@@ -422,10 +746,7 @@ impl ServiceHandle {
         let log_dir = PathBuf::from(self.config().await.log_directory);
         let shared = self.shared.clone();
         tokio::task::spawn_blocking(move || {
-            let mut index = shared.pull_index.lock().unwrap_or_else(|p| p.into_inner());
-            if let Err(e) = index.refresh(&log_dir) {
-                tracing::warn!(error = %e, "Failed to refresh pull history index");
-            }
+            let index = cleanup::pull_index(&shared, &log_dir);
             query(&index)
         })
         .await
@@ -562,14 +883,20 @@ impl ServiceHandle {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Open a historical file (pauses live tailing)
+    /// Queue a historical open. Returns `Ok(false)` when the same file is
+    /// already queued or being parsed, so the click is a no-op.
     pub async fn open_historical_file(
         &self,
         path: PathBuf,
         select_encounter: Option<u64>,
-    ) -> Result<(), String> {
+    ) -> Result<bool, String> {
+        if !self.shared.pending_opens.lock().unwrap_or_else(|p| p.into_inner()).insert(path.clone()) {
+            return Ok(false);
+        }
         self.cmd_tx
             .send(ServiceCommand::OpenHistoricalFile { path, select_encounter })
             .await
+            .map(|()| true)
             .map_err(|e| e.to_string())
     }
 
@@ -597,6 +924,7 @@ impl ServiceHandle {
         tab: DataTab,
         encounter_idx: Option<u32>,
         entity_name: Option<String>,
+        entity_id: Option<i64>,
         time_range: Option<TimeRange>,
         entity_types: Option<Vec<String>>,
         breakdown_mode: Option<BreakdownMode>,
@@ -634,6 +962,7 @@ impl ServiceHandle {
             .query_breakdown(
                 tab,
                 entity_name.as_deref(),
+                entity_id,
                 time_range.as_ref(),
                 types_ref.as_deref(),
                 breakdown_mode.as_ref(),
@@ -647,6 +976,7 @@ impl ServiceHandle {
         &self,
         encounter_idx: Option<u32>,
         entity_name: String,
+        entity_id: Option<i64>,
         time_range: Option<TimeRange>,
         entity_types: Option<Vec<String>>,
     ) -> Result<DamageTakenSummary, String> {
@@ -679,6 +1009,7 @@ impl ServiceHandle {
             .query()
             .query_damage_taken_summary(
                 &entity_name,
+                entity_id,
                 time_range.as_ref(),
                 types_ref.as_deref(),
             )
@@ -1652,6 +1983,11 @@ impl ServiceHandle {
     /// Called when visibility, move mode, or rearrange mode changes
     pub fn emit_overlay_status_changed(&self) {
         let _ = self.app_handle.emit("overlay-status-changed", ());
+    }
+
+    /// Emit when locking move mode persisted at least one changed overlay position
+    pub fn emit_overlay_positions_changed(&self) {
+        let _ = self.app_handle.emit("overlay-positions-changed", ());
     }
 
     /// Get current notes data from loaded boss definitions

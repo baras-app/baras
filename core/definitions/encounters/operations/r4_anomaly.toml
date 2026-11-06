@@ -1,6 +1,7 @@
 [area]
 name = "R-4 Anomaly"
 id = 833571547775799
+timed_run_minutes = 40
 
 # "Anomalously Skilled" timer starts at the start line past the elevator (VM only).
 [area.timer_start]
@@ -1557,6 +1558,8 @@ phase_id = "kanoth_p4"
 id = "hallway"
 name = "Hallway"
 difficulties = ["story", "veteran", "master"]
+# A trash gauntlet, not a boss: never part of a clear or the timed run
+is_optional_boss = true
 
 [[boss.entities]]
 name = "Attractor"

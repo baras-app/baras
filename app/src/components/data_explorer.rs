@@ -110,9 +110,10 @@ async fn load_actor_entities(
     let dmg_map: HashMap<String, f64> = dmg.iter()
         .map(|e| (e.source_name.clone(), e.total_value))
         .collect();
-    let mut merged: HashMap<String, EntityBreakdown> = HashMap::new();
+    // Keyed by (name, instance id) so same-named NPC spawns stay separate rows
+    let mut merged: HashMap<(String, i64), EntityBreakdown> = HashMap::new();
     for e in dmg.into_iter().chain(heal) {
-        merged.entry(e.source_name.clone())
+        merged.entry((e.source_name.clone(), e.source_id))
             .and_modify(|existing| {
                 existing.total_value += e.total_value;
                 existing.abilities_used = existing.abilities_used.max(e.abilities_used);
@@ -120,7 +121,7 @@ async fn load_actor_entities(
             .or_insert(e);
     }
     for e in roster {
-        merged.entry(e.source_name.clone()).or_insert(e);
+        merged.entry((e.source_name.clone(), e.source_id)).or_insert(e);
     }
     let mut result: Vec<_> = merged.into_values().collect();
     result.sort_by(|a, b| {
@@ -154,6 +155,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     let mut live_poll_tick = use_signal(|| 0u32);
     let mut view_mode = use_signal(|| props.state.read().data_explorer.view_mode);
     let mut selected_source = use_signal(|| props.state.read().data_explorer.selected_source.clone());
+    // Instance id of the selected NPC spawn; None for players and name-keyed selections
+    let mut selected_source_id = use_signal(|| props.state.read().data_explorer.selected_source_id);
     let mut breakdown_mode = use_signal(|| props.state.read().data_explorer.breakdown_mode);
     let mut show_players_only = use_signal(|| props.state.read().data_explorer.show_players_only);
     let mut show_only_bosses = use_signal(|| props.state.read().data_explorer.show_only_bosses);
@@ -176,6 +179,8 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
     // NPC health table: which grouped NPC names are expanded (not persisted)
     let mut expanded_npc_groups = use_signal(HashSet::<String>::new);
+    // Entity sidebar: NPC names whose same-named spawns are expanded
+    let mut expanded_entity_groups = use_signal(HashSet::<String>::new);
 
     // (overview_sub_tab removed — NPC Health and Challenges now shown side-by-side)
 
@@ -209,6 +214,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         let enc = *selected_encounter.read();
         let vm = *view_mode.read();
         let src = selected_source.read().clone();
+        let src_id = *selected_source_id.read();
         let bm = *breakdown_mode.read();
         let players = *show_players_only.read();
         let col = *sort_column.read();
@@ -224,6 +230,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
             state.data_explorer.selected_encounter = enc;
             state.data_explorer.view_mode = vm;
             state.data_explorer.selected_source = src;
+            state.data_explorer.selected_source_id = src_id;
             state.data_explorer.breakdown_mode = bm;
             state.data_explorer.show_players_only = players;
             state.data_explorer.sort_column = col;
@@ -810,12 +817,14 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
                 // Load ability breakdown for selected source
                 let src = selected_source.peek().clone();
+                let src_id = *selected_source_id.peek();
                 let breakdown = *breakdown_mode.peek();
                 let duration = timeline.read().as_ref().map(|t| t.duration_secs);
                 if let Some(data) = api::query_breakdown(
                     tab,
                     None,
                     src.as_deref(),
+                    src_id,
                     None,
                     None,
                     Some(&breakdown),
@@ -931,6 +940,13 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
             let _ = entities.try_write().map(|mut w| *w = entity_data);
 
+            // Instance id only applies while the held selection survived
+            let auto_id = if auto_selected == *selected_source.read() {
+                *selected_source_id.read()
+            } else {
+                None
+            };
+
             // Load ability breakdown for selected (or auto-selected) source
             let breakdown = *breakdown_mode.read();
             let duration = timeline.read().as_ref().map(|t| t.duration_secs);
@@ -938,6 +954,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 tab,
                 idx,
                 auto_selected.as_deref(),
+                auto_id,
                 tr_opt.as_ref(),
                 None, // No entity filter when source is selected
                 Some(&breakdown),
@@ -969,6 +986,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         let idx = *selected_encounter.read();
         let view = *view_mode.read();
         let src = selected_source.read().clone();
+        let src_id = *selected_source_id.read();
         let tr = time_range();
         let tl_state = timeline_state();
 
@@ -1009,6 +1027,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 tab,
                 idx,
                 src.as_deref(),
+                src_id,
                 tr_opt.as_ref(),
                 entity_filter,
                 Some(&breakdown),
@@ -1027,6 +1046,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         let view = *view_mode.read();
         let idx = *selected_encounter.read();
         let src = selected_source.read().clone();
+        let src_id = *selected_source_id.read();
         let tr = time_range();
         let tl_state = timeline_state();
 
@@ -1045,26 +1065,29 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
         spawn(async move {
             let tr_opt = if tr.start == 0.0 && tr.end == 0.0 { None } else { Some(tr) };
             // Don't filter source entity types — the target_name filter already scopes the query
-            let result = api::query_damage_taken_summary(idx, &entity_name, tr_opt.as_ref(), None).await;
+            let result = api::query_damage_taken_summary(idx, &entity_name, src_id, tr_opt.as_ref(), None).await;
             let _ = dt_summary.try_write().map(|mut w| *w = result);
         });
     });
 
     // Filter by source when selected
-    let mut on_source_click = move |name: String| {
+    // `id` is the NPC instance id when the row is one spawn among same-named copies
+    let mut on_source_click = move |name: String, id: Option<i64>| {
         let idx = *selected_encounter.read();
         let mode = *view_mode.read();
         let current = selected_source.read().clone();
+        let current_id = *selected_source_id.read();
         let tr = time_range();
 
-        // Toggle selection
-        let new_source = if current.as_ref() == Some(&name) {
-            None
+        // Toggle selection (same name + same instance = deselect)
+        let (new_source, new_id) = if current.as_ref() == Some(&name) && current_id == id {
+            (None, None)
         } else {
-            Some(name.clone())
+            (Some(name.clone()), id)
         };
 
         selected_source.set(new_source.clone());
+        selected_source_id.set(new_id);
         usage_selected_abilities.set(Vec::new());
 
         // In Rotation mode, just set the source - the RotationView handles its own queries
@@ -1096,6 +1119,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                 tab,
                 idx,
                 new_source.as_deref(),
+                new_id,
                 tr_opt.as_ref(),
                 entity_filter,
                 Some(&breakdown),
@@ -2354,66 +2378,160 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         let mode = view_mode();
                                         let show_values = !matches!(mode, ViewMode::Charts);
                                         let overview_stats = overview_stats_lookup();
+                                        let list = entity_list();
+                                        let sel_name = selected_source.read().clone();
+                                        let sel_id = *selected_source_id.read();
+                                        // Same-named NPC spawns collapse into one group row (aggregate) with
+                                        // expandable members, so a wave of adds doesn't bury single enemies.
+                                        let mut items: Vec<(EntityBreakdown, Vec<EntityBreakdown>)> = Vec::new();
+                                        let mut group_idx: HashMap<&str, usize> = HashMap::new();
+                                        for e in list.iter() {
+                                            match (e.entity_type == "Npc").then(|| group_idx.get(e.source_name.as_str())).flatten() {
+                                                Some(&i) => {
+                                                    let (head, members) = &mut items[i];
+                                                    if members.is_empty() {
+                                                        members.push(head.clone());
+                                                    }
+                                                    head.total_value += e.total_value;
+                                                    head.abilities_used = head.abilities_used.max(e.abilities_used);
+                                                    members.push(e.clone());
+                                                }
+                                                None => {
+                                                    group_idx.insert(e.source_name.as_str(), items.len());
+                                                    items.push((e.clone(), Vec::new()));
+                                                }
+                                            }
+                                        }
+                                        items.sort_by(|a, b| {
+                                            b.0.total_value.partial_cmp(&a.0.total_value).unwrap_or(std::cmp::Ordering::Equal)
+                                        });
+                                        // For Rotation/Usage: overview DPS for non-healers, EHPS for healers
+                                        // For Detailed tabs: entity total_value / duration
+                                        let row_values = |entity: &EntityBreakdown, is_npc: bool| -> (f64, &'static str, &'static str) {
+                                            match mode {
+                                                ViewMode::Rotation | ViewMode::Usage => {
+                                                    let stats = overview_stats.get(&entity.source_name);
+                                                    let is_healer = stats.map(|s| s.2).unwrap_or(false);
+                                                    if is_healer && !is_npc {
+                                                        (stats.map(|s| s.1).unwrap_or(0.0), "entity-value value-healing", "EHPS")
+                                                    } else {
+                                                        (stats.map(|s| s.0).unwrap_or(0.0), "entity-value value-damage", "DPS")
+                                                    }
+                                                }
+                                                ViewMode::Detailed(DataTab::Damage) => {
+                                                    (entity.total_value / duration, "entity-value value-damage", "DPS")
+                                                }
+                                                ViewMode::Detailed(DataTab::Healing) => {
+                                                    (entity.total_value / duration, "entity-value value-healing", "HPS")
+                                                }
+                                                ViewMode::Detailed(DataTab::HealingTaken) => {
+                                                    (entity.total_value / duration, "entity-value value-healing", "HTPS")
+                                                }
+                                                ViewMode::Detailed(DataTab::DamageTaken) => {
+                                                    (entity.total_value / duration, "entity-value value-dtps", "DTPS")
+                                                }
+                                                _ => (entity.total_value / duration, "entity-value", ""),
+                                            }
+                                        };
                                         rsx! {
-                                        for entity in entity_list().iter() {
+                                        for (head, members) in items.iter() {
                                             {
-                                                let name = entity.source_name.clone();
-                                                let is_selected = selected_source.read().as_ref() == Some(&name);
-                                                let is_npc = entity.entity_type == "Npc";
+                                                let name = head.source_name.clone();
+                                                let is_npc = head.entity_type == "Npc";
+                                                let is_group = !members.is_empty();
+                                                let name_selected = sel_name.as_ref() == Some(&name);
+                                                let member_selected = is_group && name_selected
+                                                    && sel_id.is_some_and(|id| members.iter().any(|m| m.source_id == id));
+                                                let expanded = is_group
+                                                    && (member_selected || expanded_entity_groups.read().contains(&name));
+                                                // Group heads select by name (aggregate), lone NPCs by instance, players by name
+                                                let click_id = (is_npc && !is_group).then_some(head.source_id);
+                                                let is_selected = name_selected
+                                                    && if is_group { sel_id.is_none() } else { sel_id.is_none_or(|id| id == head.source_id) };
                                                 let class_icon = class_icon_lookup().get(&name).cloned();
-                                                // For Rotation/Usage: use overview DPS for non-healers, EHPS for healers
-                                                // For Detailed tabs: use entity total_value / duration as before
-                                                let (per_sec, value_class, rate_label) = match mode {
-                                                    ViewMode::Rotation | ViewMode::Usage => {
-                                                        let stats = overview_stats.get(&name);
-                                                        let is_healer = stats.map(|s| s.2).unwrap_or(false);
-                                                        if is_healer && !is_npc {
-                                                            let ehps = stats.map(|s| s.1).unwrap_or(0.0);
-                                                            (ehps, "entity-value value-healing", "EHPS")
-                                                        } else {
-                                                            let dps = stats.map(|s| s.0).unwrap_or(0.0);
-                                                            (dps, "entity-value value-damage", "DPS")
-                                                        }
-                                                    }
-                                                    ViewMode::Detailed(DataTab::Damage) => {
-                                                        (entity.total_value / duration, "entity-value value-damage", "DPS")
-                                                    }
-                                                    ViewMode::Detailed(DataTab::Healing) => {
-                                                        (entity.total_value / duration, "entity-value value-healing", "HPS")
-                                                    }
-                                                    ViewMode::Detailed(DataTab::HealingTaken) => {
-                                                        (entity.total_value / duration, "entity-value value-healing", "HTPS")
-                                                    }
-                                                    ViewMode::Detailed(DataTab::DamageTaken) => {
-                                                        (entity.total_value / duration, "entity-value value-dtps", "DTPS")
-                                                    }
-                                                    _ => {
-                                                        (entity.total_value / duration, "entity-value", "")
-                                                    }
+                                                let (per_sec, value_class, rate_label) = row_values(head, is_npc);
+                                                let row_class = match (is_selected, is_group, is_npc) {
+                                                    (true, true, _) => "entity-row npc group selected",
+                                                    (true, _, _) => "entity-row selected",
+                                                    (false, true, _) => "entity-row npc group",
+                                                    (false, false, true) => "entity-row npc",
+                                                    _ => "entity-row",
                                                 };
-                                                let icon_class = "entity-class-icon";
                                                 rsx! {
                                                     div {
-                                                        class: if is_selected { "entity-row selected" } else if is_npc { "entity-row npc" } else { "entity-row" },
+                                                        class: "{row_class}",
                                                         onclick: {
                                                             let name = name.clone();
-                                                            move |_| on_source_click(name.clone())
+                                                            move |_| on_source_click(name.clone(), click_id)
                                                         },
                                                         span { class: "entity-name",
+                                                            if is_group {
+                                                                span {
+                                                                    class: if expanded { "entity-caret expanded" } else { "entity-caret" },
+                                                                    title: if expanded { "Collapse spawns" } else { "Show spawns" },
+                                                                    onclick: {
+                                                                        let name = name.clone();
+                                                                        move |e: MouseEvent| {
+                                                                            e.stop_propagation();
+                                                                            if member_selected {
+                                                                                // A pinned spawn keeps the group open; fall back to the
+                                                                                // aggregate selection so the group can collapse
+                                                                                on_source_click(name.clone(), None);
+                                                                                expanded_entity_groups.write().remove(&name);
+                                                                                return;
+                                                                            }
+                                                                            let mut set = expanded_entity_groups.write();
+                                                                            if !set.remove(&name) {
+                                                                                set.insert(name.clone());
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    i { class: "fa-solid fa-chevron-right" }
+                                                                }
+                                                            }
                                                             if let Some(icon_name) = &class_icon {
                                                                 if let Some(icon_asset) = get_class_icon(icon_name) {
                                                                     img {
-                                                                        class: "{icon_class}",
+                                                                        class: "entity-class-icon",
                                                                         src: *icon_asset,
                                                                         alt: ""
                                                                     }
                                                                 }
                                                             }
-                                                            "{entity.source_name}"
+                                                            "{head.source_name}"
+                                                            if is_group {
+                                                                span { class: "entity-group-count", "×{members.len()}" }
+                                                            }
                                                         }
                                                         if show_values {
                                                             span { class: "{value_class}", "{format_number(per_sec)} {rate_label}" }
-                                                            span { class: "entity-abilities", "{entity.abilities_used} abilities" }
+                                                            span { class: "entity-abilities", "{head.abilities_used} abilities" }
+                                                        }
+                                                    }
+                                                    if expanded {
+                                                        for m in members.iter() {
+                                                            {
+                                                                let mid = m.source_id;
+                                                                let m_selected = name_selected && sel_id == Some(mid);
+                                                                let (ps, vc, rl) = row_values(m, true);
+                                                                let tag = m.first_hit_secs
+                                                                    .map(|t| format!("@{}:{:02}", (t as i32) / 60, (t as i32) % 60))
+                                                                    .unwrap_or_else(|| "spawn".to_string());
+                                                                rsx! {
+                                                                    div {
+                                                                        class: if m_selected { "entity-row npc spawn selected" } else { "entity-row npc spawn" },
+                                                                        onclick: {
+                                                                            let name = name.clone();
+                                                                            move |_| on_source_click(name.clone(), Some(mid))
+                                                                        },
+                                                                        span { class: "entity-name", "{tag}" }
+                                                                        if show_values {
+                                                                            span { class: "{vc}", "{format_number(ps)} {rl}" }
+                                                                            span { class: "entity-abilities", "{m.abilities_used} abilities" }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -2446,6 +2564,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                     duration_secs: tl.duration_secs,
                                                     time_range: tr,
                                                     selected_source: selected_source,
+                                                    selected_source_id: selected_source_id,
                                                     european: eu,
                                                     sidebar_collapsed: sidebar_collapsed,
                                                     entity_collapsed: entity_collapsed,

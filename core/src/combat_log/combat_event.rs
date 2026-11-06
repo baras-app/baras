@@ -75,6 +75,8 @@ pub struct Effect {
     pub difficulty_id: i64,
     pub discipline_name: IStr,
     pub discipline_id: i64,
+    /// Server code from the AreaEntered trailer, e.g. `he3000` (empty otherwise)
+    pub server: IStr,
 }
 
 impl Default for Effect {
@@ -88,6 +90,7 @@ impl Default for Effect {
             difficulty_id: 0,
             discipline_name: empty_istr(),
             discipline_id: 0,
+            server: empty_istr(),
         }
     }
 }

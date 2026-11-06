@@ -171,6 +171,9 @@ impl CooldownOverlay {
     /// Update the config
     pub fn set_config(&mut self, config: CooldownConfig) {
         self.config = config;
+        // Force re-render — a layout/config change invalidates the dirty-check state
+        self.last_rendered.clear();
+        self.last_rendered_bar.clear();
     }
 
     /// Update background alpha
@@ -742,12 +745,16 @@ impl CooldownOverlay {
         let mut y = bars_start_y;
 
         for entry in self.data.entries.iter().take(max_display) {
-            // Label: optional charges prefix + name + optional source
+            let has_icon = entry.show_icon && entry.icon.is_some();
+
+            // Label: optional charges prefix + name + optional source.
+            // Name is optional, but always shown when there's no icon to
+            // identify the ability.
             let mut label = String::new();
             if entry.charges > 1 {
                 label.push_str(&format!("{}x ", entry.charges));
             }
-            if self.config.show_ability_names || label.is_empty() {
+            if self.config.show_ability_names || !has_icon {
                 label.push_str(&entry.name);
             }
             if entry.display_source && !entry.source_name.is_empty() {
@@ -755,7 +762,6 @@ impl CooldownOverlay {
             }
 
             let right_text = entry.format_time(self.european_number_format);
-            let has_icon = entry.show_icon && entry.icon.is_some();
             let bar_color = color_from_rgba(entry.color);
 
             let bar = ProgressBar::new(&label, entry.progress())
@@ -868,7 +874,8 @@ impl CooldownOverlay {
             // Placeholder icon slot
             draw_icon_placeholder(&mut self.frame, padding, y, icon_size, bar_height, bar_radius, accent);
 
-            ProgressBar::new(name, if is_ready { 1.0 } else { 0.4 })
+            let label = if self.config.show_ability_names { name } else { "" };
+            ProgressBar::new(label, if is_ready { 1.0 } else { 0.4 })
                 .with_fill_color(accent)
                 .with_bg_color(colors::dps_bar_bg())
                 .with_text_color(font_color)

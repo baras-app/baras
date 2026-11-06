@@ -8,7 +8,8 @@ use wasm_bindgen_futures::spawn_local;
 use crate::api::{self, BossNotesInfo};
 use crate::components::{
     ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    HistoryPanel, HotkeyInput, ParselyUploadModal, SettingsPanel, Slider, ToastFrame, ToastSeverity, use_parsely_upload,
+    FileOpenBanner, HistoryPanel, HotkeyInput, NavMenu, ParselyUploadModal, SettingsPanel, Slider, ToastFrame, ToastSeverity,
+    use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
 use crate::components::class_icons::{get_class_icon, get_role_icon};
@@ -19,6 +20,7 @@ use crate::types::{
 
 static CSS: Asset = asset!("/assets/styles.css");
 static DATA_EXPLORER_CSS: Asset = asset!("/assets/data-explorer.css");
+static HISTORY_CSS: Asset = asset!("/assets/history.css");
 static LOGO: Asset = asset!("/assets/logo.png");
 static FONT: Asset = asset!("/assets/StarJedi.ttf");
 
@@ -87,6 +89,7 @@ pub fn App() -> Element {
     let mut active_file = use_signal(String::new);
     let mut is_watching = use_signal(|| false);
     let mut is_live_tailing = use_signal(|| true);
+    let opener = use_file_opener_provider(is_live_tailing);
     let mut session_info = use_signal(|| None::<SessionInfo>);
     let mut session_ended = use_signal(|| false); // True when player logged out but data preserved
 
@@ -133,11 +136,6 @@ pub fn App() -> Element {
     // Log management state
     let mut log_dir_size = use_signal(|| 0u64);
     let mut log_file_count = use_signal(|| 0usize);
-    let mut auto_delete_empty = use_signal(|| false);
-    let mut auto_delete_small = use_signal(|| false);
-    let mut auto_delete_old = use_signal(|| false);
-    let mut retention_days = use_signal(|| 21u32);
-    let mut cleanup_status = use_signal(String::new);
 
     // Application settings
     let mut minimize_to_tray = use_signal(|| true);
@@ -210,10 +208,6 @@ pub fn App() -> Element {
                     active_profile.set(Some("Default".to_string()));
                 }
             }
-            auto_delete_empty.set(config.auto_delete_empty_files);
-            auto_delete_small.set(config.auto_delete_small_files);
-            auto_delete_old.set(config.auto_delete_old_files);
-            retention_days.set(config.log_retention_days);
             hide_small_log_files.set(config.hide_small_log_files);
             ocr_debug_dump.set(config.ocr_debug_dump);
             ocr_debug_max_dumps.set(config.ocr_debug_max_dumps);
@@ -289,6 +283,7 @@ pub fn App() -> Element {
             if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
                 && let Some(path) = payload.as_string()
             {
+                opener.loaded(&path);
                 // Use try_write to handle signal being dropped when component unmounts
                 let _ = active_file.try_write().map(|mut w| *w = path);
             }
@@ -527,21 +522,24 @@ pub fn App() -> Element {
             // Use spawn_local for JS callbacks (no Dioxus runtime context available)
             spawn_local(async move {
                 if let Some(status) = api::get_overlay_status().await {
-                    // Detect move mode locking (positions saved to disk)
-                    let was_move_mode = move_mode.try_read().map(|r| *r).unwrap_or(false);
                     // Use try_write for signals - safe outside Dioxus runtime context
                     let _ = overlays_visible.try_write().map(|mut w| *w = status.overlays_visible);
                     let _ = move_mode.try_write().map(|mut w| *w = status.move_mode);
                     let _ = rearrange_mode.try_write().map(|mut w| *w = status.rearrange_mode);
                     let _ = auto_hidden.try_write().map(|mut w| *w = status.auto_hidden);
-                    // Locking saves positions to disk; mark profile dirty
-                    if was_move_mode && !status.move_mode {
-                        let _ = profile_dirty.try_write().map(|mut w| *w = true);
-                    }
                 }
             });
         });
         api::tauri_listen("overlay-status-changed", &closure).await;
+        closure.forget();
+    });
+
+    // Backend emits this only when locking persisted a position that actually changed
+    use_future(move || async move {
+        let closure = Closure::new(move |_event: JsValue| {
+            let _ = profile_dirty.try_write().map(|mut w| *w = true);
+        });
+        api::tauri_listen("overlay-positions-changed", &closure).await;
         closure.forget();
     });
 
@@ -680,6 +678,7 @@ pub fn App() -> Element {
     rsx! {
         link { rel: "stylesheet", href: CSS }
         link { rel: "stylesheet", href: DATA_EXPLORER_CSS }
+        link { rel: "stylesheet", href: HISTORY_CSS }
         link { rel: "stylesheet", href: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" }
         style { "@font-face {{ font-family: 'StarJedi'; src: url('{FONT}') format('truetype'); font-display: block; font-weight: normal; font-style: normal; }}" }
 
@@ -843,7 +842,7 @@ pub fn App() -> Element {
                     }
                 } // end header-top-row
 
-                // Navigation + controls row: | live/historical + overlay controls | tabs | file/settings |
+                // Navigation + controls row: | overlay controls | tabs |
                 div { class: "header-nav-row",
                     // Overlay controls
                     div { class: "header-overlay-controls",
@@ -881,8 +880,6 @@ pub fn App() -> Element {
                                 if let Ok(new_mode) = api::toggle_move_mode().await {
                                     move_mode.set(new_mode);
                                     if new_mode { rearrange_mode.set(false); }
-                                    // Locking saves positions to disk; mark profile dirty
-                                    if !new_mode { profile_dirty.set(true); }
                                 }
                             }); },
                             i { class: if is_move_mode { "fa-solid fa-lock-open" } else { "fa-solid fa-lock" } }
@@ -1010,37 +1007,40 @@ pub fn App() -> Element {
                         }
                     }
 
-                    // Navigation tabs (centered)
+                    // Navigation (centered): live view and overlays as tabs, the editors and history behind menus
                     div { class: "header-tabs",
                         button {
                             class: if ui_state.read().active_tab == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
+                            title: "One fight at a time, from the loaded log",
                             onclick: move |_| ui_state.write().active_tab = MainTab::DataExplorer,
                             i { class: "fa-solid fa-magnifying-glass-chart" }
                             span { class: "tab-label", " Data Explorer" }
                         }
                         button {
                             class: if ui_state.read().active_tab == MainTab::Overlays { "tab-btn active" } else { "tab-btn" },
+                            title: "Enable, arrange and customize overlays",
                             onclick: move |_| ui_state.write().active_tab = MainTab::Overlays,
                             i { class: "fa-solid fa-layer-group" }
                             span { class: "tab-label", " Overlays" }
                         }
-                        button {
-                            class: if ui_state.read().active_tab == MainTab::EncounterBuilder { "tab-btn active" } else { "tab-btn" },
-                            onclick: move |_| ui_state.write().active_tab = MainTab::EncounterBuilder,
-                            i { class: "fa-solid fa-hammer" }
-                            span { class: "tab-label", " Encounter Builder" }
+                        NavMenu {
+                            label: "Timers & Effects",
+                            icon: "fa-solid fa-stopwatch",
+                            items: vec![
+                                (MainTab::EncounterBuilder, "fa-solid fa-hammer", "Encounter Builder", "Boss timers, phases and triggers"),
+                                (MainTab::Effects, "fa-solid fa-heart-pulse", "Effects Editor", "Tracked buffs, debuffs and alerts"),
+                            ],
+                            state: ui_state,
                         }
-                        button {
-                            class: if ui_state.read().active_tab == MainTab::Effects { "tab-btn active" } else { "tab-btn" },
-                            onclick: move |_| ui_state.write().active_tab = MainTab::Effects,
-                            i { class: "fa-solid fa-heart-pulse" }
-                            span { class: "tab-label", " Effects Editor" }
-                        }
-                        button {
-                            class: if ui_state.read().active_tab == MainTab::History { "tab-btn active" } else { "tab-btn" },
-                            onclick: move |_| ui_state.write().active_tab = MainTab::History,
-                            i { class: "fa-solid fa-clock-rotate-left" }
-                            span { class: "tab-label", " History" }
+                        NavMenu {
+                            label: "Historical",
+                            icon: "fa-solid fa-clock-rotate-left",
+                            items: vec![
+                                (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
+                                (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", "One raid night across every log"),
+                                (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
+                            ],
+                            state: ui_state,
                         }
                     }
                 }
@@ -1454,6 +1454,21 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 if ui_state.read().active_tab == MainTab::Overlays {
                     section { class: "overlay-controls",
+                        // The appearance editor lives in a modal; this is its front door
+                        button {
+                            class: "btn btn-lg btn-customize-overlays",
+                            title: "Fonts, colours, sizes and layout of every overlay",
+                            onclick: move |_| {
+                                let opening = !settings_open();
+                                settings_open.set(opening);
+                                if !opening {
+                                    settings_pos.set(None);
+                                    settings_drag.set(None);
+                                }
+                            },
+                            i { class: "fa-solid fa-screwdriver-wrench" }
+                            " Customize Overlays"
+                        }
                         // Controls
                         h4 { class: "subsection-title", "Controls" }
                         div { class: "settings-controls",
@@ -1482,8 +1497,6 @@ pub fn App() -> Element {
                                     if let Ok(new_mode) = api::toggle_move_mode().await {
                                         move_mode.set(new_mode);
                                         if new_mode { rearrange_mode.set(false); }
-                                        // Locking saves positions to disk; mark profile dirty
-                                        if !new_mode { profile_dirty.set(true); }
                                     }
                                 }); },
                                 if is_move_mode { i { class: "fa-solid fa-lock-open" } span { " Unlocked" } }
@@ -1845,11 +1858,11 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 // History Tab
                 // ─────────────────────────────────────────────────────────────
-                if ui_state.read().active_tab == MainTab::History {
+                if let Some(view) = ui_state.read().active_tab.history_view() {
                     HistoryPanel {
                         european: *european_number_format.read(),
                         state: ui_state,
-                        is_live_tailing,
+                        view,
                     }
                 }
 
@@ -1984,16 +1997,6 @@ pub fn App() -> Element {
                                         " Browse"
                                     }
                                 }
-                                if watching {
-                                    div { class: "directory-status",
-                                        span { class: "status-dot status-on" }
-                                        span { "Watching for new log files" }
-                                    }
-                                }
-                            }
-
-                            div { class: "settings-section",
-                                h4 { "Log Management" }
                                 {
                                     let count = log_file_count();
                                     let size_mb = log_dir_size() as f64 / 1_000_000.0;
@@ -2001,117 +2004,10 @@ pub fn App() -> Element {
                                         p { class: "hint", "{count} files • {size_mb:.1} MB" }
                                     }
                                 }
-
-                                div { class: "setting-row",
-                                    label { "Auto-delete empty files" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: auto_delete_empty(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            auto_delete_empty.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.auto_delete_empty_files = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-
-                                div { class: "setting-row",
-                                    label { "Auto-delete small files (<1MB)" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: auto_delete_small(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            auto_delete_small.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.auto_delete_small_files = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-
-                                div { class: "setting-row",
-                                    label { "Delete old files" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: auto_delete_old(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            auto_delete_old.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.auto_delete_old_files = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-
-                                div { class: "setting-row",
-                                    label { "Retention days" }
-                                    input {
-                                        r#type: "number",
-                                        min: "7",
-                                        max: "365",
-                                        value: "{retention_days()}",
-                                        onchange: move |e| {
-                                            if let Ok(days) = e.value().parse::<u32>() {
-                                                let days = days.clamp(7, 365);
-                                                retention_days.set(days);
-                                                let mut toast = use_toast();
-                                                spawn(async move {
-                                                    if let Some(mut cfg) = api::get_config().await {
-                                                        cfg.log_retention_days = days;
-                                                        if let Err(err) = api::update_config(&cfg).await {
-                                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                        }
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-
-                                div { class: "settings-footer",
-                                    button {
-                                        class: "btn btn-control",
-                                        onclick: move |_| {
-                                            let del_empty = auto_delete_empty();
-                                            let del_small = auto_delete_small();
-                                            let del_old = auto_delete_old();
-                                            let days = retention_days();
-                                            spawn(async move {
-                                                cleanup_status.set("Cleaning...".to_string());
-                                                let retention = if del_old { Some(days) } else { None };
-                                                let (empty, small, old) = api::cleanup_logs(del_empty, del_small, retention).await;
-                                                cleanup_status.set(format!("Deleted {} empty, {} small, {} old files", empty, small, old));
-                                                log_dir_size.set(api::get_log_directory_size().await);
-                                                log_file_count.set(api::get_log_file_count().await);
-                                            });
-                                        },
-                                        i { class: "fa-solid fa-broom" }
-                                        " Clean Now"
-                                    }
-                                    if !cleanup_status().is_empty() {
-                                        span { class: "save-status", "{cleanup_status}" }
+                                if watching {
+                                    div { class: "directory-status",
+                                        span { class: "status-dot status-on" }
+                                        span { "Watching for new log files" }
                                     }
                                 }
                             }
@@ -2786,18 +2682,10 @@ pub fn App() -> Element {
                                                 div { class: "file-actions",
                                                     button {
                                                         class: "btn btn-open",
-                                                        disabled: is_empty,
+                                                        disabled: is_empty || opener.busy(),
                                                         onclick: move |_| {
-                                                            let p = path.clone();
-                                                            let mut toast = use_toast();
                                                             file_browser_open.set(false);
-                                                            spawn(async move {
-                                                                if let Err(err) = api::open_historical_file(&p).await {
-                                                                    toast.show(format!("Failed to open log file: {}", err), ToastSeverity::Normal);
-                                                                } else {
-                                                                    is_live_tailing.set(false);
-                                                                }
-                                                            });
+                                                            opener.open(path.clone(), None);
                                                         },
                                                         i { class: "fa-solid fa-eye" }
                                                         " Open"
@@ -2953,6 +2841,7 @@ pub fn App() -> Element {
             }
 
             // Toast notifications (rendered on top of everything)
+            FileOpenBanner {}
             ToastFrame {}
         }
     }

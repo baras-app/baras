@@ -21,5 +21,5 @@ pub use config::{
     TimerOverlayConfig, overlay_colors,
 };
 pub use interner::{IStr, empty_istr, intern, resolve};
-pub use log_files::{DirectoryIndex, parse_log_filename};
+pub use log_files::{DirectoryIndex, LogFileMetaData, parse_log_filename};
 pub use parser::{DefinitionLoader, ParseResult, ParsingSession, parse_file, resolve_log_path};

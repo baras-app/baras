@@ -170,6 +170,11 @@ impl LogAreaCache {
         }
     }
 
+    /// Forget one file (deleted through the library)
+    pub fn remove(&mut self, path: &Path) {
+        self.entries.remove(path);
+    }
+
     /// Remove entries for files that no longer exist
     pub fn prune_missing(&mut self) {
         self.entries.retain(|path, _| path.exists());

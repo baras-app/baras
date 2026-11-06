@@ -1,0 +1,1199 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   History tab: Overview (pull history) and Library (log management).
+   Sub-tabs reuse .data-tab-selector / .data-tab from data-explorer.css.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.history-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  /* Everything below is in em: one bump scales the whole tab */
+  font-size: 1.08em;
+}
+
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.history-toolbar select {
+  min-width: 160px;
+}
+
+.history-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.history-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.history-toolbar .pull-history-result-tabs {
+  margin-left: 0;
+}
+
+.pull-history-date {
+  width: 9.5em;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.25em 0.4em;
+  font-size: 0.9em;
+  font-family: var(--font-mono);
+}
+
+.pull-history-date::placeholder {
+  color: var(--text-disabled);
+  font-family: var(--font-family);
+}
+
+.pull-history-count {
+  margin-left: auto;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+/* Sidebar tree + detail pane, mirrors .data-explorer */
+.pull-history-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 1em;
+}
+
+.pull-tree-count {
+  margin-left: auto;
+  font-size: 0.8em;
+  color: var(--text-disabled);
+  white-space: nowrap;
+}
+
+.pull-history-main {
+  flex: 1;
+  min-width: 0;
+  /* Flex children default to min-height:auto and overflow their parent;
+     this pane scrolls as a whole, and the Overview table scrolls inside it */
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* Fixed-height pieces must not be squeezed when the pane is short */
+.pull-history-main > .pull-history-header,
+.pull-history-main > .history-cards,
+.pull-history-main > .history-charts,
+.pull-history-main > .history-pick,
+.pull-history-main > .run-timeline,
+.pull-history-main > .run-tags,
+.pull-history-main > .run-note,
+.pull-history-main > .run-section {
+  flex-shrink: 0;
+}
+
+/* Run detail: several tables, natural height each; the pane scrolls */
+.run-section .pull-history-table-wrap {
+  flex: 0 0 auto;
+  max-height: 60vh;
+}
+
+.pull-history-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: 0 var(--space-xs);
+}
+
+.pull-history-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.pull-history-title h3 {
+  margin: 0;
+  font-size: 1.3em;
+  color: var(--swtor-blue);
+}
+
+.pull-history-operation {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.pull-history-stats {
+  display: flex;
+  gap: 0.4em;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.pull-history-rate {
+  color: var(--text-muted);
+}
+
+.pull-history-result-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  margin-left: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.pull-history-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--gradient-panel);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+}
+
+.pull-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.pull-history-table th,
+.pull-history-table td {
+  padding: 0.55em 0.8em;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pull-history-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-mid);
+  color: var(--swtor-blue-dim);
+  font-weight: 500;
+}
+
+.pull-history-table th.sortable-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.pull-history-table th.sorted {
+  color: var(--text-primary);
+}
+
+.pull-history-table th.sorted.desc::after {
+  content: " \25BE";
+}
+
+.pull-history-table th.sorted.asc::after {
+  content: " \25B4";
+}
+
+.pull-history-table tbody tr:hover {
+  background: var(--blue-alpha-8);
+}
+
+.pull-result {
+  padding: 0.1em 0.5em;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+
+.pull-result.kill {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.pull-result.wipe {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.pull-log-missing {
+  color: var(--text-disabled);
+}
+
+.pull-discipline {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  gap: 0.4em;
+}
+
+.pull-discipline .role-icon,
+.pull-discipline .discipline-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Shell
+   ───────────────────────────────────────────────────────────────────────── */
+
+.history-scan-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.35em 0.7em;
+  border: 1px solid var(--border-accent-medium);
+  border-radius: 4px;
+  background: var(--blue-alpha-8);
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.history-scan-bar > i {
+  color: var(--swtor-blue);
+}
+
+.history-scan-bar .btn {
+  margin-left: auto;
+}
+
+.history-toolbar select {
+  min-width: 0;
+}
+
+/* The toolbar sits at the top of each view's sidebar, stacked: every
+   control spans the rail, segmented buttons share the width equally */
+.explorer-sidebar .history-toolbar {
+  flex-direction: column;
+  /* A wrapped column would spill extra items into a second column past the rail */
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  align-items: stretch;
+  min-width: 0;
+  gap: var(--space-sm);
+  padding: 0.75em 0.75em 0;
+}
+
+.explorer-sidebar .history-toolbar > * {
+  min-width: 0;
+}
+
+.explorer-sidebar .history-toolbar .history-dates .pull-history-date {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.explorer-sidebar .history-toolbar.secondary {
+  padding-top: var(--space-sm);
+  padding-bottom: 0.75em;
+  margin-top: var(--space-xs);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.explorer-sidebar .history-toolbar .history-seg .seg {
+  padding: 0.45em 0.5em;
+}
+
+.explorer-sidebar .history-more {
+  justify-content: center;
+  padding: 0.45em;
+}
+
+/* Sized by their label, then sharing the slack: equal thirds would clip
+   the widest one when the rail is narrow */
+.explorer-sidebar .history-toolbar .history-seg .seg {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.explorer-sidebar .history-toolbar .pull-history-result-tabs .filter-tab {
+  flex: 1;
+}
+
+
+.history-more {
+  gap: 0.35em;
+}
+
+.history-more-count {
+  padding: 0 0.45em;
+  border-radius: 8px;
+  background: var(--swtor-blue);
+  color: #fff;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.history-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.history-card {
+  flex: 1 1 130px;
+  min-width: 0;
+  padding: 0.6em 0.9em;
+  background: var(--bg-mid);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.history-card .k {
+  font-size: 0.78em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.history-card .v {
+  margin-top: 0.15em;
+  font-size: 1.6em;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-card .v.small {
+  font-size: 1em;
+}
+
+.history-card .v.warn {
+  color: var(--color-warning);
+}
+
+.history-card.warn {
+  border-color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.history-card.warn .k {
+  color: var(--color-warning);
+}
+
+.history-card .sub {
+  font-size: 0.7em;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Overview table extras
+   ───────────────────────────────────────────────────────────────────────── */
+
+.pull-result.reset {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pull-partial {
+  color: var(--color-warning);
+  cursor: help;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Library
+   ───────────────────────────────────────────────────────────────────────── */
+
+.library {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-sm);
+}
+
+.library-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.library-actions .boss-search-input {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+
+
+.library-table td {
+  white-space: nowrap;
+}
+
+.library-file {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.library-areas {
+  max-width: 28em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.library-empty {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Stays a real table cell (no flex) so the row border runs through it */
+.pull-history-table td.library-row-actions {
+  text-align: right;
+  padding-top: 0.25em;
+  padding-bottom: 0.25em;
+}
+
+.library-row-actions .btn,
+.library-row-actions .lib-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.3em;
+  height: 2.3em;
+  margin-left: 0.5em;
+  padding: 0;
+  font-size: 0.95em;
+  vertical-align: middle;
+}
+
+.library-row-actions .lib-star {
+  font-size: 1.7em;
+  line-height: 1;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: 4px;
+}
+
+.library-row-actions .lib-delete:hover:not(:disabled) {
+  color: var(--color-error);
+}
+
+.library-row-actions .lib-star:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.lib-star {
+  background: none;
+  border: 0;
+  padding: 0 0.3em;
+  font-size: 1.1em;
+  line-height: 1;
+  color: var(--text-disabled);
+  cursor: pointer;
+}
+
+.lib-star:hover {
+  color: var(--swtor-gold);
+}
+
+.lib-star.on {
+  color: var(--swtor-gold);
+}
+
+.lib-status {
+  font-size: 0.75em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.lib-status.live {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.lib-status.stale {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.lib-status.indexed {
+  color: var(--text-secondary);
+}
+
+.lib-status.archived {
+  color: var(--swtor-blue);
+  background: rgba(79, 165, 230, 0.12);
+}
+
+.library-parsely {
+  color: var(--swtor-blue);
+}
+
+.library-parsely-count {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Run-cleanup modal
+   ───────────────────────────────────────────────────────────────────────── */
+
+.modal-content.library-cleanup {
+  width: 680px;
+  max-width: 95vw;
+}
+
+.library-delete-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+}
+
+.library-action {
+  font-size: 0.8em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.library-action.delete {
+  color: var(--color-error);
+}
+
+.library-num {
+  width: 4.5em;
+  padding: 2px 4px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font: inherit;
+}
+
+
+.library-preview {
+  padding: 0.4em 0.7em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+}
+
+.library-preview.warn {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+}
+
+.library-preview-list {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Content tags and the retention list
+   ───────────────────────────────────────────────────────────────────────── */
+
+.lib-tag {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.75em;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+}
+
+.lib-tag.nim { color: #f08080; background: rgba(220, 60, 60, 0.12); }
+.lib-tag.hm { color: #e8c060; background: rgba(220, 160, 40, 0.12); }
+.lib-tag.sm { color: var(--color-success); background: var(--color-success-bg); }
+.lib-tag.pvp { color: var(--swtor-blue-bright); background: rgba(74, 158, 255, 0.15); }
+.lib-tag.misc { color: var(--text-muted); }
+
+.library-area-names {
+  margin-left: 4px;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.library-manage {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-sm);
+}
+
+@media (max-width: 1100px) {
+  .library-manage {
+    grid-template-columns: 1fr;
+  }
+}
+
+.library-manage .run-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  /* Children stretch so the chip and button rows have a width to wrap at */
+  min-width: 0;
+  margin-top: 0;
+  padding: 0.6em 0.9em 0.8em;
+  background: var(--bg-mid);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.library-manage .run-section h4 {
+  margin-bottom: 0.1em;
+}
+
+/* Both panels fold under one header (chevron from .collapsible-summary) */
+.library-settings > summary {
+  padding: 0.45em 0.75em;
+  font-size: 0.95em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-mid);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.library-settings > summary:hover {
+  color: var(--text-primary);
+  border-color: var(--border-accent-medium);
+  background: var(--blue-alpha-8);
+}
+
+.library-settings[open] > summary {
+  margin-bottom: var(--space-sm);
+}
+
+.library-manage .run-section > .hint {
+  margin: 0;
+}
+
+.library-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.library-num:disabled {
+  opacity: 0.4;
+}
+
+.library-manage .history-pick {
+  margin: 0;
+}
+
+.library-manage .library-retain-title {
+  margin-top: 0.3em;
+}
+
+.library-actions-center {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: auto;
+  padding-top: 0.6em;
+}
+
+.library-actions-center .btn {
+  font-weight: 600;
+}
+
+.library-retain-title {
+  margin-top: 0.3em;
+  font-size: 0.8em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.library-retain-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+}
+
+.lib-tag-toggle {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.lib-tag-toggle:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-medium);
+}
+
+/* Lit: the .lib-tag colour rules supply text and tint; the rim follows */
+.lib-tag-toggle.on {
+  border-color: currentColor;
+}
+
+.lib-tag-toggle input {
+  display: none;
+}
+
+.modal-footer.library-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+.library-scan-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+/* Overview charts: three across, stacking on narrow panels */
+.history-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.history-chart {
+  height: 190px;
+  min-width: 0;
+  background: var(--bg-mid);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.history-chart.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+/* Chart click → table filter */
+.history-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: var(--space-xs);
+  padding: 0.3em 0.7em;
+  border: 1px solid var(--swtor-blue);
+  border-radius: 4px;
+  background: rgba(74, 158, 255, 0.1);
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.history-pick .btn {
+  margin-left: auto;
+}
+
+/* ── Operations: run rail and recap ─────────────────────────────────────── */
+
+.run-tag-filter {
+  width: 100%;
+}
+
+.run-item .encounter-main {
+  justify-content: space-between;
+}
+
+.run-item .lib-tag {
+  margin-right: 0;
+}
+
+.run-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em;
+  margin-top: 2px;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.run-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.95em;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.run-badge.cleared { color: var(--color-success); background: var(--color-success-bg); }
+.run-badge.timer-ok { color: var(--swtor-gold); background: rgba(201, 162, 39, 0.08); }
+
+.run-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em;
+  margin: var(--space-xs) 0;
+  color: var(--text-muted);
+}
+
+.run-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(74, 158, 255, 0.12);
+  color: var(--swtor-blue-bright);
+  font-size: 0.8em;
+}
+
+.run-tag.small {
+  padding: 0 6px;
+  font-size: 0.95em;
+}
+
+.run-tag button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.run-tag button:hover { opacity: 1; }
+
+.run-tag-input {
+  width: 12em;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.8em;
+}
+
+.run-note {
+  width: 100%;
+  min-height: 3em;
+  margin-bottom: var(--space-xs);
+  padding: 0.4em 0.6em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.85em;
+  resize: vertical;
+}
+
+.run-section {
+  margin-top: var(--space-sm);
+}
+
+.run-section h4 {
+  margin: 0 0 var(--space-xs);
+  font-size: 0.88em;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.run-boss-skipped {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.run-player-me td {
+  background: rgba(74, 158, 255, 0.06);
+}
+
+.history-card .v.ok { color: var(--color-success); }
+.history-card.ok { border-color: var(--color-success); }
+
+.run-timeline {
+  margin: var(--space-xs) 0;
+}
+
+.run-timeline-bar {
+  position: relative;
+  display: flex;
+  height: 30px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.run-timeline-ticks {
+  position: relative;
+  height: 1.3em;
+  margin-top: 2px;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.run-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.run-tick:first-child {
+  transform: none;
+}
+
+.run-seg {
+  flex-grow: 0;
+  flex-shrink: 1;
+  min-width: 2px;
+}
+
+.run-seg.kill { background: #2ecc71; }
+.run-seg.wipe { background: #c0392b; }
+.run-seg.gap { background: rgba(255, 255, 255, 0.08); }
+.run-seg.kill:hover, .run-seg.wipe:hover { filter: brightness(1.25); }
+
+.run-timeline-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.run-timeline-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+}
+
+.run-timeline-legend .run-seg {
+  display: inline-block;
+  width: 14px;
+  height: 11px;
+  border-radius: 2px;
+}
+
+.run-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.run-who img {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.run-note-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: var(--space-xs);
+}
+
+.run-note-row .run-note {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  resize: none;
+}
+
+.run-note-count {
+  font-size: 0.78em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.history-tag-active {
+  border-color: var(--swtor-blue-bright);
+  color: var(--swtor-blue-bright);
+}
+
+/* Inline tag and note editors in the Log Management table */
+.library-tag-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3em;
+  min-width: 10em;
+}
+
+.run-tag.small.muted {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+.library-tag-input {
+  width: 4.5em;
+  padding: 0 6px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.8em;
+}
+
+.library-tag-input:focus {
+  width: 9em;
+  border-style: solid;
+  outline: none;
+}
+
+.library-note {
+  width: 14em;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.85em;
+  text-overflow: ellipsis;
+}
+
+.library-note:hover,
+.library-note:focus {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+  outline: none;
+}
+
+/* Rail item that lists the rest of a long operation group */
+.run-item.run-more,
+.sidebar-encounter-item.run-more {
+  justify-content: center;
+  gap: 0.4em;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.sidebar-encounter-item.run-more:hover {
+  color: var(--text-secondary);
+}
+
+/* Rows not being edited show plain text that turns into the editor on click */
+.library-tag-cell.static {
+  cursor: text;
+  min-height: 1.4em;
+}
+
+.library-add-hint {
+  padding: 0 6px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.library-note.static {
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: text;
+}
+
+.library-note.static.empty {
+  color: var(--text-muted);
+}
+
+.library-parsely-cell {
+  white-space: nowrap;
+}
+
+.pull-history-table .run-tag.small {
+  margin-right: 0.25em;
+}
+
+/* ── Difficulty / size: segmented toggles and the subset chips ───────────── */
+
+.history-seg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-mid);
+}
+
+.history-seg .seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.35em 0.7em;
+  border: none;
+  border-right: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.history-seg .seg:last-child { border-right: none; }
+.history-seg .seg:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.04); }
+
+.history-seg .seg.active { color: var(--text-primary); background: rgba(255, 255, 255, 0.06); }
+.history-seg .seg.active.tier-story { box-shadow: inset 0 -2px 0 var(--color-success); }
+.history-seg .seg.active.tier-veteran { box-shadow: inset 0 -2px 0 #e8c060; }
+.history-seg .seg.active.tier-master { box-shadow: inset 0 -2px 0 #f08080; }
+.history-seg .seg.active.size { box-shadow: inset 0 -2px 0 var(--swtor-blue-bright); }
+
+.history-subset {
+  display: inline-flex;
+  gap: 0.4em;
+  margin-left: var(--space-xs);
+}
+
+.subset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.subset-chip.tier-story { color: var(--color-success); background: rgba(46, 204, 113, 0.18); }
+.subset-chip.tier-veteran { color: #e8c060; background: rgba(220, 160, 40, 0.15); }
+.subset-chip.tier-master { color: #f08080; background: rgba(220, 60, 60, 0.15); }
+.subset-chip.size { color: var(--swtor-blue-bright); background: rgba(74, 158, 255, 0.18); }
+.subset-chip.any { color: var(--text-muted); background: rgba(255, 255, 255, 0.06); font-weight: 500; }
+
+.history-seg .seg.role img {
+  width: 1.1em;
+  height: 1.1em;
+  opacity: 0.7;
+}
+
+.history-seg .seg.role.active img { opacity: 1; }
+.history-seg .seg.active.role { box-shadow: inset 0 -2px 0 var(--text-secondary); }

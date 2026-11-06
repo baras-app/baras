@@ -2,6 +2,7 @@
 name = "The Dread Fortress"
 id = 137438993402
 area_type = "operation"
+timed_run_minutes = 60
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Boss 1: Nefra, Who Bars The Way

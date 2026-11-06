@@ -359,7 +359,15 @@ pub fn ParselyUploadModal(
 
                                 let result = match upload_req.upload_type {
                                     ParselyUploadType::File { path, .. } => {
-                                        api::upload_to_parsely(&path, visibility, notes, guild_log, guild, no_guild).await
+                                        let resp = api::upload_to_parsely(&path, visibility, notes, guild_log, guild, no_guild).await;
+                                        // Remember the upload so the Library can link instead of re-uploading
+                                        if let Ok(ref r) = resp
+                                            && r.success
+                                            && let Some(ref link) = r.link
+                                        {
+                                            let _ = api::set_log_parsely_link(&path, link, visibility).await;
+                                        }
+                                        resp
                                     }
                                     ParselyUploadType::Encounter {
                                         path,
@@ -385,7 +393,7 @@ pub fn ParselyUploadModal(
                                         if let Ok(ref r) = resp {
                                             if r.success {
                                                 if let Some(ref link) = r.link {
-                                                    let _ = api::set_encounter_parsely_link(enc_id, link).await;
+                                                    let _ = api::set_encounter_parsely_link(enc_id, link, visibility).await;
 
                                                     // Emit event to refresh encounter list
                                                     if let Some(window) = web_sys::window() {

@@ -4,7 +4,7 @@
 //! It runs in a separate process so memory fragmentation doesn't affect the main app.
 //!
 //! Usage: baras-parse-worker <file_path> <session_id> <output_dir> [definitions_dir] [--summary-only]
-//!        baras-parse-worker --backfill <log_dir> [definitions_dir]
+//!        baras-parse-worker --backfill <log_dir> [definitions_dir] [--stale-only]
 //!
 //! `--summary-only` skips parquet output (summaries still go to stdout).
 //! `--backfill` records pull history for every log in a directory (see `backfill.rs`).
@@ -25,7 +25,7 @@ use arrow::datatypes::{DataType, Field, Fields, Schema, TimeUnit};
 use arrow::record_batch::RecordBatch;
 use baras_core::combat_log::{CombatEvent, EntityType, LogParser};
 use baras_core::context::{parse_log_filename, resolve};
-use baras_core::dsl::{build_area_index, load_bosses_with_custom};
+use baras_core::dsl::{build_area_index, load_area_config, load_bosses_with_custom};
 use baras_core::game_data::defense_type;
 use baras_core::signal_processor::{
     check_counter_signal_triggers, check_counter_timer_triggers, check_entity_phase_transitions,
@@ -566,12 +566,14 @@ fn main() {
     let raw_args: Vec<String> = std::env::args().collect();
 
     if raw_args.get(1).is_some_and(|a| a == "--backfill") {
-        let Some(log_dir) = raw_args.get(2) else {
-            eprintln!("Usage: baras-parse-worker --backfill <log_dir> [definitions_dir]");
+        let stale_only = raw_args.iter().any(|a| a == "--stale-only");
+        let positional: Vec<&String> = raw_args.iter().skip(2).filter(|a| !a.starts_with("--")).collect();
+        let Some(log_dir) = positional.first() else {
+            eprintln!("Usage: baras-parse-worker --backfill <log_dir> [definitions_dir] [--stale-only]");
             std::process::exit(1);
         };
-        let defs = raw_args.get(3).map(PathBuf::from);
-        if let Err(e) = backfill::run(Path::new(log_dir), defs.as_deref()) {
+        let defs = positional.get(1).map(PathBuf::from);
+        if let Err(e) = backfill::run(Path::new(log_dir), defs.as_deref(), stale_only) {
             eprintln!("Backfill failed: {e}");
             std::process::exit(1);
         }
@@ -827,6 +829,9 @@ fn process_and_write_encounters(
                             timer_manager.load_boss_definitions(filtered_bosses);
 
                             cache.load_boss_definitions(bosses, false);
+                            // Region-based timer start, so timed runs are recorded in the history store
+                            let timer_start = load_area_config(&entry.file_path).ok().flatten().and_then(|a| a.timer_start);
+                            cache.set_timer_start(area_id, timer_start);
                         }
                         Err(e) => {
                             tracing::warn!(area_id, error = %e, "Failed to load definitions for area");

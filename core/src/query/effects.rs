@@ -14,23 +14,24 @@ const DAMAGE_EFFECT: i64 = 836045448945501;
 const HEAL_EFFECT: i64 = 836045448945500;
 
 /// Build a SQL WHERE clause fragment for source filtering.
-/// Returns an AND clause or empty string.
-fn source_filter_clause(source_filter: Option<&str>, target_name: Option<&str>) -> String {
+/// Returns an AND clause or empty string. `target` is an entity selector
+/// (name or `id:<instance>`, see `entity_match_sql`).
+fn source_filter_clause(source_filter: Option<&str>, target: Option<&str>) -> String {
     match source_filter {
         Some("self") => {
-            // Self-applied: source_name matches the target being inspected
-            if let Some(name) = target_name {
-                format!("AND source_name = '{}'", sql_escape(name))
+            // Self-applied: the source is the entity being inspected
+            if let Some(sel) = target {
+                format!("AND {}", entity_match_sql("source", sel))
             } else {
                 String::new()
             }
         }
         Some("other_players") => {
             // Other players/companions, excluding self
-            if let Some(name) = target_name {
+            if let Some(sel) = target {
                 format!(
-                    "AND source_entity_type IN ('Player', 'Companion') AND source_name != '{}'",
-                    sql_escape(name)
+                    "AND source_entity_type IN ('Player', 'Companion') AND NOT ({})",
+                    entity_match_sql("source", sel)
                 )
             } else {
                 "AND source_entity_type IN ('Player', 'Companion')".to_string()
@@ -64,7 +65,7 @@ impl EncounterQuery<'_> {
         source_filter: Option<&str>,
     ) -> Result<Vec<EffectChartData>, String> {
         let target_filter = target_name
-            .map(|n| format!("AND target_name = '{}'", sql_escape(n)))
+            .map(|n| format!("AND {}", entity_match_sql("target", n)))
             .unwrap_or_default();
         let src_filter = source_filter_clause(source_filter, target_name);
         let duration = duration_secs.max(0.001);
@@ -310,7 +311,7 @@ impl EncounterQuery<'_> {
         source_filter: Option<&str>,
     ) -> Result<Vec<EffectWindow>, String> {
         let target_filter = target_name
-            .map(|n| format!("AND target_name = '{}'", sql_escape(n)))
+            .map(|n| format!("AND {}", entity_match_sql("target", n)))
             .unwrap_or_default();
         let src_filter = source_filter_clause(source_filter, target_name);
         let duration = duration_secs.max(0.001);

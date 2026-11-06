@@ -1,8 +1,10 @@
 //! Combat log viewer queries.
 
+use std::collections::HashMap;
+
 use super::*;
 use crate::game_data::{effect_id, effect_type_id};
-use baras_types::{CombatLogSortColumn, SortDirection};
+use baras_types::{CombatLogSortColumn, NpcSpawn, SortDirection};
 
 use super::search_parser::build_search_clause;
 
@@ -64,6 +66,16 @@ fn build_event_filter_clause(filters: &CombatLogFilters) -> Option<String> {
     }
 }
 
+/// WHERE fragment for a Source/Target dropdown value: the sentinel groups, an
+/// `id:<instance>` pin to one NPC spawn, or a plain entity name.
+fn entity_filter_sql(prefix: &str, value: &str) -> String {
+    match value {
+        "__ALL_FRIENDLY__" => format!("{prefix}_entity_type IN ('Player', 'Companion')"),
+        "__ALL_NPCS__" => format!("{prefix}_entity_type = 'Npc'"),
+        _ => entity_match_sql(prefix, value),
+    }
+}
+
 impl EncounterQuery<'_> {
     /// Query combat log rows for the combat log viewer.
     /// Supports pagination via offset/limit for virtual scrolling.
@@ -91,30 +103,10 @@ impl EncounterQuery<'_> {
         ];
 
         if let Some(source) = source_filter {
-            match source {
-                "__ALL_FRIENDLY__" => {
-                    where_clauses.push("source_entity_type IN ('Player', 'Companion')".to_string());
-                }
-                "__ALL_NPCS__" => {
-                    where_clauses.push("source_entity_type = 'Npc'".to_string());
-                }
-                _ => {
-                    where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
-                }
-            }
+            where_clauses.push(entity_filter_sql("source", source));
         }
         if let Some(target) = target_filter {
-            match target {
-                "__ALL_FRIENDLY__" => {
-                    where_clauses.push("target_entity_type IN ('Player', 'Companion')".to_string());
-                }
-                "__ALL_NPCS__" => {
-                    where_clauses.push("target_entity_type = 'Npc'".to_string());
-                }
-                _ => {
-                    where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
-                }
-            }
+            where_clauses.push(entity_filter_sql("target", target));
         }
         if let Some(search) = search_filter {
             if !search.is_empty() {
@@ -171,6 +163,8 @@ impl EncounterQuery<'_> {
                 effect_type_id,
                 source_class_id,
                 target_class_id,
+                source_id,
+                target_id,
                 source_hp, source_max_hp, target_hp, target_max_hp{coord_select}
             FROM events
             WHERE {where_clause}
@@ -206,10 +200,12 @@ impl EncounterQuery<'_> {
             let effect_type_ids = col_i64(batch, 19)?;
             let source_class_ids = col_i64(batch, 20)?;
             let target_class_ids = col_i64(batch, 21)?;
-            let source_hps = col_i32(batch, 22)?;
-            let source_max_hps = col_i32(batch, 23)?;
-            let target_hps = col_i32(batch, 24)?;
-            let target_max_hps = col_i32(batch, 25)?;
+            let source_ids = col_i64(batch, 22)?;
+            let target_ids = col_i64(batch, 23)?;
+            let source_hps = col_i32(batch, 24)?;
+            let source_max_hps = col_i32(batch, 25)?;
+            let target_hps = col_i32(batch, 26)?;
+            let target_max_hps = col_i32(batch, 27)?;
 
             let no_coords = vec![None; num_rows];
             let coord_col = |idx: usize| -> Result<Vec<Option<f32>>, String> {
@@ -219,14 +215,14 @@ impl EncounterQuery<'_> {
                     Ok(no_coords.clone())
                 }
             };
-            let source_xs = coord_col(26)?;
-            let source_ys = coord_col(27)?;
-            let source_zs = coord_col(28)?;
-            let source_facings = coord_col(29)?;
-            let target_xs = coord_col(30)?;
-            let target_ys = coord_col(31)?;
-            let target_zs = coord_col(32)?;
-            let target_facings = coord_col(33)?;
+            let source_xs = coord_col(28)?;
+            let source_ys = coord_col(29)?;
+            let source_zs = coord_col(30)?;
+            let source_facings = coord_col(31)?;
+            let target_xs = coord_col(32)?;
+            let target_ys = coord_col(33)?;
+            let target_zs = coord_col(34)?;
+            let target_facings = coord_col(35)?;
 
             for i in 0..num_rows {
                 results.push(CombatLogRow {
@@ -252,6 +248,8 @@ impl EncounterQuery<'_> {
                     effect_type_id: effect_type_ids[i],
                     source_class_id: source_class_ids[i],
                     target_class_id: target_class_ids[i],
+                    source_id: source_ids[i],
+                    target_id: target_ids[i],
                     source_hp: source_hps[i],
                     source_max_hp: source_max_hps[i],
                     target_hp: target_hps[i],
@@ -290,30 +288,10 @@ impl EncounterQuery<'_> {
         ];
 
         if let Some(source) = source_filter {
-            match source {
-                "__ALL_FRIENDLY__" => {
-                    where_clauses.push("source_entity_type IN ('Player', 'Companion')".to_string());
-                }
-                "__ALL_NPCS__" => {
-                    where_clauses.push("source_entity_type = 'Npc'".to_string());
-                }
-                _ => {
-                    where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
-                }
-            }
+            where_clauses.push(entity_filter_sql("source", source));
         }
         if let Some(target) = target_filter {
-            match target {
-                "__ALL_FRIENDLY__" => {
-                    where_clauses.push("target_entity_type IN ('Player', 'Companion')".to_string());
-                }
-                "__ALL_NPCS__" => {
-                    where_clauses.push("target_entity_type = 'Npc'".to_string());
-                }
-                _ => {
-                    where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
-                }
-            }
+            where_clauses.push(entity_filter_sql("target", target));
         }
         if let Some(search) = search_filter {
             if !search.is_empty() {
@@ -346,50 +324,64 @@ impl EncounterQuery<'_> {
 
     /// Get distinct source names for filter dropdown, grouped by entity type.
     pub async fn query_source_names(&self) -> Result<GroupedEntityNames, String> {
-        let batches = self
-            .sql(
-                "SELECT DISTINCT source_name, source_entity_type FROM events WHERE combat_time_secs IS NOT NULL ORDER BY source_name",
-            )
-            .await?;
-
-        let mut friendly = Vec::new();
-        let mut npcs = Vec::new();
-        for batch in &batches {
-            let names = col_strings(batch, 0)?;
-            let types = col_strings(batch, 1)?;
-            for (name, entity_type) in names.into_iter().zip(types.into_iter()) {
-                match entity_type.as_str() {
-                    "Player" | "Companion" => friendly.push(name),
-                    "Npc" => npcs.push(name),
-                    _ => {} // Skip Empty, SelfReference
-                }
-            }
-        }
-        Ok(GroupedEntityNames { friendly, npcs })
+        self.query_entity_names("source").await
     }
 
     /// Get distinct target names for filter dropdown, grouped by entity type.
     pub async fn query_target_names(&self) -> Result<GroupedEntityNames, String> {
+        self.query_entity_names("target").await
+    }
+
+    /// Distinct entity names on one side of the event, plus per-spawn rows for any
+    /// NPC name that occurs with more than one instance id (so the dropdown can
+    /// offer "this spawn" under the aggregate name).
+    async fn query_entity_names(&self, prefix: &str) -> Result<GroupedEntityNames, String> {
         let batches = self
-            .sql(
-                "SELECT DISTINCT target_name, target_entity_type FROM events WHERE combat_time_secs IS NOT NULL ORDER BY target_name",
-            )
+            .sql(&format!(
+                "SELECT {prefix}_name, {prefix}_entity_type, {prefix}_id, MIN(combat_time_secs) as first_hit \
+                 FROM events WHERE combat_time_secs IS NOT NULL \
+                 GROUP BY {prefix}_name, {prefix}_entity_type, {prefix}_id \
+                 ORDER BY {prefix}_name, first_hit"
+            ))
             .await?;
 
         let mut friendly = Vec::new();
         let mut npcs = Vec::new();
+        let mut spawns: Vec<NpcSpawn> = Vec::new();
         for batch in &batches {
             let names = col_strings(batch, 0)?;
             let types = col_strings(batch, 1)?;
-            for (name, entity_type) in names.into_iter().zip(types.into_iter()) {
-                match entity_type.as_str() {
-                    "Player" | "Companion" => friendly.push(name),
-                    "Npc" => npcs.push(name),
+            let ids = col_i64(batch, 2)?;
+            let first_hits = col_f32(batch, 3)?;
+            for i in 0..batch.num_rows() {
+                let name = &names[i];
+                match types[i].as_str() {
+                    "Player" | "Companion" => {
+                        if friendly.last() != Some(name) {
+                            friendly.push(name.clone());
+                        }
+                    }
+                    "Npc" => {
+                        if npcs.last() != Some(name) {
+                            npcs.push(name.clone());
+                        }
+                        spawns.push(NpcSpawn { name: name.clone(), id: ids[i], first_hit_secs: first_hits[i] });
+                    }
                     _ => {} // Skip Empty, SelfReference
                 }
             }
         }
-        Ok(GroupedEntityNames { friendly, npcs })
+        // Only names with several spawns need per-instance entries
+        let mut counts: HashMap<&str, usize> = HashMap::new();
+        for sp in &spawns {
+            *counts.entry(sp.name.as_str()).or_default() += 1;
+        }
+        let npc_spawns = spawns
+            .iter()
+            .filter(|sp| counts[sp.name.as_str()] > 1)
+            .cloned()
+            .collect();
+        Ok(GroupedEntityNames { friendly, npcs, npc_spawns })
     }
 
     /// Find all row positions matching search text (for Find feature).
@@ -423,30 +415,10 @@ impl EncounterQuery<'_> {
         ];
 
         if let Some(source) = source_filter {
-            match source {
-                "__ALL_FRIENDLY__" => {
-                    where_clauses.push("source_entity_type IN ('Player', 'Companion')".to_string());
-                }
-                "__ALL_NPCS__" => {
-                    where_clauses.push("source_entity_type = 'Npc'".to_string());
-                }
-                _ => {
-                    where_clauses.push(format!("source_name = '{}'", sql_escape(source)));
-                }
-            }
+            where_clauses.push(entity_filter_sql("source", source));
         }
         if let Some(target) = target_filter {
-            match target {
-                "__ALL_FRIENDLY__" => {
-                    where_clauses.push("target_entity_type IN ('Player', 'Companion')".to_string());
-                }
-                "__ALL_NPCS__" => {
-                    where_clauses.push("target_entity_type = 'Npc'".to_string());
-                }
-                _ => {
-                    where_clauses.push(format!("target_name = '{}'", sql_escape(target)));
-                }
-            }
+            where_clauses.push(entity_filter_sql("target", target));
         }
         if let Some(search) = search_filter {
             if !search.is_empty() {

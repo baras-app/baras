@@ -364,6 +364,10 @@ impl EventProcessor {
         let area_changed = event.effect.effect_id != cache.current_area.area_id;
         cache.current_area.area_name = resolve(event.effect.effect_name).to_string();
         cache.current_area.area_id = event.effect.effect_id;
+        let server = resolve(event.effect.server);
+        if !server.is_empty() {
+            cache.current_area.server = server.to_string();
+        }
         // Update difficulty: game sends 0 for non-instanced areas and as an initial
         // placeholder before the real value arrives. Only skip the update when staying
         // in the same area (placeholder case); on area change, 0 means open world.
@@ -668,7 +672,7 @@ impl EventProcessor {
             .filter(|e| e.entity_type == EntityType::Player && e.log_id != 0)
             .find(|e| e.position.is_some_and(|p| timer_start.matches(difficulty, p)));
         if let Some(player) = crossed {
-            cache.mark_timer_start_fired();
+            cache.mark_timer_start_fired(event.timestamp);
             out.push(GameSignal::OperationTimerStart {
                 entity_id: player.log_id,
                 timestamp: event.timestamp,
@@ -1335,19 +1339,17 @@ impl EventProcessor {
         if eid == effect_id::ABILITYACTIVATE
             && BATTLE_REZ_ABILITY_IDS.contains(&event.action.action_id)
         {
-            if let Some(enc) = cache.current_encounter() {
-                let targets_local = enc
-                    .get_current_target(event.source_entity.log_id)
-                    .is_some_and(|tid| tid == cache.player.id);
-                if targets_local {
-                    if let Some(enc) = cache.current_encounter_mut() {
-                        enc.battle_rez_pending = true;
-                        tracing::debug!(
-                            "[BATTLE_REZ] Pending battle rez on local player at {}",
-                            event.timestamp
-                        );
-                    }
-                }
+            let caster = event.source_entity.log_id;
+            let local = cache.player.id;
+            if let Some(enc) = cache.current_encounter_mut()
+                && (enc.get_current_target(caster) == Some(local)
+                    || enc.battle_rez_implies_local(caster, local))
+            {
+                enc.battle_rez_pending = true;
+                tracing::debug!(
+                    "[BATTLE_REZ] Pending battle rez on local player at {}",
+                    event.timestamp
+                );
             }
             return;
         }

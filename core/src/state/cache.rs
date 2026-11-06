@@ -1,3 +1,4 @@
+use baras_types::history::TimerStart;
 use chrono::NaiveDateTime;
 
 use crate::dsl::{BossEncounterDefinition, OperationTimerStart};
@@ -42,6 +43,8 @@ pub struct SessionCache {
     timer_start: Option<(i64, OperationTimerStart)>,
     /// Set once the start signal fires; cleared when a new area is loaded.
     timer_start_fired: bool,
+    /// Every timer start of this session, persisted with the pull history
+    pub timer_starts: Vec<TimerStart>,
 
     // NPC tracking (session-scoped)
     /// NPC instance log IDs that have been seen in this session (for NpcFirstSeen signals)
@@ -89,6 +92,7 @@ impl SessionCache {
             boss_definitions: Arc::new(Vec::new()),
             timer_start: None,
             timer_start_fired: false,
+            timer_starts: Vec::new(),
             seen_npc_instances: HashSet::new(),
             player_disciplines: HashMap::new(),
             inferred_discipline_eviction_pending: false,
@@ -316,8 +320,13 @@ impl SessionCache {
             .map(|(_, t)| t)
     }
 
-    pub fn mark_timer_start_fired(&mut self) {
+    pub fn mark_timer_start_fired(&mut self, at: chrono::NaiveDateTime) {
         self.timer_start_fired = true;
+        self.timer_starts.push(TimerStart {
+            area_id: self.current_area.area_id,
+            difficulty_id: self.current_area.difficulty_id,
+            time: at.format("%Y-%m-%dT%H:%M:%S").to_string(),
+        });
     }
 
     /// Load boss definitions for the current area.
@@ -429,6 +438,7 @@ impl SessionCache {
                 .collect(),
             character_mismatch: self.character_mismatch,
             missing_area: self.missing_area,
+            timer_starts: self.timer_starts.clone(),
             elapsed_ms: 0, // Filled in by caller
         }
     }
@@ -476,6 +486,7 @@ impl SessionCache {
         for summary in &output.encounters {
             self.encounter_history.add(summary.clone());
         }
+        self.timer_starts.extend(output.timer_starts.iter().cloned());
 
         // Restore generation counter to prevent raid splitting
         if generation_count > 0 {

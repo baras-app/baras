@@ -1,40 +1,34 @@
 //! Cross-session pull history.
 //!
 //! Boss pulls and dummy parses are persisted as one JSON file per combat log
-//! under `~/.config/baras/history/`, so the Historical tab can compare pulls
-//! across nights without re-parsing logs. Each file is rewritten in full from
-//! the session's `EncounterHistory`, which makes re-parsing a log idempotent.
+//! under `~/.config/baras/history/` (`store`), so the History tab can compare
+//! pulls across nights without re-parsing logs. `index` holds compact rows
+//! over every file; `meta` is the separate user-owned store (favorites, tags,
+//! notes, Parsely links) that a re-parse never rewrites.
 
+mod catalog;
 mod index;
+mod meta;
+mod record;
+mod runs;
+mod store;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use chrono::NaiveDateTime;
-use serde::{Deserialize, Serialize};
-
-use crate::context::parse_log_filename;
 use crate::encounter::PhaseType;
 use crate::encounter::summary::EncounterSummary;
 
-pub use index::PullIndex;
+pub use catalog::AreaCatalog;
+pub use index::{PullIndex, RefreshReport};
+pub use runs::{difficulty_parts, run_detail};
+pub use meta::{LibraryMeta, meta_path, now_iso, pull_key};
+pub use record::{ChallengeLine, PullRecord, RosterLine, start_ms_of};
+pub use store::{
+    HISTORY_VERSION, HistoryHeader, LogHistory, history_file_for, history_file_name, mtime_secs,
+};
 
 /// Tree group for training dummy parses (they have no boss or operation)
 pub const DUMMY_GROUP: &str = "Training Dummy";
-
-/// Recorded pulls from a single combat log file.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogHistory {
-    /// Combat log filename (e.g. `combat_2026-09-29_02_20_23_294905.txt`)
-    pub filename: String,
-    /// Full path the log was parsed from. Cleared on load if the file is gone.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub path: Option<PathBuf>,
-    /// Local player for this log (None if never initialized)
-    pub character_name: Option<String>,
-    /// Log start time parsed from the filename
-    pub started_at: Option<NaiveDateTime>,
-    pub pulls: Vec<EncounterSummary>,
-}
 
 /// `~/.config/baras/history/` (created on demand)
 pub fn history_dir() -> std::io::Result<PathBuf> {
@@ -52,63 +46,5 @@ pub fn is_recordable(summary: &EncounterSummary) -> bool {
         PhaseType::DummyParse => true,
         PhaseType::PvP => false,
         _ => summary.boss_name.is_some(),
-    }
-}
-
-/// Drop fields that only matter within the live session.
-fn strip_bulk(summary: &EncounterSummary) -> EncounterSummary {
-    let mut s = summary.clone();
-    s.incoming_damage = Vec::new();
-    s.area_entered_line = None;
-    s.event_start_line = None;
-    s.event_end_line = None;
-    s
-}
-
-impl LogHistory {
-    /// Build from a session's encounter history, keeping only recordable pulls.
-    /// Returns None if `path` has no usable filename.
-    pub fn from_summaries(
-        path: &Path,
-        character_name: Option<String>,
-        summaries: &[EncounterSummary],
-    ) -> Option<Self> {
-        let filename = path.file_name()?.to_str()?;
-        Some(Self {
-            filename: filename.to_string(),
-            path: Some(path.to_path_buf()),
-            character_name,
-            started_at: parse_log_filename(filename).map(|(_, dt)| dt),
-            pulls: summaries.iter().filter(|s| is_recordable(s)).map(strip_bulk).collect(),
-        })
-    }
-
-    /// Where the log should be: the stored path, or `log_dir/filename` for
-    /// files recorded before paths were stored.
-    pub fn log_path(&self, log_dir: &Path) -> PathBuf {
-        self.path
-            .clone()
-            .unwrap_or_else(|| log_dir.join(&self.filename))
-    }
-
-    fn path(&self) -> std::io::Result<PathBuf> {
-        let stem = self.filename.strip_suffix(".txt").unwrap_or(&self.filename);
-        Ok(history_dir()?.join(format!("{stem}.json")))
-    }
-
-    /// Write atomically (tmp + rename). A log with no recordable pulls
-    /// removes any stale file left from an earlier parse.
-    pub fn save(&self) -> std::io::Result<()> {
-        let path = self.path()?;
-        if self.pulls.is_empty() {
-            return match std::fs::remove_file(&path) {
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-                other => other,
-            };
-        }
-        let tmp = path.with_extension("json.tmp");
-        let bytes = serde_json::to_vec(self).map_err(std::io::Error::other)?;
-        std::fs::write(&tmp, bytes)?;
-        std::fs::rename(&tmp, &path)
     }
 }

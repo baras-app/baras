@@ -41,6 +41,15 @@ fn build_args<T: Serialize + ?Sized>(key: &str, value: &T) -> JsValue {
     obj.into()
 }
 
+/// Set an optional entity instance id. Log ids are ~15 digits, well inside f64's exact range,
+/// same as the ability/effect ids sent elsewhere in this file.
+fn js_set_entity_id(obj: &JsValue, entity_id: Option<i64>) {
+    match entity_id {
+        Some(id) => js_set(obj, "entityId", &JsValue::from_f64(id as f64)),
+        None => js_set(obj, "entityId", &JsValue::NULL),
+    }
+}
+
 /// Deserialize a JsValue into a type, returning None on failure (no console logging)
 fn from_js<T: serde::de::DeserializeOwned>(value: JsValue) -> Option<T> {
     serde_wasm_bindgen::from_value(value).ok()
@@ -330,20 +339,6 @@ pub async fn get_log_files() -> JsValue {
     invoke("get_log_files", JsValue::NULL).await
 }
 
-/// Clean up log files. Returns (empty_deleted, small_deleted, old_deleted).
-pub async fn cleanup_logs(delete_empty: bool, delete_small: bool, retention_days: Option<u32>) -> (u32, u32, u32) {
-    let args = js_sys::Object::new();
-    js_set(&args, "deleteEmpty", &JsValue::from_bool(delete_empty));
-    js_set(&args, "deleteSmall", &JsValue::from_bool(delete_small));
-    if let Some(days) = retention_days {
-        js_set(&args, "retentionDays", &JsValue::from_f64(days as f64));
-    } else {
-        js_set(&args, "retentionDays", &JsValue::NULL);
-    }
-    let result = invoke("cleanup_logs", args.into()).await;
-    from_js(result).unwrap_or((0, 0, 0))
-}
-
 /// Refresh file sizes in the directory index (fast stat-only)
 pub async fn refresh_file_sizes() {
     let _ = invoke("refresh_file_sizes", JsValue::NULL).await;
@@ -354,19 +349,20 @@ pub async fn refresh_file_sizes() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Open a historical log file (pauses live tailing)
-pub async fn open_historical_file(path: &str) -> Result<(), String> {
-    try_invoke("open_historical_file", build_args("path", &path)).await?;
-    Ok(())
+/// Queue a historical open. `Ok(false)` means that file is already being opened.
+pub async fn open_historical_file(path: &str) -> Result<bool, String> {
+    let result = try_invoke("open_historical_file", build_args("path", &path)).await?;
+    Ok(result.as_bool().unwrap_or(true))
 }
 
 /// Open a historical log and focus `encounter_id` in the Data Explorer once loaded
 /// (backend emits `select-encounter` after the parse completes).
-pub async fn open_historical_encounter(path: &str, encounter_id: u64) -> Result<(), String> {
+pub async fn open_historical_encounter(path: &str, encounter_id: u64) -> Result<bool, String> {
     let args = js_sys::Object::new();
     js_set(&args, "path", &JsValue::from_str(path));
     js_set(&args, "selectEncounter", &JsValue::from_f64(encounter_id as f64));
-    try_invoke("open_historical_file", args.into()).await?;
-    Ok(())
+    let result = try_invoke("open_historical_file", args.into()).await?;
+    Ok(result.as_bool().unwrap_or(true))
 }
 
 /// Resume live tailing mode
@@ -491,12 +487,109 @@ pub async fn get_pull_history_overview(
 
 /// Backfill pull history from every log in the configured directory.
 /// Progress arrives on the `history-backfill` event.
-pub async fn start_history_backfill() -> Result<(), String> {
-    try_invoke("start_history_backfill", JsValue::NULL).await?;
+pub async fn start_history_backfill(stale_only: bool) -> Result<(), String> {
+    try_invoke("start_history_backfill", build_args("staleOnly", &stale_only)).await?;
     Ok(())
 }
 
+/// Stop a running backfill; a `Done { cancelled: true }` event follows
+pub async fn cancel_history_backfill() -> Result<(), String> {
+    try_invoke("cancel_history_backfill", JsValue::NULL).await?;
+    Ok(())
+}
+
+/// History store health: logs, pulls, files needing a re-scan
+pub async fn get_history_status() -> Option<baras_types::history::HistoryStatus> {
+    from_js(invoke("get_history_status", JsValue::NULL).await)
+}
+
+/// Every log with its history and metadata joined, for the Library tab
+pub async fn get_library() -> Option<Vec<baras_types::history::LibraryRow>> {
+    from_js(invoke("get_library", JsValue::NULL).await)
+}
+
+pub async fn set_log_favorite(filename: &str, favorite: bool) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filename", &JsValue::from_str(filename));
+    js_set(&obj, "favorite", &JsValue::from_bool(favorite));
+    let result = try_invoke("set_log_favorite", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// The user's tags and one-line note on a log
+pub async fn set_log_meta(filename: &str, tags: &[String], note: &str) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filename", &JsValue::from_str(filename));
+    js_set(&obj, "tags", &serde_wasm_bindgen::to_value(tags).map_err(|e| e.to_string())?);
+    js_set(&obj, "note", &JsValue::from_str(note));
+    let result = try_invoke("set_log_meta", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Content kinds the user wants kept out of every delete
+pub async fn get_retained_content() -> Option<Vec<baras_types::history::ContentTag>> {
+    from_js(invoke("get_retained_content", JsValue::NULL).await)
+}
+
+pub async fn set_retained_content(retain: &[baras_types::history::ContentTag]) -> Result<bool, String> {
+    let result = try_invoke("set_retained_content", build_args("retain", retain)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Dry run of the saved cleanup rules: what would be archived and deleted now
+pub async fn preview_log_cleanup() -> Option<baras_types::history::CleanupPlan> {
+    from_js(invoke("preview_log_cleanup", JsValue::NULL).await)
+}
+
+/// Archive and delete whatever the saved rules select right now
+pub async fn run_log_cleanup() -> Result<baras_types::history::CleanupReport, String> {
+    let result = try_invoke("run_log_cleanup", JsValue::NULL).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Decompress an archived log back into the log directory; returns its path
+pub async fn restore_log(filename: &str) -> Result<String, String> {
+    let result = try_invoke("restore_log", build_args("filename", filename)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Delete a log (or archive) and every artifact it owns; refused for the live log
+pub async fn delete_log(path: &str) -> Result<baras_types::history::DeleteReport, String> {
+    let result = try_invoke("delete_log", build_args("path", path)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+/// Record a whole-file Parsely upload against the log
+pub async fn set_log_parsely_link(path: &str, link: &str, visibility: u8) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "path", &JsValue::from_str(path));
+    js_set(&obj, "link", &JsValue::from_str(link));
+    js_set(&obj, "visibility", &JsValue::from_f64(visibility as f64));
+    let result = try_invoke("set_log_parsely_link", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
 /// Every recorded pull of one boss under `filter`, newest first
+pub async fn get_operation_runs(filter: &baras_types::history::PullFilter) -> Option<baras_types::history::RunList> {
+    from_js(invoke("get_operation_runs", build_args("filter", filter)).await)
+}
+
+pub async fn get_operation_run(filename: &str, start_ms: i64) -> Option<baras_types::history::RunDetail> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filename", &JsValue::from_str(filename));
+    js_set(&obj, "startMs", &JsValue::from_f64(start_ms as f64));
+    from_js(invoke("get_operation_run", obj.into()).await).flatten()
+}
+
+pub async fn set_run_meta(filename: &str, start_ms: i64, meta: &baras_types::history::RunMeta) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filename", &JsValue::from_str(filename));
+    js_set(&obj, "startMs", &JsValue::from_f64(start_ms as f64));
+    js_set(&obj, "meta", &serde_wasm_bindgen::to_value(meta).unwrap_or(JsValue::NULL));
+    let result = try_invoke("set_run_meta", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
 pub async fn get_boss_pulls(
     operation: &str,
     boss: &str,
@@ -957,10 +1050,11 @@ pub async fn upload_encounter_to_parsely(
 }
 
 /// Set the Parsely link for an encounter (persists in backend)
-pub async fn set_encounter_parsely_link(encounter_id: u64, link: &str) -> Result<bool, String> {
+pub async fn set_encounter_parsely_link(encounter_id: u64, link: &str, visibility: u8) -> Result<bool, String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "encounterId", &JsValue::from_f64(encounter_id as f64));
     js_set(&obj, "link", &JsValue::from_str(link));
+    js_set(&obj, "visibility", &JsValue::from_f64(visibility as f64));
     let result = try_invoke("set_encounter_parsely_link", obj.into()).await?;
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
@@ -1017,7 +1111,7 @@ pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch,
     CombatLogRow, CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap,
     DeathRecapEventKind, EffectChartData, EffectWindow,
-    EncounterTimeline, EntityBreakdown, GroupedEntityNames, HpPoint, NpcHealthRow,
+    EncounterTimeline, EntityBreakdown, GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn,
     PhaseSegment, PlayerDeath, PvpFaction, RaidOverviewRow, RotationAnalysis,
     SortDirection, TimeRange, TimeSeriesPoint,
 };
@@ -1031,6 +1125,7 @@ pub async fn query_breakdown(
     tab: DataTab,
     encounter_idx: Option<u32>,
     entity_name: Option<&str>,
+    entity_id: Option<i64>,
     time_range: Option<&TimeRange>,
     entity_types: Option<&[&str]>,
     breakdown_mode: Option<&BreakdownMode>,
@@ -1049,6 +1144,7 @@ pub async fn query_breakdown(
     } else {
         js_set(&obj, "entityName", &JsValue::NULL);
     }
+    js_set_entity_id(&obj, entity_id);
     if let Some(tr) = time_range {
         let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
         js_set(&obj, "timeRange", &tr_js);
@@ -1628,6 +1724,7 @@ pub async fn query_death_recap(
 pub async fn query_damage_taken_summary(
     encounter_idx: Option<u32>,
     entity_name: &str,
+    entity_id: Option<i64>,
     time_range: Option<&TimeRange>,
     entity_types: Option<&[&str]>,
 ) -> Option<DamageTakenSummary> {
@@ -1638,6 +1735,7 @@ pub async fn query_damage_taken_summary(
         js_set(&obj, "encounterIdx", &JsValue::NULL);
     }
     js_set(&obj, "entityName", &JsValue::from_str(entity_name));
+    js_set_entity_id(&obj, entity_id);
     if let Some(tr) = time_range {
         let tr_js = serde_wasm_bindgen::to_value(tr).unwrap_or(JsValue::NULL);
         js_set(&obj, "timeRange", &tr_js);

@@ -67,6 +67,10 @@ pub struct NpcInfo {
     pub death_time: Option<NaiveDateTime>,
     pub current_hp: i32,
     pub max_hp: i32,
+    /// Lowest HP % seen this encounter and the combat second it happened
+    /// (pull progress for the History tab)
+    pub lowest_hp_pct: f32,
+    pub lowest_hp_at_secs: f32,
     pub current_target_id: i64,
     /// Once this NPC has qualified for the boss HP overlay (took damage or
     /// gained a shield), keep showing it even if it heals back to full HP.
@@ -87,6 +91,8 @@ impl Default for NpcInfo {
             death_time: None,
             current_hp: 0,
             max_hp: 0,
+            lowest_hp_pct: 100.0,
+            lowest_hp_at_secs: 0.0,
             current_target_id: 0,
             is_displayed: false,
         }

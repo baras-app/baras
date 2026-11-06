@@ -167,6 +167,9 @@ pub struct EntityBreakdown {
     pub entity_type: String, // "Player", "Npc", "Companion"
     pub total_value: f64,
     pub abilities_used: i64,
+    /// First combat second this entity acted (distinguishes same-named NPC spawns)
+    #[serde(default)]
+    pub first_hit_secs: Option<f32>,
 }
 
 /// Which side of a PvP match a player is on, relative to the local player.
@@ -497,6 +500,11 @@ pub struct CombatLogRow {
     pub source_class_id: i64,
     /// Target entity class_id for Show IDs feature (consistent across encounters)
     pub target_class_id: i64,
+    /// Per-spawn instance ids (what `id:` filters match on)
+    #[serde(default)]
+    pub source_id: i64,
+    #[serde(default)]
+    pub target_id: i64,
     /// Entity HP as reported on this line (0 when the entity has no HP data)
     #[serde(default)]
     pub source_hp: i32,
@@ -541,6 +549,16 @@ pub struct CombatLogFilters {
     pub other: bool,
 }
 
+/// One NPC spawn, for names that occur with several instance ids in an encounter.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NpcSpawn {
+    pub name: String,
+    /// Log instance id (`source_id` / `target_id`)
+    pub id: i64,
+    /// First combat second this spawn appeared
+    pub first_hit_secs: f32,
+}
+
 /// Entity names grouped by type for combat log filter dropdowns.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupedEntityNames {
@@ -548,6 +566,9 @@ pub struct GroupedEntityNames {
     pub friendly: Vec<String>,
     /// NPCs/enemies
     pub npcs: Vec<String>,
+    /// Per-instance rows for NPC names that appear more than once (ordered by first hit)
+    #[serde(default)]
+    pub npc_spawns: Vec<NpcSpawn>,
 }
 
 /// A match result from the combat log find feature.
@@ -2155,7 +2176,7 @@ impl Default for PersonalOverlayConfig {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Position configuration for an overlay
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OverlayPositionConfig {
     pub x: i32,
     pub y: i32,
@@ -3462,14 +3483,12 @@ pub const WEB_OVERLAY_URL: &str = "http://127.0.0.1:47684/overlay";
 pub struct AppConfig {
     #[serde(default)]
     pub log_directory: String,
+    /// Automatic log housekeeping (see Log Management)
     #[serde(default)]
-    pub auto_delete_empty_files: bool,
-    #[serde(default)]
-    pub auto_delete_small_files: bool,
-    #[serde(default)]
-    pub auto_delete_old_files: bool,
-    #[serde(default = "default_retention_days")]
-    pub log_retention_days: u32,
+    pub log_cleanup: history::LogCleanup,
+    /// Scan new and out-of-date logs into the history store at startup
+    #[serde(default = "default_true")]
+    pub auto_scan_history: bool,
     #[serde(default = "default_true")]
     pub minimize_to_tray: bool,
     /// Serve the currently visible native overlays on a loopback-only web page.
@@ -3545,10 +3564,6 @@ fn default_ocr_debug_max_dumps() -> u32 {
     100
 }
 
-fn default_retention_days() -> u32 {
-    21
-}
-
 fn default_alacrity() -> f32 {
     7.5
 }
@@ -3563,10 +3578,8 @@ impl AppConfig {
     pub fn with_log_directory(log_directory: String) -> Self {
         Self {
             log_directory,
-            auto_delete_empty_files: false,
-            auto_delete_small_files: false,
-            auto_delete_old_files: false,
-            log_retention_days: 21,
+            log_cleanup: history::LogCleanup::default(),
+            auto_scan_history: true,
             minimize_to_tray: false,
             web_overlay_enabled: false,
             overlay_settings: OverlaySettings::default(),
@@ -3832,10 +3845,23 @@ pub enum MainTab {
     Overlays,
     EncounterBuilder,
     Effects,
-    History,
+    /// The three history views: per-boss pulls, per-run recaps, the log library
+    BossStats,
+    RaidSummaries,
+    LogManagement,
 }
 
 impl MainTab {
+    /// Which history view this tab shows, if any
+    pub fn history_view(self) -> Option<history::HistorySubTab> {
+        match self {
+            MainTab::BossStats => Some(history::HistorySubTab::Overview),
+            MainTab::RaidSummaries => Some(history::HistorySubTab::Operations),
+            MainTab::LogManagement => Some(history::HistorySubTab::Library),
+            _ => None,
+        }
+    }
+
     /// Convert to string ID used in old code
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -3843,7 +3869,9 @@ impl MainTab {
             MainTab::Overlays => "overlays",
             MainTab::EncounterBuilder => "timers",
             MainTab::Effects => "effects",
-            MainTab::History => "history",
+            MainTab::BossStats => "boss_stats",
+            MainTab::RaidSummaries => "raid_summaries",
+            MainTab::LogManagement => "log_management",
         }
     }
 
@@ -3855,7 +3883,9 @@ impl MainTab {
             "overlays" => MainTab::Overlays,
             "timers" => MainTab::EncounterBuilder,
             "effects" => MainTab::Effects,
-            "history" => MainTab::History,
+            "history" | "boss_stats" => MainTab::BossStats,
+            "raid_summaries" => MainTab::RaidSummaries,
+            "log_management" => MainTab::LogManagement,
             _ => MainTab::DataExplorer,
         }
     }
@@ -4001,6 +4031,9 @@ pub struct DataExplorerState {
     pub view_mode: ViewMode,
     /// Selected source entity for detailed breakdown
     pub selected_source: Option<String>,
+    /// Instance id of the selected source when it is one NPC spawn among same-named copies.
+    /// `None` for players (and NPCs selected by name), which keeps queries name-keyed.
+    pub selected_source_id: Option<i64>,
     /// Breakdown mode toggles
     pub breakdown_mode: BreakdownMode,
     /// Players-only filter
@@ -4031,6 +4064,7 @@ impl Default for DataExplorerState {
             selected_encounter: None,
             view_mode: ViewMode::default(),
             selected_source: None,
+            selected_source_id: None,
             breakdown_mode: BreakdownMode::ability_only(),
             show_players_only: true,
             show_only_bosses: false,
@@ -4052,6 +4086,7 @@ impl DataExplorerState {
     pub fn reset_session(&mut self) {
         self.selected_encounter = None;
         self.selected_source = None;
+        self.selected_source_id = None;
         self.time_range = TimeRange::default();
         self.selected_rotation_anchor = None;
         // Preserve: show_only_bosses, view_mode, breakdown_mode, show_players_only,

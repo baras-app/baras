@@ -1,0 +1,418 @@
+//! Overview sub-tab: Operation → Boss tree, per-boss header cards and the
+//! enriched pull table (result with HP %, phase reached, deaths).
+
+use dioxus::prelude::*;
+
+use baras_types::formatting;
+use baras_types::history::{BossNode, PullEnd, PullFilter, PullRow, PullSortKey as SortKey};
+
+use super::Backfill;
+use super::scroll::{save_scroll, use_paged, use_restore_scroll};
+use super::charts::{ChartPick, PullCharts};
+use super::toolbar::{HistoryToolbar, SubsetChips};
+use crate::api;
+use crate::components::class_icons::{get_class_icon, get_role_icon};
+use crate::components::use_file_opener;
+use crate::types::UiSessionState;
+
+const OV_RAIL: &str = "hist-ov-rail";
+const OV_MAIN: &str = "hist-ov-main";
+const OV_TABLE: &str = "hist-ov-table";
+
+#[derive(Props, Clone, PartialEq)]
+pub struct OverviewProps {
+    pub european: bool,
+    pub state: Signal<UiSessionState>,
+    pub filter: Signal<PullFilter>,
+    pub backfill: Backfill,
+}
+
+/// Tree selection: (operation, boss)
+type BossKey = (String, String);
+
+pub(super) fn short_ts(iso: &str) -> String {
+    iso.get(..16).unwrap_or(iso).replacen('T', " ", 1)
+}
+
+/// The boss to show: the user's pick if it still exists, else the first boss
+fn effective_selection(selected: Option<BossKey>, bosses: &[BossNode]) -> Option<BossKey> {
+    selected
+        .filter(|(op, boss)| bosses.iter().any(|n| n.operation == *op && n.boss == *boss))
+        .or_else(|| bosses.first().map(|n| (n.operation.clone(), n.boss.clone())))
+}
+
+/// Group consecutive nodes (already sorted by operation) into tree sections
+fn group_by_operation<'a>(bosses: impl Iterator<Item = &'a BossNode>) -> Vec<(&'a str, Vec<&'a BossNode>)> {
+    let mut tree: Vec<(&'a str, Vec<&'a BossNode>)> = Vec::new();
+    for node in bosses {
+        match tree.last_mut() {
+            Some((op, nodes)) if *op == node.operation => nodes.push(node),
+            _ => tree.push((&node.operation, vec![node])),
+        }
+    }
+    tree
+}
+
+/// Result badge: label and CSS class for one pull
+pub(super) fn result_badge(row: &PullRow, eu: bool) -> (String, &'static str) {
+    match row.end_reason {
+        PullEnd::Kill => ("Kill".into(), "pull-result kill"),
+        PullEnd::Wipe | PullEnd::Unknown => {
+            let label = match row.boss_hp_pct {
+                Some(pct) => format!("Wipe · {} %", formatting::format_decimal(pct, 1, eu)),
+                None => "Wipe".into(),
+            };
+            (label, "pull-result wipe")
+        }
+        PullEnd::Reset => ("Reset".into(), "pull-result reset"),
+        PullEnd::LogEnd => ("Cut off".into(), "pull-result reset"),
+    }
+}
+
+#[component]
+pub fn OverviewTab(props: OverviewProps) -> Element {
+    let eu = props.european;
+    let filter = props.filter;
+    let opener = use_file_opener();
+
+    let mut selected = use_signal(|| props.state.read().history.selected.clone());
+    // Chart click → table narrowed to that pull or night; cleared with the boss
+    let mut pick = use_signal(|| None::<ChartPick>);
+    use_effect(move || {
+        let _ = selected.read();
+        pick.set(None);
+    });
+    let mut expanded = use_signal(|| props.state.read().history.expanded.clone());
+    let mut boss_search = use_signal(|| props.state.read().history.boss_search.clone());
+    let mut sort_key = use_signal(|| props.state.read().history.sort_key);
+    let mut sort_desc = use_signal(|| props.state.read().history.sort_desc);
+    let mut state = props.state;
+    use_effect(move || {
+        let mut s = state.write();
+        s.history.selected = selected.read().clone();
+        s.history.expanded = expanded.read().clone();
+        s.history.boss_search = boss_search.read().clone();
+        s.history.sort_key = *sort_key.read();
+        s.history.sort_desc = *sort_desc.read();
+    });
+
+    let mut overview = use_resource(move || {
+        let f = filter.read().clone();
+        async move { api::get_pull_history_overview(&f).await.unwrap_or_default() }
+    });
+    // A finished re-scan changes every count
+    let backfill = props.backfill;
+    use_effect(move || {
+        if matches!(*backfill.event.read(), Some(baras_types::history::BackfillEvent::Done { .. })) {
+            overview.restart();
+        }
+    });
+
+    // Nothing picked (first visit, or the pick fell out of the filter): take
+    // the first boss and open its operation so the highlighted row is visible
+    use_effect(move || {
+        let read = overview.read();
+        let Some(o) = read.as_ref() else { return };
+        let picked = selected.read().clone();
+        if let Some(key) = effective_selection(picked.clone(), &o.bosses)
+            && picked.as_ref() != Some(&key)
+        {
+            expanded.write().insert(key.0.clone());
+            selected.set(Some(key));
+        }
+    });
+
+    let overview_read = overview.read();
+    let loading = overview_read.is_none();
+    let bosses: &[BossNode] = overview_read.as_ref().map(|o| o.bosses.as_slice()).unwrap_or(&[]);
+    let search = boss_search.read().to_lowercase();
+    let tree = group_by_operation(bosses.iter().filter(|n| {
+        search.is_empty() || n.boss.to_lowercase().contains(&search) || n.operation.to_lowercase().contains(&search)
+    }));
+    let current = effective_selection(selected.read().clone(), bosses);
+    let current_node = current
+        .as_ref()
+        .and_then(|(op, boss)| bosses.iter().find(|n| n.operation == *op && n.boss == *boss));
+
+    // Reads signals (not render-local values) so the resource re-runs on change
+    let pulls = use_resource(move || {
+        let key = overview
+            .read()
+            .as_ref()
+            .and_then(|o| effective_selection(selected.read().clone(), &o.bosses));
+        let f = filter.read().clone();
+        async move {
+            let (op, boss) = key?;
+            api::get_boss_pulls(&op, &boss, &f).await
+        }
+    });
+    let pulls_read = pulls.read();
+    let rows: &[PullRow] = pulls_read.as_ref().and_then(|p| p.as_deref()).unwrap_or(&[]);
+    use_restore_scroll(&[OV_RAIL, OV_MAIN, OV_TABLE], !loading && (current_node.is_none() || pulls_read.is_some()));
+
+    // Header cards
+    let kills = rows.iter().filter(|r| r.success).count();
+    let best = rows
+        .iter()
+        .filter(|r| !r.success)
+        .filter_map(|r| r.boss_hp_pct.map(|p| (p, r)))
+        .min_by(|a, b| a.0.total_cmp(&b.0));
+    // Cleared: fastest kill. Otherwise: furthest progress (lowest HP, phase)
+    let fastest_kill = rows.iter().filter(|r| r.success).map(|r| r.duration_seconds).min();
+    let best_label = if let Some(secs) = fastest_kill {
+        formatting::format_duration(secs)
+    } else if let Some((pct, r)) = best {
+        match &r.phase {
+            Some(ph) => format!("{ph} · {} %", formatting::format_decimal(pct, 1, eu)),
+            None => format!("{} %", formatting::format_decimal(pct, 1, eu)),
+        }
+    } else {
+        "—".into()
+    };
+    // Average time to kill: clears only; wipes would drag it toward the wipe point
+    let avg_ttk = (kills > 0).then(|| rows.iter().filter(|r| r.success).map(|r| r.duration_seconds).sum::<i64>() / kills as i64);
+    let max_dps = rows.iter().filter_map(|r| r.dps).max();
+
+    let key = *sort_key.read();
+    let picked = pick.read().clone();
+    let mut visible: Vec<&PullRow> = rows.iter().filter(|r| picked.as_ref().is_none_or(|p| p.matches(r))).collect();
+    visible.sort_by(|a, b| {
+        let ord = match key {
+            SortKey::Date => a.timestamp.cmp(&b.timestamp),
+            SortKey::Duration => a.duration_seconds.cmp(&b.duration_seconds),
+            SortKey::Dps => a.dps.cmp(&b.dps),
+            SortKey::Hps => a.hps.cmp(&b.hps),
+        };
+        if *sort_desc.read() { ord.reverse() } else { ord }
+    });
+    // The table renders a page at a time; a new boss, filter, pick or sort starts over
+    let page_key = format!("{current:?}|{key:?}|{}|{}|{}", *sort_desc.read(), rows.len(), visible.len());
+    let paged = use_paged(&page_key);
+    let shown = visible.len().min(paged.limit(&page_key));
+    let total = visible.len();
+    let scroll_key = page_key.clone();
+    let mut on_sort = move |key: SortKey| {
+        if *sort_key.read() == key {
+            sort_desc.toggle();
+        } else {
+            sort_key.set(key);
+            sort_desc.set(true);
+        }
+    };
+    let sort_class = move |k: SortKey| {
+        if *sort_key.read() != k {
+            "sortable-header"
+        } else if *sort_desc.read() {
+            "sortable-header sorted desc"
+        } else {
+            "sortable-header sorted asc"
+        }
+    };
+    let fmt_opt = move |n: Option<i64>| n.map(|v| formatting::format_compact(v, eu)).unwrap_or_else(|| "-".into());
+
+    rsx! {
+        div { class: "pull-history-body",
+            aside { class: "explorer-sidebar",
+                HistoryToolbar { filter, runs: false }
+                div { class: "sidebar-search",
+                    input {
+                        class: "boss-search-input",
+                        r#type: "text",
+                        placeholder: "Filter bosses...",
+                        value: "{boss_search}",
+                        oninput: move |e| boss_search.set(e.value()),
+                    }
+                }
+                div { id: OV_RAIL, class: "sidebar-encounter-list", onscroll: move |_| save_scroll(OV_RAIL),
+                    if !loading && tree.is_empty() {
+                        div { class: "sidebar-empty",
+                            i { class: "fa-solid fa-clock-rotate-left" }
+                            p { "No recorded pulls" }
+                            p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
+                        }
+                    }
+                    for (op, nodes) in tree.iter() {
+                        {
+                            let op_key = op.to_string();
+                            let is_collapsed = search.is_empty() && !expanded.read().contains(*op);
+                            let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
+                            let op_pulls: u32 = nodes.iter().map(|n| n.pulls).sum();
+                            rsx! {
+                                div {
+                                    class: "sidebar-section-header",
+                                    onclick: move |_| {
+                                        let mut set = expanded.write();
+                                        if !set.remove(&op_key) {
+                                            set.insert(op_key.clone());
+                                        }
+                                    },
+                                    i { class: "fa-solid {chevron} collapse-icon" }
+                                    span { class: "section-area", "{op}" }
+                                    span { class: "section-count", "{op_pulls}" }
+                                }
+                                if !is_collapsed {
+                                    for node in nodes.iter() {
+                                        {
+                                            let key = (node.operation.clone(), node.boss.clone());
+                                            let is_selected = current.as_ref() == Some(&key);
+                                            rsx! {
+                                                div {
+                                                    class: if is_selected { "sidebar-encounter-item selected" } else { "sidebar-encounter-item" },
+                                                    onclick: move |_| selected.set(Some(key.clone())),
+                                                    div { class: "encounter-main",
+                                                        span { class: "encounter-name", "{node.boss}" }
+                                                        span { class: "pull-tree-count", title: "pulls · kills", "{node.pulls} · {node.kills}" }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            section { id: OV_MAIN, class: "pull-history-main", onscroll: move |_| save_scroll(OV_MAIN),
+                if let Some(node) = current_node {
+                    div { class: "pull-history-header",
+                        div { class: "pull-history-title",
+                            h3 { "{node.boss}" }
+                            span { class: "pull-history-operation", "{node.operation}" }
+                            SubsetChips { filter }
+                        }
+                    }
+                    div { class: "history-cards",
+                        div { class: "history-card", div { class: "k", "Pulls" } div { class: "v", "{rows.len()}" } }
+                        div { class: "history-card", div { class: "k", "Kills" }
+                            div { class: "v", "{kills} "
+                                if !rows.is_empty() { span { class: "sub", "{kills * 100 / rows.len()} %" } }
+                            }
+                        }
+                        div { class: "history-card", title: if fastest_kill.is_some() { "Fastest kill" } else { "Furthest progress" },
+                            div { class: "k", "Best" }
+                            div { class: "v small", "{best_label}" }
+                        }
+                        div { class: "history-card", title: "Average time to kill across clears",
+                            div { class: "k", "Avg TTK" }
+                            div { class: "v", {avg_ttk.map(formatting::format_duration).unwrap_or_else(|| "—".into())} }
+                        }
+                        div { class: "history-card", title: "Your highest DPS on a pull", div { class: "k", "Max DPS" } div { class: "v", {fmt_opt(max_dps)} } }
+                    }
+                    PullCharts { pulls, pick, kills_only: filter.read().kills_only }
+                    if let Some(p) = picked.as_ref() {
+                        div { class: "history-pick",
+                            i { class: "fa-solid fa-filter" }
+                            " Showing {p.label(rows)} · {visible.len()} of {rows.len()} pulls"
+                            button { class: "btn btn-xs btn-ghost", title: "Show every pull again", onclick: move |_| pick.set(None), i { class: "fa-solid fa-xmark" } " Clear" }
+                        }
+                    }
+                    div { id: OV_TABLE, class: "pull-history-table-wrap", onscroll: move |_| paged.on_scroll(OV_TABLE, &scroll_key, total),
+                        table { class: "pull-history-table",
+                            thead {
+                                tr {
+                                    th { class: sort_class(SortKey::Date), onclick: move |_| on_sort(SortKey::Date), "Date" }
+                                    th { "Result" }
+                                    th { "Phase" }
+                                    th { class: sort_class(SortKey::Duration), onclick: move |_| on_sort(SortKey::Duration), "Duration" }
+                                    th { "Deaths" }
+                                    th { "Character" }
+                                    th { "Discipline" }
+                                    th { class: sort_class(SortKey::Dps), onclick: move |_| on_sort(SortKey::Dps), "DPS" }
+                                    th { class: sort_class(SortKey::Hps), onclick: move |_| on_sort(SortKey::Hps), "HPS" }
+                                    th { "Tags" }
+                                    th { "Parsely" }
+                                    th { "Log" }
+                                }
+                            }
+                            tbody {
+                                for row in visible[..shown].iter() {
+                                    {
+                                        let (label, class) = result_badge(row, eu);
+                                        rsx! {
+                                            tr {
+                                                key: "{row.filename}:{row.start_ms}",
+                                                td { {short_ts(&row.timestamp)} }
+                                                td {
+                                                    span { class: "{class}", "{label}" }
+                                                    if row.partial { span { class: "pull-partial", title: "Log ended before combat did", " ⚠" } }
+                                                }
+                                                td { {row.phase.clone().unwrap_or_else(|| "-".into())} }
+                                                td { {formatting::format_duration(row.duration_seconds)} }
+                                                td { "{row.deaths}" }
+                                                td { "{row.character}" }
+                                                td {
+                                                    span { class: "pull-discipline",
+                                                        if let Some(icon) = row.role_icon.as_deref().and_then(get_role_icon) {
+                                                            img { class: "role-icon", src: *icon, alt: "" }
+                                                        }
+                                                        if let Some(icon) = row.discipline_icon.as_deref().and_then(get_class_icon) {
+                                                            img { class: "discipline-icon", src: *icon, alt: "" }
+                                                        }
+                                                        {row.discipline.clone().unwrap_or_else(|| "-".into())}
+                                                    }
+                                                }
+                                                td { {fmt_opt(row.dps)} }
+                                                td { {fmt_opt(row.hps)} }
+                                                td {
+                                                    for t in row.tags.iter() {
+                                                        span { class: "run-tag small", "{t}" }
+                                                    }
+                                                }
+                                                td {
+                                                    if let Some(link) = row.parsely.clone() {
+                                                        button {
+                                                            class: "btn btn-xs btn-ghost",
+                                                            title: "View on Parsely",
+                                                            onclick: move |_| {
+                                                                let link = link.clone();
+                                                                spawn(async move { api::open_url(&link).await });
+                                                            },
+                                                            i { class: "fa-solid fa-up-right-from-square" }
+                                                        }
+                                                    } else {
+                                                        span { class: "pull-log-missing", title: "Not uploaded to Parsely", "—" }
+                                                    }
+                                                }
+                                                td {
+                                                    if let Some(path) = row.path.clone() {
+                                                        button {
+                                                            class: "btn btn-xs btn-ghost",
+                                                            title: "Open this pull in Encounter Analysis",
+                                                            disabled: opener.busy(),
+                                                            onclick: {
+                                                                let encounter_id = row.encounter_id;
+                                                                move |_| opener.open(path.clone(), Some(encounter_id))
+                                                            },
+                                                            i { class: "fa-solid fa-eye" }
+                                                        }
+                                                    } else {
+                                                        span { class: "pull-log-missing", title: "Log file no longer exists", "—" }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if shown < total {
+                                    tr {
+                                        td { colspan: "12", class: "library-empty",
+                                            "{shown} of {total} shown · scroll for more "
+                                            button { class: "btn btn-xs btn-ghost", onclick: move |_| paged.show_all(&page_key), "Show all" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if !loading {
+                    div { class: "panel-placeholder",
+                        i { class: "fa-solid fa-clock-rotate-left" }
+                        p { "Select a boss to see its pulls." }
+                    }
+                }
+            }
+        }
+    }
+}

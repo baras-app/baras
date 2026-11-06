@@ -45,15 +45,21 @@ fn collect_signals_from_fixture_ext(
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes).expect("Failed to read file");
     let content = String::from_utf8_lossy(&bytes);
+    let config = boss_config_path.and_then(load_boss_config);
+    collect_signals_from_content(&content, config, debug)
+}
 
+/// Run raw log text through the processor, optionally with boss definitions loaded.
+fn collect_signals_from_content(
+    content: &str,
+    boss_config: Option<BossConfig>,
+    debug: bool,
+) -> Vec<GameSignal> {
     let parser = LogParser::new(chrono::Local::now().naive_local());
     let mut processor = EventProcessor::new();
     let mut cache = SessionCache::default();
 
-    // Load boss definitions if provided
-    if let Some(config_path) = boss_config_path
-        && let Some(config) = load_boss_config(config_path)
-    {
+    if let Some(config) = boss_config {
         cache.load_boss_definitions(config.bosses, false);
     }
 
@@ -1948,4 +1954,139 @@ fn test_damage_signal_emitted_for_empty_source() {
         Some((crate::combat_log::EntityType::Empty, 0, 0, 4311124962967854)),
         "DamageTaken should be emitted with an Empty source"
     );
+}
+
+/// Regression for the Nahut "Pursuit" report: an `effect_removed` phase trigger
+/// must fire only when that effect is removed, not whenever the same-named
+/// ability removes some *other* effect. The old raw-event path also matched the
+/// removing action's ID, so the phase flipped at the first RemoveEffect line.
+#[test]
+fn test_effect_removed_phase_ignores_removing_ability() {
+    const P: &str = "[@Tester#690062569980999|(0.00,0.00,0.00,0.00)|(100000/100000)]";
+    const N: &str = "[NAHUT {4108011664572416}:1001|(1.00,1.00,1.00,0.00)|(5000000/5000000)]";
+    let log = format!(
+        "[12:00:00.000] {P} [] [] [AreaEntered {{836045448953664}}: Valley of the Machine Gods {{833571547775765}} 8 Player Master {{836045448953655}}] (he3000) <v7.0.0b>
+[12:00:01.000] {P} [] [] [Event {{836045448945472}}: EnterCombat {{836045448945489}}]
+[12:00:02.000] {N} {P} [Encounter Start {{4132016236789760}}] [ApplyEffect {{836045448945477}}: Encounter Start {{4132016236789760}}]
+[12:00:10.000] {N} {P} [Pursuit {{4126462844076032}}] [ApplyEffect {{836045448945477}}: Pursuit {{4126462844076032}}]
+[12:00:10.100] {N} {P} [Pursuit {{4126462844076032}}] [ApplyEffect {{836045448945477}}: Pursuit Mark {{4126462844076999}}]
+[12:00:15.000] {N} {P} [Pursuit {{4126462844076032}}] [RemoveEffect {{836045448945478}}: Pursuit Mark {{4126462844076999}}]
+[12:00:20.000] {N} {P} [Pursuit {{4126462844076032}}] [RemoveEffect {{836045448945478}}: Pursuit {{4126462844076032}}]
+[12:00:25.000] {P} [] [] [Event {{836045448945472}}: ExitCombat {{836045448945490}}]
+"
+    );
+    let mut config: BossConfig = toml::from_str(
+        r#"
+[[boss]]
+id = "nahut_test"
+name = "NAHUT"
+difficulties = ["story", "veteran", "master"]
+encounter_trigger = { type = "effect_applied", effects = [4132016236789760] }
+
+[[boss.entities]]
+name = "NAHUT"
+ids = [4108011664572416]
+is_boss = true
+
+[[boss.phases]]
+id = "pursuit"
+name = "Pursuit"
+start_trigger = { type = "effect_applied", effects = [4126462844076032] }
+
+[[boss.phases]]
+id = "after_pursuit"
+name = "After Pursuit"
+start_trigger = { type = "effect_removed", effects = [4126462844076032] }
+"#,
+    )
+    .unwrap();
+    for boss in &mut config.bosses {
+        boss.build_indexes();
+    }
+
+    let signals = collect_signals_from_content(&log, Some(config), false);
+
+    let transitions: Vec<(String, chrono::NaiveTime)> = signals
+        .iter()
+        .filter_map(|s| match s {
+            GameSignal::PhaseChanged { new_phase, timestamp, .. } => {
+                Some((new_phase.clone(), timestamp.time()))
+            }
+            _ => None,
+        })
+        .collect();
+    let t = |h, m, s| chrono::NaiveTime::from_hms_opt(h, m, s).unwrap();
+    assert_eq!(
+        transitions,
+        vec![("pursuit".to_string(), t(12, 0, 10)), ("after_pursuit".to_string(), t(12, 0, 20))],
+        "phase must flip on the Pursuit effect removal (20s), not when Pursuit removes another effect (15s)"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Battle rez attribution when the healer's TargetSet was lost
+// ─────────────────────────────────────────────────────────────────────────
+
+const REZ_LOCAL: &str = "[@Ari'mior#689903976132962|(500.73,2811.81,261.19,-39.72)|(481636/481636)]";
+const REZ_LOCAL_DEAD: &str = "[@Ari'mior#689903976132962|(500.73,2811.81,261.19,-39.72)|(0/481636)]";
+const REZ_HEALER: &str = "[@Tureis#688512241679298|(485.09,2813.87,317.41,-27.85)|(443634/443634)]";
+const REZ_OTHER: &str = "[@Inpulsa's Brokenheart#690538484217315|(484.92,2788.54,317.41,-84.83)|(415877/443634)]";
+const REZ_OTHER_DEAD: &str = "[@Inpulsa's Brokenheart#690538484217315|(484.92,2788.54,317.41,-84.83)|(0/443634)]";
+const REZ_BOSS: &str = "[ESNE {4088538282852352}:47487001802345|(487.01,2780.48,317.41,22.21)|(14906726/18734600)]";
+
+/// Cut from the 2026-10-29 A&E log: the local player fell off the platform, the
+/// healer's TargetSet on the body was dropped by the game during a 3s log stall,
+/// and Resuscitation Probe was activated while their tracked target was still a
+/// living player. The 25% HP Revived must be treated as a battle rez.
+fn rez_log(other_dies_first: bool) -> String {
+    let other_death = if other_dies_first {
+        format!("[22:54:05.000] {REZ_BOSS} {REZ_OTHER_DEAD} [] [Event {{836045448945472}}: Death {{836045448945493}}]\n")
+    } else {
+        String::new()
+    };
+    format!(
+        "[22:51:07.087] {REZ_LOCAL} [] [] [Event {{836045448945472}}: EnterCombat {{836045448945489}}]
+[22:51:07.087] {REZ_LOCAL} [] [] [DisciplineChanged {{836045448953665}}: Assassin {{16141163438392504574}}/Darkness {{2031339142381582}}]
+[22:51:07.087] {REZ_HEALER} [] [] [DisciplineChanged {{836045448953665}}: Operative {{16140905232405801950}}/Medicine {{2031339142381596}}]
+[22:51:07.087] {REZ_OTHER} [] [] [DisciplineChanged {{836045448953665}}: Powertech {{16141007401395916385}}/Pyrotech {{2031339142381602}}]
+[22:54:04.544] {REZ_HEALER} {REZ_OTHER} [] [Event {{836045448945472}}: TargetSet {{836045448953668}}]
+{other_death}[22:54:09.638] {REZ_LOCAL_DEAD} [=] [] [Event {{836045448945472}}: Death {{836045448945493}}]
+[22:54:12.720] {REZ_HEALER} [=] [Resuscitation Probe {{814875555135488}}] [Event {{836045448945472}}: AbilityActivate {{836045448945479}}]
+[22:54:15.183] [@Ari'mior#689903976132962|(485.97,2814.34,317.41,-39.72)|(120409/481636)] [=] [] [Event {{836045448945472}}: Revived {{836045448945494}}]
+[22:54:16.000] {REZ_BOSS} {REZ_OTHER} [Remote Access {{4113827050291200}}] [ApplyEffect {{836045448945477}}: Damage {{836045448945501}}] (1000 kinetic {{836045448940873}})
+[22:54:30.000] {REZ_LOCAL} [] [] [Event {{836045448945472}}: ExitCombat {{836045448945490}}]
+[22:56:00.000] {REZ_LOCAL} [=] [Sprint {{810670782152704}}] [ApplyEffect {{836045448945477}}: Sprint {{810670782152704}}]
+"
+    )
+}
+
+fn combat_ended_seconds(signals: &[GameSignal]) -> Vec<u32> {
+    use chrono::Timelike;
+    signals
+        .iter()
+        .filter_map(|s| match s {
+            GameSignal::CombatEnded { timestamp, .. } => Some(timestamp.second()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn test_battle_rez_with_stale_healer_target_keeps_combat_alive() {
+    let signals = collect_signals_from_content(&rez_log(false), None, false);
+    assert_eq!(
+        combat_ended_seconds(&signals),
+        vec![30],
+        "the only CombatEnded must carry the ExitCombat time (:30), not the Revived at :15"
+    );
+}
+
+#[test]
+fn test_battle_rez_with_stale_target_and_two_dead_players_is_unattributed() {
+    // With another player also dead, the rez could be for either of them, so the
+    // existing OOC-revive classification is kept (combat ends at the revive).
+    let signals = collect_signals_from_content(&rez_log(true), None, false);
+    let ended = combat_ended_seconds(&signals);
+    assert_eq!(ended.len(), 1, "exactly one CombatEnded: {ended:?}");
+    assert!(ended[0] < 30, "combat should end at the revive, not at ExitCombat: {ended:?}");
 }

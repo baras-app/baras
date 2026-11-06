@@ -44,16 +44,6 @@ pub async fn get_log_file_count(handle: State<'_, ServiceHandle>) -> Result<usiz
 }
 
 #[tauri::command]
-pub async fn cleanup_logs(
-    handle: State<'_, ServiceHandle>,
-    delete_empty: bool,
-    delete_small: bool,
-    retention_days: Option<u32>,
-) -> Result<(u32, u32, u32), String> {
-    Ok(handle.cleanup_logs(delete_empty, delete_small, retention_days).await)
-}
-
-#[tauri::command]
 pub async fn refresh_file_sizes(handle: State<'_, ServiceHandle>) -> Result<(), String> {
     handle.refresh_file_sizes().await;
     Ok(())
@@ -97,7 +87,7 @@ pub async fn open_historical_file(
     path: PathBuf,
     select_encounter: Option<u64>,
     handle: State<'_, ServiceHandle>,
-) -> Result<(), String> {
+) -> Result<bool, String> {
     handle.open_historical_file(path, select_encounter).await
 }
 
@@ -311,8 +301,129 @@ pub async fn get_pull_history_overview(
 }
 
 #[tauri::command]
-pub async fn start_history_backfill(handle: State<'_, ServiceHandle>) -> Result<(), String> {
-    handle.start_history_backfill().await
+pub async fn start_history_backfill(
+    stale_only: bool,
+    handle: State<'_, ServiceHandle>,
+) -> Result<(), String> {
+    handle.start_history_backfill(stale_only).await
+}
+
+#[tauri::command]
+pub async fn cancel_history_backfill(handle: State<'_, ServiceHandle>) -> Result<(), String> {
+    handle.cancel_history_backfill();
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_history_status(
+    handle: State<'_, ServiceHandle>,
+) -> Result<baras_types::history::HistoryStatus, String> {
+    Ok(handle.history_status().await)
+}
+
+#[tauri::command]
+pub async fn get_library(
+    handle: State<'_, ServiceHandle>,
+) -> Result<Vec<baras_types::history::LibraryRow>, String> {
+    Ok(handle.library().await)
+}
+
+#[tauri::command]
+pub async fn set_log_favorite(
+    filename: String,
+    favorite: bool,
+    handle: State<'_, ServiceHandle>,
+) -> Result<bool, String> {
+    Ok(handle.set_log_favorite(filename, favorite).await)
+}
+
+#[tauri::command]
+pub fn set_log_meta(
+    filename: String,
+    tags: Vec<String>,
+    note: String,
+    handle: State<'_, ServiceHandle>,
+) -> Result<bool, String> {
+    Ok(handle.set_log_meta(&filename, tags, &note))
+}
+
+#[tauri::command]
+pub async fn get_retained_content(
+    handle: State<'_, ServiceHandle>,
+) -> Result<Vec<baras_types::history::ContentTag>, String> {
+    Ok(handle.retained_content().await)
+}
+
+#[tauri::command]
+pub async fn set_retained_content(
+    retain: Vec<baras_types::history::ContentTag>,
+    handle: State<'_, ServiceHandle>,
+) -> Result<bool, String> {
+    Ok(handle.set_retained_content(retain).await)
+}
+
+#[tauri::command]
+pub async fn preview_log_cleanup(
+    handle: State<'_, ServiceHandle>,
+) -> Result<baras_types::history::CleanupPlan, String> {
+    Ok(handle.preview_log_cleanup().await)
+}
+
+#[tauri::command]
+pub async fn run_log_cleanup(
+    handle: State<'_, ServiceHandle>,
+) -> Result<baras_types::history::CleanupReport, String> {
+    Ok(handle.run_log_cleanup().await)
+}
+
+#[tauri::command]
+pub async fn restore_log(filename: String, handle: State<'_, ServiceHandle>) -> Result<String, String> {
+    handle.restore_log(filename).await.map(|p| p.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub async fn delete_log(
+    path: std::path::PathBuf,
+    handle: State<'_, ServiceHandle>,
+) -> Result<baras_types::history::DeleteReport, String> {
+    Ok(handle.delete_log(path).await)
+}
+
+#[tauri::command]
+pub async fn set_log_parsely_link(
+    path: std::path::PathBuf,
+    link: String,
+    visibility: u8,
+    handle: State<'_, ServiceHandle>,
+) -> Result<bool, String> {
+    Ok(handle.set_log_parsely_link(path, link, visibility).await)
+}
+
+#[tauri::command]
+pub async fn get_operation_runs(
+    filter: baras_types::history::PullFilter,
+    handle: State<'_, ServiceHandle>,
+) -> Result<baras_types::history::RunList, String> {
+    Ok(handle.operation_runs(filter).await)
+}
+
+#[tauri::command]
+pub async fn get_operation_run(
+    filename: String,
+    start_ms: i64,
+    handle: State<'_, ServiceHandle>,
+) -> Result<Option<baras_types::history::RunDetail>, String> {
+    Ok(handle.operation_run(filename, start_ms).await)
+}
+
+#[tauri::command]
+pub fn set_run_meta(
+    filename: String,
+    start_ms: i64,
+    meta: baras_types::history::RunMeta,
+    handle: State<'_, ServiceHandle>,
+) -> Result<bool, String> {
+    Ok(handle.set_run_meta(&filename, start_ms, meta))
 }
 
 #[tauri::command]
@@ -336,9 +447,10 @@ pub async fn get_encounter_history(
 pub async fn set_encounter_parsely_link(
     encounter_id: u64,
     link: String,
+    visibility: u8,
     handle: State<'_, ServiceHandle>,
 ) -> Result<bool, String> {
-    Ok(handle.set_encounter_parsely_link(encounter_id, link).await)
+    Ok(handle.set_encounter_parsely_link(encounter_id, link, visibility).await)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

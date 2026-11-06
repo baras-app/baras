@@ -963,7 +963,7 @@ impl OverlayManager {
             let _ = tx.send(OverlayCommand::SetMoveMode(new_mode)).await;
         }
 
-        // When locking (move_mode = false), save all positions
+        // When locking (move_mode = false), persist positions that actually changed
         if !new_mode {
             let mut positions = Vec::new();
             for tx in &txs {
@@ -973,12 +973,19 @@ impl OverlayManager {
             }
 
             let mut config = service.config().await;
+            let mut changed = false;
             for pos in positions {
-                config
-                    .overlay_settings
-                    .set_position(pos.kind.config_key(), Self::position_to_config(&pos));
+                let key = pos.kind.config_key();
+                let new_pos = Self::position_to_config(&pos);
+                if config.overlay_settings.get_position(key) != new_pos {
+                    config.overlay_settings.set_position(key, new_pos);
+                    changed = true;
+                }
             }
-            service.update_config(config).await?;
+            if changed {
+                service.update_config(config).await?;
+                service.emit_overlay_positions_changed();
+            }
         }
 
         // Notify frontend to update UI buttons

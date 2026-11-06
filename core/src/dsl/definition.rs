@@ -70,6 +70,11 @@ pub struct AreaConfig {
     /// threshold rather than the first boss pull (e.g., Dxun, Gods, R-4).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timer_start: Option<OperationTimerStart>,
+
+    /// Timed-run achievement limit in minutes. Only the operation's highest
+    /// difficulty has a timed run (R-4's is Veteran because it has no Master).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timed_run_minutes: Option<u32>,
 }
 
 /// Region-based operation timer start. Fires once per area visit when any
@@ -468,6 +473,11 @@ pub struct BossEncounterDefinition {
     #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
     pub is_final_boss: bool,
 
+    /// Secret / bonus boss (Hateful Entity, Dreadful Entity): not part of a
+    /// clear, not counted in the operation's boss total.
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
+    pub is_optional_boss: bool,
+
     #[serde(skip)]
     pub all_npc_ids: HashSet<i64>,
 }
@@ -499,6 +509,7 @@ impl Default for BossEncounterDefinition {
             victory_trigger_difficulties: Vec::new(),
             victory_conditions: Vec::new(),
             is_final_boss: false,
+            is_optional_boss: false,
             all_npc_ids: HashSet::new(),
         }
     }

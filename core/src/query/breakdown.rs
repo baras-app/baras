@@ -26,11 +26,14 @@ impl EncounterQuery<'_> {
     /// Query ability breakdown for any data tab.
     /// - entity_name: For outgoing tabs (Damage/Healing), filters by source_name.
     ///                For incoming tabs (DamageTaken/HealingTaken), filters by target_name.
+    /// - entity_id: When set, filters by the entity's instance id instead of its name
+    ///              (one NPC spawn among several with the same name).
     /// - entity_types: Filters by source_entity_type for outgoing, target_entity_type for incoming.
     pub async fn query_breakdown(
         &self,
         tab: DataTab,
         entity_name: Option<&str>,
+        entity_id: Option<i64>,
         time_range: Option<&TimeRange>,
         entity_types: Option<&[&str]>,
         breakdown_mode: Option<&BreakdownMode>,
@@ -47,6 +50,7 @@ impl EncounterQuery<'_> {
         // For incoming (DamageTaken/HealingTaken): filter/group by target, breakdown by source
         let (
             entity_col,
+            entity_id_col,
             entity_type_col,
             breakdown_name_col,
             breakdown_class_col,
@@ -54,6 +58,7 @@ impl EncounterQuery<'_> {
         ) = if is_outgoing {
             (
                 "source_name",
+                "source_id",
                 "source_entity_type",
                 "target_name",
                 "target_class_id",
@@ -62,11 +67,19 @@ impl EncounterQuery<'_> {
         } else {
             (
                 "target_name",
+                "target_id",
                 "target_entity_type",
                 "source_name",
                 "source_class_id",
                 "source_id",
             )
+        };
+
+        // Instance id wins over name: it pins the query to one spawn.
+        let entity_filter = match (entity_id, entity_name) {
+            (Some(id), _) => Some(format!("{entity_id_col} = {id}")),
+            (None, Some(n)) => Some(format!("{entity_col} = '{}'", sql_escape(n))),
+            (None, None) => None,
         };
 
         // Build WHERE conditions
@@ -82,8 +95,8 @@ impl EncounterQuery<'_> {
         if tab == DataTab::Damage {
             conditions.push("source_id != target_id".to_string());
         }
-        if let Some(n) = entity_name {
-            conditions.push(format!("{} = '{}'", entity_col, sql_escape(n)));
+        if let Some(f) = &entity_filter {
+            conditions.push(f.clone());
         }
         if let Some(tr) = time_range {
             conditions.push(tr.sql_filter());
@@ -161,12 +174,8 @@ impl EncounterQuery<'_> {
                 "effect_id = {}",
                 effect_id::ABILITYACTIVATE
             )];
-            if let Some(n) = entity_name {
-                act_conditions.push(format!(
-                    "{} = '{}'",
-                    entity_col,
-                    sql_escape(n)
-                ));
+            if let Some(f) = &entity_filter {
+                act_conditions.push(f.clone());
             }
             if let Some(tr) = time_range {
                 act_conditions.push(tr.sql_filter());
@@ -778,13 +787,15 @@ impl EncounterQuery<'_> {
             WITH healing AS (
                 SELECT {name_col}, {id_col}, MIN({type_col}) as entity_type,
                        SUM({value_col}) as heal_total,
-                       COUNT(DISTINCT ability_id) as abilities_used
+                       COUNT(DISTINCT ability_id) as abilities_used,
+                       MIN(combat_time_secs) as first_hit
                 FROM events {filter}
                 GROUP BY {name_col}, {id_col}
             ),
             shielding AS (
                 SELECT {name_col}, {id_col}, MIN({type_col}) as entity_type,
-                       SUM(dmg_absorbed) as shield_total
+                       SUM(dmg_absorbed) as shield_total,
+                       MIN(combat_time_secs) as first_hit
                 FROM events
                 WHERE dmg_absorbed > 0 AND cardinality(active_shields) > 0 {time_filter}
                 GROUP BY {name_col}, {id_col}
@@ -793,7 +804,8 @@ impl EncounterQuery<'_> {
                    COALESCE(h.{id_col}, s.{id_col}) as {id_col},
                    COALESCE(h.entity_type, s.entity_type) as entity_type,
                    COALESCE(h.heal_total, 0) + COALESCE(s.shield_total, 0) as total_value,
-                   COALESCE(h.abilities_used, 0) as abilities_used
+                   COALESCE(h.abilities_used, 0) as abilities_used,
+                   LEAST(h.first_hit, s.first_hit) as first_hit_secs
             FROM healing h
             FULL OUTER JOIN shielding s
               ON h.{name_col} = s.{name_col} AND h.{id_col} = s.{id_col}
@@ -813,7 +825,8 @@ impl EncounterQuery<'_> {
             WITH healing AS (
                 SELECT {name_col}, {id_col}, MIN({type_col}) as entity_type,
                        SUM({value_col}) as heal_total,
-                       COUNT(DISTINCT ability_id) as abilities_used
+                       COUNT(DISTINCT ability_id) as abilities_used,
+                       MIN(combat_time_secs) as first_hit
                 FROM events {filter}
                 GROUP BY {name_col}, {id_col}
             ),
@@ -843,7 +856,8 @@ impl EncounterQuery<'_> {
                    COALESCE(h.{id_col}, s.{id_col}) as {id_col},
                    COALESCE(h.entity_type, s.entity_type) as entity_type,
                    COALESCE(h.heal_total, 0) + COALESCE(s.shield_total, 0) as total_value,
-                   COALESCE(h.abilities_used, 0) as abilities_used
+                   COALESCE(h.abilities_used, 0) as abilities_used,
+                   h.first_hit as first_hit_secs
             FROM healing h
             FULL OUTER JOIN shielding s
               ON h.{id_col} = s.{id_col}
@@ -855,7 +869,8 @@ impl EncounterQuery<'_> {
                 r#"
             SELECT {name_col}, {id_col}, MIN({type_col}) as entity_type,
                    SUM({value_col}) as total_value,
-                   COUNT(DISTINCT ability_id) as abilities_used
+                   COUNT(DISTINCT ability_id) as abilities_used,
+                   MIN(combat_time_secs) as first_hit_secs
             FROM events {filter}
             GROUP BY {name_col}, {id_col}
             ORDER BY total_value DESC
@@ -879,7 +894,8 @@ impl EncounterQuery<'_> {
             r#"
             SELECT source_name, source_id, MIN(source_entity_type) as entity_type,
                    CAST(SUM(dmg_amount + heal_amount) AS DOUBLE) as total_value,
-                   COUNT(DISTINCT ability_id) as abilities_used
+                   COUNT(DISTINCT ability_id) as abilities_used,
+                   MIN(combat_time_secs) as first_hit_secs
             FROM events
             WHERE source_id != 0
               AND source_entity_type IN ('Player', 'Companion', 'Npc')
@@ -903,6 +919,7 @@ impl EncounterQuery<'_> {
             let entity_types = col_strings(batch, 2)?;
             let totals = col_f64(batch, 3)?;
             let abilities = col_i64(batch, 4)?;
+            let first_hits = col_opt_f32(batch, 5)?;
 
             for i in 0..batch.num_rows() {
                 results.push(EntityBreakdown {
@@ -911,6 +928,7 @@ impl EncounterQuery<'_> {
                     entity_type: entity_types[i].clone(),
                     total_value: totals[i],
                     abilities_used: abilities[i],
+                    first_hit_secs: first_hits[i],
                 });
             }
         }
@@ -921,10 +939,16 @@ impl EncounterQuery<'_> {
     pub async fn query_damage_taken_summary(
         &self,
         target_name: &str,
+        target_id: Option<i64>,
         time_range: Option<&TimeRange>,
         entity_types: Option<&[&str]>,
     ) -> Result<DamageTakenSummary, String> {
         let name = sql_escape(target_name);
+        // Instance id pins the summary to one NPC spawn; players fall back to name.
+        let target_filter = match target_id {
+            Some(id) => format!("target_id = {id}"),
+            None => format!("target_name = '{name}'"),
+        };
         let time_filter = time_range
             .map(|tr| format!("AND {}", tr.sql_filter()))
             .unwrap_or_default();
@@ -954,7 +978,7 @@ impl EncounterQuery<'_> {
                 SUM(CASE WHEN defense_type_id = {shield} THEN 1 ELSE 0 END) as shielded_count,
                 SUM(CASE WHEN dmg_amount > 0 THEN 1 ELSE 0 END) as hit_count
             FROM events
-            WHERE target_name = '{name}'
+            WHERE {target_filter}
               AND (dmg_amount > 0 OR defense_type_id IN ({miss_ids}))
               {time_filter} {entity_filter}
             "#,
@@ -984,16 +1008,17 @@ impl EncounterQuery<'_> {
         }
 
         // Absorbed self vs given: use UNNEST on active_shields, credit position=1
-        let target_id_batches = self
-            .sql(&format!(
-                "SELECT DISTINCT source_id FROM events WHERE source_name = '{name}' LIMIT 1"
-            ))
-            .await?;
-
-        let target_id = target_id_batches
-            .first()
-            .and_then(|b| if b.num_rows() > 0 { Some(col_i64(b, 0).ok()?[0]) } else { None })
-            .unwrap_or(0);
+        let target_id = match target_id {
+            Some(id) => id,
+            None => self
+                .sql(&format!(
+                    "SELECT DISTINCT source_id FROM events WHERE source_name = '{name}' LIMIT 1"
+                ))
+                .await?
+                .first()
+                .and_then(|b| if b.num_rows() > 0 { Some(col_i64(b, 0).ok()?[0]) } else { None })
+                .unwrap_or(0),
+        };
 
         let absorbed_batches = self
             .sql(&format!(
@@ -1004,7 +1029,7 @@ impl EncounterQuery<'_> {
             FROM (
                 SELECT dmg_absorbed, UNNEST(active_shields) as shield
                 FROM events
-                WHERE target_name = '{name}'
+                WHERE {target_filter}
                   AND dmg_absorbed > 0 AND cardinality(active_shields) > 0
                   {time_filter} {entity_filter}
             )
@@ -1033,7 +1058,7 @@ impl EncounterQuery<'_> {
             .sql(&format!(
                 r#"SELECT ability_id, SUM(CAST(dmg_amount AS DOUBLE)) as total
                 FROM events
-                WHERE target_name = '{name}' AND dmg_amount > 0
+                WHERE {target_filter} AND dmg_amount > 0
                   {time_filter} {entity_filter}
                 GROUP BY ability_id"#,
             ))

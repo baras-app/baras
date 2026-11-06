@@ -4,6 +4,7 @@
 //! - SharedState: Arc-wrapped state readable by Tauri commands (in crate::state)
 //! - ServiceHandle: For sending commands + accessing shared state
 //! - CombatService: Background task that processes commands and updates shared state
+mod cleanup;
 mod directory;
 mod handler;
 mod history;
@@ -1412,28 +1413,18 @@ impl CombatService {
 
     /// Run the service event loop
     pub async fn run(mut self) {
-        // Auto-cleanup log files on startup based on user settings
-        {
-            let config = self.shared.config.read().await;
-            let delete_empty = config.auto_delete_empty_files;
-            let delete_small = config.auto_delete_small_files;
-            let retention = if config.auto_delete_old_files {
-                Some(config.log_retention_days)
-            } else {
-                None
-            };
-            drop(config);
-
-            if delete_empty || delete_small || retention.is_some() {
-                let mut index = self.shared.directory_index.write().await;
-                let (empty, small, old) = index.cleanup(delete_empty, delete_small, retention);
-                if empty > 0 || small > 0 || old > 0 {
-                    tracing::info!(empty_deleted = empty, small_deleted = small, old_deleted = old, "Startup log cleanup");
-                }
-            }
-        }
-
         self.start_watcher().await;
+
+        // Scan new and out-of-date logs into the history store (worker subprocess, off the loop)
+        if self.shared.config.read().await.auto_scan_history {
+            let shared = self.shared.clone();
+            let app = self.app_handle.clone();
+            tokio::spawn(async move {
+                if let Err(e) = history::run_backfill(shared, app, true).await {
+                    tracing::warn!(error = %e, "Startup history scan did not start");
+                }
+            });
+        }
 
         // Operation timer tick interval - 1 second precision
         let mut op_timer_interval = tokio::time::interval(std::time::Duration::from_secs(1));
@@ -1496,7 +1487,8 @@ impl CombatService {
                             }
                             self.emit_operation_timer_tick();
                             // Parse is awaited inline, so "FileLoaded" has fired by now
-                            self.start_tailing(path).await;
+                            self.start_tailing(path.clone()).await;
+                            self.shared.pending_opens.lock().unwrap_or_else(|p| p.into_inner()).remove(&path);
                             if let Some(id) = select_encounter {
                                 let _ = self.app_handle.emit("select-encounter", id);
                             }
@@ -2004,6 +1996,8 @@ impl CombatService {
                     });
                     let _ = app_handle.emit("log-files-changed", ());
                     info!("Background index backfill complete");
+                    // The index is complete and the live log known: apply the cleanup rules
+                    rt.block_on(cleanup::run(&shared, &app_handle));
                 }
                 Err(e) => {
                     error!(error = %e, "Background index backfill failed");
@@ -2497,9 +2491,6 @@ impl CombatService {
                             let _ = trigger_tx.try_send(MetricsTrigger::CombatStarted);
                             let _ = session_event_tx.send(SessionEvent::CombatStarted);
                         }
-                        
-                        // Notify frontend to refresh session info (after in_combat is set)
-                        let _ = self.app_handle.emit("session-updated", "FileLoaded");
                     }
                     Err(e) => {
                         error!(error = %e, "Subprocess output parse failed");
@@ -2562,6 +2553,11 @@ impl CombatService {
             elapsed_ms = timer.elapsed().as_millis() as u64,
             "Parse completed"
         );
+
+        // Re-parsed fights get their recorded Parsely links back, then the
+        // frontend refreshes session info (in_combat is already set above)
+        history::restore_parsely_links(&session, &self.shared).await;
+        let _ = self.app_handle.emit("session-updated", "FileLoaded");
 
         // Check if this live session is actually not-live (game closed, no player,
         // or newest log file is blank). This catches the case where the app starts
