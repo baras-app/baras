@@ -160,7 +160,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
                         }
                     },
                 }
-                span { class: "library-retain-title", "Always keep logs containing" }
+                span { class: "library-retain-title", "Never delete logs containing" }
                 div { class: "library-retain-tags",
                     for tag in ContentTag::ALL {
                         {
@@ -175,7 +175,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
                     }
                 }
                 p { class: "hint",
-                    "Runs after startup. Favorites, the live log and today's logs are never touched; pulls from removed logs stay in the statistics."
+                    "Archiving compresses a log into cold storage: it stays in the statistics, scans still cover it, and the table can restore it. Deleting removes the file for good, from the directory or the archive; its pulls stay in the statistics. Logs with the content above are archived once old enough but never deleted. Favorites, the live log and today's logs are never touched. Runs after startup."
                 }
                 if let Some(p) = p && !p.is_empty() {
                     div { class: "history-pick",
@@ -199,7 +199,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
             div { class: "run-section",
                 h4 { "Historical data" }
                 p { class: "hint",
-                    "Boss Statistics and Raid Summaries are built from scanned logs. Rebuilding re-parses every log; favorites, tags and notes are kept."
+                    "Boss Statistics and Raid Summaries are built from scanned logs, archived ones included. Rebuilding re-parses every log; favorites, tags and notes are kept."
                 }
                 label { class: "history-toggle",
                     input {
@@ -241,7 +241,7 @@ pub fn CleanupPanel(backfill: Backfill, status: Resource<HistoryStatus>, on_chan
                         }
                         button {
                             class: "btn btn-lg",
-                            title: "Re-parse every log in the directory and recompute the statistics",
+                            title: "Re-parse every log in the directory and the archive, and recompute the statistics",
                             onclick: move |_| backfill.start(false),
                             i { class: "fa-solid fa-database" }
                             " Rebuild all"

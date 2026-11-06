@@ -7,7 +7,8 @@
 //! dangling and nothing precious (favorites, the live log) is ever touched.
 //!
 //! Removal is two-step: `plan` is a pure dry run of the cleanup rules over
-//! the indexes, then `execute` acts on exactly what the plan listed.
+//! the indexes, then the service acts on exactly what the plan listed:
+//! `compress_log` + `commit` per archive, `delete` for the rest.
 
 mod archive;
 
@@ -15,13 +16,11 @@ use std::path::{Path, PathBuf};
 
 use chrono::NaiveDate;
 
-use baras_types::history::{
-    CleanupCandidate, CleanupPlan, CleanupReport, ContentTag, DeleteReport, LogCleanup, PullRow,
-};
+use baras_types::history::{CleanupCandidate, CleanupPlan, ContentTag, DeleteReport, LogCleanup, PullRow};
 
-pub use archive::{ArchivedLog, archive, archive_dir, archived_logs, restore};
+pub use archive::{ArchivedLog, Compressed, archive_dir, archived_log, archived_logs, commit, compress_log, restore};
 
-use crate::context::{DirectoryIndex, FileAreaEntry, FileAreaIndex, LogAreaCache};
+use crate::context::{DirectoryIndex, FileAreaEntry, FileAreaIndex, LogAreaCache, parse_log_filename};
 use crate::game_data::{Difficulty, is_pvp_area};
 use crate::history::{DUMMY_GROUP, LibraryMeta, PullIndex, history_file_for};
 use crate::storage::data_dir;
@@ -58,36 +57,26 @@ fn area_tag(area: &FileAreaEntry) -> ContentTag {
     }
 }
 
-/// True when the log must be kept under `retain`. A non-empty log that has
-/// not been area-indexed yet is unknown, so it is kept until it has been.
-fn is_retained(tags: &[ContentTag], indexed: bool, size: u64, retain: &[ContentTag]) -> bool {
-    if retain.is_empty() {
-        return false;
-    }
-    if !indexed && size > 0 {
-        return true;
-    }
-    tags.iter().any(|t| retain.contains(t))
-}
-
 /// Read-only view of every index a plan joins.
 pub struct LibraryView<'a> {
     pub directory: &'a DirectoryIndex,
     pub areas: &'a LogAreaCache,
+    pub archived: &'a [ArchivedLog],
     pub pulls: &'a PullIndex,
     pub meta: &'a LibraryMeta,
     /// The log being tailed, never a candidate
     pub live: Option<&'a Path>,
 }
 
+#[derive(PartialEq)]
 enum Action {
     Archive,
     Delete,
 }
 
-/// Which rule, if any, a log of this age and size falls under. Deletion wins
-/// over archival; the size rule leaves today's logs alone since the game may
-/// still come back to one.
+/// Which rule, if any, a raw log of this age and size falls under. Deletion
+/// wins over archival; the size rule leaves today's logs alone since the game
+/// may still come back to one.
 fn rule_for(rules: &LogCleanup, age_days: i64, size: u64) -> Option<Action> {
     if rules.delete_after_days.is_some_and(|d| age_days > i64::from(d)) {
         return Some(Action::Delete);
@@ -95,73 +84,96 @@ fn rule_for(rules: &LogCleanup, age_days: i64, size: u64) -> Option<Action> {
     if rules.delete_smaller_than > 0 && size < rules.delete_smaller_than && age_days >= 1 {
         return Some(Action::Delete);
     }
-    if rules.archive_after_days.is_some_and(|d| age_days > i64::from(d)) {
+    if archive_due(rules, age_days) {
         return Some(Action::Archive);
     }
     None
 }
 
+fn archive_due(rules: &LogCleanup, age_days: i64) -> bool {
+    rules.archive_after_days.is_some_and(|d| age_days > i64::from(d))
+}
+
+/// Retention only shields a log from deletion: a retained log that is due
+/// for deletion is archived instead when the archive rule covers it, and
+/// kept raw otherwise. A non-empty log that has not been area-indexed yet is
+/// unknown, so it is left alone until it has been (an archive can no longer
+/// be indexed). Returns None when the log is kept.
+fn retained_action(
+    action: Action,
+    tags: &[ContentTag],
+    indexed: bool,
+    size: u64,
+    rules: &LogCleanup,
+    age_days: i64,
+    retain: &[ContentTag],
+) -> Option<Action> {
+    if retain.is_empty() {
+        return Some(action);
+    }
+    if !indexed && size > 0 {
+        return None;
+    }
+    if action == Action::Archive || !tags.iter().any(|t| retain.contains(t)) {
+        return Some(action);
+    }
+    archive_due(rules, age_days).then_some(Action::Archive)
+}
+
 /// Dry run: what `rules` would archive and delete today. The live log,
-/// favorites and retained content are counted, not listed.
+/// favorites and kept content are counted, not listed. Archived logs fall
+/// under the delete-after rule only; their size is already paid for.
 pub fn plan(view: &LibraryView<'_>, rules: &LogCleanup, today: NaiveDate) -> CleanupPlan {
     let mut out = CleanupPlan::default();
-    for entry in view.directory.entries() {
-        let age = today.signed_duration_since(entry.date).num_days();
-        let Some(action) = rule_for(rules, age, entry.file_size) else {
-            continue;
-        };
-        if view.live.is_some_and(|l| l == entry.path) {
+    let mut consider = |path: &Path, filename: &str, date: NaiveDate, size: u64, action: Action, age: i64| {
+        if view.live.is_some_and(|l| l == path) {
             out.skipped_live += 1;
-            continue;
+            return;
         }
-        if view.meta.is_favorite(&entry.filename) {
+        if view.meta.is_favorite(filename) {
             out.skipped_favorites += 1;
-            continue;
+            return;
         }
-        let area_index = view.areas.get(&entry.path);
-        let content = content_tags(area_index, view.pulls.rows_for(&entry.filename));
-        if is_retained(&content, area_index.is_some(), entry.file_size, &view.meta.retain) {
+        let area_index = view.areas.get(path);
+        let content = content_tags(area_index, view.pulls.rows_for(filename));
+        let Some(action) = retained_action(action, &content, area_index.is_some(), size, rules, age, &view.meta.retain) else {
             out.kept += 1;
-            continue;
-        }
+            return;
+        };
         let candidate = CleanupCandidate {
-            path: entry.path.to_string_lossy().into_owned(),
-            filename: entry.filename.clone(),
-            date: entry.date.to_string(),
-            size: entry.file_size,
+            path: path.to_string_lossy().into_owned(),
+            filename: filename.to_owned(),
+            date: date.to_string(),
+            size,
             content,
         };
         match action {
             Action::Archive => {
-                out.archive_bytes += entry.file_size;
+                out.archive_bytes += size;
                 out.archive.push(candidate);
             }
             Action::Delete => {
-                out.delete_bytes += entry.file_size;
+                out.delete_bytes += size;
                 out.delete.push(candidate);
             }
+        }
+    };
+    for entry in view.directory.entries() {
+        let age = today.signed_duration_since(entry.date).num_days();
+        if let Some(action) = rule_for(rules, age, entry.file_size) {
+            consider(&entry.path, &entry.filename, entry.date, entry.file_size, action, age);
+        }
+    }
+    for a in view.archived {
+        let Some((date, _)) = parse_log_filename(&a.filename) else { continue };
+        let age = today.signed_duration_since(date).num_days();
+        if rules.delete_after_days.is_some_and(|d| age > i64::from(d)) {
+            consider(&a.path, &a.filename, date, a.compressed_size, Action::Delete, age);
         }
     }
     out.archive.sort_by(|a, b| b.size.cmp(&a.size));
     out.delete.sort_by(|a, b| b.size.cmp(&a.size));
     out
-}
-
-/// Carry out a plan: archive first, then delete. History rows always stay,
-/// so pulls from removed logs remain in the statistics as "log missing".
-pub fn execute(lib: &mut LibraryMut<'_>, plan: &CleanupPlan) -> CleanupReport {
-    let paths = |c: &[CleanupCandidate]| c.iter().map(|f| PathBuf::from(&f.path)).collect::<Vec<_>>();
-    let archived = archive(lib, &paths(&plan.archive));
-    let deleted = delete(lib, &paths(&plan.delete), true);
-    let mut failed = archived.failed;
-    failed.extend(deleted.failed);
-    CleanupReport {
-        archived: archived.archived,
-        deleted: deleted.deleted,
-        bytes_freed: deleted.bytes_freed + archived.bytes_before.saturating_sub(archived.bytes_after),
-        bytes_archived: archived.bytes_after,
-        failed,
-    }
 }
 
 /// Everything that must be touched to delete logs. Mutable so the indexes

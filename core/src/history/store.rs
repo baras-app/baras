@@ -68,9 +68,12 @@ impl HistoryHeader {
     /// True when this file was written by the current store version from the
     /// log exactly as it is on disk now.
     pub fn is_current(&self, log_meta: &std::fs::Metadata) -> bool {
-        self.version == HISTORY_VERSION
-            && self.source_len == log_meta.len()
-            && self.source_mtime == mtime_secs(log_meta)
+        self.matches(log_meta.len(), mtime_secs(log_meta))
+    }
+
+    /// Current store version, written from a log of this length and mtime.
+    pub fn matches(&self, len: u64, mtime: i64) -> bool {
+        self.version == HISTORY_VERSION && self.source_len == len && self.source_mtime == mtime
     }
 }
 

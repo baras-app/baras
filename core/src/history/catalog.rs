@@ -25,25 +25,29 @@ impl CatalogBoss {
     }
 }
 
-/// Timed-run achievement: the operation's highest difficulty only, with the
-/// limit from `[area] timed_run_minutes`. Where the clock starts is the
-/// `[area.timer_start]` region, or the first pull when none was logged.
+/// Timed-run achievement with the limit from `[area] timed_run_minutes`. It
+/// applies at the `[area.timer_start]` difficulties when that region names
+/// them, else at the operation's highest difficulty. Where the clock starts is
+/// that region, or the first pull when none was logged.
 #[derive(Debug, Clone)]
 pub struct TimerRule {
-    /// Config key of the highest difficulty, e.g. "master"
-    tier: String,
+    /// Config keys ("master", "veteran_8")
+    tiers: Vec<String>,
     pub limit_secs: Option<u32>,
 }
 
 impl TimerRule {
-    pub fn applies_to(&self, tier: &str, _size: u8) -> bool {
-        self.tier.eq_ignore_ascii_case(tier)
+    pub fn applies_to(&self, tier: &str, size: u8) -> bool {
+        self.tiers.iter().any(|k| key_matches(k, tier, size))
     }
 }
 
-/// "master" if any boss lists it, else "veteran", else "story"
+/// "master" if any required boss lists it, else "veteran", else "story".
+/// Optional encounters are skipped: R4's Hallway lists a master mode the
+/// operation does not have.
 fn highest_tier(bosses: &[CatalogBoss]) -> String {
-    let has = |t: &str| bosses.iter().any(|b| b.difficulties.is_empty() || b.difficulties.iter().any(|k| k.split('_').next() == Some(t)));
+    let required = || bosses.iter().filter(|b| !b.optional);
+    let has = |t: &str| required().any(|b| b.difficulties.is_empty() || b.difficulties.iter().any(|k| k.split('_').next() == Some(t)));
     ["master", "veteran", "story"].into_iter().find(|t| has(t)).unwrap_or("master").to_string()
 }
 
@@ -120,9 +124,13 @@ impl AreaCatalog {
                     difficulties: b.difficulties,
                 })
                 .collect();
-            let timer = area
-                .timed_run_minutes
-                .map(|m| TimerRule { tier: highest_tier(&bosses), limit_secs: Some(m * 60) });
+            let timer = area.timed_run_minutes.map(|m| {
+                let tiers = match area.timer_start.as_ref().map(|t| &t.difficulties) {
+                    Some(d) if !d.is_empty() => d.clone(),
+                    _ => vec![highest_tier(&bosses)],
+                };
+                TimerRule { tiers, limit_secs: Some(m * 60) }
+            });
             areas.insert(
                 area_id,
                 AreaDef {

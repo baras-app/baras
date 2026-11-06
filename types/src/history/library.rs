@@ -53,8 +53,9 @@ impl ContentTag {
 }
 
 /// Automatic log housekeeping, run once the directory index is loaded at
-/// startup and on demand from Log Management. Favorites, the live log and
-/// logs holding retained content (`LibraryMeta::retain`) are never touched.
+/// startup and on demand from Log Management. Favorites and the live log are
+/// never touched; logs holding retained content (`LibraryMeta::retain`) are
+/// archived but never deleted. The delete-after rule also covers archives.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LogCleanup {
     /// Delete logs smaller than this many bytes (not from today); 0 = off
@@ -99,7 +100,8 @@ pub struct CleanupPlan {
     pub delete: Vec<CleanupCandidate>,
     pub archive_bytes: u64,
     pub delete_bytes: u64,
-    /// Logs a rule matched but that hold retained content (or are not yet classified)
+    /// Logs a delete rule matched but that hold retained content with no
+    /// archive rule to fall back on, or that are not yet classified
     pub kept: u32,
     pub skipped_favorites: u32,
     pub skipped_live: u32,

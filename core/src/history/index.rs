@@ -334,20 +334,21 @@ fn tags_at(ranges: &[(i64, i64, Vec<String>)], start_ms: i64) -> &[String] {
         .map_or(&[], |(_, _, t)| t.as_slice())
 }
 
-/// Old store version, or the log on disk no longer matches the header. A
-/// missing log is not stale: there is nothing to re-scan from.
+/// Old store version, or the log (in the directory or the archive) no longer
+/// matches the header. A log that is gone from both is not stale: there is
+/// nothing to re-scan from.
 fn is_stale(history: &LogHistory, log_path: &Path) -> bool {
     if history.version < HISTORY_VERSION {
         return true;
     }
+    let header = HistoryHeader {
+        version: history.version,
+        source_len: history.source_len,
+        source_mtime: history.source_mtime,
+    };
     match std::fs::metadata(log_path) {
-        Ok(meta) => !HistoryHeader {
-            version: history.version,
-            source_len: history.source_len,
-            source_mtime: history.source_mtime,
-        }
-        .is_current(&meta),
-        Err(_) => false,
+        Ok(meta) => !header.is_current(&meta),
+        Err(_) => crate::library::archived_log(&history.filename).is_some_and(|a| !a.history_current(&header)),
     }
 }
 

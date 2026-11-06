@@ -698,7 +698,7 @@ impl ServiceHandle {
         } else {
             None
         };
-        let logs: Vec<String> = {
+        let mut logs: Vec<String> = {
             let directory = self.shared.directory_index.read().await;
             directory
                 .entries()
@@ -707,6 +707,7 @@ impl ServiceHandle {
                 .map(|e| e.filename.clone())
                 .collect()
         };
+        logs.extend(baras_core::library::archived_logs().into_iter().map(|a| a.filename));
         self.with_pull_index(move |index| {
             let mut status = index.status(live.as_deref());
             status.unscanned = logs.iter().filter(|f| index.log_info(f).is_none()).count() as u32;

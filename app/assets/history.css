@@ -419,6 +419,13 @@
   flex: 1;
   min-height: 0;
   gap: var(--space-sm);
+  /* With the settings open the fixed rows can outgrow a short window;
+     the pane scrolls rather than squeezing the table out of reach */
+  overflow-y: auto;
+}
+
+.library > .pull-history-table-wrap {
+  min-height: 14em;
 }
 
 .library-actions {
