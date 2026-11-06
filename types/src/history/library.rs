@@ -209,6 +209,10 @@ pub struct LibraryRow {
     /// Every recorded pull is a training dummy parse
     pub dummy_only: bool,
     pub status: LogStatus,
+    /// Loaded in the session right now, whether tailed live or opened as a
+    /// historical log; pinned first and never deletable
+    #[serde(default)]
+    pub open: bool,
     pub favorite: bool,
     /// The user's own tags on this log
     pub tags: Vec<String>,
