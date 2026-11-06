@@ -28,15 +28,17 @@ pub fn game_version_at(day: &str) -> &'static str {
         .map_or("", |(_, v)| v)
 }
 
-/// Server codes from the AreaEntered trailer. The five merge-era servers are
-/// confirmed; Shae Vizla (APAC, 2023) and the PTS are not documented yet, so
-/// an unknown code is shown as-is until someone logs on it and reports it.
+/// Server codes from the AreaEntered trailer. An unknown code is shown as-is
+/// until someone logs on it and reports it.
 const SERVERS: &[(&str, &str)] = &[
     ("he3000", "Star Forge"),
     ("he3001", "Satele Shan"),
     ("he4000", "Darth Malgus"),
     ("he4001", "Tulak Hord"),
     ("he4002", "The Leviathan"),
+    ("he8000", "Shae Vizla"),
+    ("he600", "PTS"),
+    ("he605", "PTS"),
 ];
 
 /// Display name for a server code, e.g. `he3000` → "Star Forge". Unknown
