@@ -42,6 +42,24 @@ impl FileOpener {
         });
     }
 
+    /// Restore an archived log into the log directory, then open it.
+    pub fn restore_and_open(&self, filename: String, encounter: Option<u64>) {
+        let opener = *self;
+        let mut loading = self.loading;
+        let mut toast = self.toast;
+        spawn(async move {
+            // Hold the buttons while the archive inflates; `open` takes over the banner
+            loading.set(Some(filename.clone()));
+            match api::restore_log(&filename).await {
+                Ok(path) => opener.open(path, encounter),
+                Err(err) => {
+                    toast.show(format!("Restore failed: {err}"), ToastSeverity::Normal);
+                    loading.set(None);
+                }
+            }
+        });
+    }
+
     /// The backend finished parsing `path` (from the `active-file-changed` event).
     /// Safe to call from a JS callback: only writes when it is the file we wait on.
     pub fn loaded(&self, path: &str) {

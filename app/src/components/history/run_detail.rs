@@ -176,18 +176,7 @@ pub fn RunDetailView(
                     disabled: opener.busy(),
                     onclick: {
                         let filename = run.filename.clone();
-                        move |_| {
-                            let filename = filename.clone();
-                            spawn(async move {
-                                match api::restore_log(&filename).await {
-                                    Ok(path) => {
-                                        on_change.call(());
-                                        opener.open(path, None);
-                                    }
-                                    Err(err) => toast.show(format!("Restore failed: {err}"), ToastSeverity::Normal),
-                                }
-                            });
-                        }
+                        move |_| opener.restore_and_open(filename.clone(), None)
                     },
                     i { class: "fa-solid fa-box-open" }
                     " Restore & open"
@@ -387,6 +376,7 @@ pub fn RunDetailView(
                                 let (label, class) = result_badge(row, eu);
                                 let encounter_id = row.encounter_id;
                                 let path = row.path.clone();
+                                let archived = row.archived.then(|| row.filename.clone());
                                 rsx! {
                                     tr { key: "{row.start_ms}",
                                         td { {short_ts(&row.timestamp)} }
@@ -403,6 +393,14 @@ pub fn RunDetailView(
                                                     disabled: opener.busy(),
                                                     onclick: move |_| opener.open(path.clone(), Some(encounter_id)),
                                                     i { class: "fa-solid fa-eye" }
+                                                }
+                                            } else if let Some(filename) = archived {
+                                                button {
+                                                    class: "btn btn-xs btn-ghost",
+                                                    title: "The log is archived: restore it, then open this pull in Encounter Analysis",
+                                                    disabled: opener.busy(),
+                                                    onclick: move |_| opener.restore_and_open(filename.clone(), Some(encounter_id)),
+                                                    i { class: "fa-solid fa-box-open" }
                                                 }
                                             }
                                         }

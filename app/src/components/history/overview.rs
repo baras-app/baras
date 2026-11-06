@@ -391,6 +391,17 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                                                             },
                                                             i { class: "fa-solid fa-eye" }
                                                         }
+                                                    } else if row.archived {
+                                                        button {
+                                                            class: "btn btn-xs btn-ghost",
+                                                            title: "The log is archived: restore it, then open this pull in Encounter Analysis",
+                                                            disabled: opener.busy(),
+                                                            onclick: {
+                                                                let (filename, encounter_id) = (row.filename.clone(), row.encounter_id);
+                                                                move |_| opener.restore_and_open(filename.clone(), Some(encounter_id))
+                                                            },
+                                                            i { class: "fa-solid fa-box-open" }
+                                                        }
                                                     } else {
                                                         span { class: "pull-log-missing", title: "Log file no longer exists", "—" }
                                                     }

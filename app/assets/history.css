@@ -76,6 +76,12 @@
   gap: 1em;
 }
 
+/* The selection rail on Boss Statistics and Raid Summaries: a shade darker
+   than the shared panel gradient so it reads as a separate surface */
+.pull-history-body > .explorer-sidebar {
+  background: linear-gradient(180deg, #1f1f27 0%, #15151a 100%);
+}
+
 .pull-tree-count {
   margin-left: auto;
   font-size: 0.8em;
@@ -347,11 +353,12 @@
   gap: var(--space-sm);
 }
 
+/* Value boxes sit a shade below the page panels (between --bg-mid and --bg-dark) */
 .history-card {
   flex: 1 1 130px;
   min-width: 0;
   padding: 0.6em 0.9em;
-  background: var(--bg-mid);
+  background: #1e1e26;
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
 }
