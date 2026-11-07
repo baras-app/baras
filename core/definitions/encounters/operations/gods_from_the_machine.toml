@@ -2445,7 +2445,7 @@ name = "Gravitic Shockwave"
 duration_secs = 20.0
 color = [255, 128, 0, 255]
 icon_ability_id = 4132991194366212
-difficulties = ["story", "veteran", "master"]
+difficulties = ["master"]
 
 [boss.timer.trigger]
 type = "damage_taken"
@@ -2488,7 +2488,7 @@ phase_id = "nahut_k_p4"
 id = "nahut_1st_discharge"
 name = "Discharge"
 duration_secs = 12.0
-color = [134, 94, 60, 255]
+color = [129, 61, 156, 255]
 icon_ability_id = 4133906022400000
 difficulties = ["story", "veteran", "master"]
 
@@ -2517,7 +2517,7 @@ value = 1
 id = "nahut_k_p4_dis"
 name = "Discharge"
 duration_secs = 12.0
-color = [134, 94, 60, 255]
+color = [129, 61, 156, 255]
 icon_ability_id = 4133906022400000
 difficulties = ["story", "veteran", "master"]
 can_be_refreshed = true
