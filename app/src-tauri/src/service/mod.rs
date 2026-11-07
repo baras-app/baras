@@ -1068,7 +1068,7 @@ impl CombatService {
         app_handle: AppHandle,
     ) {
         use baras_core::context::{
-            FileAreaIndex, LogAreaCache, default_cache_path, extract_areas_from_file,
+            FileAreaIndex, LogAreaCache, SCAN_VERSION, default_cache_path, extract_areas_from_file,
         };
         use std::collections::HashSet;
 
@@ -1151,6 +1151,7 @@ impl CombatService {
 
             // Scan files without holding any locks
             let mut scanned = 0;
+            let mut last_saved = 0;
             for (path, modified) in files_to_scan {
                 let modified_secs = modified
                     .duration_since(std::time::SystemTime::UNIX_EPOCH)
@@ -1164,6 +1165,7 @@ impl CombatService {
                             FileAreaIndex {
                                 modified_secs,
                                 areas,
+                                scanned_with: SCAN_VERSION,
                             },
                         );
                         scanned += 1;
@@ -1173,6 +1175,16 @@ impl CombatService {
                     }
                 }
 
+                // Persist progress now and then: a restart resumes instead of
+                // starting over, and the Library sees areas as they land
+                if scanned - last_saved >= 25 {
+                    last_saved = scanned;
+                    *shared.area_cache.write().await = cache.clone();
+                    if let Err(e) = cache.save_to_disk(&cache_path) {
+                        warn!(error = %e, "Failed to save area cache to disk");
+                    }
+                    let _ = app_handle.emit("log-files-changed", ());
+                }
                 // Yield periodically to avoid starving other tasks
                 if scanned % 10 == 0 {
                     tokio::task::yield_now().await;

@@ -206,8 +206,6 @@ pub struct HistoryState {
     pub library_search: String,
     pub library_content: LibraryContent,
     pub library_favorites: bool,
-    /// Library: the cleanup/scan settings panel is unfolded
-    pub library_settings_open: bool,
     /// Boss Statistics and Raid Summaries: the selection sidebar is folded
     /// to its toggle
     pub sidebar_collapsed: bool,
@@ -228,7 +226,6 @@ impl Default for HistoryState {
             library_search: String::new(),
             library_content: LibraryContent::default(),
             library_favorites: false,
-            library_settings_open: false,
             sidebar_collapsed: false,
         }
     }

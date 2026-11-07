@@ -11,6 +11,7 @@ mod heatmap;
 mod library;
 mod library_cleanup;
 mod library_meta;
+mod library_rules;
 mod operations;
 mod overview;
 mod pvp;
@@ -27,6 +28,8 @@ use crate::api;
 use crate::components::toast::ToastManager;
 use crate::components::{ToastSeverity, use_toast};
 use crate::types::UiSessionState;
+
+pub use library_rules::CleanupRules;
 
 use library::LibraryTab;
 use operations::OperationsTab;

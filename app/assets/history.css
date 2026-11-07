@@ -526,6 +526,10 @@
 }
 
 .library-file {
+  max-width: 13em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 0.85em;
 }
@@ -724,59 +728,15 @@
   color: var(--text-muted);
 }
 
-.library-manage {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: var(--space-sm);
-}
 
 @media (max-width: 1100px) {
-  .library-manage {
-    grid-template-columns: 1fr;
   }
-}
 
-.library-manage .run-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4em;
-  /* Children stretch so the chip and button rows have a width to wrap at */
-  min-width: 0;
-  margin-top: 0;
-  padding: 0.6em 0.9em 0.8em;
-  background: var(--bg-mid);
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-}
 
-.library-manage .run-section h4 {
-  margin-bottom: 0.1em;
-}
 
-/* Both panels fold under one header (chevron from .collapsible-summary) */
-.library-settings > summary {
-  padding: 0.45em 0.75em;
-  font-size: 0.95em;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: var(--bg-mid);
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-}
 
-.library-settings > summary:hover {
-  color: var(--text-primary);
-  border-color: var(--border-accent-medium);
-  background: var(--blue-alpha-8);
-}
 
-.library-settings[open] > summary {
-  margin-bottom: var(--space-sm);
-}
 
-.library-manage .run-section > .hint {
-  margin: 0;
-}
 
 /* Rules share one grid so the checkboxes, inputs and units line up */
 .library-rules {
@@ -816,42 +776,10 @@
   opacity: 0.4;
 }
 
-.library-manage .history-pick {
-  margin: 0;
-}
 
-.library-manage .library-retain-title {
-  margin-top: 0.3em;
-}
 
-/* Section actions: centered, and the buttons share the row's width so
-   "Rebuild all" and "Scan missing" fill the whitespace under the settings */
-.library-actions-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin-top: auto;
-  padding-top: 0.6em;
-}
 
-.library-actions-center .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45em;
-  flex: 1 1 12em;
-  max-width: 22em;
-  padding: var(--space-md) var(--space-lg);
-  font-size: 1.05em;
-  font-weight: 600;
-}
 
-.library-actions-center .library-scan-progress {
-  flex: 1 1 100%;
-  text-align: center;
-}
 
 /* Retention sits in its own box between the rules and the hint */
 .library-retain {
@@ -865,9 +793,6 @@
   background: rgba(255, 255, 255, 0.025);
 }
 
-.library-manage .library-retain .library-retain-title {
-  margin-top: 0;
-}
 
 .library-retain-title {
   margin-top: 0.3em;
@@ -1108,15 +1033,26 @@
 
 .run-timeline {
   margin: var(--space-xs) 0;
+  padding: var(--space-sm);
+  background: var(--gradient-panel);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
 }
 
 .run-timeline-bar {
   position: relative;
   display: flex;
-  height: 30px;
+  height: 34px;
   overflow: hidden;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-light);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* A thin dark seam keeps back-to-back pulls apart */
+.run-timeline-bar .run-seg + .run-seg {
+  border-left: 1px solid rgba(0, 0, 0, 0.6);
 }
 
 .run-timeline-ticks {
@@ -1792,4 +1728,50 @@
   height: 1.1em;
   vertical-align: -0.2em;
   margin-right: 0.35em;
+}
+
+/* Scan / rebuild / cleanup strip at the end of the Library toolbar */
+.library-ops {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35em;
+  margin-left: auto;
+  padding-left: 0.6em;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.library-ops .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.library-ops-count {
+  padding: 0 0.45em;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.library-ops .library-scan-progress {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+/* Rules on the Settings page */
+.cleanup-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  max-width: 48em;
+}
+
+.cleanup-rules > .hint {
+  margin: 0;
+}
+
+.cleanup-rules .library-retain-title {
+  margin-top: 0.4em;
 }

@@ -8,7 +8,7 @@ use wasm_bindgen_futures::spawn_local;
 use crate::api::{self, BossNotesInfo};
 use crate::components::{
     ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    CharactersPanel, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
+    CharactersPanel, CleanupRules, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
     use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
@@ -2245,6 +2245,11 @@ pub fn App() -> Element {
                         div { class: "settings-section",
                             h4 { "Characters" }
                             LockoutResetSetting {}
+                        }
+
+                        div { class: "settings-section",
+                            h4 { "Log Management" }
+                            CleanupRules {}
                         }
 
                         div { class: "settings-section",

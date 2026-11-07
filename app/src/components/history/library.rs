@@ -1,6 +1,6 @@
 //! Log Management: every log (including archived ones) with its history and
-//! metadata, the automatic cleanup and history store controls, favorites and
-//! restore.
+//! metadata, the scan and cleanup actions, favorites and restore. The rules
+//! behind the cleanup are on the Settings page (`library_rules`).
 
 use std::collections::HashSet;
 
@@ -12,7 +12,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 
 use super::Backfill;
-use super::library_cleanup::CleanupPanel;
+use super::library_cleanup::LibraryActions;
 use super::library_meta::{LogNoteCell, LogTagsCell, TAG_OPTIONS};
 use super::scroll::{use_paged, use_restore_scroll};
 use crate::api;
@@ -233,8 +233,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                 }
             }
 
-            CleanupPanel { state, backfill, cleanup, status, on_changed: move |_| rows.restart() }
-
             div { class: "library-actions",
                 input {
                     class: "boss-search-input",
@@ -332,6 +330,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                         button { class: "btn btn-xs btn-ghost", onclick: move |_| selected.set(HashSet::new()), "Clear" }
                     }
                 }
+                LibraryActions { state, backfill, cleanup, status, on_changed: move |_| rows.restart() }
             }
 
             datalist { id: TAG_OPTIONS,
@@ -368,8 +367,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                             th { "Content" }
                             th { "Tags" }
                             th { "Note" }
-                            th { "Pulls" }
-                            th { "Kills" }
                             th { "Size" }
                             th { "Status" }
                             th { "Parsely" }
@@ -415,7 +412,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                                 },
                                             }
                                         }
-                                        td { class: "library-file", "{row.filename}" }
+                                        td { class: "library-file", title: "{row.filename}", "{row.filename}" }
                                         td { "{row.date}" }
                                         td { {row.character.clone().unwrap_or_else(|| "—".into())} }
                                         td { if row.server.is_empty() { "—" } else { "{row.server}" } }
@@ -473,8 +470,6 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                                 }
                                             }
                                         }
-                                        td { "{row.pulls}" }
-                                        td { "{row.kills}" }
                                         td { {fmt_bytes(row.size)} }
                                         td { span { class: "{badge_class}", title: "{badge_title}", "{badge}" } }
                                         td { class: "library-parsely-cell",

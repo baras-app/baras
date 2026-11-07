@@ -4,8 +4,8 @@
 //! Enables filtering log files by operation/area name in the file browser.
 
 use std::collections::{HashMap, HashSet};
-use std::fs::{self, File};
-use std::io::{BufRead, BufReader, Result as IoResult};
+use std::fs;
+use std::io::Result as IoResult;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -96,6 +96,9 @@ pub struct FileAreaIndex {
     pub modified_secs: u64,
     /// Areas visited in this file (deduplicated by area_id + difficulty_id)
     pub areas: Vec<FileAreaEntry>,
+    /// `SCAN_VERSION` that produced `areas`; 0 for entries from before it existed
+    #[serde(default)]
+    pub scanned_with: u32,
 }
 
 /// Cache of area indexes for all log files
@@ -107,8 +110,13 @@ pub struct LogAreaCache {
     pub entries: HashMap<PathBuf, FileAreaIndex>,
 }
 
+const CACHE_VERSION: u32 = 1;
+
+/// Bump when the scanner starts keeping different areas: entries scanned
+/// with an older version are re-scanned one file at a time, keeping their
+/// old areas until then (the cache format itself is unchanged).
 /// 2: PvP areas are kept (they were dropped as undefined before)
-const CACHE_VERSION: u32 = 2;
+pub const SCAN_VERSION: u32 = 2;
 
 impl LogAreaCache {
     pub fn new() -> Self {
@@ -157,8 +165,8 @@ impl LogAreaCache {
         self.entries.insert(path, index);
     }
 
-    /// Check if a file needs to be (re)indexed
-    /// Returns true if file is not in cache or has been modified since caching
+    /// Check if a file needs to be (re)indexed: not in the cache, modified
+    /// since, or scanned by an older scanner
     pub fn needs_update(&self, path: &Path, current_modified: SystemTime) -> bool {
         let current_secs = current_modified
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -166,7 +174,7 @@ impl LogAreaCache {
             .unwrap_or(0);
 
         match self.entries.get(path) {
-            Some(entry) => entry.modified_secs != current_secs,
+            Some(entry) => entry.modified_secs != current_secs || entry.scanned_with != SCAN_VERSION,
             None => true,
         }
     }
@@ -217,42 +225,22 @@ pub fn extract_areas_from_file(
     path: &Path,
     known_area_ids: &HashSet<i64>,
 ) -> IoResult<Vec<FileAreaEntry>> {
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
-
+    let bytes = fs::read(path)?;
     let mut areas = Vec::new();
     let mut seen: HashSet<(i64, i64)> = HashSet::new(); // (area_id, difficulty_id)
-    let mut line_buf = Vec::new();
 
-    // Read line by line as raw bytes (handles Windows-1252 encoding properly)
-    loop {
-        line_buf.clear();
-        let bytes_read = reader.read_until(b'\n', &mut line_buf)?;
-        if bytes_read == 0 {
-            break; // EOF
-        }
-
-        // Fast path: check if marker exists in raw bytes (ASCII matching)
-        // This avoids decoding lines that don't contain AreaEntered events
-        if !line_buf
-            .windows(MARKER_BYTES.len())
-            .any(|w| w == MARKER_BYTES)
+    // SIMD substring search over the whole file; only the handful of lines
+    // holding the marker are ever decoded (Windows-1252 -> UTF-8)
+    for hit in memchr::memmem::find_iter(&bytes, MARKER_BYTES) {
+        let line_start = memchr::memrchr(b'\n', &bytes[..hit]).map_or(0, |i| i + 1);
+        let line_end = memchr::memchr(b'\n', &bytes[hit..]).map_or(bytes.len(), |i| hit + i);
+        let (line, _, _) = WINDOWS_1252.decode(&bytes[line_start..line_end]);
+        // Only include if area is in our definitions (or a PvP map)
+        if let Some(entry) = parse_area_entered_line(&line)
+            && known_area_ids.contains(&entry.area_id)
+            && seen.insert((entry.area_id, entry.difficulty_id))
         {
-            continue;
-        }
-
-        // Only decode lines that contain the marker (Windows-1252 -> UTF-8)
-        let (line, _, _) = WINDOWS_1252.decode(&line_buf);
-
-        // Parse just the effect segment to extract area info
-        if let Some(entry) = parse_area_entered_line(&line) {
-            // Only include if area is in our definitions
-            if known_area_ids.contains(&entry.area_id) {
-                let key = (entry.area_id, entry.difficulty_id);
-                if seen.insert(key) {
-                    areas.push(entry);
-                }
-            }
+            areas.push(entry);
         }
     }
 
@@ -451,5 +439,21 @@ mod tests {
             difficulty_name: String::new(),
         };
         assert_eq!(without_diff.display_name(), "Imperial Fleet");
+    }
+}
+
+#[cfg(test)]
+mod scan_tests {
+    use super::*;
+
+    /// Dev benchmark: `AREA_SCAN_FILE=/path/to/log cargo test -p baras-core --lib area_index::scan_tests -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn scan_timing_on_real_log() {
+        let Ok(path) = std::env::var("AREA_SCAN_FILE") else { return };
+        let known: HashSet<i64> = crate::game_data::pvp_area_ids().collect();
+        let t = std::time::Instant::now();
+        let areas = extract_areas_from_file(Path::new(&path), &known).unwrap();
+        println!("{:?} in {:?}", areas.iter().map(|a| a.area_name.as_str()).collect::<Vec<_>>(), t.elapsed());
     }
 }

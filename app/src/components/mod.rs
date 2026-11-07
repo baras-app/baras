@@ -41,7 +41,7 @@ pub use file_open::{FileOpenBanner, use_file_opener, use_file_opener_provider};
 pub use encounter_editor::EncounterEditorPanel;
 pub use nav_menu::NavMenu;
 pub use overlay_toggle::OverlayToggle;
-pub use history::HistoryPanel;
+pub use history::{CleanupRules, HistoryPanel};
 pub use hotkey_input::HotkeyInput;
 pub use profile_unsaved::ProfileUnsavedHint;
 pub use parsely_upload_modal::{ParselyUploadModal, use_parsely_upload, use_parsely_upload_provider};

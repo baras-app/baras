@@ -51,7 +51,7 @@ fn RunTimeline(detail: RunDetail) -> Element {
         let dur = p.duration_seconds * 1000;
         let class = if p.success { "kill" } else { "wipe" };
         let what = if p.success { "Kill" } else { "Wipe" };
-        segs.push((pct(dur), class, format!("{} · {what} · {} · {}", p.boss, fmt_secs(p.duration_seconds), clock(&p.timestamp))));
+        segs.push((pct(dur), class, format!("{} · {what} · {}", p.boss, fmt_secs(p.duration_seconds))));
         cursor = (p.start_ms + dur).max(cursor);
     }
 
