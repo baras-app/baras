@@ -1726,11 +1726,16 @@
   padding-left: 3px;
 }
 
+/* The cell stays a table cell so it shares the row's gridline; the icon
+   and name line up in the inner wrapper */
 .effect-name-cell {
+  max-width: 120px;
+}
+
+.effect-name-inner {
   display: flex;
   align-items: center;
   gap: 4px;
-  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -2636,4 +2641,141 @@
   font-weight: 600;
   background: var(--bg-secondary);
   border-color: var(--accent-gold);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Shared table look, matching the Overview table: a dark framed card,
+   muted uppercase headers on a 2px rule, hairline rows. Sticky headers get
+   an opaque shade of the card so rows never show through them.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.effect-table-wrapper,
+.usage-table-container,
+.log-table-container,
+.entity-list {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+/* The ability table has no wrapper of its own: frame the table itself.
+   Separate borders let the radius show; spacing 0 keeps the rows flush. */
+.ability-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  overflow: clip;
+}
+
+.ability-table th,
+.usage-table thead th,
+.effect-table th,
+.log-header {
+  background: #18181d;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--border-subtle);
+}
+
+.ability-table th.sortable:hover,
+.usage-table thead th.sortable:hover,
+.effect-table th.sortable:hover {
+  background: #18181d;
+  color: var(--text-primary);
+}
+
+.ability-table td,
+.usage-table tbody td,
+.effect-table td {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ability-table tbody tr:hover,
+.usage-table tbody tr:hover,
+.effect-table tbody tr:hover,
+.log-row:hover,
+.overview-table tbody tr:hover,
+.npc-health-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ability-table tbody tr:last-child td,
+.usage-table tbody tr:last-child td,
+.effect-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* The effect table drew its row rules on the rows; the cells carry them now */
+.effect-table thead tr,
+.effect-table tbody tr {
+  border-bottom: none;
+}
+
+/* Totals keep their rule but sit on the card, not a lighter band */
+.ability-table tfoot .totals-row {
+  background: #18181d;
+}
+
+/* The entity list and the ability table start on the same line: their
+   header rows share one height and one gap above the card */
+.entity-header,
+.ability-header {
+  box-sizing: border-box;
+  min-height: 30px;
+  margin-bottom: var(--space-sm);
+}
+
+/* Challenge cards in the same dark card as the tables: header band in the
+   table-header shade, column labels styled like table headers */
+.challenge-card {
+  padding: 0;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-light);
+}
+
+.challenge-card-header {
+  margin-bottom: 0;
+  padding: 0.5em 0.75em;
+  background: #18181d;
+  border-bottom: 2px solid var(--border-subtle);
+}
+
+.challenge-players {
+  padding: 0.3em 0.75em 0.5em;
+}
+
+.challenge-player-header {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Death recap: damage type as a small muted tag after the amount, and as
+   a plain column in the damage table */
+.recap-dmg-type {
+  margin: 0 0.4em;
+  padding: 0 0.35em;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  font-family: var(--font-sans, inherit);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  vertical-align: middle;
+}
+
+.recap-table td.recap-dmg-type-cell {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: capitalize;
 }

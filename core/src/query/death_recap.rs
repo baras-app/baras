@@ -206,8 +206,12 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
                     total: 0,
                     max_hit: 0,
                     absorbed: 0,
+                    damage_type: String::new(),
                 },
             );
+            if row.damage_type.is_empty() && !r.dmg_type.is_empty() {
+                row.damage_type = r.dmg_type.clone();
+            }
             row.hits += 1;
             row.crits += r.is_crit as u32;
             row.total += r.dmg_effective as i64;
@@ -296,6 +300,7 @@ fn build_recap(player_name: &str, requested_death_time: f32, rows: Vec<RecapRow>
             absorbed,
             is_crit: r.is_crit && kind == DeathRecapEventKind::Damage,
             avoided: kind == DeathRecapEventKind::Damage && r.is_avoided(),
+            damage_type: if kind == DeathRecapEventKind::Damage { r.dmg_type.clone() } else { String::new() },
             hp_pct: last_hp_pct.unwrap_or(0.0),
         });
     }

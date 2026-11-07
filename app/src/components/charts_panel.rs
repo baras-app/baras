@@ -1400,11 +1400,13 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                                         selected_effects.set(effects);
                                                     },
                                                     td { class: "effect-name-cell",
-                                                        AbilityIcon { key: "{icon_id}", ability_id: icon_id, size: 16 }
-                                                        if effect.effect_name.is_empty() {
-                                                            span { class: "effect-id-fallback", "{eid}" }
-                                                        } else {
-                                                            "{effect.effect_name}"
+                                                        div { class: "effect-name-inner",
+                                                            AbilityIcon { key: "{icon_id}", ability_id: icon_id, size: 16 }
+                                                            if effect.effect_name.is_empty() {
+                                                                span { class: "effect-id-fallback", "{eid}" }
+                                                            } else {
+                                                                "{effect.effect_name}"
+                                                            }
                                                         }
                                                     }
                                                     td { class: "num", "{effect.count}" }

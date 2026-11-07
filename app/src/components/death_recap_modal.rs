@@ -128,6 +128,9 @@ fn RecapBody(recap: DeathRecap, european: bool, on_open_combat_log: EventHandler
                             }
                         }
                     }
+                    if !kb.damage_type.is_empty() {
+                        span { class: "recap-dmg-type", "{kb.damage_type}" }
+                    }
                     if kb.overkill > 0 {
                         span { class: "recap-verdict-overkill", " ({fmt(kb.overkill as i64)} overkill)" }
                     }
@@ -201,6 +204,7 @@ fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Elemen
                             th { "Total" }
                             th { "Max" }
                             th { "Absorbed" }
+                            th { class: "col-left", "Type" }
                         }
                     }
                     tbody {
@@ -221,6 +225,7 @@ fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Elemen
                                         td { class: "stat-damage", "{fmt(src.total)}" }
                                         td { "{fmt(src.max_hit as i64)}" }
                                         td { class: "stat-absorb", "{fmt(src.absorbed)}" }
+                                        td {}
                                     }
                                     if is_open {
                                         for ab in src.abilities.iter().cloned() {
@@ -230,6 +235,9 @@ fn DamageTakenTable(rows: Vec<DeathRecapDamageSource>, european: bool) -> Elemen
                                                 td { class: "stat-damage", "{fmt(ab.total)}" }
                                                 td { "{fmt(ab.max_hit as i64)}" }
                                                 td { class: "stat-absorb", "{fmt(ab.absorbed)}" }
+                                                td { class: "col-left recap-dmg-type-cell",
+                                                    if ab.damage_type.is_empty() { "-" } else { "{ab.damage_type}" }
+                                                }
                                             }
                                         }
                                     }
@@ -377,7 +385,7 @@ fn event_row(ev: &DeathRecapEvent, death_time: f32, european: bool) -> Element {
     // Negative = before death; trailing events (damage logged after the
     // death event) show as positive
     let rel = ev.time_secs - death_time;
-    let time_label = if matches!(ev.kind, DeathRecapEventKind::Death) {
+    let time_label = if matches!(ev.kind, DeathRecapEventKind::Death) || rel.abs() < 0.05 {
         "0.0s".to_string()
     } else if rel > 0.0 {
         format!("+{}s", formatting::format_decimal(rel, 1, european))
@@ -431,7 +439,12 @@ fn event_row(ev: &DeathRecapEvent, death_time: f32, european: bool) -> Element {
                     span { class: "recap-source", " — {ev.source_name}" }
                 }
             }
-            span { class: "{detail_class}", "{detail}" }
+            span { class: "{detail_class}",
+                if !ev.damage_type.is_empty() && !(ev.avoided && ev.value == 0) {
+                    span { class: "recap-dmg-type", "{ev.damage_type}" }
+                }
+                "{detail}"
+            }
             span { class: "ledger-hp",
                 span { class: "ledger-hp-bar",
                     span { class: "ledger-hp-fill", style: "width: {hp_width}" }

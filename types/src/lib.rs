@@ -348,6 +348,10 @@ pub struct DeathRecapDamageRow {
     pub max_hit: i32,
     /// Total damage absorbed by shields
     pub absorbed: i64,
+    /// "kinetic" | "energy" | "internal" | "elemental"; empty when the log
+    /// gave none (e.g. only avoided hits)
+    #[serde(default)]
+    pub damage_type: String,
 }
 
 /// Damage taken from one source entity (per NPC spawn instance), with a
@@ -405,6 +409,9 @@ pub struct DeathRecapEvent {
     pub is_crit: bool,
     /// Hit was fully avoided (dodge/parry/miss/...)
     pub avoided: bool,
+    /// Damage events only; empty for heals, the death, and untyped hits
+    #[serde(default)]
+    pub damage_type: String,
     /// Player HP% after this event (last known sample)
     pub hp_pct: f32,
 }
