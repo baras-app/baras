@@ -231,21 +231,7 @@ select optgroup {
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
 
-.header-top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1em;
-  padding: 0.4em 2vw;
-}
 
-.app-header .header-content {
-  flex: 0 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
 
 .app-header h1 {
   margin: 0;
@@ -257,6 +243,76 @@ select optgroup {
   text-shadow:
     0 0 20px var(--swtor-blue-glow),
     0 0 40px var(--blue-alpha-15);
+}
+
+
+
+/* Single header row: brand | navigation | overlay controls, files, settings */
+.header-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  padding: 0.4em 2vw 0.45em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.header-meta .header-version-group {
+  align-self: center;
+  margin: 0;
+}
+
+
+/* Settings as a page */
+.settings-page {
+  flex: 1 0 auto;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 1em;
+  text-align: left;
+  background: var(--gradient-panel);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-xl);
+}
+/* Sections flow into two balanced columns on wide windows, one when narrow */
+.settings-page .settings-content {
+  columns: 2 460px;
+  column-gap: 1.25em;
+}
+.settings-page .settings-section {
+  display: inline-block;
+  width: 100%;
+  box-sizing: border-box;
+  break-inside: avoid;
+  margin: 0 0 1.25em;
+}
+.settings-page h4 {
+  margin: 0 0 0.5em 0;
+  font-size: 1em;
+  color: var(--text-secondary);
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-left: auto;
+}
+
+.app-header .header-content {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .app-header .header-logo {
@@ -274,11 +330,6 @@ select optgroup {
   gap: 0.4rem;
 }
 
-.app-header .header-version {
-  font-size: clamp(0.6rem, 1.2vh, 0.8rem);
-  color: var(--text-disabled);
-}
-
 .app-header .header-version.clickable {
   background: transparent;
   border: none;
@@ -293,6 +344,31 @@ select optgroup {
   color: var(--swtor-gold);
   background: var(--blue-alpha-10);
 }
+
+.app-header .header-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.app-header .header-link {
+  color: var(--swtor-blue);
+  font-size: clamp(0.75rem, 1.4vh, 1rem);
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.app-header .header-link:hover {
+  opacity: 1;
+}
+
+.app-header .header-version {
+  font-size: clamp(0.6rem, 1.2vh, 0.8rem);
+  color: var(--text-disabled);
+}
+
+
 
 .app-header .header-version.update-available {
   background: linear-gradient(
@@ -342,40 +418,9 @@ select optgroup {
   cursor: wait;
 }
 
-/* subtitle removed — consolidated into session bar */
 
-.app-header .header-links {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-}
 
-.app-header .header-link {
-  color: var(--swtor-blue);
-  font-size: clamp(0.75rem, 1.4vh, 1rem);
-  opacity: 0.5;
-  transition: opacity 0.2s;
-}
 
-.app-header .header-link:hover {
-  opacity: 1;
-}
-
-.btn-header-settings {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(80, 80, 90, 0.4);
-  color: var(--text-muted);
-  padding: 0.6em;
-  font-size: 1.2em;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
 
 .btn-header-settings:hover {
   background: rgba(255, 255, 255, 0.1);
@@ -383,23 +428,8 @@ select optgroup {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.header-buttons {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-}
 
 /* Live/Historical status pill in top-right header area */
-.header-live-status {
-  display: flex;
-  align-items: center;
-  gap: 0.35em;
-  padding: 0.3em 0.6em;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(80, 80, 90, 0.3);
-  margin-right: 0.25em;
-}
 
 .header-live-status .status-dot {
   width: 8px;
@@ -515,10 +545,6 @@ select optgroup {
 }
 
 /* Customize button in header (gold-tinted to stand out) */
-.btn-header-customize {
-  color: #d4a849 !important;
-  border-color: rgba(212, 168, 73, 0.25) !important;
-}
 
 .btn-header-customize:hover:not(:disabled) {
   color: #f0c860 !important;
@@ -528,29 +554,15 @@ select optgroup {
 
 /* Big entry point to the same modal on the Overlays tab: the header
    customize button's gold, at panel-button size */
-.btn-customize-overlays {
-  align-self: flex-start;
-  margin-bottom: 0.75vh;
-  gap: 0.5em;
-  font-size: 1.05em;
-  font-weight: 600;
-  color: #d4a849;
-  border-color: rgba(212, 168, 73, 0.4);
-  background: rgba(212, 168, 73, 0.08);
-}
 
-.btn-customize-overlays:hover:not(:disabled) {
-  color: #f0c860;
-  border-color: rgba(212, 168, 73, 0.6);
-  background: rgba(212, 168, 73, 0.15);
-}
 
 /* Profile unsaved hint (compact, in header nav row) */
 .header-unsaved-hint {
   display: flex;
   align-items: center;
-  gap: 0.3em;
-  font-size: 0.7em;
+  flex-shrink: 0;
+  gap: 0.35em;
+  font-size: 0.75em;
   color: rgba(240, 173, 78, 0.8);
   white-space: nowrap;
   padding: 0.2em 0.5em;
@@ -590,86 +602,19 @@ select optgroup {
 }
 
 /* Status dot (inside header-overlay-controls) */
-.header-overlay-controls .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
 
-.header-overlay-controls .status-dot.watching {
-  background-color: #5aaa7a;
-  box-shadow: 0 0 6px rgba(90, 170, 122, 0.5);
-}
 
-.header-overlay-controls .status-dot.not-watching {
-  background-color: var(--text-muted);
-}
 
-.header-overlay-controls .status-dot.paused {
-  background-color: #d4a850;
-  box-shadow: 0 0 6px rgba(212, 168, 80, 0.5);
-}
 
 /* Mode label (Live / Historical / Idle) */
-.header-mode-label {
-  font-size: 0.75em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
 
-.header-mode-label.live {
-  color: #5aaa7a;
-}
 
-.header-mode-label.historical {
-  color: #d4a850;
-}
 
-.btn-header-restart {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  padding: 0.2em;
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: color 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
-.btn-header-restart.live {
-  color: #5aaa7a;
-}
 
-.btn-header-restart.historical {
-  color: #d4a850;
-}
 
-.btn-header-restart:hover {
-  color: var(--swtor-blue);
-}
 
 /* Resume Live button - dark green bg with light green text */
-.btn-resume-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3em;
-  padding: 0.2em 0.6em;
-  font-size: 0.75em;
-  font-weight: 500;
-  background: var(--color-success-bg);
-  border: 1px solid var(--color-success-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-success);
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
 
 .btn-resume-live:hover {
   background: var(--color-success-bg-hover);
@@ -679,26 +624,7 @@ select optgroup {
   font-size: 0.85em;
 }
 
-.btn-header-files {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(80, 80, 90, 0.4);
-  color: var(--text-muted);
-  padding: 0.6em;
-  font-size: 1.2em;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
 
-.btn-header-files:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-  border-color: rgba(255, 255, 255, 0.2);
-}
 
 a {
   font-weight: 500;
@@ -997,154 +923,215 @@ button:active {
 }
 
 /* Settings controls row (Hide/Show, Lock, Rearrange, Clear) */
-.settings-controls {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5vw;
-  margin-bottom: 0.5vh;
-  padding: 0.75vh 0.75vw;
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: var(--radius-xl);
-  flex-shrink: 0;
-}
-
-.subsection {
-  border-left: 2px solid var(--border-light);
-  padding-left: var(--space-sm);
-  margin-top: var(--space-sm);
-}
-
-.subsection-title {
-  font-size: clamp(0.5rem, 1.2vh, 0.75rem);
-  color: var(--text-disabled);
-  text-transform: uppercase;
-  margin: 0.3vh 0 0.2vh 0;
-  letter-spacing: 0.5px;
-  flex-shrink: 0;
-}
-
-/* Overlay toggle buttons grid (legacy) */
-.overlay-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.8vh 0.6vw;
-  margin: 0.2vh 0 0.3vh 0;
-  width: 100%;
-  flex-shrink: 0;
-}
-
-/* Overlay categories - horizontal column layout */
-.overlay-categories {
+/* Card header above the overlay grid: compact pill buttons for the global controls */
+/* Overlays page: toolbar row, then category cards in a fixed 3-column grid */
+.overlay-toolbar {
   display: flex;
-  flex-direction: row;
-  gap: 1.5em;
-  padding: 1em;
-  background: linear-gradient(
-    180deg,
-    rgba(30, 60, 100, 0.25) 0%,
-    rgba(20, 45, 80, 0.2) 100%
-  );
-  border-radius: var(--radius-md);
-  border: 1px solid var(--blue-alpha-15);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0 0 0.75em;
   margin-bottom: 1em;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
 }
 
+.overlay-toolbar-label {
+  margin-right: 0.35em;
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.overlay-toolbar-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  margin-left: 0.5em;
+  font-size: 0.82em;
+  color: var(--text-muted);
+}
+
+.overlay-categories {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1em;
+  align-items: start;
+}
+/* General + Encounter | Effects + PvP | Metrics: the three columns end up close in height */
+.overlay-category:nth-child(1) { grid-column: 1; grid-row: 1; }
+.overlay-category:nth-child(2) { grid-column: 1; grid-row: 2; }
+.overlay-category:nth-child(3) { grid-column: 2; grid-row: 1; }
+.overlay-category:nth-child(4) { grid-column: 3; grid-row: 1 / span 2; }
+.overlay-category:nth-child(5) { grid-column: 2; grid-row: 2; }
+@media (max-width: 1000px) {
+  .overlay-categories { grid-template-columns: minmax(0, 1fr); }
+  .overlay-category:nth-child(n) { grid-column: auto; grid-row: auto; }
+}
+
+/* Same card treatment as the history pages: a shade below the panel, neutral border */
 .overlay-category {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
   min-width: 0;
+  padding: 0.8em 0.6em 0.5em 0.9em;
+  background: #1e1e26;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.category-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5em;
+  margin: 0 0.25em 0.5em 0;
+  padding-bottom: 0.55em;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .overlay-category .category-title {
-  font-size: 0.85em;
-  color: var(--swtor-blue);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  margin: 0;
+  font-size: 1em;
   font-weight: 600;
-  margin: 0 0 0.5em 0;
-  padding-bottom: 0.4em;
-  border-bottom: 1px solid var(--blue-alpha-20);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.category-count {
+  font-size: 0.82em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .overlay-category .category-buttons {
   display: flex;
   flex-direction: column;
-  gap: 0.4em;
 }
 
-.overlay-toggles {
-  display: flex;
-  gap: 0.5em;
-  justify-content: center;
-}
 
 /* ═══ Futuristic Control Panel Buttons ═══ */
-.btn-overlay {
-  width: 100%;
-  min-width: unset;
-  padding: 0.8em 0.5em;
+/* One overlay per row: accent bar + name on the left, state dot and gear on the right */
+.overlay-toggle {
+  display: flex;
+  align-items: stretch;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+.overlay-toggle + .overlay-toggle {
+  border-top: 1px solid var(--border-subtle);
+}
+.overlay-toggle:hover {
+  background: rgba(74, 158, 255, 0.06);
+}
+
+.overlay-toggle .btn-overlay {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-start;
+  gap: 0.7em;
   margin: 0;
-  font-size: clamp(0.6rem, 1.4vh, 0.9rem);
+  padding: 0.7em 0.6em 0.7em 0.85em;
+  font-size: 0.95em;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  text-transform: none;
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-width: 1px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(
-    180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(30, 30, 35, 0.95) 100%
-  );
-  border: 1px solid rgba(80, 80, 90, 0.4);
-  color: #777;
-  position: relative;
-  transition: all 0.2s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: inset 3px 0 0 transparent;
+  color: var(--text-tertiary);
+  transition: color 0.15s, box-shadow 0.15s;
 }
-
-.btn-overlay:hover:not(:disabled) {
-  background: linear-gradient(
-    180deg,
-    rgba(55, 60, 75, 0.95) 0%,
-    rgba(35, 40, 55, 0.95) 100%
-  );
-  border-color: var(--swtor-blue-dim);
-  color: var(--swtor-blue);
-  box-shadow: 0 0 10px var(--blue-alpha-15);
+/* State dot */
+.overlay-toggle .btn-overlay::after {
+  content: "";
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-medium);
+  transition: background 0.15s, box-shadow 0.15s;
 }
-
-.btn-overlay.btn-active {
-  background: linear-gradient(
-    180deg,
-    var(--blue-alpha-20) 0%,
-    rgba(45, 90, 140, 0.15) 100%
-  );
-  border-color: var(--swtor-blue);
+.overlay-toggle .btn-overlay:hover:not(:disabled) {
+  color: var(--text-secondary);
+  background: none;
+  box-shadow: inset 3px 0 0 var(--swtor-blue-dim);
+}
+.overlay-toggle .btn-overlay.btn-active {
   color: var(--swtor-blue);
-  box-shadow:
-    0 0 12px var(--blue-alpha-20),
-    inset 0 0 15px var(--blue-alpha-8);
+  background: none;
+  box-shadow: inset 3px 0 0 var(--swtor-blue);
+}
+.overlay-toggle .btn-overlay.btn-active::after {
+  background: var(--swtor-blue);
+  box-shadow: 0 0 6px var(--swtor-blue-glow);
 }
 
 .overlay-btn-icon {
-  margin-right: 0.5em;
-  font-size: 0.9em;
-  opacity: 0.7;
+  width: 1.4em;
+  margin: 0;
+  font-size: 1em;
+  text-align: center;
+  opacity: 0.55;
 }
-
-.btn-overlay.btn-active .overlay-btn-icon {
+.overlay-toggle .btn-overlay.btn-active .overlay-btn-icon {
   opacity: 1;
 }
 
-.btn-control {
-  width: 100%;
-  padding: 1em 0.75em;
+.overlay-toggle .btn-overlay-gear,
+.overlay-toggle .btn-overlay-gear-spacer {
+  flex: 0 0 auto;
+  width: 2.6em;
+}
+.overlay-toggle .btn-overlay-gear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   margin: 0;
-  font-size: clamp(0.7rem, 1.5vh, 0.95rem);
-  border-width: 1px;
-  border-radius: var(--radius-lg);
+  min-width: unset;
+  font-size: 1em;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.28);
+  transition: color 0.15s;
+}
+.overlay-toggle .btn-overlay-gear.btn-active {
+  color: rgba(255, 255, 255, 0.4);
+}
+.overlay-toggle .btn-overlay-gear:hover:not(:disabled),
+.overlay-toggle .btn-overlay-gear.open {
+  color: var(--swtor-blue);
+  background: none;
+  box-shadow: none;
+}
+.overlay-toggle .btn-overlay-gear i {
+  transition: transform 0.2s ease;
+}
+.overlay-toggle .btn-overlay-gear:hover:not(:disabled) i,
+.overlay-toggle .btn-overlay-gear.open i {
+  transform: rotate(30deg);
+}
+
+.btn-control {
+  width: auto;
+  padding: 0.4em 0.9em;
+  margin: 0;
+  gap: 0.45em;
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border-radius: 999px;
   background: linear-gradient(
     180deg,
     rgba(50, 50, 55, 0.9) 0%,
@@ -1152,8 +1139,6 @@ button:active {
   );
   border: 1px solid rgba(80, 80, 90, 0.4);
   transition: all 0.2s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 /* Lock button - locked state (neutral) */
@@ -1294,6 +1279,92 @@ button:active {
   opacity: 0.9;
 }
 
+/* Live / Prior Session / Historical chip at the head of the session bar */
+.session-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.2em 0.6em;
+  border-radius: 999px;
+  font-size: 0.78em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(80, 80, 90, 0.35);
+}
+.session-status-chip .status-dot {
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+}
+.session-status-chip.live {
+  color: #5aaa7a;
+  border-color: rgba(90, 170, 122, 0.4);
+}
+.session-status-chip.live .status-dot {
+  box-shadow: 0 0 6px rgba(90, 170, 122, 0.6);
+}
+.session-status-chip.prior,
+.session-status-chip.historical {
+  color: #d4a850;
+  border-color: rgba(212, 168, 80, 0.4);
+}
+.session-status-chip.prior .status-dot,
+.session-status-chip.historical .status-dot {
+  box-shadow: 0 0 6px rgba(212, 168, 80, 0.5);
+}
+.session-status-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: -0.2em -0.3em -0.2em 0.1em;
+  min-width: 1.9em;
+  min-height: 1.9em;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 1em;
+  cursor: pointer;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.session-status-action:hover {
+  opacity: 1;
+  color: var(--swtor-blue);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Historical mode: a real button, not an icon, since it is the way back to live */
+.session-status-resume {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.3em 0.8em;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.session-status-resume:hover {
+  background: var(--color-success-bg-hover);
+  border-color: var(--color-success);
+}
+
 .dashboard-collapse-btn {
   background: none;
   border: none;
@@ -1333,23 +1404,8 @@ button:active {
   color: var(--color-warning);
 }
 
-.dashboard-status-label {
-  display: flex;
-  align-items: center;
-  gap: 0.35em;
-  font-size: 0.85em;
-  font-weight: 600;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
 
-.dashboard-status-label.live {
-  color: var(--color-success);
-}
 
-.dashboard-status-label.historical {
-  color: var(--color-warning);
-}
 
 .dashboard-separator {
   color: var(--border-dim);
@@ -1400,22 +1456,7 @@ button:active {
 }
 
 /* Controls label in expanded settings row */
-.session-controls-label {
-  font-size: 0.75em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-  flex-shrink: 0;
-}
 
-.session-controls-label i {
-  font-size: 0.9em;
-}
 
 /* Profile selector inside session dashboard bar */
 /* Settings row inside dashboard bar */
@@ -1718,7 +1759,7 @@ button:active {
 /* ── Settings row (alacrity/latency + notes) ── */
 .session-settings-row {
   display: flex;
-  align-items: center;
+  align-items: stretch; /* op timer and player stats boxes share a height */
   gap: 1em;
   padding: 0.5em 0 0.25em;
   border-top: 1px solid var(--border-dim);
@@ -1732,6 +1773,9 @@ button:active {
   background: var(--border-dim);
   flex-shrink: 0;
 }
+.session-settings-row > :not(.session-op-timer):not(.player-stats-bar) {
+  align-self: center;
+}
 
 /* Override player-stats-bar when inside settings row (keep border, adjust padding) */
 .session-settings-row .player-stats-bar {
@@ -1739,17 +1783,7 @@ button:active {
 }
 
 /* Auto-hide toggles in session settings row */
-.session-auto-hide-toggles {
-  display: flex;
-  align-items: center;
-  gap: 1em;
-  margin-left: auto;
-}
 
-.session-auto-hide-toggles .toggle-text {
-  font-size: 0.8em;
-  white-space: nowrap;
-}
 
 /* Session toolbar */
 .session-toolbar {
@@ -2040,37 +2074,32 @@ button:active {
 }
 
 /* Floating settings panel wrapper — no backdrop, clicks pass through */
-.settings-floating-wrap {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
-.settings-floating-wrap.positioned {
-  display: block;
-}
 
 
 /* Settings panel */
-.settings-panel {
-  position: relative;
-  width: min(900px, 90vw);
-  max-height: 85vh;
+/* Right-hand drawer (overlay settings, log files): leaves the page beside it clickable */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  width: min(560px, 92vw);
   background: var(--gradient-panel);
-  border-radius: var(--radius-xl);
+  border-left: 1px solid var(--blue-alpha-20);
+  box-shadow:
+    -8px 0 30px rgba(0, 0, 0, 0.6),
+    0 0 20px var(--blue-alpha-10);
   padding: 1em;
   text-align: left;
-  box-shadow:
-    0 4px 30px rgba(0, 0, 0, 0.6),
-    0 0 20px var(--blue-alpha-10);
-  border: 1px solid var(--blue-alpha-20);
   display: flex;
   flex-direction: column;
-  pointer-events: auto;
+  animation: settings-drawer-in 0.18s ease-out;
+}
+@keyframes settings-drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }
 
 /* Scrollable content area within settings panel */
@@ -2081,14 +2110,7 @@ button:active {
 }
 
 /* Draggable header */
-.settings-header.draggable {
-  cursor: grab;
-  user-select: none;
-}
 
-.settings-header.draggable:active {
-  cursor: grabbing;
-}
 
 .settings-header {
   display: flex;
@@ -2117,34 +2139,41 @@ button:active {
 }
 
 /* Settings tabs */
-.settings-tabs {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
-  margin: 1em 0;
-}
 
-.tab-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25em;
-}
 
-.tab-group-label {
-  font-size: 0.7em;
-  color: var(--swtor-blue-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 0.25em;
-}
 
-.tab-group-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25em;
-}
 
 /* Settings panel tab buttons - blue theme */
+/* Drawer top tabs: Overlays | Profiles | Global */
+.settings-top-tabs {
+  display: flex;
+  gap: 0.25em;
+  margin: 0.75em 0;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid var(--blue-alpha-15);
+}
+.settings-top-tabs .tab-btn {
+  flex: 1;
+}
+.overlay-select-row {
+  margin-bottom: 0.25em;
+}
+.overlay-select-row select {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--swtor-blue);
+  border-color: var(--swtor-blue-dim);
+}
+.overlay-options-title {
+  margin: 0.75em 0 0.5em;
+  font-size: 0.95em;
+  color: var(--swtor-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid var(--blue-alpha-15);
+}
 .settings-panel .tab-btn {
   background: linear-gradient(
     180deg,
@@ -2425,6 +2454,7 @@ details[open] .collapsible-summary::before {
 /* Reset row - centered button */
 .reset-row {
   justify-content: flex-end;
+  gap: 0.5em;
   margin-top: 1em;
   padding-top: 0.75em;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -2670,24 +2700,6 @@ details[open] .collapsible-summary::before {
   flex: 1;
 }
 
-.btn-reset-positions {
-  font-size: 0.75em;
-  padding: 4px 10px;
-  opacity: 0.6;
-  background: transparent;
-  border: 1px solid var(--border-medium);
-  color: var(--text-muted);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.btn-reset-positions:hover {
-  opacity: 1;
-  border-color: rgba(200, 140, 60, 0.6);
-  color: rgba(220, 170, 80, 0.9);
-}
-
 /* Unsaved changes indicator */
 .btn-save.btn-unsaved {
   background: linear-gradient(
@@ -2731,17 +2743,7 @@ details[open] .collapsible-summary::before {
 }
 
 /* General settings modal */
-.general-settings {
-  width: 40vw;
-  min-width: 500px;
-  max-width: none;
-}
 
-.general-settings h4 {
-  margin: 0 0 0.5em 0;
-  font-size: 1em;
-  color: var(--text-secondary);
-}
 
 .web-overlay-url {
   display: block;
@@ -3143,18 +3145,9 @@ details[open] .collapsible-summary::before {
    File Browser Modal
    ───────────────────────────────────────────────────────────────────────────── */
 
-.file-browser-modal {
-  background: var(--gradient-panel);
-  border-radius: var(--radius-xl);
-  width: 90vw;
-  max-width: 600px;
-  max-height: 70vh;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--blue-alpha-20);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 20px var(--blue-alpha-10);
+.file-browser-drawer {
+  width: min(620px, 92vw);
+  padding: 0;
 }
 
 .file-browser-header {
@@ -4543,13 +4536,6 @@ a.contributor-name:hover {
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* Navigation + controls row below branding */
-.header-nav-row {
-  display: flex;
-  align-items: center;
-  padding: 0.2em 2vw 0.4em;
-  border-bottom: 1px solid var(--border-subtle);
-  gap: 0.5em;
-}
 
 /* Sunken tray centred in the leftover row width, so the tabs read as one control */
 .header-tabs {
@@ -4557,7 +4543,6 @@ a.contributor-name:hover {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.4em;
-  margin: 0 auto;
   min-width: 0;
   padding: 0.35em;
   background: rgba(0, 0, 0, 0.3);
@@ -4645,6 +4630,12 @@ a.contributor-name:hover {
   background: var(--blue-alpha-8);
 }
 
+.nav-menu-divider {
+  height: 1px;
+  margin: 0.25em 0.4em;
+  background: var(--border-accent-medium);
+}
+
 .nav-menu-backdrop {
   position: fixed;
   inset: 0;
@@ -4712,26 +4703,16 @@ a.contributor-name:hover {
 
 /* Compress overlay controls at narrower widths */
 @media (max-width: 1100px) {
-  /* Hide mode label text, keep status dot as indicator */
-  .header-mode-label {
-    display: none;
-  }
-  /* Resume Live → just the play icon */
-  .btn-resume-live .resume-live-label {
-    display: none;
-  }
   .header-overlay-controls {
     gap: 0.25em;
   }
-  .header-live-status {
-    gap: 0.25em;
+  /* Chip keeps its dot and action; the word goes */
+  .session-status-chip .session-status-label {
+    display: none;
   }
-  /* Compact auto-hide toggle labels in session row */
-  .session-auto-hide-toggles .toggle-text {
-    font-size: 0.7em;
-  }
-  .session-auto-hide-toggles {
-    gap: 0.6em;
+  /* Brand keeps logo and version; the link icons go */
+  .app-header .header-links {
+    display: none;
   }
   /* Shorten unsaved hint text */
   .header-unsaved-hint {
@@ -4767,10 +4748,6 @@ a.contributor-name:hover {
     gap: 0.2em;
     padding: 0.25em 0.4em;
   }
-  .header-live-status {
-    gap: 0.2em;
-    padding: 0.25em 0.4em;
-  }
   .btn-header-overlay {
     width: 26px;
     height: 26px;
@@ -4778,10 +4755,6 @@ a.contributor-name:hover {
   }
   .header-controls-divider {
     height: 16px;
-  }
-  /* Hide auto-hide toggle labels, show only switches */
-  .session-auto-hide-toggles .toggle-text {
-    display: none;
   }
   /* Hide unsaved hint */
   .header-unsaved-hint {
@@ -7038,8 +7011,8 @@ a.contributor-name:hover {
   flex-shrink: 0;
 }
 
-.settings-panel .profile-unsaved-indicator {
-  margin: 0 1em 0.5em 1em;
+.settings-footer .profile-unsaved-indicator {
+  margin: 0;
 }
 
 /* ─── Color Swatch ───────────────────────────────────────────────────────────── */

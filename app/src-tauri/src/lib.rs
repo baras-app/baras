@@ -264,6 +264,7 @@ pub fn run() {
             commands::set_overlay_font_family,
             commands::get_overlay_status,
             commands::refresh_overlay_settings,
+            commands::reset_overlay_position,
             commands::preview_overlay_settings,
             commands::set_web_overlay_enabled,
             commands::clear_raid_registry,

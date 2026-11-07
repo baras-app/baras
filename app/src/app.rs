@@ -8,7 +8,7 @@ use wasm_bindgen_futures::spawn_local;
 use crate::api::{self, BossNotesInfo};
 use crate::components::{
     ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    FileOpenBanner, HistoryPanel, HotkeyInput, NavMenu, ParselyUploadModal, SettingsPanel, Slider, ToastFrame, ToastSeverity,
+    FileOpenBanner, HistoryPanel, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
     use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
@@ -114,11 +114,29 @@ pub fn App() -> Element {
 
     // Other UI state (not part of session persistence)
     let mut settings_open = use_signal(|| false);
-    let mut settings_pos = use_signal(|| None::<(f64, f64)>);
-    let mut settings_drag = use_signal(|| None::<(f64, f64)>);
-    let mut general_settings_open = use_signal(|| false);
     let mut overlay_settings = use_signal(OverlaySettings::default);
-    let selected_overlay_tab = use_signal(|| "dps".to_string());
+    let mut selected_overlay_tab = use_signal(|| "dps".to_string());
+    let mut settings_section = use_signal(|| SettingsSection::Overlays);
+    // Gear on an overlay toggle: show that overlay's options, or close the drawer
+    // when it is already showing them
+    let open_overlay_settings = move |key: &'static str| {
+        let showing = settings_open()
+            && settings_section() == SettingsSection::Overlays
+            && selected_overlay_tab() == key;
+        if showing {
+            settings_open.set(false);
+        } else {
+            selected_overlay_tab.set(key.to_string());
+            settings_section.set(SettingsSection::Overlays);
+            settings_open.set(true);
+        }
+    };
+    // Overlay whose options the drawer currently shows, for the gear highlight
+    let drawer_overlay = if settings_open() && settings_section() == SettingsSection::Overlays {
+        selected_overlay_tab()
+    } else {
+        String::new()
+    };
 
     // Hotkey state
     let mut hotkey_visibility = use_signal(String::new);
@@ -587,27 +605,6 @@ pub fn App() -> Element {
         }
     });
 
-    // Document-level mousemove/mouseup for settings panel drag (registered once)
-    {
-        let mut pos = settings_pos;
-        let mut drag = settings_drag;
-        use_future(move || async move {
-            let doc = web_sys::window().unwrap().document().unwrap();
-            let move_cb = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |e: web_sys::MouseEvent| {
-                if let Some((ox, oy)) = drag() {
-                    pos.set(Some((e.client_x() as f64 - ox, e.client_y() as f64 - oy)));
-                }
-            });
-            let up_cb = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |_: web_sys::MouseEvent| {
-                drag.set(None);
-            });
-            let _ = doc.add_event_listener_with_callback("mousemove", move_cb.as_ref().unchecked_ref());
-            let _ = doc.add_event_listener_with_callback("mouseup", up_cb.as_ref().unchecked_ref());
-            move_cb.forget();
-            up_cb.forget();
-        });
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
     // Computed Values
     // ─────────────────────────────────────────────────────────────────────────
@@ -671,6 +668,36 @@ pub fn App() -> Element {
     // Auto-hide state is provided by the backend as the single source of truth
     let overlays_auto_hidden = auto_hidden();
 
+    // Enabled counts for the category card headers on the Overlays page
+    let count_on = |flags: &[bool]| flags.iter().filter(|on| **on).count();
+    let general_on = count_on(&[personal_on, raid_on, alerts_on, combat_time_on, operation_timer_on, ability_cast_on]);
+    let encounter_on = count_on(&[boss_health_on, challenges_on, timers_on, timers_b_on, notes_on, ability_queue_on]);
+    let effects_on = count_on(&[effects_a_on, effects_b_on, effects_c_on, cooldowns_on, cooldowns_b_on, dot_tracker_on]);
+    let pvp_metrics = MetricType::pvp();
+    let metric_on = |m: &MetricType| enabled_map.get(m).copied().unwrap_or(false);
+    let metrics_on = MetricType::all().iter().filter(|m| !pvp_metrics.contains(m) && metric_on(m)).count();
+    let metrics_total = MetricType::all().len() - pvp_metrics.len();
+    let pvp_on = usize::from(enemy_frames_on) + pvp_metrics.iter().filter(|m| metric_on(m)).count();
+    let pvp_total = 1 + pvp_metrics.len();
+
+    // Session status chip actions (shared by every session bar variant)
+    let restart_watcher = move |_| {
+        spawn(async move {
+            api::restart_watcher().await;
+            is_live_tailing.set(true);
+        });
+    };
+    let resume_live = move |_| {
+        let mut toast = use_toast();
+        spawn(async move {
+            if let Err(err) = api::resume_live_tailing().await {
+                toast.show(format!("Failed to resume live tailing: {}", err), ToastSeverity::Normal);
+            } else {
+                is_live_tailing.set(true);
+            }
+        });
+    };
+
     // ─────────────────────────────────────────────────────────────────────────
     // Render
     // ─────────────────────────────────────────────────────────────────────────
@@ -685,10 +712,182 @@ pub fn App() -> Element {
         main { class: "container",
             // Header
             header { class: "app-header",
-                div { class: "header-top-row",
+                div { class: "header-bar",
                     div { class: "header-content",
                         h1 { "BARAS" }
                         img { class: "header-logo", src: LOGO, alt: "BARAS mascot" }
+                    }
+                    // Overlay quick actions, profile and log files
+                    div { class: "header-actions",
+                        div { class: "header-overlay-controls",
+                            button {
+                                class: if is_visible { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
+                                title: if is_visible { "Hide overlays" } else { "Show overlays" },
+                                disabled: !any_enabled,
+                                onclick: move |_| {
+                                    let mut toast = use_toast();
+                                    spawn(async move {
+                                        if api::toggle_visibility(is_visible).await {
+                                            overlays_visible.set(!is_visible);
+                                            if is_visible { move_mode.set(false); }
+                                            if !is_visible && auto_hidden() {
+                                                toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Normal);
+                                            }
+                                        }
+                                    });
+                                },
+                                i { class: if is_visible { "fa-solid fa-eye" } else { "fa-solid fa-eye-slash" } }
+                            }
+                            if overlays_auto_hidden {
+                                span {
+                                    class: "auto-hide-indicator",
+                                    title: "Overlays auto-hidden (not live)",
+                                    i { class: "fa-solid fa-eye-slash" }
+                                    " Auto"
+                                }
+                            }
+                            button {
+                                class: if is_move_mode { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
+                                title: if is_move_mode { "Lock overlays" } else { "Unlock overlays (move/resize)" },
+                                disabled: !is_visible || !any_enabled || is_rearrange || overlays_auto_hidden,
+                                onclick: move |_| { spawn(async move {
+                                    if let Ok(new_mode) = api::toggle_move_mode().await {
+                                        move_mode.set(new_mode);
+                                        if new_mode { rearrange_mode.set(false); }
+                                    }
+                                }); },
+                                i { class: if is_move_mode { "fa-solid fa-lock-open" } else { "fa-solid fa-lock" } }
+                            }
+                            button {
+                                class: if is_rearrange { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
+                                title: "Rearrange raid frames",
+                                disabled: !is_visible || !raid_on || is_move_mode || overlays_auto_hidden,
+                                onclick: move |_| { spawn(async move {
+                                    if let Ok(new_mode) = api::toggle_raid_rearrange().await {
+                                        rearrange_mode.set(new_mode);
+                                    }
+                                }); },
+                                i { class: "fa-solid fa-grip" }
+                            }
+                            if is_rearrange {
+                                button {
+                                    class: "btn btn-header-overlay",
+                                    title: "Clear raid frame assignments",
+                                    disabled: !raid_on,
+                                    onclick: move |_| { spawn(async move { api::clear_raid_registry().await; }); },
+                                    i { class: "fa-solid fa-eraser" }
+                                }
+                            }
+                            span { class: "header-controls-divider" }
+                            // Profile selector
+                            select {
+                                class: "header-profile-dropdown",
+                                title: "Switch overlay profile",
+                                value: active_profile().unwrap_or_default(),
+                                onchange: move |e| {
+                                    let selected = e.value();
+                                    if selected.is_empty() { return; }
+                                    let previous = active_profile();
+                                    active_profile.set(Some(selected.clone()));
+                                    let mut toast = use_toast();
+                                    spawn(async move {
+                                        if let Err(err) = api::load_profile(&selected).await {
+                                            active_profile.set(previous);
+                                            toast.show(format!("Failed to load profile: {}", err), ToastSeverity::Normal);
+                                        } else {
+                                            if let Some(cfg) = api::get_config().await {
+                                                overlay_settings.set(cfg.overlay_settings);
+                                            }
+                                            profile_dirty.set(false);
+                                            if let Some(status) = api::get_overlay_status().await {
+                                                apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
+                                                    &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
+                                                    &mut timers_b_enabled, &mut challenges_enabled, &mut alerts_enabled,
+                                                    &mut effects_a_enabled, &mut effects_b_enabled, &mut effects_c_enabled,
+                                                    &mut cooldowns_enabled, &mut cooldowns_b_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
+                                                    &mut combat_time_enabled, &mut operation_timer_enabled,
+                                                    &mut ability_queue_enabled, &mut enemy_frames_enabled, &mut ability_cast_enabled,
+                                                    &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
+                                            }
+                                        }
+                                    });
+                                },
+                                for name in profile_names().iter() {
+                                    option {
+                                        value: "{name}",
+                                        selected: active_profile().as_deref() == Some(name.as_str()),
+                                        "{name}"
+                                    }
+                                }
+                            }
+                            span { class: "header-controls-divider" }
+                            button {
+                                class: if file_browser_open() { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
+                                title: if file_browser_open() { "Close log files" } else { "Browse log files" },
+                                onclick: move |_| {
+                                    // Second click closes the drawer again
+                                    if file_browser_open() {
+                                        file_browser_open.set(false);
+                                        return;
+                                    }
+                                    file_browser_filter.set(String::new());
+                                    file_browser_open.set(true);
+                                    spawn(async move {
+                                        api::refresh_file_sizes().await;
+                                        let result = api::get_log_files().await;
+                                        if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
+                                            log_files.set(files);
+                                        }
+                                    });
+                                },
+                                i { class: "fa-solid fa-folder-open" }
+                            }
+                        }
+                    }
+                    // Navigation: live view and overlays as tabs, the editors and everything else behind menus
+                    div { class: "header-tabs",
+                        button {
+                            class: if ui_state.read().active_tab == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
+                            title: "One fight at a time, from the loaded log",
+                            onclick: move |_| ui_state.write().active_tab = MainTab::DataExplorer,
+                            i { class: "fa-solid fa-magnifying-glass-chart" }
+                            span { class: "tab-label", " Data Explorer" }
+                        }
+                        NavMenu {
+                            label: "Overlays",
+                            icon: "fa-solid fa-layer-group",
+                            items: vec![
+                                (MainTab::Overlays, "fa-solid fa-layer-group", "Overlays", "Enable, arrange and customize overlays"),
+                            ],
+                            actions: vec![
+                                ("fa-solid fa-screwdriver-wrench", "Overlay Settings", "Fonts, colours, sizes and layout of every overlay",
+                                    EventHandler::new(move |_| settings_open.toggle())),
+                            ],
+                            state: ui_state,
+                        }
+                        NavMenu {
+                            label: "Timers & Effects",
+                            icon: "fa-solid fa-stopwatch",
+                            items: vec![
+                                (MainTab::EncounterBuilder, "fa-solid fa-hammer", "Encounter Builder", "Boss timers, phases and triggers"),
+                                (MainTab::Effects, "fa-solid fa-heart-pulse", "Effects Editor", "Tracked buffs, debuffs and alerts"),
+                            ],
+                            state: ui_state,
+                        }
+                        NavMenu {
+                            label: "More",
+                            icon: "fa-solid fa-ellipsis",
+                            items: vec![
+                                (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
+                                (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", ""),
+                                (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
+                                (MainTab::Settings, "fa-solid fa-gear", "Settings", "Log directory, hotkeys, audio and application options"),
+                            ],
+                            state: ui_state,
+                        }
+                    }
+                    // Version, update notice and project links
+                    div { class: "header-meta",
                         div { class: "header-version-group",
                             if !app_version().is_empty() {
                                 if let Some(ref update) = update_available() {
@@ -784,265 +983,6 @@ pub fn App() -> Element {
                             }
                         }
                     }
-                    // Live/Historical status + File browser + settings buttons (top-right)
-                    div { class: "header-buttons",
-                        // Live/Historical toggle group
-                        div { class: "header-live-status",
-                            // Watcher status dot
-                            span {
-                                class: if !live_tailing { "status-dot paused" }
-                                    else if watching { "status-dot watching" }
-                                    else { "status-dot not-watching" },
-                                title: if !live_tailing { "Historical mode" } else if watching { "Live" } else { "Not watching" }
-                            }
-                            // Mode label
-                            span {
-                                class: if live_tailing && watching { "header-mode-label live" }
-                                    else if !live_tailing { "header-mode-label historical" }
-                                    else { "header-mode-label" },
-                                if !live_tailing { "Historical" } else if watching { "Live" } else { "Idle" }
-                            }
-                            // Restart watcher button
-                            button {
-                                class: if live_tailing && watching { "btn-header-restart live" }
-                                    else if !live_tailing { "btn-header-restart historical" }
-                                    else { "btn-header-restart" },
-                                title: "Restart watcher",
-                                onclick: move |_| {
-                                    spawn(async move {
-                                        api::restart_watcher().await;
-                                        is_live_tailing.set(true);
-                                    });
-                                },
-                                i { class: "fa-solid fa-rotate" }
-                            }
-                        }
-                        button {
-                            class: "btn btn-header-files",
-                            title: "Browse log files",
-                            onclick: move |_| {
-                                file_browser_filter.set(String::new());
-                                file_browser_open.set(true);
-                                spawn(async move {
-                                    api::refresh_file_sizes().await;
-                                    let result = api::get_log_files().await;
-                                    if let Ok(files) = serde_wasm_bindgen::from_value::<Vec<LogFileInfo>>(result) {
-                                        log_files.set(files);
-                                    }
-                                });
-                            },
-                            i { class: "fa-solid fa-folder-open" }
-                        }
-                        button {
-                            class: "btn btn-header-settings",
-                            title: "Settings",
-                            onclick: move |_| general_settings_open.set(true),
-                            i { class: "fa-solid fa-gear" }
-                        }
-                    }
-                } // end header-top-row
-
-                // Navigation + controls row: | overlay controls | tabs |
-                div { class: "header-nav-row",
-                    // Overlay controls
-                    div { class: "header-overlay-controls",
-                        button {
-                            class: if is_visible { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
-                            title: if is_visible { "Hide overlays" } else { "Show overlays" },
-                            disabled: !any_enabled,
-                            onclick: move |_| {
-                                let mut toast = use_toast();
-                                spawn(async move {
-                                    if api::toggle_visibility(is_visible).await {
-                                        overlays_visible.set(!is_visible);
-                                        if is_visible { move_mode.set(false); }
-                                        if !is_visible && auto_hidden() {
-                                            toast.show("Overlays are currently auto-hidden".to_string(), ToastSeverity::Normal);
-                                        }
-                                    }
-                                });
-                            },
-                            i { class: if is_visible { "fa-solid fa-eye" } else { "fa-solid fa-eye-slash" } }
-                        }
-                        if overlays_auto_hidden {
-                            span {
-                                class: "auto-hide-indicator",
-                                title: "Overlays auto-hidden (not live)",
-                                i { class: "fa-solid fa-eye-slash" }
-                                " Auto"
-                            }
-                        }
-                        button {
-                            class: if is_move_mode { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
-                            title: if is_move_mode { "Lock overlays" } else { "Unlock overlays (move/resize)" },
-                            disabled: !is_visible || !any_enabled || is_rearrange || overlays_auto_hidden,
-                            onclick: move |_| { spawn(async move {
-                                if let Ok(new_mode) = api::toggle_move_mode().await {
-                                    move_mode.set(new_mode);
-                                    if new_mode { rearrange_mode.set(false); }
-                                }
-                            }); },
-                            i { class: if is_move_mode { "fa-solid fa-lock-open" } else { "fa-solid fa-lock" } }
-                        }
-                        button {
-                            class: if is_rearrange { "btn btn-header-overlay active" } else { "btn btn-header-overlay" },
-                            title: "Rearrange raid frames",
-                            disabled: !is_visible || !raid_on || is_move_mode || overlays_auto_hidden,
-                            onclick: move |_| { spawn(async move {
-                                if let Ok(new_mode) = api::toggle_raid_rearrange().await {
-                                    rearrange_mode.set(new_mode);
-                                }
-                            }); },
-                            i { class: "fa-solid fa-grip" }
-                        }
-                        button {
-                            class: "btn btn-header-overlay",
-                            title: "Clear raid frame assignments",
-                            disabled: !raid_on,
-                            onclick: move |_| { spawn(async move { api::clear_raid_registry().await; }); },
-                            i { class: "fa-solid fa-eraser" }
-                        }
-                        span { class: "header-controls-divider" }
-                        // Profile selector
-                        select {
-                            class: "header-profile-dropdown",
-                            title: "Switch overlay profile",
-                            value: active_profile().unwrap_or_default(),
-                            onchange: move |e| {
-                                let selected = e.value();
-                                if selected.is_empty() { return; }
-                                let previous = active_profile();
-                                active_profile.set(Some(selected.clone()));
-                                let mut toast = use_toast();
-                                spawn(async move {
-                                    if let Err(err) = api::load_profile(&selected).await {
-                                        active_profile.set(previous);
-                                        toast.show(format!("Failed to load profile: {}", err), ToastSeverity::Normal);
-                                    } else {
-                                        if let Some(cfg) = api::get_config().await {
-                                            overlay_settings.set(cfg.overlay_settings);
-                                        }
-                                        profile_dirty.set(false);
-                                        if let Some(status) = api::get_overlay_status().await {
-                                            apply_status(&status, &mut metric_overlays_enabled, &mut personal_enabled,
-                                                &mut raid_enabled, &mut boss_health_enabled, &mut timers_enabled,
-                                                &mut timers_b_enabled, &mut challenges_enabled, &mut alerts_enabled,
-                                                &mut effects_a_enabled, &mut effects_b_enabled, &mut effects_c_enabled,
-                                                &mut cooldowns_enabled, &mut cooldowns_b_enabled, &mut dot_tracker_enabled, &mut notes_enabled,
-                                                &mut combat_time_enabled, &mut operation_timer_enabled,
-                                                &mut ability_queue_enabled, &mut enemy_frames_enabled, &mut ability_cast_enabled,
-                                                &mut overlays_visible, &mut move_mode, &mut rearrange_mode, &mut auto_hidden);
-                                        }
-                                    }
-                                });
-                            },
-                            for name in profile_names().iter() {
-                                option {
-                                    value: "{name}",
-                                    selected: active_profile().as_deref() == Some(name.as_str()),
-                                    "{name}"
-                                }
-                            }
-                        }
-                        span { class: "header-controls-divider" }
-                        button {
-                            class: "btn btn-header-overlay btn-header-customize",
-                            title: "Customize overlay appearance",
-                            onclick: move |_| {
-                                let opening = !settings_open();
-                                settings_open.set(opening);
-                                if !opening {
-                                    settings_pos.set(None);
-                                    settings_drag.set(None);
-                                }
-                            },
-                            i { class: "fa-solid fa-screwdriver-wrench" }
-                        }
-                    }
-
-                    // Resume Live button (when paused/historical)
-                    if !live_tailing {
-                        button {
-                            class: "btn-resume-live",
-                            title: "Resume live tailing",
-                            onclick: move |_| {
-                                let mut toast = use_toast();
-                                spawn(async move {
-                                    if let Err(err) = api::resume_live_tailing().await {
-                                        toast.show(format!("Failed to resume live tailing: {}", err), ToastSeverity::Normal);
-                                    } else {
-                                        is_live_tailing.set(true);
-                                    }
-                                });
-                            },
-                            span { class: "resume-live-label", "Resume Live " }
-                            i { class: "fa-solid fa-play" }
-                        }
-                    }
-
-                    // Profile unsaved changes hint (header)
-                    if profile_dirty() {
-                        span { class: "header-unsaved-hint",
-                            i { class: "fa-solid fa-circle-info" }
-                            " Unsaved"
-                            button {
-                                class: "header-unsaved-save-btn",
-                                title: "Save changes to active profile",
-                                onclick: move |_| {
-                                    if let Some(ref name) = active_profile() {
-                                        let n = name.clone();
-                                        let mut toast = use_toast();
-                                        spawn(async move {
-                                            if let Err(err) = api::save_profile(&n).await {
-                                                toast.show(format!("Failed to save profile: {}", err), ToastSeverity::Normal);
-                                            } else {
-                                                profile_dirty.set(false);
-                                            }
-                                        });
-                                    }
-                                },
-                                i { class: "fa-solid fa-floppy-disk" }
-                                " Save"
-                            }
-                        }
-                    }
-
-                    // Navigation (centered): live view and overlays as tabs, the editors and history behind menus
-                    div { class: "header-tabs",
-                        button {
-                            class: if ui_state.read().active_tab == MainTab::DataExplorer { "tab-btn active" } else { "tab-btn" },
-                            title: "One fight at a time, from the loaded log",
-                            onclick: move |_| ui_state.write().active_tab = MainTab::DataExplorer,
-                            i { class: "fa-solid fa-magnifying-glass-chart" }
-                            span { class: "tab-label", " Data Explorer" }
-                        }
-                        button {
-                            class: if ui_state.read().active_tab == MainTab::Overlays { "tab-btn active" } else { "tab-btn" },
-                            title: "Enable, arrange and customize overlays",
-                            onclick: move |_| ui_state.write().active_tab = MainTab::Overlays,
-                            i { class: "fa-solid fa-layer-group" }
-                            span { class: "tab-label", " Overlays" }
-                        }
-                        NavMenu {
-                            label: "Timers & Effects",
-                            icon: "fa-solid fa-stopwatch",
-                            items: vec![
-                                (MainTab::EncounterBuilder, "fa-solid fa-hammer", "Encounter Builder", "Boss timers, phases and triggers"),
-                                (MainTab::Effects, "fa-solid fa-heart-pulse", "Effects Editor", "Tracked buffs, debuffs and alerts"),
-                            ],
-                            state: ui_state,
-                        }
-                        NavMenu {
-                            label: "Historical",
-                            icon: "fa-solid fa-clock-rotate-left",
-                            items: vec![
-                                (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
-                                (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", ""),
-                                (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
-                            ],
-                            state: ui_state,
-                        }
-                    }
                 }
 
                 // ─────────────────────────────────────────────────────────────
@@ -1053,6 +993,7 @@ pub fn App() -> Element {
                 if show_empty_state && !session.as_ref().is_some_and(|s| s.missing_area) {
                     div { class: "session-dashboard-bar",
                     div { class: "dashboard-toggle-row dashboard-empty-state",
+                        SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                         if !live_tailing {
                             i { class: "fa-solid fa-spinner fa-spin dashboard-status-icon" }
                             span { class: "dashboard-empty-text", "Loading file..." }
@@ -1061,7 +1002,7 @@ pub fn App() -> Element {
                             span { class: "dashboard-empty-text", "No log files found — " }
                             span {
                                 class: "settings-link",
-                                onclick: move |_| general_settings_open.set(true),
+                                onclick: move |_| ui_state.write().active_tab = MainTab::Settings,
                                 "set log directory"
                             }
                         } else if watching {
@@ -1071,6 +1012,7 @@ pub fn App() -> Element {
                             i { class: "fa-solid fa-inbox dashboard-status-icon" }
                             span { class: "dashboard-empty-text", "No active session" }
                         }
+                        ProfileUnsavedHint { active_profile, profile_dirty }
                     }
                     }
                 }
@@ -1079,8 +1021,10 @@ pub fn App() -> Element {
                 if session.as_ref().is_some_and(|s| s.missing_area) {
                     div { class: "session-dashboard-bar",
                         div { class: "dashboard-toggle-row dashboard-empty-state",
+                            SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                             i { class: "fa-solid fa-triangle-exclamation dashboard-status-icon warning" }
                             span { class: "dashboard-empty-text", "Incomplete log file — boss encounters and timers unavailable" }
+                            ProfileUnsavedHint { active_profile, profile_dirty }
                         }
                     }
                 }
@@ -1120,22 +1064,12 @@ pub fn App() -> Element {
 
                             // Session status icon + label + player name + duration (always visible as a summary)
                             div { class: "dashboard-summary",
-                                // Status icon + label
-                                if session_ended() || info.stale_session {
-                                    span { class: "dashboard-status-label historical",
-                                        i { class: "fa-solid fa-clock" }
-                                        " Prior Session"
-                                    }
-                                } else if live_tailing {
-                                    span { class: "dashboard-status-label live",
-                                        i { class: "fa-solid fa-circle-play" }
-                                        " Live"
-                                    }
-                                } else {
-                                    span { class: "dashboard-status-label historical",
-                                        i { class: "fa-solid fa-circle-pause" }
-                                        " Historical"
-                                    }
+                                SessionStatusChip {
+                                    live_tailing,
+                                    watching,
+                                    prior: session_ended() || info.stale_session,
+                                    on_restart: restart_watcher,
+                                    on_resume: resume_live,
                                 }
 
                                 span { class: "dashboard-separator", "|" }
@@ -1264,20 +1198,14 @@ pub fn App() -> Element {
                                         }
                                     }
                                 }
+
+                                ProfileUnsavedHint { active_profile, profile_dirty }
                             }
                         }
 
                         // ── Expanded content (controls row) ──
                         if !dashboard_collapsed() {
                             div { class: "session-settings-row",
-                                // Controls label
-                                span { class: "session-controls-label",
-                                    i { class: "fa-solid fa-sliders" }
-                                    " Controls"
-                                }
-
-                                span { class: "session-settings-divider" }
-
                                 // Operation timer
                                 {
                                     let secs = op_timer_secs();
@@ -1379,65 +1307,6 @@ pub fn App() -> Element {
                                         }
                                     }
                                 }
-
-                                span { class: "session-settings-divider" }
-
-                                // Auto-hide toggles
-                                div { class: "session-auto-hide-toggles",
-                                    label {
-                                        class: "toggle-switch-label",
-                                        title: "Automatically hide overlays when viewing historical files or when logged out",
-                                        span { class: "toggle-switch",
-                                            input {
-                                                r#type: "checkbox",
-                                                checked: overlay_settings().hide_when_not_live,
-                                                onchange: move |e| {
-                                                    let enabled = e.checked();
-                                                    let mut toast = use_toast();
-                                                    spawn(async move {
-                                                        if let Some(mut cfg) = api::get_config().await {
-                                                            cfg.overlay_settings.hide_when_not_live = enabled;
-                                                            if let Err(err) = api::update_config(&cfg).await {
-                                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                            } else {
-                                                                overlay_settings.set(cfg.overlay_settings);
-                                                                api::apply_not_live_auto_hide().await;
-                                                            }
-                                                        }
-                                                    });
-                                                },
-                                            }
-                                            span { class: "toggle-slider" }
-                                        }
-                                        span { class: "toggle-text", "Auto-hide when not live" }
-                                    }
-                                    label {
-                                        class: "toggle-switch-label",
-                                        title: "Automatically hide overlays during in-game conversations",
-                                        span { class: "toggle-switch",
-                                            input {
-                                                r#type: "checkbox",
-                                                checked: overlay_settings().hide_during_conversations,
-                                                onchange: move |e| {
-                                                    let enabled = e.checked();
-                                                    let mut toast = use_toast();
-                                                    spawn(async move {
-                                                        if let Some(mut cfg) = api::get_config().await {
-                                                            cfg.overlay_settings.hide_during_conversations = enabled;
-                                                            if let Err(err) = api::update_config(&cfg).await {
-                                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                            } else {
-                                                                overlay_settings.set(cfg.overlay_settings);
-                                                            }
-                                                        }
-                                                    });
-                                                },
-                                            }
-                                            span { class: "toggle-slider" }
-                                        }
-                                        span { class: "toggle-text", "Hide in conversations" }
-                                    }
-                                }
                             }
                         }
                     }
@@ -1454,26 +1323,12 @@ pub fn App() -> Element {
                 // ─────────────────────────────────────────────────────────────
                 if ui_state.read().active_tab == MainTab::Overlays {
                     section { class: "overlay-controls",
-                        // The appearance editor lives in a modal; this is its front door
-                        button {
-                            class: "btn btn-lg btn-customize-overlays",
-                            title: "Fonts, colours, sizes and layout of every overlay",
-                            onclick: move |_| {
-                                let opening = !settings_open();
-                                settings_open.set(opening);
-                                if !opening {
-                                    settings_pos.set(None);
-                                    settings_drag.set(None);
-                                }
-                            },
-                            i { class: "fa-solid fa-screwdriver-wrench" }
-                            " Customize Overlays"
-                        }
-                        // Controls
-                        h4 { class: "subsection-title", "Controls" }
-                        div { class: "settings-controls",
+                        // Global controls as the header of the overlay card
+                        div { class: "overlay-toolbar",
+                            span { class: "overlay-toolbar-label", "Controls:" }
                             button {
                                 class: if is_visible && any_enabled { "btn btn-control btn-visible" } else { "btn btn-control btn-hidden" },
+                                title: if is_visible { "Hide all overlays" } else { "Show enabled overlays" },
                                 disabled: !any_enabled,
                                 onclick: move |_| {
                                     let mut toast = use_toast();
@@ -1492,6 +1347,7 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: if is_move_mode { "btn btn-control btn-unlocked" } else { "btn btn-control btn-locked" },
+                                title: if is_move_mode { "Lock overlays in place" } else { "Unlock overlays to move and resize them" },
                                 disabled: !is_visible || !any_enabled || is_rearrange || overlays_auto_hidden,
                                 onclick: move |_| { spawn(async move {
                                     if let Ok(new_mode) = api::toggle_move_mode().await {
@@ -1504,6 +1360,7 @@ pub fn App() -> Element {
                             }
                             button {
                                 class: if is_rearrange { "btn btn-control btn-rearrange btn-active" } else { "btn btn-control btn-rearrange" },
+                                title: "Drag raid frames into a new order",
                                 disabled: !is_visible || !raid_on || is_move_mode || overlays_auto_hidden,
                                 onclick: move |_| { spawn(async move {
                                     if let Ok(new_mode) = api::toggle_raid_rearrange().await {
@@ -1511,270 +1368,340 @@ pub fn App() -> Element {
                                     }
                                 }); },
                                 i { class: "fa-solid fa-grip" }
-                                span { " Rearrange Frames" }
+                                span { " Rearrange" }
                             }
                             button {
                                 class: "btn btn-control btn-clear-frames",
+                                title: "Clear raid frame assignments",
                                 disabled: !is_visible || !raid_on,
                                 onclick: move |_| { spawn(async move { api::clear_raid_registry().await; }); },
-                                i { class: "fa-solid fa-trash" }
-                                span { " Clear Frames" }
+                                i { class: "fa-solid fa-eraser" }
+                                span { " Clear" }
+                            }
+                            if !any_enabled {
+                                span { class: "overlay-toolbar-hint",
+                                    i { class: "fa-solid fa-circle-info" }
+                                    " Enable at least one overlay to toggle visibility and movement modes."
+                                }
                             }
                         }
 
                         // Overlay categories in columns
                         div { class: "overlay-categories",
-                            // General column
                             div { class: "overlay-category",
-                                h4 { class: "category-title", "General" }
+                                div { class: "category-header",
+                                    h4 { class: "category-title", "General" }
+                                    span { class: "category-count", "{general_on} of 6" }
+                                }
                                 div { class: "category-buttons",
-                                    button {
-                                        class: if personal_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Personal Stats",
+                                        icon: "fa-solid fa-chart-bar",
                                         title: "Shows your personal combat statistics",
-                                        onclick: move |_| { spawn(async move {
+                                        active: personal_on,
+                                        tab_key: "personal",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Personal, personal_on).await {
                                                 personal_enabled.set(!personal_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-chart-bar overlay-btn-icon" }
-                                        "Personal Stats"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if raid_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Raid Frames",
+                                        icon: "fa-solid fa-users",
                                         title: "Displays party/raid member health bars with effect tracking",
-                                        onclick: move |_| { spawn(async move {
+                                        active: raid_on,
+                                        tab_key: "raid",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Raid, raid_on).await {
                                                 raid_enabled.set(!raid_on);
                                                 if raid_on { rearrange_mode.set(false); }
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-users overlay-btn-icon" }
-                                        "Raid Frames"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if alerts_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Alerts",
+                                        icon: "fa-solid fa-bell",
                                         title: "Shows combat alerts and notifications",
-                                        onclick: move |_| { spawn(async move {
+                                        active: alerts_on,
+                                        tab_key: "alerts",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Alerts, alerts_on).await {
                                                 alerts_enabled.set(!alerts_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-bell overlay-btn-icon" }
-                                        "Alerts"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if combat_time_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Combat Time",
+                                        icon: "fa-solid fa-stopwatch",
                                         title: "Displays the current encounter combat time",
-                                        onclick: move |_| { spawn(async move {
+                                        active: combat_time_on,
+                                        tab_key: "combat_time",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::CombatTime, combat_time_on).await {
                                                 combat_time_enabled.set(!combat_time_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-stopwatch overlay-btn-icon" }
-                                        "Combat Time"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if operation_timer_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Op Timer",
+                                        icon: "fa-solid fa-hourglass-half",
                                         title: "Displays a persistent timer for the entire operation run",
-                                        onclick: move |_| { spawn(async move {
+                                        active: operation_timer_on,
+                                        tab_key: "operation_timer",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::OperationTimer, operation_timer_on).await {
                                                 operation_timer_enabled.set(!operation_timer_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-hourglass-half overlay-btn-icon" }
-                                        "Op Timer"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if ability_cast_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Abilities Cast",
+                                        icon: "fa-solid fa-list-ol",
                                         title: "Lists the abilities you recently cast",
-                                        onclick: move |_| { spawn(async move {
+                                        active: ability_cast_on,
+                                        tab_key: "ability_cast",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::AbilityCast, ability_cast_on).await {
                                                 ability_cast_enabled.set(!ability_cast_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-list-ol overlay-btn-icon" }
-                                        "Abilities Cast"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
                                 }
                             }
-
-                            // Encounter column
                             div { class: "overlay-category",
-                                h4 { class: "category-title", "Encounter" }
+                                div { class: "category-header",
+                                    h4 { class: "category-title", "Encounter" }
+                                    span { class: "category-count", "{encounter_on} of 6" }
+                                }
                                 div { class: "category-buttons",
-                                    button {
-                                        class: if boss_health_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Boss Health",
+                                        icon: "fa-solid fa-heart-pulse",
                                         title: "Shows boss health bars and cast timers",
-                                        onclick: move |_| { spawn(async move {
+                                        active: boss_health_on,
+                                        tab_key: "boss_health",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::BossHealth, boss_health_on).await {
                                                 boss_health_enabled.set(!boss_health_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-heart-pulse overlay-btn-icon" }
-                                        "Boss Health"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if challenges_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Challenges",
+                                        icon: "fa-solid fa-trophy",
                                         title: "Tracks raid challenge objectives and progress",
-                                        onclick: move |_| { spawn(async move {
+                                        active: challenges_on,
+                                        tab_key: "challenges",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Challenges, challenges_on).await {
                                                 challenges_enabled.set(!challenges_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-trophy overlay-btn-icon" }
-                                        "Challenges"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if timers_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Timers A",
+                                        icon: "fa-solid fa-clock",
                                         title: "Displays encounter-specific timers and phase markers (Group A)",
-                                        onclick: move |_| { spawn(async move {
+                                        active: timers_on,
+                                        tab_key: "timers_a",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::TimersA, timers_on).await {
                                                 timers_enabled.set(!timers_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-clock overlay-btn-icon" }
-                                        "Timers A"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if timers_b_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Timers B",
+                                        icon: "fa-solid fa-clock",
                                         title: "Displays encounter-specific timers and phase markers (Group B)",
-                                        onclick: move |_| { spawn(async move {
+                                        active: timers_b_on,
+                                        tab_key: "timers_b",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::TimersB, timers_b_on).await {
                                                 timers_b_enabled.set(!timers_b_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-clock overlay-btn-icon" }
-                                        "Timers B"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if notes_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Notes",
+                                        icon: "fa-solid fa-note-sticky",
                                         title: "Displays encounter notes written in the Encounter Editor",
-                                        onclick: move |_| { spawn(async move {
+                                        active: notes_on,
+                                        tab_key: "notes",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Notes, notes_on).await {
                                                 notes_enabled.set(!notes_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-note-sticky overlay-btn-icon" }
-                                        "Notes"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if ability_queue_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Ability Queue",
+                                        icon: "fa-solid fa-layer-group",
                                         title: "Displays GCD bar, queued/ready abilities, and active ability countdowns",
-                                        onclick: move |_| { spawn(async move {
+                                        active: ability_queue_on,
+                                        tab_key: None,
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::AbilityQueue, ability_queue_on).await {
                                                 ability_queue_enabled.set(!ability_queue_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-layer-group overlay-btn-icon" }
-                                        "Ability Queue"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
                                 }
                             }
-
-                            // Effects column
                             div { class: "overlay-category",
-                                h4 { class: "category-title", "Effects" }
+                                div { class: "category-header",
+                                    h4 { class: "category-title", "Effects" }
+                                    span { class: "category-count", "{effects_on} of 6" }
+                                }
                                 div { class: "category-buttons",
-                                    button {
-                                        class: if effects_a_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Effects A",
+                                        icon: "fa-solid fa-bolt",
                                         title: "Displays tracked buffs and effects (Group A)",
-                                        onclick: move |_| { spawn(async move {
+                                        active: effects_a_on,
+                                        tab_key: "effects_a",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EffectsA, effects_a_on).await {
                                                 effects_a_enabled.set(!effects_a_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-bolt overlay-btn-icon" }
-                                        "Effects A"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if effects_b_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Effects B",
+                                        icon: "fa-solid fa-bolt",
                                         title: "Displays tracked buffs and effects (Group B)",
-                                        onclick: move |_| { spawn(async move {
+                                        active: effects_b_on,
+                                        tab_key: "effects_b",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EffectsB, effects_b_on).await {
                                                 effects_b_enabled.set(!effects_b_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-bolt overlay-btn-icon" }
-                                        "Effects B"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if effects_c_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Effects C",
+                                        icon: "fa-solid fa-bolt",
                                         title: "Displays tracked buffs and effects (Group C)",
-                                        onclick: move |_| { spawn(async move {
+                                        active: effects_c_on,
+                                        tab_key: "effects_c",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EffectsC, effects_c_on).await {
                                                 effects_c_enabled.set(!effects_c_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-bolt overlay-btn-icon" }
-                                        "Effects C"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if cooldowns_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Cooldowns A",
+                                        icon: "fa-solid fa-rotate",
                                         title: "Tracks ability cooldowns (Group A)",
-                                        onclick: move |_| { spawn(async move {
+                                        active: cooldowns_on,
+                                        tab_key: "cooldowns",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Cooldowns, cooldowns_on).await {
                                                 cooldowns_enabled.set(!cooldowns_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-rotate overlay-btn-icon" }
-                                        "Cooldowns A"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if cooldowns_b_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Cooldowns B",
+                                        icon: "fa-solid fa-rotate",
                                         title: "Tracks ability cooldowns (Group B)",
-                                        onclick: move |_| { spawn(async move {
+                                        active: cooldowns_b_on,
+                                        tab_key: "cooldowns_b",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::CooldownsB, cooldowns_b_on).await {
                                                 cooldowns_b_enabled.set(!cooldowns_b_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-rotate overlay-btn-icon" }
-                                        "Cooldowns B"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
-                                    button {
-                                        class: if dot_tracker_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "DOT Tracker",
+                                        icon: "fa-solid fa-fire",
                                         title: "Tracks damage-over-time effects on targets",
-                                        onclick: move |_| { spawn(async move {
+                                        active: dot_tracker_on,
+                                        tab_key: "dot_tracker",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::DotTracker, dot_tracker_on).await {
                                                 dot_tracker_enabled.set(!dot_tracker_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-fire overlay-btn-icon" }
-                                        "DOT Tracker"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
                                 }
                             }
-
-                            // Metrics column
                             div { class: "overlay-category",
-                                h4 { class: "category-title", "Metrics" }
+                                div { class: "category-header",
+                                    h4 { class: "category-title", "Metrics" }
+                                    span { class: "category-count", "{metrics_on} of {metrics_total}" }
+                                }
                                 div { class: "category-buttons",
                                     for mt in MetricType::all().iter().filter(|mt| !MetricType::pvp().contains(mt)) {
                                         {
                                             let ot = *mt;
                                             let is_on = enabled_map.get(&ot).copied().unwrap_or(false);
-                                            let icon = ot.icon_class();
                                             rsx! {
-                                                button {
-                                                    class: if is_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
-                                                    onclick: move |_| { spawn(async move {
+                                                OverlayToggle {
+                                                    key: "{ot.config_key()}",
+                                                    label: ot.label(),
+                                                    icon: ot.icon_class(),
+                                                    title: "",
+                                                    active: is_on,
+                                                    tab_key: ot.config_key(),
+                                                    on_toggle: move |_| { spawn(async move {
                                                         if api::toggle_overlay(OverlayType::Metric(ot), is_on).await {
                                                             let mut map = metric_overlays_enabled();
                                                             map.insert(ot, !is_on);
@@ -1782,41 +1709,48 @@ pub fn App() -> Element {
                                                             profile_dirty.set(true);
                                                         }
                                                     }); },
-                                                    i { class: "{icon} overlay-btn-icon" }
-                                                    "{ot.label()}"
+                                                    on_settings: open_overlay_settings,
+                                                    drawer_overlay: drawer_overlay.clone(),
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
-
-                            // PvP column
                             div { class: "overlay-category",
-                                h4 { class: "category-title", "PvP" }
+                                div { class: "category-header",
+                                    h4 { class: "category-title", "PvP" }
+                                    span { class: "category-count", "{pvp_on} of {pvp_total}" }
+                                }
                                 div { class: "category-buttons",
-                                    button {
-                                        class: if enemy_frames_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                    OverlayToggle {
+                                        label: "Enemy Frames",
+                                        icon: "fa-solid fa-heart-pulse",
                                         title: "Enemy team HP frames with disciplines and targets",
-                                        onclick: move |_| { spawn(async move {
+                                        active: enemy_frames_on,
+                                        tab_key: "enemy_frames",
+                                        on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EnemyFrames, enemy_frames_on).await {
                                                 enemy_frames_enabled.set(!enemy_frames_on);
                                                 profile_dirty.set(true);
                                             }
                                         }); },
-                                        i { class: "fa-solid fa-heart-pulse overlay-btn-icon" }
-                                        "Enemy Frames"
+                                        on_settings: open_overlay_settings,
+                                        drawer_overlay: drawer_overlay.clone(),
                                     }
                                     for mt in MetricType::pvp() {
                                         {
                                             let ot = *mt;
                                             let is_on = enabled_map.get(&ot).copied().unwrap_or(false);
-                                            let icon = ot.icon_class();
                                             rsx! {
-                                                button {
-                                                    class: if is_on { "btn btn-overlay btn-active" } else { "btn btn-overlay" },
+                                                OverlayToggle {
+                                                    key: "{ot.config_key()}",
+                                                    label: ot.label(),
+                                                    icon: ot.icon_class(),
                                                     title: "Show your DTPS over the past 20 seconds by source. Optionally enable total DTPS by source for the entire fight",
-                                                    onclick: move |_| { spawn(async move {
+                                                    active: is_on,
+                                                    tab_key: ot.config_key(),
+                                                    on_toggle: move |_| { spawn(async move {
                                                         if api::toggle_overlay(OverlayType::Metric(ot), is_on).await {
                                                             let mut map = metric_overlays_enabled();
                                                             map.insert(ot, !is_on);
@@ -1824,8 +1758,8 @@ pub fn App() -> Element {
                                                             profile_dirty.set(true);
                                                         }
                                                     }); },
-                                                    i { class: "{icon} overlay-btn-icon" }
-                                                    "{ot.label()}"
+                                                    on_settings: open_overlay_settings,
+                                                    drawer_overlay: drawer_overlay.clone(),
                                                 }
                                             }
                                         }
@@ -1852,6 +1786,521 @@ pub fn App() -> Element {
                 if ui_state.read().active_tab == MainTab::Effects {
                     EffectEditorPanel {
                         state: ui_state,
+                    }
+                }
+
+                // ─────────────────────────────────────────────────────────────
+                // Settings Tab
+                // ─────────────────────────────────────────────────────────────
+                if ui_state.read().active_tab == MainTab::Settings {
+                    section { class: "settings-page",
+                        div { class: "settings-header",
+                            h3 { "Settings" }
+                        }
+                        div { class: "settings-content",
+                        div { class: "settings-section",
+                            h4 { "Log Directory" }
+                            p { class: "hint", "Select the directory containing your SWTOR combat logs." }
+                            div { class: "directory-picker",
+                                div { class: "directory-display",
+                                    i { class: "fa-solid fa-folder" }
+                                    span { class: "directory-path",
+                                        if current_dir.is_empty() { "No directory selected" } else { "{current_dir}" }
+                                    }
+                                }
+                                button {
+                                    class: "btn btn-browse",
+                                    onclick: move |_| {
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(path) = api::pick_log_directory().await {
+                                                log_directory.set(path.clone());
+                                                if let Some(mut cfg) = api::get_config().await {
+                                                    cfg.log_directory = path;
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                    } else {
+                                                        // Restart watcher and rebuild index for new directory
+                                                        api::restart_watcher().await;
+                                                        api::refresh_log_index().await;
+                                                        is_watching.set(true);
+                                                        // Now fetch updated stats
+                                                        log_dir_size.set(api::get_log_directory_size().await);
+                                                        log_file_count.set(api::get_log_file_count().await);
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    },
+                                    i { class: "fa-solid fa-folder-open" }
+                                    " Browse"
+                                }
+                            }
+                            {
+                                let count = log_file_count();
+                                let size_mb = log_dir_size() as f64 / 1_000_000.0;
+                                rsx! {
+                                    p { class: "hint", "{count} files • {size_mb:.1} MB" }
+                                }
+                            }
+                            if watching {
+                                div { class: "directory-status",
+                                    span { class: "status-dot status-on" }
+                                    span { "Watching for new log files" }
+                                }
+                            }
+                        }
+
+                        div { class: "settings-section",
+                            h4 { "Application" }
+                            div { class: "setting-row",
+                                label { "Minimize to tray on close" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: minimize_to_tray(),
+                                    onchange: move |e| {
+                                        let checked = e.checked();
+                                        minimize_to_tray.set(checked);
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.minimize_to_tray = checked;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                            p { class: "hint", "When enabled, closing the window hides to system tray instead of quitting." }
+                            div { class: "setting-row",
+                                label { "Overlay Streaming Source" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: web_overlay_enabled(),
+                                    onchange: move |e| {
+                                        let checked = e.checked();
+                                        let previous = web_overlay_enabled();
+                                        web_overlay_enabled.set(checked);
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Err(err) = api::set_web_overlay_enabled(checked).await {
+                                                web_overlay_enabled.set(previous);
+                                                toast.show(format!("Failed to change web overlay: {}", err), ToastSeverity::Normal);
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                            p { class: "hint", "Mirror visible overlays into a locally hosted browser page that can be used as a browser source for OBS and other streaming software." }
+                            if web_overlay_enabled() {
+                                code { class: "web-overlay-url", "{WEB_OVERLAY_URL}" }
+                            }
+                            div { class: "setting-row",
+                                label { "European number format" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: european_number_format(),
+                                    onchange: move |e| {
+                                        let checked = e.checked();
+                                        european_number_format.set(checked);
+                                        ui_state.write().european_number_format = checked;
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.european_number_format = checked;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                } else {
+                                                    api::refresh_overlay_settings().await;
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                            p { class: "hint", "Swap decimal point and thousands separator (e.g., 1.50K becomes 1,50K)." }
+                            p { class: "hint hint-warning",
+                                i { class: "fa-solid fa-triangle-exclamation" }
+                                strong { " Editor inputs still use '.' for decimals." }
+                            }
+                        }
+
+                        div { class: "settings-section",
+                            h4 { "Global Hotkeys" }
+                            p { class: "hint", "Click to capture a key combination. Backspace to clear." }
+                            if is_wayland_session() {
+                                p { class: "hint hint-warning",
+                                    i { class: "fa-solid fa-triangle-exclamation" }
+                                    " Linux Wayland: Experimental, requires compositor support for freedesktop global shortcuts portal."
+                                }
+                            }
+                            p { class: "hint hint-warning",
+                                i { class: "fa-solid fa-info-circle" }
+                                " Restart app after changes."
+                            }
+                            div { class: "hotkey-grid",
+                                div { class: "setting-row",
+                                    label { "Show/Hide" }
+                                    HotkeyInput {
+                                        value: hotkey_visibility(),
+                                        on_change: move |v| hotkey_visibility.set(v),
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Move Mode" }
+                                    HotkeyInput {
+                                        value: hotkey_move_mode(),
+                                        on_change: move |v| hotkey_move_mode.set(v),
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Rearrange" }
+                                    HotkeyInput {
+                                        value: hotkey_rearrange(),
+                                        on_change: move |v| hotkey_rearrange.set(v),
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Op Timer" }
+                                    HotkeyInput {
+                                        value: hotkey_op_timer(),
+                                        on_change: move |v| hotkey_op_timer.set(v),
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Detect Raid Names" }
+                                    HotkeyInput {
+                                        value: hotkey_detect_raid(),
+                                        on_change: move |v| hotkey_detect_raid.set(v),
+                                    }
+                                }
+                                div { class: "setting-row",
+                                    label { "Go Live" }
+                                    HotkeyInput {
+                                        value: hotkey_live_mode(),
+                                        on_change: move |v| hotkey_live_mode.set(v),
+                                    }
+                                }
+                            }
+                            if is_macos() {
+                                p { class: "hint hint-warning",
+                                    i { class: "fa-solid fa-triangle-exclamation" }
+                                    " Detect Raid Names is not supported on macOS."
+                                }
+                            }
+                            div { class: "settings-footer",
+                                button {
+                                    class: "btn btn-save",
+                                    onclick: move |_| {
+                                        let v = hotkey_visibility(); let m = hotkey_move_mode(); let r = hotkey_rearrange(); let ot = hotkey_op_timer(); let lm = hotkey_live_mode(); let dr = hotkey_detect_raid();
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.hotkeys.toggle_visibility = if v.is_empty() { None } else { Some(v) };
+                                                cfg.hotkeys.toggle_move_mode = if m.is_empty() { None } else { Some(m) };
+                                                cfg.hotkeys.toggle_rearrange_mode = if r.is_empty() { None } else { Some(r) };
+                                                cfg.hotkeys.toggle_operation_timer = if ot.is_empty() { None } else { Some(ot) };
+                                                cfg.hotkeys.toggle_live_mode = if lm.is_empty() { None } else { Some(lm) };
+                                                cfg.hotkeys.detect_raid_names = if dr.is_empty() { None } else { Some(dr) };
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save hotkeys: {}", err), ToastSeverity::Normal);
+                                                } else {
+                                                    hotkey_save_status.set("Saved! Restart to apply.".to_string());
+                                                }
+                                            }
+                                        });
+                                    },
+                                    "Save Hotkeys"
+                                }
+                                span { class: "save-status", "{hotkey_save_status}" }
+                            }
+                        }
+
+                        div { class: "settings-section",
+                            h4 { "Audio" }
+
+                            div { class: "setting-row",
+                                label { "Enable Audio" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: audio_enabled(),
+                                    onchange: move |e| {
+                                        let checked = e.checked();
+                                        audio_enabled.set(checked);
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.audio.enabled = checked;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+
+                            Slider {
+                                label: "Volume",
+                                value: audio_volume() as f64,
+                                min: 0.0,
+                                max: 200.0,
+                                suffix: "%",
+                                disabled: !audio_enabled(),
+                                on_change: move |v: f64| {
+                                    let val = v.round() as u8;
+                                    audio_volume.set(val);
+                                    let mut toast = use_toast();
+                                    spawn(async move {
+                                        if let Some(mut cfg) = api::get_config().await {
+                                            cfg.audio.volume = val;
+                                            if let Err(err) = api::update_config(&cfg).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                            }
+                                        }
+                                    });
+                                },
+                            }
+
+                            div { style: "text-align: right; margin: 0.25em 0 0.5em; display: flex; gap: 0.5em; justify-content: flex-end;",
+                                button {
+                                    class: "btn-small",
+                                    disabled: !audio_enabled(),
+                                    onclick: move |_| {
+                                        spawn(async move {
+                                            api::preview_sound("Alert.mp3").await;
+                                        });
+                                    },
+                                    "Play Test Sound"
+                                }
+                                button {
+                                    class: "btn-small",
+                                    disabled: !audio_enabled() || !audio_tts_enabled(),
+                                    onclick: move |_| {
+                                        spawn(async move {
+                                            api::preview_tts().await;
+                                        });
+                                    },
+                                    "Play Test TTS"
+                                }
+                            }
+
+                            div { class: "setting-row",
+                                label { "Text-to-Speech" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: audio_tts_enabled(),
+                                    disabled: !audio_enabled(),
+                                    onchange: move |e| {
+                                        let checked = e.checked();
+                                        audio_tts_enabled.set(checked);
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.audio.tts_enabled = checked;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                            p { class: "hint",
+                                "Reads alerts and countdowns aloud when no sound file or voice pack is set"
+                                if is_linux() {
+                                    " (requires espeak to be installed)"
+                                }
+                                "."
+                            }
+                        }
+
+                        div { class: "settings-section",
+                            h4 { "Parsely.io" }
+                            p { class: "hint", "Upload logs to parsely.io for leaderboards and detailed analysis." }
+                            div { class: "setting-row",
+                                label { "Username" }
+                                input {
+                                    r#type: "text",
+                                    placeholder: "Optional",
+                                    value: parsely_username,
+                                    oninput: move |e| parsely_username.set(e.value())
+                                }
+                            }
+                            div { class: "setting-row",
+                                label { "Password" }
+                                input {
+                                    r#type: "password",
+                                    placeholder: "Optional",
+                                    value: parsely_password,
+                                    oninput: move |e| parsely_password.set(e.value())
+                                }
+                            }
+                            div { class: "setting-row",
+                                label { "Guilds" }
+                                div { class: "parsely-guilds-field",
+                                    if !parsely_guilds.read().is_empty() {
+                                        div { class: "parsely-guilds-chips",
+                                            for (idx, guild) in parsely_guilds.read().iter().enumerate() {
+                                                {
+                                                    let name = guild.clone();
+                                                    rsx! {
+                                                        span {
+                                                            key: "{name}-{idx}",
+                                                            class: "chip",
+                                                            "{name}"
+                                                            button {
+                                                                class: "chip-remove",
+                                                                title: "Remove guild",
+                                                                onclick: move |_| {
+                                                                    let (guilds_snapshot, selected_snapshot) = {
+                                                                        let mut list = parsely_guilds.write();
+                                                                        list.retain(|g| g != &name);
+                                                                        let still_has_selected = parsely_selected_guild
+                                                                            .read()
+                                                                            .as_deref()
+                                                                            .map(|s| list.iter().any(|g| g == s))
+                                                                            .unwrap_or(false);
+                                                                        if !still_has_selected {
+                                                                            parsely_selected_guild.set(list.first().cloned());
+                                                                        }
+                                                                        (list.clone(), parsely_selected_guild.read().clone())
+                                                                    };
+                                                                    save_parsely_guild_fields(
+                                                                        guilds_snapshot,
+                                                                        selected_snapshot,
+                                                                        parsely_save_status,
+                                                                    );
+                                                                },
+                                                                "×"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    div { class: "parsely-guilds-add",
+                                        input {
+                                            r#type: "text",
+                                            placeholder: "Add a guild...",
+                                            value: parsely_guild_input,
+                                            oninput: move |e| parsely_guild_input.set(e.value()),
+                                            onkeydown: move |e| {
+                                                if e.key() == Key::Enter {
+                                                    add_parsely_guild(
+                                                        parsely_guild_input,
+                                                        parsely_guilds,
+                                                        parsely_selected_guild,
+                                                        parsely_save_status,
+                                                    );
+                                                }
+                                            }
+                                        }
+                                        button {
+                                            class: "btn btn-secondary btn-sm",
+                                            onclick: move |_| {
+                                                add_parsely_guild(
+                                                    parsely_guild_input,
+                                                    parsely_guilds,
+                                                    parsely_selected_guild,
+                                                    parsely_save_status,
+                                                );
+                                            },
+                                            "Add"
+                                        }
+                                    }
+                                }
+                            }
+                            div { class: "settings-footer",
+                                button {
+                                    class: "btn btn-save",
+                                    onclick: move |_| {
+                                        let u = parsely_username();
+                                        let p = parsely_password();
+                                        let guilds = parsely_guilds.read().clone();
+                                        let selected = parsely_selected_guild.read().clone();
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.parsely.username = u;
+                                                cfg.parsely.password = p;
+                                                cfg.parsely.guild = String::new();
+                                                cfg.parsely.guilds = guilds;
+                                                cfg.parsely.selected_guild = selected;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save Parsely settings: {}", err), ToastSeverity::Normal);
+                                                } else {
+                                                    parsely_save_status.set("Saved!".to_string());
+                                                }
+                                            }
+                                        });
+                                    },
+                                    "Save Parsely Settings"
+                                }
+                                span { class: "save-status", "{parsely_save_status}" }
+                            }
+                        }
+
+                        div { class: "settings-section",
+                            h4 { "Name Detection" }
+                            if is_macos() {
+                                p { class: "hint hint-warning",
+                                    i { class: "fa-solid fa-triangle-exclamation" }
+                                    " Name detection is not supported on macOS."
+                                }
+                            }
+                            div { class: "setting-row",
+                                label { "Save detection images" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: ocr_debug_dump(),
+                                    onchange: move |e| {
+                                        let checked = e.checked();
+                                        ocr_debug_dump.set(checked);
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.ocr_debug_dump = checked;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                            p { class: "hint", "Writes what name detection saw to baras/ocr-debug, so a misread name can be diagnosed from the images rather than guessed at." }
+                            div { class: "setting-row",
+                                label { "Detections to keep" }
+                                input {
+                                    r#type: "number",
+                                    min: "1",
+                                    max: "1000",
+                                    step: "1",
+                                    value: "{ocr_debug_max_dumps()}",
+                                    onchange: move |e| {
+                                        let Ok(count) = e.value().parse::<u32>() else { return };
+                                        let count = count.clamp(1, 1000);
+                                        ocr_debug_max_dumps.set(count);
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.ocr_debug_max_dumps = count;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                            p { class: "hint", "The oldest detections are deleted before each new one, so the folder never holds more than this many." }
+                        }
+
+                        } // settings-content
                     }
                 }
 
@@ -1897,326 +2346,49 @@ pub fn App() -> Element {
                 }
             }
 
-            // Overlay settings floating panel (accessible from any tab via header customize button)
+            // Overlay settings drawer (accessible from any tab via the header customize button)
             if settings_open() {
-                {
-                    let has_pos = settings_pos().is_some();
-                    let style = if let Some((sx, sy)) = settings_pos() {
-                        format!("left: {sx}px; top: {sy}px;")
-                    } else {
-                        String::new()
-                    };
-                    rsx! {
-                        div {
-                            class: if has_pos { "settings-floating-wrap positioned" } else { "settings-floating-wrap" },
-                            style: "{style}",
-                            SettingsPanel {
-                                settings: overlay_settings,
-                                selected_tab: selected_overlay_tab,
-                                profile_names: profile_names,
-                                active_profile: active_profile,
-                                metric_overlays_enabled: metric_overlays_enabled,
-                                personal_enabled: personal_enabled,
-                                raid_enabled: raid_enabled,
-                                overlays_visible: overlays_visible,
-                                profile_dirty: profile_dirty,
-                                on_close: move |_| {
-                                    settings_open.set(false);
-                                    settings_pos.set(None);
-                                    settings_drag.set(None);
-                                },
-                                on_header_mousedown: move |e: MouseEvent| {
-                                    let coords = e.client_coordinates();
-                                    let (px, py) = settings_pos().unwrap_or_else(|| {
-                                        let doc = web_sys::window().unwrap().document().unwrap();
-                                        let vw = doc.document_element().unwrap().client_width() as f64;
-                                        let vh = doc.document_element().unwrap().client_height() as f64;
-                                        ((vw - 900.0_f64.min(vw * 0.9)) / 2.0, (vh * 0.075))
-                                    });
-                                    settings_drag.set(Some((coords.x - px, coords.y - py)));
-                                    if !has_pos {
-                                        settings_pos.set(Some((px, py)));
-                                    }
-                                },
-                                on_settings_saved: move |_| {},
-                            }
-                        }
-                    }
+                SettingsPanel {
+                    settings: overlay_settings,
+                    selected_tab: selected_overlay_tab,
+                    profile_names: profile_names,
+                    active_profile: active_profile,
+                    metric_overlays_enabled: metric_overlays_enabled,
+                    personal_enabled: personal_enabled,
+                    raid_enabled: raid_enabled,
+                    overlays_visible: overlays_visible,
+                    profile_dirty: profile_dirty,
+                    section: settings_section,
+                    on_close: move |_| {
+                        settings_open.set(false);
+                    },
+                    on_settings_saved: move |_| {},
                 }
             }
 
-            // General settings modal
-            if general_settings_open() {
-                div {
-                    class: "modal-backdrop",
-                    onclick: move |_| general_settings_open.set(false),
-                    div {
-                        onclick: move |e| e.stop_propagation(),
-                        section { class: "settings-panel general-settings",
-                            div { class: "settings-header",
-                                h3 { "Settings" }
-                                button { class: "btn btn-close", onclick: move |_| general_settings_open.set(false), "X" }
+            // File browser modal
+            if file_browser_open() {
+                section { class: "drawer file-browser-drawer",
+
+                    div { class: "file-browser-header",
+                        div { class: "file-browser-header-top",
+                            h3 {
+                                i { class: "fa-solid fa-folder-open" }
+                                " Log Files"
                             }
-
-                            div { class: "settings-content",
-                            div { class: "settings-section",
-                                h4 { "Log Directory" }
-                                p { class: "hint", "Select the directory containing your SWTOR combat logs." }
-                                div { class: "directory-picker",
-                                    div { class: "directory-display",
-                                        i { class: "fa-solid fa-folder" }
-                                        span { class: "directory-path",
-                                            if current_dir.is_empty() { "No directory selected" } else { "{current_dir}" }
-                                        }
-                                    }
-                                    button {
-                                        class: "btn btn-browse",
-                                        onclick: move |_| {
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(path) = api::pick_log_directory().await {
-                                                    log_directory.set(path.clone());
-                                                    if let Some(mut cfg) = api::get_config().await {
-                                                        cfg.log_directory = path;
-                                                        if let Err(err) = api::update_config(&cfg).await {
-                                                            toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                        } else {
-                                                            // Restart watcher and rebuild index for new directory
-                                                            api::restart_watcher().await;
-                                                            api::refresh_log_index().await;
-                                                            is_watching.set(true);
-                                                            // Now fetch updated stats
-                                                            log_dir_size.set(api::get_log_directory_size().await);
-                                                            log_file_count.set(api::get_log_file_count().await);
-                                                        }
-                                                    }
-                                                }
-                                            });
-                                        },
-                                        i { class: "fa-solid fa-folder-open" }
-                                        " Browse"
-                                    }
-                                }
-                                {
-                                    let count = log_file_count();
-                                    let size_mb = log_dir_size() as f64 / 1_000_000.0;
-                                    rsx! {
-                                        p { class: "hint", "{count} files • {size_mb:.1} MB" }
-                                    }
-                                }
-                                if watching {
-                                    div { class: "directory-status",
-                                        span { class: "status-dot status-on" }
-                                        span { "Watching for new log files" }
-                                    }
-                                }
-                            }
-
-                            div { class: "settings-section",
-                                h4 { "Application" }
-                                div { class: "setting-row",
-                                    label { "Minimize to tray on close" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: minimize_to_tray(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            minimize_to_tray.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.minimize_to_tray = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-                                p { class: "hint", "When enabled, closing the window hides to system tray instead of quitting." }
-                                div { class: "setting-row",
-                                    label { "Overlay Streaming Source" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: web_overlay_enabled(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            let previous = web_overlay_enabled();
-                                            web_overlay_enabled.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Err(err) = api::set_web_overlay_enabled(checked).await {
-                                                    web_overlay_enabled.set(previous);
-                                                    toast.show(format!("Failed to change web overlay: {}", err), ToastSeverity::Normal);
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-                                p { class: "hint", "Mirror visible overlays into a locally hosted browser page that can be used as a browser source for OBS and other streaming software." }
-                                if web_overlay_enabled() {
-                                    code { class: "web-overlay-url", "{WEB_OVERLAY_URL}" }
-                                }
-                                div { class: "setting-row",
-                                    label { "European number format" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: european_number_format(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            european_number_format.set(checked);
-                                            ui_state.write().european_number_format = checked;
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.european_number_format = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    } else {
-                                                        api::refresh_overlay_settings().await;
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-                                p { class: "hint", "Swap decimal point and thousands separator (e.g., 1.50K becomes 1,50K)." }
-                                p { class: "hint hint-warning",
-                                    i { class: "fa-solid fa-triangle-exclamation" }
-                                    strong { " Editor inputs still use '.' for decimals." }
-                                }
-                            }
-
-                            div { class: "settings-section",
-                                h4 { "Global Hotkeys" }
-                                p { class: "hint", "Click to capture a key combination. Backspace to clear." }
-                                if is_wayland_session() {
-                                    p { class: "hint hint-warning",
-                                        i { class: "fa-solid fa-triangle-exclamation" }
-                                        " Linux Wayland: Experimental, requires compositor support for freedesktop global shortcuts portal."
-                                    }
-                                }
-                                p { class: "hint hint-warning",
-                                    i { class: "fa-solid fa-info-circle" }
-                                    " Restart app after changes."
-                                }
-                                div { class: "hotkey-grid",
-                                    div { class: "setting-row",
-                                        label { "Show/Hide" }
-                                        HotkeyInput {
-                                            value: hotkey_visibility(),
-                                            on_change: move |v| hotkey_visibility.set(v),
-                                        }
-                                    }
-                                    div { class: "setting-row",
-                                        label { "Move Mode" }
-                                        HotkeyInput {
-                                            value: hotkey_move_mode(),
-                                            on_change: move |v| hotkey_move_mode.set(v),
-                                        }
-                                    }
-                                    div { class: "setting-row",
-                                        label { "Rearrange" }
-                                        HotkeyInput {
-                                            value: hotkey_rearrange(),
-                                            on_change: move |v| hotkey_rearrange.set(v),
-                                        }
-                                    }
-                                    div { class: "setting-row",
-                                        label { "Op Timer" }
-                                        HotkeyInput {
-                                            value: hotkey_op_timer(),
-                                            on_change: move |v| hotkey_op_timer.set(v),
-                                        }
-                                    }
-                                    div { class: "setting-row",
-                                        label { "Detect Raid Names" }
-                                        HotkeyInput {
-                                            value: hotkey_detect_raid(),
-                                            on_change: move |v| hotkey_detect_raid.set(v),
-                                        }
-                                    }
-                                    div { class: "setting-row",
-                                        label { "Go Live" }
-                                        HotkeyInput {
-                                            value: hotkey_live_mode(),
-                                            on_change: move |v| hotkey_live_mode.set(v),
-                                        }
-                                    }
-                                }
-                                if is_macos() {
-                                    p { class: "hint hint-warning",
-                                        i { class: "fa-solid fa-triangle-exclamation" }
-                                        " Detect Raid Names is not supported on macOS."
-                                    }
-                                }
-                                div { class: "settings-footer",
-                                    button {
-                                        class: "btn btn-save",
-                                        onclick: move |_| {
-                                            let v = hotkey_visibility(); let m = hotkey_move_mode(); let r = hotkey_rearrange(); let ot = hotkey_op_timer(); let lm = hotkey_live_mode(); let dr = hotkey_detect_raid();
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.hotkeys.toggle_visibility = if v.is_empty() { None } else { Some(v) };
-                                                    cfg.hotkeys.toggle_move_mode = if m.is_empty() { None } else { Some(m) };
-                                                    cfg.hotkeys.toggle_rearrange_mode = if r.is_empty() { None } else { Some(r) };
-                                                    cfg.hotkeys.toggle_operation_timer = if ot.is_empty() { None } else { Some(ot) };
-                                                    cfg.hotkeys.toggle_live_mode = if lm.is_empty() { None } else { Some(lm) };
-                                                    cfg.hotkeys.detect_raid_names = if dr.is_empty() { None } else { Some(dr) };
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save hotkeys: {}", err), ToastSeverity::Normal);
-                                                    } else {
-                                                        hotkey_save_status.set("Saved! Restart to apply.".to_string());
-                                                    }
-                                                }
-                                            });
-                                        },
-                                        "Save Hotkeys"
-                                    }
-                                    span { class: "save-status", "{hotkey_save_status}" }
-                                }
-                            }
-
-                            div { class: "settings-section",
-                                h4 { "Audio" }
-
-                                div { class: "setting-row",
-                                    label { "Enable Audio" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: audio_enabled(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            audio_enabled.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.audio.enabled = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-
-                                Slider {
-                                    label: "Volume",
-                                    value: audio_volume() as f64,
-                                    min: 0.0,
-                                    max: 200.0,
-                                    suffix: "%",
-                                    disabled: !audio_enabled(),
-                                    on_change: move |v: f64| {
-                                        let val = v.round() as u8;
-                                        audio_volume.set(val);
+                            label {
+                                class: "file-browser-filter-toggle",
+                                title: "Hide files smaller than 1MB",
+                                input {
+                                    r#type: "checkbox",
+                                    checked: hide_small_log_files(),
+                                    onchange: move |e| {
+                                        let checked = e.checked();
+                                        hide_small_log_files.set(checked);
                                         let mut toast = use_toast();
                                         spawn(async move {
                                             if let Some(mut cfg) = api::get_config().await {
-                                                cfg.audio.volume = val;
+                                                cfg.hide_small_log_files = checked;
                                                 if let Err(err) = api::update_config(&cfg).await {
                                                     toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
                                                 }
@@ -2224,490 +2396,211 @@ pub fn App() -> Element {
                                         });
                                     },
                                 }
-
-                                div { style: "text-align: right; margin: 0.25em 0 0.5em; display: flex; gap: 0.5em; justify-content: flex-end;",
-                                    button {
-                                        class: "btn-small",
-                                        disabled: !audio_enabled(),
-                                        onclick: move |_| {
-                                            spawn(async move {
-                                                api::preview_sound("Alert.mp3").await;
-                                            });
-                                        },
-                                        "Play Test Sound"
-                                    }
-                                    button {
-                                        class: "btn-small",
-                                        disabled: !audio_enabled() || !audio_tts_enabled(),
-                                        onclick: move |_| {
-                                            spawn(async move {
-                                                api::preview_tts().await;
-                                            });
-                                        },
-                                        "Play Test TTS"
-                                    }
-                                }
-
-                                div { class: "setting-row",
-                                    label { "Text-to-Speech" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: audio_tts_enabled(),
-                                        disabled: !audio_enabled(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            audio_tts_enabled.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.audio.tts_enabled = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-                                p { class: "hint",
-                                    "Reads alerts and countdowns aloud when no sound file or voice pack is set"
-                                    if is_linux() {
-                                        " (requires espeak to be installed)"
-                                    }
-                                    "."
-                                }
+                                " Hide <1MB"
                             }
-
-                            div { class: "settings-section",
-                                h4 { "Parsely.io" }
-                                p { class: "hint", "Upload logs to parsely.io for leaderboards and detailed analysis." }
-                                div { class: "setting-row",
-                                    label { "Username" }
-                                    input {
-                                        r#type: "text",
-                                        placeholder: "Optional",
-                                        value: parsely_username,
-                                        oninput: move |e| parsely_username.set(e.value())
-                                    }
-                                }
-                                div { class: "setting-row",
-                                    label { "Password" }
-                                    input {
-                                        r#type: "password",
-                                        placeholder: "Optional",
-                                        value: parsely_password,
-                                        oninput: move |e| parsely_password.set(e.value())
-                                    }
-                                }
-                                div { class: "setting-row",
-                                    label { "Guilds" }
-                                    div { class: "parsely-guilds-field",
-                                        if !parsely_guilds.read().is_empty() {
-                                            div { class: "parsely-guilds-chips",
-                                                for (idx, guild) in parsely_guilds.read().iter().enumerate() {
-                                                    {
-                                                        let name = guild.clone();
-                                                        rsx! {
-                                                            span {
-                                                                key: "{name}-{idx}",
-                                                                class: "chip",
-                                                                "{name}"
-                                                                button {
-                                                                    class: "chip-remove",
-                                                                    title: "Remove guild",
-                                                                    onclick: move |_| {
-                                                                        let (guilds_snapshot, selected_snapshot) = {
-                                                                            let mut list = parsely_guilds.write();
-                                                                            list.retain(|g| g != &name);
-                                                                            let still_has_selected = parsely_selected_guild
-                                                                                .read()
-                                                                                .as_deref()
-                                                                                .map(|s| list.iter().any(|g| g == s))
-                                                                                .unwrap_or(false);
-                                                                            if !still_has_selected {
-                                                                                parsely_selected_guild.set(list.first().cloned());
-                                                                            }
-                                                                            (list.clone(), parsely_selected_guild.read().clone())
-                                                                        };
-                                                                        save_parsely_guild_fields(
-                                                                            guilds_snapshot,
-                                                                            selected_snapshot,
-                                                                            parsely_save_status,
-                                                                        );
-                                                                    },
-                                                                    "×"
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        div { class: "parsely-guilds-add",
-                                            input {
-                                                r#type: "text",
-                                                placeholder: "Add a guild...",
-                                                value: parsely_guild_input,
-                                                oninput: move |e| parsely_guild_input.set(e.value()),
-                                                onkeydown: move |e| {
-                                                    if e.key() == Key::Enter {
-                                                        add_parsely_guild(
-                                                            parsely_guild_input,
-                                                            parsely_guilds,
-                                                            parsely_selected_guild,
-                                                            parsely_save_status,
-                                                        );
-                                                    }
-                                                }
-                                            }
-                                            button {
-                                                class: "btn btn-secondary btn-sm",
-                                                onclick: move |_| {
-                                                    add_parsely_guild(
-                                                        parsely_guild_input,
-                                                        parsely_guilds,
-                                                        parsely_selected_guild,
-                                                        parsely_save_status,
-                                                    );
-                                                },
-                                                "Add"
-                                            }
-                                        }
-                                    }
-                                }
-                                div { class: "settings-footer",
-                                    button {
-                                        class: "btn btn-save",
-                                        onclick: move |_| {
-                                            let u = parsely_username();
-                                            let p = parsely_password();
-                                            let guilds = parsely_guilds.read().clone();
-                                            let selected = parsely_selected_guild.read().clone();
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.parsely.username = u;
-                                                    cfg.parsely.password = p;
-                                                    cfg.parsely.guild = String::new();
-                                                    cfg.parsely.guilds = guilds;
-                                                    cfg.parsely.selected_guild = selected;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save Parsely settings: {}", err), ToastSeverity::Normal);
-                                                    } else {
-                                                        parsely_save_status.set("Saved!".to_string());
-                                                    }
-                                                }
-                                            });
-                                        },
-                                        "Save Parsely Settings"
-                                    }
-                                    span { class: "save-status", "{parsely_save_status}" }
-                                }
+                            button {
+                                class: "btn btn-close",
+                                onclick: move |_| file_browser_open.set(false),
+                                "X"
                             }
-
-                            div { class: "settings-section",
-                                h4 { "Name Detection" }
-                                if is_macos() {
-                                    p { class: "hint hint-warning",
-                                        i { class: "fa-solid fa-triangle-exclamation" }
-                                        " Name detection is not supported on macOS."
-                                    }
-                                }
-                                div { class: "setting-row",
-                                    label { "Save detection images" }
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: ocr_debug_dump(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            ocr_debug_dump.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.ocr_debug_dump = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-                                p { class: "hint", "Writes what name detection saw to baras/ocr-debug, so a misread name can be diagnosed from the images rather than guessed at." }
-                                div { class: "setting-row",
-                                    label { "Detections to keep" }
-                                    input {
-                                        r#type: "number",
-                                        min: "1",
-                                        max: "1000",
-                                        step: "1",
-                                        value: "{ocr_debug_max_dumps()}",
-                                        onchange: move |e| {
-                                            let Ok(count) = e.value().parse::<u32>() else { return };
-                                            let count = count.clamp(1, 1000);
-                                            ocr_debug_max_dumps.set(count);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.ocr_debug_max_dumps = count;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-                                p { class: "hint", "The oldest detections are deleted before each new one, so the folder never holds more than this many." }
-                            }
-
-                            } // settings-content
+                        }
+                        input {
+                            class: "file-browser-search",
+                            r#type: "text",
+                            placeholder: "Filter by name, date, day, or operation (comma = AND, e.g. \"ToonName,Dxun\")...",
+                            value: "{file_browser_filter}",
+                            oninput: move |e| file_browser_filter.set(e.value()),
                         }
                     }
-                }
-            }
 
-            // File browser modal
-            if file_browser_open() {
-                div {
-                    class: "modal-backdrop",
-                    onclick: move |_| file_browser_open.set(false),
-                    div {
-                        class: "file-browser-modal",
-                        onclick: move |e| e.stop_propagation(),
-
-                        div { class: "file-browser-header",
-                            div { class: "file-browser-header-top",
-                                h3 {
-                                    i { class: "fa-solid fa-folder-open" }
-                                    " Log Files"
-                                }
-                                label {
-                                    class: "file-browser-filter-toggle",
-                                    title: "Hide files smaller than 1MB",
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: hide_small_log_files(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            hide_small_log_files.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.hide_small_log_files = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        },
+                    div { class: "file-browser-list",
+                        if log_files().is_empty() {
+                            div { class: "file-browser-empty",
+                                i { class: "fa-solid fa-spinner fa-spin" }
+                                " Loading files..."
+                            }
+                        } else {
+                            {
+                                let filter = file_browser_filter().to_lowercase();
+                                let hide_small = hide_small_log_files();
+                                let filtered: Vec<_> = log_files().iter().filter(|f| {
+                                    // Size filter: hide files < 1MB if enabled
+                                    if hide_small && f.file_size < 1024 * 1024 {
+                                        return false;
                                     }
-                                    " Hide <1MB"
-                                }
-                                button {
-                                    class: "btn btn-close",
-                                    onclick: move |_| file_browser_open.set(false),
-                                    "X"
-                                }
-                            }
-                            input {
-                                class: "file-browser-search",
-                                r#type: "text",
-                                placeholder: "Filter by name, date, day, or operation (comma = AND, e.g. \"ToonName,Dxun\")...",
-                                value: "{file_browser_filter}",
-                                oninput: move |e| file_browser_filter.set(e.value()),
-                            }
-                        }
-
-                        div { class: "file-browser-list",
-                            if log_files().is_empty() {
-                                div { class: "file-browser-empty",
-                                    i { class: "fa-solid fa-spinner fa-spin" }
-                                    " Loading files..."
-                                }
-                            } else {
+                                    // Text filter: comma-separated terms are ANDed
+                                    // together (e.g. "X,Y" matches files with both X and Y).
+                                    let terms: Vec<&str> = filter
+                                        .split(',')
+                                        .map(|t| t.trim())
+                                        .filter(|t| !t.is_empty())
+                                        .collect();
+                                    if terms.is_empty() {
+                                        return true;
+                                    }
+                                    let name = f.character_name.as_deref().unwrap_or("").to_lowercase();
+                                    let date = f.date.to_lowercase();
+                                    let day = f.day_of_week.to_lowercase();
+                                    terms.iter().all(|term| {
+                                        // Also check area names for operation search
+                                        let areas_match = f.areas.as_ref().map_or(false, |areas| {
+                                            areas.iter().any(|a| {
+                                                a.display.to_lowercase().contains(term)
+                                                    || a.area_name.to_lowercase().contains(term)
+                                            })
+                                        });
+                                        name.contains(term) || date.contains(term) || day.contains(term) || areas_match
+                                    })
+                                }).cloned().collect();
+                                rsx! {
+                                    for file in filtered.iter() {
                                 {
-                                    let filter = file_browser_filter().to_lowercase();
-                                    let hide_small = hide_small_log_files();
-                                    let filtered: Vec<_> = log_files().iter().filter(|f| {
-                                        // Size filter: hide files < 1MB if enabled
-                                        if hide_small && f.file_size < 1024 * 1024 {
-                                            return false;
-                                        }
-                                        // Text filter: comma-separated terms are ANDed
-                                        // together (e.g. "X,Y" matches files with both X and Y).
-                                        let terms: Vec<&str> = filter
-                                            .split(',')
-                                            .map(|t| t.trim())
-                                            .filter(|t| !t.is_empty())
-                                            .collect();
-                                        if terms.is_empty() {
-                                            return true;
-                                        }
-                                        let name = f.character_name.as_deref().unwrap_or("").to_lowercase();
-                                        let date = f.date.to_lowercase();
-                                        let day = f.day_of_week.to_lowercase();
-                                        terms.iter().all(|term| {
-                                            // Also check area names for operation search
-                                            let areas_match = f.areas.as_ref().map_or(false, |areas| {
-                                                areas.iter().any(|a| {
-                                                    a.display.to_lowercase().contains(term)
-                                                        || a.area_name.to_lowercase().contains(term)
-                                                })
-                                            });
-                                            name.contains(term) || date.contains(term) || day.contains(term) || areas_match
-                                        })
-                                    }).cloned().collect();
+                                    let path = file.path.clone();
+                                    let path_for_upload = file.path.clone();
+                                    let char_name = file.character_name.clone().unwrap_or_else(|| "Unknown".to_string());
+                                    let date = file.date.clone();
+                                    let day_of_week = file.day_of_week.clone();
+                                    let size_str = if file.file_size >= 1024 * 1024 {
+                                        format!("{:.1}mb", file.file_size as f64 / (1024.0 * 1024.0))
+                                    } else {
+                                        format!("{}kb", file.file_size / 1024)
+                                    };
+                                    let is_empty = file.is_empty;
+                                    let is_current = path == current_file;
+                                    let upload_result = upload_status().get(&path).cloned();
                                     rsx! {
-                                        for file in filtered.iter() {
-                                    {
-                                        let path = file.path.clone();
-                                        let path_for_upload = file.path.clone();
-                                        let char_name = file.character_name.clone().unwrap_or_else(|| "Unknown".to_string());
-                                        let date = file.date.clone();
-                                        let day_of_week = file.day_of_week.clone();
-                                        let size_str = if file.file_size >= 1024 * 1024 {
-                                            format!("{:.1}mb", file.file_size as f64 / (1024.0 * 1024.0))
-                                        } else {
-                                            format!("{}kb", file.file_size / 1024)
-                                        };
-                                        let is_empty = file.is_empty;
-                                        let is_current = path == current_file;
-                                        let upload_result = upload_status().get(&path).cloned();
-                                        rsx! {
-                                            div {
-                                                class: match (is_empty, is_current) {
-                                                    (true, true) => "file-item empty current",
-                                                    (true, false) => "file-item empty",
-                                                    (false, true) => "file-item current",
-                                                    (false, false) => "file-item",
-                                                },
-                                                div { class: "file-info",
-                                                    span { class: "file-date",
-                                                        "{date}"
-                                                        if !day_of_week.is_empty() {
-                                                            span { class: "file-day", " - {day_of_week}" }
-                                                        }
+                                        div {
+                                            class: match (is_empty, is_current) {
+                                                (true, true) => "file-item empty current",
+                                                (true, false) => "file-item empty",
+                                                (false, true) => "file-item current",
+                                                (false, false) => "file-item",
+                                            },
+                                            div { class: "file-info",
+                                                span { class: "file-date",
+                                                    "{date}"
+                                                    if !day_of_week.is_empty() {
+                                                        span { class: "file-day", " - {day_of_week}" }
                                                     }
-                                                    div { class: "file-meta",
-                                                        span { class: "file-char", "{char_name}" }
-                                                        span { class: "file-sep", " • " }
-                                                        span { class: "file-size", "{size_str}" }
-                                                    }
-                                                    // Show areas/operations visited in this file
-                                                    // Only show areas with difficulty (actual instances, not open world)
-                                                    {
-                                                        // Helper to get difficulty CSS class; prefers the
-                                                        // ID-derived tier (language-independent), falls back
-                                                        // to English string matching for unknown IDs
-                                                        fn difficulty_class(area: &AreaVisitInfo) -> &'static str {
-                                                            match area.difficulty_tier.as_deref() {
-                                                                Some("fp") => return "area-tag diff-fp",
-                                                                Some("nim") => return "area-tag diff-nim",
-                                                                Some("hm") => return "area-tag diff-hm",
-                                                                Some("sm") => return "area-tag diff-sm",
-                                                                _ => {}
-                                                            }
-                                                            let lower = area.difficulty.to_lowercase();
-                                                            // 4-player content (flashpoints) gets blue
-                                                            if lower.contains("4 player") {
-                                                                "area-tag diff-fp"
-                                                            // 8/16 player operations get colored by difficulty
-                                                            } else if lower.contains("master") {
-                                                                "area-tag diff-nim"
-                                                            } else if lower.contains("veteran") {
-                                                                "area-tag diff-hm"
-                                                            } else if lower.contains("story") {
-                                                                "area-tag diff-sm"
-                                                            } else {
-                                                                "area-tag"
-                                                            }
+                                                }
+                                                div { class: "file-meta",
+                                                    span { class: "file-char", "{char_name}" }
+                                                    span { class: "file-sep", " • " }
+                                                    span { class: "file-size", "{size_str}" }
+                                                }
+                                                // Show areas/operations visited in this file
+                                                // Only show areas with difficulty (actual instances, not open world)
+                                                {
+                                                    // Helper to get difficulty CSS class; prefers the
+                                                    // ID-derived tier (language-independent), falls back
+                                                    // to English string matching for unknown IDs
+                                                    fn difficulty_class(area: &AreaVisitInfo) -> &'static str {
+                                                        match area.difficulty_tier.as_deref() {
+                                                            Some("fp") => return "area-tag diff-fp",
+                                                            Some("nim") => return "area-tag diff-nim",
+                                                            Some("hm") => return "area-tag diff-hm",
+                                                            Some("sm") => return "area-tag diff-sm",
+                                                            _ => {}
                                                         }
-
-                                                        let instanced_areas: Vec<_> = file.areas.as_ref()
-                                                            .map(|areas| areas.iter().filter(|a| !a.difficulty.is_empty()).collect())
-                                                            .unwrap_or_default();
-                                                        let area_count = instanced_areas.len();
-                                                        rsx! {
-                                                            if !instanced_areas.is_empty() {
-                                                                details { class: "file-areas",
-                                                                    summary {
-                                                                        // Show first 3 badges in summary
-                                                                        for area in instanced_areas.iter().take(3) {
-                                                                            span { class: "{difficulty_class(area)}", "{area.display}" }
-                                                                        }
-                                                                        // Show "+N more" if there are more than 3
-                                                                        if area_count > 3 {
-                                                                            span { class: "area-tag area-more", "+{area_count - 3} more" }
-                                                                        }
-                                                                    }
-                                                                    // When expanded, show all areas
-                                                                    if area_count > 3 {
-                                                                        ul { class: "area-list",
-                                                                            for area in instanced_areas.iter() {
-                                                                                li { class: "{difficulty_class(area)}", "{area.display}" }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                    // Show upload result for this file
-                                                    if let Some((success, ref msg)) = upload_result {
-                                                        if success {
-                                                            // Show clickable link that opens in browser
-                                                            {
-                                                                let url = msg.clone();
-                                                                rsx! {
-                                                                    button {
-                                                                        class: "upload-link",
-                                                                        title: "Open in browser",
-                                                                        onclick: move |_| {
-                                                                            let u = url.clone();
-                                                                            spawn(async move {
-                                                                                api::open_url(&u).await;
-                                                                            });
-                                                                        },
-                                                                        i { class: "fa-solid fa-external-link-alt" }
-                                                                        " {msg}"
-                                                                    }
-                                                                }
-                                                            }
+                                                        let lower = area.difficulty.to_lowercase();
+                                                        // 4-player content (flashpoints) gets blue
+                                                        if lower.contains("4 player") {
+                                                            "area-tag diff-fp"
+                                                        // 8/16 player operations get colored by difficulty
+                                                        } else if lower.contains("master") {
+                                                            "area-tag diff-nim"
+                                                        } else if lower.contains("veteran") {
+                                                            "area-tag diff-hm"
+                                                        } else if lower.contains("story") {
+                                                            "area-tag diff-sm"
                                                         } else {
-                                                            span { class: "upload-status error", "{msg}" }
+                                                            "area-tag"
+                                                        }
+                                                    }
+
+                                                    let instanced_areas: Vec<_> = file.areas.as_ref()
+                                                        .map(|areas| areas.iter().filter(|a| !a.difficulty.is_empty()).collect())
+                                                        .unwrap_or_default();
+                                                    let area_count = instanced_areas.len();
+                                                    rsx! {
+                                                        if !instanced_areas.is_empty() {
+                                                            details { class: "file-areas",
+                                                                summary {
+                                                                    // Show first 3 badges in summary
+                                                                    for area in instanced_areas.iter().take(3) {
+                                                                        span { class: "{difficulty_class(area)}", "{area.display}" }
+                                                                    }
+                                                                    // Show "+N more" if there are more than 3
+                                                                    if area_count > 3 {
+                                                                        span { class: "area-tag area-more", "+{area_count - 3} more" }
+                                                                    }
+                                                                }
+                                                                // When expanded, show all areas
+                                                                if area_count > 3 {
+                                                                    ul { class: "area-list",
+                                                                        for area in instanced_areas.iter() {
+                                                                            li { class: "{difficulty_class(area)}", "{area.display}" }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
-                                                div { class: "file-actions",
-                                                    button {
-                                                        class: "btn btn-open",
-                                                        disabled: is_empty || opener.busy(),
-                                                        onclick: move |_| {
-                                                            file_browser_open.set(false);
-                                                            opener.open(path.clone(), None);
-                                                        },
-                                                        i { class: "fa-solid fa-eye" }
-                                                        " Open"
-                                                    }
-                                                    button {
-                                                        class: "btn btn-upload",
-                                                        disabled: is_empty,
-                                                        title: "Upload to Parsely.io",
-                                                        onclick: {
-                                                            let p = path_for_upload.clone();
-                                                            let display_name = format!("{} - {}", char_name, date);
-                                                            move |_| {
-                                                                parsely_upload.open_file(p.clone(), display_name.clone());
+                                                // Show upload result for this file
+                                                if let Some((success, ref msg)) = upload_result {
+                                                    if success {
+                                                        // Show clickable link that opens in browser
+                                                        {
+                                                            let url = msg.clone();
+                                                            rsx! {
+                                                                button {
+                                                                    class: "upload-link",
+                                                                    title: "Open in browser",
+                                                                    onclick: move |_| {
+                                                                        let u = url.clone();
+                                                                        spawn(async move {
+                                                                            api::open_url(&u).await;
+                                                                        });
+                                                                    },
+                                                                    i { class: "fa-solid fa-external-link-alt" }
+                                                                    " {msg}"
+                                                                }
                                                             }
-                                                        },
-                                                        i { class: "fa-solid fa-cloud-arrow-up" }
+                                                        }
+                                                    } else {
+                                                        span { class: "upload-status error", "{msg}" }
                                                     }
+                                                }
+                                            }
+                                            div { class: "file-actions",
+                                                button {
+                                                    class: "btn btn-open",
+                                                    disabled: is_empty || opener.busy(),
+                                                    onclick: move |_| {
+                                                        file_browser_open.set(false);
+                                                        opener.open(path.clone(), None);
+                                                    },
+                                                    i { class: "fa-solid fa-eye" }
+                                                    " Open"
+                                                }
+                                                button {
+                                                    class: "btn btn-upload",
+                                                    disabled: is_empty,
+                                                    title: "Upload to Parsely.io",
+                                                    onclick: {
+                                                        let p = path_for_upload.clone();
+                                                        let display_name = format!("{} - {}", char_name, date);
+                                                        move |_| {
+                                                            parsely_upload.open_file(p.clone(), display_name.clone());
+                                                        }
+                                                    },
+                                                    i { class: "fa-solid fa-cloud-arrow-up" }
                                                 }
                                             }
                                         }
                                     }
-                                        }
+                                }
                                     }
                                 }
                             }

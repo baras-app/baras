@@ -337,6 +337,16 @@ pub async fn refresh_overlay_settings(
     OverlayManager::refresh_settings(&state, &service, true).await
 }
 
+/// Return one overlay to its default position (respawns it if running)
+#[tauri::command]
+pub async fn reset_overlay_position(
+    key: String,
+    state: State<'_, SharedOverlayState>,
+    service: State<'_, ServiceHandle>,
+) -> Result<(), String> {
+    OverlayManager::reset_position(&key, &state, &service).await
+}
+
 /// Preview overlay settings without persisting to disk.
 /// Used for live preview while user is editing settings.
 #[tauri::command]

@@ -3846,6 +3846,8 @@ pub enum MainTab {
     BossStats,
     RaidSummaries,
     LogManagement,
+    /// Application settings page
+    Settings,
 }
 
 impl MainTab {
@@ -3869,6 +3871,7 @@ impl MainTab {
             MainTab::BossStats => "boss_stats",
             MainTab::RaidSummaries => "raid_summaries",
             MainTab::LogManagement => "log_management",
+            MainTab::Settings => "settings",
         }
     }
 
@@ -3883,6 +3886,7 @@ impl MainTab {
             "history" | "boss_stats" => MainTab::BossStats,
             "raid_summaries" => MainTab::RaidSummaries,
             "log_management" => MainTab::LogManagement,
+            "settings" => MainTab::Settings,
             _ => MainTab::DataExplorer,
         }
     }

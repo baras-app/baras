@@ -575,12 +575,24 @@ impl OverlayManager {
             return Ok(true);
         }
 
+        Self::spawn_and_prime(kind, state, service, &config).await?;
+        Ok(true)
+    }
+
+    /// Spawn an overlay (unless already running) and send it everything it needs
+    /// to render immediately: config, move mode, cached combat data, notes.
+    async fn spawn_and_prime(
+        kind: OverlayType,
+        state: &SharedOverlayState,
+        service: &ServiceHandle,
+        config: &baras_core::context::AppConfig,
+    ) -> Result<(), String> {
         // Check if already running, spawn, and insert - all under lock to prevent race conditions
         // from rapid toggle clicks spawning duplicate overlays
         let (tx, needs_monitor_save, current_move_mode) = {
             let mut s = state.lock().map_err(|e| e.to_string())?;
             if s.is_running(kind) {
-                return Ok(true);
+                return Ok(());
             }
             // Spawn while holding lock (spawn is synchronous, so this is safe)
             let result = Self::spawn(kind, &config.overlay_settings)?;
@@ -620,7 +632,29 @@ impl OverlayManager {
         // Update overlay status flag for effects loop optimization
         service.set_overlay_active(kind.config_key(), true);
 
-        Ok(true)
+        Ok(())
+    }
+
+    /// Forget an overlay's saved position so it returns to its default spot.
+    /// Defaults apply at spawn, so a running overlay is torn down and respawned.
+    pub async fn reset_position(
+        key: &str,
+        state: &SharedOverlayState,
+        service: &ServiceHandle,
+    ) -> Result<(), String> {
+        let kind = Self::all_overlay_types()
+            .into_iter()
+            .find(|t| t.config_key() == key)
+            .ok_or_else(|| format!("Unknown overlay: {key}"))?;
+
+        let mut config = service.config().await;
+        config.overlay_settings.positions.remove(key);
+        service.update_config(config.clone()).await?;
+
+        let handle = state.lock().map_err(|e| e.to_string())?.remove(kind);
+        let Some(handle) = handle else { return Ok(()) };
+        Self::shutdown_no_position(handle).await;
+        Self::spawn_and_prime(kind, state, service, &config).await
     }
 
     /// Hide a single overlay (disable + shutdown if running).

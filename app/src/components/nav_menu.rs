@@ -8,9 +8,18 @@ use crate::types::{MainTab, UiSessionState};
 
 /// One destination: tab, icon class, label, tooltip
 pub type NavItem = (MainTab, &'static str, &'static str, &'static str);
+/// One extra entry below the destinations that runs a callback instead of
+/// switching tabs: icon class, label, tooltip, handler
+pub type NavAction = (&'static str, &'static str, &'static str, EventHandler<()>);
 
 #[component]
-pub fn NavMenu(label: &'static str, icon: &'static str, items: Vec<NavItem>, state: Signal<UiSessionState>) -> Element {
+pub fn NavMenu(
+    label: &'static str,
+    icon: &'static str,
+    items: Vec<NavItem>,
+    #[props(default)] actions: Vec<NavAction>,
+    state: Signal<UiSessionState>,
+) -> Element {
     let mut open = use_signal(|| false);
     // Last destination picked from this menu: one click on the button goes
     // straight back to it; the list is for switching
@@ -66,6 +75,21 @@ pub fn NavMenu(label: &'static str, icon: &'static str, items: Vec<NavItem>, sta
                             },
                             i { class: "{i}" }
                             " {l}"
+                        }
+                    }
+                    if !actions.is_empty() {
+                        div { class: "nav-menu-divider" }
+                        for (i, l, t, on_pick) in actions.iter().cloned() {
+                            button {
+                                class: "nav-menu-item",
+                                title: "{t}",
+                                onclick: move |_| {
+                                    on_pick.call(());
+                                    open.set(false);
+                                },
+                                i { class: "{i}" }
+                                " {l}"
+                            }
                         }
                     }
                 }

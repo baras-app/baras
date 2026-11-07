@@ -243,6 +243,11 @@ pub async fn refresh_overlay_settings() -> bool {
     result.as_bool().unwrap_or(false)
 }
 
+/// Return one overlay to its default position
+pub async fn reset_overlay_position(key: &str) -> Result<JsValue, String> {
+    try_invoke("reset_overlay_position", build_args("key", key)).await
+}
+
 /// Preview overlay settings without persisting (for live preview)
 pub async fn preview_overlay_settings(settings: &crate::types::OverlaySettings) -> bool {
     let result = invoke("preview_overlay_settings", build_args("settings", settings)).await;
