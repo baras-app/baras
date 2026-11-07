@@ -1560,12 +1560,16 @@
   pointer-events: none;
 }
 
+/* Each chart on the same dark card as the tables (the old --bg-secondary
+   was never defined, so the charts had no background at all) */
 .chart-container {
   width: 100%;
   flex: 1;
   min-height: 150px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
 }
 
 /* Empty chart state */
@@ -1574,8 +1578,9 @@
   align-items: center;
   justify-content: center;
   min-height: 80px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
   color: var(--text-muted);
   font-size: 12px;
   font-style: italic;
