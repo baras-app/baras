@@ -141,100 +141,102 @@ pub fn OverviewTable(props: OverviewTableProps) -> Element {
         if let Some((class, text)) = props.side_label {
             span { class: "overview-side-label {class}", "{text}" }
         }
-        table { class: "overview-table",
-            thead {
-                tr {
-                    th { class: "name-col", "Name" }
-                    th { class: "section-header", colspan: "2", "Damage Dealt" }
-                    th { class: "section-header", colspan: "2", "Threat" }
-                    th { class: "section-header", colspan: "3", "Damage Taken" }
-                    th { class: "section-header", colspan: "4", "Healing" }
-                    th { class: "section-header", colspan: "2", "Shielding" }
-                    th { class: "section-header", colspan: "2", "Activity" }
-                }
-                tr { class: "sub-header",
-                    th {}
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::DamageTotal), "Total{arrow(OverviewSort::DamageTotal)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::DPS), "DPS{arrow(OverviewSort::DPS)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::ThreatTotal), "Total{arrow(OverviewSort::ThreatTotal)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::TPS), "TPS{arrow(OverviewSort::TPS)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::DamageTakenTotal), "Total{arrow(OverviewSort::DamageTakenTotal)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::DTPS), "DTPS{arrow(OverviewSort::DTPS)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::APS), "APS{arrow(OverviewSort::APS)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::HealingTotal), "Total{arrow(OverviewSort::HealingTotal)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::HPS), "HPS{arrow(OverviewSort::HPS)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::HealingPct), "%{arrow(OverviewSort::HealingPct)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::EHPS), "EHPS{arrow(OverviewSort::EHPS)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::ShieldingTotal), "Total{arrow(OverviewSort::ShieldingTotal)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::SPS), "SPS{arrow(OverviewSort::SPS)}" }
-                    th { class: "num sortable", onclick: sort_click(OverviewSort::APM), "APM{arrow(OverviewSort::APM)}" }
-                    th { class: "num sortable", title: "Interrupt casts", onclick: sort_click(OverviewSort::Interrupts), "Int{arrow(OverviewSort::Interrupts)}" }
-                }
-            }
-            tbody {
-                for row in props.rows.iter() {
+        div { class: "overview-table-box",
+            table { class: "overview-table",
+                thead {
                     tr {
-                        td { class: "name-col",
-                            span { class: "name-with-icon",
-                                if let Some(role_name) = &row.role_icon {
-                                    if let Some(role_asset) = get_role_icon(role_name) {
-                                        img {
-                                            class: "role-icon",
-                                            src: *role_asset,
-                                            alt: ""
-                                        }
-                                    }
-                                }
-                                if let Some(icon_name) = &row.class_icon {
-                                    if let Some(icon_asset) = get_class_icon(icon_name) {
-                                        img {
-                                            class: "class-icon",
-                                            src: *icon_asset,
-                                            title: "{row.discipline_name.as_deref().unwrap_or(\"\")}",
-                                            alt: ""
-                                        }
-                                    }
-                                }
-                                "{row.name}"
-                            }
-                        }
-                        td { class: "num dmg", "{format_number(row.damage_total)}" }
-                        td { class: "num dmg", "{format_number(row.dps)}" }
-                        td { class: "num threat", "{format_number(row.threat_total)}" }
-                        td { class: "num threat", "{format_number(row.tps)}" }
-                        td { class: "num taken", "{format_number(row.damage_taken_total)}" }
-                        td { class: "num taken", "{format_number(row.dtps)}" }
-                        td { class: "num taken", "{format_number(row.aps)}" }
-                        td { class: "num heal", "{format_number(row.healing_total)}" }
-                        td { class: "num heal", "{format_number(row.hps)}" }
-                        td { class: "num heal", "{format_pct(row.healing_pct)}" }
-                        td { class: "num heal", "{format_number(row.ehps)}" }
-                        td { class: "num shield", "{format_number(row.shielding_given_total)}" }
-                        td { class: "num shield", "{format_number(row.sps)}" }
-                        td { class: "num apm", "{formatting::format_decimal_f64(row.apm, 1, eu)}" }
-                        td { class: "num apm", "{formatting::format_decimal_f64(row.interrupts, 0, eu)}" }
+                        th { class: "name-col", "Name" }
+                        th { class: "section-header", colspan: "2", "Damage Dealt" }
+                        th { class: "section-header", colspan: "2", "Threat" }
+                        th { class: "section-header", colspan: "3", "Damage Taken" }
+                        th { class: "section-header", colspan: "4", "Healing" }
+                        th { class: "section-header", colspan: "2", "Shielding" }
+                        th { class: "section-header", colspan: "2", "Activity" }
+                    }
+                    tr { class: "sub-header",
+                        th {}
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::DamageTotal), "Total{arrow(OverviewSort::DamageTotal)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::DPS), "DPS{arrow(OverviewSort::DPS)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::ThreatTotal), "Total{arrow(OverviewSort::ThreatTotal)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::TPS), "TPS{arrow(OverviewSort::TPS)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::DamageTakenTotal), "Total{arrow(OverviewSort::DamageTakenTotal)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::DTPS), "DTPS{arrow(OverviewSort::DTPS)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::APS), "APS{arrow(OverviewSort::APS)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::HealingTotal), "Total{arrow(OverviewSort::HealingTotal)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::HPS), "HPS{arrow(OverviewSort::HPS)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::HealingPct), "%{arrow(OverviewSort::HealingPct)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::EHPS), "EHPS{arrow(OverviewSort::EHPS)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::ShieldingTotal), "Total{arrow(OverviewSort::ShieldingTotal)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::SPS), "SPS{arrow(OverviewSort::SPS)}" }
+                        th { class: "num sortable", onclick: sort_click(OverviewSort::APM), "APM{arrow(OverviewSort::APM)}" }
+                        th { class: "num sortable", title: "Interrupt casts", onclick: sort_click(OverviewSort::Interrupts), "Int{arrow(OverviewSort::Interrupts)}" }
                     }
                 }
-            }
-            tfoot {
-                for (label, t) in props.total_rows.iter() {
-                    tr { class: "totals-row",
-                        td { class: "name-col", "{label}" }
-                        td { class: "num dmg", "{format_number(t.damage)}" }
-                        td { class: "num dmg", "{format_number(t.dps)}" }
-                        td { class: "num threat", "{format_number(t.threat)}" }
-                        td { class: "num threat", "{format_number(t.tps)}" }
-                        td { class: "num taken", "{format_number(t.damage_taken)}" }
-                        td { class: "num taken", "{format_number(t.dtps)}" }
-                        td { class: "num taken", "{format_number(t.aps)}" }
-                        td { class: "num heal", "{format_number(t.healing)}" }
-                        td { class: "num heal", "{format_number(t.hps)}" }
-                        td { class: "num heal", "" }
-                        td { class: "num heal", "{format_number(t.ehps)}" }
-                        td { class: "num shield", "{format_number(t.shielding)}" }
-                        td { class: "num shield", "{format_number(t.sps)}" }
-                        td { class: "num apm" }
-                        td { class: "num apm", "{formatting::format_decimal_f64(t.interrupts, 0, eu)}" }
+                tbody {
+                    for row in props.rows.iter() {
+                        tr {
+                            td { class: "name-col",
+                                span { class: "name-with-icon",
+                                    if let Some(role_name) = &row.role_icon {
+                                        if let Some(role_asset) = get_role_icon(role_name) {
+                                            img {
+                                                class: "role-icon",
+                                                src: *role_asset,
+                                                alt: ""
+                                            }
+                                        }
+                                    }
+                                    if let Some(icon_name) = &row.class_icon {
+                                        if let Some(icon_asset) = get_class_icon(icon_name) {
+                                            img {
+                                                class: "class-icon",
+                                                src: *icon_asset,
+                                                title: "{row.discipline_name.as_deref().unwrap_or(\"\")}",
+                                                alt: ""
+                                            }
+                                        }
+                                    }
+                                    "{row.name}"
+                                }
+                            }
+                            td { class: "num dmg", "{format_number(row.damage_total)}" }
+                            td { class: "num dmg", "{format_number(row.dps)}" }
+                            td { class: "num threat", "{format_number(row.threat_total)}" }
+                            td { class: "num threat", "{format_number(row.tps)}" }
+                            td { class: "num taken", "{format_number(row.damage_taken_total)}" }
+                            td { class: "num taken", "{format_number(row.dtps)}" }
+                            td { class: "num taken", "{format_number(row.aps)}" }
+                            td { class: "num heal", "{format_number(row.healing_total)}" }
+                            td { class: "num heal", "{format_number(row.hps)}" }
+                            td { class: "num heal", "{format_pct(row.healing_pct)}" }
+                            td { class: "num heal", "{format_number(row.ehps)}" }
+                            td { class: "num shield", "{format_number(row.shielding_given_total)}" }
+                            td { class: "num shield", "{format_number(row.sps)}" }
+                            td { class: "num apm", "{formatting::format_decimal_f64(row.apm, 1, eu)}" }
+                            td { class: "num apm", "{formatting::format_decimal_f64(row.interrupts, 0, eu)}" }
+                        }
+                    }
+                }
+                tfoot {
+                    for (label, t) in props.total_rows.iter() {
+                        tr { class: "totals-row",
+                            td { class: "name-col", "{label}" }
+                            td { class: "num dmg", "{format_number(t.damage)}" }
+                            td { class: "num dmg", "{format_number(t.dps)}" }
+                            td { class: "num threat", "{format_number(t.threat)}" }
+                            td { class: "num threat", "{format_number(t.tps)}" }
+                            td { class: "num taken", "{format_number(t.damage_taken)}" }
+                            td { class: "num taken", "{format_number(t.dtps)}" }
+                            td { class: "num taken", "{format_number(t.aps)}" }
+                            td { class: "num heal", "{format_number(t.healing)}" }
+                            td { class: "num heal", "{format_number(t.hps)}" }
+                            td { class: "num heal", "" }
+                            td { class: "num heal", "{format_number(t.ehps)}" }
+                            td { class: "num shield", "{format_number(t.shielding)}" }
+                            td { class: "num shield", "{format_number(t.sps)}" }
+                            td { class: "num apm" }
+                            td { class: "num apm", "{formatting::format_decimal_f64(t.interrupts, 0, eu)}" }
+                        }
                     }
                 }
             }

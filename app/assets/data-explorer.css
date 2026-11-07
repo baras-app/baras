@@ -865,10 +865,22 @@
   display: grid;
 }
 
+/* Card around the table; it scrolls sideways itself when the columns overflow */
+.overview-table-box {
+  overflow-x: auto;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
 .overview-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
+}
+
+.overview-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .overview-table th,
