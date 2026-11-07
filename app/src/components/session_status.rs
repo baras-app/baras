@@ -1,4 +1,4 @@
-//! Live / prior-session / historical chip at the head of the session bar.
+//! Live / prior-session / historical chip at the end of the session bar.
 //! The single place the app states which log it is looking at, with the
 //! matching action (restart the watcher, or resume live tailing) built in.
 
@@ -24,32 +24,34 @@ pub fn SessionStatusChip(
     };
 
     rsx! {
-        div { class: "session-status-chip {class}", title: "{title}",
-            span { class: "status-dot" }
-            span { class: "session-status-label", "{label}" }
-            if live_tailing {
+        div { class: "session-status-group",
+            // Historical mode: the way back to live is its own green button beside the chip
+            if !live_tailing {
                 button {
-                    class: "session-status-action",
-                    title: "Restart watcher",
+                    class: "session-status-resume",
+                    title: "Go back to tailing the newest log",
                     onclick: move |e| {
                         e.stop_propagation();
-                        on_restart.call(());
+                        on_resume.call(());
                     },
-                    i { class: "fa-solid fa-rotate" }
+                    i { class: "fa-solid fa-play" }
+                    " Resume Live"
                 }
             }
-        }
-        // Historical mode: the way back to live is its own green button beside the chip
-        if !live_tailing {
-            button {
-                class: "session-status-resume",
-                title: "Go back to tailing the newest log",
-                onclick: move |e| {
-                    e.stop_propagation();
-                    on_resume.call(());
-                },
-                i { class: "fa-solid fa-play" }
-                " Resume Live"
+            div { class: "session-status-chip {class}", title: "{title}",
+                span { class: "status-dot" }
+                span { class: "session-status-label", "{label}" }
+                if live_tailing {
+                    button {
+                        class: "session-status-action",
+                        title: "Restart watcher",
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            on_restart.call(());
+                        },
+                        i { class: "fa-solid fa-rotate" }
+                    }
+                }
             }
         }
     }

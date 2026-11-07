@@ -97,12 +97,6 @@
   gap: 1em;
 }
 
-/* The selection rail on Boss Statistics and Raid Summaries: a shade darker
-   than the shared panel gradient so it reads as a separate surface */
-.pull-history-body > .explorer-sidebar {
-  background: linear-gradient(180deg, #1f1f27 0%, #15151a 100%);
-}
-
 .pull-tree-count {
   margin-left: auto;
   font-size: 0.8em;

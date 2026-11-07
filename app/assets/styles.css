@@ -549,6 +549,12 @@ select optgroup {
   border: 1px solid rgba(80, 80, 90, 0.3);
 }
 
+.header-profile-icon {
+  margin-right: -0.1em;
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
 .header-profile-dropdown {
   padding: 0.3em 1.8em 0.3em 0.5em;
   background: var(--bg-elevated);
@@ -1365,7 +1371,17 @@ button:active {
   opacity: 0.9;
 }
 
-/* Live / Prior Session / Historical chip at the head of the session bar */
+/* Live / Prior Session / Historical chip, with Resume Live to its left */
+.session-status-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  flex-shrink: 0;
+}
+.dashboard-summary > .session-status-group,
+.dashboard-empty-state > .session-status-group {
+  margin-left: auto;
+}
 .session-status-chip {
   display: inline-flex;
   align-items: center;
@@ -1433,12 +1449,13 @@ button:active {
   gap: 0.4em;
   flex-shrink: 0;
   margin: 0;
-  padding: 0.3em 0.8em;
+  padding: 0.15em 0.65em;
   border-radius: 999px;
   font: inherit;
-  font-size: 0.8em;
+  font-size: 0.75em;
   font-weight: 600;
   letter-spacing: 0.3px;
+  line-height: 1.5;
   white-space: nowrap;
   color: var(--color-success);
   background: var(--color-success-bg);
@@ -1500,12 +1517,18 @@ button:active {
   opacity: 0.5;
 }
 
-.dashboard-time-info {
+.session-time-info {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
   font-size: 0.8em;
   color: var(--text-muted);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+.session-time-info i {
+  font-size: 0.9em;
+  opacity: 0.7;
 }
 
 .dashboard-role-icon {
@@ -1695,13 +1718,9 @@ button:active {
   display: inline-flex;
   align-items: center;
   gap: 0.35em;
-  padding: 0.25em 0.65em;
   font-size: 0.85em;
   font-weight: 500;
-  color: var(--text-primary);
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--blue-alpha-8);
-  border-radius: var(--radius-md);
+  color: var(--text-secondary);
 }
 
 .session-duration-badge i {
@@ -6889,37 +6908,17 @@ a.contributor-name:hover {
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* ─── Editor Layout ──────────────────────────────────────────────────────────── */
+/* Same panel + dark rail as .data-explorer */
 .editor-layout {
   display: flex;
+  gap: 1em;
   height: 100%;
   overflow: hidden;
+  box-sizing: border-box;
   background: var(--gradient-panel);
   border-radius: var(--radius-xl);
-  padding: 1em;
+  padding: 0.75em;
   border: 1px solid var(--border-accent);
-}
-
-.editor-sidebar {
-  width: 220px;
-  min-width: 220px;
-  border-right: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.editor-sidebar-header {
-  padding: var(--space-sm);
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.editor-sidebar-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-xs);
 }
 
 .editor-main {
@@ -6928,67 +6927,6 @@ a.contributor-name:hover {
   padding: var(--space-md);
 }
 
-/* ─── Category Groups (collapsible sections) ─────────────────────────────────── */
-.category-group {
-  margin-bottom: var(--space-xs);
-}
-
-.category-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-dark);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 0.8em;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.category-header:hover {
-  background: var(--bg-light);
-  color: var(--text-secondary);
-}
-
-.category-items {
-  padding-left: var(--space-xs);
-}
-
-/* ─── Sidebar Items ──────────────────────────────────────────────────────────── */
-.sidebar-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 0.85em;
-  color: var(--text-secondary);
-  transition: background var(--transition-fast);
-  text-align: left;
-}
-
-.sidebar-item:hover {
-  background: var(--blue-alpha-10);
-  color: var(--text-primary);
-}
-
-.sidebar-item.active {
-  background: var(--blue-alpha-15);
-  color: var(--swtor-blue);
-  border-left: 2px solid var(--swtor-blue);
-}
-
-.sidebar-item-count {
-  margin-left: auto;
-  font-size: 0.75em;
-  color: var(--text-muted);
-  background: var(--bg-dark);
-  padding: 0.1em 0.4em;
-  border-radius: var(--radius-sm);
-}
 
 /* ─── Tab Navigation ─────────────────────────────────────────────────────────── */
 .tab-nav {
@@ -7517,19 +7455,26 @@ a.contributor-name:hover {
    Data Explorer Panel (StarParse-style layout)
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* One panel like .history-panel: the rail and the content share its surface,
+   so the gap between them is the panel, not the page behind it */
 .data-explorer {
   display: flex;
   gap: 1em;
   height: 100%;
   min-height: 500px;
+  box-sizing: border-box;
+  padding: 0.75em;
+  background: var(--gradient-panel);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-accent);
 }
 
-/* Sidebar */
+/* Sidebar: a shade darker than the panel, matching the history rails */
 .explorer-sidebar {
   width: 280px;
   min-width: 240px;
   max-width: 320px;
-  background: var(--gradient-panel);
+  background: linear-gradient(180deg, #1f1f27 0%, #15151a 100%);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-accent);
   display: flex;
@@ -7601,6 +7546,10 @@ a.contributor-name:hover {
 
 .sidebar-header h3 i {
   color: var(--swtor-blue-dim);
+}
+.sidebar-header-action {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .sidebar-search {
@@ -7709,6 +7658,13 @@ a.contributor-name:hover {
   text-overflow: ellipsis;
 }
 
+.sidebar-encounter-item .encounter-count {
+  margin-left: auto;
+  font-size: 0.8em;
+  color: var(--text-disabled);
+  white-space: nowrap;
+}
+
 .sidebar-encounter-item .result-indicator {
   font-size: 1em;
   flex-shrink: 0;
@@ -7789,10 +7745,10 @@ a.contributor-name:hover {
 /* Data Panel (main content) */
 .data-explorer .data-panel {
   flex: 1;
-  background: var(--gradient-panel);
+  background: none;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border-accent);
-  padding: 1em;
+  border: none;
+  padding: 0.25em 0.25em 0.25em 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -7802,6 +7758,8 @@ a.contributor-name:hover {
   position: fixed;
   inset: 0;
   z-index: 1000;
+  padding: 1em;
+  background: var(--gradient-panel);
   border-radius: 0;
   border: none;
 }

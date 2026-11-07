@@ -670,6 +670,20 @@ pub fn App() -> Element {
     // Amber treatment for the whole status row when the view is not live
     let status_historical = !live_tailing || session_ended() || session.as_ref().is_some_and(|s| s.stale_session);
     let has_session_bar = has_player && !session.as_ref().is_some_and(|s| s.missing_area);
+    // When the session ran: shown at the end of the collapsible row
+    let session_time_text = session.as_ref().and_then(|s| {
+        if session_ended() || s.stale_session {
+            s.session_start.clone()
+        } else if live_tailing {
+            s.session_start_short.as_ref().map(|t| format!("since {t}"))
+        } else {
+            match (&s.session_start, &s.session_end) {
+                (Some(start), Some(end)) => Some(format!("{start} – {end}")),
+                (Some(start), None) => Some(start.clone()),
+                _ => None,
+            }
+        }
+    });
 
     // Enabled counts for the category card headers on the Overlays page
     let count_on = |flags: &[bool]| flags.iter().filter(|on| **on).count();
@@ -956,6 +970,7 @@ pub fn App() -> Element {
                                 }
                                 span { class: "header-controls-divider" }
                                 // Profile selector
+                                i { class: "fa-solid fa-user header-profile-icon", title: "Overlay profile" }
                                 select {
                                     class: "header-profile-dropdown",
                                     title: "Switch overlay profile",
@@ -1007,7 +1022,6 @@ pub fn App() -> Element {
                         if show_empty_state && !session.as_ref().is_some_and(|s| s.missing_area) {
                             div { class: "session-dashboard-bar",
                             div { class: "dashboard-toggle-row dashboard-empty-state",
-                                SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                                 if !live_tailing {
                                     i { class: "fa-solid fa-spinner fa-spin dashboard-status-icon" }
                                     span { class: "dashboard-empty-text", "Loading file..." }
@@ -1027,6 +1041,7 @@ pub fn App() -> Element {
                                     span { class: "dashboard-empty-text", "No active session" }
                                 }
                                 ProfileUnsavedHint { active_profile, profile_dirty }
+                                SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                             }
                             }
                         }
@@ -1035,10 +1050,10 @@ pub fn App() -> Element {
                         if session.as_ref().is_some_and(|s| s.missing_area) {
                             div { class: "session-dashboard-bar",
                                 div { class: "dashboard-toggle-row dashboard-empty-state",
-                                    SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                                     i { class: "fa-solid fa-triangle-exclamation dashboard-status-icon warning" }
                                     span { class: "dashboard-empty-text", "Incomplete log file — boss encounters and timers unavailable" }
                                     ProfileUnsavedHint { active_profile, profile_dirty }
+                                    SessionStatusChip { live_tailing, watching, prior: false, on_restart: restart_watcher, on_resume: resume_live }
                                 }
                             }
                         }
@@ -1071,16 +1086,6 @@ pub fn App() -> Element {
 
                                     // Session status icon + label + player name + duration (always visible as a summary)
                                     div { class: "dashboard-summary",
-                                        SessionStatusChip {
-                                            live_tailing,
-                                            watching,
-                                            prior: session_ended() || info.stale_session,
-                                            on_restart: restart_watcher,
-                                            on_resume: resume_live,
-                                        }
-
-                                        span { class: "dashboard-separator", "|" }
-
                                         // Role icon (small)
                                         if let Some(ref role_name) = info.role_icon {
                                             if let Some(role_asset) = get_role_icon(role_name) {
@@ -1099,33 +1104,11 @@ pub fn App() -> Element {
                                             span { class: "dashboard-player-name", "{name}" }
                                         }
 
-                                        // Class/discipline
-
                                         // Duration badge
                                         if let Some(ref duration) = info.duration_formatted {
                                             span { class: "session-duration-badge",
                                                 i { class: "fa-solid fa-stopwatch" }
                                                 " {duration}"
-                                            }
-                                        }
-
-                                        // Session time info
-                                        if session_ended() || info.stale_session {
-                                            // Prior session: show start date
-                                            if let Some(ref start) = info.session_start {
-                                                span { class: "dashboard-time-info", "— {start}" }
-                                            }
-                                        } else if live_tailing {
-                                            // Live: show "since {time}"
-                                            if let Some(ref start_short) = info.session_start_short {
-                                                span { class: "dashboard-time-info", "— since {start_short}" }
-                                            }
-                                        } else {
-                                            // Historical: show date range
-                                            if let (Some(start), Some(end)) = (&info.session_start, &info.session_end) {
-                                                span { class: "dashboard-time-info", "— {start} – {end}" }
-                                            } else if let Some(ref start) = info.session_start {
-                                                span { class: "dashboard-time-info", "— {start}" }
                                             }
                                         }
 
@@ -1189,6 +1172,15 @@ pub fn App() -> Element {
                                         }
 
                                         ProfileUnsavedHint { active_profile, profile_dirty }
+
+                                        // Live / historical status closes the row on the right
+                                        SessionStatusChip {
+                                            live_tailing,
+                                            watching,
+                                            prior: session_ended() || info.stale_session,
+                                            on_restart: restart_watcher,
+                                            on_resume: resume_live,
+                                        }
                                     }
                                 }
 
@@ -1304,6 +1296,13 @@ pub fn App() -> Element {
                                                 }
                                             }
                                         }
+                                    }
+                                }
+
+                                if let Some(ref text) = session_time_text {
+                                    span { class: "session-time-info",
+                                        i { class: "fa-regular fa-calendar" }
+                                        " {text}"
                                     }
                                 }
                             }

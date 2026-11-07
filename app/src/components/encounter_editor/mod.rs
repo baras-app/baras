@@ -312,29 +312,33 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     rsx! {
         div { class: "editor-layout",
             // ─── Sidebar: Area List ───────────────────────────────────────────
-            div { class: "editor-sidebar",
-                div { class: "editor-sidebar-header",
-                    span { class: "text-sm text-muted", "Areas" }
-                    button {
-                        class: "btn btn-success btn-sm",
-                        onclick: move |_| show_new_area.set(true),
-                        "+ New"
+            aside { class: "explorer-sidebar",
+                div { class: "sidebar-header",
+                    div { class: "sidebar-header-row",
+                        h3 { i { class: "fa-solid fa-map-location-dot" } " Areas" }
+                        button {
+                            class: "btn btn-xs sidebar-header-action",
+                            title: "Create a new area",
+                            onclick: move |_| show_new_area.set(true),
+                            i { class: "fa-solid fa-plus" }
+                            " New"
+                        }
                     }
                 }
 
-                div { class: "p-sm",
+                div { class: "sidebar-search",
                     input {
-                        class: "input input-sm w-full",
+                        class: "boss-search-input",
                         r#type: "text",
-                        placeholder: "Filter...",
+                        placeholder: "Filter areas...",
                         value: "{area_filter}",
                         oninput: move |e| area_filter.set(e.value())
                     }
                 }
 
-                div { class: "editor-sidebar-content",
+                div { class: "sidebar-encounter-list",
                     if loading_areas() {
-                        div { class: "empty-state text-sm", "Loading..." }
+                        div { class: "sidebar-empty", "Loading..." }
                     } else {
                         if !grouped_areas.0.is_empty() {
                             AreaCategory {
@@ -759,30 +763,30 @@ fn AreaCategory(
 ) -> Element {
     let mut collapsed = use_signal(|| false);
 
+    let chevron = if collapsed() { "fa-chevron-right" } else { "fa-chevron-down" };
+
     rsx! {
-        div { class: "category-group",
-            div {
-                class: "category-header",
-                onclick: move |_| collapsed.set(!collapsed()),
-                span { if collapsed() { "▶" } else { "▼" } }
-                span { "{name}" }
-                span { class: "sidebar-item-count", "{areas.len()}" }
-            }
+        div {
+            class: "sidebar-section-header",
+            onclick: move |_| collapsed.set(!collapsed()),
+            i { class: "fa-solid {chevron} collapse-icon" }
+            span { class: "section-area", "{name}" }
+            span { class: "section-count", "{areas.len()}" }
+        }
 
-            if !collapsed() {
-                div { class: "category-items",
-                    for area in areas {
-                        {
-                            let is_active = selected.as_ref().map(|s| s.file_path == area.file_path).unwrap_or(false);
-                            let area_clone = area.clone();
+        if !collapsed() {
+            for area in areas {
+                {
+                    let is_active = selected.as_ref().map(|s| s.file_path == area.file_path).unwrap_or(false);
+                    let area_clone = area.clone();
 
-                            rsx! {
-                                div {
-                                    class: if is_active { "sidebar-item active" } else { "sidebar-item" },
-                                    onclick: move |_| on_select.call(area_clone.clone()),
-                                    "{area.name}"
-                                    span { class: "sidebar-item-count", "{area.boss_count}" }
-                                }
+                    rsx! {
+                        div {
+                            class: if is_active { "sidebar-encounter-item selected" } else { "sidebar-encounter-item" },
+                            onclick: move |_| on_select.call(area_clone.clone()),
+                            div { class: "encounter-main",
+                                span { class: "encounter-name", "{area.name}" }
+                                span { class: "encounter-count", title: "bosses", "{area.boss_count}" }
                             }
                         }
                     }
