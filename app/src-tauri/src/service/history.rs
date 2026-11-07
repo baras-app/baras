@@ -18,6 +18,8 @@ use baras_types::history::BackfillEvent;
 use crate::state::SharedState;
 
 pub const BACKFILL_EVENT: &str = "history-backfill";
+/// Fired after a history file is written, so open history views refetch
+pub const HISTORY_UPDATED_EVENT: &str = "history-updated";
 
 /// Snapshot the session's recordable pulls. None when no file or cache is active.
 pub fn build_pull_history(session: &ParsingSession) -> Option<LogHistory> {
@@ -30,19 +32,20 @@ pub fn build_pull_history(session: &ParsingSession) -> Option<LogHistory> {
     LogHistory::from_summaries(path, character, cache.encounter_history.summaries(), &cache.timer_starts)
 }
 
-/// Write off the async runtime; failures are logged, never fatal.
-pub fn save_in_background(history: LogHistory) {
-    tokio::task::spawn_blocking(move || {
-        if let Err(e) = history.save() {
-            warn!(file = %history.filename, error = %e, "Failed to persist pull history");
+/// Write off the async runtime and announce it; failures are logged, never fatal.
+pub fn save_in_background(history: LogHistory, app: AppHandle) {
+    tokio::task::spawn_blocking(move || match history.save() {
+        Ok(()) => {
+            let _ = app.emit(HISTORY_UPDATED_EVENT, ());
         }
+        Err(e) => warn!(file = %history.filename, error = %e, "Failed to persist pull history"),
     });
 }
 
-pub async fn persist_pull_history(session: &Arc<RwLock<ParsingSession>>) {
+pub async fn persist_pull_history(session: &Arc<RwLock<ParsingSession>>, app: &AppHandle) {
     let history = build_pull_history(&*session.read().await);
     if let Some(history) = history {
-        save_in_background(history);
+        save_in_background(history, app.clone());
     }
 }
 

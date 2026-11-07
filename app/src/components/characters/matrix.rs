@@ -48,29 +48,24 @@ fn LockBar(operation: String, tier: &'static str, bosses: usize, lock: Option<Lo
 }
 
 #[component]
-pub fn LockoutMatrix(rows: Vec<CharacterRow>, operations: Vec<OperationRef>, tier: String, on_edit: EventHandler<CharacterRow>) -> Element {
+pub fn LockoutMatrix(rows: Vec<CharacterRow>, operations: Vec<OperationRef>, on_edit: EventHandler<CharacterRow>) -> Element {
     // Columns: operations with a known boss list first, then the rest
     let mut ops: Vec<&OperationRef> = operations.iter().collect();
     ops.sort_by_key(|o| (o.tiers.is_empty(), o.name.clone()));
     let keys: Vec<String> = ops.iter().map(|o| operation_key(o.area_id, &o.name)).collect();
     // Modes drawn per column: the ones the operation has (every one with a
-    // lockout when the area is unknown), narrowed to the chosen mode
+    // lockout when the area is unknown)
     let shown: Vec<Vec<(&'static str, usize)>> = ops
         .iter()
         .zip(keys.iter())
         .map(|(o, k)| {
-            let mut modes: Vec<(&'static str, usize)> = if o.tiers.is_empty() {
+            if o.tiers.is_empty() {
                 TIERS.iter().copied().filter(|t| rows.iter().any(|r| lock_at(r, k, t).is_some())).map(|t| (t, 0)).collect()
             } else {
                 TIERS.iter().copied().filter_map(|t| o.tiers.iter().find(|tb| tb.tier == t).map(|tb| (t, tb.bosses.len()))).collect()
-            };
-            if !tier.is_empty() {
-                modes.retain(|(t, _)| *t == tier);
             }
-            modes
         })
         .collect();
-    let stacked = tier.is_empty();
     // How many characters each column locks out at a shown mode, for the header
     let locked_counts: Vec<usize> = keys
         .iter()
@@ -116,7 +111,7 @@ pub fn LockoutMatrix(rows: Vec<CharacterRow>, operations: Vec<OperationRef>, tie
                                     for ((o, key), modes) in ops.iter().zip(keys.iter()).zip(shown.iter()) {
                                         td { class: "matrix-cell",
                                             if modes.is_empty() {
-                                                span { class: "matrix-unknown", title: if tier.is_empty() { "No lockouts recorded here".to_string() } else { format!("{} has no {} mode", o.name, tier) }, "—" }
+                                                span { class: "matrix-unknown", title: "No lockouts recorded here", "—" }
                                             } else {
                                                 div { class: "lock-bars",
                                                     for (t, bosses) in modes.iter() {
@@ -125,7 +120,7 @@ pub fn LockoutMatrix(rows: Vec<CharacterRow>, operations: Vec<OperationRef>, tie
                                                             tier: *t,
                                                             bosses: *bosses,
                                                             lock: lock_at(row, key, t).cloned(),
-                                                            label: stacked,
+                                                            label: true,
                                                         }
                                                     }
                                                 }

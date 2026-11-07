@@ -27,6 +27,9 @@ pub struct OperationsProps {
 /// Rail key: (filename, first pull start_ms)
 type RunKey = (String, i64);
 
+/// Runs listed under "Recent" at the top of the rail
+const RECENT: usize = 6;
+
 fn key_of(r: &RunSummary) -> RunKey {
     (r.filename.clone(), r.start_ms)
 }
@@ -79,6 +82,66 @@ fn effective(selected: Option<RunKey>, runs: &[&RunSummary]) -> Option<RunKey> {
         .or_else(|| runs.first().map(|r| key_of(r)))
 }
 
+/// One run in the rail; `show_operation` names the operation (Recent list)
+#[component]
+fn RunItem(run: RunSummary, selected: bool, on_pick: EventHandler<RunKey>, #[props(default)] show_operation: bool) -> Element {
+    let r = &run;
+    let key = key_of(r);
+    let date = r.started.get(..10).unwrap_or(&r.started);
+    rsx! {
+        div {
+            class: if selected { "sidebar-encounter-item run-item selected" } else { "sidebar-encounter-item run-item" },
+            onclick: move |_| on_pick.call(key.clone()),
+            if show_operation {
+                div { class: "run-item-op", "{r.operation}" }
+            }
+            div { class: "encounter-main",
+                span { class: "encounter-name run-who",
+                    if let Some(icon) = r.role_icon.as_deref().and_then(get_role_icon) {
+                        img { class: "role-icon", src: *icon, alt: "" }
+                    }
+                    if let Some(icon) = r.discipline_icon.as_deref().and_then(get_class_icon) {
+                        img { class: "discipline-icon", src: *icon, alt: "" }
+                    }
+                    span { title: "{r.discipline.clone().unwrap_or_default()}", "{r.character}" }
+                }
+                span { class: "{tier_class(&r.tier)}", {tier_label(r)} }
+            }
+            div { class: "run-item-meta",
+                span { "{date}" }
+                span { "·" }
+                span {
+                    class: if r.timer.achieved == Some(true) { "run-time ok" } else { "run-time" },
+                    title: if r.cleared { "Time to the final kill" } else { "Time to the last pull" },
+                    {fmt_secs(r.timer.elapsed_secs)}
+                }
+                // Outcome sits at the right edge, under the tier badge. A full
+                // clear replaces the kill count; partial runs show how far they got
+                span { class: "run-outcome",
+                    // A missed timer shows nothing; only the achievement is worth a badge
+                    if r.timer.achieved == Some(true) {
+                        span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }
+                    }
+                    if r.cleared {
+                        span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
+                    } else {
+                        span { class: "run-badge", title: "kills / bosses",
+                            if r.bosses_total > 0 { "{r.kills}/{r.bosses_total}" } else { "{r.kills} kills" }
+                        }
+                    }
+                }
+            }
+            if !r.tags.is_empty() {
+                div { class: "run-item-meta",
+                    for t in r.tags.iter() {
+                        span { class: "run-tag small", "{t}" }
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[component]
 pub fn OperationsTab(props: OperationsProps) -> Element {
     let filter = props.filter;
@@ -88,6 +151,8 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
     let mut expanded = use_signal(|| props.state.read().history.run_expanded.clone());
     // Operations whose every run is listed; others show the newest PAGE
     let mut unfolded = use_signal(std::collections::HashSet::<String>::new);
+    // The newest runs across every operation, open by default
+    let mut recent_open = use_signal(|| true);
     let mut state = props.state;
     use_effect(move || {
         let mut s = state.write();
@@ -103,6 +168,12 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
     let backfill = props.backfill;
     use_effect(move || {
         if matches!(*backfill.event.read(), Some(BackfillEvent::Done { .. })) {
+            list.restart();
+        }
+    });
+    // A pull just landed in a history file: the newest run may have grown or appeared
+    use_effect(move || {
+        if *backfill.history.read() > 0 {
             list.restart();
         }
     });
@@ -173,6 +244,23 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                 p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
                             }
                         }
+                        if !visible.is_empty() && query.is_empty() {
+                            {
+                                let chevron = if *recent_open.read() { "fa-chevron-down" } else { "fa-chevron-right" };
+                                rsx! {
+                                    div { class: "sidebar-section-header run-recent-header", onclick: move |_| recent_open.toggle(),
+                                        i { class: "fa-solid {chevron} collapse-icon" }
+                                        span { class: "section-area", i { class: "fa-solid fa-clock-rotate-left" } " Recent" }
+                                        span { class: "section-count", "{visible.len().min(RECENT)}" }
+                                    }
+                                    if *recent_open.read() {
+                                        for r in visible.iter().take(RECENT) {
+                                            RunItem { run: (*r).clone(), selected: current.as_ref() == Some(&key_of(r)), on_pick: move |k| selected.set(Some(k)), show_operation: true }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         for (op, group) in groups.iter() {
                             {
                                 let op_key = op.to_string();
@@ -196,60 +284,7 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                     }
                                     if !is_collapsed {
                                         for r in group[..cap].iter() {
-                                            {
-                                                let key = key_of(r);
-                                                let is_selected = current.as_ref() == Some(&key);
-                                                let date = r.started.get(..10).unwrap_or(&r.started);
-                                                rsx! {
-                                                    div {
-                                                        class: if is_selected { "sidebar-encounter-item run-item selected" } else { "sidebar-encounter-item run-item" },
-                                        onclick: move |_| selected.set(Some(key.clone())),
-                                        div { class: "encounter-main",
-                                            span { class: "encounter-name run-who",
-                                                if let Some(icon) = r.role_icon.as_deref().and_then(get_role_icon) {
-                                                    img { class: "role-icon", src: *icon, alt: "" }
-                                                }
-                                                if let Some(icon) = r.discipline_icon.as_deref().and_then(get_class_icon) {
-                                                    img { class: "discipline-icon", src: *icon, alt: "" }
-                                                }
-                                                span { title: "{r.discipline.clone().unwrap_or_default()}", "{r.character}" }
-                                            }
-                                            span { class: "{tier_class(&r.tier)}", {tier_label(r)} }
-                                        }
-                                        div { class: "run-item-meta",
-                                            span { "{date}" }
-                                            span { "·" }
-                                            span {
-                                                class: if r.timer.achieved == Some(true) { "run-time ok" } else { "run-time" },
-                                                title: if r.cleared { "Time to the final kill" } else { "Time to the last pull" },
-                                                {fmt_secs(r.timer.elapsed_secs)}
-                                            }
-                                            // Outcome sits at the right edge, under the tier badge. A full
-                                            // clear replaces the kill count; partial runs show how far they got
-                                            span { class: "run-outcome",
-                                                // A missed timer shows nothing; only the achievement is worth a badge
-                                                if r.timer.achieved == Some(true) {
-                                                    span { class: "run-badge timer-ok", title: "Timed run achieved", i { class: "fa-solid fa-stopwatch" } }
-                                                }
-                                                if r.cleared {
-                                                    span { class: "run-badge cleared", title: "Final boss killed", i { class: "fa-solid fa-check" } " Clear" }
-                                                } else {
-                                                    span { class: "run-badge", title: "kills / bosses",
-                                                        if r.bosses_total > 0 { "{r.kills}/{r.bosses_total}" } else { "{r.kills} kills" }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        if !r.tags.is_empty() {
-                                            div { class: "run-item-meta",
-                                                for t in r.tags.iter() {
-                                                    span { class: "run-tag small", "{t}" }
-                                                }
-                                            }
-                                        }
-                                    }
-                                                }
-                                            }
+                                            RunItem { run: (*r).clone(), selected: current.as_ref() == Some(&key_of(r)), on_pick: move |k| selected.set(Some(k)) }
                                         }
                                         if cap < group.len() {
                                             div { class: "sidebar-encounter-item run-more",

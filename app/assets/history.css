@@ -1540,3 +1540,43 @@
   color: var(--swtor-blue-bright);
   background: rgba(74, 158, 255, 0.12);
 }
+
+/* Recent runs at the top of the Operations rail name their operation */
+.run-recent-header .section-area i {
+  margin-right: 0.3em;
+  color: var(--swtor-blue-dim);
+}
+
+.run-item-op {
+  font-size: 0.78em;
+  color: var(--swtor-blue-dim);
+  margin-bottom: 0.15em;
+}
+
+/* "More filters" and "Clear filters" share one row of the rail toolbar */
+.history-actions {
+  display: flex;
+  gap: var(--space-xs);
+  width: 100%;
+}
+
+.history-actions .btn {
+  flex: 1;
+  justify-content: center;
+  gap: 0.35em;
+}
+
+.history-clear.active {
+  color: #e8c060;
+  border-color: rgba(217, 164, 65, 0.7);
+  background: rgba(217, 164, 65, 0.12);
+}
+
+.history-clear.active:hover {
+  background: rgba(217, 164, 65, 0.22);
+}
+
+.history-clear.active .history-more-count {
+  background: #d9a441;
+  color: #1a1a1a;
+}

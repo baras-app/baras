@@ -107,6 +107,11 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
             overview.restart();
         }
     });
+    use_effect(move || {
+        if *backfill.history.read() > 0 {
+            overview.restart();
+        }
+    });
 
     // Nothing picked (first visit, or the pick fell out of the filter): take
     // the first boss and open its operation so the highlighted row is visible

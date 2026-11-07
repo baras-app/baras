@@ -859,10 +859,17 @@
    Raid Overview Table
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* Content height, never squeezed: the tab area scrolls, the tables do not */
 .overview-section {
   padding: var(--space-sm);
-  overflow-x: auto;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.overview-section > * {
+  flex-shrink: 0;
 }
 
 /* Card around the table; it scrolls sideways itself when the columns overflow */

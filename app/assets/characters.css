@@ -74,11 +74,6 @@
   white-space: nowrap;
 }
 
-.op-filter-select {
-  font-size: 0.95em;
-  padding: 0.15em 0.3em;
-}
-
 .op-filter-head .btn {
   margin-left: auto;
 }
@@ -120,35 +115,60 @@
   white-space: nowrap;
 }
 
-.op-filter-count {
+/* One circle per mode the operation has: Story green, Veteran amber,
+   Master red; the number is how many characters it locks out */
+.op-filter-modes {
+  display: inline-flex;
+  gap: 3px;
   flex-shrink: 0;
-  min-width: 1.6em;
-  padding: 0 0.4em;
-  border-radius: 9px;
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-muted);
 }
 
-/* Nobody locked: green edge; some locked: amber edge and count */
+.op-mode {
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.op-mode.tier-story { color: #5fc47a; }
+.op-mode.tier-veteran { color: #d9a441; }
+.op-mode.tier-master { color: #e05a5a; }
+
+/* Nobody locked: hollow and faint; someone locked: filled */
+.op-mode.none {
+  opacity: 0.45;
+}
+
+.op-mode:not(.none).tier-story { background: rgba(95, 196, 122, 0.22); }
+.op-mode:not(.none).tier-veteran { background: rgba(217, 164, 65, 0.22); }
+.op-mode:not(.none).tier-master { background: rgba(224, 90, 90, 0.22); }
+
+.op-mode:hover {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+
+.op-mode.lit {
+  opacity: 1;
+  box-shadow: 0 0 0 2px currentColor;
+}
+
+/* Tile edge: green when nobody is locked at the chosen mode, amber otherwise */
 .op-filter-badge.free {
   border-left-color: rgba(120, 200, 120, 0.7);
 }
 
-.op-filter-badge.free .op-filter-count {
-  color: var(--color-success);
-  background: var(--color-success-bg);
-}
-
 .op-filter-badge.locked {
   border-left-color: #d9a441;
-}
-
-.op-filter-badge.locked .op-filter-count {
-  color: #d9a441;
-  background: rgba(217, 164, 65, 0.15);
 }
 
 .op-filter-badge.active {
@@ -156,11 +176,6 @@
   border-color: var(--swtor-blue);
   border-left-color: var(--swtor-blue);
   color: var(--text-primary);
-}
-
-.op-filter-badge.active .op-filter-count {
-  background: var(--swtor-blue);
-  color: #fff;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

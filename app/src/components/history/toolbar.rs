@@ -72,6 +72,11 @@ fn extra_active(f: &PullFilter) -> usize {
         + usize::from(f.flashpoints)
 }
 
+/// Everything narrowing the view, segmented toggles included (Clear button)
+fn active_count(f: &PullFilter) -> usize {
+    extra_active(f) + [&f.tier, &f.group_size, &f.role].iter().filter(|v| !v.is_empty()).count()
+}
+
 /// `runs`: the Raid Summaries view, where the role played is meaningless
 /// across a night and "kills only" means fully cleared runs.
 #[component]
@@ -91,6 +96,7 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
     let mut set = move |update: fn(&mut PullFilter, String), value: String| update(&mut filter.write(), value);
     let f = filter.read().clone();
     let extra = extra_active(&f);
+    let active = active_count(&f);
     // Starts open when a hidden filter is already narrowing the view
     let mut more = use_signal(|| extra > 0);
 
@@ -139,12 +145,23 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                     }
                 }
             }
-            button {
-                class: if *more.read() { "btn btn-xs history-more active" } else { "btn btn-xs history-more" },
-                onclick: move |_| more.toggle(),
-                i { class: if *more.read() { "fa-solid fa-chevron-up" } else { "fa-solid fa-sliders" } }
-                " More filters"
-                if extra > 0 { span { class: "history-more-count", "{extra}" } }
+            div { class: "history-actions",
+                button {
+                    class: if *more.read() { "btn btn-xs history-more active" } else { "btn btn-xs history-more" },
+                    onclick: move |_| more.toggle(),
+                    i { class: if *more.read() { "fa-solid fa-chevron-up" } else { "fa-solid fa-sliders" } }
+                    " More filters"
+                    if extra > 0 { span { class: "history-more-count", "{extra}" } }
+                }
+                button {
+                    class: if active > 0 { "btn btn-xs history-clear active" } else { "btn btn-xs history-clear" },
+                    disabled: active == 0,
+                    title: "Show everything: any difficulty, size and role, and nothing under More filters",
+                    onclick: move |_| filter.set(PullFilter::default()),
+                    i { class: "fa-solid fa-filter-circle-xmark" }
+                    " Clear filters"
+                    if active > 0 { span { class: "history-more-count", "{active}" } }
+                }
             }
         }
         if *more.read() {

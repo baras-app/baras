@@ -44,6 +44,9 @@ pub struct HistoryPanelProps {
 #[derive(Clone, Copy)]
 pub struct Backfill {
     pub event: Signal<Option<BackfillEvent>>,
+    /// Bumped whenever the backend writes a history file (a live pull just
+    /// ended, or a log finished parsing); views refetch on it
+    pub history: Signal<u32>,
     toast: ToastManager,
 }
 
@@ -101,7 +104,15 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
 
     // Tauri callbacks run outside the Dioxus runtime, so the listener only
     // writes the signal; the toast happens in the effect below.
-    let backfill = Backfill { event: use_signal(|| None::<BackfillEvent>), toast };
+    let backfill = Backfill { event: use_signal(|| None::<BackfillEvent>), history: use_signal(|| 0u32), toast };
+    use_future(move || async move {
+        let mut version = backfill.history;
+        let closure = Closure::new(move |_: JsValue| {
+            let _ = version.try_write().map(|mut w| *w += 1);
+        });
+        api::tauri_listen("history-updated", &closure).await;
+        closure.forget();
+    });
     use_future(move || async move {
         let mut event = backfill.event;
         let closure = Closure::new(move |ev: JsValue| {

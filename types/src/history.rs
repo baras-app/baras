@@ -149,8 +149,9 @@ impl Default for PullFilter {
             character: String::new(),
             role: String::new(),
             discipline: String::new(),
-            tier: "Master".into(),
-            group_size: "8".into(),
+            // Nothing narrowed: every difficulty and size
+            tier: String::new(),
+            group_size: String::new(),
             flashpoints: false,
             kills_only: false,
             date_from: String::new(),

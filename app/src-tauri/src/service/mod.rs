@@ -2127,7 +2127,7 @@ impl CombatService {
                 if matches!(event, SessionEvent::CombatEnded)
                     && let Some(session) = event_session.upgrade()
                 {
-                    history::persist_pull_history(&session).await;
+                    history::persist_pull_history(&session, &app_handle).await;
                 }
                 // Emit event to frontend - they can fetch fresh data
                 let _ = app_handle.emit("session-updated", format!("{:?}", event));
@@ -2375,7 +2375,7 @@ impl CombatService {
 
                         // Record this log's pulls for the Historical tab
                         if let Some(history) = history::build_pull_history(&session_guard) {
-                            history::save_in_background(history);
+                            history::save_in_background(history, self.app_handle.clone());
                         }
 
                         // Check if we're starting mid-encounter (live mode only)

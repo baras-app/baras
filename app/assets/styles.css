@@ -251,7 +251,9 @@ select optgroup {
 .header-bar {
   /* Brand and version keep their natural width; navigation centers in the rest */
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* The nav may shrink below its content (labels ellipsize) rather than
+     spill into the brand or the version block */
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
   align-items: center;
   gap: 0.75em;
   padding: 0.2em 2vw 0.25em;
@@ -4737,6 +4739,37 @@ a.contributor-name:hover {
 
 .header-tabs .tab-btn i {
   font-size: 1.1em;
+}
+
+/* Long active names (a menu showing its open view) shorten with an ellipsis
+   before anything overlaps; icons, carets and the files pill keep their size */
+.header-nav {
+  max-width: 100%;
+}
+
+.header-tabs .nav-menu {
+  display: flex;
+  min-width: 0;
+}
+
+.header-tabs .tab-btn {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.header-tabs .tab-btn > i,
+.header-tabs .nav-menu-caret,
+.header-nav .header-files-btn {
+  flex-shrink: 0;
+}
+
+.header-tabs .tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Header menus: a tab-styled button that drops a list of views */
