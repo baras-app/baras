@@ -4,6 +4,7 @@
 //! to improve code organization and reduce file size.
 
 pub mod ability_icon;
+pub mod characters;
 pub mod charts_panel;
 pub mod class_icons;
 pub mod combat_log;
@@ -32,6 +33,7 @@ pub mod slider;
 pub mod sound_picker;
 pub mod toast;
 
+pub use characters::{CharactersPanel, LockoutResetSetting};
 pub use contributors_modal::ContributorsModal;
 pub use data_explorer::DataExplorerPanel;
 pub use effect_editor::EffectEditorPanel;

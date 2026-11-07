@@ -513,6 +513,62 @@ pub async fn get_library() -> Option<Vec<baras_types::history::LibraryRow>> {
     from_js(invoke("get_library", JsValue::NULL).await)
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Characters
+// ─────────────────────────────────────────────────────────────────────────
+
+pub async fn get_character_roster() -> Option<baras_types::characters::CharacterRoster> {
+    from_js(invoke("get_character_roster", JsValue::NULL).await)
+}
+
+/// Create or update a character; `previous_key` when renaming. Returns the stored key.
+pub async fn save_character(
+    record: &baras_types::characters::CharacterRecord,
+    previous_key: Option<&str>,
+) -> Result<String, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "record", &serde_wasm_bindgen::to_value(record).map_err(|e| e.to_string())?);
+    js_set(&obj, "previousKey", &previous_key.map_or(JsValue::NULL, JsValue::from_str));
+    let result = try_invoke("save_character", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+pub async fn delete_character(key: &str) -> Result<bool, String> {
+    let result = try_invoke("delete_character", build_args("key", key)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+pub async fn restore_character(key: &str) -> Result<bool, String> {
+    let result = try_invoke("restore_character", build_args("key", key)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+pub async fn get_lockout_reset_hour() -> Option<u8> {
+    from_js(invoke("get_lockout_reset_hour", JsValue::NULL).await)
+}
+
+pub async fn set_lockout_reset_hour(hour: u8) -> Result<bool, String> {
+    let result = try_invoke("set_lockout_reset_hour", build_args("hour", &hour)).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+pub async fn add_manual_lock(key: &str, lock: &baras_types::characters::ManualLock) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "key", &JsValue::from_str(key));
+    js_set(&obj, "lock", &serde_wasm_bindgen::to_value(lock).map_err(|e| e.to_string())?);
+    let result = try_invoke("add_manual_lock", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
+pub async fn clear_manual_lock(key: &str, operation: &str, tier: &str) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "key", &JsValue::from_str(key));
+    js_set(&obj, "operation", &JsValue::from_str(operation));
+    js_set(&obj, "tier", &JsValue::from_str(tier));
+    let result = try_invoke("clear_manual_lock", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
 pub async fn set_log_favorite(filename: &str, favorite: bool) -> Result<bool, String> {
     let obj = js_sys::Object::new();
     js_set(&obj, "filename", &JsValue::from_str(filename));

@@ -672,7 +672,7 @@ impl ServiceHandle {
 
     /// Definitions are read once per app run; an edited encounter file shows
     /// up after a restart.
-    fn area_catalog(&self) -> Arc<baras_core::history::AreaCatalog> {
+    pub(super) fn area_catalog(&self) -> Arc<baras_core::history::AreaCatalog> {
         self.shared
             .area_catalog
             .get_or_init(|| {
@@ -750,7 +750,7 @@ impl ServiceHandle {
 
     /// Refresh the index against disk (mtime-based, cheap when unchanged) and query it
     /// off the async runtime.
-    async fn with_pull_index<T: Send + 'static>(
+    pub(super) async fn with_pull_index<T: Send + 'static>(
         &self,
         query: impl FnOnce(&baras_core::history::PullIndex) -> T + Send + 'static,
     ) -> Option<T> {

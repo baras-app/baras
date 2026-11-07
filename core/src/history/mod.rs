@@ -19,7 +19,7 @@ use crate::encounter::PhaseType;
 use crate::encounter::summary::EncounterSummary;
 
 pub use catalog::AreaCatalog;
-pub use index::{PullIndex, RefreshReport};
+pub use index::{LogRef, PullIndex, RefreshReport};
 pub use runs::{difficulty_parts, run_detail};
 pub use meta::{LibraryMeta, meta_path, now_iso, pull_key};
 pub use record::{ChallengeLine, PullRecord, RosterLine, start_ms_of};

@@ -1,0 +1,375 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Characters tab: roster table, lockout chips and the character editor.
+   Shell, toolbar and table rules come from history.css.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.characters-search {
+  width: 14em;
+}
+
+/* Value boxes, then the per-operation "free for" grid beneath them */
+.characters-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.characters-summary .history-cards {
+  margin: 0;
+}
+
+.op-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm) var(--space-sm);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.op-filter-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.85em;
+}
+
+.op-filter-head > i {
+  color: var(--swtor-blue-dim);
+}
+
+.op-filter-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.op-filter-select {
+  font-size: 0.95em;
+  padding: 0.15em 0.3em;
+}
+
+.op-filter-head .btn {
+  margin-left: auto;
+}
+
+.op-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13.5em, 1fr));
+  gap: 0.35em;
+}
+
+.op-filter-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  min-width: 0;
+  padding: 0.3em 0.4em 0.3em 0.6em;
+  border-radius: var(--radius-sm);
+  font-size: 0.82em;
+  font-family: inherit;
+  text-align: left;
+  color: var(--text-secondary);
+  background: var(--blue-alpha-8);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--border-accent);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.op-filter-badge:hover {
+  background: var(--blue-alpha-10);
+  border-color: var(--swtor-blue);
+  color: var(--text-primary);
+}
+
+.op-filter-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.op-filter-count {
+  flex-shrink: 0;
+  min-width: 1.6em;
+  padding: 0 0.4em;
+  border-radius: 9px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+/* Nobody locked: green edge; some locked: amber edge and count */
+.op-filter-badge.free {
+  border-left-color: rgba(120, 200, 120, 0.7);
+}
+
+.op-filter-badge.free .op-filter-count {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.op-filter-badge.locked {
+  border-left-color: #d9a441;
+}
+
+.op-filter-badge.locked .op-filter-count {
+  color: #d9a441;
+  background: rgba(217, 164, 65, 0.15);
+}
+
+.op-filter-badge.active {
+  background: rgba(74, 158, 255, 0.22);
+  border-color: var(--swtor-blue);
+  border-left-color: var(--swtor-blue);
+  color: var(--text-primary);
+}
+
+.op-filter-badge.active .op-filter-count {
+  background: var(--swtor-blue);
+  color: #fff;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Table cells
+   ───────────────────────────────────────────────────────────────────────── */
+.characters-table td {
+  vertical-align: middle;
+}
+
+.characters-table tr.hidden-row td {
+  opacity: 0.55;
+}
+
+.char-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.char-auto {
+  margin-left: 0.4em;
+  font-size: 0.65em;
+  color: var(--text-disabled);
+  vertical-align: middle;
+}
+
+.char-faction-cell {
+  text-align: center;
+}
+
+.char-faction {
+  font-size: 0.85em;
+  vertical-align: middle;
+}
+
+svg.char-faction {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.char-faction.unknown { color: var(--text-disabled); }
+
+.char-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+}
+
+.char-class {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.char-class img,
+.char-icons .role-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.char-note {
+  max-width: 16em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.char-actions {
+  white-space: nowrap;
+}
+
+.char-actions .btn {
+  opacity: 0.6;
+}
+
+.characters-table tr:hover .char-actions .btn {
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Lockout chips
+   ───────────────────────────────────────────────────────────────────────── */
+.lockout-free {
+  color: var(--color-success);
+  font-size: 0.85em;
+}
+
+.lockout-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  max-width: 22em;
+}
+
+.lockout-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.78em;
+  border: 1px solid var(--border-accent);
+  background: var(--blue-alpha-10);
+  color: var(--text-secondary);
+  cursor: help;
+  white-space: nowrap;
+}
+
+.lockout-chip .lockout-op {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.lockout-chip .lockout-tier {
+  color: var(--text-muted);
+}
+
+.lockout-chip .lockout-progress {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.lockout-chip.tier-story { border-color: rgba(120, 200, 120, 0.4); background: rgba(120, 200, 120, 0.1); }
+.lockout-chip.tier-veteran { border-color: rgba(74, 158, 255, 0.45); background: rgba(74, 158, 255, 0.12); }
+.lockout-chip.tier-master { border-color: rgba(224, 90, 90, 0.5); background: rgba(224, 90, 90, 0.12); }
+
+.lockout-chip.full .lockout-progress {
+  color: var(--color-error);
+}
+
+.lockout-chip.manual {
+  border-style: dashed;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Editor
+   ───────────────────────────────────────────────────────────────────────── */
+.character-editor {
+  width: 540px;
+  /* The page root centers text; forms read left to right */
+  text-align: left;
+  font-family: var(--font-family);
+}
+
+.character-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm) var(--space-md);
+}
+
+.character-form .form-row {
+  margin: 0;
+  gap: 0.3em;
+  min-width: 0;
+}
+
+.character-form .form-row.span-2 {
+  grid-column: 1 / -1;
+}
+
+.character-form label {
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.character-form input[type="text"],
+.character-form textarea,
+.character-form select {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-family);
+  font-size: 0.9em;
+}
+
+/* Text fields match the global select look (selects keep their own rule) */
+.character-form input[type="text"],
+.character-form textarea {
+  padding: 0.4em 0.6em;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+}
+
+.character-form input[type="text"]:focus,
+.character-form textarea:focus {
+  outline: none;
+  border-color: #6a8aba;
+}
+
+.character-form textarea {
+  resize: vertical;
+  min-height: 3.5em;
+}
+
+.character-slots {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.character-locks {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-sm);
+}
+
+.character-lock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.character-lock-add {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.character-lock-add input {
+  flex: 1;
+}
+
+.character-lock-add select {
+  width: auto;
+}
+
+.character-lock-add .btn {
+  white-space: nowrap;
+}
+
+.character-editor .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}

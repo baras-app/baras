@@ -1,3 +1,4 @@
+pub mod characters;
 pub mod combat_log;
 pub mod context;
 pub mod debug_log;

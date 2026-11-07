@@ -15,6 +15,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
 
 use baras_core::context::{AppConfig, DirectoryIndex, LogAreaCache, ParsingSession};
+use baras_core::characters::CharacterStore;
 use baras_core::history::{LibraryMeta, PullIndex};
 use baras_core::query::QueryContext;
 
@@ -143,6 +144,8 @@ pub struct SharedState {
     pub pull_index: Mutex<PullIndex>,
     /// User-owned log/pull metadata (favorites, tags, notes, Parsely links)
     pub library_meta: Mutex<LibraryMeta>,
+    /// User-owned character data (crew skills, guild, notes, manual lockouts)
+    pub character_store: Mutex<CharacterStore>,
     /// Boss order, final bosses and timed-run rules per area, built on first use
     pub area_catalog: std::sync::OnceLock<Arc<baras_core::history::AreaCatalog>>,
     /// A history backfill subprocess is running
@@ -223,6 +226,7 @@ impl SharedState {
             raid_registry: Mutex::new(RaidSlotRegistry::new(raid_slots)),
             pull_index: Mutex::new(PullIndex::default()),
             library_meta: Mutex::new(LibraryMeta::load()),
+            character_store: Mutex::new(CharacterStore::load()),
             area_catalog: std::sync::OnceLock::new(),
             history_backfill_running: AtomicBool::new(false),
             history_backfill_cancel: AtomicBool::new(false),

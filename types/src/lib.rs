@@ -3,6 +3,7 @@
 //! This crate contains serializable configuration types that are shared between
 //! the native backend (baras-core) and the WASM frontend (app-ui).
 
+pub mod characters;
 pub mod formatting;
 pub mod history;
 
@@ -3846,6 +3847,8 @@ pub enum MainTab {
     BossStats,
     RaidSummaries,
     LogManagement,
+    /// Character roster and operation lockouts
+    Characters,
     /// Application settings page
     Settings,
 }
@@ -3871,6 +3874,7 @@ impl MainTab {
             MainTab::BossStats => "boss_stats",
             MainTab::RaidSummaries => "raid_summaries",
             MainTab::LogManagement => "log_management",
+            MainTab::Characters => "characters",
             MainTab::Settings => "settings",
         }
     }
@@ -3886,6 +3890,7 @@ impl MainTab {
             "history" | "boss_stats" => MainTab::BossStats,
             "raid_summaries" => MainTab::RaidSummaries,
             "log_management" => MainTab::LogManagement,
+            "characters" => MainTab::Characters,
             "settings" => MainTab::Settings,
             _ => MainTab::DataExplorer,
         }

@@ -4,6 +4,7 @@
 //! - SharedState: Arc-wrapped state readable by Tauri commands (in crate::state)
 //! - ServiceHandle: For sending commands + accessing shared state
 //! - CombatService: Background task that processes commands and updates shared state
+mod characters;
 mod cleanup;
 mod directory;
 mod handler;

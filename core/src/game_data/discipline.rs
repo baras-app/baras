@@ -86,6 +86,38 @@ impl Class {
             Class::Gunslinger => "gunslinger.png",
         }
     }
+
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Class::Sorcerer => "Sorcerer",
+            Class::Assassin => "Assassin",
+            Class::Juggernaut => "Juggernaut",
+            Class::Marauder => "Marauder",
+            Class::Mercenary => "Mercenary",
+            Class::Powertech => "Powertech",
+            Class::Operative => "Operative",
+            Class::Sniper => "Sniper",
+            Class::Sage => "Sage",
+            Class::Shadow => "Shadow",
+            Class::Guardian => "Guardian",
+            Class::Sentinel => "Sentinel",
+            Class::Commando => "Commando",
+            Class::Vanguard => "Vanguard",
+            Class::Scoundrel => "Scoundrel",
+            Class::Gunslinger => "Gunslinger",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        Discipline::all().iter().map(|d| d.class()).find(|c| c.name().eq_ignore_ascii_case(name))
+    }
+
+    /// Every role one of this class's disciplines fills, Tank → Healer → DPS
+    pub fn roles(&self) -> impl Iterator<Item = Role> + '_ {
+        [Role::Tank, Role::Healer, Role::Dps]
+            .into_iter()
+            .filter(move |r| Discipline::all().iter().any(|d| d.class() == *self && d.role() == *r))
+    }
 }
 
 /// Character discipline with associated role and class

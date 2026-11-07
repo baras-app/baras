@@ -8,7 +8,7 @@ use wasm_bindgen_futures::spawn_local;
 use crate::api::{self, BossNotesInfo};
 use crate::components::{
     ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    FileOpenBanner, HistoryPanel, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
+    CharactersPanel, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
     use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
@@ -21,6 +21,7 @@ use crate::types::{
 static CSS: Asset = asset!("/assets/styles.css");
 static DATA_EXPLORER_CSS: Asset = asset!("/assets/data-explorer.css");
 static HISTORY_CSS: Asset = asset!("/assets/history.css");
+static CHARACTERS_CSS: Asset = asset!("/assets/characters.css");
 static LOGO: Asset = asset!("/assets/logo.png");
 static FONT: Asset = asset!("/assets/StarJedi.ttf");
 
@@ -723,6 +724,7 @@ pub fn App() -> Element {
         link { rel: "stylesheet", href: CSS }
         link { rel: "stylesheet", href: DATA_EXPLORER_CSS }
         link { rel: "stylesheet", href: HISTORY_CSS }
+        link { rel: "stylesheet", href: CHARACTERS_CSS }
         link { rel: "stylesheet", href: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" }
         style { "@font-face {{ font-family: 'StarJedi'; src: url('{FONT}') format('truetype'); font-display: block; font-weight: normal; font-style: normal; }}" }
 
@@ -772,6 +774,7 @@ pub fn App() -> Element {
                                     (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
                                     (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", ""),
                                     (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
+                                    (MainTab::Characters, "fa-solid fa-users", "Characters", "Your characters across servers, with operation lockouts"),
                                     (MainTab::Settings, "fa-solid fa-gear", "Settings", "Log directory, hotkeys, audio and application options"),
                                 ],
                                 state: ui_state,
@@ -2239,6 +2242,11 @@ pub fn App() -> Element {
                         }
 
                         div { class: "settings-section",
+                            h4 { "Characters" }
+                            LockoutResetSetting {}
+                        }
+
+                        div { class: "settings-section",
                             h4 { "Name Detection" }
                             if is_macos() {
                                 p { class: "hint hint-warning",
@@ -2307,6 +2315,13 @@ pub fn App() -> Element {
                         state: ui_state,
                         view,
                     }
+                }
+
+                // ─────────────────────────────────────────────────────────────
+                // Characters Tab
+                // ─────────────────────────────────────────────────────────────
+                if ui_state.read().active_tab == MainTab::Characters {
+                    CharactersPanel {}
                 }
 
                 // ─────────────────────────────────────────────────────────────

@@ -28,6 +28,12 @@ struct IndexedLog {
     modified: SystemTime,
     /// Where the log should be; existence is checked at query time
     log_path: PathBuf,
+    /// Logging character ("Unknown" when the log never named one)
+    character: String,
+    /// Server display name from the first pull that recorded one; empty otherwise
+    server: String,
+    /// Log start from the filename, local time taken as UTC millis (see `PullRow::start_ms`)
+    started_ms: i64,
     /// Written by an older store version, or from log bytes that have since
     /// changed. Decided at load time from the file header.
     stale: bool,
@@ -82,16 +88,24 @@ impl PullIndex {
                     }
                     let log_path = history.log_path(log_dir);
                     let stale = is_stale(&history, &log_path);
-                    let rows = history
+                    let rows: Vec<PullRow> = history
                         .pulls
                         .iter()
                         .map(|p| row_from(&history, p))
                         .collect();
+                    let server = rows.iter().map(|r| r.server.clone()).find(|s| !s.is_empty()).unwrap_or_default();
+                    let started_ms = history
+                        .started_at
+                        .map(|t| t.and_utc().timestamp_millis())
+                        .unwrap_or(0);
                     self.logs.insert(
                         name,
                         IndexedLog {
                             modified,
                             log_path,
+                            character: history.character_name.clone().unwrap_or_else(|| "Unknown".into()),
+                            server,
+                            started_ms,
                             stale,
                             rows,
                             timer_starts: history.timer_starts,
@@ -310,6 +324,26 @@ impl PullIndex {
     fn rows(&self) -> impl Iterator<Item = &PullRow> {
         self.logs.values().flat_map(|l| l.rows.iter())
     }
+
+    /// Every indexed log with its character, for the roster
+    pub fn logs(&self) -> impl Iterator<Item = LogRef<'_>> {
+        self.logs.iter().map(|(filename, l)| LogRef {
+            filename,
+            character: &l.character,
+            server: &l.server,
+            started_ms: l.started_ms,
+            rows: &l.rows,
+        })
+    }
+}
+
+/// One log as the roster sees it
+pub struct LogRef<'a> {
+    pub filename: &'a str,
+    pub character: &'a str,
+    pub server: &'a str,
+    pub started_ms: i64,
+    pub rows: &'a [PullRow],
 }
 
 impl IndexedLog {

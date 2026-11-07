@@ -12,7 +12,9 @@
 //! - `game_data` - Static game-data lookups (mirror abilities)
 //! - `parsely` - Parsely.io log upload
 //! - `url` - URL opening with portal support for Linux
+//! - `characters` - Character roster and store edits
 
+mod characters;
 mod effects;
 mod encounters;
 mod game_data;
@@ -24,6 +26,7 @@ mod stream_overlay;
 mod url;
 
 // Re-export all commands for the invoke_handler
+pub use characters::*;
 pub use effects::*;
 pub use encounters::*;
 pub use game_data::*;
