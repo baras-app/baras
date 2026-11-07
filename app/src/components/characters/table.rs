@@ -11,7 +11,7 @@ use super::lockouts::{LockoutChips, ago};
 
 /// Faction emblems (Sith cog, Jedi wings) drawn inline on a colored disc
 #[component]
-fn FactionIcon(faction: Faction) -> Element {
+pub fn FactionIcon(faction: Faction) -> Element {
     match faction {
         Faction::Empire => rsx! {
             svg { class: "char-faction empire", view_box: "0 0 100 100", role: "img",

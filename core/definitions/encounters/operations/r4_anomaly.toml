@@ -722,7 +722,7 @@ name = "Lord Kanoth"
 area_name = "R4"
 area_id = 833571547775799
 area_type = "operation"
-difficulties = ["story", "veteran", "master"]
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
 name = "Kanoth"
@@ -1557,7 +1557,7 @@ phase_id = "kanoth_p4"
 [[boss]]
 id = "hallway"
 name = "Hallway"
-difficulties = ["story", "veteran", "master"]
+difficulties = ["story", "veteran"]
 # A trash gauntlet, not a boss: never part of a clear or the timed run
 is_optional_boss = true
 

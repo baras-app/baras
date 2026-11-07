@@ -144,6 +144,8 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     let mut search = use_signal(|| state.read().history.library_search.clone());
     let mut content = use_signal(|| state.read().history.library_content);
     let mut favorites_only = use_signal(|| state.read().history.library_favorites);
+    // Calendar pick: inclusive day bounds, or None for every day
+    let mut day_range: Signal<Option<super::heatmap::DayRange>> = use_signal(|| None);
     let mut state = state;
     use_effect(move || {
         let mut s = state.write();
@@ -176,12 +178,15 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     let pending = hs.stale + hs.unscanned;
 
     let q = search.read().to_lowercase();
+    let picked_days = day_range.read().clone();
     let visible: Vec<&LibraryRow> = all
         .iter()
         .filter(|r| matches(r, *content.read(), *favorites_only.read(), &q))
+        .filter(|r| picked_days.as_ref().is_none_or(|d| super::heatmap::in_range(&r.date, d)))
         .collect();
+    let day_stats = super::heatmap::day_stats(all);
     // Rows render a page at a time; a filter change starts over
-    let page_key = format!("{q}|{:?}|{}", *content.read(), *favorites_only.read());
+    let page_key = format!("{q}|{:?}|{}|{:?}", *content.read(), *favorites_only.read(), picked_days);
     let paged = use_paged(&page_key);
     let limit = paged.limit(&page_key);
     let shown = visible.len().min(limit);
@@ -204,24 +209,27 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
 
     rsx! {
         div { class: "library",
-            div { class: "history-cards",
-                div { class: "history-card", div { class: "k", "Log files" } div { class: "v", "{all.len()}" } }
-                div { class: "history-card", div { class: "k", "Storage used" }
-                    div { class: "v", {fmt_bytes(total_bytes)} }
-                }
-                div { class: "history-card", div { class: "k", "Archived" }
-                    div { class: "v", "{archived} " span { class: "sub", {fmt_bytes(archived_bytes)} } }
-                    if archived_saved > 0 {
-                        div { class: "sub", "saved {fmt_bytes(archived_saved)}" }
+            div { class: "library-top",
+                super::heatmap::LogHeatmap { days: day_stats, selected: day_range }
+                div { class: "history-cards library-stats",
+                    div { class: "history-card",
+                        div { class: "k", "Log files" }
+                        div { class: "v", "{all.len()}" }
+                        if pending > 0 {
+                            div { class: "sub warn", title: "Logs with no history yet, or history from an older version", "{pending} need a scan" }
+                        }
                     }
-                }
-                div { class: "history-card", div { class: "k", "Logs scanned" } div { class: "v", "{hs.logs}" } }
-                div { class: "history-card", div { class: "k", "Pulls recorded" } div { class: "v", "{hs.pulls}" } }
-                if pending > 0 {
-                    div { class: "history-card", title: "Logs with no history yet, or history from an older version",
-                        div { class: "k", "Needs scan" }
-                        div { class: "v", "{pending}" }
+                    div { class: "history-card", div { class: "k", "Storage used" }
+                        div { class: "v", {fmt_bytes(total_bytes)} }
                     }
+                    div { class: "history-card", div { class: "k", "Archived" }
+                        div { class: "v", "{archived}" }
+                        div { class: "sub",
+                            {fmt_bytes(archived_bytes)}
+                            if archived_saved > 0 { " · saved {fmt_bytes(archived_saved)}" }
+                        }
+                    }
+                    div { class: "history-card", div { class: "k", "Pulls recorded" } div { class: "v", "{hs.pulls}" } }
                 }
             }
 
@@ -251,6 +259,13 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                         onchange: move |e| favorites_only.set(e.checked()),
                     }
                     " Favorites"
+                }
+                if let Some((from, to)) = picked_days.clone() {
+                    span { class: "library-day-pick",
+                        i { class: "fa-solid fa-calendar-day" }
+                        if from == to { " {from}" } else { " {from} – {to}" }
+                        button { class: "btn btn-xs btn-ghost", title: "Show every day again", onclick: move |_| day_range.set(None), i { class: "fa-solid fa-xmark" } }
+                    }
                 }
                 if has_open {
                     button {

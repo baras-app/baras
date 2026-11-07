@@ -7,6 +7,7 @@
 //! compact rows.
 
 mod charts;
+mod heatmap;
 mod library;
 mod library_cleanup;
 mod library_meta;

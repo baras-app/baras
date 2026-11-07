@@ -6,19 +6,48 @@
   width: 14em;
 }
 
-/* Value boxes, then the per-operation "free for" grid beneath them */
+/* Value boxes stacked beside the per-operation "free for" grid */
 .characters-summary {
   display: flex;
-  flex-direction: column;
+  align-items: stretch;
   gap: var(--space-sm);
   flex-shrink: 0;
 }
 
-.characters-summary .history-cards {
+.characters-stats {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  width: 170px;
+  flex-shrink: 0;
   margin: 0;
 }
 
+.characters-stats .history-card {
+  flex: 1 1 auto;
+}
+
+.characters-add {
+  margin-left: auto;
+}
+
+/* Roster / Lockouts switch: a tab bar over the content */
+.characters-views {
+  margin-bottom: 0;
+}
+
+.characters-views .data-tab {
+  flex: 0 0 auto;
+  min-width: 10em;
+  font-size: 0.9em;
+}
+
+.characters-views .data-tab i {
+  margin-right: 0.4em;
+}
+
 .op-filter {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
@@ -56,7 +85,7 @@
 
 .op-filter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(13.5em, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(12.5em, 1fr));
   gap: 0.35em;
 }
 
@@ -373,3 +402,123 @@ svg.char-faction {
   gap: var(--space-sm);
   margin-top: var(--space-md);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Lockout matrix
+   ───────────────────────────────────────────────────────────────────────── */
+.lockout-matrix th,
+.lockout-matrix td {
+  padding: 0.4em 0.5em;
+}
+
+.lockout-matrix th.matrix-op {
+  max-width: 7.5em;
+  white-space: normal;
+  vertical-align: bottom;
+  line-height: 1.2;
+  font-size: 0.8em;
+  text-align: center;
+}
+
+.matrix-op-count {
+  display: inline-block;
+  margin-left: 0.35em;
+  padding: 0 0.4em;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: #d9a441;
+  background: rgba(217, 164, 65, 0.15);
+}
+
+.lockout-matrix .matrix-char {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-mid);
+  min-width: 11em;
+}
+
+.lockout-matrix thead .matrix-char {
+  z-index: 2;
+}
+
+.matrix-char-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.matrix-char-btn:hover .matrix-char-name {
+  color: var(--swtor-blue-bright);
+}
+
+.matrix-char-name {
+  font-weight: 500;
+}
+
+.matrix-char-server {
+  font-size: 0.78em;
+  color: var(--text-muted);
+}
+
+.matrix-cell {
+  text-align: center;
+  cursor: help;
+}
+
+/* Story / Veteran / Master stacked; each mode is its own lockout */
+.lock-bars {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.lock-bar-tier {
+  width: 2.2em;
+  font-size: 0.68em;
+  text-align: right;
+  color: var(--text-disabled);
+  margin-right: 0.3em;
+}
+
+.lock-bar.locked .lock-bar-tier {
+  color: var(--text-secondary);
+}
+
+.matrix-unknown {
+  color: var(--text-disabled);
+  font-family: var(--font-mono);
+}
+
+/* One segment per boss; filled = locked, tinted by mode */
+.lock-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+.lock-bar .seg {
+  width: 9px;
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lock-bar .seg.on {
+  border-color: transparent;
+}
+
+.lock-bar.tier-master .seg.on { background: #e05a5a; }
+.lock-bar.tier-veteran .seg.on { background: #d9a441; }
+.lock-bar.tier-story .seg.on { background: #5fc47a; }

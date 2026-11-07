@@ -147,6 +147,17 @@ pub struct CharacterRow {
 pub struct OperationRef {
     pub name: String,
     pub area_id: i64,
+    /// The modes this operation has, each with its bosses in order (empty
+    /// when the area has no definition)
+    #[serde(default)]
+    pub tiers: Vec<TierBosses>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TierBosses {
+    /// "Story" | "Veteran" | "Master"
+    pub tier: String,
+    pub bosses: Vec<String>,
 }
 
 /// What identifies an operation across localized names: the area id when

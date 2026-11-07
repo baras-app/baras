@@ -353,7 +353,7 @@ difficulties = ["veteran"]
 [[boss]]
 id = "revanite_commanders"
 name = "Revanite Commanders"
-difficulties = ["veteran"]
+difficulties = ["story", "veteran"]
 # its a faceroll do you really need timers ??
 #
 [[boss.entities]]

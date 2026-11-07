@@ -1,6 +1,6 @@
 [area]
-name = "Rakghoul Tunnels"
-id = 137438993429
+name = "Lair of the Eyeless"
+id = 137438993438
 
 [[boss]]
 id = "eyeless"

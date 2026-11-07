@@ -4,6 +4,7 @@
 
 mod editor;
 mod lockouts;
+mod matrix;
 mod settings;
 mod table;
 
@@ -20,6 +21,7 @@ pub use settings::LockoutResetSetting;
 
 use editor::{CharacterEditor, EditTarget};
 use lockouts::until;
+use matrix::LockoutMatrix;
 use table::{CharacterTable, SortKey, sort_rows};
 
 const ROLES: &[&str] = &["Tank", "Healer", "Dps"];
@@ -44,14 +46,13 @@ impl FreeFor {
     }
 }
 
-fn matches(row: &CharacterRow, search: &str, server: &str, role: &str, faction: &str, locked_only: bool, free_for: &FreeFor) -> bool {
+fn matches(row: &CharacterRow, search: &str, server: &str, role: &str, faction: &str, free_for: &FreeFor) -> bool {
     let q = search.trim().to_lowercase();
     let text = || [&row.name, &row.guild, &row.note, &row.server].into_iter().any(|f| f.to_lowercase().contains(&q));
     (q.is_empty() || text())
         && (server.is_empty() || row.server == server)
         && (role.is_empty() || row.roles.iter().any(|r| r.name == role))
         && (faction.is_empty() || row.faction.label() == faction)
-        && (!locked_only || !row.lockouts.is_empty())
         && !free_for.excludes(row)
 }
 
@@ -63,8 +64,9 @@ pub fn CharactersPanel() -> Element {
     let mut server = use_signal(String::new);
     let mut role = use_signal(String::new);
     let mut faction = use_signal(String::new);
-    let mut locked_only = use_signal(|| false);
     let mut show_hidden = use_signal(|| false);
+    // Which view: the roster table, or the lockout matrix
+    let mut matrix = use_signal(|| false);
     let mut free_for: Signal<FreeFor> = use_signal(FreeFor::default);
     let sort_key = use_signal(|| SortKey::LastSeen);
     let sort_desc = use_signal(|| true);
@@ -76,7 +78,7 @@ pub fn CharactersPanel() -> Element {
         .rows
         .iter()
         .filter(|r| r.hidden == *show_hidden.read())
-        .filter(|r| matches(r, &search.read(), &server.read(), &role.read(), &faction.read(), *locked_only.read(), &free_for.read()))
+        .filter(|r| matches(r, &search.read(), &server.read(), &role.read(), &faction.read(), &free_for.read()))
         .cloned()
         .collect();
     sort_rows(&mut rows, *sort_key.read(), *sort_desc.read());
@@ -139,10 +141,6 @@ pub fn CharactersPanel() -> Element {
                     option { value: "Republic", "Republic" }
                     option { value: "Empire", "Empire" }
                 }
-                label { class: "history-toggle",
-                    input { r#type: "checkbox", checked: *locked_only.read(), onchange: move |e| locked_only.set(e.checked()) }
-                    " Locked only"
-                }
                 if hidden_count > 0 {
                     label { class: "history-toggle",
                         input { r#type: "checkbox", checked: *show_hidden.read(), onchange: move |e| show_hidden.set(e.checked()) }
@@ -150,14 +148,14 @@ pub fn CharactersPanel() -> Element {
                     }
                 }
                 button {
-                    class: "btn btn-xs",
+                    class: "btn btn-xs characters-add",
                     onclick: move |_| editing.set(Some(EditTarget { record: CharacterRecord::default(), previous_key: None, lockouts: Vec::new() })),
                     i { class: "fa-solid fa-plus" }
                     " Add character"
                 }
             }
             div { class: "characters-summary",
-                div { class: "history-cards",
+                div { class: "history-cards characters-stats",
                     div { class: "history-card",
                         div { class: "k", "Characters" }
                         div { class: "v", "{total}" }
@@ -213,13 +211,30 @@ pub fn CharactersPanel() -> Element {
                     }
                 }
             }
-            CharacterTable {
-                rows,
-                sort_key,
-                sort_desc,
-                on_edit: move |row: CharacterRow| editing.set(Some(EditTarget::from(&row))),
-                on_delete,
-                on_restore,
+            div { class: "data-tab-selector characters-views",
+                button { class: if !*matrix.read() { "data-tab active" } else { "data-tab" }, title: "Every character with its details", onclick: move |_| matrix.set(false),
+                    i { class: "fa-solid fa-table-list" } " Roster"
+                }
+                button { class: if *matrix.read() { "data-tab active" } else { "data-tab" }, title: "Who is locked out of what, boss by boss", onclick: move |_| matrix.set(true),
+                    i { class: "fa-solid fa-table-cells" } " Lockouts"
+                }
+            }
+            if *matrix.read() {
+                LockoutMatrix {
+                    rows,
+                    operations: data.operations.clone(),
+                    tier: free_for.read().tier.clone(),
+                    on_edit: move |row: CharacterRow| editing.set(Some(EditTarget::from(&row))),
+                }
+            } else {
+                CharacterTable {
+                    rows,
+                    sort_key,
+                    sort_desc,
+                    on_edit: move |row: CharacterRow| editing.set(Some(EditTarget::from(&row))),
+                    on_delete,
+                    on_restore,
+                }
             }
             if let Some(target) = editing.read().clone() {
                 CharacterEditor {

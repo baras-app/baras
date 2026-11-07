@@ -43,8 +43,8 @@ impl TimerRule {
 }
 
 /// "master" if any required boss lists it, else "veteran", else "story".
-/// Optional encounters are skipped: R4's Hallway lists a master mode the
-/// operation does not have.
+/// Optional encounters are skipped: a bonus boss says nothing about the
+/// operation's own modes.
 fn highest_tier(bosses: &[CatalogBoss]) -> String {
     let required = || bosses.iter().filter(|b| !b.optional);
     let has = |t: &str| required().any(|b| b.difficulties.is_empty() || b.difficulties.iter().any(|k| k.split('_').next() == Some(t)));
@@ -73,6 +73,21 @@ impl AreaDef {
     /// Bonus boss or trash gauntlet (R4's Hallway): killing it is not a boss kill
     pub fn is_optional(&self, boss_name: &str) -> bool {
         self.bosses.iter().any(|b| b.optional && b.name == boss_name)
+    }
+
+    /// Modes the operation exists at ("story" | "veteran" | "master"): those
+    /// some required boss names. Bosses that name none exist at every mode,
+    /// so an area whose bosses name none at all is taken to have all three.
+    pub fn tiers(&self) -> Vec<&'static str> {
+        let required = || self.bosses.iter().filter(|b| !b.optional);
+        let explicit = required().any(|b| !b.difficulties.is_empty());
+        ["story", "veteran", "master"]
+            .into_iter()
+            .filter(|t| {
+                !explicit
+                    || required().any(|b| !b.difficulties.is_empty() && (b.exists_at(t, 8) || b.exists_at(t, 16)))
+            })
+            .collect()
     }
 
     pub fn timer_at(&self, tier: &str, size: u8) -> Option<&TimerRule> {

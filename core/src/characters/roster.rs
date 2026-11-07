@@ -2,7 +2,7 @@
 
 use hashbrown::HashMap;
 
-use baras_types::characters::{CharacterRecord, CharacterRoster, CharacterRow, IconLabel, OperationRef, character_key, operation_key};
+use baras_types::characters::{CharacterRecord, CharacterRoster, CharacterRow, IconLabel, OperationRef, TierBosses, character_key, operation_key};
 use baras_types::history::PullRow;
 
 use super::lockouts::{lockouts, next_reset, now_utc_ms};
@@ -163,7 +163,28 @@ pub fn roster(
     }
     let mut operations: Vec<OperationRef> = best
         .into_values()
-        .map(|(name, area_id, _)| OperationRef { name: name.to_string(), area_id })
+        .map(|(name, area_id, _)| OperationRef {
+            name: name.to_string(),
+            area_id,
+            tiers: catalog
+                .area(area_id)
+                .map(|a| {
+                    a.tiers()
+                        .into_iter()
+                        .map(|t| TierBosses {
+                            // Config keys are lowercase; rows and lockouts use the capitalized word
+                            tier: format!("{}{}", t[..1].to_uppercase(), &t[1..]),
+                            bosses: a.bosses_at(t, 8).chain(a.bosses_at(t, 16)).map(|b| b.name.clone()).fold(Vec::new(), |mut v, n| {
+                                if !v.contains(&n) {
+                                    v.push(n);
+                                }
+                                v
+                            }),
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
+        })
         .collect();
     operations.sort_by(|a, b| a.name.cmp(&b.name));
     CharacterRoster {
