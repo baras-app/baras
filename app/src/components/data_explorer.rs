@@ -1898,85 +1898,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                         // Raid Overview - Donut Charts + Table
                         // Uses memoized overview_table_data - charts initialized via use_effect above
                         div { class: "overview-section",
-                            // Death Tracker (only shown if deaths occurred) - at top for visibility
-                            {
-                                let deaths = player_deaths.read();
-                                let death_badge = move |death: &PlayerDeath| {
-                                    let d = death.clone();
-                                    let name = death.name.clone();
-                                    let time_str = formatting::format_duration(death.death_time_secs as i64);
-                                    // PvP: highlight the local player's own deaths and killing blows
-                                    let class = if death.is_local {
-                                        "death-item local-death"
-                                    } else if death.local_kill {
-                                        "death-item local-kill"
-                                    } else {
-                                        "death-item"
-                                    };
-                                    rsx! {
-                                        button {
-                                            class: "{class}",
-                                            title: "Click for death recap",
-                                            onclick: move |_| recap_death.set(Some(d.clone())),
-                                            span { class: "death-name", "{name}" }
-                                            span { class: "death-time", "@ {time_str}" }
-                                        }
-                                    }
-                                };
-                                // PvP: group deaths by side
-                                let is_pvp = deaths.iter().any(|d| d.faction.is_some());
-                                let groups: Vec<(&str, &str, Vec<PlayerDeath>)> = if is_pvp {
-                                    [
-                                        ("Friendly", "friendly", Some(PvpFaction::Friendly)),
-                                        ("Enemy", "enemy", Some(PvpFaction::Enemy)),
-                                        ("Unknown", "unknown", None),
-                                    ]
-                                    .into_iter()
-                                    .map(|(label, cls, side)| {
-                                        let side_deaths: Vec<PlayerDeath> = deaths
-                                            .iter()
-                                            .filter(|d| d.faction == side)
-                                            .cloned()
-                                            .collect();
-                                        (label, cls, side_deaths)
-                                    })
-                                    .filter(|(_, _, v)| !v.is_empty())
-                                    .collect()
-                                } else {
-                                    Vec::new()
-                                };
-                                rsx! {
-                                    if !deaths.is_empty() {
-                                        div { class: "death-tracker",
-                                            h4 { class: "death-tracker-title",
-                                                i { class: "fa-solid fa-skull" }
-                                                " Deaths ({deaths.len()})"
-                                            }
-                                            if is_pvp {
-                                                for (label, cls, side_deaths) in groups {
-                                                    div { class: "death-subgroup",
-                                                        span { class: "death-subgroup-label {cls}",
-                                                            "{label} ({side_deaths.len()})"
-                                                        }
-                                                        div { class: "death-list",
-                                                            for death in side_deaths.iter() {
-                                                                {death_badge(death)}
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            } else {
-                                                div { class: "death-list",
-                                                    for death in deaths.iter() {
-                                                        {death_badge(death)}
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
                             // Death recap modal (opened from the death tracker)
                             if let Some(d) = recap_death() {
                                 DeathRecapModal {
@@ -2052,7 +1973,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         }
                                     }
 
-                                    // Side-by-side: NPC Health + Challenges
+                                    // Side-by-side: Deaths + NPC Health + Challenges
                                     {
                                         let npcs = npc_health.read();
                                         let challenges: Vec<ChallengeSummary> = if let Some(enc_idx) = *selected_encounter.read() {
@@ -2095,6 +2016,86 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                         let format_compact = |n: i64| formatting::format_compact(n, eu);
 
                                         rsx! {
+                                            // Deaths strip between the overview table and the columns (only when deaths occurred)
+                                            {
+                                                let deaths = player_deaths.read();
+                                                let death_badge = move |death: &PlayerDeath| {
+                                                    let d = death.clone();
+                                                    let name = death.name.clone();
+                                                    let time_str = formatting::format_duration(death.death_time_secs as i64);
+                                                    // PvP: highlight the local player's own deaths and killing blows
+                                                    let class = if death.is_local {
+                                                        "death-item local-death"
+                                                    } else if death.local_kill {
+                                                        "death-item local-kill"
+                                                    } else {
+                                                        "death-item"
+                                                    };
+                                                    rsx! {
+                                                        button {
+                                                            class: "{class}",
+                                                            title: "Click for death recap",
+                                                            onclick: move |_| recap_death.set(Some(d.clone())),
+                                                            span { class: "death-name", "{name}" }
+                                                            span { class: "death-time", "@ {time_str}" }
+                                                        }
+                                                    }
+                                                };
+                                                // PvP: group deaths by side
+                                                let is_pvp = deaths.iter().any(|d| d.faction.is_some());
+                                                let groups: Vec<(&str, &str, Vec<PlayerDeath>)> = if is_pvp {
+                                                    [
+                                                        ("Friendly", "friendly", Some(PvpFaction::Friendly)),
+                                                        ("Enemy", "enemy", Some(PvpFaction::Enemy)),
+                                                        ("Unknown", "unknown", None),
+                                                    ]
+                                                    .into_iter()
+                                                    .map(|(label, cls, side)| {
+                                                        let side_deaths: Vec<PlayerDeath> = deaths
+                                                            .iter()
+                                                            .filter(|d| d.faction == side)
+                                                            .cloned()
+                                                            .collect();
+                                                        (label, cls, side_deaths)
+                                                    })
+                                                    .filter(|(_, _, v)| !v.is_empty())
+                                                    .collect()
+                                                } else {
+                                                    Vec::new()
+                                                };
+                                                rsx! {
+                                                    if !deaths.is_empty() {
+                                                        div { class: "overview-deaths",
+                                                            div { class: "overview-column-header",
+                                                                i { class: "fa-solid fa-skull" }
+                                                                " Deaths"
+                                                                span { class: "text-muted", " ({deaths.len()})" }
+                                                            }
+                                                            if is_pvp {
+                                                                for (label, cls, side_deaths) in groups {
+                                                                    div { class: "death-subgroup",
+                                                                        span { class: "death-subgroup-label {cls}",
+                                                                            "{label} ({side_deaths.len()})"
+                                                                        }
+                                                                        div { class: "death-list",
+                                                                            for death in side_deaths.iter() {
+                                                                                {death_badge(death)}
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            } else {
+                                                                div { class: "death-list",
+                                                                    for death in deaths.iter() {
+                                                                        {death_badge(death)}
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
                                             if has_npcs || has_challenges {
                                                 div { class: "overview-columns",
                                                     // ─── NPC Health column ───────────────────
@@ -2105,125 +2106,127 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                                 " NPC Health"
                                                                 span { class: "text-muted", " ({npc_count})" }
                                                             }
-                                                            table { class: "npc-health-table",
-                                                                thead {
-                                                                    tr {
-                                                                        th { "Name" }
-                                                                        th { class: "num", "HP" }
-                                                                        th { class: "num", "Max" }
-                                                                        th { class: "num", "%" }
+                                                            div { class: "npc-health-box",
+                                                                table { class: "npc-health-table",
+                                                                    thead {
+                                                                        tr {
+                                                                            th { "Name" }
+                                                                            th { class: "num", "HP" }
+                                                                            th { class: "num", "Max" }
+                                                                            th { class: "num", "%" }
+                                                                        }
                                                                     }
-                                                                }
-                                                                tbody {
-                                                                    for (name, members) in groups.iter() {
-                                                                        if members.len() == 1 {
-                                                                            {
-                                                                                let npc = members[0];
-                                                                                let is_dead = npc.final_hp == 0;
-                                                                                let hp_class = if is_dead { "dead" } else { "alive" };
-                                                                                let seen_str = formatting::format_duration(npc.first_seen_secs as i64);
-                                                                                let death_str = npc.death_time_secs.map(|t| formatting::format_duration(t as i64));
-                                                                                rsx! {
-                                                                                    tr { class: "npc-row {hp_class}",
-                                                                                        td {
-                                                                                            span { class: "npc-name", "{npc.name}" }
-                                                                                            span { class: "npc-seen-time", " @{seen_str}" }
-                                                                                            if let Some(ref dt) = death_str {
-                                                                                                span { class: "npc-death-time",
-                                                                                                    i { class: "fa-solid fa-skull" }
-                                                                                                    " {dt}"
+                                                                    tbody {
+                                                                        for (name, members) in groups.iter() {
+                                                                            if members.len() == 1 {
+                                                                                {
+                                                                                    let npc = members[0];
+                                                                                    let is_dead = npc.final_hp == 0;
+                                                                                    let hp_class = if is_dead { "dead" } else { "alive" };
+                                                                                    let seen_str = formatting::format_duration(npc.first_seen_secs as i64);
+                                                                                    let death_str = npc.death_time_secs.map(|t| formatting::format_duration(t as i64));
+                                                                                    rsx! {
+                                                                                        tr { class: "npc-row {hp_class}",
+                                                                                            td {
+                                                                                                span { class: "npc-name", "{npc.name}" }
+                                                                                                span { class: "npc-seen-time", " @{seen_str}" }
+                                                                                                if let Some(ref dt) = death_str {
+                                                                                                    span { class: "npc-death-time",
+                                                                                                        i { class: "fa-solid fa-skull" }
+                                                                                                        " {dt}"
+                                                                                                    }
                                                                                                 }
                                                                                             }
-                                                                                        }
-                                                                                        td { class: "num",
-                                                                                            if is_dead {
-                                                                                                span { class: "npc-hp-dead",
-                                                                                                    i { class: "fa-solid fa-skull" }
-                                                                                                    " Dead"
+                                                                                            td { class: "num",
+                                                                                                if is_dead {
+                                                                                                    span { class: "npc-hp-dead",
+                                                                                                        i { class: "fa-solid fa-skull" }
+                                                                                                        " Dead"
+                                                                                                    }
+                                                                                                } else {
+                                                                                                    "{format_number(npc.final_hp as f64)}"
                                                                                                 }
-                                                                                            } else {
-                                                                                                "{format_number(npc.final_hp as f64)}"
                                                                                             }
-                                                                                        }
-                                                                                        td { class: "num", "{format_number(npc.max_hp as f64)}" }
-                                                                                        td { class: "num",
-                                                                                            if is_dead {
-                                                                                                span { class: "npc-hp-dead", "0.0%" }
-                                                                                            } else {
-                                                                                                "{formatting::format_pct_f32(npc.final_hp_pct, eu)}"
+                                                                                            td { class: "num", "{format_number(npc.max_hp as f64)}" }
+                                                                                            td { class: "num",
+                                                                                                if is_dead {
+                                                                                                    span { class: "npc-hp-dead", "0.0%" }
+                                                                                                } else {
+                                                                                                    "{formatting::format_pct_f32(npc.final_hp_pct, eu)}"
+                                                                                                }
                                                                                             }
                                                                                         }
                                                                                     }
                                                                                 }
-                                                                            }
-                                                                        } else {
-                                                                            {
-                                                                                let is_expanded = expanded.contains(name);
-                                                                                let dead_count = members.iter().filter(|n| n.final_hp == 0).count();
-                                                                                let alive_count = members.len() - dead_count;
-                                                                                let max_hp = members.iter().map(|n| n.max_hp).max().unwrap_or(0);
-                                                                                let all_dead = alive_count == 0;
-                                                                                let group_hp_class = if all_dead { "dead" } else { "alive" };
-                                                                                let chevron_class = if is_expanded { "fa-solid fa-chevron-down" } else { "fa-solid fa-chevron-right" };
-                                                                                let toggle_name = name.clone();
-                                                                                rsx! {
-                                                                                    tr {
-                                                                                        class: "npc-group-header {group_hp_class}",
-                                                                                        onclick: move |_| {
-                                                                                            let mut set = expanded_npc_groups.write();
-                                                                                            if set.contains(&toggle_name) {
-                                                                                                set.remove(&toggle_name);
-                                                                                            } else {
-                                                                                                set.insert(toggle_name.clone());
-                                                                                            }
-                                                                                        },
-                                                                                        td { colspan: "4",
-                                                                                            i { class: "npc-group-chevron {chevron_class}" }
-                                                                                            span { class: "npc-name", "{name}" }
-                                                                                            span { class: "npc-group-count",
-                                                                                                if all_dead {
-                                                                                                    " ({dead_count} dead)"
+                                                                            } else {
+                                                                                {
+                                                                                    let is_expanded = expanded.contains(name);
+                                                                                    let dead_count = members.iter().filter(|n| n.final_hp == 0).count();
+                                                                                    let alive_count = members.len() - dead_count;
+                                                                                    let max_hp = members.iter().map(|n| n.max_hp).max().unwrap_or(0);
+                                                                                    let all_dead = alive_count == 0;
+                                                                                    let group_hp_class = if all_dead { "dead" } else { "alive" };
+                                                                                    let chevron_class = if is_expanded { "fa-solid fa-chevron-down" } else { "fa-solid fa-chevron-right" };
+                                                                                    let toggle_name = name.clone();
+                                                                                    rsx! {
+                                                                                        tr {
+                                                                                            class: "npc-group-header {group_hp_class}",
+                                                                                            onclick: move |_| {
+                                                                                                let mut set = expanded_npc_groups.write();
+                                                                                                if set.contains(&toggle_name) {
+                                                                                                    set.remove(&toggle_name);
                                                                                                 } else {
-                                                                                                    " ({alive_count} alive, {dead_count} dead)"
+                                                                                                    set.insert(toggle_name.clone());
                                                                                                 }
+                                                                                            },
+                                                                                            td { colspan: "4",
+                                                                                                i { class: "npc-group-chevron {chevron_class}" }
+                                                                                                span { class: "npc-name", "{name}" }
+                                                                                                span { class: "npc-group-count",
+                                                                                                    if all_dead {
+                                                                                                        " ({dead_count} dead)"
+                                                                                                    } else {
+                                                                                                        " ({alive_count} alive, {dead_count} dead)"
+                                                                                                    }
+                                                                                                }
+                                                                                                span { class: "npc-group-max", " \u{2014} {format_number(max_hp as f64)}" }
                                                                                             }
-                                                                                            span { class: "npc-group-max", " \u{2014} {format_number(max_hp as f64)}" }
                                                                                         }
-                                                                                    }
-                                                                                    if is_expanded {
-                                                                                        for npc in members.iter() {
-                                                                                            {
-                                                                                                let is_dead = npc.final_hp == 0;
-                                                                                                let hp_class = if is_dead { "dead" } else { "alive" };
-                                                                                                let seen_str = formatting::format_duration(npc.first_seen_secs as i64);
-                                                                                                let death_str = npc.death_time_secs.map(|t| formatting::format_duration(t as i64));
-                                                                                                rsx! {
-                                                                                                    tr { class: "npc-row npc-sub-row {hp_class}",
-                                                                                                        td {
-                                                                                                            span { class: "npc-seen-time", "@{seen_str}" }
-                                                                                                            if let Some(ref dt) = death_str {
-                                                                                                                span { class: "npc-death-time",
-                                                                                                                    i { class: "fa-solid fa-skull" }
-                                                                                                                    " {dt}"
+                                                                                        if is_expanded {
+                                                                                            for npc in members.iter() {
+                                                                                                {
+                                                                                                    let is_dead = npc.final_hp == 0;
+                                                                                                    let hp_class = if is_dead { "dead" } else { "alive" };
+                                                                                                    let seen_str = formatting::format_duration(npc.first_seen_secs as i64);
+                                                                                                    let death_str = npc.death_time_secs.map(|t| formatting::format_duration(t as i64));
+                                                                                                    rsx! {
+                                                                                                        tr { class: "npc-row npc-sub-row {hp_class}",
+                                                                                                            td {
+                                                                                                                span { class: "npc-seen-time", "@{seen_str}" }
+                                                                                                                if let Some(ref dt) = death_str {
+                                                                                                                    span { class: "npc-death-time",
+                                                                                                                        i { class: "fa-solid fa-skull" }
+                                                                                                                        " {dt}"
+                                                                                                                    }
                                                                                                                 }
                                                                                                             }
-                                                                                                        }
-                                                                                                        td { class: "num",
-                                                                                                            if is_dead {
-                                                                                                                span { class: "npc-hp-dead",
-                                                                                                                    i { class: "fa-solid fa-skull" }
-                                                                                                                    " Dead"
+                                                                                                            td { class: "num",
+                                                                                                                if is_dead {
+                                                                                                                    span { class: "npc-hp-dead",
+                                                                                                                        i { class: "fa-solid fa-skull" }
+                                                                                                                        " Dead"
+                                                                                                                    }
+                                                                                                                } else {
+                                                                                                                    "{format_number(npc.final_hp as f64)}"
                                                                                                                 }
-                                                                                                            } else {
-                                                                                                                "{format_number(npc.final_hp as f64)}"
                                                                                                             }
-                                                                                                        }
-                                                                                                        td { class: "num", "{format_number(npc.max_hp as f64)}" }
-                                                                                                        td { class: "num",
-                                                                                                            if is_dead {
-                                                                                                                span { class: "npc-hp-dead", "0.0%" }
-                                                                                                            } else {
-                                                                                                                "{formatting::format_pct_f32(npc.final_hp_pct, eu)}"
+                                                                                                            td { class: "num", "{format_number(npc.max_hp as f64)}" }
+                                                                                                            td { class: "num",
+                                                                                                                if is_dead {
+                                                                                                                    span { class: "npc-hp-dead", "0.0%" }
+                                                                                                                } else {
+                                                                                                                    "{formatting::format_pct_f32(npc.final_hp_pct, eu)}"
+                                                                                                                }
                                                                                                             }
                                                                                                         }
                                                                                                     }

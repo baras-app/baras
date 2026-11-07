@@ -15,7 +15,11 @@
 }
 
 .phase-timeline {
-  padding: var(--space-xs) 0;
+  padding: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
 }
 
 /* Horizontal row: track + range display */
@@ -674,6 +678,16 @@
   overflow-x: auto;
 }
 
+/* Deaths: a full-width strip between the overview table and the columns */
+.overview-deaths {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-subtle);
+}
+.overview-deaths + .overview-columns {
+  margin-top: var(--space-md);
+}
+
 .overview-column-header {
   font-size: 11px;
   font-weight: 500;
@@ -694,11 +708,23 @@
    NPC Health Table
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* The table sits in its own card, like the timeline and challenge cards */
+.npc-health-box {
+  max-width: 650px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
 .npc-health-table {
   border-collapse: collapse;
   font-size: 13px;
-  max-width: 650px;
   width: 100%;
+}
+
+.npc-health-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .npc-health-table thead th {
@@ -771,6 +797,7 @@
 .npc-health-table .npc-group-header td {
   padding: 6px 10px;
   border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
   font-weight: 500;
   transition: background var(--transition-fast, 0.15s);
 }
