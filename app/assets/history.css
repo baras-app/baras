@@ -184,9 +184,10 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  background: var(--gradient-panel);
-  border: 1px solid var(--border-accent);
-  border-radius: var(--radius-sm);
+  /* Same dark card as the Data Explorer tables */
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
 }
 
 .pull-history-table {
@@ -208,9 +209,17 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--bg-mid);
-  color: var(--swtor-blue-dim);
-  font-weight: 500;
+  background: #18181d;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--border-subtle);
+}
+
+.pull-history-table th.sortable-header:hover {
+  color: var(--text-primary);
 }
 
 .pull-history-table th.sortable-header {
@@ -231,7 +240,11 @@
 }
 
 .pull-history-table tbody tr:hover {
-  background: var(--blue-alpha-8);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pull-history-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .pull-result {
