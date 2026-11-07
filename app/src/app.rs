@@ -8,7 +8,7 @@ use wasm_bindgen_futures::spawn_local;
 use crate::api::{self, BossNotesInfo};
 use crate::components::{
     ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    CharactersPanel, CleanupRules, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
+    CharactersPanel, CleanupRules, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionSettingsPill, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
     use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
@@ -98,8 +98,6 @@ pub fn App() -> Element {
     let mut area_bosses = use_signal(Vec::<BossNotesInfo>::new);
     let mut selected_boss_id = use_signal(|| None::<String>);
 
-    // Session dashboard bar collapse state
-    let mut dashboard_collapsed = use_signal(|| false);
 
     // File browser state
     let mut file_browser_open = use_signal(|| false);
@@ -670,7 +668,6 @@ pub fn App() -> Element {
     let overlays_auto_hidden = auto_hidden();
     // Amber treatment for the whole status row when the view is not live
     let status_historical = !live_tailing || session_ended() || session.as_ref().is_some_and(|s| s.stale_session);
-    let has_session_bar = has_player && !session.as_ref().is_some_and(|s| s.missing_area);
     // When the session ran: shown at the end of the collapsible row
     let session_time_text = session.as_ref().and_then(|s| {
         if session_ended() || s.stale_session {
@@ -774,10 +771,11 @@ pub fn App() -> Element {
                                     (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
                                     (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", ""),
                                     (MainTab::PvpStats, "fa-solid fa-crosshairs", "PvP Statistics", "Warzone and arena record, kills and deaths, trends"),
-                                    (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
                                     (MainTab::Characters, "fa-solid fa-users", "Characters", "Your characters across servers, with operation lockouts"),
+                                    (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
                                     (MainTab::Settings, "fa-solid fa-gear", "Settings", "Log directory, hotkeys, audio and application options"),
                                 ],
+                                divider_before: Some(MainTab::LogManagement),
                                 state: ui_state,
                             }
                         }
@@ -905,13 +903,6 @@ pub fn App() -> Element {
                 // Status row: overlay quick actions, then the session bar beside them
                 div {
                     class: if status_historical { "status-row historical" } else { "status-row" },
-                    button {
-                        class: if has_session_bar { "dashboard-collapse-btn" } else { "dashboard-collapse-btn hidden" },
-                        title: if dashboard_collapsed() { "Expand session bar" } else { "Collapse session bar" },
-                        disabled: !has_session_bar,
-                        onclick: move |_| dashboard_collapsed.set(!dashboard_collapsed()),
-                        i { class: if dashboard_collapsed() { "fa-solid fa-chevron-down" } else { "fa-solid fa-chevron-up" } }
-                    }
                         div { class: "header-actions",
                             div { class: "header-overlay-controls",
                                 button {
@@ -1071,7 +1062,6 @@ pub fn App() -> Element {
                                 class: {
                                     let mut cls = String::from("session-dashboard-bar");
                                     if is_historical { cls.push_str(" historical"); }
-                                    if dashboard_collapsed() { cls.push_str(" collapsed"); }
                                     cls
                                 },
 
@@ -1086,7 +1076,6 @@ pub fn App() -> Element {
                                 // ── Always-visible header row (clickable to toggle collapse) ──
                                 div {
                                     class: "dashboard-toggle-row",
-                                    onclick: move |_| dashboard_collapsed.set(!dashboard_collapsed()),
 
                                     // Session status icon + label + player name + duration (always visible as a summary)
                                     div { class: "dashboard-summary",
@@ -1175,6 +1164,14 @@ pub fn App() -> Element {
                                             }
                                         }
 
+                                        SessionSettingsPill {
+                                            op_timer_secs,
+                                            op_timer_running,
+                                            area_bosses,
+                                            selected_boss_id,
+                                            session_time: session_time_text.clone(),
+                                        }
+
                                         ProfileUnsavedHint { active_profile, profile_dirty }
 
                                         // Live / historical status closes the row on the right
@@ -1196,122 +1193,6 @@ pub fn App() -> Element {
                     }
                 }
 
-                // Expanded session controls sit below the status row, so the action
-                // group keeps the height of the collapsed bar
-                if has_session_bar && !dashboard_collapsed() {
-                    div { class: if status_historical { "session-settings-panel historical" } else { "session-settings-panel" },
-                            div { class: "session-settings-row",
-                                // Operation timer
-                                {
-                                    let secs = op_timer_secs();
-                                    let running = op_timer_running();
-                                    let timer_str = if secs >= 3600 {
-                                        format!("{}:{:02}:{:02}", secs / 3600, (secs % 3600) / 60, secs % 60)
-                                    } else {
-                                        format!("{}:{:02}", secs / 60, secs % 60)
-                                    };
-                                    rsx! {
-                                        div { class: "session-op-timer",
-                                            label { class: "op-timer-label", "Op Timer" }
-                                            span {
-                                                class: if running { "op-timer-display running" } else { "op-timer-display" },
-                                                "{timer_str}"
-                                            }
-                                            button {
-                                                class: "btn btn-op-timer",
-                                                title: if running { "Stop" } else if secs > 0 { "Resume" } else { "Start" },
-                                                onclick: move |_| {
-                                                    let is_running = running;
-                                                    spawn(async move {
-                                                        if is_running {
-                                                            api::stop_operation_timer().await;
-                                                        } else {
-                                                            api::start_operation_timer().await;
-                                                        }
-                                                    });
-                                                },
-                                                if running {
-                                                    i { class: "fa-solid fa-pause" }
-                                                } else {
-                                                    i { class: "fa-solid fa-play" }
-                                                }
-                                            }
-                                            if secs > 0 || running {
-                                                button {
-                                                    class: "btn btn-op-timer btn-op-timer-reset",
-                                                    title: "Reset",
-                                                    onclick: move |_| {
-                                                        spawn(async move {
-                                                            api::reset_operation_timer().await;
-                                                        });
-                                                    },
-                                                    i { class: "fa-solid fa-rotate-left" }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                span { class: "session-settings-divider" }
-
-                                // Player stats (alacrity / latency)
-                                PlayerStatsBar {}
-
-                                span { class: "session-settings-divider" }
-
-                                // Boss notes selector
-                                {
-                                    let bosses_with_notes: Vec<_> = area_bosses().iter()
-                                        .filter(|b| b.has_notes)
-                                        .cloned()
-                                        .collect();
-                                    rsx! {
-                                        div { class: "session-notes-selector",
-                                            span { class: "label",
-                                                i { class: "fa-solid fa-note-sticky" }
-                                                " Notes:"
-                                            }
-                                            if bosses_with_notes.is_empty() {
-                                                select {
-                                                    class: "notes-boss-select",
-                                                    disabled: true,
-                                                    option { value: "", "No notes available" }
-                                                }
-                                            } else {
-                                                select {
-                                                    class: "notes-boss-select",
-                                                    onchange: move |evt| {
-                                                        let boss_id = evt.value();
-                                                        if !boss_id.is_empty() {
-                                                            selected_boss_id.set(Some(boss_id.clone()));
-                                                            spawn(async move {
-                                                                let _ = api::select_boss_notes(&boss_id).await;
-                                                            });
-                                                        }
-                                                    },
-                                                    option { value: "", "Select boss..." }
-                                                    for boss in bosses_with_notes.iter() {
-                                                        option {
-                                                            value: "{boss.id}",
-                                                            selected: selected_boss_id().as_ref() == Some(&boss.id),
-                                                            "{boss.name}"
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if let Some(ref text) = session_time_text {
-                                    span { class: "session-time-info",
-                                        i { class: "fa-regular fa-calendar" }
-                                        " {text}"
-                                    }
-                                }
-                            }
-                    }
-                }
             } // end app-header
 
             // Tab Content
@@ -2806,86 +2687,6 @@ fn add_parsely_guild(
         selected.read().clone(),
         save_status,
     );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Player Stats Bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Inline bar for alacrity and duration bias settings
-#[component]
-fn PlayerStatsBar() -> Element {
-    let mut alacrity = use_signal(|| 0.0f32);
-    let mut latency = use_signal(|| 0i16);
-    let mut loaded = use_signal(|| false);
-
-    // Load from config on mount
-    use_effect(move || {
-        if !loaded() {
-            spawn(async move {
-                if let Some(config) = api::get_config().await {
-                    alacrity.set(config.alacrity_percent);
-                    latency.set(config.latency_ms);
-                    loaded.set(true);
-                }
-            });
-        }
-    });
-
-    let save_config = move || {
-        let new_alacrity = alacrity();
-        let new_latency = latency();
-        let mut toast = use_toast();
-        spawn(async move {
-            if let Some(mut config) = api::get_config().await {
-                config.alacrity_percent = new_alacrity;
-                config.latency_ms = new_latency;
-                if let Err(err) = api::update_config(&config).await {
-                    toast.show(
-                        format!("Failed to save settings: {}", err),
-                        ToastSeverity::Normal,
-                    );
-                }
-            }
-        });
-    };
-
-    rsx! {
-        div { class: "player-stats-bar",
-            div { class: "stat-input",
-                label { "Alacrity %" }
-                input {
-                    r#type: "text",
-                    title: "Your alacrity percentage for GCD calculations",
-                    value: "{alacrity():.2}",
-                    onchange: move |e| {
-                        if let Ok(val) = e.value().parse::<f32>() {
-                            alacrity.set(val.clamp(0.0, 30.0));
-                            save_config();
-                        }
-                    }
-                }
-            }
-            div { class: "stat-input",
-                label { "Bias Adjustment (ms)" }
-                input {
-                    r#type: "text",
-                    value: "{latency()}",
-                    onchange: move |e| {
-                        if let Ok(val) = e.value().parse::<i16>() {
-                            latency.set(val.clamp(-500, 500));
-                            save_config();
-                        }
-                    }
-                }
-            }
-            span {
-                class: "stats-help-icon",
-                title: "Alacrity shortens the duration of your HOTS. Use the bias adjustment field to adjust durations by +/- X ms if a consistent discrepancy is noticed.",
-                i { class: "fa-solid fa-circle-question" }
-            }
-        }
-    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

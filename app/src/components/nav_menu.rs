@@ -18,6 +18,8 @@ pub fn NavMenu(
     icon: &'static str,
     items: Vec<NavItem>,
     #[props(default)] actions: Vec<NavAction>,
+    /// A hairline above this item, separating the group it starts
+    #[props(default)] divider_before: Option<MainTab>,
     state: Signal<UiSessionState>,
 ) -> Element {
     let mut open = use_signal(|| false);
@@ -66,6 +68,9 @@ pub fn NavMenu(
                 div { class: "nav-menu-backdrop", onclick: move |_| open.set(false) }
                 div { class: "nav-menu-list",
                     for (tab, i, l, t) in items.iter().copied() {
+                        if divider_before == Some(tab) {
+                            div { class: "nav-menu-divider" }
+                        }
                         button {
                             class: if tab == active_tab { "nav-menu-item active" } else { "nav-menu-item" },
                             title: "{t}",

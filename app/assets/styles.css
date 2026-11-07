@@ -274,13 +274,6 @@ select optgroup {
   align-items: stretch;
   flex-shrink: 0;
 }
-.status-row > .dashboard-collapse-btn {
-  align-self: center;
-  margin-right: -0.5em;
-}
-.dashboard-collapse-btn.hidden {
-  visibility: hidden;
-}
 /* Flush with the row: a left-anchored segment rather than a floating box */
 .header-actions .header-overlay-controls {
   box-sizing: border-box;
@@ -297,27 +290,6 @@ select optgroup {
   width: 1px;
   height: 20px;
   background: rgba(255, 255, 255, 0.15);
-}
-.session-settings-panel {
-  padding: 0 2vw;
-}
-.session-settings-panel.historical {
-  background: linear-gradient(
-    135deg,
-    rgba(212, 168, 80, 0.08) 0%,
-    transparent 100%
-  );
-}
-.session-settings-panel .session-settings-row {
-  margin-top: 0;
-  padding: 0.3em 0 0.35em;
-  border-top: none;
-}
-/* Slimmer boxes: the inputs set the height, the frames just hug them */
-.session-settings-panel .session-op-timer,
-.session-settings-panel .player-stats-bar {
-  padding-top: 0.15em;
-  padding-bottom: 0.15em;
 }
 .status-row-session {
   flex: 1;
@@ -1364,14 +1336,9 @@ button:active {
   display: flex;
   align-items: center;
   gap: 0.8em;
-  cursor: pointer;
-  user-select: none;
   min-height: 28px;
 }
 
-.dashboard-toggle-row:hover {
-  opacity: 0.9;
-}
 
 /* Live / Prior Session / Historical chip, with Resume Live to its left */
 .session-status-group {
@@ -1470,21 +1437,7 @@ button:active {
   border-color: var(--color-success);
 }
 
-.dashboard-collapse-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0.2em;
-  font-size: 0.8em;
-  flex-shrink: 0;
-  width: 1.2em;
-  text-align: center;
-}
 
-.dashboard-collapse-btn:hover {
-  color: var(--text-primary);
-}
 
 .dashboard-summary {
   display: flex;
@@ -1492,7 +1445,8 @@ button:active {
   gap: 0.5em;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  /* Visible so the session settings panel can hang below the row; the
+     player name truncates on its own */
 }
 
 .dashboard-status-icon {
@@ -1571,12 +1525,7 @@ button:active {
 
 /* Profile selector inside session dashboard bar */
 /* Settings row inside dashboard bar */
-.session-dashboard-bar .session-settings-row {
-  padding: 0.4em 0 0.2em 0;
-  margin-top: 0.3em;
-  border-top: 1px solid var(--border-dim);
-}
-
+.session-dashboard-bar 
 /* Empty state in dashboard bar */
 .dashboard-empty-state {
   cursor: default;
@@ -1758,20 +1707,7 @@ button:active {
 }
 
 /* ── Operation timer (session settings row) ── */
-.session-op-timer {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.3em 0.7em;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-}
 
-.op-timer-label {
-  font-size: 0.85em;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
 
 .op-timer-display {
   /* Same explicit box as the alacrity and bias inputs */
@@ -1868,35 +1804,6 @@ button:active {
   font-size: clamp(0.75rem, 1.5vh, 0.9rem);
   color: var(--text-muted);
 }
-
-/* ── Settings row (alacrity/latency + notes) ── */
-.session-settings-row {
-  display: flex;
-  align-items: stretch; /* op timer and player stats boxes share a height */
-  gap: 1em;
-  padding: 0.5em 0 0.25em;
-  border-top: 1px solid var(--border-dim);
-  margin-top: 0.25em;
-  flex-wrap: wrap;
-}
-
-.session-settings-divider {
-  width: 1px;
-  height: 1.5em;
-  background: var(--border-dim);
-  flex-shrink: 0;
-}
-.session-settings-row > :not(.session-op-timer):not(.player-stats-bar) {
-  align-self: center;
-}
-
-/* Override player-stats-bar when inside settings row (keep border, adjust padding) */
-.session-settings-row .player-stats-bar {
-  padding: 0.3em 0.7em;
-}
-
-/* Auto-hide toggles in session settings row */
-
 
 /* Session toolbar */
 .session-toolbar {
@@ -4720,14 +4627,17 @@ a.contributor-name:hover {
   padding: 0.4em clamp(0.7em, calc(var(--nav-room) / 25), 1.75em);
   font-size: clamp(0.8em, calc(var(--nav-room) / 44), 1em);
 }
-/* Log files: a pill like the others, set off by a thin separator */
+/* Log files: a pill like the others, a little narrower */
 .header-nav .header-files-btn {
-  position: relative;
-  margin-left: 0.55em;
   padding: 0.4em clamp(0.6em, calc(var(--nav-room) / 48), 0.9em);
   font-size: clamp(0.8em, calc(var(--nav-room) / 44), 1em);
 }
-.header-nav .header-files-btn::before {
+/* A thin separator between every pill in the bar */
+.header-tabs > * + * {
+  position: relative;
+  margin-left: 0.55em;
+}
+.header-tabs > * + *::before {
   content: "";
   position: absolute;
   left: -0.5em;
@@ -6239,47 +6149,11 @@ a.contributor-name:hover {
   font-size: 0.85em;
 }
 
-.player-stats-bar {
-  display: flex;
-  align-items: center;
-  gap: 1em;
-  padding: 0.4em 0.8em;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-}
 
-.player-stats-bar .stat-input {
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-}
 
-.player-stats-bar label {
-  font-size: 0.85em;
-  color: var(--text-muted);
-}
 
-.player-stats-bar input {
-  width: 50px;
-  height: 1.9em;
-  box-sizing: border-box;
-  padding: 0 0.5em;
-  background: rgba(50, 50, 55, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-size: 0.85em;
-}
 
-.player-stats-bar .stats-help-icon {
-  color: var(--text-muted);
-  cursor: help;
-  font-size: 0.9em;
-}
 
-.player-stats-bar .stats-help-icon:hover {
-  color: var(--swtor-blue);
-}
 
 .effect-search-bar {
   display: flex;
@@ -8798,4 +8672,121 @@ a.contributor-name:hover {
 
 .modifier-anyof > .btn-sm {
   align-self: flex-start;
+}
+
+/* ── Session settings pill and its panel (status row) ── */
+.session-settings-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.btn-session-settings {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.4em 0.7em;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-session-settings:hover,
+.btn-session-settings.open {
+  color: var(--text-primary);
+  background: var(--blue-alpha-8);
+  border-color: var(--swtor-blue-dim);
+}
+
+.btn-session-settings .summary {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+}
+
+.btn-session-settings.running .summary,
+.btn-session-settings.running .fa-stopwatch {
+  color: var(--swtor-gold);
+}
+
+.btn-session-settings .caret {
+  font-size: 0.7em;
+  opacity: 0.7;
+}
+
+.session-settings-pop {
+  position: absolute;
+  top: calc(100% + 0.4em);
+  right: 0;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+  width: 22em;
+  padding: 0.7em 0.8em;
+  background: var(--swtor-bg-mid);
+  border: 1px solid var(--border-accent-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  cursor: default;
+  text-align: left;
+}
+
+.session-settings-pop .row {
+  display: grid;
+  grid-template-columns: 7.5em minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5em;
+}
+
+.session-settings-pop .row > label {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.session-settings-pop .controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  min-width: 0;
+}
+
+.session-settings-pop input {
+  width: 5em;
+  height: 1.9em;
+  box-sizing: border-box;
+  padding: 0 0.5em;
+  font-size: 0.85em;
+  color: var(--text-primary);
+  background: rgba(50, 50, 55, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.session-settings-pop .unit {
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.session-settings-pop .notes-boss-select {
+  width: 100%;
+  max-width: none;
+}
+
+.session-settings-pop .hint {
+  margin: 0;
+  font-size: 0.78em;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.session-settings-pop .divider {
+  height: 1px;
+  background: var(--border-dim);
+}
+
+.session-settings-pop .session-time-info {
+  margin-left: 0;
 }
