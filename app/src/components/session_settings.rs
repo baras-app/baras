@@ -74,6 +74,7 @@ pub fn SessionSettingsPill(
                     span { class: "summary", "{timer}" }
                 } else {
                     span { class: "summary", "{alacrity():.2} %" }
+                    span { class: "unit", "alac" }
                 }
                 i { class: "fa-solid fa-chevron-down caret" }
             }

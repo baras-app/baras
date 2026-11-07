@@ -93,6 +93,8 @@ fn test_parse_entity_empty() {
 
 // parse_position edge cases
 #[test]
+// The fixture line literally says 3.14; it is a facing value, not pi
+#[allow(clippy::approx_constant)]
 fn test_parse_position_whole_and_zero() {
     let entity = test_parser()
         .parse_entity("Training Dummy {123}:456|(0.00,4694.53,-8.00,3.14)|(100/100)")

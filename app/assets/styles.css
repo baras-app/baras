@@ -251,9 +251,10 @@ select optgroup {
 .header-bar {
   /* Brand and version keep their natural width; navigation centers in the rest */
   display: grid;
-  /* The nav may shrink below its content (labels ellipsize) rather than
-     spill into the brand or the version block */
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+  /* The side columns never drop below their content, so when room runs out
+     it is the nav column that gives way and its labels ellipsize, instead of
+     the nav growing to its full width and sliding over the brand */
+  grid-template-columns: minmax(min-content, 1fr) minmax(0, auto) minmax(min-content, 1fr);
   align-items: center;
   gap: 0.75em;
   padding: 0.2em 2vw 0.25em;
@@ -529,12 +530,6 @@ select optgroup {
   background: rgba(0, 0, 0, 0.3);
   border-radius: var(--radius-lg);
   border: 1px solid rgba(80, 80, 90, 0.3);
-}
-
-.header-profile-icon {
-  margin-right: -0.1em;
-  font-size: 0.8em;
-  color: var(--text-muted);
 }
 
 .header-profile-dropdown {
@@ -1362,38 +1357,32 @@ button:active {
 .session-status-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.45em;
-  padding: 0.2em 0.6em;
-  border-radius: 999px;
-  font-size: 0.78em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  gap: 0.5em;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 0.8em;
+  border-radius: var(--radius-md);
+  font-size: 0.85em;
+  font-weight: 500;
   white-space: nowrap;
   flex-shrink: 0;
-  color: var(--text-muted);
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(80, 80, 90, 0.35);
+  /* Same quiet pill as the controls beside it; the dot says which state */
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 .session-status-chip .status-dot {
   width: 8px;
   height: 8px;
-  background: currentColor;
-}
-.session-status-chip.live {
-  color: #5aaa7a;
-  border-color: rgba(90, 170, 122, 0.4);
+  border-radius: 50%;
 }
 .session-status-chip.live .status-dot {
-  box-shadow: 0 0 6px rgba(90, 170, 122, 0.6);
-}
-.session-status-chip.prior,
-.session-status-chip.historical {
-  color: #d4a850;
-  border-color: rgba(212, 168, 80, 0.4);
+  background: var(--color-success);
+  box-shadow: 0 0 6px rgba(95, 217, 142, 0.6);
 }
 .session-status-chip.prior .status-dot,
 .session-status-chip.historical .status-dot {
+  background: #d4a850;
   box-shadow: 0 0 6px rgba(212, 168, 80, 0.5);
 }
 .session-status-action {
@@ -1423,25 +1412,28 @@ button:active {
 .session-status-resume {
   display: inline-flex;
   align-items: center;
-  gap: 0.4em;
+  gap: 0.45em;
   flex-shrink: 0;
   margin: 0;
-  padding: 0.15em 0.65em;
-  border-radius: 999px;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 0.8em;
+  border-radius: var(--radius-md);
   font: inherit;
-  font-size: 0.75em;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  line-height: 1.5;
+  font-size: 0.85em;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1;
   white-space: nowrap;
+  /* Same pill as the rest of the row, tinted green: it is the way back to live */
   color: var(--color-success);
-  background: var(--color-success-bg);
-  border: 1px solid var(--color-success-border);
+  background: rgba(95, 217, 142, 0.08);
+  border: 1px solid rgba(95, 217, 142, 0.25);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 .session-status-resume:hover {
-  background: var(--color-success-bg-hover);
+  background: var(--color-success-bg);
   border-color: var(--color-success);
 }
 
@@ -1877,21 +1869,25 @@ button:active {
   gap: 0.4em;
   padding: 0.4em 0.8em;
   font-size: 0.85em;
-  background: var(--blue-alpha-8);
-  border: 1px solid var(--blue-alpha-20);
+  /* Quiet like the settings pill; the icon carries the meaning */
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-md);
-  color: var(--swtor-blue);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-session-upload:hover {
-  background: var(--blue-alpha-20);
-  border-color: var(--swtor-blue);
+  color: var(--text-primary);
+  background: var(--blue-alpha-8);
+  border-color: var(--swtor-blue-dim);
 }
 
 .btn-session-upload i {
   font-size: 1.1em;
+  color: var(--swtor-blue);
+  opacity: 0.85;
 }
 
 .btn-session-upload:disabled {
@@ -4640,12 +4636,15 @@ a.contributor-name:hover {
   padding: 0.4em clamp(0.6em, calc(var(--nav-room) / 48), 0.9em);
   font-size: clamp(0.8em, calc(var(--nav-room) / 44), 1em);
 }
-/* A thin separator between every pill in the bar */
-.header-tabs > * + * {
+/* A thin separator between every pill in the bar, the files pill included
+   (it sits beside the tabs group, not inside it) */
+.header-tabs > * + *,
+.header-nav > * + * {
   position: relative;
   margin-left: 0.55em;
 }
-.header-tabs > * + *::before {
+.header-tabs > * + *::before,
+.header-nav > * + *::before {
   content: "";
   position: absolute;
   left: -0.5em;
@@ -4799,6 +4798,25 @@ a.contributor-name:hover {
   /* Shorten unsaved hint text */
   .header-unsaved-hint {
     font-size: 0.6em;
+  }
+}
+
+/* Below ~1300px the labels would start to ellipsize. Before that happens,
+   pills that are not the open view drop to icon + caret (their tooltip and
+   the menu still name them) and the update button shortens, so the open
+   view's name is always whole. */
+@media (max-width: 1300px) {
+  .header-tabs .tab-btn:not(.active) .tab-label {
+    display: none;
+  }
+  .header-tabs .tab-btn:not(.active) > i {
+    font-size: 1.2em;
+  }
+  .header-tabs .tab-btn:not(.active) .nav-menu-caret {
+    margin-left: 0.1em;
+  }
+  .app-header .header-version .update-long {
+    display: none;
   }
 }
 
@@ -8797,4 +8815,76 @@ a.contributor-name:hover {
 
 .session-settings-pop .session-time-info {
   margin-left: 0;
+}
+
+/* One control height across the status row */
+.status-row .header-profile-dropdown,
+.status-row .btn-session-upload,
+.status-row .btn-session-settings {
+  height: 30px;
+  box-sizing: border-box;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.btn-session-settings .unit {
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+/* ── Overlay page controls: the same pills as the status row ── */
+.overlay-toolbar .btn-control {
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 0.8em;
+  gap: 0.45em;
+  font-size: 0.85em;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.overlay-toolbar .btn-control:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--blue-alpha-8);
+  border-color: var(--swtor-blue-dim);
+  box-shadow: none;
+}
+
+.overlay-toolbar .btn-control:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Lit: overlays visible, rearrange on */
+.overlay-toolbar .btn-visible,
+.overlay-toolbar .btn-rearrange.btn-active {
+  color: var(--text-primary);
+  background: var(--blue-alpha-15);
+  border-color: var(--border-accent-medium);
+  box-shadow: none;
+}
+
+/* Unlocked overlays are a state worth noticing: the gold the timer uses */
+.overlay-toolbar .btn-unlocked,
+.overlay-toolbar .btn-unlocked:hover:not(:disabled) {
+  color: var(--swtor-gold);
+  background: rgba(180, 140, 60, 0.14);
+  border-color: var(--swtor-gold-dim);
+  box-shadow: none;
+}
+
+.overlay-toolbar .btn-clear-frames:hover:not(:disabled) {
+  color: var(--swtor-red);
+  background: rgba(255, 74, 74, 0.08);
+  border-color: rgba(255, 74, 74, 0.35);
+}
+
+/* Version block buttons (update) stay on one line; the nav gives way instead */
+.header-meta button {
+  white-space: nowrap;
 }

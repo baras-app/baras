@@ -1,4 +1,4 @@
-//! Discipline and role icon assets for player display
+//! Discipline, advanced class and role icon assets for player display
 
 use dioxus::prelude::*;
 use manganis::Asset;
@@ -53,6 +53,24 @@ static ICON_SHARPSHOOTER: Asset = asset!("/assets/icons/discipline/sharpshooter.
 static ICON_SABOTEUR: Asset = asset!("/assets/icons/discipline/saboteur.png");
 static ICON_DIRTY_FIGHTING: Asset = asset!("/assets/icons/discipline/dirty-fighting.png");
 static ICON_COMPANION: Asset = asset!("/assets/icons/discipline/companion.png");
+
+// Pre-declare advanced class icon assets (Character roster)
+static ICON_CLASS_SORCERER: Asset = asset!("/assets/icons/class/sorcerer.png");
+static ICON_CLASS_ASSASSIN: Asset = asset!("/assets/icons/class/assassin.png");
+static ICON_CLASS_JUGGERNAUT: Asset = asset!("/assets/icons/class/juggernaut.png");
+static ICON_CLASS_MARAUDER: Asset = asset!("/assets/icons/class/marauder.png");
+static ICON_CLASS_MERCENARY: Asset = asset!("/assets/icons/class/mercenary.png");
+static ICON_CLASS_POWERTECH: Asset = asset!("/assets/icons/class/powertech.png");
+static ICON_CLASS_OPERATIVE: Asset = asset!("/assets/icons/class/operative.png");
+static ICON_CLASS_SNIPER: Asset = asset!("/assets/icons/class/sniper.png");
+static ICON_CLASS_SAGE: Asset = asset!("/assets/icons/class/sage.png");
+static ICON_CLASS_SHADOW: Asset = asset!("/assets/icons/class/shadow.png");
+static ICON_CLASS_GUARDIAN: Asset = asset!("/assets/icons/class/guardian.png");
+static ICON_CLASS_SENTINEL: Asset = asset!("/assets/icons/class/sentinel.png");
+static ICON_CLASS_COMMANDO: Asset = asset!("/assets/icons/class/commando.png");
+static ICON_CLASS_VANGUARD: Asset = asset!("/assets/icons/class/vanguard.png");
+static ICON_CLASS_SCOUNDREL: Asset = asset!("/assets/icons/class/scoundrel.png");
+static ICON_CLASS_GUNSLINGER: Asset = asset!("/assets/icons/class/gunslinger.png");
 
 // Pre-declare role icon assets
 static ICON_ROLE_TANK: Asset = asset!("/assets/icons/role/icon_tank.png");
@@ -112,6 +130,23 @@ pub fn get_class_icon(icon_name: &str) -> Option<&'static Asset> {
         "saboteur.png" => Some(&ICON_SABOTEUR),
         "dirty-fighting.png" => Some(&ICON_DIRTY_FIGHTING),
         "companion.png" => Some(&ICON_COMPANION),
+        // Advanced class icons
+        "sorcerer.png" => Some(&ICON_CLASS_SORCERER),
+        "assassin.png" => Some(&ICON_CLASS_ASSASSIN),
+        "juggernaut.png" => Some(&ICON_CLASS_JUGGERNAUT),
+        "marauder.png" => Some(&ICON_CLASS_MARAUDER),
+        "mercenary.png" => Some(&ICON_CLASS_MERCENARY),
+        "powertech.png" => Some(&ICON_CLASS_POWERTECH),
+        "operative.png" => Some(&ICON_CLASS_OPERATIVE),
+        "sniper.png" => Some(&ICON_CLASS_SNIPER),
+        "sage.png" => Some(&ICON_CLASS_SAGE),
+        "shadow.png" => Some(&ICON_CLASS_SHADOW),
+        "guardian.png" => Some(&ICON_CLASS_GUARDIAN),
+        "sentinel.png" => Some(&ICON_CLASS_SENTINEL),
+        "commando.png" => Some(&ICON_CLASS_COMMANDO),
+        "vanguard.png" => Some(&ICON_CLASS_VANGUARD),
+        "scoundrel.png" => Some(&ICON_CLASS_SCOUNDREL),
+        "gunslinger.png" => Some(&ICON_CLASS_GUNSLINGER),
         _ => None,
     }
 }

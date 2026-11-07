@@ -826,7 +826,7 @@ pub fn App() -> Element {
                                             " Updating..."
                                         } else {
                                             i { class: "fa-solid fa-arrow-up" }
-                                            " Update Available!"
+                                            " Update" span { class: "update-long", " Available!" }
                                         }
                                     }
                                 } else {
@@ -963,9 +963,7 @@ pub fn App() -> Element {
                                         i { class: "fa-solid fa-eraser" }
                                     }
                                 }
-                                span { class: "header-controls-divider" }
                                 // Profile selector
-                                i { class: "fa-solid fa-user header-profile-icon", title: "Overlay profile" }
                                 select {
                                     class: "header-profile-dropdown",
                                     title: "Switch overlay profile",
@@ -1104,6 +1102,7 @@ pub fn App() -> Element {
                                                 " {duration}"
                                             }
                                         }
+                                        span { class: "header-controls-divider" }
 
                                         // Combat status icon (live only)
                                         if live_tailing && !session_ended() && !info.stale_session {
@@ -1112,6 +1111,14 @@ pub fn App() -> Element {
                                                 title: if info.in_combat { "In Combat" } else { "Out of Combat" },
                                                 i { class: "fa-solid fa-khanda" }
                                             }
+                                        }
+
+                                        SessionSettingsPill {
+                                            op_timer_secs,
+                                            op_timer_running,
+                                            area_bosses,
+                                            selected_boss_id,
+                                            session_time: session_time_text.clone(),
                                         }
 
                                         // Parsely upload (inline in summary)
@@ -1162,14 +1169,6 @@ pub fn App() -> Element {
                                                     }
                                                 }
                                             }
-                                        }
-
-                                        SessionSettingsPill {
-                                            op_timer_secs,
-                                            op_timer_running,
-                                            area_bosses,
-                                            selected_boss_id,
-                                            session_time: session_time_text.clone(),
                                         }
 
                                         ProfileUnsavedHint { active_profile, profile_dirty }
