@@ -259,61 +259,6 @@ svg.char-faction {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Lockout chips
-   ───────────────────────────────────────────────────────────────────────── */
-.lockout-free {
-  color: var(--color-success);
-  font-size: 0.85em;
-}
-
-.lockout-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3em;
-  max-width: 22em;
-}
-
-.lockout-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35em;
-  padding: 1px 7px;
-  border-radius: 10px;
-  font-size: 0.78em;
-  border: 1px solid var(--border-accent);
-  background: var(--blue-alpha-10);
-  color: var(--text-secondary);
-  cursor: help;
-  white-space: nowrap;
-}
-
-.lockout-chip .lockout-op {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.lockout-chip .lockout-tier {
-  color: var(--text-muted);
-}
-
-.lockout-chip .lockout-progress {
-  font-family: var(--font-mono);
-  color: var(--text-muted);
-}
-
-.lockout-chip.tier-story { border-color: rgba(120, 200, 120, 0.4); background: rgba(120, 200, 120, 0.1); }
-.lockout-chip.tier-veteran { border-color: rgba(74, 158, 255, 0.45); background: rgba(74, 158, 255, 0.12); }
-.lockout-chip.tier-master { border-color: rgba(224, 90, 90, 0.5); background: rgba(224, 90, 90, 0.12); }
-
-.lockout-chip.full .lockout-progress {
-  color: var(--color-error);
-}
-
-.lockout-chip.manual {
-  border-style: dashed;
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
    Editor
    ───────────────────────────────────────────────────────────────────────── */
 .character-editor {

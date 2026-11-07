@@ -7,7 +7,7 @@ use baras_types::history::iso_to_ms;
 
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 
-use super::lockouts::{LockoutChips, ago};
+use super::lockouts::ago;
 
 /// Faction emblems (Sith cog, Jedi wings) drawn inline on a colored disc
 #[component]
@@ -36,7 +36,6 @@ pub enum SortKey {
     Name,
     Server,
     LastSeen,
-    Lockouts,
 }
 
 pub fn sort_rows(rows: &mut [CharacterRow], key: SortKey, desc: bool) {
@@ -45,7 +44,6 @@ pub fn sort_rows(rows: &mut [CharacterRow], key: SortKey, desc: bool) {
             SortKey::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
             SortKey::Server => a.server.cmp(&b.server).then_with(|| a.name.cmp(&b.name)),
             SortKey::LastSeen => iso_to_ms(&a.last_seen).cmp(&iso_to_ms(&b.last_seen)),
-            SortKey::Lockouts => a.lockouts.len().cmp(&b.lockouts.len()),
         };
         if desc { ord.reverse() } else { ord }
     });
@@ -73,7 +71,7 @@ pub fn CharacterTable(
             sort_desc.toggle();
         } else {
             sort_key.set(k);
-            sort_desc.set(matches!(k, SortKey::LastSeen | SortKey::Lockouts));
+            sort_desc.set(matches!(k, SortKey::LastSeen));
         }
     };
 
@@ -90,7 +88,6 @@ pub fn CharacterTable(
                         th { "Guild" }
                         th { "Crew Skills" }
                         th { class: sort_class(SortKey::LastSeen), onclick: move |_| on_sort(SortKey::LastSeen), "Last Seen" }
-                        th { class: sort_class(SortKey::Lockouts), onclick: move |_| on_sort(SortKey::Lockouts), "Lockouts" }
                         th { "Note" }
                         th { }
                     }
@@ -133,7 +130,6 @@ pub fn CharacterTable(
                                         for s in row.crew_skills.iter() { span { class: "run-tag small", "{s}" } }
                                     }
                                     td { title: "{row.last_seen}", {ago(&row.last_seen)} }
-                                    td { LockoutChips { lockouts: row.lockouts.clone() } }
                                     td { class: "char-note", title: "{row.note}", "{row.note}" }
                                     td { class: "char-actions",
                                         button { class: "btn btn-xs btn-ghost", title: "Edit", onclick: move |_| on_edit.call(r1.clone()), i { class: "fa-solid fa-pen" } }

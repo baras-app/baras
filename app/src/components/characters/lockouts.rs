@@ -1,8 +1,5 @@
-//! Lockout chips and the time helpers the Characters tab shares.
+//! Time and tier helpers the Characters tab shares.
 
-use dioxus::prelude::*;
-
-use baras_types::characters::Lockout;
 use baras_types::history::iso_to_ms;
 
 const MINUTE_MS: f64 = 60_000.0;
@@ -17,17 +14,6 @@ pub fn tier_short(tier: &str) -> &'static str {
         "Master" => "NiM",
         _ => "",
     }
-}
-
-/// "The Dread Fortress" → "DF"; words like "the"/"of" are skipped
-pub fn acronym(name: &str) -> String {
-    let short: String = name
-        .split(|c: char| c.is_whitespace() || c == '-')
-        .filter(|w| !matches!(w.to_ascii_lowercase().as_str(), "the" | "of" | "and" | "from" | "&"))
-        .filter_map(|w| w.chars().next())
-        .filter(|c| c.is_alphanumeric())
-        .collect();
-    if short.len() < 2 { name.to_string() } else { short.to_uppercase() }
 }
 
 /// "2d 4h" / "5h 12m" / "3m" until a true-UTC epoch instant
@@ -63,44 +49,5 @@ pub fn ago(iso: &str) -> String {
         d @ 2..=59 => plural(d, "day"),
         d @ 60..=729 => plural(d / 30, "month"),
         d => plural(d / 365, "year"),
-    }
-}
-
-#[component]
-pub fn LockoutChips(lockouts: Vec<Lockout>) -> Element {
-    rsx! {
-        if lockouts.is_empty() {
-            span { class: "lockout-free", title: "No operation kills this reset", "Free" }
-        } else {
-            div { class: "lockout-chips",
-                for l in lockouts.iter() {
-                    {
-                        let tier = tier_short(&l.tier);
-                        let progress = if l.total > 0 { format!("{}/{}", l.locked.len(), l.total) } else { l.locked.len().to_string() };
-                        let class = format!(
-                            "lockout-chip tier-{}{}{}",
-                            l.tier.to_lowercase(),
-                            if l.is_full() { " full" } else { "" },
-                            if l.manual { " manual" } else { "" },
-                        );
-                        let title = format!(
-                            "{} · {} mode{}\nLocked: {}\nResets in {}",
-                            l.operation,
-                            l.tier,
-                            if l.manual { " (marked by hand)" } else { "" },
-                            l.locked.join(", "),
-                            until(l.expires_ms),
-                        );
-                        rsx! {
-                            span { class: "{class}", title: "{title}",
-                                span { class: "lockout-op", {acronym(&l.operation)} }
-                                span { class: "lockout-tier", "{tier}" }
-                                span { class: "lockout-progress", "{progress}" }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
