@@ -1,6 +1,8 @@
-//! Logging activity calendar for Log Management: one cell per day, shaded
-//! by how much was logged and tinted by the hardest content that day.
-//! Clicking a day (or a month label) filters the table to it.
+//! Calendar heatmap: one cell per day over the last year, shaded by a level
+//! and tinted by a tone class. Clicking a day (or a month label) selects a
+//! day range the caller filters on. `LogHeatmap` is the Log Management
+//! flavour (bytes logged, hardest content); PvP Statistics builds its own
+//! days from matches.
 
 use std::collections::HashMap;
 
@@ -29,7 +31,7 @@ pub struct DayStat {
 }
 
 /// Days since epoch for a `YYYY-MM-DD` prefix
-fn day_of(date: &str) -> Option<i64> {
+pub fn day_of(date: &str) -> Option<i64> {
     iso_to_ms(&format!("{}T00:00:00", date.get(..10)?)).map(|ms| ms.div_euclid(DAY_MS))
 }
 
@@ -104,10 +106,59 @@ pub fn in_range(date: &str, range: &DayRange) -> bool {
     date.get(..10).is_some_and(|d| d >= range.0.as_str() && d <= range.1.as_str())
 }
 
+/// One rendered day: `level` 1–4 picks the shade, `tone` the hue class
+/// (`nim`, `hm`, `sm`, `pvp`, `wb`, `misc`, `win`, `loss`, `even`).
+#[derive(Clone, PartialEq)]
+pub struct HeatDay {
+    pub day: i64,
+    pub level: u8,
+    pub tone: &'static str,
+    pub title: String,
+}
+
+/// Shade 1–4 for `value` against the largest value, square-root scaled so a
+/// single heavy day does not flatten every other one
+pub fn level(value: f64, max: f64) -> u8 {
+    ((value / max.max(1.0)).sqrt() * 4.0).ceil().clamp(1.0, 4.0) as u8
+}
+
 #[component]
 pub fn LogHeatmap(days: Vec<DayStat>, selected: Signal<Option<DayRange>>) -> Element {
-    let by_day: HashMap<i64, &DayStat> = days.iter().map(|s| (s.day, s)).collect();
-    let max_bytes = days.iter().map(|s| s.bytes).max().unwrap_or(1).max(1) as f64;
+    let max_bytes = days.iter().map(|s| s.bytes).max().unwrap_or(1) as f64;
+    let cells: Vec<HeatDay> = days
+        .iter()
+        .map(|s| {
+            let tags: Vec<&str> = s.tags.iter().map(|t| t.label()).collect();
+            HeatDay {
+                day: s.day,
+                level: level(s.bytes as f64, max_bytes),
+                tone: tone(&s.tags),
+                title: format!(
+                    "{} log{} · {}{}{}",
+                    s.logs,
+                    if s.logs == 1 { "" } else { "s" },
+                    fmt_bytes(s.bytes),
+                    if s.kills > 0 { format!(" · {} kills", s.kills) } else { String::new() },
+                    if tags.is_empty() { String::new() } else { format!("\n{}", tags.join(", ")) }
+                ),
+            }
+        })
+        .collect();
+    rsx! {
+        Heatmap { days: cells, selected, title: "Logging activity", hint: "Click a day or month to filter the table", legend: "pvp" }
+    }
+}
+
+#[component]
+pub fn Heatmap(
+    days: Vec<HeatDay>,
+    selected: Signal<Option<DayRange>>,
+    title: &'static str,
+    hint: &'static str,
+    /// Tone class the legend swatches use
+    legend: &'static str,
+) -> Element {
+    let by_day: HashMap<i64, &HeatDay> = days.iter().map(|s| (s.day, s)).collect();
     // Window: the last 53 weeks, columns starting on a Monday
     let end = today();
     let start = end - weekday(end) - 7 * (WEEKS - 1);
@@ -125,11 +176,11 @@ pub fn LogHeatmap(days: Vec<DayStat>, selected: Signal<Option<DayRange>>) -> Ele
     rsx! {
         div { class: "log-heatmap",
             div { class: "log-heatmap-head",
-                span { class: "log-heatmap-title", i { class: "fa-solid fa-calendar-days" } " Logging activity" }
-                span { class: "hint", "Click a day or month to filter the table" }
+                span { class: "log-heatmap-title", i { class: "fa-solid fa-calendar-days" } " {title}" }
+                if !hint.is_empty() { span { class: "hint", "{hint}" } }
                 div { class: "log-heatmap-legend",
                     span { "Less" }
-                    for lvl in 1..=4 { span { class: "heatmap-cell pvp l{lvl}" } }
+                    for lvl in 1..=4 { span { class: "heatmap-cell {legend} l{lvl}" } }
                     span { "More" }
                 }
             }
@@ -148,7 +199,7 @@ pub fn LogHeatmap(days: Vec<DayStat>, selected: Signal<Option<DayRange>>) -> Ele
                             button {
                                 class: if active { "log-heatmap-month active" } else { "log-heatmap-month" },
                                 style: "grid-column: {col + 1} / span {span}",
-                                title: "Show logs from {label} {y}",
+                                title: "Only {label} {y}",
                                 onclick: move |_| {
                                     let r = month_range.clone();
                                     let mut sel = selected.write();
@@ -172,22 +223,16 @@ pub fn LogHeatmap(days: Vec<DayStat>, selected: Signal<Option<DayRange>>) -> Ele
                             {
                                 let day = start + col as i64 * 7 + row;
                                 let date = iso(day);
-                                let stat = by_day.get(&day);
+                                let cell = by_day.get(&day);
                                 let future = day > end;
-                                let level = stat.map_or(0, |s| ((s.bytes as f64 / max_bytes).sqrt() * 4.0).ceil().clamp(1.0, 4.0) as u8);
                                 let picked = range.as_ref().is_some_and(|r| date >= r.0 && date <= r.1);
-                                let class = match stat {
-                                    Some(s) => format!("heatmap-cell {} l{level}{}", tone(&s.tags), if picked { " picked" } else { "" }),
+                                let class = match cell {
+                                    Some(c) => format!("heatmap-cell {} l{}{}", c.tone, c.level, if picked { " picked" } else { "" }),
                                     None if future => "heatmap-cell future".to_string(),
                                     None => format!("heatmap-cell l0{}", if picked { " picked" } else { "" }),
                                 };
-                                let title = match stat {
-                                    Some(s) => {
-                                        let tags: Vec<&str> = s.tags.iter().map(|t| t.label()).collect();
-                                        format!("{} {date}\n{} log{} · {}{}{}", WEEKDAYS[row as usize], s.logs, if s.logs == 1 { "" } else { "s" }, fmt_bytes(s.bytes),
-                                            if s.kills > 0 { format!(" · {} kills", s.kills) } else { String::new() },
-                                            if tags.is_empty() { String::new() } else { format!("\n{}", tags.join(", ")) })
-                                    }
+                                let title = match cell {
+                                    Some(c) => format!("{} {date}\n{}", WEEKDAYS[row as usize], c.title),
                                     None => format!("{} {date}", WEEKDAYS[row as usize]),
                                 };
                                 rsx! {

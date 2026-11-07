@@ -133,7 +133,9 @@ pub struct CombatEncounter {
     /// Pull progress for the History tab: phases in entry order with combat
     /// seconds, player deaths in order, and whether the fight ended by reset.
     pub phases_seen: Vec<(String, f32)>,
-    pub deaths: Vec<(i64, f32)>,
+    /// `(player id, combat secs, killer id)` in order; killer is 0 when the
+    /// death was inferred from 0 HP rather than a Death event
+    pub deaths: Vec<(i64, f32, i64)>,
     pub ended_by_reset: bool,
     /// Whether the victory trigger has fired (for has_victory_trigger encounters).
     /// Once true, ExitCombat events will be honored.
@@ -158,6 +160,8 @@ pub struct CombatEncounter {
     /// Arena round outcome, set at the death that wipes a full team
     /// (None = undetermined: round in progress or ended without a team wipe)
     pub arena_outcome: Option<PvpOutcome>,
+    /// This arena round ended the match ("Rebirth" fired): best-of-3 grouping
+    pub pvp_match_end: bool,
 
     // ─── Boss Shield State ────────────────────────────────────────────────
     /// Active boss shield state: (npc_log_id, entity_name, shield_def_index) → (remaining, effective_total)
@@ -270,6 +274,7 @@ impl CombatEncounter {
             last_exit_combat_time: None,
             pvp_factions: PvpFactionTracker::default(),
             arena_outcome: None,
+            pvp_match_end: false,
 
             // Boss shields
             boss_shields: HashMap::new(),
@@ -1162,6 +1167,7 @@ impl CombatEncounter {
         entity_id: i64,
         entity_type: &EntityType,
         timestamp: NaiveDateTime,
+        killer_id: i64,
     ) {
         match entity_type {
             EntityType::Player => {
@@ -1169,13 +1175,16 @@ impl CombatEncounter {
                 if let Some(player) = self.players.get_mut(&entity_id) {
                     // A synthetic death (0 HP observed) precedes the real Death
                     // event by a fraction of a second; keep one record per death
-                    // and let the authoritative timestamp win.
+                    // and let the authoritative timestamp and killer win.
                     if player.is_dead {
-                        if let Some(last) = self.deaths.iter_mut().rev().find(|(id, _)| *id == entity_id) {
+                        if let Some(last) = self.deaths.iter_mut().rev().find(|(id, ..)| *id == entity_id) {
                             last.1 = secs;
+                            if killer_id != 0 {
+                                last.2 = killer_id;
+                            }
                         }
                     } else {
-                        self.deaths.push((entity_id, secs));
+                        self.deaths.push((entity_id, secs, killer_id));
                     }
                     player.is_dead = true;
                     player.death_time = Some(timestamp);

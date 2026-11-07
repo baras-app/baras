@@ -1580,3 +1580,216 @@
   background: #d9a441;
   color: #1a1a1a;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PvP Statistics
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pvp-main {
+  padding: var(--space-sm);
+}
+
+.pvp-main > * {
+  flex-shrink: 0;
+}
+
+/* Mode switch (Warzones | Arenas) and the filters on one row */
+.pvp-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.pvp-views {
+  margin-bottom: 0;
+}
+
+.pvp-views .data-tab {
+  flex: 0 0 auto;
+  min-width: 9em;
+  font-size: 0.9em;
+}
+
+.pvp-views .data-tab i {
+  margin-right: 0.4em;
+}
+
+.pvp-head .history-toolbar {
+  flex: 1;
+  min-width: 0;
+}
+
+.pvp-head .history-toolbar select {
+  min-width: 0;
+}
+
+.pvp-head .pull-history-count {
+  margin-left: auto;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+/* Value boxes stacked beside the calendar, which takes the rest */
+.pvp-top {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-sm);
+}
+
+.pvp-stats {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  width: 190px;
+  flex-shrink: 0;
+}
+
+.pvp-stats .history-card {
+  flex: 1 1 0;
+}
+
+.pvp-top .log-heatmap {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Arena days: tinted by the day's net result */
+.heatmap-cell.win.l1 { background: rgba(80, 200, 120, 0.3); }
+.heatmap-cell.win.l2 { background: rgba(80, 200, 120, 0.5); }
+.heatmap-cell.win.l3 { background: rgba(90, 210, 130, 0.75); }
+.heatmap-cell.win.l4 { background: #6fd98a; }
+.heatmap-cell.loss.l1 { background: rgba(220, 60, 60, 0.3); }
+.heatmap-cell.loss.l2 { background: rgba(220, 60, 60, 0.5); }
+.heatmap-cell.loss.l3 { background: rgba(230, 80, 80, 0.75); }
+.heatmap-cell.loss.l4 { background: #f08080; }
+.heatmap-cell.even.l1 { background: rgba(220, 160, 40, 0.3); }
+.heatmap-cell.even.l2 { background: rgba(220, 160, 40, 0.5); }
+.heatmap-cell.even.l3 { background: rgba(230, 180, 70, 0.75); }
+.heatmap-cell.even.l4 { background: #e8c060; }
+
+/* Maps, disciplines, teammates, opponents: four boards in a row */
+.pvp-boards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-sm);
+  align-items: start;
+}
+
+.pvp-board {
+  background: var(--gradient-panel);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.pvp-board h4 {
+  margin: 0;
+  padding: 0.45em 0.8em;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pvp-board h4 i {
+  margin-right: 0.4em;
+  color: var(--text-muted);
+}
+
+.pvp-board table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+
+.pvp-board td {
+  padding: 0.3em 0.8em;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.pvp-board tr:last-child td {
+  border-bottom: none;
+}
+
+.pvp-board td.name {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0;
+}
+
+.pvp-board td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.pvp-board tr.pick {
+  cursor: pointer;
+}
+
+.pvp-board tr.pick:hover td {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pvp-board tr.active td {
+  background: rgba(74, 144, 217, 0.12);
+}
+
+.pvp-board .empty {
+  padding: 0.6em 0.8em;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.pvp-rate.up {
+  color: var(--color-success);
+}
+
+.pvp-rate.down {
+  color: var(--color-error);
+}
+
+.pvp-main .pull-history-table-wrap {
+  flex: 0 0 auto;
+  max-height: 60vh;
+}
+
+.pvp-main .pull-history-table td.people {
+  max-width: 16em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.pvp-no-result {
+  color: var(--text-muted);
+}
+
+.pvp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5em;
+  padding: 3em 1em;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.pvp-empty > i {
+  font-size: 2em;
+  color: var(--text-muted);
+}
+
+.pvp-empty .hint {
+  max-width: 36em;
+}
+
+.pvp-board td.name .discipline-icon {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.2em;
+  margin-right: 0.35em;
+}

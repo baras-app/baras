@@ -640,6 +640,11 @@ impl ServiceHandle {
         .unwrap_or_default()
     }
 
+    /// Every recorded warzone match and arena round, newest first.
+    pub async fn pvp_matches(&self) -> Vec<baras_types::history::PvpMatchRow> {
+        self.with_pull_index(|index| index.pvp_matches()).await.unwrap_or_default()
+    }
+
     /// One run with its bosses, players and pulls.
     pub async fn operation_run(&self, filename: String, start_ms: i64) -> Option<RunDetail> {
         let catalog = self.area_catalog();

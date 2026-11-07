@@ -21,7 +21,7 @@ use crate::encounter::summary::EncounterSummary;
 
 /// Bump whenever `PullRecord` gains a field that old files cannot default
 /// sensibly. Files below this version are "stale" and need a re-scan.
-pub const HISTORY_VERSION: u32 = 4;
+pub const HISTORY_VERSION: u32 = 5;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogHistory {

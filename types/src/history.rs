@@ -6,6 +6,7 @@
 mod library;
 mod meta;
 mod progress;
+mod pvp;
 mod runs;
 
 use std::collections::HashSet;
@@ -18,6 +19,7 @@ pub use library::{
 };
 pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
+pub use pvp::{PvpMatchRow, PvpPlayer, PvpRound};
 pub use runs::{RunBoss, RunDetail, RunList, RunMeta, RunPlayer, RunSummary, RunTimer, TimerStart, iso_to_ms};
 
 /// One recorded pull, reduced to what the History table shows.
@@ -180,6 +182,7 @@ pub enum HistorySubTab {
     Overview,
     Operations,
     Library,
+    Pvp,
 }
 
 /// History tab selections kept across tab switches (see `UiSessionState`).

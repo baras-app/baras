@@ -1100,11 +1100,13 @@ impl CombatService {
             // Don't emit event here - let frontend use its initial load
 
             // Get known area IDs from boss definitions
-            let known_area_ids: HashSet<i64> = area_index.keys().copied().collect();
+            let mut known_area_ids: HashSet<i64> = area_index.keys().copied().collect();
             if known_area_ids.is_empty() {
                 debug!("No area definitions found, skipping area indexing");
                 return;
             }
+            // Warzones and arenas have no definitions but are content too
+            known_area_ids.extend(baras_core::game_data::pvp_area_ids());
 
             // Collect file paths to scan quickly, then release lock
             let files_to_scan: Vec<(PathBuf, std::time::SystemTime)> = {

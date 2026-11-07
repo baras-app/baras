@@ -7,6 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use baras_types::PvpFaction;
 use baras_types::history::{PullDeath, PullEnd, PullProgress};
 
 use crate::encounter::summary::{ChallengeSummary, EncounterSummary};
@@ -55,6 +56,9 @@ pub struct PullRecord {
     pub pvp_outcome: Option<PvpOutcome>,
     #[serde(default)]
     pub is_warzone: bool,
+    /// Arena round that ended its best-of-3 match
+    #[serde(default, skip_serializing_if = "crate::serde_defaults::is_false")]
+    pub pvp_match_end: bool,
 }
 
 /// One player's numbers on the pull.
@@ -73,6 +77,9 @@ pub struct RosterLine {
     pub ehps: i64,
     pub dtps: i64,
     pub apm: f32,
+    /// Side relative to the logging character; PvP matches only
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pvp_faction: Option<PvpFaction>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -138,11 +145,13 @@ impl From<&EncounterSummary> for PullRecord {
                     ehps: m.ehps,
                     dtps: m.dtps,
                     apm: m.apm,
+                    pvp_faction: m.pvp_faction,
                 })
                 .collect(),
             challenges: s.challenges.iter().map(ChallengeLine::from).collect(),
             pvp_outcome: s.pvp_outcome,
             is_warzone: s.is_warzone,
+            pvp_match_end: s.pvp_match_end,
         }
     }
 }

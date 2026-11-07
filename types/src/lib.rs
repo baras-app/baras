@@ -3849,6 +3849,8 @@ pub enum MainTab {
     LogManagement,
     /// Character roster and operation lockouts
     Characters,
+    /// Warzone and arena record, K/D and trends
+    PvpStats,
     /// Application settings page
     Settings,
 }
@@ -3860,6 +3862,7 @@ impl MainTab {
             MainTab::BossStats => Some(history::HistorySubTab::Overview),
             MainTab::RaidSummaries => Some(history::HistorySubTab::Operations),
             MainTab::LogManagement => Some(history::HistorySubTab::Library),
+            MainTab::PvpStats => Some(history::HistorySubTab::Pvp),
             _ => None,
         }
     }
@@ -3875,6 +3878,7 @@ impl MainTab {
             MainTab::RaidSummaries => "raid_summaries",
             MainTab::LogManagement => "log_management",
             MainTab::Characters => "characters",
+            MainTab::PvpStats => "pvp_stats",
             MainTab::Settings => "settings",
         }
     }
@@ -3891,6 +3895,7 @@ impl MainTab {
             "raid_summaries" => MainTab::RaidSummaries,
             "log_management" => MainTab::LogManagement,
             "characters" => MainTab::Characters,
+            "pvp_stats" => MainTab::PvpStats,
             "settings" => MainTab::Settings,
             _ => MainTab::DataExplorer,
         }

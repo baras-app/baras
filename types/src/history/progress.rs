@@ -61,4 +61,12 @@ pub struct PullDeath {
     pub name: String,
     /// Combat seconds since the pull started
     pub secs: f32,
+    /// Entity that dealt the killing blow (source of the Death event); 0 when
+    /// unknown. Players killing players is what PvP K/D counts.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub killer: i64,
+}
+
+fn is_zero(v: &i64) -> bool {
+    *v == 0
 }

@@ -12,11 +12,12 @@ use std::time::SystemTime;
 use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
-    BossNode, HistoryStatus, PullFilter, PullHistoryOverview, PullRow, RunSummary, TimerStart,
+    BossNode, HistoryStatus, PullFilter, PullHistoryOverview, PullRow, PvpMatchRow, RunSummary, TimerStart,
 };
 
 use super::catalog::AreaCatalog;
 use super::meta::LibraryMeta;
+use super::pvp::pvp_rows;
 use super::record::PullRecord;
 use super::runs::{apply_meta, run_matches, runs_of_log};
 use crate::game_data::{game_version_at, server_name};
@@ -38,6 +39,9 @@ struct IndexedLog {
     /// changed. Decided at load time from the file header.
     stale: bool,
     rows: Vec<PullRow>,
+    /// Warzone matches and arena rounds, kept out of `rows` so the boss views
+    /// never see them
+    pvp: Vec<PvpMatchRow>,
     timer_starts: Vec<TimerStart>,
 }
 
@@ -91,8 +95,10 @@ impl PullIndex {
                     let rows: Vec<PullRow> = history
                         .pulls
                         .iter()
+                        .filter(|p| p.kind != PhaseType::PvP)
                         .map(|p| row_from(&history, p))
                         .collect();
+                    let pvp = pvp_rows(&history);
                     let server = rows.iter().map(|r| r.server.clone()).find(|s| !s.is_empty()).unwrap_or_default();
                     let started_ms = history
                         .started_at
@@ -108,6 +114,7 @@ impl PullIndex {
                             started_ms,
                             stale,
                             rows,
+                            pvp,
                             timer_starts: history.timer_starts,
                         },
                     );
@@ -323,6 +330,21 @@ impl PullIndex {
 
     fn rows(&self) -> impl Iterator<Item = &PullRow> {
         self.logs.values().flat_map(|l| l.rows.iter())
+    }
+
+    /// Every PvP match and arena round, newest first, with `path` set when
+    /// the log exists.
+    pub fn pvp_matches(&self) -> Vec<PvpMatchRow> {
+        let mut out = Vec::new();
+        for log in self.logs.values().filter(|l| !l.pvp.is_empty()) {
+            let path = log.log_path.is_file().then(|| log.log_path.to_string_lossy().into_owned());
+            out.extend(log.pvp.iter().cloned().map(|mut m| {
+                m.path = path.clone();
+                m
+            }));
+        }
+        out.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        out
     }
 
     /// Every indexed log with its character, for the roster

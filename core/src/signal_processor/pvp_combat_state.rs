@@ -85,6 +85,11 @@ pub fn handle_in_combat_arena(
             .is_some_and(|e| e.last_damage_time.is_some());
     if round_ended {
         let success = round_success();
+        if event.action.action_id == REBIRTH_ABILITY_ID
+            && let Some(enc) = cache.current_encounter_mut()
+        {
+            enc.pvp_match_end = true;
+        }
         end_pvp_match(cache, &mut signals, timestamp, success, "Arena round ended");
         return (signals, false);
     }

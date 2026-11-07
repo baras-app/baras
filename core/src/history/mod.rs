@@ -9,6 +9,7 @@
 mod catalog;
 mod index;
 mod meta;
+mod pvp;
 mod record;
 mod runs;
 mod store;
@@ -40,11 +41,11 @@ pub fn history_dir() -> std::io::Result<PathBuf> {
     Ok(dir)
 }
 
-/// Boss pulls (any content type except PvP) and training dummy parses.
+/// Boss pulls, training dummy parses, and PvP matches (every warzone match
+/// and arena round; the index keeps those apart from boss pulls).
 pub fn is_recordable(summary: &EncounterSummary) -> bool {
     match summary.encounter_type {
-        PhaseType::DummyParse => true,
-        PhaseType::PvP => false,
+        PhaseType::DummyParse | PhaseType::PvP => true,
         _ => summary.boss_name.is_some(),
     }
 }

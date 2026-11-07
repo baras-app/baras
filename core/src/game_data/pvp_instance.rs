@@ -9,32 +9,43 @@ pub enum PvpAreaKind {
     Arena,
 }
 
+/// 8-player warzones
+pub const WARZONE_AREA_IDS: [i64; 9] = [
+    137438956902,    // The Civil War (Alderaan)
+    945872057669561, // Yavin Ruins
+    137438992654,    // Novare Coast
+    137438993104,    // Ancient Hypergate
+    137438989517,    // The Voidstar
+    833571547775744, // Odessen Proving Grounds
+    137438988866,    // The Pit (Nar Shaddaa Huttball)
+    137438953518,    // Quesh Huttball Pit
+    833571547775746, // Vandin Huttball (The Sky Shredder)
+];
+
+/// 4-player arenas
+pub const ARENA_AREA_IDS: [i64; 7] = [
+    137438993370,    // Corellia Square
+    137438993381,    // Makeb Mesa Arena
+    945872057669563, // Mandalorian Battle Ring
+    137438993376,    // Orbital Station
+    833571547775745, // Rishi Cove
+    137438993374,    // Tatooine Canyon
+    945872057669629, // Onderon Palatial Ruins
+];
+
+/// Every PvP instance id (for indexes that otherwise only know defined areas)
+pub fn pvp_area_ids() -> impl Iterator<Item = i64> {
+    WARZONE_AREA_IDS.into_iter().chain(ARENA_AREA_IDS)
+}
+
 /// Classify a PvP area ID, or `None` if the area is not a PvP instance
 pub fn pvp_area_kind(area_id: i64) -> Option<PvpAreaKind> {
-    match area_id {
-        // Warzones (8-player)
-        137438956902      // The Civil War (Alderaan)
-        | 945872057669561 // Yavin Ruins
-        | 137438992654    // Novare Coast
-        | 137438993104    // Ancient Hypergate
-        | 137438989517    // The Voidstar
-        | 833571547775744 // Odessen Proving Grounds
-        | 137438988866    // The Pit (Nar Shaddaa Huttball)
-        | 137438953518    // Quesh Huttball Pit
-        | 833571547775746 // Vandin Huttball (The Sky Shredder)
-        => Some(PvpAreaKind::Warzone),
-
-        // Arenas (4-player)
-        137438993370      // Corellia Square
-        | 137438993381    // Makeb Mesa Arena
-        | 945872057669563 // Mandalorian Battle Ring
-        | 137438993376    // Orbital Station
-        | 833571547775745 // Rishi Cove
-        | 137438993374    // Tatooine Canyon
-        | 945872057669629 // Onderon Palatial Ruins
-        => Some(PvpAreaKind::Arena),
-
-        _ => None,
+    if WARZONE_AREA_IDS.contains(&area_id) {
+        Some(PvpAreaKind::Warzone)
+    } else if ARENA_AREA_IDS.contains(&area_id) {
+        Some(PvpAreaKind::Arena)
+    } else {
+        None
     }
 }
 

@@ -1,5 +1,5 @@
-//! History views: Boss Statistics (Overview), Raid Summaries (Operations)
-//! and Log Management (Library), each a main tab of its own.
+//! History views: Boss Statistics (Overview), Raid Summaries (Operations),
+//! Log Management (Library) and PvP Statistics, each a main tab of its own.
 //!
 //! One shell with the shared filter (rendered by each view in its sidebar)
 //! and the backfill listener every view reads. Each view fetches its own
@@ -13,6 +13,7 @@ mod library_cleanup;
 mod library_meta;
 mod operations;
 mod overview;
+mod pvp;
 mod run_detail;
 mod scroll;
 mod toolbar;
@@ -30,6 +31,7 @@ use crate::types::UiSessionState;
 use library::LibraryTab;
 use operations::OperationsTab;
 use overview::OverviewTab;
+use pvp::PvpTab;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct HistoryPanelProps {
@@ -202,6 +204,9 @@ pub fn HistoryPanel(props: HistoryPanelProps) -> Element {
                 },
                 HistorySubTab::Library => rsx! {
                     LibraryTab { state: props.state, backfill, cleanup, status }
+                },
+                HistorySubTab::Pvp => rsx! {
+                    PvpTab { european: props.european, backfill }
                 },
             }
         }

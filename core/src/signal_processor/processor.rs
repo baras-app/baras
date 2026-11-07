@@ -466,6 +466,7 @@ impl EventProcessor {
                     event.target_entity.log_id,
                     &event.target_entity.entity_type,
                     event.timestamp,
+                    event.source_entity.log_id,
                 );
                 enc.check_all_players_dead();
                 enc.check_arena_round_outcome(local_player_id);
@@ -611,7 +612,7 @@ impl EventProcessor {
                     let npc_id = npc.class_id;
                     let entity_name = resolve(npc.name).to_string();
 
-                    enc.set_entity_death(entity.log_id, &entity.entity_type, event.timestamp);
+                    enc.set_entity_death(entity.log_id, &entity.entity_type, event.timestamp, 0);
 
                     out.push(GameSignal::EntityDeath {
                         entity_id: entity.log_id,
@@ -636,7 +637,7 @@ impl EventProcessor {
 
                     let entity_name = resolve(player.name).to_string();
 
-                    enc.set_entity_death(entity.log_id, &entity.entity_type, event.timestamp);
+                    enc.set_entity_death(entity.log_id, &entity.entity_type, event.timestamp, 0);
                     enc.check_all_players_dead();
                     enc.check_arena_round_outcome(local_player_id);
 

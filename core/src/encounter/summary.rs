@@ -67,6 +67,9 @@ pub struct EncounterSummary {
     /// True for 8-player warzone matches (metric overlays hide totals)
     #[serde(default)]
     pub is_warzone: bool,
+    /// Arena round that ended its best-of-3 match
+    #[serde(default)]
+    pub pvp_match_end: bool,
     /// Local player's damage taken per source (rate = encounter-wide DTPS here)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub incoming_damage: Vec<super::metrics::IncomingDamageRow>,
@@ -662,7 +665,7 @@ pub fn create_encounter_summary(
     let deaths: Vec<PullDeath> = encounter
         .deaths
         .iter()
-        .map(|&(entity_id, secs)| PullDeath {
+        .map(|&(entity_id, secs, killer)| PullDeath {
             entity_id,
             name: encounter
                 .players
@@ -670,6 +673,7 @@ pub fn create_encounter_summary(
                 .map(|p| resolve(p.name).to_string())
                 .unwrap_or_default(),
             secs,
+            killer,
         })
         .collect();
     let success = determine_success(encounter);
@@ -709,6 +713,7 @@ pub fn create_encounter_summary(
         pvp_outcome: (pvp_area_kind(area_id_for_classification) == Some(PvpAreaKind::Arena))
             .then(|| encounter.arena_outcome.unwrap_or(PvpOutcome::Unknown)),
         is_warzone: pvp_area_kind(area_id_for_classification) == Some(PvpAreaKind::Warzone),
+        pvp_match_end: encounter.pvp_match_end,
         incoming_damage,
         area_name: encounter_area_name,
         area_id: area_id_for_classification,

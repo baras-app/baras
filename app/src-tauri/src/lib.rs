@@ -294,6 +294,7 @@ pub fn run() {
             commands::get_encounter_history,
             commands::get_pull_history_overview,
             commands::get_boss_pulls,
+            commands::get_pvp_matches,
             commands::get_operation_runs,
             commands::get_operation_run,
             commands::set_run_meta,

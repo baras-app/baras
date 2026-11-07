@@ -107,7 +107,8 @@ pub struct LogAreaCache {
     pub entries: HashMap<PathBuf, FileAreaIndex>,
 }
 
-const CACHE_VERSION: u32 = 1;
+/// 2: PvP areas are kept (they were dropped as undefined before)
+const CACHE_VERSION: u32 = 2;
 
 impl LogAreaCache {
     pub fn new() -> Self {
