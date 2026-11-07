@@ -2593,9 +2593,10 @@
 .usage-timeline-container {
   flex-shrink: 0;
   margin-top: 16px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  background: var(--bg-secondary);
+  /* Same dark card as the tables and charts (--bg-secondary was never defined) */
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.22);
   padding: 8px;
 }
 
