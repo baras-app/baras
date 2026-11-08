@@ -52,6 +52,6 @@ pub use parsely_upload_modal::{ParselyUploadModal, use_parsely_upload, use_parse
 pub use session_settings::SessionSettingsPill;
 pub use session_status::SessionStatusChip;
 pub use settings::{SettingsPanel, SettingsSection};
-pub use slider::Slider;
+pub use slider::{NumberInput, Slider};
 pub use sound_picker::SoundPicker;
 pub use toast::{ToastFrame, ToastSeverity, use_toast, use_toast_provider};

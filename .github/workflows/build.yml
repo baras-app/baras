@@ -56,7 +56,7 @@ jobs:
         uses: cargo-bins/cargo-binstall@main
 
       - name: Install Dioxus and Tauri CLIs
-        run: cargo binstall dioxus-cli tauri-cli --no-confirm --force --locked
+        run: cargo binstall dioxus-cli@0.7.10 tauri-cli --no-confirm --force --locked
 
       - name: Setup linuxdeploy
         run: |
@@ -126,7 +126,7 @@ jobs:
         uses: cargo-bins/cargo-binstall@main
 
       - name: Install Dioxus and Tauri CLIs
-        run: cargo binstall dioxus-cli tauri-cli --no-confirm --force --locked
+        run: cargo binstall dioxus-cli@0.7.10 tauri-cli --no-confirm --force --locked
 
       - name: Build parse-worker sidecar
         run: |
@@ -171,7 +171,7 @@ jobs:
         uses: cargo-bins/cargo-binstall@main
 
       - name: Install Dioxus and Tauri CLIs
-        run: cargo binstall dioxus-cli tauri-cli --no-confirm --force --locked
+        run: cargo binstall dioxus-cli@0.7.10 tauri-cli --no-confirm --force --locked
 
       - name: Add aarch64 target
         run: rustup target add aarch64-apple-darwin

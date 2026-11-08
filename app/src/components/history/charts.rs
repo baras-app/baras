@@ -56,12 +56,10 @@ const DPS_ID: &str = "hist-chart-dps";
 const EHPS_ID: &str = "hist-chart-ehps";
 const NIGHTS_ID: &str = "hist-chart-nights";
 const CHART_IDS: [&str; 3] = [DPS_ID, EHPS_ID, NIGHTS_ID];
-/// Kills are marked by shape and outline as well as colour, so they read
-/// without red/green discrimination: a large gold diamond with a black rim
-/// on the lines, a green bar with a thick black rim on the nights chart.
+/// Pull markers: green diamonds for kills, smaller red diamonds for wipes;
+/// size keeps them apart without relying on red/green discrimination.
 const KILL_COLOR: &str = "#2ecc71";
-const KILL_MARK: &str = "#f1c40f";
-const KILL_RIM: &str = "#000000";
+const WIPE_COLOR: &str = "#e74c3c";
 const NO_KILL_COLOR: &str = "#6c7a89";
 
 /// `Sep 12 19:15:03` from an ISO timestamp. Each pull gets its own category
@@ -133,8 +131,7 @@ fn period_ticks(timestamps: &[&str]) -> Value {
 }
 
 /// One point per pull where the logging character has the metric, in
-/// chronological order. Wipes are small dots in the series colour; kills are
-/// large rimmed diamonds.
+/// chronological order, marked as kill or wipe diamonds.
 fn metric_option(rows: &[PullRow], title: &str, color: &str, pick: impl Fn(&PullRow) -> Option<i64>) -> Option<Value> {
     let points: Vec<(&PullRow, i64)> = rows.iter().filter_map(|r| pick(r).filter(|v| *v > 0).map(|v| (r, v))).collect();
     if points.is_empty() {
@@ -146,12 +143,8 @@ fn metric_option(rows: &[PullRow], title: &str, color: &str, pick: impl Fn(&Pull
         .iter()
         .map(|(r, v)| {
             let pick = ChartPick::Pull { filename: r.filename.clone(), start_ms: r.start_ms };
-            if r.success {
-                json!({ "value": v, "pick": pick, "symbol": "diamond", "symbolSize": 13,
-                        "itemStyle": { "color": KILL_MARK, "borderColor": KILL_RIM, "borderWidth": 2 } })
-            } else {
-                json!({ "value": v, "pick": pick })
-            }
+            let (color, size) = if r.success { (KILL_COLOR, 12) } else { (WIPE_COLOR, 8) };
+            json!({ "value": v, "pick": pick, "symbolSize": size, "itemStyle": { "color": color } })
         })
         .collect();
     let mut opt = base_option(title);
@@ -164,15 +157,15 @@ fn metric_option(rows: &[PullRow], title: &str, color: &str, pick: impl Fn(&Pull
     opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } }, "scale": true });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
     opt["series"] = json!([{
-        "type": "line", "name": title, "data": data, "symbol": "circle", "symbolSize": 5,
+        "type": "line", "name": title, "data": data, "symbol": "diamond",
         "itemStyle": { "color": color },
         "lineStyle": { "color": color, "width": 1.5 }, "areaStyle": { "color": color, "opacity": 0.08 },
     }]);
     Some(opt)
 }
 
-/// Kills only: time to kill per clear, in order. Gold rimmed diamonds like
-/// the kill markers on the metric charts; y is m:ss via `_mmss`.
+/// Kills only: time to kill per clear, in order, with the same kill diamonds
+/// as the metric charts; y is m:ss via `_mmss`.
 fn ttk_option(rows: &[PullRow]) -> Option<Value> {
     let kills: Vec<&PullRow> = rows.iter().filter(|r| r.success).collect();
     if kills.is_empty() {
@@ -193,8 +186,8 @@ fn ttk_option(rows: &[PullRow]) -> Option<Value> {
     opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } }, "scale": true });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
     opt["series"] = json!([{
-        "type": "line", "name": "Time to kill", "data": data, "symbol": "diamond", "symbolSize": 11,
-        "itemStyle": { "color": KILL_MARK, "borderColor": KILL_RIM, "borderWidth": 2 },
+        "type": "line", "name": "Time to kill", "data": data, "symbol": "diamond", "symbolSize": 12,
+        "itemStyle": { "color": KILL_COLOR },
         "lineStyle": { "color": KILL_COLOR, "width": 1.5 }, "areaStyle": { "color": KILL_COLOR, "opacity": 0.08 },
     }]);
     Some(opt)
@@ -231,7 +224,7 @@ fn previous_day(date: &str) -> String {
 }
 
 /// One bar per raid night and character: pulls that night, grey when the
-/// boss stayed up, green with a thick rim when it went down. Grey bars
+/// boss stayed up, green when it went down. Grey bars
 /// piling up before a green one are the progression cost.
 fn nights_option(rows: &[PullRow]) -> Option<Value> {
     let mut nights: Vec<((String, String), &str, u32, bool)> = Vec::new(); // (key, first timestamp, pulls, killed)
@@ -254,7 +247,7 @@ fn nights_option(rows: &[PullRow]) -> Option<Value> {
         .map(|n| {
             let pick = ChartPick::Night { character: n.0.0.clone(), date: n.0.1.clone() };
             if n.3 {
-                json!({ "value": n.2, "pick": pick, "itemStyle": { "color": KILL_COLOR, "borderColor": KILL_RIM, "borderWidth": 2, "borderRadius": 2 } })
+                json!({ "value": n.2, "pick": pick, "itemStyle": { "color": KILL_COLOR, "borderRadius": 2 } })
             } else {
                 json!({ "value": n.2, "pick": pick, "itemStyle": { "color": NO_KILL_COLOR, "borderRadius": 2 } })
             }

@@ -8,7 +8,7 @@ use wasm_bindgen_futures::spawn_local;
 use crate::api::{self, BossNotesInfo};
 use crate::components::{
     ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    CharactersPanel, CleanupRules, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, ProfileUnsavedHint, SessionSettingsPill, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
+    CharactersPanel, CleanupRules, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, NumberInput, ProfileUnsavedHint, SessionSettingsPill, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
     use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
@@ -1695,7 +1695,7 @@ pub fn App() -> Element {
                                     }
                                 }
                                 button {
-                                    class: "btn btn-browse",
+                                    class: "btn btn-primary btn-browse",
                                     onclick: move |_| {
                                         let mut toast = use_toast();
                                         spawn(async move {
@@ -1739,8 +1739,7 @@ pub fn App() -> Element {
 
                         div { class: "settings-section",
                             h4 { "Application" }
-                            div { class: "setting-row",
-                                label { "Minimize to tray on close" }
+                            label { class: "settings-check",
                                 input {
                                     r#type: "checkbox",
                                     checked: minimize_to_tray(),
@@ -1758,10 +1757,10 @@ pub fn App() -> Element {
                                         });
                                     }
                                 }
+                                "Minimize to tray on close"
                             }
-                            p { class: "hint", "When enabled, closing the window hides to system tray instead of quitting." }
-                            div { class: "setting-row",
-                                label { "Light theme" }
+                            p { class: "hint", "Closing the window hides BARAS to the tray instead of quitting." }
+                            label { class: "settings-check",
                                 input {
                                     r#type: "checkbox",
                                     checked: light_theme(),
@@ -1780,9 +1779,9 @@ pub fn App() -> Element {
                                         });
                                     }
                                 }
+                                "Light theme"
                             }
-                            div { class: "setting-row",
-                                label { "Overlay Streaming Source" }
+                            label { class: "settings-check",
                                 input {
                                     r#type: "checkbox",
                                     checked: web_overlay_enabled(),
@@ -1799,13 +1798,13 @@ pub fn App() -> Element {
                                         });
                                     }
                                 }
+                                "Overlay Streaming Source"
                             }
-                            p { class: "hint", "Mirror visible overlays into a locally hosted browser page that can be used as a browser source for OBS and other streaming software." }
+                            p { class: "hint", "Mirrors visible overlays to a local web page for use as an OBS browser source." }
                             if web_overlay_enabled() {
                                 code { class: "web-overlay-url", "{WEB_OVERLAY_URL}" }
                             }
-                            div { class: "setting-row",
-                                label { "European number format" }
+                            label { class: "settings-check",
                                 input {
                                     r#type: "checkbox",
                                     checked: european_number_format(),
@@ -1826,26 +1825,19 @@ pub fn App() -> Element {
                                         });
                                     }
                                 }
+                                "European number format"
                             }
-                            p { class: "hint", "Swap decimal point and thousands separator (e.g., 1.50K becomes 1,50K)." }
-                            p { class: "hint hint-warning",
-                                i { class: "fa-solid fa-triangle-exclamation" }
-                                strong { " Editor inputs still use '.' for decimals." }
-                            }
+                            p { class: "hint", "Swaps the decimal point and thousands separator (1.50K → 1,50K). Editor inputs still use '.' for decimals." }
                         }
 
                         div { class: "settings-section",
                             h4 { "Global Hotkeys" }
-                            p { class: "hint", "Click to capture a key combination. Backspace to clear." }
+                            p { class: "hint", "Click a field and press a key combination; Backspace clears it. Changes apply after a restart." }
                             if is_wayland_session() {
                                 p { class: "hint hint-warning",
                                     i { class: "fa-solid fa-triangle-exclamation" }
-                                    " Linux Wayland: Experimental, requires compositor support for freedesktop global shortcuts portal."
+                                    " Wayland support is experimental and needs a compositor that implements the global shortcuts portal."
                                 }
-                            }
-                            p { class: "hint hint-warning",
-                                i { class: "fa-solid fa-info-circle" }
-                                " Restart app after changes."
                             }
                             div { class: "hotkey-grid",
                                 div { class: "setting-row",
@@ -1914,7 +1906,7 @@ pub fn App() -> Element {
                                                 if let Err(err) = api::update_config(&cfg).await {
                                                     toast.show(format!("Failed to save hotkeys: {}", err), ToastSeverity::Normal);
                                                 } else {
-                                                    hotkey_save_status.set("Saved! Restart to apply.".to_string());
+                                                    hotkey_save_status.set("Saved".to_string());
                                                 }
                                             }
                                         });
@@ -1928,8 +1920,7 @@ pub fn App() -> Element {
                         div { class: "settings-section",
                             h4 { "Audio" }
 
-                            div { class: "setting-row",
-                                label { "Enable Audio" }
+                            label { class: "settings-check",
                                 input {
                                     r#type: "checkbox",
                                     checked: audio_enabled(),
@@ -1947,6 +1938,7 @@ pub fn App() -> Element {
                                         });
                                     }
                                 }
+                                "Enable Audio"
                             }
 
                             Slider {
@@ -1971,31 +1963,7 @@ pub fn App() -> Element {
                                 },
                             }
 
-                            div { style: "text-align: right; margin: 0.25em 0 0.5em; display: flex; gap: 0.5em; justify-content: flex-end;",
-                                button {
-                                    class: "btn-small",
-                                    disabled: !audio_enabled(),
-                                    onclick: move |_| {
-                                        spawn(async move {
-                                            api::preview_sound("Alert.mp3").await;
-                                        });
-                                    },
-                                    "Play Test Sound"
-                                }
-                                button {
-                                    class: "btn-small",
-                                    disabled: !audio_enabled() || !audio_tts_enabled(),
-                                    onclick: move |_| {
-                                        spawn(async move {
-                                            api::preview_tts().await;
-                                        });
-                                    },
-                                    "Play Test TTS"
-                                }
-                            }
-
-                            div { class: "setting-row",
-                                label { "Text-to-Speech" }
+                            label { class: "settings-check",
                                 input {
                                     r#type: "checkbox",
                                     checked: audio_tts_enabled(),
@@ -2014,6 +1982,7 @@ pub fn App() -> Element {
                                         });
                                     }
                                 }
+                                "Text-to-Speech"
                             }
                             p { class: "hint",
                                 "Reads alerts and countdowns aloud when no sound file or voice pack is set"
@@ -2021,6 +1990,28 @@ pub fn App() -> Element {
                                     " (requires espeak to be installed)"
                                 }
                                 "."
+                            }
+                            div { class: "settings-footer",
+                                button {
+                                    class: "btn",
+                                    disabled: !audio_enabled(),
+                                    onclick: move |_| {
+                                        spawn(async move {
+                                            api::preview_sound("Alert.mp3").await;
+                                        });
+                                    },
+                                    "Test sound"
+                                }
+                                button {
+                                    class: "btn",
+                                    disabled: !audio_enabled() || !audio_tts_enabled(),
+                                    onclick: move |_| {
+                                        spawn(async move {
+                                            api::preview_tts().await;
+                                        });
+                                    },
+                                    "Test TTS"
+                                }
                             }
                         }
 
@@ -2140,7 +2131,7 @@ pub fn App() -> Element {
                                                 if let Err(err) = api::update_config(&cfg).await {
                                                     toast.show(format!("Failed to save Parsely settings: {}", err), ToastSeverity::Normal);
                                                 } else {
-                                                    parsely_save_status.set("Saved!".to_string());
+                                                    parsely_save_status.set("Saved".to_string());
                                                 }
                                             }
                                         });
@@ -2169,8 +2160,7 @@ pub fn App() -> Element {
                                     " Name detection is not supported on macOS."
                                 }
                             }
-                            div { class: "setting-row",
-                                label { "Save detection images" }
+                            label { class: "settings-check",
                                 input {
                                     r#type: "checkbox",
                                     checked: ocr_debug_dump(),
@@ -2188,19 +2178,17 @@ pub fn App() -> Element {
                                         });
                                     }
                                 }
+                                "Save detection images"
                             }
-                            p { class: "hint", "Writes what name detection saw to baras/ocr-debug, so a misread name can be diagnosed from the images rather than guessed at." }
+                            p { class: "hint", "Saves what name detection saw to baras/ocr-debug, so misread names can be diagnosed." }
                             div { class: "setting-row",
                                 label { "Detections to keep" }
-                                input {
-                                    r#type: "number",
-                                    min: "1",
-                                    max: "1000",
-                                    step: "1",
-                                    value: "{ocr_debug_max_dumps()}",
-                                    onchange: move |e| {
-                                        let Ok(count) = e.value().parse::<u32>() else { return };
-                                        let count = count.clamp(1, 1000);
+                                NumberInput {
+                                    value: ocr_debug_max_dumps() as f64,
+                                    min: 1.0,
+                                    max: 1000.0,
+                                    on_change: move |v: f64| {
+                                        let count = v as u32;
                                         ocr_debug_max_dumps.set(count);
                                         let mut toast = use_toast();
                                         spawn(async move {
@@ -2214,7 +2202,7 @@ pub fn App() -> Element {
                                     }
                                 }
                             }
-                            p { class: "hint", "The oldest detections are deleted before each new one, so the folder never holds more than this many." }
+                            p { class: "hint", "The oldest images are removed once this limit is reached." }
                         }
 
                         } // settings-content

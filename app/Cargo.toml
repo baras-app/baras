@@ -6,8 +6,8 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 baras-types = { path = "../types" }
-dioxus = { version = "0.7.2", features = ["web"] }
-dioxus-logger = "0.7.2"
+dioxus = { version = "0.7.10", features = ["web"] }
+dioxus-logger = "0.7.10"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Navigator", "Window", "Document", "Element", "CssStyleDeclaration"] }

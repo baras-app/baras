@@ -458,6 +458,24 @@ select optgroup {
   font-size: 1em;
   color: var(--text-secondary);
 }
+/* Checkbox + label, box first, as in the editors */
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0.5em 0 0.2em;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.settings-check + .hint {
+  margin-left: calc(14px + 0.55em);
+}
+.settings-page .settings-footer {
+  margin-top: 0.75em;
+  padding: 0.75em 0 0;
+  background: none;
+}
 
 .header-meta {
   justify-self: end;
@@ -763,6 +781,19 @@ button {
   transition: border-color var(--transition-normal);
   box-shadow: var(--shadow-sm);
   outline: none;
+}
+
+/* The base input padding scales with the viewport; toggles must not inherit it */
+input[type="checkbox"],
+input[type="radio"] {
+  padding: 0;
+  box-shadow: none;
+}
+
+/* WebKit draws search fields as native GTK widgets (theme-dependent, often white) */
+input[type="search"] {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 button {
@@ -2186,7 +2217,7 @@ details[open] .collapsible-summary::before {
 
 /* Personal stats section */
 .hint {
-  font-size: 0.85em;
+  font-size: 0.75em;
   color: var(--text-muted);
   margin: 0 0 0.5em 0;
 }
@@ -2500,18 +2531,8 @@ details[open] .collapsible-summary::before {
 }
 
 .btn-browse {
-  background: #3a5a8a;
-  border-color: #4a7aba;
-  color: white;
   padding: 0.75em 1.25em;
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
   white-space: nowrap;
-}
-
-.btn-browse:hover {
-  background: #4a6a9a;
 }
 
 .directory-status {
@@ -5249,11 +5270,6 @@ a.contributor-name:hover {
   justify-content: flex-end;
 }
 
-.hint {
-  font-size: 0.75em;
-  color: var(--text-muted);
-}
-
 /* ─── Chips (removable tags) ─────────────────────────────────────────────────── */
 .chip {
   display: inline-flex;
@@ -6264,7 +6280,7 @@ a.contributor-name:hover {
 }
 
 /* Checkboxes drawn by hand: the native unchecked box is a bright white square */
-.form-card input[type="checkbox"] {
+:is(.form-card, .settings-page) input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   box-sizing: border-box;
@@ -6281,17 +6297,22 @@ a.contributor-name:hover {
   cursor: pointer;
 }
 
-.form-card input[type="checkbox"]:hover {
+:is(.form-card, .settings-page) input[type="checkbox"]:hover {
   border-color: var(--border-accent-heavy);
 }
 
-.form-card input[type="checkbox"]:checked {
+:is(.form-card, .settings-page) input[type="checkbox"]:checked {
   background-color: var(--swtor-blue);
   border-color: var(--swtor-blue);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.5 5.2l2.3 2.3 4.7-5' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-.form-card input[type="checkbox"]:focus-visible {
+:is(.form-card, .settings-page) input[type="checkbox"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+:is(.form-card, .settings-page) input[type="checkbox"]:focus-visible {
   outline: 2px solid var(--border-accent-heavy);
   outline-offset: 1px;
 }

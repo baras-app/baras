@@ -71,7 +71,7 @@ pub fn CleanupRules() -> Element {
 
     rsx! {
         div { class: "cleanup-rules",
-            label { class: "history-toggle",
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: *auto_scan.read(),
@@ -85,9 +85,9 @@ pub fn CleanupRules() -> Element {
                         });
                     },
                 }
-                " Scan new logs at startup"
+                "Scan new logs at startup"
             }
-            p { class: "hint", "Boss Statistics, Raid Summaries and PvP Statistics are built from scanned logs, archived ones included. Logs can also be scanned from Log Management at any time." }
+            p { class: "hint", "The statistics pages are built from scanned logs, archived ones included. You can also scan from Log Management." }
 
             span { class: "library-retain-title", "Automatic cleanup" }
             div { class: "library-rules",
@@ -169,7 +169,7 @@ pub fn CleanupRules() -> Element {
                 }
             }
             p { class: "hint",
-                "Archiving compresses a log into cold storage: it stays in the statistics, scans still cover it, and Log Management can restore it. Deleting removes the file for good, from the directory or the archive; its pulls stay in the statistics. Logs with the content above are archived once old enough but never deleted. Favorites, the live log and today's logs are never touched. Cleanup runs after startup, or on demand from Log Management."
+                "Archived logs are compressed but stay in the statistics and can be restored from Log Management. Deleted logs are removed for good; their pulls stay in the statistics. Protected content can still be archived. Favorites, the live log and today's logs are never touched. Cleanup runs at startup or from Log Management."
             }
         }
     }
@@ -189,9 +189,9 @@ fn RuleRow(
 ) -> Element {
     rsx! {
         div { class: "library-rule",
-            label { class: "history-toggle",
+            label { class: "settings-check",
                 input { r#type: "checkbox", checked: on, onchange: move |e| on_toggle.call(e.checked()) }
-                " {text}"
+                "{text}"
             }
             input {
                 class: "library-num",
