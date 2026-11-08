@@ -463,19 +463,24 @@ mod linux {
     #[derive(Debug, Clone, Copy)]
     enum Backend {
         LayerShell,
+        Xwayland,
         X11,
     }
 
     /// Layer-shell wherever the compositor offers it. GNOME's Mutter does not, and
     /// has no other way to place or raise a Wayland surface, so overlays go to its
-    /// Xwayland instead.
+    /// Xwayland instead. Only a session that names its compositor in WAYLAND_DISPLAY
+    /// is probed: connecting consumes a handed-over WAYLAND_SOCKET, which would leave
+    /// the overlays' own connections with no compositor to reach.
     fn backend() -> Backend {
         static BACKEND: OnceLock<Backend> = OnceLock::new();
         *BACKEND.get_or_init(|| {
-            let backend = if wayland::has_layer_shell() {
+            let backend = if std::env::var_os("WAYLAND_DISPLAY").is_none() {
+                Backend::X11
+            } else if wayland::has_layer_shell() {
                 Backend::LayerShell
             } else {
-                Backend::X11
+                Backend::Xwayland
             };
             tracing::info!(
                 ?backend,
@@ -490,7 +495,7 @@ mod linux {
     pub fn get_all_monitors() -> Vec<MonitorInfo> {
         match backend() {
             Backend::LayerShell => wayland::get_all_monitors(),
-            Backend::X11 => x11::get_all_monitors(),
+            Backend::Xwayland | Backend::X11 => x11::get_all_monitors(),
         }
     }
 
@@ -506,7 +511,9 @@ mod linux {
                 Backend::LayerShell => {
                     wayland::WaylandOverlay::new(config).map(LinuxOverlay::Wayland)
                 }
-                Backend::X11 => x11::X11Overlay::new(config).map(LinuxOverlay::X11),
+                Backend::Xwayland | Backend::X11 => {
+                    x11::X11Overlay::new(config).map(LinuxOverlay::X11)
+                }
             }
         }
 

@@ -201,14 +201,21 @@ impl Dispatch<ZxdgOutputV1, u32> for MonitorEnumState {
 }
 
 pub(super) fn has_layer_shell() -> bool {
-    let Ok(connection) = Connection::connect_to_env() else {
-        return false;
+    let connection = match Connection::connect_to_env() {
+        Ok(connection) => connection,
+        Err(error) => {
+            tracing::warn!(%error, "layer-shell probe could not connect to the compositor");
+            return false;
+        }
     };
-    let Ok((globals, _queue)) =
-        wayland_client::globals::registry_queue_init::<WaylandState>(&connection)
-    else {
-        return false;
-    };
+    let (globals, _queue) =
+        match wayland_client::globals::registry_queue_init::<WaylandState>(&connection) {
+            Ok(registry) => registry,
+            Err(error) => {
+                tracing::warn!(%error, "layer-shell probe could not read the compositor's globals");
+                return false;
+            }
+        };
     let name = <ZwlrLayerShellV1 as wayland_client::Proxy>::interface().name;
     globals
         .contents()
