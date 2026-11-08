@@ -1071,6 +1071,7 @@ impl CombatService {
             FileAreaIndex, LogAreaCache, SCAN_VERSION, default_cache_path, extract_areas_from_file,
         };
         use std::collections::HashSet;
+        const NEWEST_FILE_SETTLE: std::time::Duration = std::time::Duration::from_secs(600);
 
         tauri::async_runtime::spawn(async move {
             // Small delay to let app finish initializing - don't block startup
@@ -1120,14 +1121,17 @@ impl CombatService {
                         if e.is_empty {
                             return None;
                         }
-                        // Skip the newest file (it's being actively written)
-                        if Some(&e.path) == newest_path.as_ref() {
-                            return None;
-                        }
                         // Get modification time
                         let modified = std::fs::metadata(&e.path)
                             .and_then(|m| m.modified())
                             .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                        // Skip the newest file only while the game is still
+                        // writing it; a finished one indexes like any other
+                        if Some(&e.path) == newest_path.as_ref()
+                            && modified.elapsed().is_ok_and(|age| age < NEWEST_FILE_SETTLE)
+                        {
+                            return None;
+                        }
                         // Check if needs update
                         if cache.needs_update(&e.path, modified) {
                             Some((e.path.clone(), modified))
@@ -4732,6 +4736,8 @@ pub struct LogFileInfo {
     pub file_size: u64,
     /// Areas/operations visited in this file (None if not yet indexed)
     pub areas: Option<Vec<AreaVisitInfo>>,
+    /// Saved Parsely link from a previous upload
+    pub parsely: Option<String>,
 }
 
 /// Unified combat data for metric overlays

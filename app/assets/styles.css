@@ -3394,26 +3394,6 @@ details[open] .collapsible-summary::before {
   color: #f28b82;
 }
 
-.file-item .upload-link {
-  font-size: 0.7em;
-  margin-top: 0.25em;
-  background: none;
-  border: none;
-  color: #8ab4f8;
-  cursor: pointer;
-  text-align: left;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-  word-break: break-all;
-}
-
-.file-item .upload-link:hover {
-  color: #aac8fa;
-  text-decoration: underline;
-}
-
 /* File Areas (Operations visited) */
 .file-areas {
   margin-top: 0.4em;

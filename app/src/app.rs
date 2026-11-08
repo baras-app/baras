@@ -1125,7 +1125,9 @@ pub fn App() -> Element {
                                         if !current_file.is_empty() {
                                             {
                                                 let path = current_file.clone();
-                                                let upload_result = upload_status().get(&path).cloned();
+                                                let upload_result = upload_status().get(&path).cloned().or_else(|| {
+                                                    log_files().iter().find(|f| f.path == path).and_then(|f| f.parsely.clone()).map(|link| (true, link))
+                                                });
                                                 rsx! {
                                                     div { class: "session-upload-group",
                                                         button {
@@ -2362,7 +2364,8 @@ pub fn App() -> Element {
                                     };
                                     let is_empty = file.is_empty;
                                     let is_current = path == current_file;
-                                    let upload_result = upload_status().get(&path).cloned();
+                                    let upload_result = upload_status().get(&path).cloned()
+                                        .or_else(|| file.parsely.clone().map(|link| (true, link)));
                                     rsx! {
                                         div {
                                             class: match (is_empty, is_current) {
@@ -2442,30 +2445,9 @@ pub fn App() -> Element {
                                                         }
                                                     }
                                                 }
-                                                // Show upload result for this file
-                                                if let Some((success, ref msg)) = upload_result {
-                                                    if success {
-                                                        // Show clickable link that opens in browser
-                                                        {
-                                                            let url = msg.clone();
-                                                            rsx! {
-                                                                button {
-                                                                    class: "upload-link",
-                                                                    title: "Open in browser",
-                                                                    onclick: move |_| {
-                                                                        let u = url.clone();
-                                                                        spawn(async move {
-                                                                            api::open_url(&u).await;
-                                                                        });
-                                                                    },
-                                                                    i { class: "fa-solid fa-external-link-alt" }
-                                                                    " {msg}"
-                                                                }
-                                                            }
-                                                        }
-                                                    } else {
-                                                        span { class: "upload-status error", "{msg}" }
-                                                    }
+                                                // Failed upload this run; a link gets its own button
+                                                if let Some((false, ref msg)) = upload_result {
+                                                    span { class: "upload-status error", "{msg}" }
                                                 }
                                             }
                                             div { class: "file-actions",
@@ -2491,6 +2473,17 @@ pub fn App() -> Element {
                                                         }
                                                     },
                                                     i { class: "fa-solid fa-cloud-arrow-up" }
+                                                }
+                                                if let Some((true, url)) = upload_result.clone() {
+                                                    button {
+                                                        class: "btn btn-upload",
+                                                        title: "Open on Parsely: {url}",
+                                                        onclick: move |_| {
+                                                            let u = url.clone();
+                                                            spawn(async move { api::open_url(&u).await });
+                                                        },
+                                                        i { class: "fa-solid fa-up-right-from-square" }
+                                                    }
                                                 }
                                             }
                                         }

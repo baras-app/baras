@@ -202,6 +202,9 @@ pub struct LogFileInfo {
     pub file_size: u64,
     /// Areas/operations visited in this file (None if not yet indexed)
     pub areas: Option<Vec<AreaVisitInfo>>,
+    /// Saved Parsely link from a previous upload
+    #[serde(default)]
+    pub parsely: Option<String>,
 }
 
 /// Update availability info from backend

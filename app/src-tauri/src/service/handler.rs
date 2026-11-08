@@ -102,6 +102,7 @@ impl ServiceHandle {
     pub async fn log_files(&self) -> Vec<LogFileInfo> {
         let index = self.shared.directory_index.read().await;
         let area_cache = self.shared.area_cache.read().await;
+        let meta = self.shared.library_meta.lock().unwrap_or_else(|p| p.into_inner());
 
         index
             .entries()
@@ -130,6 +131,7 @@ impl ServiceHandle {
                     is_empty: e.is_empty,
                     file_size: e.file_size,
                     areas,
+                    parsely: meta.log(&e.filename).and_then(|m| m.parsely.as_ref().map(|p| p.link.clone())),
                 }
             })
             .collect()
