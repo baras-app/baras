@@ -511,9 +511,16 @@ mod linux {
                 Backend::LayerShell => {
                     wayland::WaylandOverlay::new(config).map(LinuxOverlay::Wayland)
                 }
-                Backend::Xwayland | Backend::X11 => {
-                    x11::X11Overlay::new(config).map(LinuxOverlay::X11)
-                }
+                Backend::Xwayland => match x11::X11Overlay::new(config) {
+                    Ok(overlay) => Ok(LinuxOverlay::X11(overlay)),
+                    Err(PlatformError::ConnectionFailed(reason)) => {
+                        Err(PlatformError::UnsupportedFeature(format!(
+                            "zwlr_layer_shell_v1, and no Xwayland to fall back to ({reason})"
+                        )))
+                    }
+                    Err(error) => Err(error),
+                },
+                Backend::X11 => x11::X11Overlay::new(config).map(LinuxOverlay::X11),
             }
         }
 
