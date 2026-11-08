@@ -35,10 +35,9 @@ pub fn InlineNameCreator(
         if show_input() {
             div { class: "flex items-center gap-xs",
                 input {
-                    class: "input-inline",
+                    class: "input-inline w-lg",
                     r#type: "text",
                     placeholder: placeholder,
-                    style: "width: 180px;",
                     value: "{name}",
                     autofocus: true,
                     oninput: move |e| name.set(e.value()),
@@ -126,8 +125,7 @@ pub fn NpcIdChipEditor(ids: Vec<i64>, on_change: EventHandler<Vec<i64>>) -> Elem
             div { class: "flex gap-xs",
                 input {
                     r#type: "text",
-                    class: "input-inline text-mono",
-                    style: "width: 150px;",
+                    class: "input-inline text-mono w-md",
                     placeholder: "NPC ID (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),
@@ -531,8 +529,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                                                 let is_final = bwp.boss.is_final_boss;
                                                 rsx! {
                                                     span {
-                                                        class: "row-toggle",
-                                                        style: "margin-left: auto;",
+                                                        class: "row-toggle ml-auto",
                                                         title: if is_final { "Final boss (auto-stops ops timer) — click to unset" } else { "Mark as final boss (auto-stops ops timer on kill)" },
                                                         onclick: move |e| {
                                                             e.stop_propagation();
@@ -848,7 +845,7 @@ fn ImportPreviewModal(
                         }
                         if preview.is_new_area {
                             span { class: "text-xs text-muted", "Target" }
-                            span { class: "text-xs", style: "color: var(--color-warning);", "New area" }
+                            span { class: "text-xs text-warning", "New area" }
                         } else if let Some(ref name) = target_area_name {
                             span { class: "text-xs text-muted", "Target" }
                             span { class: "text-xs text-primary", "{name}" }
@@ -859,8 +856,7 @@ fn ImportPreviewModal(
                     if has_errors {
                         div { class: "mb-sm",
                             for err in &preview.errors {
-                                div { class: "text-xs",
-                                    style: "color: var(--color-error);",
+                                div { class: "text-xs text-error",
                                     "{err}"
                                 }
                             }
@@ -902,11 +898,11 @@ fn ImportPreviewModal(
                                             for (item_type, names) in grouped {
                                                 div { class: "text-xs",
                                                     style: "margin-bottom: 2px;",
-                                                    span { style: "color: var(--color-warning);", "Replace " }
+                                                    span { class: "text-warning", "Replace " }
                                                     span { class: "text-muted",
                                                         "{names.len()} {plural(&item_type, names.len())}: "
                                                     }
-                                                    span { style: "color: var(--color-warning);",
+                                                    span { class: "text-warning",
                                                         "{names.join(\", \")}"
                                                     }
                                                 }
@@ -921,11 +917,11 @@ fn ImportPreviewModal(
                                             for (item_type, names) in grouped {
                                                 div { class: "text-xs",
                                                     style: "margin-bottom: 2px;",
-                                                    span { style: "color: var(--color-success);", "Add " }
+                                                    span { class: "text-success", "Add " }
                                                     span { class: "text-muted",
                                                         "{names.len()} {plural(&item_type, names.len())}: "
                                                     }
-                                                    span { style: "color: var(--color-success);",
+                                                    span { class: "text-success",
                                                         "{names.join(\", \")}"
                                                     }
                                                 }

@@ -97,3 +97,17 @@ pub fn ItemActions(
         }
     }
 }
+
+/// Titled section of an edit form; `icon` is a Font Awesome solid name ("fa-tag")
+#[component]
+pub fn FormCard(icon: &'static str, title: &'static str, children: Element) -> Element {
+    rsx! {
+        div { class: "form-card",
+            div { class: "form-card-header",
+                i { class: "fa-solid {icon}" }
+                span { "{title}" }
+            }
+            div { class: "form-card-content", {children} }
+        }
+    }
+}

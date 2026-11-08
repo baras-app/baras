@@ -40,8 +40,7 @@ pub fn CounterConditionEditor(
     rsx! {
         div { class: "flex items-center gap-xs",
             select {
-                class: "select",
-                style: "width: 140px;",
+                class: "select w-md",
                 value: "{selected_value}",
                 onchange: {
                     let cond_clone = cond.clone();
@@ -72,8 +71,7 @@ pub fn CounterConditionEditor(
 
             if effective_condition.is_some() {
                 select {
-                    class: "select",
-                    style: "width: 55px;",
+                    class: "select w-xs",
                     value: "{op_value}",
                     onchange: {
                         let cond_clone = cond.clone();
@@ -92,8 +90,7 @@ pub fn CounterConditionEditor(
 
                 input {
                     r#type: "number",
-                    class: "input-inline",
-                    style: "width: 55px;",
+                    class: "input-inline w-xs",
                     min: "0",
                     value: "{cond.value}",
                     oninput: {
@@ -468,8 +465,7 @@ fn SimpleConditionEditor(
             // Type selector dropdown
             div { class: "flex items-center gap-xs",
                 select {
-                    class: "select",
-                    style: "width: 160px;",
+                    class: "select w-md",
                     value: "{type_name}",
                     onchange: {
                         let current = condition.clone();
@@ -581,8 +577,7 @@ fn CounterCompareEditor(
     rsx! {
         div { class: "flex items-center gap-xs",
             select {
-                class: "select",
-                style: "width: 140px;",
+                class: "select w-md",
                 value: "{selected_counter}",
                 onchange: move |e| {
                     let new_id = if e.value() == "__none__" {
@@ -604,8 +599,7 @@ fn CounterCompareEditor(
 
             if has_counter {
                 select {
-                    class: "select",
-                    style: "width: 55px;",
+                    class: "select w-xs",
                     value: "{op_value}",
                     onchange: {
                         let cid = counter_id_for_op.clone();
@@ -624,8 +618,7 @@ fn CounterCompareEditor(
 
                 input {
                     r#type: "number",
-                    class: "input-inline",
-                    style: "width: 55px;",
+                    class: "input-inline w-xs",
                     min: "0",
                     value: "{value}",
                     oninput: {
@@ -680,8 +673,7 @@ fn CounterCompareCounterEditor(
         div { class: "flex items-center gap-xs",
             // Left counter
             select {
-                class: "select",
-                style: "width: 140px;",
+                class: "select w-md",
                 value: "{selected_left}",
                 onchange: {
                     let other_id = other_counter_id.clone();
@@ -707,8 +699,7 @@ fn CounterCompareCounterEditor(
             if has_left {
                 // Operator
                 select {
-                    class: "select",
-                    style: "width: 55px;",
+                    class: "select w-xs",
                     value: "{op_value}",
                     onchange: {
                         let cid = counter_id_for_op.clone();
@@ -728,8 +719,7 @@ fn CounterCompareCounterEditor(
 
                 // Right counter
                 select {
-                    class: "select",
-                    style: "width: 140px;",
+                    class: "select w-md",
                     value: "{selected_right}",
                     onchange: {
                         let cid = counter_id_for_right.clone();
@@ -781,8 +771,7 @@ fn TimerTimeRemainingEditor(
     rsx! {
         div { class: "flex items-center gap-xs",
             select {
-                class: "select",
-                style: "width: 140px;",
+                class: "select w-md",
                 value: "{selected_timer}",
                 onchange: move |e| {
                     let new_id = if e.value() == "__none__" {
@@ -804,8 +793,7 @@ fn TimerTimeRemainingEditor(
 
             if has_timer {
                 select {
-                    class: "select",
-                    style: "width: 55px;",
+                    class: "select w-xs",
                     value: "{op_value}",
                     onchange: {
                         let tid = timer_id_for_op.clone();
@@ -824,8 +812,7 @@ fn TimerTimeRemainingEditor(
 
                 input {
                     r#type: "number",
-                    class: "input-inline",
-                    style: "width: 70px;",
+                    class: "input-inline w-sm",
                     min: "0",
                     step: "0.1",
                     value: "{value}",

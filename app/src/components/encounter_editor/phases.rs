@@ -5,7 +5,7 @@
 
 use dioxus::prelude::*;
 
-use crate::components::editor_common::{ItemActions, Origin, OriginBadge};
+use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
 use crate::api;
 use crate::types::{BossWithPath, Condition, EncounterItem, PhaseDefinition, Trigger};
 
@@ -330,246 +330,230 @@ fn PhaseEditForm(
         div { class: "phase-edit-form",
             div { class: "encounter-item-grid",
                 // ═══ LEFT: Identity Card ═════════════════════════════════════
-                div { class: "form-card",
-                    div { class: "form-card-header",
-                        i { class: "fa-solid fa-tag" }
-                        span { "Identity" }
+                FormCard { icon: "fa-tag", title: "Identity",
+                    div { class: "form-row-hz",
+                        label { "Phase ID" }
+                        code { class: "tag-muted text-mono text-xs", "{phase_id_display}" }
                     }
-                    div { class: "form-card-content",
-                        div { class: "form-row-hz",
-                            label { "Phase ID" }
-                            code { class: "tag-muted text-mono text-xs", "{phase_id_display}" }
-                        }
 
-                        div { class: "form-row-hz",
-                            label { "Name" }
-                            input {
-                                class: "input-inline",
-                                style: "width: 200px;",
-                                value: "{draft().name}",
-                                oninput: move |e| {
-                                    let mut d = draft();
-                                    d.name = e.value();
-                                    draft.set(d);
-                                }
+                    div { class: "form-row-hz",
+                        label { "Name" }
+                        input {
+                            class: "input-inline w-lg",
+                            value: "{draft().name}",
+                            oninput: move |e| {
+                                let mut d = draft();
+                                d.name = e.value();
+                                draft.set(d);
                             }
                         }
+                    }
 
-                        div { class: "form-row-hz",
-                            label { "Display Text" }
-                            input {
-                                class: "input-inline",
-                                style: "width: 200px;",
-                                placeholder: "(defaults to name)",
-                                value: "{draft().display_text.clone().unwrap_or_default()}",
-                                oninput: move |e| {
-                                    let mut d = draft();
-                                    d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
-                                    draft.set(d);
-                                }
+                    div { class: "form-row-hz",
+                        label { "Display Text" }
+                        input {
+                            class: "input-inline w-lg",
+                            placeholder: "(defaults to name)",
+                            value: "{draft().display_text.clone().unwrap_or_default()}",
+                            oninput: move |e| {
+                                let mut d = draft();
+                                d.display_text = if e.value().is_empty() { None } else { Some(e.value()) };
+                                draft.set(d);
                             }
                         }
+                    }
 
-                        div { class: "form-row-hz",
-                            label { class: "flex items-center",
-                                "Difficulties"
-                                span {
-                                    class: "help-icon",
-                                    title: "Only activate this phase on selected difficulties. Empty = all difficulties.",
-                                    "?"
-                                }
-                            }
-                            DifficultiesEditor {
-                                difficulties: draft().difficulties.clone(),
-                                on_change: move |updated: Vec<String>| {
-                                    let mut d = draft();
-                                    d.difficulties = updated;
-                                    draft.set(d);
-                                }
+                    div { class: "form-row-hz",
+                        label { class: "flex items-center",
+                            "Difficulties"
+                            span {
+                                class: "help-icon",
+                                title: "Only activate this phase on selected difficulties. Empty = all difficulties.",
+                                "?"
                             }
                         }
-
-                        // ─── Conditions subsection ─────────────────────────────
-                        span { class: "text-sm font-bold text-secondary mt-sm", "Conditions" }
-
-                        div { class: "form-row-hz mt-xs",
-                            label { class: "flex items-center",
-                                "Preceded By"
-                                span {
-                                    class: "help-icon",
-                                    title: "This phase can only start if the specified phase was the most recent active phase",
-                                    "?"
-                                }
-                            }
-                            {
-                                let selected_phase = draft().preceded_by.clone().unwrap_or_default();
-                                rsx! {
-                                    select {
-                                        class: "select",
-                                        style: "width: 180px;",
-                                        onchange: move |e| {
-                                            let mut d = draft();
-                                            d.preceded_by = if e.value().is_empty() { None } else { Some(e.value()) };
-                                            draft.set(d);
-                                        },
-                                        option { value: "", selected: selected_phase.is_empty(), "(none)" }
-                                        for phase_id in &phase_ids {
-                                            option {
-                                                value: "{phase_id}",
-                                                selected: phase_id == &selected_phase,
-                                                "{phase_id}"
-                                            }
-                                        }
-                                    }
-                                }
+                        DifficultiesEditor {
+                            difficulties: draft().difficulties.clone(),
+                            on_change: move |updated: Vec<String>| {
+                                let mut d = draft();
+                                d.difficulties = updated;
+                                draft.set(d);
                             }
                         }
+                    }
 
-                        div { class: "form-row-hz", style: "align-items: flex-start;",
-                            label { class: "flex items-center", style: "padding-top: 6px;",
-                                "Conditions"
-                                span {
-                                    class: "help-icon",
-                                    title: "State conditions that must ALL be true for this phase to activate",
-                                    "?"
-                                }
-                            }
-                            ConditionsEditor {
-                                conditions: draft().conditions.clone(),
-                                encounter_data: encounter_data.clone(),
-                                on_change: move |c| {
-                                    let mut d = draft();
-                                    d.conditions = c;
-                                    draft.set(d);
-                                }
+                    // ─── Conditions subsection ─────────────────────────────
+                    span { class: "text-sm font-bold text-secondary mt-sm", "Conditions" }
+
+                    div { class: "form-row-hz mt-xs",
+                        label { class: "flex items-center",
+                            "Preceded By"
+                            span {
+                                class: "help-icon",
+                                title: "This phase can only start if the specified phase was the most recent active phase",
+                                "?"
                             }
                         }
-
-                        // Legacy counter condition: show migration banner if old field has value
-                        if draft().counter_condition.is_some() {
-                            div { class: "legacy-conditions-banner",
-                                i { class: "fa-solid fa-circle-info" }
-                                span { "Legacy counter condition detected." }
-                                button {
-                                    class: "btn btn-sm",
-                                    title: "Move legacy counter condition into the new Conditions system",
-                                    onclick: move |_| {
+                        {
+                            let selected_phase = draft().preceded_by.clone().unwrap_or_default();
+                            rsx! {
+                                select {
+                                    class: "select w-lg",
+                                    onchange: move |e| {
                                         let mut d = draft();
-                                        if let Some(cc) = d.counter_condition.take() {
-                                            d.conditions.push(Condition::CounterCompare {
-                                                counter_id: cc.counter_id,
-                                                operator: cc.operator,
-                                                value: cc.value,
-                                            });
-                                        }
+                                        d.preceded_by = if e.value().is_empty() { None } else { Some(e.value()) };
                                         draft.set(d);
                                     },
-                                    "Migrate"
-                                }
-                            }
-
-                            div { class: "form-row-hz",
-                                label { class: "flex items-center text-tertiary",
-                                    "Counter (legacy)"
-                                }
-                                CounterConditionEditor {
-                                    condition: draft().counter_condition.clone(),
-                                    counters: encounter_data.counter_ids(),
-                                    on_change: move |cond| {
-                                        let mut d = draft();
-                                        d.counter_condition = cond;
-                                        draft.set(d);
+                                    option { value: "", selected: selected_phase.is_empty(), "(none)" }
+                                    for phase_id in &phase_ids {
+                                        option {
+                                            value: "{phase_id}",
+                                            selected: phase_id == &selected_phase,
+                                            "{phase_id}"
+                                        }
                                     }
                                 }
                             }
                         }
+                    }
 
-                        div { class: "form-row-hz", style: "align-items: flex-start;",
-                            label { class: "flex items-center", style: "padding-top: 6px;",
-                                "Resets"
-                                span {
-                                    class: "help-icon",
-                                    title: "Counters to reset when this phase starts",
-                                    "?"
-                                }
+                    div { class: "form-row-hz top",
+                        label { class: "flex items-center",
+                            "Conditions"
+                            span {
+                                class: "help-icon",
+                                title: "State conditions that must ALL be true for this phase to activate",
+                                "?"
                             }
-                            CounterListEditor {
-                                counters: draft().resets_counters.clone(),
-                                available_counters: encounter_data.counter_ids(),
-                                on_change: move |counters| {
+                        }
+                        ConditionsEditor {
+                            conditions: draft().conditions.clone(),
+                            encounter_data: encounter_data.clone(),
+                            on_change: move |c| {
+                                let mut d = draft();
+                                d.conditions = c;
+                                draft.set(d);
+                            }
+                        }
+                    }
+
+                    // Legacy counter condition: show migration banner if old field has value
+                    if draft().counter_condition.is_some() {
+                        div { class: "legacy-conditions-banner",
+                            i { class: "fa-solid fa-circle-info" }
+                            span { "Legacy counter condition detected." }
+                            button {
+                                class: "btn btn-sm",
+                                title: "Move legacy counter condition into the new Conditions system",
+                                onclick: move |_| {
                                     let mut d = draft();
-                                    d.resets_counters = counters;
+                                    if let Some(cc) = d.counter_condition.take() {
+                                        d.conditions.push(Condition::CounterCompare {
+                                            counter_id: cc.counter_id,
+                                            operator: cc.operator,
+                                            value: cc.value,
+                                        });
+                                    }
+                                    draft.set(d);
+                                },
+                                "Migrate"
+                            }
+                        }
+
+                        div { class: "form-row-hz",
+                            label { class: "flex items-center text-tertiary",
+                                "Counter (legacy)"
+                            }
+                            CounterConditionEditor {
+                                condition: draft().counter_condition.clone(),
+                                counters: encounter_data.counter_ids(),
+                                on_change: move |cond| {
+                                    let mut d = draft();
+                                    d.counter_condition = cond;
                                     draft.set(d);
                                 }
+                            }
+                        }
+                    }
+
+                    div { class: "form-row-hz top",
+                        label { class: "flex items-center",
+                            "Resets"
+                            span {
+                                class: "help-icon",
+                                title: "Counters to reset when this phase starts",
+                                "?"
+                            }
+                        }
+                        CounterListEditor {
+                            counters: draft().resets_counters.clone(),
+                            available_counters: encounter_data.counter_ids(),
+                            on_change: move |counters| {
+                                let mut d = draft();
+                                d.resets_counters = counters;
+                                draft.set(d);
                             }
                         }
                     }
                 }
 
                 // ═══ RIGHT: Trigger Card (2-column: Start / End) ═════════════
-                div { class: "form-card",
-                    div { class: "form-card-header",
-                        i { class: "fa-solid fa-bolt" }
-                        span { "Trigger" }
-                    }
-                    div { class: "form-card-content",
-                        div { class: "trigger-two-col",
-                            // ─── Start Trigger (left) ──────────────────────
-                            div {
-                                span { class: "text-sm font-bold text-secondary", "Start On" }
-                                div { style: "margin-top: 6px;",
-                                    ComposableTriggerEditor {
-                                        trigger: draft().start_trigger,
-                                        encounter_data: encounter_data.clone(),
-                                        on_change: move |t| {
-                                            let mut d = draft();
-                                            d.start_trigger = t;
-                                            draft.set(d);
-                                        },
-                                        hide_timer_only: true,
-                                    }
+                FormCard { icon: "fa-bolt", title: "Trigger",
+                    div { class: "trigger-two-col",
+                        // ─── Start Trigger (left) ──────────────────────
+                        div {
+                            span { class: "text-sm font-bold text-secondary", "Start On" }
+                            div { style: "margin-top: 6px;",
+                                ComposableTriggerEditor {
+                                    trigger: draft().start_trigger,
+                                    encounter_data: encounter_data.clone(),
+                                    on_change: move |t| {
+                                        let mut d = draft();
+                                        d.start_trigger = t;
+                                        draft.set(d);
+                                    },
+                                    hide_timer_only: true,
                                 }
                             }
+                        }
 
-                            // ─── End Trigger (right) ───────────────────────
-                            div {
-                                span { class: "text-sm font-bold text-secondary", "End On" }
-                                div { style: "margin-top: 6px;",
-                                    if let Some(end) = draft().end_trigger.clone() {
-                                        div { class: "flex-col gap-xs",
-                                            ComposableTriggerEditor {
-                                                trigger: end,
-                                                encounter_data: encounter_data.clone(),
-                                                on_change: move |t| {
-                                                    let mut d = draft();
-                                                    d.end_trigger = Some(t);
-                                                    draft.set(d);
-                                                },
-                                                hide_timer_only: true,
-                                            }
-                                            button {
-                                                class: "btn btn-sm",
-                                                style: "width: fit-content;",
-                                                onclick: move |_| {
-                                                    let mut d = draft();
-                                                    d.end_trigger = None;
-                                                    draft.set(d);
-                                                },
-                                                "Remove End Trigger"
-                                            }
+                        // ─── End Trigger (right) ───────────────────────
+                        div {
+                            span { class: "text-sm font-bold text-secondary", "End On" }
+                            div { style: "margin-top: 6px;",
+                                if let Some(end) = draft().end_trigger.clone() {
+                                    div { class: "flex-col gap-xs",
+                                        ComposableTriggerEditor {
+                                            trigger: end,
+                                            encounter_data: encounter_data.clone(),
+                                            on_change: move |t| {
+                                                let mut d = draft();
+                                                d.end_trigger = Some(t);
+                                                draft.set(d);
+                                            },
+                                            hide_timer_only: true,
                                         }
-                                    } else {
-                                        div { class: "flex-col gap-xs",
-                                            span { class: "text-muted text-sm", "(ends when another phase starts)" }
-                                            button {
-                                                class: "btn btn-sm",
-                                                onclick: move |_| {
-                                                    let mut d = draft();
-                                                    d.end_trigger = Some(Trigger::CombatStart);
-                                                    draft.set(d);
-                                                },
-                                                "+ Add End Trigger"
-                                            }
+                                        button {
+                                            class: "btn btn-sm w-fit",
+                                            onclick: move |_| {
+                                                let mut d = draft();
+                                                d.end_trigger = None;
+                                                draft.set(d);
+                                            },
+                                            "Remove End Trigger"
+                                        }
+                                    }
+                                } else {
+                                    div { class: "flex-col gap-xs",
+                                        span { class: "text-muted text-sm", "(ends when another phase starts)" }
+                                        button {
+                                            class: "btn btn-sm",
+                                            onclick: move |_| {
+                                                let mut d = draft();
+                                                d.end_trigger = Some(Trigger::CombatStart);
+                                                draft.set(d);
+                                            },
+                                            "+ Add End Trigger"
                                         }
                                     }
                                 }
@@ -580,29 +564,23 @@ fn PhaseEditForm(
             }
 
             // ─── Advanced Card ───────────────────────────────────────
-            div { class: "form-card",
-                div { class: "form-card-header",
-                    i { class: "fa-solid fa-triangle-exclamation" }
-                    span { "Advanced" }
-                }
-                div { class: "form-card-content",
-                    label { class: "flex items-center gap-xs text-sm",
-                        input {
-                            r#type: "checkbox",
-                            checked: draft().enabled,
-                            onchange: move |e| {
-                                let mut d = draft();
-                                d.enabled = e.checked();
-                                draft.set(d);
-                            }
+            FormCard { icon: "fa-triangle-exclamation", title: "Advanced",
+                label { class: "flex items-center gap-xs text-sm",
+                    input {
+                        r#type: "checkbox",
+                        checked: draft().enabled,
+                        onchange: move |e| {
+                            let mut d = draft();
+                            d.enabled = e.checked();
+                            draft.set(d);
                         }
-                        "Phase Enabled"
                     }
-                    if !draft().enabled {
-                        div { class: "text-xs text-warning mt-xs",
-                            i { class: "fa-solid fa-triangle-exclamation" }
-                            " Disabling a phase may break timers or other phases that depend on it."
-                        }
+                    "Phase Enabled"
+                }
+                if !draft().enabled {
+                    div { class: "text-xs text-warning mt-xs",
+                        i { class: "fa-solid fa-triangle-exclamation" }
+                        " Disabling a phase may break timers or other phases that depend on it."
                     }
                 }
             }
@@ -671,8 +649,7 @@ fn CounterListEditor(
                         let current_selection = selected_counter();
                         rsx! {
                             select {
-                                class: "select",
-                                style: "width: 150px;",
+                                class: "select w-md",
                                 onchange: move |e| selected_counter.set(e.value()),
                                 option { value: "", selected: current_selection.is_empty(), "Select counter..." }
                                 for counter_id in &remaining {

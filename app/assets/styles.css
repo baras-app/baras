@@ -6591,6 +6591,10 @@ a.contributor-name:hover {
   color: var(--color-success);
 }
 
+.text-warning {
+  color: var(--color-warning);
+}
+
 .text-error {
   color: var(--color-error);
 }
@@ -6672,8 +6676,31 @@ a.contributor-name:hover {
   position: relative;
 }
 
-.phase-dropdown {
+/* Dropdown positioned with fixed left/top (inline) to escape overflow clipping */
+.floating-menu {
+  position: fixed;
+  z-index: 10000;
   margin-top: var(--space-xs);
+  min-width: 160px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: var(--space-xs);
+  background: var(--bg-dark);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.floating-menu.wide {
+  min-width: 260px;
+  max-height: 400px;
+}
+
+/* Invisible layer under a floating menu that closes it on outside click */
+.floating-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
 }
 
 /* Discipline selector dropdown */
@@ -6681,9 +6708,6 @@ a.contributor-name:hover {
   position: relative;
 }
 
-.discipline-dropdown {
-  margin-top: var(--space-xs);
-}
 
 /* Row toggle buttons (enable/audio in timer list) */
 .row-toggle {
@@ -6753,6 +6777,18 @@ a.contributor-name:hover {
 .w-auto {
   width: auto;
 }
+
+/* Fixed control widths. !important so they beat the scoped editor input
+   rules (e.g. `.effect-editor-panel .form-field input[type="number"]`) */
+.w-xs { width: 60px !important; }
+.w-sm { width: 80px !important; }
+.w-md { width: 150px !important; }
+.w-lg { width: 200px !important; }
+.w-fit { width: fit-content; }
+.min-w-sm { min-width: 80px; }
+.min-w-md { min-width: 150px; }
+.shrink-0 { flex-shrink: 0; }
+.flex-fill { flex: 1; min-width: 0; }
 
 /* ─── Cursor ─────────────────────────────────────────────────────────────────── */
 .cursor-pointer {
@@ -7064,6 +7100,15 @@ a.contributor-name:hover {
   font-size: 0.85em;
   color: var(--text-secondary);
   min-width: 80px;
+}
+
+/* Row whose control is taller than one line: label stays at the top */
+.form-row-hz.top {
+  align-items: flex-start;
+}
+
+.form-row-hz.top > label {
+  padding-top: 6px;
 }
 
 /* Icon preview in effect editor */

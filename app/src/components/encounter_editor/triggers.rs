@@ -27,8 +27,7 @@ fn IdSelector(
         div { class: "flex items-center gap-xs",
             label { class: "text-sm text-secondary", "{label}" }
             select {
-                class: "select",
-                style: "width: 180px;",
+                class: "select w-lg",
                 value: "{value}",
                 onchange: move |e| on_change.call(e.value()),
                 if value.is_empty() {
@@ -81,8 +80,7 @@ pub fn EntityFilterDropdown(
                     span { class: "text-sm text-secondary", "{label}:" }
                 }
                 select {
-                    class: "select",
-                    style: "width: 160px;",
+                    class: "select w-md",
                     onchange: move |e| {
                         let selected = e.value();
                         if selected == "Specific (ID or Name)" {
@@ -164,8 +162,7 @@ pub fn BossSelector(
             div { class: "flex items-center gap-xs",
                 label { class: "text-sm text-secondary", "Boss" }
                 select {
-                    class: "select",
-                    style: "width: 180px;",
+                    class: "select w-lg",
                     onchange: move |e| {
                         let val = e.value();
                         if !val.is_empty() {
@@ -401,8 +398,7 @@ pub fn SimpleTriggerEditor(
     rsx! {
         div { class: "flex-col gap-xs",
             select {
-                class: "select",
-                style: "width: 180px;",
+                class: "select w-lg",
                 value: "{trigger_type}",
                 onchange: move |e| {
                     let new_trigger = match e.value().as_str() {
@@ -803,8 +799,7 @@ pub fn SimpleTriggerEditor(
                                         step: "0.1",
                                         min: "0",
                                         max: "100",
-                                        class: "input-inline",
-                                        style: "width: 70px;",
+                                        class: "input-inline w-sm",
                                         value: "{hp_percent}",
                                         oninput: {
                                             let selector = selector.clone();
@@ -848,8 +843,7 @@ pub fn SimpleTriggerEditor(
                                     input {
                                         r#type: "number",
                                         min: "0",
-                                        class: "input-inline",
-                                        style: "width: 70px;",
+                                        class: "input-inline w-sm",
                                         value: "{value}",
                                         oninput: {
                                             let counter_id = counter_id.clone();
@@ -930,8 +924,7 @@ pub fn SimpleTriggerEditor(
                                 r#type: "number",
                                 step: "0.1",
                                 min: "0",
-                                class: "input-inline",
-                                style: "width: 80px;",
+                                class: "input-inline w-sm",
                                 value: "{secs}",
                                 oninput: move |e| {
                                     if let Ok(val) = e.value().parse::<f32>() {
@@ -1086,8 +1079,7 @@ fn PositionConstraintRow(
         div { class: "flex items-center gap-xs",
             if show_entity {
                 select {
-                    class: "select",
-                    style: "width: 90px;",
+                    class: "select w-sm",
                     value: "{entity_name}",
                     onchange: move |e| {
                         let mut c = c_entity.clone();
@@ -1103,8 +1095,7 @@ fn PositionConstraintRow(
                 }
             }
             select {
-                class: "select",
-                style: "width: 80px;",
+                class: "select w-sm",
                 value: "{axis_name}",
                 onchange: move |e| {
                     let mut c = c_axis.clone();
@@ -1126,8 +1117,7 @@ fn PositionConstraintRow(
                 option { value: "x_plus_y", selected: axis_name == "x_plus_y", "X + Y" }
             }
             select {
-                class: "select",
-                style: "width: 90px;",
+                class: "select w-sm",
                 value: "{op_name}",
                 onchange: move |e| {
                     let mut c = c_op.clone();
@@ -1158,8 +1148,7 @@ fn PositionConstraintRow(
                 input {
                     r#type: "number",
                     step: "0.1",
-                    class: "input-inline",
-                    style: "width: 90px;",
+                    class: "input-inline w-sm",
                     value: "{min}",
                     oninput: move |e| {
                         if let Ok(v) = e.value().parse::<f32>()
@@ -1175,8 +1164,7 @@ fn PositionConstraintRow(
                 input {
                     r#type: "number",
                     step: "0.1",
-                    class: "input-inline",
-                    style: "width: 90px;",
+                    class: "input-inline w-sm",
                     value: "{max}",
                     oninput: move |e| {
                         if let Ok(v) = e.value().parse::<f32>()
@@ -1192,8 +1180,7 @@ fn PositionConstraintRow(
                 input {
                     r#type: "number",
                     step: "0.1",
-                    class: "input-inline",
-                    style: "width: 90px;",
+                    class: "input-inline w-sm",
                     value: "{value}",
                     oninput: move |e| {
                         if let Ok(v) = e.value().parse::<f32>() {
@@ -1262,8 +1249,7 @@ pub fn EffectSelectorEditor(
             div { class: "flex gap-xs",
                 input {
                     r#type: "text",
-                    class: "input-inline",
-                    style: "width: 180px;",
+                    class: "input-inline w-lg",
                     placeholder: "ID or Name (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),
@@ -1343,8 +1329,7 @@ pub fn AbilitySelectorEditor(
             div { class: "flex gap-xs",
                 input {
                     r#type: "text",
-                    class: "input-inline",
-                    style: "width: 180px;",
+                    class: "input-inline w-lg",
                     placeholder: "ID or Name (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),
@@ -1429,8 +1414,7 @@ pub fn MitigationTypeEditor(
             // Add dropdown + button
             div { class: "flex gap-xs items-center",
                 select {
-                    class: "select",
-                    style: "width: 130px;",
+                    class: "select w-md",
                     onchange: move |e| {
                         let m = match e.value().as_str() {
                             "Miss" => MitigationType::Miss,
@@ -1514,8 +1498,7 @@ pub fn EntitySelectorEditor(
             div { class: "flex gap-xs",
                 input {
                     r#type: "text",
-                    class: "input-inline",
-                    style: "width: 180px;",
+                    class: "input-inline w-lg",
                     placeholder: "ID or Name (Enter)",
                     value: "{new_input}",
                     oninput: move |e| new_input.set(e.value()),

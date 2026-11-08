@@ -6,7 +6,7 @@
 
 use dioxus::prelude::*;
 
-use crate::components::editor_common::{ItemActions, Origin};
+use crate::components::editor_common::{FormCard, ItemActions, Origin};
 use crate::api;
 use crate::types::{BossWithPath, EncounterItem, EntityDefinition, EntityFilter, Trigger};
 
@@ -306,8 +306,7 @@ fn EntityEditForm(
             div { class: "form-row-hz",
                 label { "Name" }
                 input {
-                    class: "input-inline",
-                    style: "width: 200px;",
+                    class: "input-inline w-lg",
                     value: "{draft().name}",
                     oninput: move |e| {
                         let mut d = draft();
@@ -318,8 +317,8 @@ fn EntityEditForm(
             }
 
             // ─── NPC IDs ───────────────────────────────────────────────────────
-            div { class: "form-row-hz", style: "align-items: flex-start;",
-                label { style: "padding-top: 6px;", "NPC IDs" }
+            div { class: "form-row-hz top",
+                label { "NPC IDs" }
                 NpcIdChipEditor {
                     ids: draft().ids.clone(),
                     on_change: move |new_ids| {
@@ -406,8 +405,7 @@ fn EntityEditForm(
                         }
                         if let Some(pct) = draft().pushes_at {
                             input {
-                                class: "input-inline",
-                                style: "width: 60px;",
+                                class: "input-inline w-xs",
                                 r#type: "number",
                                 step: "1",
                                 min: "0",
@@ -457,10 +455,9 @@ fn EntityEditForm(
                         rsx! {
                             div { class: "flex-col gap-xs mb-xs",
                                 // Row 1: hp%, label, conditions toggle, remove
-                                div { class: "form-row-hz", style: "align-items: center;",
+                                div { class: "form-row-hz items-center",
                                     input {
-                                        class: "input-inline",
-                                        style: "width: 60px;",
+                                        class: "input-inline w-xs",
                                         r#type: "number",
                                         step: "1",
                                         min: "0",
@@ -476,8 +473,7 @@ fn EntityEditForm(
                                     }
                                     span { class: "text-xs text-muted", "%" }
                                     input {
-                                        class: "input-inline",
-                                        style: "width: 120px;",
+                                        class: "input-inline w-md",
                                         placeholder: "Label...",
                                         value: "{marker.label}",
                                         oninput: move |e| {
@@ -509,7 +505,7 @@ fn EntityEditForm(
                                 }
                                 // Row 2: Difficulties
                                 div { class: "form-row-hz", style: "align-items: center; padding-left: 4px;",
-                                    span { class: "text-xs text-muted", style: "min-width: 70px;", "Difficulties" }
+                                    span { class: "text-xs text-muted min-w-sm", "Difficulties" }
                                     DifficultiesEditor {
                                         difficulties: marker.difficulties.clone(),
                                         on_change: move |updated: Vec<String>| {
@@ -522,7 +518,7 @@ fn EntityEditForm(
                                 }
                                 // Row 3: Group size
                                 div { class: "form-row-hz", style: "align-items: center; padding-left: 4px;",
-                                    span { class: "text-xs text-muted", style: "min-width: 70px;", "Size" }
+                                    span { class: "text-xs text-muted min-w-sm", "Size" }
                                     div { class: "flex gap-xs",
                                         for (size_label, size_val) in [("All", None), ("4-man", Some(4u8)), ("8-man", Some(8u8)), ("16-man", Some(16u8))] {
                                             {
@@ -603,8 +599,7 @@ fn EntityEditForm(
                         // ── Label + remove ────────────────────────────────────
                         div { style: "display: flex; align-items: center; gap: 8px;",
                             input {
-                                class: "input-inline",
-                                style: "flex: 1;",
+                                class: "input-inline flex-1",
                                 placeholder: "Shield name...",
                                 value: "{shield.label}",
                                 oninput: move |e| {
@@ -614,8 +609,7 @@ fn EntityEditForm(
                                 }
                             }
                             input {
-                                class: "input-inline",
-                                style: "width: 150px;",
+                                class: "input-inline w-md",
                                 placeholder: "Icon ID (auto)",
                                 title: "Ability ID for the icon shown beside the shield amount. Leave blank to use the start trigger's first effect ID.",
                                 value: "{shield.icon_ability_id.map(|id| id.to_string()).unwrap_or_default()}",
@@ -646,42 +640,30 @@ fn EntityEditForm(
                         div { class: "trigger-two-col", style: "margin-top: 10px;",
 
                             // Start trigger card
-                            div { class: "form-card",
-                                div { class: "form-card-header",
-                                    i { class: "fa-solid fa-play" }
-                                    span { "Start On" }
-                                }
-                                div { class: "form-card-content",
-                                    ComposableTriggerEditor {
-                                        trigger: shield.start_trigger.clone(),
-                                        encounter_data: encounter_data.clone(),
-                                        on_change: move |t| {
-                                            let mut d = draft();
-                                            d.shields[i].start_trigger = t;
-                                            draft.set(d);
-                                        },
-                                        hide_timer_only: true,
-                                    }
+                            FormCard { icon: "fa-play", title: "Start On",
+                                ComposableTriggerEditor {
+                                    trigger: shield.start_trigger.clone(),
+                                    encounter_data: encounter_data.clone(),
+                                    on_change: move |t| {
+                                        let mut d = draft();
+                                        d.shields[i].start_trigger = t;
+                                        draft.set(d);
+                                    },
+                                    hide_timer_only: true,
                                 }
                             }
 
                             // End trigger card
-                            div { class: "form-card",
-                                div { class: "form-card-header",
-                                    i { class: "fa-solid fa-stop" }
-                                    span { "End On" }
-                                }
-                                div { class: "form-card-content",
-                                    ComposableTriggerEditor {
-                                        trigger: shield.end_trigger.clone(),
-                                        encounter_data: encounter_data.clone(),
-                                        on_change: move |t| {
-                                            let mut d = draft();
-                                            d.shields[i].end_trigger = t;
-                                            draft.set(d);
-                                        },
-                                        hide_timer_only: true,
-                                    }
+                            FormCard { icon: "fa-stop", title: "End On",
+                                ComposableTriggerEditor {
+                                    trigger: shield.end_trigger.clone(),
+                                    encounter_data: encounter_data.clone(),
+                                    on_change: move |t| {
+                                        let mut d = draft();
+                                        d.shields[i].end_trigger = t;
+                                        draft.set(d);
+                                    },
+                                    hide_timer_only: true,
                                 }
                             }
                         }
@@ -771,8 +753,7 @@ fn EntityEditForm(
                                     div { class: "flex items-center gap-xs",
                                         span { class: "text-xs text-muted", "HP:" }
                                         input {
-                                            class: "input-inline text-mono",
-                                            style: "width: 120px;",
+                                            class: "input-inline text-mono w-md",
                                             r#type: "number",
                                             value: "{entry.total}",
                                             oninput: move |e| {
