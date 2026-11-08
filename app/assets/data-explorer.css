@@ -476,9 +476,8 @@
   display: flex;
   align-items: stretch;
   gap: 2px;
-  padding: var(--space-xs) 0;
   margin-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
 }
 
@@ -500,18 +499,21 @@
   padding: 24px 0;
 }
 
+/* Underline tabs: flat labels; the open one gets its accent as an underline
+   sitting on the strip's hairline */
 .data-tab {
   flex: 1;
-  padding: 8px 12px;
+  position: relative;
+  padding: 9px 12px;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
-  background: var(--bg-tertiary);
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  box-shadow: none;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: color var(--transition-fast), background var(--transition-fast);
   text-align: center;
   display: flex;
   align-items: center;
@@ -520,29 +522,23 @@
 
 .data-tab:hover {
   color: var(--text-primary);
-  background: var(--bg-hover);
+  background: rgba(var(--fg-rgb), 0.04);
 }
 
 .data-tab.active {
   color: var(--text-primary);
   font-weight: 600;
-  background: var(--bg-secondary);
-  border-left: 2px solid rgba(var(--fg-rgb), 0.18);
-  border-right: 2px solid rgba(var(--fg-rgb), 0.18);
-  border-top: none;
-  border-bottom-color: var(--bg-secondary);
-  position: relative;
 }
 
-/* Active tab top accent bar */
+/* Active tab underline (colour per tab below) */
 .data-tab.active::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: -2px;
-  right: -2px;
-  height: 3px;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  left: 10%;
+  right: 10%;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
 }
 
 /* Tab-specific accent colors */
@@ -1436,7 +1432,7 @@
   flex: 1;
   min-height: 150px;
   box-sizing: border-box;
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--chart-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -1447,7 +1443,7 @@
   align-items: center;
   justify-content: center;
   min-height: 80px;
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--chart-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   color: var(--text-muted);
@@ -1540,10 +1536,25 @@
 }
 
 /* Effect table */
+/* Fixed layout: the number columns get set widths and the name takes the
+   rest, truncating instead of wrapping each row onto several lines */
 .effect-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 11px;
+}
+
+.effect-table .col-apps {
+  width: 46px;
+}
+
+.effect-table .col-uptime {
+  width: 58px;
+}
+
+.effect-table .col-pct {
+  width: 56px;
 }
 
 .effect-table th,
@@ -1602,16 +1613,18 @@
 
 /* The cell stays a table cell so it shares the row's gridline; the icon
    and name line up in the inner wrapper */
-.effect-name-cell {
-  max-width: 120px;
-}
-
 .effect-name-inner {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+}
+
+.effect-name-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .effect-id-fallback {

@@ -858,6 +858,16 @@ pub fn App() -> Element {
                                 a {
                                     class: "header-link",
                                     href: "#",
+                                    title: if light_theme() { "Switch to dark theme" } else { "Switch to light theme" },
+                                    onclick: move |e| {
+                                        e.prevent_default();
+                                        set_light_theme(light_theme, !light_theme());
+                                    },
+                                    i { class: if light_theme() { "fa-solid fa-moon" } else { "fa-solid fa-sun" } }
+                                }
+                                a {
+                                    class: "header-link",
+                                    href: "#",
                                     title: "Discord — Questions, bugs, or feedback",
                                     onclick: move |e| {
                                         e.prevent_default();
@@ -1764,20 +1774,7 @@ pub fn App() -> Element {
                                 input {
                                     r#type: "checkbox",
                                     checked: light_theme(),
-                                    onchange: move |e| {
-                                        let checked = e.checked();
-                                        light_theme.set(checked);
-                                        crate::utils::apply_theme(checked);
-                                        let mut toast = use_toast();
-                                        spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
-                                                cfg.light_theme = checked;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                }
-                                            }
-                                        });
-                                    }
+                                    onchange: move |e| set_light_theme(light_theme, e.checked()),
                                 }
                                 "Light theme"
                             }
@@ -2646,6 +2643,21 @@ pub fn App() -> Element {
 // ─────────────────────────────────────────────────────────────────────────────
 // Parsely Guild Helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Apply the theme now and persist it (header toggle and Settings checkbox)
+fn set_light_theme(mut light_theme: Signal<bool>, on: bool) {
+    light_theme.set(on);
+    crate::utils::apply_theme(on);
+    let mut toast = use_toast();
+    spawn(async move {
+        if let Some(mut cfg) = api::get_config().await {
+            cfg.light_theme = on;
+            if let Err(err) = api::update_config(&cfg).await {
+                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+            }
+        }
+    });
+}
 
 /// Persist guild fields (`guilds` + `selected_guild`) to the config without
 /// touching unrelated parsely settings. Used by add/remove handlers so the

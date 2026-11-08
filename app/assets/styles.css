@@ -70,6 +70,8 @@
   --recess-k: 1;
   /* Base lightness of phase timeline segments (hue/sat come from phase_color) */
   --phase-l: 30%;
+  /* Plot surface: a recessed well on dark, a near-white card on light */
+  --chart-bg: rgba(0, 0, 0, 0.22);
 
   /* ─── Colors - Borders ───────────────────────────────────────────────────────── */
   --border-subtle: rgba(var(--fg-rgb), 0.05);
@@ -193,6 +195,7 @@
   --lt-yellow: #8a6400;
   --lt-green: #1a7f45;
   --phase-l: 78%;
+  --chart-bg: #fbfbfc;
 
   /* Same depth order as dark: body lightest, inputs/panels/sidebars progressively darker */
   --bg-body: #f6f6f8;

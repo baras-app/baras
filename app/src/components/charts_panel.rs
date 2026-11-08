@@ -12,7 +12,7 @@ use crate::components::ability_icon::AbilityIcon;
 use crate::components::echarts::{
     dispose_chart, get_chart, init_chart, next_animation_frame, resize_chart, set_chart_option,
 };
-use crate::utils::{css_var, js_set};
+use crate::utils::{css_var, css_var_or, js_set};
 use baras_types::formatting;
 
 /// Sort column for the effects table.
@@ -486,7 +486,7 @@ fn build_hp_chart_option(
     js_set(&y_axis_left, "min", &JsValue::from_f64(0.0));
     js_set(&y_axis_left, "max", &JsValue::from_f64(100.0));
     let y_label_left = js_sys::Object::new();
-    js_set(&y_label_left, "color", &JsValue::from_str("#f1c40f"));
+    js_set(&y_label_left, "color", &JsValue::from_str(&css_var_or("--lt-yellow", "#f1c40f")));
     js_set(&y_axis_left, "axisLabel", &y_label_left);
     let y_split_left = js_sys::Object::new();
     js_set(&y_split_left, "show", &JsValue::FALSE);
@@ -499,7 +499,7 @@ fn build_hp_chart_option(
     js_set(&y_axis_right, "name", &JsValue::from_str("EHT"));
     js_set(&y_axis_right, "position", &JsValue::from_str("right"));
     let y_label_right = js_sys::Object::new();
-    js_set(&y_label_right, "color", &JsValue::from_str("#2ecc71"));
+    js_set(&y_label_right, "color", &JsValue::from_str(&css_var_or("--lt-green", "#2ecc71")));
     js_set(&y_axis_right, "axisLabel", &y_label_right);
     let y_split_right = js_sys::Object::new();
     js_set(&y_split_right, "show", &JsValue::FALSE);
@@ -1367,9 +1367,9 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                         rsx! {
                                             tr {
                                                 th { class: "sortable", onclick: sort_click(EffectSort::Name), "Effect{arrow(EffectSort::Name)}" }
-                                                th { class: "num sortable", onclick: sort_click(EffectSort::Applications), "Applications{arrow(EffectSort::Applications)}" }
-                                                th { class: "num sortable", onclick: sort_click(EffectSort::Uptime), "Uptime{arrow(EffectSort::Uptime)}" }
-                                                th { class: "num sortable", onclick: sort_click(EffectSort::Pct), "%{arrow(EffectSort::Pct)}" }
+                                                th { class: "num sortable col-apps", title: "Applications", onclick: sort_click(EffectSort::Applications), "Apps{arrow(EffectSort::Applications)}" }
+                                                th { class: "num sortable col-uptime", onclick: sort_click(EffectSort::Uptime), "Uptime{arrow(EffectSort::Uptime)}" }
+                                                th { class: "num sortable col-pct", onclick: sort_click(EffectSort::Pct), "%{arrow(EffectSort::Pct)}" }
                                             }
                                         }
                                     }
@@ -1395,13 +1395,13 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                                                         }
                                                         selected_effects.set(effects);
                                                     },
-                                                    td { class: "effect-name-cell",
+                                                    td { class: "effect-name-cell", title: "{effect.effect_name}",
                                                         div { class: "effect-name-inner",
                                                             AbilityIcon { key: "{icon_id}", ability_id: icon_id, size: 16 }
                                                             if effect.effect_name.is_empty() {
                                                                 span { class: "effect-id-fallback", "{eid}" }
                                                             } else {
-                                                                "{effect.effect_name}"
+                                                                span { class: "effect-name-text", "{effect.effect_name}" }
                                                             }
                                                         }
                                                     }

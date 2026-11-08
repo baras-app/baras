@@ -24,6 +24,13 @@ pub fn css_var(name: &str) -> String {
         .unwrap_or_default()
 }
 
+/// `css_var`, or `fallback` when the property is unset (the `--lt-*` text
+/// colors exist only in the light theme; dark keeps the original hue).
+pub fn css_var_or(name: &str, fallback: &str) -> String {
+    let v = css_var(name);
+    if v.is_empty() { fallback.to_string() } else { v }
+}
+
 /// Switch the app's color theme by toggling `data-theme` on the root element.
 pub fn apply_theme(light: bool) {
     if let Some(root) = web_sys::window()
