@@ -4191,16 +4191,23 @@ a.contributor-name:hover {
    Effect Editor Panel
    ═══════════════════════════════════════════════════════════════════════════════ */
 
+/* Main column of the effects editor (inside .editor-layout) */
 .effect-editor-panel {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--gradient-panel);
-  border-radius: var(--radius-xl);
-  padding: 1em;
   overflow: hidden;
-  border: 1px solid var(--border-accent);
 }
+
+/* ─── Effects Sidebar Filters (history toolbar controls) ─────────────────────── */
+.history-seg .seg.origin-seg .origin-badge {
+  width: 15px;
+  height: 15px;
+  font-size: 10px;
+}
+
+.history-seg .seg.active.origin-seg.custom { box-shadow: inset 0 -2px 0 var(--color-success, #2ecc71); }
+.history-seg .seg.active.origin-seg.modified { box-shadow: inset 0 -2px 0 #c39bd3; }
+.history-seg .seg.active.origin-seg.builtin { box-shadow: inset 0 -2px 0 var(--swtor-blue-bright, #6ab0ff); }
 
 .effect-editor-header {
   display: flex;
@@ -5243,6 +5250,19 @@ a.contributor-name:hover {
 .explorer-sidebar.collapsed .sidebar-header {
   border-bottom: none;
   padding: 0.5em;
+}
+
+/* Count under the fold toggle (e.g. active filters) */
+.sidebar-collapsed-badge {
+  align-self: center;
+  min-width: 18px;
+  padding: 0 0.4em;
+  border-radius: 8px;
+  background: #d9a441;
+  color: #1a1a1a;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-align: center;
 }
 
 .sidebar-header-row {

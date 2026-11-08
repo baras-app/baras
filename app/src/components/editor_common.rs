@@ -27,18 +27,37 @@ impl Origin {
             Self::Custom
         }
     }
+
+    /// Modifier class shared by the badge and the origin filter toggle
+    pub fn css_class(&self) -> &'static str {
+        match self {
+            Self::New => "new",
+            Self::Builtin => "builtin",
+            Self::Modified => "modified",
+            Self::Custom => "custom",
+        }
+    }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::New => "New",
+            Self::Builtin => "Built-in",
+            Self::Modified => "Modified",
+            Self::Custom => "Custom",
+        }
+    }
 }
 
 /// One-letter origin marker; `kind` names the item in the tooltip ("timer")
 #[component]
 pub fn OriginBadge(origin: Origin, kind: &'static str) -> Element {
-    let (letter, class, title) = match origin {
-        Origin::New => ("N", "new", "New: not yet saved".to_string()),
-        Origin::Builtin => ("B", "builtin", "Built-in: ships with the app".to_string()),
-        Origin::Modified => ("M", "modified", format!("Modified: built-in {kind} you have edited")),
-        Origin::Custom => ("C", "custom", "Custom: created by you".to_string()),
+    let (letter, title) = match origin {
+        Origin::New => ("N", "New: not yet saved".to_string()),
+        Origin::Builtin => ("B", "Built-in: ships with the app".to_string()),
+        Origin::Modified => ("M", format!("Modified: built-in {kind} you have edited")),
+        Origin::Custom => ("C", "Custom: created by you".to_string()),
     };
-    rsx! { span { class: "origin-badge {class}", title: "{title}", "{letter}" } }
+    rsx! { span { class: "origin-badge {origin.css_class()}", title: "{title}", "{letter}" } }
 }
 
 /// Save, optional Duplicate, any extra buttons (`children`), then the removal

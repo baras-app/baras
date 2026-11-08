@@ -244,27 +244,19 @@ fn ScanBar(backfill: Backfill, status: Resource<HistoryStatus>) -> Element {
     }
 }
 
-/// Top of a view's sidebar: title and the collapse toggle. The folded state
-/// is shared by Boss Statistics and Raid Summaries and kept for the session.
+/// Sidebar header whose folded state is shared by Boss Statistics and Raid
+/// Summaries and kept for the session.
 #[component]
 fn SidebarHeader(state: Signal<UiSessionState>, icon: &'static str, title: &'static str) -> Element {
-    let collapsed = state.read().history.sidebar_collapsed;
     rsx! {
-        div { class: "sidebar-header",
-            div { class: "sidebar-header-row",
-                if !collapsed {
-                    h3 { i { class: "{icon}" } " {title}" }
-                }
-                button {
-                    class: "sidebar-collapse-btn",
-                    title: if collapsed { "Expand {title}" } else { "Collapse {title}" },
-                    onclick: move |_| {
-                        let mut s = state.write();
-                        s.history.sidebar_collapsed = !s.history.sidebar_collapsed;
-                    },
-                    i { class: if collapsed { "fa-solid fa-angles-right" } else { "fa-solid fa-angles-left" } }
-                }
-            }
+        crate::components::sidebar_header::SidebarHeader {
+            icon,
+            title,
+            collapsed: state.read().history.sidebar_collapsed,
+            on_toggle: move |_| {
+                let mut s = state.write();
+                s.history.sidebar_collapsed = !s.history.sidebar_collapsed;
+            },
         }
     }
 }

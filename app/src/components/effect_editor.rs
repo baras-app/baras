@@ -12,6 +12,7 @@ use super::encounter_editor::InlineNameCreator;
 use super::encounter_editor::triggers::{
     EffectSelectorEditor, EntityFilterDropdown,
 };
+use crate::components::effect_sidebar::{EffectSidebar, matches_filters};
 use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
 use crate::api;
 use super::sound_picker::SoundPicker;
@@ -329,9 +330,11 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     let mut import_toml_content = use_signal(|| None::<String>);
 
     // Extract persisted state fields
-    let mut search_query = use_signal(|| props.state.read().effects_editor.search_query.clone());
+    let search_query = use_signal(|| props.state.read().effects_editor.search_query.clone());
     let mut expanded_effect = use_signal(|| props.state.read().effects_editor.expanded_effect.clone());
     let mut hide_disabled_effects = use_signal(|| props.state.read().effects_editor.hide_disabled_effects);
+    let filters = use_signal(|| props.state.read().effects_editor.filters.clone());
+    let sidebar_collapsed = use_signal(|| props.state.read().effects_editor.sidebar_collapsed);
 
     // Sync persisted state back to unified state
     use_effect(move || {
@@ -339,6 +342,8 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         state.effects_editor.search_query = search_query.read().clone();
         state.effects_editor.expanded_effect = expanded_effect.read().clone();
         state.effects_editor.hide_disabled_effects = *hide_disabled_effects.read();
+        state.effects_editor.filters = filters.read().clone();
+        state.effects_editor.sidebar_collapsed = *sidebar_collapsed.read();
     });
 
     // Load effects on mount
@@ -369,30 +374,18 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         }
     });
 
-    // Filter effects based on search query and hide-disabled toggle
-    let filtered_effects = use_memo(move || {
+    // Name search + hide-disabled; the sidebar counts against this list
+    let searched_effects = use_memo(move || {
         let query = search_query().to_lowercase();
         let hide_disabled = hide_disabled_effects();
-
         effects()
             .into_iter()
-            .filter(|e| {
-                if hide_disabled && !e.enabled {
-                    return false;
-                }
-                if !query.is_empty() {
-                    return e.name.to_lowercase().contains(&query)
-                        || e.id.to_lowercase().contains(&query)
-                        || e.display_targets
-                            .iter()
-                            .any(|t| t.label().to_lowercase().contains(&query))
-                        || e.disciplines
-                            .iter()
-                            .any(|d| d.to_lowercase().contains(&query));
-                }
-                true
-            })
+            .filter(|e| !(hide_disabled && !e.enabled) && (query.is_empty() || e.name.to_lowercase().contains(&query)))
             .collect::<Vec<_>>()
+    });
+    let filtered_effects = use_memo(move || {
+        let f = filters.read();
+        searched_effects().into_iter().filter(|e| matches_filters(&f, e)).collect::<Vec<_>>()
     });
 
     // Handlers
@@ -557,214 +550,206 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     };
 
     rsx! {
-        div { class: "effect-editor-panel",
-            // Header
-            div { class: "effect-editor-header",
-                h2 { "Effect Definitions" }
-                div { class: "header-right",
-                    if !save_status().is_empty() {
-                        span {
-                            class: if status_is_error() { "save-status error" } else { "save-status" },
-                            "{save_status()}"
+        div { class: "editor-layout",
+            EffectSidebar { effects: searched_effects, filters, search: search_query, collapsed: sidebar_collapsed }
+            div { class: "editor-main effect-editor-panel",
+                // Header
+                div { class: "effect-editor-header",
+                    h2 { "Effect Definitions" }
+                    div { class: "header-right",
+                        if !save_status().is_empty() {
+                            span {
+                                class: if status_is_error() { "save-status error" } else { "save-status" },
+                                "{save_status()}"
+                            }
                         }
-                    }
-                    span { class: "effect-count", "{filtered_effects().len()} effects" }
-                    {
-                        let disabled_count = effects().iter().filter(|e| !e.enabled).count();
-                        rsx! {
-                            if disabled_count > 0 {
-                                label { class: "flex items-center gap-xs text-xs text-muted cursor-pointer",
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: hide_disabled_effects(),
-                                        onchange: move |e| hide_disabled_effects.set(e.checked()),
+                        span { class: "effect-count", "{filtered_effects().len()} of {effects().len()} effects" }
+                        {
+                            let disabled_count = effects().iter().filter(|e| !e.enabled).count();
+                            rsx! {
+                                if disabled_count > 0 {
+                                    label { class: "flex items-center gap-xs text-xs text-muted cursor-pointer",
+                                        input {
+                                            r#type: "checkbox",
+                                            checked: hide_disabled_effects(),
+                                            onchange: move |e| hide_disabled_effects.set(e.checked()),
+                                        }
+                                        "Hide disabled ({disabled_count})"
                                     }
-                                    "Hide disabled ({disabled_count})"
                                 }
                             }
                         }
-                    }
-                    button {
-                        class: "btn btn-sm",
-                        onclick: move |_| {
-                            spawn(async move {
-                                match api::export_effects_toml(None).await {
-                                    Ok(toml) => {
-                                        if let Some(path) = api::save_file_dialog("effects_custom.toml").await {
-                                            match api::save_export_file(&path, &toml).await {
-                                                Ok(()) => {
-                                                    save_status.set("Exported".to_string());
-                                                    status_is_error.set(false);
-                                                }
-                                                Err(e) => {
-                                                    save_status.set(e);
-                                                    status_is_error.set(true);
+                        button {
+                            class: "btn btn-sm",
+                            onclick: move |_| {
+                                spawn(async move {
+                                    match api::export_effects_toml(None).await {
+                                        Ok(toml) => {
+                                            if let Some(path) = api::save_file_dialog("effects_custom.toml").await {
+                                                match api::save_export_file(&path, &toml).await {
+                                                    Ok(()) => {
+                                                        save_status.set("Exported".to_string());
+                                                        status_is_error.set(false);
+                                                    }
+                                                    Err(e) => {
+                                                        save_status.set(e);
+                                                        status_is_error.set(true);
+                                                    }
                                                 }
                                             }
                                         }
+                                        Err(e) => {
+                                            save_status.set(e);
+                                            status_is_error.set(true);
+                                        }
                                     }
-                                    Err(e) => {
-                                        save_status.set(e);
-                                        status_is_error.set(true);
-                                    }
-                                }
-                            });
-                        },
-                        "Export All"
-                    }
-                    button {
-                        class: "btn btn-sm",
-                        onclick: move |_| {
-                            spawn(async move {
-                                let Some(path) = api::open_toml_file_dialog().await else { return };
-                                let content = match api::read_import_file(&path).await {
-                                    Ok(c) => c,
-                                    Err(e) => {
-                                        save_status.set(e);
-                                        status_is_error.set(true);
-                                        return;
-                                    }
-                                };
-                                match api::preview_import_effects(&content).await {
-                                    Ok(preview) => {
-                                        import_toml_content.set(Some(content));
-                                        import_preview.set(Some(preview));
-                                    }
-                                    Err(e) => {
-                                        save_status.set(e);
-                                        status_is_error.set(true);
-                                    }
-                                }
-                            });
-                        },
-                        "Import"
-                    }
-                    InlineNameCreator {
-                        button_label: "+ New Effect",
-                        placeholder: "Effect name...",
-                        on_create: on_create,
-                    }
-                }
-            }
-
-            // Search bar
-            div { class: "effect-search-bar",
-                input {
-                    r#type: "text",
-                    placeholder: "Search by name, ID, overlay, or discipline...",
-                    value: "{search_query}",
-                    class: "search-input",
-                    oninput: move |e| search_query.set(e.value())
-                }
-            }
-
-            // Effect list (flat)
-            if loading() {
-                div { class: "empty-state", "Loading effects..." }
-            } else if filtered_effects().is_empty() && draft_effect().is_none() {
-                if effects().is_empty() {
-                    div { class: "empty-state-guidance",
-                        div { class: "empty-state-icon",
-                            i { class: "fa-solid fa-sparkles" }
+                                });
+                            },
+                            "Export All"
                         }
-                        p { "No effects defined yet" }
-                        p { class: "hint", "Click \"+ New Effect\" above to create your first effect" }
+                        button {
+                            class: "btn btn-sm",
+                            onclick: move |_| {
+                                spawn(async move {
+                                    let Some(path) = api::open_toml_file_dialog().await else { return };
+                                    let content = match api::read_import_file(&path).await {
+                                        Ok(c) => c,
+                                        Err(e) => {
+                                            save_status.set(e);
+                                            status_is_error.set(true);
+                                            return;
+                                        }
+                                    };
+                                    match api::preview_import_effects(&content).await {
+                                        Ok(preview) => {
+                                            import_toml_content.set(Some(content));
+                                            import_preview.set(Some(preview));
+                                        }
+                                        Err(e) => {
+                                            save_status.set(e);
+                                            status_is_error.set(true);
+                                        }
+                                    }
+                                });
+                            },
+                            "Import"
+                        }
+                        InlineNameCreator {
+                            button_label: "+ New Effect",
+                            placeholder: "Effect name...",
+                            on_create: on_create,
+                        }
+                    }
+                }
+
+                // Effect list (flat)
+                if loading() {
+                    div { class: "empty-state", "Loading effects..." }
+                } else if filtered_effects().is_empty() && draft_effect().is_none() {
+                    if effects().is_empty() {
+                        div { class: "empty-state-guidance",
+                            div { class: "empty-state-icon",
+                                i { class: "fa-solid fa-sparkles" }
+                            }
+                            p { "No effects defined yet" }
+                            p { class: "hint", "Click \"+ New Effect\" above to create your first effect" }
+                        }
+                    } else {
+                        div { class: "empty-state", "No effects match the search and filters" }
                     }
                 } else {
-                    div { class: "empty-state", "No effects match your search" }
-                }
-            } else {
-                div { class: "effect-list",
-                    // Draft effect at the top (if any)
-                    if let Some(draft) = draft_effect() {
-                        {
-                            let is_draft_expanded = expanded_effect() == Some(DRAFT_EFFECT_ID.to_string());
-                            rsx! {
-                                EffectRow {
-                                    key: "{DRAFT_EFFECT_ID}",
-                                    effect: draft,
-                                    expanded: is_draft_expanded,
-                                    is_draft: true,
-                                    on_toggle: move |_| {
-                                        if is_draft_expanded {
-                                            expanded_effect.set(None);
-                                        } else {
-                                            expanded_effect.set(Some(DRAFT_EFFECT_ID.to_string()));
-                                        }
-                                    },
-                                    on_save: on_save_draft,
-                                    on_delete: on_cancel_draft,
-                                    on_duplicate: move |_| {},
-                                    on_cancel: on_cancel_draft,
-                                }
-                            }
-                        }
-                    }
-
-                    // Existing effects
-                    for effect in filtered_effects() {
-                        {
-                            let effect_key = effect.id.clone();
-                            let is_effect_expanded = expanded_effect() == Some(effect_key.clone());
-                            let effect_clone = effect.clone();
-                            let effect_for_delete = effect.clone();
-                            let effect_for_duplicate = effect.clone();
-                            let effect_for_export = effect.clone();
-
-                            rsx! {
-                                EffectRow {
-                                    key: "{effect_key}",
-                                    effect: effect_clone,
-                                    expanded: is_effect_expanded,
-                                    is_draft: false,
-                                    on_toggle: move |_| {
-                                        if is_effect_expanded {
-                                            expanded_effect.set(None);
-                                        } else {
-                                            expanded_effect.set(Some(effect_key.clone()));
-                                        }
-                                    },
-                                    on_save: on_save,
-                                    on_delete: move |_| on_delete(effect_for_delete.clone()),
-                                    on_duplicate: move |_| on_duplicate(effect_for_duplicate.clone()),
-                                    on_export: move |_| on_export_effect(effect_for_export.clone()),
-                                    on_cancel: move |_| {},
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Import preview modal
-            if let Some(preview) = import_preview() {
-                EffectImportPreviewModal {
-                    preview: preview,
-                    on_confirm: move |_| {
-                        let content = import_toml_content().unwrap_or_default();
-                        import_preview.set(None);
-                        import_toml_content.set(None);
-                        spawn(async move {
-                            match api::import_effects_toml(&content).await {
-                                Ok(()) => {
-                                    // Refresh the effects list
-                                    if let Some(e) = api::get_effect_definitions().await {
-                                        effects.set(e);
+                    div { class: "effect-list",
+                        // Draft effect at the top (if any)
+                        if let Some(draft) = draft_effect() {
+                            {
+                                let is_draft_expanded = expanded_effect() == Some(DRAFT_EFFECT_ID.to_string());
+                                rsx! {
+                                    EffectRow {
+                                        key: "{DRAFT_EFFECT_ID}",
+                                        effect: draft,
+                                        expanded: is_draft_expanded,
+                                        is_draft: true,
+                                        on_toggle: move |_| {
+                                            if is_draft_expanded {
+                                                expanded_effect.set(None);
+                                            } else {
+                                                expanded_effect.set(Some(DRAFT_EFFECT_ID.to_string()));
+                                            }
+                                        },
+                                        on_save: on_save_draft,
+                                        on_delete: on_cancel_draft,
+                                        on_duplicate: move |_| {},
+                                        on_cancel: on_cancel_draft,
                                     }
-                                    save_status.set("Imported".to_string());
-                                    status_is_error.set(false);
-                                }
-                                Err(e) => {
-                                    save_status.set(e);
-                                    status_is_error.set(true);
                                 }
                             }
-                        });
-                    },
-                    on_cancel: move |_| {
-                        import_preview.set(None);
-                        import_toml_content.set(None);
-                    },
+                        }
+
+                        // Existing effects
+                        for effect in filtered_effects() {
+                            {
+                                let effect_key = effect.id.clone();
+                                let is_effect_expanded = expanded_effect() == Some(effect_key.clone());
+                                let effect_clone = effect.clone();
+                                let effect_for_delete = effect.clone();
+                                let effect_for_duplicate = effect.clone();
+                                let effect_for_export = effect.clone();
+
+                                rsx! {
+                                    EffectRow {
+                                        key: "{effect_key}",
+                                        effect: effect_clone,
+                                        expanded: is_effect_expanded,
+                                        is_draft: false,
+                                        on_toggle: move |_| {
+                                            if is_effect_expanded {
+                                                expanded_effect.set(None);
+                                            } else {
+                                                expanded_effect.set(Some(effect_key.clone()));
+                                            }
+                                        },
+                                        on_save: on_save,
+                                        on_delete: move |_| on_delete(effect_for_delete.clone()),
+                                        on_duplicate: move |_| on_duplicate(effect_for_duplicate.clone()),
+                                        on_export: move |_| on_export_effect(effect_for_export.clone()),
+                                        on_cancel: move |_| {},
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Import preview modal
+                if let Some(preview) = import_preview() {
+                    EffectImportPreviewModal {
+                        preview: preview,
+                        on_confirm: move |_| {
+                            let content = import_toml_content().unwrap_or_default();
+                            import_preview.set(None);
+                            import_toml_content.set(None);
+                            spawn(async move {
+                                match api::import_effects_toml(&content).await {
+                                    Ok(()) => {
+                                        // Refresh the effects list
+                                        if let Some(e) = api::get_effect_definitions().await {
+                                            effects.set(e);
+                                        }
+                                        save_status.set("Imported".to_string());
+                                        status_is_error.set(false);
+                                    }
+                                    Err(e) => {
+                                        save_status.set(e);
+                                        status_is_error.set(true);
+                                    }
+                                }
+                            });
+                        },
+                        on_cancel: move |_| {
+                            import_preview.set(None);
+                            import_toml_content.set(None);
+                        },
+                    }
                 }
             }
         }
@@ -883,7 +868,7 @@ fn EffectImportPreviewModal(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Bundled + user override = edited built-in
-fn effect_origin(is_draft: bool, is_bundled: bool, is_user_override: bool) -> Origin {
+pub(crate) fn effect_origin(is_draft: bool, is_bundled: bool, is_user_override: bool) -> Origin {
     if is_draft { Origin::New } else { Origin::of(is_bundled && !is_user_override, is_bundled && is_user_override) }
 }
 
@@ -2250,7 +2235,7 @@ fn EffectEditForm(
 // ─────────────────────────────────────────────────────────────────────────────
 
 // All discipline display names grouped by class (Imp / Rep mirror pairs)
-const ALL_DISCIPLINES: &[(&str, &[&str])] = &[
+pub(crate) const ALL_DISCIPLINES: &[(&str, &[&str])] = &[
     ("Sorcerer / Sage", &["Lightning", "Madness", "Corruption", "Telekinetics", "Balance", "Seer"]),
     ("Assassin / Shadow", &["Hatred", "Darkness", "Deception", "Infiltration", "Kinetic Combat", "Serenity"]),
     ("Juggernaut / Guardian", &["Vengeance", "Immortal", "Rage", "Focus", "Vigilance", "Defense"]),
@@ -2262,7 +2247,7 @@ const ALL_DISCIPLINES: &[(&str, &[&str])] = &[
 ];
 
 /// Role display names selectable when `include_roles` is set
-const ALL_ROLES: &[&str] = &["Tank", "Healer", "DPS"];
+pub(crate) const ALL_ROLES: &[&str] = &["Tank", "Healer", "DPS"];
 
 #[component]
 fn DisciplineSelector(

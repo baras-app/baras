@@ -4213,6 +4213,21 @@ pub struct EffectsEditorState {
     pub search_query: String,
     /// Whether to hide disabled effects
     pub hide_disabled_effects: bool,
+    /// Sidebar filters
+    pub filters: EffectFilters,
+    /// Whether the filter sidebar is folded
+    pub sidebar_collapsed: bool,
+}
+
+/// Effects editor sidebar selection, one value per section; `None` = all
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct EffectFilters {
+    /// Origin label ("Custom", "Modified", "Built-in")
+    pub origin: Option<String>,
+    /// Display target label, or the "no overlay" entry
+    pub overlay: Option<String>,
+    /// Discipline or role name, or the "any discipline" entry
+    pub discipline: Option<String>,
 }
 
 #[cfg(test)]

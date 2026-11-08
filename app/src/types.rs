@@ -35,6 +35,7 @@ pub use baras_types::{
     EffectSelector,
     EffectStackConfig,
     EffectsAConfig,
+    EffectFilters,
     EffectsEditorState,
     EncounterBuilderState,
     EntityFilter,
