@@ -398,6 +398,12 @@ pub async fn get_active_profile() -> Option<String> {
     from_js(result).unwrap_or(None)
 }
 
+/// Whether current overlay settings differ from the active profile
+pub async fn is_profile_dirty() -> bool {
+    let result = invoke("is_profile_dirty", JsValue::NULL).await;
+    from_js(result).unwrap_or(false)
+}
+
 /// Save current settings to a profile
 pub async fn save_profile(name: &str) -> Result<(), String> {
     try_invoke("save_profile", build_args("name", &name)).await?;

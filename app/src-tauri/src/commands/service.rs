@@ -487,6 +487,11 @@ pub async fn get_active_profile(
 }
 
 #[tauri::command]
+pub async fn is_profile_dirty(handle: State<'_, ServiceHandle>) -> Result<bool, String> {
+    Ok(handle.config().await.is_profile_dirty())
+}
+
+#[tauri::command]
 pub async fn save_profile(
     name: String,
     handle: State<'_, ServiceHandle>,

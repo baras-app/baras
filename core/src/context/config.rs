@@ -52,10 +52,21 @@ pub trait AppConfigExt {
     fn save(self) -> Result<(), ConfigError>;
     fn save_profile(&mut self, name: String) -> Result<(), &'static str>;
     fn load_profile(&mut self, name: &str) -> Result<(), &'static str>;
+    fn is_profile_dirty(&self) -> bool;
     fn delete_profile(&mut self, name: &str) -> Result<(), &'static str>;
     fn rename_profile(&mut self, old_name: &str, new_name: String) -> Result<(), &'static str>;
     fn profile_names(&self) -> Vec<String>;
     fn is_profile_name_available(&self, name: &str) -> bool;
+}
+
+/// Settings as stored in a profile: behavioral flags reset to defaults
+/// since they are independent of profiles.
+fn profile_snapshot(settings: &OverlaySettings) -> OverlaySettings {
+    let mut snapshot = settings.clone();
+    snapshot.overlays_visible = true;
+    snapshot.hide_when_not_live = false;
+    snapshot.hide_during_conversations = false;
+    snapshot
 }
 
 impl AppConfigExt for AppConfig {
@@ -100,11 +111,7 @@ impl AppConfigExt for AppConfig {
     }
 
     fn save_profile(&mut self, name: String) -> Result<(), &'static str> {
-        // Clone settings but reset behavioral flags to defaults (they are independent of profiles)
-        let mut settings_to_save = self.overlay_settings.clone();
-        settings_to_save.overlays_visible = true;
-        settings_to_save.hide_when_not_live = false;
-        settings_to_save.hide_during_conversations = false;
+        let settings_to_save = profile_snapshot(&self.overlay_settings);
 
         // Check if profile already exists (update case)
         if let Some(profile) = self.profiles.iter_mut().find(|p| p.name == name) {
@@ -142,6 +149,23 @@ impl AppConfigExt for AppConfig {
 
         self.active_profile_name = Some(name.to_string());
         Ok(())
+    }
+
+    /// Whether current overlay settings differ from the active profile's saved snapshot.
+    /// Compared via serde values so the nested settings tree needs no `PartialEq`.
+    fn is_profile_dirty(&self) -> bool {
+        let Some(name) = self.active_profile_name.as_deref() else {
+            return false;
+        };
+        let Some(profile) = self.profiles.iter().find(|p| p.name == name) else {
+            return false;
+        };
+        let current = serde_json::to_value(profile_snapshot(&self.overlay_settings));
+        let saved = serde_json::to_value(&profile.settings);
+        match (current, saved) {
+            (Ok(current), Ok(saved)) => current != saved,
+            _ => true,
+        }
     }
 
     fn delete_profile(&mut self, name: &str) -> Result<(), &'static str> {

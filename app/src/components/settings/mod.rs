@@ -235,7 +235,7 @@ pub fn SettingsPanel(
                 async move {
                     match api::reset_overlay_position(&key).await {
                         Ok(_) => {
-                            profile_dirty.set(true);
+                            profile_dirty.set(api::is_profile_dirty().await);
                             toast.show(format!("{reset_label} position reset"), ToastSeverity::Normal);
                         }
                         Err(err) => toast.show(format!("Failed to reset position: {err}"), ToastSeverity::Normal),

@@ -554,7 +554,10 @@ pub fn App() -> Element {
     // Backend emits this only when locking persisted a position that actually changed
     use_future(move || async move {
         let closure = Closure::new(move |_event: JsValue| {
-            let _ = profile_dirty.try_write().map(|mut w| *w = true);
+            spawn_local(async move {
+                let dirty = api::is_profile_dirty().await;
+                let _ = profile_dirty.try_write().map(|mut w| *w = dirty);
+            });
         });
         api::tauri_listen("overlay-positions-changed", &closure).await;
         closure.forget();
@@ -1283,7 +1286,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Personal, personal_on).await {
                                                 personal_enabled.set(!personal_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1299,7 +1302,7 @@ pub fn App() -> Element {
                                             if api::toggle_overlay(OverlayType::Raid, raid_on).await {
                                                 raid_enabled.set(!raid_on);
                                                 if raid_on { rearrange_mode.set(false); }
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1314,7 +1317,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Alerts, alerts_on).await {
                                                 alerts_enabled.set(!alerts_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1329,7 +1332,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::CombatTime, combat_time_on).await {
                                                 combat_time_enabled.set(!combat_time_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1344,7 +1347,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::OperationTimer, operation_timer_on).await {
                                                 operation_timer_enabled.set(!operation_timer_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1359,7 +1362,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::AbilityCast, ability_cast_on).await {
                                                 ability_cast_enabled.set(!ability_cast_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1382,7 +1385,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::BossHealth, boss_health_on).await {
                                                 boss_health_enabled.set(!boss_health_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1397,7 +1400,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Challenges, challenges_on).await {
                                                 challenges_enabled.set(!challenges_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1412,7 +1415,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::TimersA, timers_on).await {
                                                 timers_enabled.set(!timers_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1427,7 +1430,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::TimersB, timers_b_on).await {
                                                 timers_b_enabled.set(!timers_b_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1442,7 +1445,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Notes, notes_on).await {
                                                 notes_enabled.set(!notes_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1457,7 +1460,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::AbilityQueue, ability_queue_on).await {
                                                 ability_queue_enabled.set(!ability_queue_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1480,7 +1483,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EffectsA, effects_a_on).await {
                                                 effects_a_enabled.set(!effects_a_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1495,7 +1498,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EffectsB, effects_b_on).await {
                                                 effects_b_enabled.set(!effects_b_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1510,7 +1513,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EffectsC, effects_c_on).await {
                                                 effects_c_enabled.set(!effects_c_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1525,7 +1528,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::Cooldowns, cooldowns_on).await {
                                                 cooldowns_enabled.set(!cooldowns_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1540,7 +1543,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::CooldownsB, cooldowns_b_on).await {
                                                 cooldowns_b_enabled.set(!cooldowns_b_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1555,7 +1558,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::DotTracker, dot_tracker_on).await {
                                                 dot_tracker_enabled.set(!dot_tracker_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1586,7 +1589,7 @@ pub fn App() -> Element {
                                                             let mut map = metric_overlays_enabled();
                                                             map.insert(ot, !is_on);
                                                             metric_overlays_enabled.set(map);
-                                                            profile_dirty.set(true);
+                                                            profile_dirty.set(api::is_profile_dirty().await);
                                                         }
                                                     }); },
                                                     on_settings: open_overlay_settings,
@@ -1612,7 +1615,7 @@ pub fn App() -> Element {
                                         on_toggle: move |_| { spawn(async move {
                                             if api::toggle_overlay(OverlayType::EnemyFrames, enemy_frames_on).await {
                                                 enemy_frames_enabled.set(!enemy_frames_on);
-                                                profile_dirty.set(true);
+                                                profile_dirty.set(api::is_profile_dirty().await);
                                             }
                                         }); },
                                         on_settings: open_overlay_settings,
@@ -1635,7 +1638,7 @@ pub fn App() -> Element {
                                                             let mut map = metric_overlays_enabled();
                                                             map.insert(ot, !is_on);
                                                             metric_overlays_enabled.set(map);
-                                                            profile_dirty.set(true);
+                                                            profile_dirty.set(api::is_profile_dirty().await);
                                                         }
                                                     }); },
                                                     on_settings: open_overlay_settings,

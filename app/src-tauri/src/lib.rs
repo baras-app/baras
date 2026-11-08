@@ -333,6 +333,7 @@ pub fn run() {
             // Profile commands
             commands::get_profile_names,
             commands::get_active_profile,
+            commands::is_profile_dirty,
             commands::save_profile,
             commands::load_profile,
             commands::delete_profile,
