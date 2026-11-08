@@ -1925,6 +1925,10 @@ button:active {
 }
 .settings-top-tabs .tab-btn {
   flex: 1;
+  justify-content: center;
+  padding: 0.55em 1em;
+  font-size: 0.95em;
+  font-weight: 600;
 }
 .overlay-select-row {
   margin-bottom: 0.25em;
@@ -1951,7 +1955,7 @@ button:active {
     var(--btn-top) 0%,
     var(--btn-bottom) 100%
   );
-  border: 1px solid rgba(80, 80, 90, 0.4);
+  border: 1px solid var(--border-medium);
   color: var(--text-muted);
 }
 
@@ -6280,7 +6284,7 @@ a.contributor-name:hover {
 }
 
 /* Checkboxes drawn by hand: the native unchecked box is a bright white square */
-:is(.form-card, .settings-page) input[type="checkbox"] {
+:is(.form-card, .settings-check) input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   box-sizing: border-box;
@@ -6297,22 +6301,22 @@ a.contributor-name:hover {
   cursor: pointer;
 }
 
-:is(.form-card, .settings-page) input[type="checkbox"]:hover {
+:is(.form-card, .settings-check) input[type="checkbox"]:hover {
   border-color: var(--border-accent-heavy);
 }
 
-:is(.form-card, .settings-page) input[type="checkbox"]:checked {
+:is(.form-card, .settings-check) input[type="checkbox"]:checked {
   background-color: var(--swtor-blue);
   border-color: var(--swtor-blue);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.5 5.2l2.3 2.3 4.7-5' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-:is(.form-card, .settings-page) input[type="checkbox"]:disabled {
+:is(.form-card, .settings-check) input[type="checkbox"]:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-:is(.form-card, .settings-page) input[type="checkbox"]:focus-visible {
+:is(.form-card, .settings-check) input[type="checkbox"]:focus-visible {
   outline: 2px solid var(--border-accent-heavy);
   outline-offset: 1px;
 }

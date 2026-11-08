@@ -54,8 +54,7 @@ pub fn GlobalTab(draft: SettingsDraft) -> Element {
 
         div { class: "settings-section",
             h4 { "Visibility" }
-            div { class: "setting-row",
-                label { "Auto-hide when not live" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: hide_when_not_live(),
@@ -74,10 +73,10 @@ pub fn GlobalTab(draft: SettingsDraft) -> Element {
                         });
                     },
                 }
+                "Auto-hide when not live"
             }
             p { class: "hint", "Hide every overlay while viewing a historical log or logged out." }
-            div { class: "setting-row",
-                label { "Hide in conversations" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: hide_during_conversations(),
@@ -94,6 +93,7 @@ pub fn GlobalTab(draft: SettingsDraft) -> Element {
                         });
                     },
                 }
+                "Hide in conversations"
             }
             p { class: "hint", "Hide every overlay during in-game conversations." }
         }
