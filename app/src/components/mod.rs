@@ -49,7 +49,7 @@ pub use history::{CleanupRules, HistoryPanel};
 pub use hotkey_input::HotkeyInput;
 pub use profile_unsaved::ProfileUnsavedHint;
 pub use parsely_upload_modal::{ParselyUploadModal, use_parsely_upload, use_parsely_upload_provider};
-pub use session_settings::SessionSettingsPill;
+pub use session_settings::{AlacrityPill, BossNotesMenu, OpTimerControl};
 pub use session_status::SessionStatusChip;
 pub use settings::{SettingsPanel, SettingsSection};
 pub use slider::{NumberInput, Slider};

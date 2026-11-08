@@ -8,7 +8,7 @@ use wasm_bindgen_futures::spawn_local;
 use crate::api::{self, BossNotesInfo};
 use crate::components::{
     ContributorsModal, DataExplorerPanel, EffectEditorPanel, EncounterEditorPanel,
-    CharactersPanel, CleanupRules, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, NumberInput, ProfileUnsavedHint, SessionSettingsPill, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
+    CharactersPanel, CleanupRules, FileOpenBanner, HistoryPanel, LockoutResetSetting, HotkeyInput, NavMenu, OverlayToggle, ParselyUploadModal, NumberInput, ProfileUnsavedHint, AlacrityPill, BossNotesMenu, OpTimerControl, SessionStatusChip, SettingsPanel, SettingsSection, Slider, ToastFrame, ToastSeverity,
     use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
@@ -571,15 +571,16 @@ pub fn App() -> Element {
         let closure = Closure::new(move |event: JsValue| {
             // event.payload has { elapsed_secs, is_running, operation_name }
             if let Some(payload) = js_sys::Reflect::get(&event, &"payload".into()).ok() {
+                // try_write: this runs outside the Dioxus runtime, where .set() can panic
                 if let Some(secs) = js_sys::Reflect::get(&payload, &"elapsed_secs".into()).ok().and_then(|v| v.as_f64()) {
-                    op_timer_secs.set(secs as u64);
+                    let _ = op_timer_secs.try_write().map(|mut w| *w = secs as u64);
                 }
                 if let Some(running) = js_sys::Reflect::get(&payload, &"is_running".into()).ok().and_then(|v| v.as_bool()) {
-                    op_timer_running.set(running);
+                    let _ = op_timer_running.try_write().map(|mut w| *w = running);
                 }
                 let name = js_sys::Reflect::get(&payload, &"operation_name".into()).ok()
                     .and_then(|v| v.as_string());
-                op_timer_name.set(name);
+                let _ = op_timer_name.try_write().map(|mut w| *w = name);
             }
         });
         api::tauri_listen("operation-timer-tick", &closure).await;
@@ -1114,7 +1115,8 @@ pub fn App() -> Element {
                                         // Duration badge
                                         if let Some(ref duration) = info.duration_formatted {
                                             span { class: "session-duration-badge",
-                                                i { class: "fa-solid fa-stopwatch" }
+                                                title: session_time_text.as_deref().map(|t| format!("Session: {t}")).unwrap_or_default(),
+                                                i { class: "fa-regular fa-clock" }
                                                 " {duration}"
                                             }
                                         }
@@ -1129,12 +1131,10 @@ pub fn App() -> Element {
                                             }
                                         }
 
-                                        SessionSettingsPill {
-                                            op_timer_secs,
-                                            op_timer_running,
-                                            area_bosses,
-                                            selected_boss_id,
-                                            session_time: session_time_text.clone(),
+                                        AlacrityPill {}
+                                        OpTimerControl { op_timer_secs, op_timer_running, live: live_tailing }
+                                        if notes_enabled() {
+                                            BossNotesMenu { area_bosses, selected_boss_id }
                                         }
 
                                         // Parsely upload (inline in summary)

@@ -1373,13 +1373,22 @@ button:active {
   padding: 0 0.8em;
   border-radius: var(--radius-md);
   font-size: 0.85em;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   flex-shrink: 0;
-  /* Same quiet pill as the controls beside it; the dot says which state */
-  color: var(--text-secondary);
-  background: rgba(var(--fg-rgb), 0.04);
-  border: 1px solid rgba(var(--fg-rgb), 0.1);
+  /* Plain status text, not a pill: no fill or border, so it never reads as a
+     button beside the controls; the dot and label colour carry the state */
+  padding: 0 0.25em;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+}
+.session-status-chip.live {
+  color: var(--color-success);
+}
+.session-status-chip.prior,
+.session-status-chip.historical {
+  color: var(--color-warning);
 }
 .session-status-chip .status-dot {
   width: 8px;
@@ -1471,19 +1480,6 @@ button:active {
   color: var(--color-warning);
 }
 
-.session-time-info {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  font-size: 0.8em;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-.session-time-info i {
-  font-size: 0.9em;
-  opacity: 0.7;
-}
 
 .dashboard-role-icon {
   width: 18px;
@@ -1545,27 +1541,8 @@ button:active {
   color: var(--swtor-blue-light, #8ab4f8);
 }
 
-.notes-boss-select {
-  flex: 1;
-  padding: 0.3em 0.5em;
-  font-size: 0.85em;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-dim);
-  border-radius: 4px;
-  color: var(--text-primary);
-  cursor: pointer;
-  max-width: 200px;
-}
 
-.notes-boss-select:hover {
-  border-color: var(--swtor-blue);
-}
 
-.notes-boss-select:focus {
-  outline: none;
-  border-color: var(--swtor-blue);
-  box-shadow: 0 0 0 2px rgba(79, 192, 255, 0.2);
-}
 
 /* ── Duration badge ── */
 .session-duration-badge {
@@ -1611,61 +1588,11 @@ button:active {
 
 /* ── Operation timer (session settings row) ── */
 
-.op-timer-display {
-  /* Same explicit box as the alacrity and bias inputs */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 1.9em;
-  box-sizing: border-box;
-  font-size: 0.85em;
-  font-weight: 500;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-  min-width: 3.5em;
-  text-align: center;
-  padding: 0 0.5em;
-  background: var(--bg-raised);
-  border: 1px solid rgba(var(--fg-rgb), 0.1);
-  border-radius: var(--radius-sm);
-  user-select: none;
-}
 
-.op-timer-display.running {
-  color: var(--swtor-gold);
-  border-color: var(--swtor-gold-dim);
-}
 
-.btn-op-timer {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  font-size: 0.7em;
-  color: var(--text-tertiary);
-  background: transparent;
-  border: 1px solid rgba(var(--fg-rgb), 0.1);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.2s;
-}
 
-.btn-op-timer:hover {
-  color: var(--text-primary);
-  background: rgba(var(--fg-rgb), 0.05);
-  border-color: var(--swtor-blue-dim);
-}
 
-.btn-op-timer-reset {
-  color: var(--text-muted);
-}
 
-.btn-op-timer-reset:hover {
-  color: var(--swtor-red);
-  border-color: rgba(255, 74, 74, 0.3);
-}
 
 /* Character mismatch warning banner */
 .session-mismatch-warning {
@@ -1724,7 +1651,6 @@ button:active {
   display: flex;
   align-items: center;
   gap: 0.5em;
-  margin-left: 0.8em;
   flex-shrink: 0;
 }
 
@@ -4031,6 +3957,10 @@ a.contributor-name:hover {
     margin-left: 0.1em;
   }
   .app-header .header-version .update-long {
+    display: none;
+  }
+  /* Status row: the alacrity pill keeps its value, the unit goes */
+  .alac-menu .btn-session-settings .unit {
     display: none;
   }
 }
@@ -6766,10 +6696,6 @@ a.contributor-name:hover {
   font-size: 0.95em;
 }
 
-.btn-session-settings.running .summary,
-.btn-session-settings.running .fa-stopwatch {
-  color: var(--swtor-gold);
-}
 
 .btn-session-settings .caret {
   font-size: 0.7em;
@@ -6830,9 +6756,79 @@ a.contributor-name:hover {
   color: var(--text-muted);
 }
 
-.session-settings-pop .notes-boss-select {
-  width: 100%;
-  max-width: none;
+
+/* The value never wraps; the pill keeps its size like its neighbours, and
+   the "alac" unit drops out at narrower widths (see the 1300px query) */
+.alac-menu {
+  flex-shrink: 0;
+}
+.alac-menu .btn-session-settings {
+  white-space: nowrap;
+}
+
+.session-settings-pop .pop-title {
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-heading);
+}
+
+/* Op timer: a pill like its neighbours with the buttons inside it */
+.op-timer-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 0.35em 0 0.7em;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  background: rgba(var(--fg-rgb), 0.04);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.op-timer-control.running {
+  color: var(--text-gold);
+  border-color: var(--swtor-gold-dim);
+}
+
+.op-timer-time {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+}
+
+.op-timer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 0.75em;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.op-timer-btn:hover {
+  color: var(--text-primary);
+  background: rgba(var(--fg-rgb), 0.08);
+}
+
+.op-timer-btn.reset:hover {
+  color: var(--color-error);
+}
+
+.op-timer-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: none;
 }
 
 .session-settings-pop .hint {
@@ -6842,14 +6838,7 @@ a.contributor-name:hover {
   color: var(--text-muted);
 }
 
-.session-settings-pop .divider {
-  height: 1px;
-  background: var(--border-dim);
-}
 
-.session-settings-pop .session-time-info {
-  margin-left: 0;
-}
 
 /* One control height across the status row */
 .status-row .header-profile-dropdown,

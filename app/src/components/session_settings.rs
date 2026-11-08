@@ -1,9 +1,10 @@
-//! Session settings behind one pill in the status row: the operation timer,
-//! the alacrity and bias numbers the HOT tracking uses (they follow the
-//! character's spec and gear, so they live with the session, not in
-//! Settings), and the boss notes selector. The pill shows what matters at a
-//! glance, the running timer or else the alacrity, and drops a small panel
-//! for the rest, so the row stays one line at any window width.
+//! Session tools in the status row, one control per job:
+//! - `AlacrityPill`: the alacrity and bias numbers HOT tracking uses (they
+//!   follow the character's spec and gear, so they live with the session,
+//!   not in Settings)
+//! - `OpTimerControl`: the operation timer, startable in one click
+//! - `BossNotesMenu`: which boss the Notes overlay shows (only rendered while
+//!   that overlay is on)
 
 use dioxus::prelude::*;
 
@@ -18,15 +19,12 @@ fn fmt_timer(secs: u64) -> String {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Alacrity + bias
+// ─────────────────────────────────────────────────────────────────────────
+
 #[component]
-pub fn SessionSettingsPill(
-    op_timer_secs: Signal<u64>,
-    op_timer_running: Signal<bool>,
-    area_bosses: Signal<Vec<BossNotesInfo>>,
-    selected_boss_id: Signal<Option<String>>,
-    /// "Logged on …" line for the panel footer
-    session_time: Option<String>,
-) -> Element {
+pub fn AlacrityPill() -> Element {
     let mut open = use_signal(|| false);
     let mut alacrity = use_signal(|| 0.0f32);
     let mut latency = use_signal(|| 0i16);
@@ -53,59 +51,24 @@ pub fn SessionSettingsPill(
         });
     };
 
-    let secs = op_timer_secs();
-    let running = op_timer_running();
-    let timer = fmt_timer(secs);
-    let bosses: Vec<BossNotesInfo> = area_bosses().iter().filter(|b| b.has_notes).cloned().collect();
-    let selected = selected_boss_id();
-
     rsx! {
-        div { class: "session-settings-menu",
+        div { class: "session-settings-menu alac-menu",
             button {
-                class: format!("btn btn-session-settings{}{}", if *open.read() { " open" } else { "" }, if running { " running" } else { "" }),
-                title: "Op timer, alacrity and bias, boss notes",
+                class: if open() { "btn btn-session-settings open" } else { "btn btn-session-settings" },
+                title: "Alacrity and bias",
                 onclick: move |e| {
                     e.stop_propagation();
                     open.toggle();
                 },
-                i { class: "fa-solid fa-sliders" }
-                if running {
-                    i { class: "fa-solid fa-stopwatch" }
-                    span { class: "summary", "{timer}" }
-                } else {
-                    span { class: "summary", "{alacrity():.2} %" }
-                    span { class: "unit", "alac" }
-                }
+                i { class: "fa-solid fa-bolt" }
+                span { class: "summary", "{alacrity():.2} %" }
+                span { class: "unit", "alac" }
                 i { class: "fa-solid fa-chevron-down caret" }
             }
-            if *open.read() {
+            if open() {
                 div { class: "nav-menu-backdrop", onclick: move |_| open.set(false) }
                 div { class: "session-settings-pop", onclick: move |e| e.stop_propagation(),
-                    div { class: "row",
-                        label { "Op timer" }
-                        div { class: "controls",
-                            span { class: if running { "op-timer-display running" } else { "op-timer-display" }, "{timer}" }
-                            button {
-                                class: "btn btn-op-timer",
-                                title: if running { "Stop" } else if secs > 0 { "Resume" } else { "Start" },
-                                onclick: move |_| {
-                                    spawn(async move {
-                                        if running { api::stop_operation_timer().await; } else { api::start_operation_timer().await; }
-                                    });
-                                },
-                                i { class: if running { "fa-solid fa-pause" } else { "fa-solid fa-play" } }
-                            }
-                            if secs > 0 || running {
-                                button {
-                                    class: "btn btn-op-timer btn-op-timer-reset",
-                                    title: "Reset",
-                                    onclick: move |_| { spawn(async move { api::reset_operation_timer().await; }); },
-                                    i { class: "fa-solid fa-rotate-left" }
-                                }
-                            }
-                        }
-                    }
-                    div { class: "divider" }
+                    span { class: "pop-title", "Alacrity" }
                     div { class: "row",
                         label { "Alacrity" }
                         div { class: "controls",
@@ -123,7 +86,7 @@ pub fn SessionSettingsPill(
                         }
                     }
                     div { class: "row",
-                        label { "Bias adjustment" }
+                        label { "Bias" }
                         div { class: "controls",
                             input {
                                 r#type: "text",
@@ -138,31 +101,113 @@ pub fn SessionSettingsPill(
                             span { class: "unit", "ms" }
                         }
                     }
-                    p { class: "hint", "Alacrity shortens your HOT durations. If tracked durations are consistently off, bias shifts them by this many milliseconds either way." }
-                    div { class: "divider" }
-                    div { class: "row",
-                        label { "Boss notes" }
-                        if bosses.is_empty() {
-                            select { class: "notes-boss-select", disabled: true, option { value: "", "No notes for this area" } }
-                        } else {
-                            select {
-                                class: "notes-boss-select",
-                                onchange: move |e| {
-                                    let id = e.value();
-                                    if !id.is_empty() {
-                                        selected_boss_id.set(Some(id.clone()));
-                                        spawn(async move { let _ = api::select_boss_notes(&id).await; });
-                                    }
-                                },
-                                option { value: "", "Select boss…" }
-                                for b in bosses.iter() {
-                                    option { value: "{b.id}", selected: selected.as_ref() == Some(&b.id), "{b.name}" }
+                    p { class: "hint", "Alacrity shortens the duration of certain cooldowns, procs, and ticking effects like HOTs and DOTs." }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Operation timer
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Hourglass + play/pause; the time and reset appear once there is time on it
+#[component]
+pub fn OpTimerControl(
+    op_timer_secs: Signal<u64>,
+    op_timer_running: Signal<bool>,
+    /// The service ignores timer commands outside live tailing
+    live: bool,
+) -> Element {
+    let secs = op_timer_secs();
+    let running = op_timer_running();
+    let started = secs > 0 || running;
+
+    rsx! {
+        div {
+            class: if running { "op-timer-control running" } else { "op-timer-control" },
+            title: if live { "Operation timer" } else { "Operation timer: only runs while live" },
+            i { class: "fa-solid fa-hourglass-half" }
+            if started {
+                span { class: "op-timer-time", "{fmt_timer(secs)}" }
+            }
+            button {
+                class: "op-timer-btn",
+                disabled: !live,
+                title: if !live { "Only available while live" } else if running { "Pause" } else if started { "Resume" } else { "Start operation timer" },
+                onclick: move |e| {
+                    e.stop_propagation();
+                    spawn(async move {
+                        if running { api::stop_operation_timer().await; } else { api::start_operation_timer().await; }
+                    });
+                },
+                i { class: if running { "fa-solid fa-pause" } else { "fa-solid fa-play" } }
+            }
+            if started {
+                button {
+                    class: "op-timer-btn reset",
+                    disabled: !live,
+                    title: "Reset",
+                    onclick: move |e| {
+                        e.stop_propagation();
+                        spawn(async move { api::reset_operation_timer().await; });
+                    },
+                    i { class: "fa-solid fa-rotate-left" }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Boss notes
+// ─────────────────────────────────────────────────────────────────────────
+
+#[component]
+pub fn BossNotesMenu(area_bosses: Signal<Vec<BossNotesInfo>>, selected_boss_id: Signal<Option<String>>) -> Element {
+    let mut open = use_signal(|| false);
+    let bosses: Vec<BossNotesInfo> = area_bosses().iter().filter(|b| b.has_notes).cloned().collect();
+    let selected = selected_boss_id();
+    let selected_name = bosses.iter().find(|b| selected.as_ref() == Some(&b.id)).map(|b| b.name.clone());
+    let none = bosses.is_empty();
+    let title = match (&selected_name, none) {
+        (_, true) => "Boss notes: none for this area".to_string(),
+        (Some(name), _) => format!("Boss notes: {name}"),
+        (None, _) => "Boss notes".to_string(),
+    };
+
+    rsx! {
+        div { class: "session-settings-menu",
+            button {
+                class: if open() { "btn btn-session-settings open" } else { "btn btn-session-settings" },
+                title: "{title}",
+                disabled: none,
+                onclick: move |e| {
+                    e.stop_propagation();
+                    open.toggle();
+                },
+                i { class: "fa-solid fa-note-sticky" }
+                i { class: "fa-solid fa-chevron-down caret" }
+            }
+            if open() {
+                div { class: "nav-menu-backdrop", onclick: move |_| open.set(false) }
+                div { class: "nav-menu-list", onclick: move |e| e.stop_propagation(),
+                    for b in bosses {
+                        button {
+                            key: "{b.id}",
+                            class: if selected.as_ref() == Some(&b.id) { "nav-menu-item active" } else { "nav-menu-item" },
+                            onclick: {
+                                let id = b.id.clone();
+                                move |_| {
+                                    let id = id.clone();
+                                    selected_boss_id.set(Some(id.clone()));
+                                    open.set(false);
+                                    spawn(async move { let _ = api::select_boss_notes(&id).await; });
                                 }
-                            }
+                            },
+                            "{b.name}"
                         }
-                    }
-                    if let Some(text) = session_time.as_ref() {
-                        span { class: "session-time-info", i { class: "fa-regular fa-calendar" } " {text}" }
                     }
                 }
             }
