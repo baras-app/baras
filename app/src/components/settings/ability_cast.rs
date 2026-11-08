@@ -27,8 +27,7 @@ pub fn AbilityCastTab(draft: SettingsDraft, actions: Element) -> Element {
                 },
             }
 
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.ability_cast.dynamic_background,
@@ -38,10 +37,10 @@ pub fn AbilityCastTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
 
-            div { class: "setting-row",
-                label { "Stack From Bottom" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.ability_cast.stack_from_bottom,
@@ -51,6 +50,7 @@ pub fn AbilityCastTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Stack From Bottom"
             }
 
             Slider {

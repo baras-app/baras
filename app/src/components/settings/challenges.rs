@@ -28,7 +28,7 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                 },
             }
 
-            h4 { style: "margin-top: 16px;", "Layout" }
+            h4 { "Layout" }
 
             {
                 let challenge_config = current_settings.challenge_overlay.clone();
@@ -131,11 +131,10 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                         }
                     }
 
-                    h4 { style: "margin-top: 16px;", "Display Options" }
+                    h4 { "Display Options" }
 
                     // Show footer
-                    div { class: "setting-row",
-                        label { "Show Footer Totals" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: challenge_config.show_footer,
@@ -145,11 +144,11 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show Footer Totals"
                     }
 
                     // Show duration
-                    div { class: "setting-row",
-                        label { "Show Duration" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: challenge_config.show_duration,
@@ -159,10 +158,10 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show Duration"
                     }
 
-                    div { class: "setting-row",
-                        label { "Show Background Bar" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: challenge_config.show_background_bar,
@@ -172,10 +171,10 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show Background Bar"
                     }
 
-                    div { class: "setting-row",
-                        label { "Gradient Bars" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: challenge_config.bar_gradient,
@@ -185,6 +184,7 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Gradient Bars"
                     }
 
                     Slider {
@@ -201,7 +201,7 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                         },
                     }
 
-                    h4 { style: "margin-top: 16px;", "Colors" }
+                    h4 { "Colors" }
 
                     // Default bar color
                     div { class: "setting-row",
@@ -250,8 +250,7 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                     draft.update(new_settings);
                 },
             }
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.challenge_overlay.dynamic_background,
@@ -261,6 +260,7 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
 
                     // Reset button
@@ -280,7 +280,7 @@ pub fn ChallengesTab(draft: SettingsDraft, actions: Element) -> Element {
                     }
 
                     // Hint about per-challenge settings
-                    p { class: "text-muted text-sm", style: "margin-top: 12px;",
+                    p { class: "hint",
                         i { class: "fa-solid fa-info-circle" }
                         " Per-challenge settings (columns, color, enabled) are configured in the Encounter Editor."
                     }

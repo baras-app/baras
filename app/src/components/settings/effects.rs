@@ -102,10 +102,9 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                 }
             }
 
-            h4 { style: "margin-top: 16px;", "Layout" }
+            h4 { "Layout" }
 
-            div { class: "setting-row",
-                label { "Bar Mode" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.layout_bar,
@@ -115,10 +114,10 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                         draft.update(new_settings);
                     }
                 }
+                "Bar Mode"
             }
 
-            div { class: "setting-row",
-                label { "Vertical Layout" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.layout_vertical,
@@ -128,12 +127,12 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                         draft.update(new_settings);
                     }
                 }
+                "Vertical Layout"
             }
 
-            h4 { style: "margin-top: 16px;", "Display Options" }
+            h4 { "Display Options" }
 
-            div { class: "setting-row",
-                label { "Show Header" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.show_header,
@@ -143,10 +142,10 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                         draft.update(new_settings);
                     }
                 }
+                "Show Header"
             }
 
-            div { class: "setting-row",
-                label { "Show Countdown" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.show_countdown,
@@ -156,10 +155,10 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                         draft.update(new_settings);
                     }
                 }
+                "Show Countdown"
             }
 
-            div { class: "setting-row",
-                label { "Show Effect Names" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.show_effect_names,
@@ -169,10 +168,10 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                         draft.update(new_settings);
                     }
                 }
+                "Show Effect Names"
             }
 
-            div { class: "setting-row",
-                label { "Emphasize Effect Charges" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.stack_priority,
@@ -182,6 +181,7 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                         draft.update(new_settings);
                     }
                 }
+                "Emphasize Effect Charges"
             }
 
             Slider {
@@ -197,8 +197,7 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                     draft.update(new_settings);
                 },
             }
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.dynamic_background,
@@ -208,9 +207,9 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
-            div { class: "setting-row",
-                label { "Stack from Bottom" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.stack_from_bottom,
@@ -220,9 +219,9 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                         draft.update(new_settings);
                     }
                 }
+                "Stack from Bottom"
             }
-            div { class: "setting-row",
-                label { "Gradient Bars (bar layout)" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.bar_gradient,
@@ -233,9 +232,9 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                         draft.update(new_settings);
                     }
                 }
+                "Gradient Bars (bar layout)"
             }
-            div { class: "setting-row",
-                label { "Show Border (bar layout)" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.show_border,
@@ -246,6 +245,7 @@ pub fn EffectsTab(draft: SettingsDraft, group: EffectsGroup, actions: Element) -
                         draft.update(new_settings);
                     }
                 }
+                "Show Border (bar layout)"
             }
             div { class: "setting-row",
                 label { "Border Color" }

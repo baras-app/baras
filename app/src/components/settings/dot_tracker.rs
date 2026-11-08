@@ -59,10 +59,9 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                 }
             }
 
-            h4 { style: "margin-top: 16px;", "Display Options" }
+            h4 { "Display Options" }
 
-            div { class: "setting-row",
-                label { "Bar Mode" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.dot_tracker.layout_bar,
@@ -72,10 +71,10 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Bar Mode"
             }
 
-            div { class: "setting-row",
-                label { "Show Header" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.dot_tracker.show_header,
@@ -85,10 +84,10 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Show Header"
             }
 
-            div { class: "setting-row",
-                label { "Show Effect Names (bar layout)" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.dot_tracker.show_effect_names,
@@ -99,10 +98,10 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Show Effect Names (bar layout)"
             }
 
-            div { class: "setting-row",
-                label { "Show Countdown" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.dot_tracker.show_countdown,
@@ -112,6 +111,7 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Show Countdown"
             }
 
             div { class: "setting-row",
@@ -143,8 +143,7 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                     draft.update(new_settings);
                 },
             }
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.dot_tracker.dynamic_background,
@@ -154,9 +153,9 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
-            div { class: "setting-row",
-                label { "Stack from Bottom" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.dot_tracker.stack_from_bottom,
@@ -166,9 +165,9 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Stack from Bottom"
             }
-            div { class: "setting-row",
-                label { "Right-Align Icons (icon layout)" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.dot_tracker.right_align_icons,
@@ -179,9 +178,9 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Right-Align Icons (icon layout)"
             }
-            div { class: "setting-row",
-                label { "Gradient Bars (bar layout)" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.dot_tracker.bar_gradient,
@@ -192,9 +191,9 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Gradient Bars (bar layout)"
             }
-            div { class: "setting-row",
-                label { "Show Border (bar layout)" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.dot_tracker.show_border,
@@ -205,6 +204,7 @@ pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Show Border (bar layout)"
             }
             div { class: "setting-row",
                 label { "Border Color" }

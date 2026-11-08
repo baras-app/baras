@@ -40,10 +40,9 @@ pub fn AlertsTab(draft: SettingsDraft, actions: Element) -> Element {
                 },
             }
 
-            h4 { style: "margin-top: 16px;", "Display" }
+            h4 { "Display" }
 
-            div { class: "setting-row",
-                label { "Show Icons" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.alerts_overlay.show_icons,
@@ -53,10 +52,10 @@ pub fn AlertsTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Show Icons"
             }
 
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.alerts_overlay.dynamic_background,
@@ -66,6 +65,7 @@ pub fn AlertsTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
 
             div { class: "setting-row",
@@ -86,7 +86,7 @@ pub fn AlertsTab(draft: SettingsDraft, actions: Element) -> Element {
                 }
             }
 
-            h4 { style: "margin-top: 16px;", "Timing" }
+            h4 { "Timing" }
 
             Slider {
                 label: "Display Duration",
@@ -132,9 +132,9 @@ pub fn AlertsTab(draft: SettingsDraft, actions: Element) -> Element {
             }
 
             // Hint about per-alert settings
-            p { class: "text-muted text-sm", style: "margin-top: 12px;",
+            p { class: "hint",
                 i { class: "fa-solid fa-info-circle" }
-                " Per-alert color can be set when defining timers with is_alert enabled."
+                " Per-alert colors are set on each alert timer in the Encounter Editor."
             }
         }
     }

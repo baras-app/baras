@@ -97,10 +97,9 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
                 }
             }
 
-            h4 { style: "margin-top: 16px;", "Display Options" }
+            h4 { "Display Options" }
 
-            div { class: "setting-row",
-                label { "Bar Mode" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.layout_bar,
@@ -110,10 +109,10 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
                         draft.update(new_settings);
                     }
                 }
+                "Bar Mode"
             }
 
-            div { class: "setting-row",
-                label { "Show Header" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.show_header,
@@ -123,10 +122,10 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
                         draft.update(new_settings);
                     }
                 }
+                "Show Header"
             }
 
-            div { class: "setting-row",
-                label { "Show Ability Names" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.show_ability_names,
@@ -136,10 +135,10 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
                         draft.update(new_settings);
                     }
                 }
+                "Show Ability Names"
             }
 
-            div { class: "setting-row",
-                label { "Sort by Remaining Time" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.sort_by_remaining,
@@ -149,6 +148,7 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
                         draft.update(new_settings);
                     }
                 }
+                "Sort by Remaining Time"
             }
 
             Slider {
@@ -164,8 +164,7 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
                     draft.update(new_settings);
                 },
             }
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.dynamic_background,
@@ -175,9 +174,9 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
-            div { class: "setting-row",
-                label { "Stack from Bottom" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.stack_from_bottom,
@@ -187,9 +186,9 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
                         draft.update(new_settings);
                     }
                 }
+                "Stack from Bottom"
             }
-            div { class: "setting-row",
-                label { "Gradient Bars (bar layout)" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.bar_gradient,
@@ -200,9 +199,9 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
                         draft.update(new_settings);
                     }
                 }
+                "Gradient Bars (bar layout)"
             }
-            div { class: "setting-row",
-                label { "Show Border (bar layout)" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.show_border,
@@ -213,6 +212,7 @@ pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element
                         draft.update(new_settings);
                     }
                 }
+                "Show Border (bar layout)"
             }
             div { class: "setting-row",
                 label { "Border Color" }

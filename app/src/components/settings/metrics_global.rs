@@ -56,8 +56,7 @@ pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Ele
                     },
                 }
 
-                div { class: "setting-row",
-                    label { "Show Empty Bars" }
+                label { class: "settings-check",
                     input {
                         r#type: "checkbox",
                         checked: current_settings.metric_show_empty_bars,
@@ -67,10 +66,10 @@ pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Ele
                             draft.update(new_settings);
                         }
                     }
+                    "Show Empty Bars"
                 }
 
-                div { class: "setting-row",
-                    label { "Stack From Bottom" }
+                label { class: "settings-check",
                     input {
                         r#type: "checkbox",
                         checked: current_settings.metric_stack_from_bottom,
@@ -80,6 +79,7 @@ pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Ele
                             draft.update(new_settings);
                         }
                     }
+                    "Stack From Bottom"
                 }
 
                 div { class: "setting-row",
@@ -234,8 +234,7 @@ pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Ele
                     },
                 }
 
-                div { class: "setting-row",
-                    label { "Dynamic Background" }
+                label { class: "settings-check",
                     input {
                         r#type: "checkbox",
                         checked: current_settings.metric_dynamic_background,
@@ -245,10 +244,10 @@ pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Ele
                             draft.update(new_settings);
                         }
                     }
+                    "Dynamic Background"
                 }
 
-                div { class: "setting-row",
-                    label { "Show Background Bar" }
+                label { class: "settings-check",
                     input {
                         r#type: "checkbox",
                         checked: current_settings.metric_show_background_bar,
@@ -258,6 +257,7 @@ pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Ele
                             draft.update(new_settings);
                         }
                     }
+                    "Show Background Bar"
                 }
                 }
             }

@@ -1998,6 +1998,11 @@ button:active {
   color: var(--text-heading);
 }
 
+/* Later subsection headers inside one section (Appearance → Layout → Display) */
+.settings-section > h4:not(:first-child) {
+  margin-top: 1.25em;
+}
+
 /* Collapsible section using native details/summary */
 .collapsible {
   margin: 0.5em 0;
@@ -2060,13 +2065,6 @@ details[open] .collapsible-summary::before {
 .setting-row label {
   flex: 1;
   font-size: 0.9em;
-}
-
-.setting-row input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  flex-shrink: 0;
 }
 
 .setting-row input[type="number"] {

@@ -45,8 +45,7 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                 }
             }
 
-                    div { class: "setting-row",
-                        label { "Show current target" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_settings.boss_health.show_target,
@@ -56,10 +55,10 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show current target"
                     }
 
-                    div { class: "setting-row",
-                        label { "Show HP value" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_settings.boss_health.show_hp_value,
@@ -69,10 +68,10 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show HP value"
                     }
 
-                    div { class: "setting-row",
-                        label { "Show HP markers" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_settings.boss_health.show_hp_markers,
@@ -82,10 +81,10 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show HP markers"
                     }
 
-                    div { class: "setting-row",
-                        label { "Show shields" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_settings.boss_health.show_shield,
@@ -95,10 +94,10 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show shields"
                     }
 
-                    div { class: "setting-row",
-                        label { "Show effect icons" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_settings.boss_health.show_icons,
@@ -108,6 +107,7 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show effect icons"
                     }
 
                     div { class: "setting-row",
@@ -185,8 +185,7 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                     draft.update(new_settings);
                 },
             }
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.boss_health.dynamic_background,
@@ -196,9 +195,9 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
-            div { class: "setting-row",
-                label { "Clear After Combat" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.boss_health.clear_after_combat,
@@ -208,9 +207,9 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Clear After Combat"
             }
-            div { class: "setting-row",
-                label { "Gradient Bars" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.boss_health.bar_gradient,
@@ -220,9 +219,9 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Gradient Bars"
             }
-            div { class: "setting-row",
-                label { "Show Border" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.boss_health.show_border,
@@ -232,6 +231,7 @@ pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Show Border"
             }
             div { class: "setting-row",
                 label { "Border Color" }

@@ -29,8 +29,7 @@ pub fn EnemyFramesTab(draft: SettingsDraft, actions: Element) -> Element {
                     },
                 }
 
-                div { class: "setting-row",
-                    label { "Show Current Target" }
+                label { class: "settings-check",
                     input {
                         r#type: "checkbox",
                         checked: current_settings.enemy_frames.show_target,
@@ -40,6 +39,7 @@ pub fn EnemyFramesTab(draft: SettingsDraft, actions: Element) -> Element {
                             draft.update(new_settings);
                         }
                     }
+                    "Show Current Target"
                 }
 
                 OpacitySlider {
@@ -52,7 +52,7 @@ pub fn EnemyFramesTab(draft: SettingsDraft, actions: Element) -> Element {
                     },
                 }
 
-                p { class: "text-muted text-sm", style: "margin-top: 12px;",
+                p { class: "hint",
                     i { class: "fa-solid fa-info-circle" }
                     " HP bars use the class colors from Global Metrics Settings."
                 }

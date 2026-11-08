@@ -27,8 +27,7 @@ pub fn OperationTimerTab(draft: SettingsDraft, actions: Element) -> Element {
                 },
             }
 
-            div { class: "setting-row",
-                label { "Show Title" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.operation_timer.show_title,
@@ -38,10 +37,10 @@ pub fn OperationTimerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Show Title"
             }
 
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.operation_timer.dynamic_background,
@@ -51,6 +50,7 @@ pub fn OperationTimerTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
 
             Slider {

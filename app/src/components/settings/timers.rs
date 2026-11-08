@@ -95,8 +95,7 @@ pub fn TimersTab(draft: SettingsDraft, group: TimerGroup, actions: Element) -> E
                     draft.update(new_settings);
                 },
             }
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.dynamic_background,
@@ -106,9 +105,9 @@ pub fn TimersTab(draft: SettingsDraft, group: TimerGroup, actions: Element) -> E
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
-            div { class: "setting-row",
-                label { "Stack from Bottom" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.stack_from_bottom,
@@ -118,9 +117,9 @@ pub fn TimersTab(draft: SettingsDraft, group: TimerGroup, actions: Element) -> E
                         draft.update(new_settings);
                     }
                 }
+                "Stack from Bottom"
             }
-            div { class: "setting-row",
-                label { "Gradient Bars" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.bar_gradient,
@@ -130,9 +129,9 @@ pub fn TimersTab(draft: SettingsDraft, group: TimerGroup, actions: Element) -> E
                         draft.update(new_settings);
                     }
                 }
+                "Gradient Bars"
             }
-            div { class: "setting-row",
-                label { "Show Border" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: cfg.show_border,
@@ -142,6 +141,7 @@ pub fn TimersTab(draft: SettingsDraft, group: TimerGroup, actions: Element) -> E
                         draft.update(new_settings);
                     }
                 }
+                "Show Border"
             }
             div { class: "setting-row",
                 label { "Border Color" }

@@ -27,8 +27,7 @@ pub fn NotesTab(draft: SettingsDraft, actions: Element) -> Element {
                 },
             }
 
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.notes_overlay.dynamic_background,
@@ -38,6 +37,7 @@ pub fn NotesTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
 
             Slider {

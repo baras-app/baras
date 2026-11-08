@@ -2,7 +2,7 @@
 
 use dioxus::prelude::*;
 
-use crate::components::Slider;
+use crate::components::{NumberInput, Slider};
 use crate::utils::{color_to_hex, parse_hex_color};
 
 use super::draft::{SettingsDraft, appearance_for};
@@ -21,8 +21,7 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
             let tab_key = tab.clone();
             rsx! {
                 div { class: "settings-section",
-                    div { class: "setting-row",
-                        label { "Show Per-Second" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_appearance.show_per_second,
@@ -37,10 +36,10 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                                 }
                             }
                         }
+                        "Show Per-Second"
                     }
 
-                    div { class: "setting-row",
-                        label { "Show Total" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_appearance.show_total,
@@ -55,10 +54,10 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                                 }
                             }
                         }
+                        "Show Total"
                     }
 
-                    div { class: "setting-row",
-                        label { "Show Header" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_appearance.show_header,
@@ -73,10 +72,10 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                                 }
                             }
                         }
+                        "Show Header"
                     }
 
-                    div { class: "setting-row",
-                        label { "Show Footer" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_appearance.show_footer,
@@ -91,25 +90,23 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                                 }
                             }
                         }
+                        "Show Footer"
                     }
 
                     div { class: "setting-row",
                         label { "Max Entries" }
-                        input {
-                            r#type: "number",
-                            min: "1",
-                            max: "16",
-                            value: "{current_appearance.max_entries}",
-                            onchange: {
+                        NumberInput {
+                            value: current_appearance.max_entries as f64,
+                            min: 1.0,
+                            max: 16.0,
+                            on_change: {
                                 let tab = tab_key.clone();
-                                move |e: Event<FormData>| {
-                                    if let Ok(val) = e.value().parse::<u8>() {
-                                        let mut new_settings = draft.current();
-                                        let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                        let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                        appearance.max_entries = val.clamp(1, 16);
-                                        draft.update(new_settings);
-                                    }
+                                move |v: f64| {
+                                    let mut new_settings = draft.current();
+                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
+                                    let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
+                                    appearance.max_entries = v as u8;
+                                    draft.update(new_settings);
                                 }
                             }
                         }
@@ -157,8 +154,7 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                         }
                     }
 
-                    div { class: "setting-row",
-                        label { "Color Bars by Class" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_appearance.use_class_color,
@@ -173,10 +169,10 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                                 }
                             }
                         }
+                        "Color Bars by Class"
                     }
 
-                    div { class: "setting-row",
-                        label { "Gradient Bars" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_appearance.bar_gradient,
@@ -191,6 +187,7 @@ pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Ele
                                 }
                             }
                         }
+                        "Gradient Bars"
                     }
 
                     Slider {

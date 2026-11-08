@@ -159,8 +159,7 @@ pub fn PersonalTab(draft: SettingsDraft, actions: Element) -> Element {
                     draft.update(new_settings);
                 },
             }
-            div { class: "setting-row",
-                label { "Dynamic Background" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.personal_overlay.dynamic_background,
@@ -170,10 +169,10 @@ pub fn PersonalTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Dynamic Background"
             }
 
-            div { class: "setting-row",
-                label { "Auto-color Values" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.personal_overlay.auto_color_values,
@@ -183,10 +182,10 @@ pub fn PersonalTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Auto-color Values"
             }
 
-            div { class: "setting-row",
-                label { "Hide Empty Values" }
+            label { class: "settings-check",
                 input {
                     r#type: "checkbox",
                     checked: current_settings.personal_overlay.hide_empty_values,
@@ -196,6 +195,7 @@ pub fn PersonalTab(draft: SettingsDraft, actions: Element) -> Element {
                         draft.update(new_settings);
                     }
                 }
+                "Hide Empty Values"
             }
 
             Slider {

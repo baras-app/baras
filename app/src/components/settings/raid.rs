@@ -2,7 +2,7 @@
 
 use dioxus::prelude::*;
 
-use crate::components::Slider;
+use crate::components::{NumberInput, Slider};
 use crate::types::RaidOverlaySettings;
 
 use super::draft::SettingsDraft;
@@ -99,17 +99,14 @@ pub fn RaidTab(draft: SettingsDraft, actions: Element) -> Element {
 
                     div { class: "setting-row",
                         label { "Max Effects per Frame" }
-                        input {
-                            r#type: "number",
-                            min: "1",
-                            max: "8",
-                            value: "{current_settings.raid_overlay.max_effects_per_frame}",
-                            onchange: move |e: Event<FormData>| {
-                                if let Ok(val) = e.value().parse::<u8>() {
-                                    let mut new_settings = draft.current();
-                                    new_settings.raid_overlay.max_effects_per_frame = val.clamp(1, 8);
-                                    draft.update(new_settings);
-                                }
+                        NumberInput {
+                            value: current_settings.raid_overlay.max_effects_per_frame as f64,
+                            min: 1.0,
+                            max: 8.0,
+                            on_change: move |v: f64| {
+                                let mut new_settings = draft.current();
+                                new_settings.raid_overlay.max_effects_per_frame = v as u8;
+                                draft.update(new_settings);
                             }
                         }
                     }
@@ -153,8 +150,7 @@ pub fn RaidTab(draft: SettingsDraft, actions: Element) -> Element {
                         },
                     }
 
-                    div { class: "setting-row",
-                        label { "Show Role Icons" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_settings.raid_overlay.show_role_icons,
@@ -164,10 +160,10 @@ pub fn RaidTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show Role Icons"
                     }
 
-                    div { class: "setting-row",
-                        label { "Show Class Icons" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_settings.raid_overlay.show_class_icons,
@@ -177,10 +173,10 @@ pub fn RaidTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show Class Icons"
                     }
 
-                    div { class: "setting-row",
-                        label { "Show Effect Icons" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_settings.raid_overlay.show_effect_icons,
@@ -190,11 +186,11 @@ pub fn RaidTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Show Effect Icons"
                     }
                     p { class: "hint", "Display ability icons instead of colored squares (requires icon pack)" }
 
-                    div { class: "setting-row",
-                        label { "Colored Effect Borders" }
+                    label { class: "settings-check",
                         input {
                             r#type: "checkbox",
                             checked: current_settings.raid_overlay.effect_colored_borders,
@@ -204,6 +200,7 @@ pub fn RaidTab(draft: SettingsDraft, actions: Element) -> Element {
                                 draft.update(new_settings);
                             }
                         }
+                        "Colored Effect Borders"
                     }
                     p { class: "hint", "Outline colored effect squares with the effect's own color" }
 
