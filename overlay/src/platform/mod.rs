@@ -458,18 +458,39 @@ pub fn get_all_monitors() -> Vec<MonitorInfo> {
 #[cfg(all(unix, not(target_os = "macos")))]
 mod linux {
     use super::*;
+    use std::sync::OnceLock;
 
-    /// Detect whether to use Wayland or X11 at runtime
-    fn use_wayland() -> bool {
-        std::env::var("WAYLAND_DISPLAY").is_ok()
+    #[derive(Debug, Clone, Copy)]
+    enum Backend {
+        LayerShell,
+        X11,
     }
 
-    /// Get all monitors using the appropriate backend
+    /// Layer-shell wherever the compositor offers it. GNOME's Mutter does not, and
+    /// has no other way to place or raise a Wayland surface, so overlays go to its
+    /// Xwayland instead.
+    fn backend() -> Backend {
+        static BACKEND: OnceLock<Backend> = OnceLock::new();
+        *BACKEND.get_or_init(|| {
+            let backend = if wayland::has_layer_shell() {
+                Backend::LayerShell
+            } else {
+                Backend::X11
+            };
+            tracing::info!(
+                ?backend,
+                wayland_display = ?std::env::var_os("WAYLAND_DISPLAY"),
+                display = ?std::env::var_os("DISPLAY"),
+                "overlay window backend selected"
+            );
+            backend
+        })
+    }
+
     pub fn get_all_monitors() -> Vec<MonitorInfo> {
-        if use_wayland() {
-            wayland::get_all_monitors()
-        } else {
-            x11::get_all_monitors()
+        match backend() {
+            Backend::LayerShell => wayland::get_all_monitors(),
+            Backend::X11 => x11::get_all_monitors(),
         }
     }
 
@@ -481,10 +502,11 @@ mod linux {
 
     impl OverlayPlatform for LinuxOverlay {
         fn new(config: OverlayConfig) -> Result<Self, PlatformError> {
-            if use_wayland() {
-                wayland::WaylandOverlay::new(config).map(LinuxOverlay::Wayland)
-            } else {
-                x11::X11Overlay::new(config).map(LinuxOverlay::X11)
+            match backend() {
+                Backend::LayerShell => {
+                    wayland::WaylandOverlay::new(config).map(LinuxOverlay::Wayland)
+                }
+                Backend::X11 => x11::X11Overlay::new(config).map(LinuxOverlay::X11),
             }
         }
 

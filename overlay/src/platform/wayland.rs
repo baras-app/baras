@@ -2,7 +2,6 @@
 //!
 //! This provides overlay windows on Wayland compositors that support
 //! the wlr-layer-shell protocol (wlroots-based compositors like Hyprland, Sway, etc.)
-//! Not GNOME though why are you trying to game on GNOME?
 #![allow(clippy::too_many_arguments)]
 
 use std::os::fd::AsFd;
@@ -199,6 +198,21 @@ impl Dispatch<ZxdgOutputV1, u32> for MonitorEnumState {
             _ => {}
         }
     }
+}
+
+pub(super) fn has_layer_shell() -> bool {
+    let Ok(connection) = Connection::connect_to_env() else {
+        return false;
+    };
+    let Ok((globals, _queue)) =
+        wayland_client::globals::registry_queue_init::<WaylandState>(&connection)
+    else {
+        return false;
+    };
+    let name = <ZwlrLayerShellV1 as wayland_client::Proxy>::interface().name;
+    globals
+        .contents()
+        .with_list(|list| list.iter().any(|global| global.interface == name))
 }
 
 /// Get all connected monitors without requiring an existing overlay window.
