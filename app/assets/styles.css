@@ -5337,58 +5337,6 @@ a.contributor-name:hover {
   font-size: 0.85em;
 }
 
-.btn-duplicate {
-  padding: 0.4em 0.8em;
-  background: var(--blue-alpha-15);
-  border: 1px solid var(--border-accent-strong);
-  border-radius: var(--radius-md);
-  color: var(--swtor-blue);
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-}
-
-.btn-duplicate:hover {
-  background: var(--blue-alpha-25);
-}
-
-/* Form action delete button - smaller variant */
-.form-actions .btn-delete {
-  padding: 0.4em 0.8em;
-  font-size: 0.85em;
-  margin-left: auto;
-}
-
-.delete-confirm {
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-  margin-left: auto;
-  color: var(--color-error);
-  font-size: 0.85em;
-}
-
-.btn-delete-yes,
-.btn-delete-no {
-  padding: 0.25em 0.6em;
-  border-radius: var(--radius-sm);
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-delete-yes {
-  background: var(--color-error-bg-hover);
-  border: 1px solid var(--color-error-border);
-  color: var(--color-error);
-}
-
-.btn-delete-no {
-  background: var(--bg-light);
-  border: 1px solid var(--border-medium);
-  color: var(--text-secondary);
-}
-
 .timer-file-info {
   margin-top: 0.5em;
   font-size: 0.75em;
@@ -7040,8 +6988,8 @@ a.contributor-name:hover {
   text-align: right;
 }
 
-/* ─── Timer Origin Badge ─────────────────────────────────────────────────────── */
-.timer-origin {
+/* ─── Origin Badge (built-in / modified / custom / new) ──────────────────────── */
+.origin-badge {
   width: 18px;
   height: 18px;
   display: inline-flex;
@@ -7054,18 +7002,23 @@ a.contributor-name:hover {
   line-height: 1;
 }
 
-.timer-origin-builtin {
+.origin-badge.builtin {
   background: var(--swtor-blue-dim);
   color: var(--swtor-blue-bright, #6ab0ff);
 }
 
-.timer-origin-modified {
+.origin-badge.modified {
   background: rgba(155, 89, 182, 0.35);
   color: #c39bd3;
 }
 
-.timer-origin-custom {
+.origin-badge.custom {
   background: rgba(46, 204, 113, 0.2);
+  color: var(--color-success, #2ecc71);
+}
+
+.origin-badge.new {
+  border: 1px dashed var(--color-success, #2ecc71);
   color: var(--color-success, #2ecc71);
 }
 

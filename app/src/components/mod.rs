@@ -12,6 +12,7 @@ pub mod contributors_modal;
 pub mod data_explorer;
 pub mod death_recap_modal;
 pub mod echarts;
+pub mod editor_common;
 pub mod effect_editor;
 pub mod encounter_editor;
 pub mod modifier_editor;

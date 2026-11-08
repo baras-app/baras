@@ -12,6 +12,7 @@ use super::encounter_editor::InlineNameCreator;
 use super::encounter_editor::triggers::{
     EffectSelectorEditor, EntityFilterDropdown,
 };
+use crate::components::editor_common::{ItemActions, Origin, OriginBadge};
 use crate::api;
 use super::sound_picker::SoundPicker;
 use crate::types::{
@@ -866,7 +867,7 @@ fn EffectImportPreviewModal(
                         "Cancel"
                     }
                     button {
-                        class: "btn-save",
+                        class: "btn btn-success",
                         disabled: has_errors,
                         onclick: move |_| on_confirm.call(()),
                         "Import"
@@ -880,6 +881,11 @@ fn EffectImportPreviewModal(
 // ─────────────────────────────────────────────────────────────────────────────
 // Effect Row
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Bundled + user override = edited built-in
+fn effect_origin(is_draft: bool, is_bundled: bool, is_user_override: bool) -> Origin {
+    if is_draft { Origin::New } else { Origin::of(is_bundled && !is_user_override, is_bundled && is_user_override) }
+}
 
 #[component]
 fn EffectRow(
@@ -919,16 +925,7 @@ fn EffectRow(
                     if expanded { "▼" } else { "▶" }
                 }
 
-                // Origin badge (B/M/C)
-                if is_draft {
-                    span { class: "timer-origin", style: "background: var(--success-alpha-30, rgba(46,204,113,0.2)); color: var(--color-success, #2ecc71);", title: "New: not yet saved", "N" }
-                } else if effect.is_bundled && effect.is_user_override {
-                    span { class: "timer-origin timer-origin-modified", title: "Modified: built-in effect you have edited", "M" }
-                } else if effect.is_bundled {
-                    span { class: "timer-origin timer-origin-builtin", title: "Built-in: ships with the app", "B" }
-                } else {
-                    span { class: "timer-origin timer-origin-custom", title: "Custom: created by you", "C" }
-                }
+                OriginBadge { origin: effect_origin(is_draft, effect.is_bundled, effect.is_user_override), kind: "effect" }
 
                 // Color dot
                 span {
@@ -1049,7 +1046,6 @@ fn EffectEditForm(
     let effect_for_trigger = effect.clone();
     let effect_original = effect.clone();
     let mut draft = use_signal(|| effect_for_draft);
-    let mut confirm_delete = use_signal(|| false);
     let mut trigger_type = use_signal(|| EffectTriggerType::from_effect(&effect_for_trigger));
     let mut icon_preview_url = use_signal(|| None::<String>);
 
@@ -2276,90 +2272,17 @@ fn EffectEditForm(
                 }
 
                 // Actions (outside grid, full width)
-                div { class: "form-actions",
-                    button {
-                        class: "btn-save",
-                        disabled: !has_changes(),
-                        onclick: move |_| {
-                            just_saved.set(true);
-                            on_save.call(draft());
-                        },
-                        "Save"
-                    }
-
-                    if !is_draft {
-                        button {
-                            class: "btn-duplicate",
-                            onclick: move |_| on_duplicate.call(()),
-                            "Duplicate"
-                        }
-                    }
-
-                    if !is_draft && effect.is_user_override {
-                        button {
-                            class: "btn-duplicate",
-                            onclick: move |_| on_export.call(()),
-                            "Export"
-                        }
-                    }
-
-                    if is_draft {
-                        // For drafts, show Cancel button (no confirmation needed)
-                        button {
-                            class: "btn-delete",
-                            onclick: move |_| on_delete.call(()),
-                            "Cancel"
-                        }
-                    } else if is_bundled && !is_user_override {
-                        // Pure built-in, unmodified — no delete/reset action needed
-                    } else if is_bundled && is_user_override {
-                        // Modified built-in — offer "Reset to Built-in"
-                        if confirm_delete() {
-                            span { class: "delete-confirm",
-                                "Reset to built-in? "
-                                button {
-                                    class: "btn-delete-no",
-                                    style: "background: var(--color-warning, #f39c12); border-color: var(--color-warning, #f39c12); color: #000; font-weight: 600;",
-                                    onclick: move |_| on_delete.call(()),
-                                    "Yes"
-                                }
-                                button {
-                                    class: "btn-delete-no",
-                                    onclick: move |_| confirm_delete.set(false),
-                                    "No"
-                                }
-                            }
-                        } else {
-                            button {
-                                class: "btn-delete",
-                                style: "background: var(--color-warning, #f39c12); border-color: var(--color-warning, #f39c12); color: #000;",
-                                onclick: move |_| confirm_delete.set(true),
-                                "Reset to Built-in"
-                            }
-                        }
-                    } else {
-                        // Custom item — offer Delete with confirmation
-                        if confirm_delete() {
-                            span { class: "delete-confirm",
-                                "Delete? "
-                                button {
-                                    class: "btn-delete-yes",
-                                    onclick: move |_| on_delete.call(()),
-                                    "Yes"
-                                }
-                                button {
-                                    class: "btn-delete-no",
-                                    onclick: move |_| confirm_delete.set(false),
-                                    "No"
-                                }
-                            }
-                        } else {
-                            button {
-                                class: "btn-delete",
-                                onclick: move |_| confirm_delete.set(true),
-                                "Delete"
-                            }
-                        }
+                ItemActions {
+                    has_changes: has_changes(),
+                    origin: effect_origin(is_draft, is_bundled, is_user_override),
+                    on_save: move |_| {
+                        just_saved.set(true);
+                        on_save.call(draft());
+                    },
+                    on_delete: move |_| on_delete.call(()),
+                    on_duplicate: (!is_draft).then_some(on_duplicate),
+                    if !is_draft && is_user_override {
+                        button { class: "btn btn-sm", onclick: move |_| on_export.call(()), "Export" }
                     }
                 }
 

@@ -5,6 +5,7 @@
 
 use dioxus::prelude::*;
 
+use crate::components::editor_common::{ItemActions, Origin, OriginBadge};
 use crate::api;
 use crate::types::{
     BossWithPath, CounterDefinition, EffectSelector, EffectStackConfig, EncounterItem,
@@ -193,26 +194,7 @@ fn CounterRow(
                 // Expand arrow
                 span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
 
-                // Origin indicator (B)uilt-in / (M)odified / (C)ustom
-                if is_builtin {
-                    span {
-                        class: "timer-origin timer-origin-builtin",
-                        title: "Built-in: ships with the app",
-                        "B"
-                    }
-                } else if is_modified {
-                    span {
-                        class: "timer-origin timer-origin-modified",
-                        title: "Modified: built-in counter you have edited",
-                        "M"
-                    }
-                } else {
-                    span {
-                        class: "timer-origin timer-origin-custom",
-                        title: "Custom: created by you",
-                        "C"
-                    }
-                }
+                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "counter" }
 
                 span { class: "font-medium", "{counter.name}" }
                 if expanded && is_dirty() {
@@ -323,7 +305,6 @@ fn CounterEditForm(
 
     let mut draft = use_signal(|| counter_for_draft);
     let mut just_saved = use_signal(|| false);
-    let mut confirm_delete = use_signal(|| false);
 
     // Reset just_saved when user makes new changes after saving
     let original_for_effect = original.clone();
@@ -340,13 +321,13 @@ fn CounterEditForm(
         on_dirty.call(has_changes());
     });
 
-    let handle_save = move |_| {
+    let handle_save = move |_: ()| {
         just_saved.set(true);
         let updated = draft();
         on_save.call(updated);
     };
 
-    let handle_delete = move |_| {
+    let handle_delete = move |_: ()| {
         on_delete.call(counter_for_delete.clone());
     };
 
@@ -759,65 +740,11 @@ fn CounterEditForm(
             }
 
             // ─── Actions ─────────────────────────────────────────────────────
-            div { class: "form-actions",
-                button {
-                    class: if has_changes() { "btn btn-success btn-sm" } else { "btn btn-sm" },
-                    disabled: !has_changes(),
-                    onclick: handle_save,
-                    "Save"
-                }
-
-                // Reset/Delete logic:
-                // - Built-in unmodified: no delete button
-                // - Modified built-in: "Reset to Built-in"
-                // - Custom: "Delete" with confirmation
-                if is_builtin {
-                    // Pure built-in, unmodified — no action needed
-                } else if is_modified {
-                    if confirm_delete() {
-                        span { class: "flex items-center gap-xs ml-auto",
-                            "Reset to built-in?"
-                            button {
-                                class: "btn btn-warning btn-sm",
-                                onclick: handle_delete,
-                                "Yes"
-                            }
-                            button {
-                                class: "btn btn-sm",
-                                onclick: move |_| confirm_delete.set(false),
-                                "No"
-                            }
-                        }
-                    } else {
-                        button {
-                            class: "btn btn-warning btn-sm ml-auto",
-                            onclick: move |_| confirm_delete.set(true),
-                            "Reset to Built-in"
-                        }
-                    }
-                } else {
-                    if confirm_delete() {
-                        span { class: "flex items-center gap-xs ml-auto",
-                            "Delete?"
-                            button {
-                                class: "btn btn-danger btn-sm",
-                                onclick: handle_delete,
-                                "Yes"
-                            }
-                            button {
-                                class: "btn btn-sm",
-                                onclick: move |_| confirm_delete.set(false),
-                                "No"
-                            }
-                        }
-                    } else {
-                        button {
-                            class: "btn btn-danger btn-sm ml-auto",
-                            onclick: move |_| confirm_delete.set(true),
-                            "Delete"
-                        }
-                    }
-                }
+            ItemActions {
+                has_changes: has_changes(),
+                origin: Origin::of(is_builtin, is_modified),
+                on_save: handle_save,
+                on_delete: handle_delete,
             }
         }
     }

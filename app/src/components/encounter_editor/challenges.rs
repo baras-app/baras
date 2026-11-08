@@ -5,6 +5,7 @@
 
 use dioxus::prelude::*;
 
+use crate::components::editor_common::{ItemActions, Origin, OriginBadge};
 use crate::api;
 use crate::types::{
     BossWithPath, ChallengeColumns, ChallengeCondition, ChallengeDefinition, ChallengeMetric,
@@ -164,26 +165,7 @@ fn ChallengeRow(
                 // Expand arrow
                 span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
 
-                // Origin indicator (B)uilt-in / (M)odified / (C)ustom
-                if is_builtin {
-                    span {
-                        class: "timer-origin timer-origin-builtin",
-                        title: "Built-in: ships with the app",
-                        "B"
-                    }
-                } else if is_modified {
-                    span {
-                        class: "timer-origin timer-origin-modified",
-                        title: "Modified: built-in challenge you have edited",
-                        "M"
-                    }
-                } else {
-                    span {
-                        class: "timer-origin timer-origin-custom",
-                        title: "Custom: created by you",
-                        "C"
-                    }
-                }
+                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "challenge" }
 
                 span { class: "font-medium", "{challenge.name}" }
                 if expanded && is_dirty() {
@@ -328,13 +310,13 @@ fn ChallengeEditForm(
         on_dirty.call(has_changes());
     });
 
-    let handle_save = move |_| {
+    let handle_save = move |_: ()| {
         just_saved.set(true);
         let updated = draft();
         on_save.call(updated);
     };
 
-    let handle_delete = move |_| {
+    let handle_delete = move |_: ()| {
         on_delete.call(challenge_for_delete.clone());
     };
 
@@ -597,20 +579,11 @@ fn ChallengeEditForm(
             }
 
             // ─── Actions ─────────────────────────────────────────────────────
-            div { class: "form-actions",
-                button {
-                    class: if has_changes() { "btn btn-success btn-sm" } else { "btn btn-sm" },
-                    disabled: !has_changes(),
-                    onclick: handle_save,
-                    "Save"
-                }
-                if !is_builtin {
-                    button {
-                        class: "btn btn-danger btn-sm",
-                        onclick: handle_delete,
-                        "Delete"
-                    }
-                }
+            ItemActions {
+                has_changes: has_changes(),
+                origin: Origin::of(is_builtin, false),
+                on_save: handle_save,
+                on_delete: handle_delete,
             }
         }
     }

@@ -5,6 +5,7 @@
 
 use dioxus::prelude::*;
 
+use crate::components::editor_common::{ItemActions, Origin, OriginBadge};
 use crate::api;
 use crate::components::SoundPicker;
 use crate::types::{
@@ -273,26 +274,7 @@ fn TimerRow(
                 // Expand arrow
                 span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
 
-                // Origin indicator (B)uilt-in / (M)odified / (C)ustom
-                if is_builtin {
-                    span {
-                        class: "timer-origin timer-origin-builtin",
-                        title: "Built-in: ships with the app",
-                        "B"
-                    }
-                } else if is_modified {
-                    span {
-                        class: "timer-origin timer-origin-modified",
-                        title: "Modified: built-in timer you have edited",
-                        "M"
-                    }
-                } else {
-                    span {
-                        class: "timer-origin timer-origin-custom",
-                        title: "Custom: created by you",
-                        "C"
-                    }
-                }
+                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "timer" }
 
                 // Color swatch
                 span {
@@ -497,7 +479,6 @@ fn TimerEditForm(
     let timer_id = timer.id.clone();
     let timer_original = timer.clone();
     let mut draft = use_signal(|| timer_for_draft);
-    let mut confirm_delete = use_signal(|| false);
     let mut just_saved = use_signal(|| false);
 
     // Reset just_saved when user makes new changes after saving
@@ -542,7 +523,7 @@ fn TimerEditForm(
     let handle_save = {
         let timers = all_timers.clone();
         let bwp = boss_with_path.clone();
-        move |_| {
+        move |_: ()| {
             just_saved.set(true);
             let updated = draft();
             let mut current = timers.clone();
@@ -571,7 +552,7 @@ fn TimerEditForm(
         let timers = all_timers.clone();
         let bwp = boss_with_path.clone();
         let is_reset = is_builtin || is_modified; // Built-in items get "reset", not "delete"
-        move |_| {
+        move |_: ()| {
             let t = timer_del.clone();
             let timers_clone = timers.clone();
             let boss_id = bwp.boss.id.clone();
@@ -607,7 +588,7 @@ fn TimerEditForm(
         let timer_dup = timer_display.clone();
         let timers = all_timers.clone();
         let bwp = boss_with_path.clone();
-        move |_| {
+        move |_: ()| {
             let t = timer_dup.clone();
             let ts = timers.clone();
             let boss_id = bwp.boss.id.clone();
@@ -1781,72 +1762,12 @@ fn TimerEditForm(
             }
 
             // ─── Actions ────────────────────────────────────────────────────────
-            div { class: "form-actions",
-                button {
-                    class: if has_changes() { "btn btn-success btn-sm" } else { "btn btn-sm" },
-                    disabled: !has_changes(),
-                    onclick: handle_save,
-                    "Save"
-                }
-                button {
-                    class: "btn btn-primary btn-sm",
-                    onclick: handle_duplicate,
-                    "Duplicate"
-                }
-
-                // Reset/Delete logic:
-                // - Built-in unmodified: no delete button (nothing to reset)
-                // - Modified built-in: "Reset to Built-in" (calls delete + refetch)
-                // - Custom: "Delete" with confirmation
-                if is_builtin {
-                    // Pure built-in, unmodified — no action needed
-                } else if is_modified {
-                    // Modified built-in — offer reset
-                    if confirm_delete() {
-                        span { class: "flex items-center gap-xs ml-auto",
-                            "Reset to built-in?"
-                            button {
-                                class: "btn btn-warning btn-sm",
-                                onclick: handle_delete,
-                                "Yes"
-                            }
-                            button {
-                                class: "btn btn-sm",
-                                onclick: move |_| confirm_delete.set(false),
-                                "No"
-                            }
-                        }
-                    } else {
-                        button {
-                            class: "btn btn-warning btn-sm ml-auto",
-                            onclick: move |_| confirm_delete.set(true),
-                            "Reset to Built-in"
-                        }
-                    }
-                } else {
-                    // Custom item — offer delete
-                    if confirm_delete() {
-                        span { class: "flex items-center gap-xs ml-auto",
-                            "Delete?"
-                            button {
-                                class: "btn btn-danger btn-sm",
-                                onclick: handle_delete,
-                                "Yes"
-                            }
-                            button {
-                                class: "btn btn-sm",
-                                onclick: move |_| confirm_delete.set(false),
-                                "No"
-                            }
-                        }
-                    } else {
-                        button {
-                            class: "btn btn-danger btn-sm ml-auto",
-                            onclick: move |_| confirm_delete.set(true),
-                            "Delete"
-                        }
-                    }
-                }
+            ItemActions {
+                has_changes: has_changes(),
+                origin: Origin::of(is_builtin, is_modified),
+                on_save: handle_save,
+                on_delete: handle_delete,
+                on_duplicate: handle_duplicate,
             }
 
         }

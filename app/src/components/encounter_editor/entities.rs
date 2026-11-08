@@ -6,6 +6,7 @@
 
 use dioxus::prelude::*;
 
+use crate::components::editor_common::{ItemActions, Origin};
 use crate::api;
 use crate::types::{BossWithPath, EncounterItem, EntityDefinition, EntityFilter, Trigger};
 
@@ -288,14 +289,14 @@ fn EntityEditForm(
 
     let handle_save = {
         let orig_name = original_name.clone();
-        move |_| {
+        move |_: ()| {
             just_saved.set(true);
             let updated = draft();
             on_save.call((updated, orig_name.clone()));
         }
     };
 
-    let handle_delete = move |_| {
+    let handle_delete = move |_: ()| {
         on_delete.call(entity_for_delete.clone());
     };
 
@@ -803,18 +804,11 @@ fn EntityEditForm(
             }
 
             // ─── Actions ─────────────────────────────────────────────────────
-            div { class: "form-actions",
-                button {
-                    class: if has_changes() { "btn btn-success btn-sm" } else { "btn btn-sm" },
-                    disabled: !has_changes(),
-                    onclick: handle_save,
-                    "Save"
-                }
-                button {
-                    class: "btn btn-danger btn-sm",
-                    onclick: handle_delete,
-                    "Delete"
-                }
+            ItemActions {
+                has_changes: has_changes(),
+                origin: Origin::Custom,
+                on_save: handle_save,
+                on_delete: handle_delete,
             }
         }
     }
