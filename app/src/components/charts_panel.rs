@@ -1277,40 +1277,36 @@ pub fn ChartsPanel(props: ChartsPanelProps) -> Element {
                         span { class: "toggle-hp", "HP%" }
                     }
                 }
-                // Charts area
+                // Charts area: the spinner sits in the first visible chart so it
+                // never lands in the gap between two
                 div { class: "charts-area",
-                    if *loading.read() {
-                        div { class: "charts-loading",
-                            i { class: "fa-solid fa-spinner fa-spin" }
-                            " Loading..."
-                        }
-                    }
-                    if *show_dps.read() {
-                        if dps_empty && !*loading.read() && !is_live {
-                            div { class: "chart-empty", "No damage dealt in fight" }
-                        } else {
-                            div { id: "chart-dps", class: "chart-container" }
-                        }
-                    }
-                    if *show_hps.read() {
-                        if hps_empty && !*loading.read() && !is_live {
-                            div { class: "chart-empty", "No healing in fight" }
-                        } else {
-                            div { id: "chart-hps", class: "chart-container" }
-                        }
-                    }
-                    if *show_dtps.read() {
-                        if dtps_empty && !*loading.read() && !is_live {
-                            div { class: "chart-empty", "No damage taken in fight" }
-                        } else {
-                            div { id: "chart-dtps", class: "chart-container" }
-                        }
-                    }
-                    if *show_hp.read() {
-                        if hp_empty && !*loading.read() && !is_live {
-                            div { class: "chart-empty", "No HP data in fight" }
-                        } else {
-                            div { id: "chart-hp", class: "chart-container" }
+                    {
+                        let loading_now = *loading.read();
+                        let slots = [
+                            ("chart-dps", *show_dps.read(), dps_empty, "No damage dealt in fight"),
+                            ("chart-hps", *show_hps.read(), hps_empty, "No healing in fight"),
+                            ("chart-dtps", *show_dtps.read(), dtps_empty, "No damage taken in fight"),
+                            ("chart-hp", *show_hp.read(), hp_empty, "No HP data in fight"),
+                        ];
+                        let first_shown = slots.iter().position(|s| s.1);
+                        rsx! {
+                            for (i, (id, shown, empty, msg)) in slots.into_iter().enumerate() {
+                                if shown {
+                                    if empty && !loading_now && !is_live {
+                                        div { key: "{id}", class: "chart-empty", "{msg}" }
+                                    } else {
+                                        div { key: "{id}", class: "chart-slot",
+                                            div { id: "{id}", class: "chart-container" }
+                                            if loading_now && first_shown == Some(i) {
+                                                div { class: "charts-loading",
+                                                    i { class: "fa-solid fa-spinner fa-spin" }
+                                                    " Loading..."
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

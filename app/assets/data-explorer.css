@@ -1423,6 +1423,14 @@
 
 /* Each chart on the same dark card as the tables (the old --bg-secondary
    was never defined, so the charts had no background at all) */
+/* One chart plus its overlay (the loading spinner sits in the first) */
+.chart-slot {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 150px;
+}
+
 .chart-container {
   width: 100%;
   flex: 1;
