@@ -1,3 +1,29 @@
+# v2026.11.7
+
+## UI Overhaul
+
+The UI has been significantly revamped with the intent to improve visual consistency and navigation.
+
+Major changes:
+
+- Auto Hide and Hide in conversations options have been moved to global options in the overlay settings menu
+- Overlay settings menu has been reworked to make it easier to discover
+- Effects editor sidebar added
+
+## Character Roster and Lockout Tracker
+
+A new tab called "Characters" contains a roster for tracking and managing your characters. Information such as server, class, and last login time is recorded automatically, other information can be manually added.
+
+This page also serves to track lockouts across characters.
+
+## PvP Stats
+
+A new page has been added that displays summary statistics of PvP matches.
+
+## Other
+
+- Parsely upload links are now retained properly across application sessions
+
 # v2026.11.6
 
 ## Log Management
