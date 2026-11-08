@@ -224,7 +224,7 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                     HistoryToolbar { filter, runs: false }
                     div { class: "sidebar-search",
                         input {
-                            class: "boss-search-input",
+                            class: "search-input",
                             r#type: "text",
                             placeholder: "Filter bosses...",
                             value: "{boss_search}",

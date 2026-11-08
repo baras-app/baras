@@ -147,7 +147,7 @@ pub fn CharactersPanel() -> Element {
         div { class: "history-panel characters-panel",
             div { class: "history-toolbar",
                 input {
-                    class: "boss-search-input characters-search",
+                    class: "search-input characters-search",
                     r#type: "text",
                     placeholder: "Search name, guild, note…",
                     value: "{search}",

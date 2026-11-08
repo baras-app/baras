@@ -156,7 +156,7 @@ fn ChallengeRow(
     let file_path = boss_with_path.file_path.clone();
 
     rsx! {
-        div { class: if challenge.enabled { "list-item" } else { "list-item item-disabled" },
+        div { class: "list-item", class: if expanded { "expanded" }, class: if !challenge.enabled { "item-disabled" },
             // Header row
             div {
                 class: "list-item-header",
@@ -322,7 +322,7 @@ fn ChallengeEditForm(
 
     rsx! {
         div { class: "challenge-edit-form",
-            div { class: "encounter-item-grid",
+            div { class: "edit-grid",
                 // ═══ LEFT: Identity Card ═════════════════════════════════════
                 FormCard { icon: "fa-tag", title: "Identity",
                     div { class: "form-row-hz",

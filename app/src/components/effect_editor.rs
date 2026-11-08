@@ -653,14 +653,14 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                     r#type: "text",
                     placeholder: "Search by name, ID, overlay, or discipline...",
                     value: "{search_query}",
-                    class: "effect-search-input",
+                    class: "search-input",
                     oninput: move |e| search_query.set(e.value())
                 }
             }
 
             // Effect list (flat)
             if loading() {
-                div { class: "effect-loading", "Loading effects..." }
+                div { class: "empty-state", "Loading effects..." }
             } else if filtered_effects().is_empty() && draft_effect().is_none() {
                 if effects().is_empty() {
                     div { class: "empty-state-guidance",
@@ -671,7 +671,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                         p { class: "hint", "Click \"+ New Effect\" above to create your first effect" }
                     }
                 } else {
-                    div { class: "effect-empty", "No effects match your search" }
+                    div { class: "empty-state", "No effects match your search" }
                 }
             } else {
                 div { class: "effect-list",
@@ -841,7 +841,7 @@ fn EffectImportPreviewModal(
                                                     1 => effect.display_targets[0].label().to_string(),
                                                     n => format!("⊞ {n} targets"),
                                                 };
-                                                rsx! { span { class: "effect-target-badge", "{targets_label}" } }
+                                                rsx! { span { class: "tag", "{targets_label}" } }
                                             }
                                         }
                                     }
@@ -910,20 +910,15 @@ fn EffectRow(
     rsx! {
         div {
             id: "effect-{effect.id}",
-            class: match (expanded, effect.enabled) {
-                (true, true) => "effect-row expanded",
-                (true, false) => "effect-row expanded item-disabled",
-                (false, true) => "effect-row",
-                (false, false) => "effect-row item-disabled",
-            },
+            class: "list-item",
+            class: if expanded { "expanded" },
+            class: if !effect.enabled { "item-disabled" },
             div {
-                class: "effect-row-summary",
+                class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
                 // Expand arrow
-                span { class: "effect-expand-icon",
-                    if expanded { "▼" } else { "▶" }
-                }
+                span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
 
                 OriginBadge { origin: effect_origin(is_draft, effect.is_bundled, effect.is_user_override), kind: "effect" }
 
@@ -934,7 +929,7 @@ fn EffectRow(
                 }
 
                 // Name | ID grouped left-aligned
-                div { class: "timer-col-name-id",
+                div { class: "row-col-name-id",
                     span { class: "effect-name truncate", "{effect.name}" }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
@@ -950,7 +945,7 @@ fn EffectRow(
                 }
 
                 // Trigger / target / duration
-                span { class: "timer-col-trigger",
+                span { class: "row-col-trigger",
                     if effect.is_alert {
                         span { class: "tag tag-alert", "Alert" }
                     } else {
@@ -960,12 +955,12 @@ fn EffectRow(
                                 1 => effect.display_targets[0].label().to_string(),
                                 n => format!("⊞ {n} targets"),
                             };
-                            rsx! { span { class: "effect-target-badge", "{targets_label}" } }
+                            rsx! { span { class: "tag", "{targets_label}" } }
                         }
                     }
                 }
 
-                span { class: "timer-col-duration",
+                span { class: "row-col-duration",
                     if !effect.is_alert {
                         if let Some(dur) = effect.duration_secs {
                             span { class: "effect-duration", "{dur:.0}s" }
@@ -1104,10 +1099,10 @@ fn EffectEditForm(
     let color_hex = format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]);
 
     rsx! {
-            div { class: "effect-edit-form",
-                div { class: "effect-edit-grid",
+            div { class: "list-item-body effect-edit-form",
+                div { class: "edit-grid left-66",
                     // ═══ LEFT COLUMN: Identity, Trigger ══════════════════════════════
-                    div { class: "effect-edit-left",
+                    div { class: "edit-grid-left",
                         // ─── Identity Card ───────────────────────────────────────────
                         FormCard { icon: "fa-tag", title: "Identity",
                             // Effect ID (read-only) - hidden for drafts
@@ -1846,7 +1841,7 @@ fn EffectEditForm(
                     }
 
                     // ═══ RIGHT COLUMN: Timing, Alerts, Audio ═════════════════════════
-                    div { class: "effect-edit-right",
+                    div { class: "edit-grid-right",
 
                         // ─── Timing Card ─────────────────────────────────────────────
                         FormCard { icon: "fa-clock", title: "Timing",

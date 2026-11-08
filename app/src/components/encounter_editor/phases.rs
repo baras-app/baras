@@ -174,7 +174,7 @@ fn PhaseRow(
     let trigger_label = phase.start_trigger.label();
 
     rsx! {
-        div { class: if phase.enabled { "list-item" } else { "list-item item-disabled" },
+        div { class: "list-item", class: if expanded { "expanded" }, class: if !phase.enabled { "item-disabled" },
             // Header row
             div {
                 class: "list-item-header",
@@ -328,7 +328,7 @@ fn PhaseEditForm(
 
     rsx! {
         div { class: "phase-edit-form",
-            div { class: "encounter-item-grid",
+            div { class: "edit-grid",
                 // ═══ LEFT: Identity Card ═════════════════════════════════════
                 FormCard { icon: "fa-tag", title: "Identity",
                     div { class: "form-row-hz",

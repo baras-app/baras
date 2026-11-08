@@ -231,8 +231,6 @@ select optgroup {
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
 
-
-
 .app-header h1 {
   margin: 0;
   font-family: "StarJedi", "Segoe UI", Arial, sans-serif;
@@ -244,8 +242,6 @@ select optgroup {
     0 0 20px var(--swtor-blue-glow),
     0 0 40px var(--blue-alpha-15);
 }
-
-
 
 /* Single header row: brand | navigation | overlay controls, files, settings */
 .header-bar {
@@ -260,7 +256,6 @@ select optgroup {
   padding: 0.2em 2vw 0.25em;
   border-bottom: 1px solid var(--border-subtle);
 }
-
 
 /* Second row: action group on the left, session bar filling the rest */
 .status-row {
@@ -315,7 +310,6 @@ select optgroup {
   align-self: center;
   margin: 0;
 }
-
 
 /* Settings as a page */
 .settings-page {
@@ -437,8 +431,6 @@ select optgroup {
   color: var(--text-disabled);
 }
 
-
-
 .app-header .header-version.update-available {
   background: linear-gradient(
     135deg,
@@ -485,40 +477,6 @@ select optgroup {
   border-color: rgba(255, 183, 77, 0.5);
   color: #ffb74d;
   cursor: wait;
-}
-
-
-
-
-
-.btn-header-settings:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-
-/* Live/Historical status pill in top-right header area */
-
-.header-live-status .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.header-live-status .status-dot.watching {
-  background-color: #5aaa7a;
-  box-shadow: 0 0 6px rgba(90, 170, 122, 0.5);
-}
-
-.header-live-status .status-dot.not-watching {
-  background-color: var(--text-muted);
-}
-
-.header-live-status .status-dot.paused {
-  background-color: #d4a850;
-  box-shadow: 0 0 6px rgba(212, 168, 80, 0.5);
 }
 
 /* Header overlay quick controls */
@@ -613,17 +571,8 @@ select optgroup {
   font-size: 0.85em;
 }
 
-/* Customize button in header (gold-tinted to stand out) */
-
-.btn-header-customize:hover:not(:disabled) {
-  color: #f0c860 !important;
-  border-color: rgba(212, 168, 73, 0.4) !important;
-  background: rgba(212, 168, 73, 0.12) !important;
-}
-
 /* Big entry point to the same modal on the Overlays tab: the header
    customize button's gold, at panel-button size */
-
 
 /* Profile unsaved hint (compact, in header nav row) */
 .header-unsaved-hint {
@@ -670,31 +619,6 @@ select optgroup {
   font-size: 0.85em;
 }
 
-/* Status dot (inside header-overlay-controls) */
-
-
-
-
-/* Mode label (Live / Historical / Idle) */
-
-
-
-
-
-
-
-/* Resume Live button - dark green bg with light green text */
-
-.btn-resume-live:hover {
-  background: var(--color-success-bg-hover);
-}
-
-.btn-resume-live i {
-  font-size: 0.85em;
-}
-
-
-
 a {
   font-weight: 500;
   color: var(--swtor-blue);
@@ -735,13 +659,6 @@ button:hover {
 button:active {
   border-color: var(--swtor-blue-dim);
   background-color: rgba(15, 15, 15, 0.4);
-}
-
-/* Baras-specific styles */
-.subtitle {
-  color: var(--text-muted);
-  margin-top: 0;
-  margin-bottom: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -842,11 +759,6 @@ button:active {
   line-height: 1;
 }
 
-.btn-lg {
-  padding: var(--space-md) var(--space-lg);
-  font-size: 1em;
-}
-
 /* Button States */
 .btn-active,
 .btn.active {
@@ -854,14 +766,6 @@ button:active {
   border-color: var(--swtor-blue);
   color: var(--swtor-blue);
   box-shadow: var(--shadow-glow-blue);
-}
-
-/* Icon-only button */
-.btn-icon {
-  padding: var(--space-sm);
-  border-radius: var(--radius-round);
-  width: 2.5em;
-  height: 2.5em;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -874,26 +778,6 @@ button:active {
   border: 1px solid var(--border-accent);
   border-radius: var(--radius-xl);
   padding: var(--space-lg);
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-md);
-  padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--border-accent);
-}
-
-.panel-title {
-  margin: 0;
-  font-size: 1.1em;
-  color: var(--swtor-blue);
-}
-
-.panel-subtitle {
-  color: var(--text-muted);
-  font-size: 0.85em;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -936,12 +820,6 @@ button:active {
 .form-row label {
   color: var(--text-muted);
   font-size: 0.85em;
-}
-
-.form-row-inline {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-md);
 }
 
 .form-field {
@@ -1079,7 +957,6 @@ button:active {
   display: flex;
   flex-direction: column;
 }
-
 
 /* ═══ Futuristic Control Panel Buttons ═══ */
 /* One overlay per row: accent bar + name on the left, state dot and gear on the right */
@@ -1303,15 +1180,6 @@ button:active {
   box-shadow: 0 0 8px var(--border-accent);
 }
 
-.btn-visibility-placeholder {
-  min-width: unset;
-  margin: 0;
-  background-color: #3a3a3a;
-  border-color: #4a4a4a;
-  color: var(--text-disabled);
-  cursor: default;
-}
-
 /* Session panel */
 /* ── Collapsible Session Dashboard Bar ── */
 .session-dashboard-bar {
@@ -1341,7 +1209,6 @@ button:active {
   gap: 0.8em;
   min-height: 28px;
 }
-
 
 /* Live / Prior Session / Historical chip, with Resume Live to its left */
 .session-status-group {
@@ -1437,8 +1304,6 @@ button:active {
   border-color: var(--color-success);
 }
 
-
-
 .dashboard-summary {
   display: flex;
   align-items: center;
@@ -1461,16 +1326,6 @@ button:active {
 .dashboard-status-icon.historical,
 .dashboard-status-icon.warning {
   color: var(--color-warning);
-}
-
-
-
-
-.dashboard-separator {
-  color: var(--border-dim);
-  font-size: 0.85em;
-  flex-shrink: 0;
-  opacity: 0.5;
 }
 
 .session-time-info {
@@ -1512,16 +1367,7 @@ button:active {
   text-overflow: ellipsis;
 }
 
-.dashboard-player-detail {
-  font-size: 0.8em;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Controls label in expanded settings row */
-
 
 /* Profile selector inside session dashboard bar */
 /* Settings row inside dashboard bar */
@@ -1556,74 +1402,6 @@ button:active {
   color: var(--swtor-blue-light, #8ab4f8);
 }
 
-/* Legacy session-panel: keep for backwards compat but redirect */
-.session-panel {
-  margin: 0 auto;
-  width: 100%;
-  max-width: 100%;
-  background: var(--gradient-panel);
-  border-radius: var(--radius-xl);
-  padding: 1vh 1.5vw;
-  box-sizing: border-box;
-  flex: 0 1 auto;
-  border: 1px solid var(--border-accent);
-}
-
-.session-panel h3 {
-  margin: 0 0 0.5vh 0;
-  font-size: clamp(0.9rem, 2vh, 1.2rem);
-  color: var(--swtor-blue);
-}
-
-/* Session empty states */
-.session-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2em 1em;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.session-empty i {
-  font-size: 2em;
-  margin-bottom: 0.5em;
-  color: var(--text-disabled);
-}
-
-.session-empty p {
-  margin: 0.3em 0;
-}
-
-.session-empty .hint {
-  font-size: 0.85em;
-  color: var(--text-disabled);
-}
-
-.session-empty.alert i {
-  color: var(--swtor-orange);
-}
-
-.session-empty .settings-link {
-  color: var(--swtor-blue);
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-/* Boss notes selector */
-.session-notes-selector {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-}
-
-.session-notes-selector .label {
-  color: var(--text-muted);
-  font-size: 0.85em;
-  white-space: nowrap;
-}
-
 .notes-boss-select {
   flex: 1;
   padding: 0.3em 0.5em;
@@ -1644,24 +1422,6 @@ button:active {
   outline: none;
   border-color: var(--swtor-blue);
   box-shadow: 0 0 0 2px rgba(79, 192, 255, 0.2);
-}
-
-.session-empty .settings-link:hover {
-  color: var(--swtor-light-blue);
-}
-
-/* ── Session header left (status + inline time) ── */
-.session-header-left {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
-
-.session-time-inline {
-  font-weight: 400;
-  font-size: 0.85em;
-  color: var(--text-muted);
-  margin-left: 0.15em;
 }
 
 /* ── Duration badge ── */
@@ -1707,7 +1467,6 @@ button:active {
 }
 
 /* ── Operation timer (session settings row) ── */
-
 
 .op-timer-display {
   /* Same explicit box as the alacrity and bias inputs */
@@ -1765,83 +1524,6 @@ button:active {
   border-color: rgba(255, 74, 74, 0.3);
 }
 
-/* ── Player identity row ── */
-.session-identity {
-  display: flex;
-  align-items: center;
-  gap: 0.6em;
-  padding: 0.5em 0;
-}
-
-.session-role-icon {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-  opacity: 0.9;
-}
-
-.session-class-icon {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-  border-radius: 3px;
-}
-
-.session-identity-text {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5em;
-  min-width: 0;
-}
-
-.session-player-name {
-  font-weight: 600;
-  font-size: clamp(0.9rem, 2vh, 1.15rem);
-  color: var(--text-primary);
-}
-
-.session-player-detail {
-  font-size: clamp(0.75rem, 1.5vh, 0.9rem);
-  color: var(--text-muted);
-}
-
-/* Session toolbar */
-.session-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 1.5em;
-  flex-wrap: wrap;
-  margin-bottom: 0.5em;
-}
-
-/* Session header with indicator */
-.session-header {
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-  margin: 0;
-  font-size: clamp(0.9rem, 2vh, 1.2rem);
-  color: var(--swtor-blue);
-}
-
-.session-header.live i {
-  color: var(--color-success);
-}
-
-.session-header.historical i {
-  color: var(--color-warning);
-}
-
-/* Historical session panel tint */
-.session-panel.historical {
-  background: linear-gradient(
-    135deg,
-    rgba(212, 168, 80, 0.05) 0%,
-    var(--bg-mid) 100%
-  );
-  border-color: rgba(212, 168, 80, 0.3);
-}
-
 /* Character mismatch warning banner */
 .session-mismatch-warning {
   display: flex;
@@ -1895,12 +1577,6 @@ button:active {
   cursor: wait;
 }
 
-.session-toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 1.5em;
-}
-
 .session-upload-group {
   display: flex;
   align-items: center;
@@ -1931,38 +1607,6 @@ button:active {
   cursor: help;
 }
 
-/* Active file display */
-.active-file {
-  margin-top: 0.5vh;
-  padding: 0.4vh 0.5vw;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: var(--radius-md);
-  font-size: clamp(0.55rem, 1.2vh, 0.85rem);
-  text-align: left;
-  word-break: break-all;
-}
-
-.active-file .label {
-  color: var(--text-muted);
-}
-
-.active-file .filename {
-  font-family: monospace;
-}
-
-/* Status footer */
-.status-footer {
-  margin-top: auto;
-  padding-top: 0.5vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5vw;
-  font-size: clamp(0.6rem, 1.3vh, 0.85rem);
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
 .status-dot {
   width: clamp(6px, 1vh, 10px);
   height: clamp(6px, 1vh, 10px);
@@ -1971,33 +1615,6 @@ button:active {
 
 .status-dot.status-on {
   background-color: #4a4;
-}
-
-.status-dot.status-off {
-  background-color: var(--text-muted);
-}
-
-/* Settings/Customize button */
-.btn-settings {
-  min-width: unset;
-  margin: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
-  );
-  border-color: rgba(80, 80, 90, 0.4);
-  color: #999;
-}
-
-.btn-settings:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(60, 60, 65, 0.95) 0%,
-    rgba(45, 45, 50, 0.95) 100%
-  );
-  border-color: var(--text-muted);
-  color: var(--text-secondary);
 }
 
 /* Rearrange Frames button - green/teal accent */
@@ -2071,18 +1688,6 @@ button:active {
   cursor: not-allowed;
 }
 
-/* Customize section */
-.customize-section {
-  margin-top: 1vh;
-  display: flex;
-  justify-content: center;
-}
-
-.customize-section .btn-settings {
-  width: 100%;
-  max-width: 200px;
-}
-
 /* Settings modal backdrop - now non-blocking */
 .modal-backdrop {
   position: fixed;
@@ -2098,8 +1703,6 @@ button:active {
 }
 
 /* Floating settings panel wrapper — no backdrop, clicks pass through */
-
-
 
 /* Settings panel */
 /* Right-hand drawer (overlay settings, log files): leaves the page beside it clickable */
@@ -2135,7 +1738,6 @@ button:active {
 
 /* Draggable header */
 
-
 .settings-header {
   display: flex;
   justify-content: space-between;
@@ -2163,9 +1765,6 @@ button:active {
 }
 
 /* Settings tabs */
-
-
-
 
 /* Settings panel tab buttons - blue theme */
 /* Drawer top tabs: Overlays | Profiles | Global */
@@ -2227,35 +1826,6 @@ button:active {
   border-color: var(--swtor-blue);
   color: var(--swtor-blue);
   box-shadow: 0 0 10px var(--blue-alpha-15);
-}
-
-.inline-opacity {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  font-size: 0.7em;
-  color: var(--text-muted);
-}
-
-.inline-opacity label {
-  white-space: nowrap;
-}
-
-.inline-opacity input[type="range"] {
-  width: 80px;
-  height: 4px;
-  accent-color: #4a9eff;
-}
-
-.inline-opacity .value {
-  min-width: 2em;
-  text-align: right;
-}
-
-.inline-opacity.metrics-opacity {
-  margin-top: 0.5em;
-  padding-top: 0.5em;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Note: Main tab-btn styles are defined below in the "Main Tabs" section.
@@ -2711,17 +2281,12 @@ details[open] .collapsible-summary::before {
   background: var(--color-success-bg-hover);
 }
 
-.btn-save.btn-disabled,
 .btn-save:disabled {
   background: var(--bg-light);
   border-color: var(--border-medium);
   color: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.6;
-}
-
-.footer-spacer {
-  flex: 1;
 }
 
 /* Unsaved changes indicator */
@@ -2767,7 +2332,6 @@ details[open] .collapsible-summary::before {
 }
 
 /* General settings modal */
-
 
 .web-overlay-url {
   display: block;
@@ -3138,15 +2702,6 @@ details[open] .collapsible-summary::before {
 
 .profile-list.compact .profile-name {
   font-size: 0.9em;
-}
-
-.profile-active-badge {
-  margin-left: auto;
-  padding: 0.15em 0.5em;
-  background: #3a5a8a;
-  border-radius: 3px;
-  font-size: 0.75em;
-  color: #aaccff;
 }
 
 .summary-icon {
@@ -3749,26 +3304,6 @@ a.contributor-name:hover {
   border: 1px solid var(--border-accent);
 }
 
-.history-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.75em;
-  padding-bottom: 0.5em;
-  border-bottom: 1px solid var(--border-accent);
-}
-
-.history-header h3 {
-  margin: 0;
-  font-size: 1em;
-  color: var(--swtor-blue);
-}
-
-.history-header h3 i {
-  margin-right: 0.5em;
-  color: var(--swtor-blue-dim);
-}
-
 .history-controls {
   display: flex;
   align-items: center;
@@ -3870,91 +3405,6 @@ a.contributor-name:hover {
   50% { opacity: 0.4; }
 }
 
-.history-loading,
-.history-empty {
-  text-align: center;
-  padding: 2em;
-  color: var(--text-muted);
-}
-
-.history-empty i {
-  font-size: 2em;
-  margin-bottom: 0.5em;
-  display: block;
-}
-
-.history-empty .hint {
-  font-size: 0.85em;
-  color: var(--text-disabled);
-  margin-top: 0.5em;
-}
-
-.history-table-container {
-  max-height: 200px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.history-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85em;
-  table-layout: fixed;
-}
-
-.history-table th,
-.history-table td {
-  padding: 0.5em 0.75em;
-  text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.history-table th {
-  background: var(--gradient-panel);
-  color: var(--swtor-blue-dim);
-  font-weight: 500;
-  font-size: 0.9em;
-  position: sticky;
-  top: 0;
-  border-bottom: 1px solid var(--border-accent);
-}
-
-.history-table tbody tr {
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.history-table tbody tr:hover {
-  background: var(--blue-alpha-5);
-}
-
-.history-table tbody tr.expanded {
-  background: var(--blue-alpha-8);
-}
-
-.col-name {
-  width: 62%;
-  overflow: hidden;
-}
-
-.col-type {
-  width: 20%;
-}
-
-.col-duration {
-  width: 15%;
-}
-
-.col-result {
-  width: 12%;
-  text-align: center;
-}
-
-.col-upload {
-  width: 11%;
-  text-align: center;
-}
-
 .parsely-upload-btn {
   background: transparent;
   border: none;
@@ -3997,13 +3447,6 @@ a.contributor-name:hover {
   background: rgba(245, 158, 11, 0.1);
 }
 
-.encounter-info {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5em;
-  overflow: hidden;
-}
-
 .encounter-name {
   font-weight: 500;
   color: #e0e0e0;
@@ -4020,221 +3463,11 @@ a.contributor-name:hover {
   min-width: 0;
 }
 
-.difficulty-badge {
-  margin-left: 0.5em;
-  padding: 0.15em 0.4em;
-  background: rgba(100, 100, 150, 0.4);
-  border-radius: 3px;
-  font-size: 0.8em;
-  color: #aabbdd;
-}
-
-.phase-type {
-  font-size: 0.9em;
-  color: var(--text-tertiary);
-  text-transform: capitalize;
-}
-
-.result-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75em;
-  height: 1.75em;
-  border-radius: 50%;
-  font-size: 0.85em;
-}
-
-.result-badge.success {
-  background: rgba(50, 180, 100, 0.3);
-  color: var(--color-success);
-}
-
-.result-badge.wipe {
-  background: rgba(200, 80, 80, 0.3);
-  color: var(--color-error);
-}
-
-/* Detail row */
-.detail-row td {
-  padding: 0 !important;
-  background: linear-gradient(
-    180deg,
-    rgba(40, 45, 55, 0.95) 0%,
-    rgba(30, 35, 45, 0.95) 100%
-  );
-  border-top: 1px solid var(--blue-alpha-10);
-}
-
-.encounter-detail {
-  padding: 0.75em;
-}
-
-.detail-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1em 1.5em;
-  margin-bottom: 0.75em;
-  font-size: 0.85em;
-  color: var(--text-muted);
-  align-items: center;
-}
-
-.detail-header i {
-  margin-right: 0.3em;
-}
-
-.detail-item {
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-.detail-item.npc-list {
-  color: #aa8866;
-  flex: 1 1 100%;
-  white-space: normal;
-  min-width: 0;
-}
-
-.btn-view-explorer {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  padding: 0.4em 0.8em;
-  background: linear-gradient(
-    180deg,
-    rgba(60, 130, 180, 0.25) 0%,
-    rgba(40, 100, 150, 0.15) 100%
-  );
-  border: 1px solid var(--swtor-blue-dim);
-  border-radius: var(--radius-md);
-  color: var(--swtor-blue);
-  font-size: 0.85em;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-view-explorer:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(70, 150, 200, 0.35) 0%,
-    rgba(50, 120, 170, 0.25) 100%
-  );
-  box-shadow: 0 0 12px rgba(74, 158, 255, 0.3);
-  color: var(--swtor-blue-bright);
-}
-
-.btn-view-explorer i {
-  font-size: 0.9em;
-}
-
-.metrics-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9em;
-  table-layout: fixed;
-}
-
-.metrics-table th,
-.metrics-table td {
-  padding: 0.35em 0.4em;
-  text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.metrics-table th {
-  color: var(--text-muted);
-  font-weight: 500;
-  font-size: 0.85em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.player-name {
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
 .name-with-icon {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-size: 14px;
-}
-
-.player-name .class-icon {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-}
-
-/* Discipline icons render with their original colors - no CSS tinting needed */
-
-/* Role icons */
-.player-name .role-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.metric-value {
-  font-family: monospace;
-  color: var(--text-tertiary);
-}
-
-.metric-value.dps {
-  color: var(--color-error);
-}
-
-.metric-value.hps {
-  color: var(--color-success);
-}
-
-.metric-value.dtps {
-  color: #d9a75f;
-}
-
-.metric-value.tps {
-  color: #b39ddb;
-}
-
-.metrics-table-scroll {
-  overflow-x: auto;
-  max-width: 100%;
-}
-
-.metrics-table .col-player {
-  width: 15%;
-}
-
-.metrics-table .col-metric {
-  width: 8.5%;
-  text-align: center;
-}
-
-.metrics-table td.metric-value {
-  text-align: center;
-}
-
-.metrics-table .totals-row {
-  font-weight: 600;
-}
-.metrics-table .totals-row td {
-  box-shadow: inset 0 2px 0 var(--border-color);
-}
-.metrics-table .totals-label {
-  text-align: left;
-  color: var(--text-secondary);
-}
-
-.no-metrics {
-  text-align: center;
-  color: var(--text-disabled);
-  font-style: italic;
-  padding: 1em;
 }
 
 /* Sortable table headers */
@@ -4252,41 +3485,6 @@ a.contributor-name:hover {
 .sortable-header.active {
   background-color: rgba(100, 150, 200, 0.15);
   color: var(--text-secondary);
-}
-
-.sortable-header .sort-icon {
-  margin-left: 0.4em;
-  font-size: 0.75em;
-  opacity: 0.4;
-}
-
-.sortable-header.active .sort-icon {
-  opacity: 1;
-  color: #7eb8da;
-}
-
-.sortable-header:hover .sort-icon {
-  opacity: 0.7;
-}
-
-/* Challenge results in encounter detail */
-.challenge-results {
-  margin-top: 0.75em;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 0.75em;
-}
-
-.challenge-results-header {
-  font-size: 0.85em;
-  color: var(--text-muted);
-  margin-bottom: 0.5em;
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-}
-
-.challenge-results-header i {
-  color: #c8a84e;
 }
 
 .challenge-cards {
@@ -4399,140 +3597,10 @@ a.contributor-name:hover {
   text-align: right;
 }
 
-/* Phase header rows (area/phase dividers - collapsible) */
-.phase-header-row {
-  background: linear-gradient(
-    90deg,
-    rgba(60, 70, 90, 0.6) 0%,
-    rgba(40, 45, 55, 0.4) 100%
-  );
-  cursor: pointer !important;
-  user-select: none;
-}
-
-.phase-header-row:hover {
-  background: linear-gradient(
-    90deg,
-    rgba(70, 80, 100, 0.7) 0%,
-    rgba(50, 55, 65, 0.5) 100%
-  ) !important;
-}
-
-.phase-header-row td {
-  padding: 0.5em 0.75em !important;
-  border-bottom: 1px solid rgba(100, 120, 160, 0.3);
-}
-
-.phase-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  font-size: 0.9em;
-  color: #8899bb;
-}
-
-.phase-header i {
-  color: #6688bb;
-}
-
-.phase-header .collapse-icon {
-  width: 1em;
-  font-size: 0.8em;
-  color: #7799cc;
-  transition: transform 0.15s ease;
-}
-
-.phase-area {
-  font-weight: 500;
-  color: #aabbdd;
-}
-
-.phase-difficulty {
-  color: #88aacc;
-  font-weight: 400;
-}
-
 .section-count {
   color: #6688aa;
   font-size: 0.85em;
   margin-left: 0.25em;
-}
-
-/* Responsive history table */
-@media (min-width: 600px) {
-  .history-table-container {
-    max-height: 350px;
-  }
-
-  .metrics-table .col-metric {
-    min-width: 42px;
-  }
-
-}
-
-@media (min-width: 800px) {
-  .history-table-container {
-    max-height: 450px;
-  }
-
-  .history-table {
-    font-size: 0.9em;
-  }
-
-  .history-table th,
-  .history-table td {
-    padding: 0.6em 1em;
-  }
-
-  .metrics-table {
-    font-size: 0.95em;
-  }
-
-  .metrics-table .col-metric {
-    min-width: 46px;
-  }
-
-  .encounter-detail {
-    padding: 1em;
-  }
-
-  .session-panel {
-    padding: 1.5em;
-  }
-}
-
-@media (min-width: 1000px) {
-  .history-table-container {
-    max-height: 550px;
-  }
-
-  .history-table {
-    font-size: 0.95em;
-  }
-
-  .history-table th,
-  .history-table td {
-    padding: 0.7em 1.2em;
-  }
-
-  .metrics-table .col-metric {
-    min-width: 50px;
-  }
-
-}
-
-@media (min-width: 1200px) {
-  .history-table {
-    font-size: 1em;
-  }
-
-  .metrics-table {
-    font-size: 1em;
-  }
-
-  .session-panel {
-    padding: 2em;
-  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -4836,407 +3904,22 @@ a.contributor-name:hover {
   }
 }
 
-/* Larger history panel in session tab */
-.history-container-large .history-panel {
-  flex: 1;
-}
-
-.history-container-large .history-table-container {
-  max-height: none;
-  min-height: 200px;
-  flex: 1;
-}
-
-.history-container-large {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════════
-   Timer Editor Panel
-   ═══════════════════════════════════════════════════════════════════════════════ */
-
-.timer-editor-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: var(--gradient-panel);
-  border-radius: var(--radius-xl);
-  padding: 1em;
-  overflow: hidden;
-  border: 1px solid var(--border-accent);
-}
-
-.timer-editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75em;
-  padding-bottom: 0.5em;
-  border-bottom: 1px solid var(--border-accent);
-}
-
-.timer-editor-header h2 {
-  margin: 0;
-  font-size: 1.1em;
-  color: var(--swtor-blue);
-}
-
-.timer-count {
-  color: var(--text-muted);
-  font-size: 0.85em;
-}
-
-/* Timer editor layout with area sidebar */
-.timer-editor-content {
-  display: flex;
-  flex: 1;
-  gap: 1em;
-  overflow: hidden;
-}
-
-.area-sidebar {
-  width: 200px;
-  min-width: 200px;
-  max-height: 100%;
-  overflow-y: auto;
-  background: rgba(30, 30, 35, 0.6);
-  border-radius: var(--radius-lg);
-  padding: 0.5em;
-}
-
-.area-loading {
-  padding: 1em;
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.area-filter {
-  margin-bottom: 0.5em;
-}
-
-.area-filter-input {
-  width: 100%;
-  padding: 0.4em 0.6em;
-  background: rgba(50, 50, 55, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.85em;
-}
-
-.area-filter-input::placeholder {
-  color: var(--text-disabled);
-}
-
-.area-filter-input:focus {
-  outline: none;
-  border-color: var(--swtor-blue);
-}
-
-.area-no-match {
-  padding: 1em;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 0.85em;
-}
-
-.area-category {
-  margin-bottom: 0.75em;
-}
-
-.area-category-header {
-  font-size: 0.75em;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  padding: 0.25em 0.5em;
-  margin-bottom: 0.25em;
-  letter-spacing: 0.5px;
-}
-
-.area-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.4em 0.6em;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.15s;
-  font-size: 0.85em;
-}
-
-.area-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.area-item.selected {
-  background: var(--blue-alpha-15);
-  color: var(--swtor-blue);
-}
-
-.area-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.area-counts {
-  font-size: 0.7em;
-  color: #777;
-  margin-left: 0.5em;
-  flex-shrink: 0;
-  font-family: monospace;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 0.15em 0.4em;
-  border-radius: 3px;
-}
-
-.area-item.selected .area-counts {
-  color: var(--swtor-blue);
-  background: var(--border-accent);
-}
-
-.timer-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.timer-empty-state {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-disabled);
-}
-
-.timer-empty-state .empty-icon {
-  font-size: 3em;
-  margin-bottom: 0.5em;
-  opacity: 0.5;
-}
-
-.timer-empty-state .empty-text {
-  font-size: 0.95em;
-}
-
-.timer-search-bar {
-  display: flex;
-  gap: 0.5em;
-  margin-bottom: 0.75em;
-}
-
-.timer-search-input {
-  flex: 1;
-  padding: 0.5em 0.75em;
-  background: rgba(50, 50, 55, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.9em;
-}
-
-.timer-search-input::placeholder {
-  color: var(--text-disabled);
-}
-
-.timer-category-filter {
-  padding: 0.5em 0.75em;
-  background: var(--bg-input);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.9em;
-  cursor: pointer;
-}
-
-/* Native select dropdown styling */
-.timer-category-filter option {
-  background: var(--bg-input);
-  color: var(--text-primary);
-}
-
-.boss-select option {
-  background: var(--bg-input);
-  color: var(--text-primary);
-}
-
-/* General select/option styling for timer editor */
-.timer-editor-panel select option,
-.new-timer-form select option {
-  background: var(--bg-input);
-  color: #222;
-}
-
-.timer-loading,
-.timer-empty {
-  text-align: center;
-  color: var(--text-muted);
-  padding: 2em;
-  font-size: 0.95em;
-}
-
-.timer-list {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25em;
-}
-
-/* Timer Row */
-.timer-row {
-  background: rgba(45, 45, 50, 0.6);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  transition: background 0.15s;
-}
-
-.timer-row:hover {
-  background: rgba(55, 55, 60, 0.7);
-}
-
-.timer-row.expanded {
-  background: rgba(55, 60, 70, 0.7);
-  border-color: rgba(100, 140, 200, 0.3);
-}
-
-.timer-row-summary {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.5em 0.75em;
-  cursor: pointer;
-}
-
-.timer-expand-icon {
-  width: 1em;
-  color: var(--text-muted);
-  font-size: 0.8em;
-}
-
-.timer-color-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.timer-boss-name {
-  color: #999;
-  font-size: 0.85em;
-}
-
-.timer-separator {
-  color: #555;
-}
-
-.timer-name {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.timer-id-inline {
-  color: var(--text-disabled);
-  font-size: 0.75em;
-  font-family: monospace;
-  margin-left: 0.5em;
-  flex: 1;
-}
-
-.timer-duration {
-  color: #8af;
-  font-size: 0.85em;
-  margin-left: auto;
-  padding-right: 0.5em;
-}
-
-.timer-status {
-  font-size: 0.85em;
-  padding: 0.15em 0.4em;
-  border-radius: 3px;
-}
-
-.timer-status.enabled {
-  color: #6d6;
-  background: rgba(100, 200, 100, 0.1);
-}
-
-.timer-status.disabled {
-  color: var(--text-muted);
-  background: rgba(100, 100, 100, 0.1);
-}
-
-/* Timer Edit Form */
-.timer-edit-form {
-  padding: 0.75em 1em 1em;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  flex-direction: column;
-  gap: 0.6em;
-}
-
-.timer-id-row {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 0.3em 0.5em;
-  border-radius: var(--radius-md);
-  margin-bottom: 0.3em;
-}
-
-.timer-id-display {
-  background: rgba(100, 180, 255, 0.1);
-  color: #8cf;
-  padding: 0.2em 0.5em;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 0.9em;
-  user-select: all;
-}
-
-.timer-id-hint {
-  color: var(--text-disabled);
-  font-size: 0.75em;
-  margin-left: 0.75em;
-  font-style: italic;
-}
-
 /* Timer/Effect editor form layouts - inline variant */
-.timer-editor-panel .form-row,
-.effect-editor-panel .form-row,
-.new-timer-form .form-row,
-.new-effect-form .form-row {
+.effect-editor-panel .form-row {
   flex-direction: row;
   align-items: center;
   gap: var(--space-md);
 }
 
-.timer-editor-panel .form-row label,
-.effect-editor-panel .form-row label,
-.new-timer-form .form-row label,
-.new-effect-form .form-row label {
+.effect-editor-panel .form-row label {
   width: 100px;
   flex-shrink: 0;
 }
 
 /* Dark inputs in editor panels */
-.timer-editor-panel input[type="text"],
-.timer-editor-panel input[type="number"],
-.timer-editor-panel select,
 .effect-editor-panel input[type="text"],
 .effect-editor-panel input[type="number"],
-.effect-editor-panel select,
-.new-timer-form input[type="text"],
-.new-timer-form input[type="number"],
-.new-timer-form select,
-.new-effect-form input[type="text"],
-.new-effect-form input[type="number"],
-.new-effect-form select {
+.effect-editor-panel select {
   flex: 1;
   padding: 0.4em 0.6em;
   background: var(--bg-input);
@@ -5247,7 +3930,6 @@ a.contributor-name:hover {
 }
 
 /* Form field number inputs */
-.timer-editor-panel .form-field input[type="number"],
 .effect-editor-panel .form-field input[type="number"] {
   width: 70px;
   flex: none;
@@ -5257,69 +3939,6 @@ a.contributor-name:hover {
   width: 16px;
   height: 16px;
   cursor: pointer;
-}
-
-.trigger-display {
-  display: flex;
-  gap: 0.5em;
-  align-items: center;
-  flex: 1;
-}
-
-.trigger-type {
-  background: rgba(70, 100, 140, 0.4);
-  padding: 0.2em 0.5em;
-  border-radius: 3px;
-  color: #adf;
-  font-size: 0.85em;
-}
-
-.trigger-ids {
-  color: var(--text-muted);
-  font-size: 0.8em;
-  font-family: monospace;
-}
-
-.difficulty-toggles {
-  display: flex;
-  gap: 0.3em;
-}
-
-.diff-btn {
-  padding: 0.25em 0.6em;
-  background: rgba(50, 50, 55, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  color: var(--text-muted);
-  font-size: 0.8em;
-  cursor: pointer;
-  text-transform: capitalize;
-  transition: all var(--transition-normal);
-}
-
-.diff-btn:hover {
-  background: rgba(60, 60, 70, 0.7);
-  color: #bbb;
-}
-
-.diff-btn.active {
-  background: rgba(70, 120, 70, 0.5);
-  border-color: rgba(100, 180, 100, 0.4);
-  color: #afa;
-}
-
-.phase-tags {
-  display: flex;
-  gap: 0.3em;
-  flex-wrap: wrap;
-}
-
-.phase-tag {
-  background: rgba(100, 80, 140, 0.4);
-  padding: 0.15em 0.5em;
-  border-radius: 3px;
-  color: #caf;
-  font-size: 0.8em;
 }
 
 .form-actions {
@@ -5337,13 +3956,6 @@ a.contributor-name:hover {
   font-size: 0.85em;
 }
 
-.timer-file-info {
-  margin-top: 0.5em;
-  font-size: 0.75em;
-  color: var(--text-disabled);
-  font-family: monospace;
-}
-
 /* Header right section */
 .header-right {
   display: flex;
@@ -5351,259 +3963,7 @@ a.contributor-name:hover {
   gap: 1em;
 }
 
-.btn-new-timer {
-  padding: 0.4em 0.8em;
-  background: var(--color-success-bg);
-  border: 1px solid var(--color-success-border);
-  border-radius: var(--radius-md);
-  color: var(--color-success);
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-}
-
-.btn-new-timer:hover {
-  background: var(--color-success-bg-hover);
-}
-
-/* Boss headers (collapsible groups) */
-.boss-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.6em 0.75em;
-  background: rgba(50, 55, 65, 0.7);
-  border: 1px solid rgba(100, 140, 200, 0.2);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  margin-top: 0.5em;
-  transition: background 0.15s;
-}
-
-.boss-header:first-child {
-  margin-top: 0;
-}
-
-.boss-header:hover {
-  background: rgba(60, 65, 75, 0.8);
-}
-
-.boss-expand-icon {
-  width: 1em;
-  color: #8af;
-  font-size: 0.8em;
-}
-
-.boss-name {
-  color: #cdf;
-  font-weight: 500;
-  font-size: 0.95em;
-}
-
-.boss-timer-count {
-  color: var(--text-muted);
-  font-size: 0.85em;
-  margin-left: 0.25em;
-}
-
-.boss-timers {
-  margin-left: 1em;
-  border-left: 2px solid rgba(100, 140, 200, 0.15);
-  padding-left: 0.5em;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25em;
-  margin-top: 0.25em;
-}
-
-/* Timer trigger badge in summary */
-.timer-trigger-badge {
-  background: rgba(70, 100, 140, 0.3);
-  padding: 0.15em 0.4em;
-  border-radius: 3px;
-  color: #8af;
-  font-size: 0.75em;
-}
-
-/* Trigger Editor */
-.trigger-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
-  flex: 1;
-}
-
-.trigger-type-select {
-  padding: 0.4em 0.6em;
-  background: rgba(40, 40, 45, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.9em;
-  max-width: 200px;
-}
-
-.trigger-hint {
-  color: var(--text-muted);
-  font-size: 0.8em;
-  font-style: italic;
-}
-
-.trigger-field {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-}
-
-.trigger-field label {
-  color: #999;
-  font-size: 0.85em;
-  min-width: 60px;
-}
-
-.trigger-field input[type="text"],
-.trigger-field input[type="number"] {
-  padding: 0.35em 0.5em;
-  background: rgba(40, 40, 45, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.9em;
-}
-
-.trigger-field input[type="number"] {
-  width: 70px;
-}
-
-.trigger-field-inline {
-  display: flex;
-  align-items: center;
-  gap: 1em;
-  flex-wrap: wrap;
-}
-
-/* ID List (for ability/effect IDs) */
-.trigger-id-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4em;
-}
-
-.trigger-id-list > label {
-  color: #999;
-  font-size: 0.8em;
-}
-
-.id-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3em;
-}
-
-.id-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-  background: rgba(60, 80, 100, 0.5);
-  padding: 0.2em 0.5em;
-  border-radius: 3px;
-  color: #adf;
-  font-size: 0.8em;
-  font-family: monospace;
-}
-
-.id-chip-remove {
-  background: none;
-  border: none;
-  color: #f88;
-  cursor: pointer;
-  padding: 0 0.2em;
-  font-size: 1em;
-  line-height: 1;
-}
-
-.id-chip-remove:hover {
-  color: #faa;
-}
-
-.id-add-row {
-  display: flex;
-  gap: 0.3em;
-  margin-top: 0.25em;
-}
-
-.id-add-row input {
-  padding: 0.3em 0.5em;
-  background: rgba(40, 40, 45, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.85em;
-  width: 140px;
-  font-family: monospace;
-}
-
-.btn-add-id {
-  padding: 0.3em 0.6em;
-  background: var(--color-success-bg);
-  border: 1px solid var(--color-success-border);
-  border-radius: var(--radius-md);
-  color: var(--color-success);
-  cursor: pointer;
-  font-size: 0.9em;
-}
-
-.btn-add-id:hover {
-  background: var(--color-success-bg-hover);
-}
-
-/* New Timer Form */
-.new-timer-form {
-  background: rgba(45, 50, 60, 0.8);
-  border: 1px solid rgba(100, 140, 200, 0.3);
-  border-radius: var(--radius-lg);
-  padding: 1em;
-  margin-bottom: 0.75em;
-}
-
-.new-timer-form h3 {
-  margin: 0 0 0.75em 0;
-  color: #cdf;
-  font-size: 1em;
-}
-
-.boss-select {
-  flex: 1;
-  padding: 0.4em 0.6em;
-  background: rgba(40, 40, 45, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.9em;
-}
-
-.boss-select optgroup {
-  background: #333;
-  color: #cdf;
-  font-weight: 600;
-}
-
-.boss-select option {
-  background: var(--bg-input);
-  color: var(--text-primary);
-}
-
-/* Boss Search Select (Fuzzy Search Dropdown) */
-.boss-search-select {
-  position: relative;
-  flex: 1;
-}
-
-.search-input-wrapper {
-  position: relative;
-}
-
-.boss-search-input {
+.search-input {
   width: 100%;
   padding: 0.5em 0.75em;
   background: #2a2a2f !important;
@@ -5613,99 +3973,14 @@ a.contributor-name:hover {
   font-size: 0.9em;
 }
 
-.boss-search-input:focus {
+.search-input:focus {
   outline: none;
   border-color: rgba(100, 160, 255, 0.5);
   box-shadow: 0 0 0 2px rgba(100, 160, 255, 0.15);
 }
 
-.boss-search-input::placeholder {
+.search-input::placeholder {
   color: var(--text-muted);
-}
-
-.selected-boss-display {
-  position: absolute;
-  left: 0.75em;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #cdf;
-  pointer-events: none;
-  font-size: 0.9em;
-}
-
-.selected-boss-display .area-hint {
-  color: #789;
-  font-size: 0.85em;
-}
-
-.boss-search-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  max-height: 280px;
-  overflow-y: auto;
-  background: #252530;
-  border: 1px solid rgba(100, 140, 200, 0.3);
-  border-top: none;
-  border-radius: 0 0 4px 4px;
-  z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-.boss-search-dropdown .area-header {
-  padding: 0.4em 0.75em 0.3em;
-  background: rgba(60, 80, 120, 0.3);
-  color: #9bf;
-  font-size: 0.75em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-top: 1px solid rgba(100, 140, 200, 0.15);
-}
-
-.boss-search-dropdown .area-header:first-child {
-  border-top: none;
-}
-
-.boss-search-dropdown .boss-option {
-  padding: 0.5em 0.75em 0.5em 1.25em;
-  cursor: pointer;
-  transition: background 0.1s;
-}
-
-.boss-search-dropdown .boss-option:hover,
-.boss-search-dropdown .boss-option.highlighted {
-  background: rgba(80, 120, 180, 0.3);
-}
-
-.boss-search-dropdown .boss-option .boss-name {
-  color: var(--text-primary);
-  font-size: 0.9em;
-}
-
-.boss-search-dropdown .no-results {
-  padding: 1em;
-  color: var(--text-muted);
-  font-size: 0.85em;
-  text-align: center;
-  font-style: italic;
-}
-
-.btn-cancel {
-  padding: 0.4em 0.8em;
-  background: rgba(60, 60, 65, 0.6);
-  border: 1px solid rgba(100, 100, 110, 0.3);
-  border-radius: var(--radius-md);
-  color: #bbb;
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-}
-
-.btn-cancel:hover {
-  background: rgba(70, 70, 75, 0.7);
-  color: var(--text-primary);
 }
 
 .color-picker {
@@ -5726,12 +4001,6 @@ a.contributor-name:hover {
   display: flex;
   flex-direction: column;
   gap: 0.4em;
-}
-
-.trigger-compose-actions {
-  display: flex;
-  gap: 0.3em;
-  margin-top: 0.3em;
 }
 
 .btn-compose {
@@ -5771,23 +4040,6 @@ a.contributor-name:hover {
   font-size: 0.85em;
 }
 
-.btn-toggle-type,
-.btn-unwrap {
-  padding: 0.15em 0.4em;
-  background: rgba(60, 60, 70, 0.6);
-  border: 1px solid rgba(100, 100, 120, 0.3);
-  border-radius: 3px;
-  color: var(--text-tertiary);
-  font-size: 0.75em;
-  cursor: pointer;
-}
-
-.btn-toggle-type:hover,
-.btn-unwrap:hover {
-  background: rgba(70, 70, 80, 0.7);
-  color: var(--text-secondary);
-}
-
 .composite-conditions {
   display: flex;
   flex-direction: column;
@@ -5801,21 +4053,6 @@ a.contributor-name:hover {
   display: flex;
   align-items: flex-start;
   gap: 0.5em;
-}
-
-.btn-remove-condition {
-  padding: 0.1em 0.4em;
-  background: var(--color-error-bg);
-  border: 1px solid var(--color-error-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-error);
-  font-size: 0.8em;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.btn-remove-condition:hover {
-  background: var(--color-error-bg-hover);
 }
 
 /* ─── State Conditions Editor ─────────────────────────────────────────── */
@@ -5937,109 +4174,6 @@ a.contributor-name:hover {
   padding: 0.15em 0.5em;
 }
 
-.btn-add-condition {
-  padding: 0.25em 0.5em;
-  background: var(--color-success-bg);
-  border: 1px solid var(--color-success-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-success);
-  font-size: 0.8em;
-  cursor: pointer;
-  margin-top: 0.3em;
-}
-
-.btn-add-condition:hover {
-  background: var(--color-success-bg-hover);
-}
-
-/* Simple Trigger Editor */
-.simple-trigger-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4em;
-}
-
-/* ID List Editor */
-.id-list-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4em;
-  width: 100%;
-}
-
-.id-label-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-}
-
-.id-label {
-  color: #999;
-  font-size: 0.8em;
-}
-
-.id-hint {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  background: rgba(100, 140, 200, 0.3);
-  border-radius: 50%;
-  color: #9bf;
-  font-size: 0.7em;
-  cursor: help;
-}
-
-.id-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.3em;
-  min-height: 1.5em;
-}
-
-.id-add-row {
-  display: flex;
-  gap: 0.4em;
-  align-items: center;
-}
-
-.id-input {
-  width: 140px;
-  padding: 0.3em 0.5em;
-  background: #2a2a2f !important;
-  border: 1px solid var(--border-medium);
-  border-radius: 3px;
-  color: #eee !important;
-  font-size: 0.85em;
-  font-family: monospace;
-}
-
-/* Trigger section styling */
-.trigger-section {
-  flex-direction: column;
-  align-items: flex-start !important;
-}
-
-.trigger-section > label {
-  margin-bottom: 0.3em;
-}
-
-/* New Timer Form header */
-.new-timer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75em;
-}
-
-.new-timer-header h3 {
-  margin: 0;
-  color: #cdf;
-  font-size: 1em;
-}
-
 .btn-close {
   background: none;
   border: none;
@@ -6051,21 +4185,6 @@ a.contributor-name:hover {
 
 .btn-close:hover {
   color: #faa;
-}
-
-/* Optgroup-style labels in select */
-.optgroup-label {
-  color: #8af !important;
-  font-weight: 600;
-  background: #333 !important;
-}
-
-/* Debug displays */
-.category-debug,
-.boss-count-debug {
-  color: #f80;
-  font-size: 0.75em;
-  margin-left: 0.5em;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -6103,141 +4222,18 @@ a.contributor-name:hover {
   font-size: 0.85em;
 }
 
-
-
-
-
-
-
 .effect-search-bar {
   display: flex;
   gap: 0.5em;
   margin-bottom: 0.75em;
 }
 
-.effect-search-input {
-  flex: 1;
-  padding: 0.5em 0.75em;
-  background: rgba(50, 50, 55, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.9em;
-}
-
-.effect-search-input::placeholder {
-  color: var(--text-disabled);
-}
-
-.effect-loading,
-.effect-empty {
-  text-align: center;
-  color: var(--text-muted);
-  padding: 2em;
-  font-size: 0.95em;
-}
-
 .effect-list {
   flex: 1;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25em;
-}
-
-/* File headers (collapsible groups) */
-.file-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.6em 0.75em;
-  background: rgba(50, 55, 65, 0.7);
-  border: 1px solid var(--blue-alpha-20);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  margin-top: 0.5em;
-  transition: background 0.15s;
-}
-
-.file-header:first-child {
-  margin-top: 0;
-}
-
-.file-header:hover {
-  background: rgba(60, 70, 85, 0.8);
-}
-
-.file-expand-icon {
-  width: 1em;
-  color: var(--swtor-blue);
-  font-size: 0.8em;
-}
-
-.file-name {
-  color: var(--swtor-blue);
-  font-weight: 500;
-  font-size: 0.95em;
-}
-
-.file-effect-count {
-  color: var(--text-muted);
-  font-size: 0.85em;
-  margin-left: 0.25em;
-}
-
-.file-effects {
-  margin-left: 1em;
-  border-left: 2px solid var(--blue-alpha-15);
-  padding-left: 0.5em;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25em;
-  margin-top: 0.25em;
 }
 
 /* Effect Row */
-.effect-row {
-  background: rgba(45, 45, 50, 0.6);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  transition: background 0.15s;
-}
-
-.effect-row:hover {
-  background: rgba(55, 55, 60, 0.7);
-}
-
-.effect-row.expanded {
-  background: rgba(50, 55, 65, 0.7);
-  border-color: var(--border-accent-strong);
-}
-
-.effect-row.item-disabled > .effect-row-summary {
-  opacity: 0.45;
-}
-
-.effect-row.item-disabled:hover > .effect-row-summary {
-  opacity: 0.6;
-}
-
-.effect-row.item-disabled > .effect-edit-form {
-  opacity: 0.85;
-}
-
-.effect-row-summary {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: 0.5em 0.75em;
-  cursor: pointer;
-}
-
-.effect-expand-icon {
-  width: 1em;
-  color: var(--text-muted);
-  font-size: 0.8em;
-}
-
 .effect-color-dot {
   width: 10px;
   height: 10px;
@@ -6254,14 +4250,6 @@ a.contributor-name:hover {
   color: var(--text-disabled);
   font-size: 0.75em;
   font-family: monospace;
-}
-
-.effect-target-badge {
-  background: var(--blue-alpha-20);
-  padding: 0.15em 0.4em;
-  border-radius: 3px;
-  color: var(--swtor-blue);
-  font-size: 0.75em;
 }
 
 .effect-new-badge {
@@ -6305,51 +4293,6 @@ a.contributor-name:hover {
 }
 
 /* Effect Edit Form */
-.effect-edit-form {
-  padding: 0.75em 1em 1em;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.effect-edit-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 65%) minmax(0, 30%);
-  gap: var(--space-md);
-}
-
-.effect-edit-left {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6em;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.effect-edit-right {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6em;
-  border-left: 1px solid var(--border-light);
-  padding-left: var(--space-md);
-  min-width: 0;
-  overflow: hidden;
-}
-
-/* Cap text inputs and selects so they don't span the full card width */
-.effect-edit-left .form-row-hz input[type="text"],
-.effect-edit-left .form-row-hz select,
-.effect-edit-right .form-row-hz input[type="text"],
-.effect-edit-right .form-row-hz select,
-.timer-edit-left .form-row-hz input[type="text"],
-.timer-edit-left .form-row-hz select,
-.timer-edit-right .form-row-hz input[type="text"],
-.timer-edit-right .form-row-hz select {
-  max-width: 200px;
-}
-
-.effect-edit-right .form-row-hz > label {
-  min-width: 70px;
-  flex-shrink: 0;
-}
 
 .effect-id-row {
   background: rgba(0, 0, 0, 0.2);
@@ -6377,8 +4320,7 @@ a.contributor-name:hover {
 
 /* Effect editor select styling */
 .effect-editor-panel select,
-.effect-edit-form select,
-.new-effect-form select {
+.effect-edit-form select {
   padding: 0.4em 0.6em;
   background: #2a2a2f !important;
   border: 1px solid var(--border-medium);
@@ -6388,68 +4330,9 @@ a.contributor-name:hover {
 }
 
 .effect-editor-panel select option,
-.effect-edit-form select option,
-.new-effect-form select option {
+.effect-edit-form select option {
   background: var(--bg-input);
   color: var(--text-primary);
-}
-
-/* New Effect button */
-.btn-new-effect {
-  padding: 0.4em 0.8em;
-  background: var(--blue-alpha-15);
-  border: 1px solid var(--border-accent-heavy);
-  border-radius: var(--radius-md);
-  color: var(--swtor-blue);
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-}
-
-.btn-new-effect:hover {
-  background: var(--blue-alpha-25);
-  box-shadow: 0 0 10px var(--blue-alpha-20);
-}
-
-.timer-edit-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 55%) minmax(0, 45%);
-  gap: var(--space-md);
-}
-
-/* New Effect Form */
-.new-effect-form {
-  display: grid;
-  grid-template-columns: 55% 45%;
-  gap: var(--space-md);
-  background: rgba(45, 50, 60, 0.8);
-  border: 1px solid var(--border-accent-strong);
-  border-radius: var(--radius-lg);
-  padding: 1em;
-  margin-bottom: 0.75em;
-}
-
-.new-effect-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75em;
-}
-
-.new-effect-header h3 {
-  margin: 0;
-  color: var(--swtor-blue);
-  font-size: 1em;
-}
-
-.file-select {
-  flex: 1;
-  padding: 0.4em 0.6em;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.9em;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -6623,45 +4506,43 @@ a.contributor-name:hover {
   text-transform: capitalize;
 }
 
-/* ─── Conditions Section ─────────────────────────────────────────────────────── */
-.conditions-section {
-  border-top: 1px solid var(--border-light);
-  padding-top: var(--space-sm);
-}
-
-/* ─── Timer Edit 2-Column Grid ───────────────────────────────────────────────── */
-.timer-edit-grid {
+/* ─── Edit Form 2-Column Grid (timers, effects, phases, counters, challenges) ─ */
+.edit-grid {
   display: grid;
-  grid-template-columns: minmax(0, 55%) minmax(0, 45%);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-md);
 }
 
-.timer-edit-left {
+.edit-grid.left-55 {
+  grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+}
+
+.edit-grid.left-66 {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.edit-grid-left,
+.edit-grid-right {
   min-width: 0;
   overflow: hidden;
 }
 
-.timer-edit-right {
+.edit-grid-right {
   border-left: 1px solid var(--border-light);
   padding-left: var(--space-md);
-  min-width: 0;
-  overflow: hidden;
 }
 
-.timer-edit-right .form-row-hz > label {
+.edit-grid-right .form-row-hz > label {
   min-width: 60px;
   flex-shrink: 0;
 }
 
-/* ─── Encounter Item Edit 2-Column Grid (phases, counters, challenges) ──────── */
-.encounter-item-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-md);
-}
-
-.encounter-item-grid .form-card {
-  /* Cards fill their column */
+/* Cap text inputs and selects so they don't span the full card width */
+.edit-grid-left .form-row-hz input[type="text"],
+.edit-grid-left .form-row-hz select,
+.edit-grid-right .form-row-hz input[type="text"],
+.edit-grid-right .form-row-hz select {
+  max-width: 200px;
 }
 
 /* Two-column trigger layout (e.g. Start / End side by side) */
@@ -6707,7 +4588,6 @@ a.contributor-name:hover {
 .discipline-selector {
   position: relative;
 }
-
 
 /* Row toggle buttons (enable/audio in timer list) */
 .row-toggle {
@@ -6824,7 +4704,6 @@ a.contributor-name:hover {
   padding: var(--space-md);
 }
 
-
 /* ─── Tab Navigation ─────────────────────────────────────────────────────────── */
 .tab-nav {
   display: flex;
@@ -6864,6 +4743,10 @@ a.contributor-name:hover {
   border-radius: var(--radius-md);
   margin-bottom: var(--space-xs);
   overflow: hidden;
+}
+
+.list-item.expanded {
+  border-color: var(--border-accent-strong);
 }
 
 .list-item-header {
@@ -6929,8 +4812,7 @@ a.contributor-name:hover {
 }
 
 /* Orange outline on inner form body when unsaved */
-.list-item-header:has(.unsaved-indicator) + .list-item-body,
-.effect-row-summary:has(.unsaved-indicator) + .effect-edit-form {
+.list-item-header:has(.unsaved-indicator) + .list-item-body {
   outline: 2px solid var(--swtor-orange, #f0ad4e);
   outline-offset: -2px;
 }
@@ -6992,7 +4874,7 @@ a.contributor-name:hover {
   gap: var(--space-xs) !important;
 }
 
-.timer-col-name-id {
+.row-col-name-id {
   display: flex;
   align-items: baseline;
   gap: var(--space-sm);
@@ -7001,12 +4883,12 @@ a.contributor-name:hover {
   overflow: hidden;
 }
 
-.timer-col-name-id > .truncate {
+.row-col-name-id > .truncate {
   flex-shrink: 1;
   min-width: 0;
 }
 
-.timer-col-name-id > .text-mono {
+.row-col-name-id > .text-mono {
   flex-shrink: 10;
   min-width: 0;
   overflow: hidden;
@@ -7014,11 +4896,11 @@ a.contributor-name:hover {
   white-space: nowrap;
 }
 
-.timer-col-trigger {
+.row-col-trigger {
   flex-shrink: 0;
 }
 
-.timer-col-duration {
+.row-col-duration {
   flex-shrink: 0;
   min-width: 45px;
   text-align: right;
@@ -7057,7 +4939,6 @@ a.contributor-name:hover {
   border: 1px dashed var(--color-success, #2ecc71);
   color: var(--color-success, #2ecc71);
 }
-
 
 .tag-muted {
   background: var(--bg-dark);
@@ -7125,14 +5006,6 @@ a.contributor-name:hover {
   border-top: 1px solid var(--border-light);
 }
 
-/* ─── New Item Form ──────────────────────────────────────────────────────────── */
-.new-item-form {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  padding: var(--space-md);
-}
-
 /* ─── Inline Input (smaller, fits in rows) ───────────────────────────────────── */
 .input-inline {
   padding: var(--space-xs);
@@ -7190,26 +5063,6 @@ a.contributor-name:hover {
 .empty-state-icon {
   font-size: 1.5em;
   margin-bottom: var(--space-sm);
-}
-
-/* ─── Status Messages ────────────────────────────────────────────────────────── */
-.status-message {
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-md);
-  font-size: 0.85em;
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.status-message.success {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-}
-
-.status-message.error {
-  background: var(--color-error-bg);
-  color: var(--color-error);
 }
 
 /* ─── Form Elements ──────────────────────────────────────────────────────────── */
@@ -7271,18 +5124,6 @@ a.contributor-name:hover {
   border: 1px solid var(--border-accent);
   border-radius: var(--radius-sm);
   font-size: 0.75em;
-  color: var(--text-secondary);
-}
-
-.chip-sm {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 1px 4px;
-  background: var(--blue-alpha-10);
-  border: 1px solid var(--border-accent);
-  border-radius: var(--radius-sm);
-  font-size: 0.65em;
   color: var(--text-secondary);
 }
 
@@ -7715,52 +5556,10 @@ a.contributor-name:hover {
   color: var(--text-disabled);
 }
 
-.explorer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1em;
-  padding-bottom: 0.75em;
-  border-bottom: 1px solid var(--border-accent);
-}
-
-.explorer-header h3 {
-  margin: 0;
-  font-size: 1.1em;
-  color: var(--text-primary);
-}
-
-.loading-indicator {
-  font-size: 0.85em;
-  color: var(--swtor-blue);
-}
-
-.loading-indicator::before {
-  content: "";
-  display: inline-block;
-  width: 0.8em;
-  height: 0.8em;
-  margin-right: 0.5em;
-  border: 2px solid var(--swtor-blue);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
-}
-
-.error-message {
-  padding: 0.75em 1em;
-  margin-bottom: 1em;
-  background: rgba(200, 80, 80, 0.15);
-  border: 1px solid rgba(200, 80, 80, 0.3);
-  border-radius: var(--radius-md);
-  color: var(--color-error);
-  font-size: 0.9em;
 }
 
 /* Explorer content (two-column) */
@@ -8298,7 +6097,6 @@ a.contributor-name:hover {
   color: var(--text-secondary);
   margin-top: var(--space-sm);
 }
-
 
 /* Help icon for tooltip indication */
 .help-icon {

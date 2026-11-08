@@ -265,7 +265,7 @@ fn TimerRow(
     let is_role_visible = !timer.roles.is_empty();
 
     rsx! {
-        div { class: if timer.enabled { "list-item" } else { "list-item item-disabled" },
+        div { class: "list-item", class: if expanded { "expanded" }, class: if !timer.enabled { "item-disabled" },
             // Header row
             div {
                 class: "list-item-header timer-row-header",
@@ -283,7 +283,7 @@ fn TimerRow(
                 }
 
                 // Name | ID grouped left-aligned
-                div { class: "timer-col-name-id",
+                div { class: "row-col-name-id",
                     span { class: "font-medium text-primary truncate", "{timer.name}" }
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
@@ -292,7 +292,7 @@ fn TimerRow(
                 }
 
                 // Overlay tag
-                span { class: "timer-col-trigger",
+                span { class: "row-col-trigger",
                     {
                         let targets_label = match timer.display_targets.len() {
                             0 => "None".to_string(),
@@ -304,7 +304,7 @@ fn TimerRow(
                 }
 
                 // Duration / Alert
-                span { class: "timer-col-duration",
+                span { class: "row-col-duration",
                     if timer.is_alert {
                         span { class: "tag tag-alert", "Alert" }
                     } else {
@@ -619,9 +619,9 @@ fn TimerEditForm(
     rsx! {
         div { class: "list-item-body",
             // ─── Two Column Layout ─────────────────────────────────────────────
-            div { class: "timer-edit-grid",
+            div { class: "edit-grid left-55",
                 // ═══ LEFT COLUMN: Identity, Trigger ════════════════════════════
-                div { class: "timer-edit-left",
+                div { class: "edit-grid-left",
 
                     // ─── Identity Card ─────────────────────────────────────────
                     FormCard { icon: "fa-tag", title: "Identity",
@@ -1010,7 +1010,7 @@ fn TimerEditForm(
                 }
 
                 // ═══ RIGHT COLUMN: Timing, Alerts, Audio ═══════════════════════
-                div { class: "timer-edit-right",
+                div { class: "edit-grid-right",
 
                     // ─── Timing Card ───────────────────────────────────────────
                     FormCard { icon: "fa-clock", title: "Timing",

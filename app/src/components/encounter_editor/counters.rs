@@ -185,7 +185,7 @@ fn CounterRow(
     };
 
     rsx! {
-        div { class: if counter.enabled { "list-item" } else { "list-item item-disabled" },
+        div { class: "list-item", class: if expanded { "expanded" }, class: if !counter.enabled { "item-disabled" },
             // Header row
             div {
                 class: "list-item-header",
@@ -333,7 +333,7 @@ fn CounterEditForm(
 
     rsx! {
         div { class: "counter-edit-form",
-            div { class: "encounter-item-grid",
+            div { class: "edit-grid",
                 // ═══ LEFT: Identity Card ═════════════════════════════════════
                 FormCard { icon: "fa-tag", title: "Identity",
                     div { class: "form-row-hz",

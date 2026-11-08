@@ -112,11 +112,6 @@
   text-overflow: ellipsis;
 }
 
-/* No-phase regions (gaps between phases) */
-.phase-gap {
-  background: var(--bg-tertiary);
-}
-
 /* Selection range overlay */
 .phase-timeline-selection {
   position: absolute;
@@ -137,30 +132,6 @@
   background: hsl(45, 100%, 55%);
   border-color: hsl(45, 100%, 70%);
   box-shadow: 0 0 12px hsl(45, 100%, 50%);
-}
-
-/* Drag handles for range selection */
-.phase-timeline-handle {
-  position: absolute;
-  top: 0;
-  width: 8px;
-  height: 100%;
-  background: var(--accent-gold);
-  cursor: ew-resize;
-  z-index: 2;
-  transition: transform var(--transition-fast);
-}
-
-.phase-timeline-handle:hover {
-  transform: scaleX(1.5);
-}
-
-.phase-timeline-handle.left {
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-}
-
-.phase-timeline-handle.right {
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 /* Range display below timeline, left-aligned */
@@ -490,21 +461,12 @@
    Table Enhancements (Percentage Bar, Target Column)
    ───────────────────────────────────────────────────────────────────────────── */
 
-.target-cell {
-  color: var(--text-secondary);
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .target-time {
   font-family: var(--font-mono);
   font-size: 0.85em;
   color: var(--text-muted);
   opacity: 0.8;
 }
-
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Data Tab Selector (Damage, Healing, Damage Taken, Healing Taken)
@@ -602,65 +564,6 @@
 .data-tab:nth-child(6).active::after {
   background: hsl(180, 60%, 45%);
 } /* Healing Taken - teal */
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Overview Sub-Section (NPC Health | Challenges tabs)
-   ───────────────────────────────────────────────────────────────────────────── */
-
-.overview-sub-section {
-  margin-top: var(--space-md);
-  padding-top: var(--space-md);
-  border-top: 1px solid var(--border-subtle);
-}
-
-.overview-sub-tabs {
-  display: flex;
-  gap: 2px;
-  margin-bottom: var(--space-sm);
-}
-
-.overview-sub-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 14px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-tertiary);
-  background: none;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  cursor: pointer;
-  transition: color var(--transition-fast, 0.15s), background var(--transition-fast, 0.15s);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.overview-sub-tab:hover {
-  color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.overview-sub-tab.active {
-  color: var(--text-primary);
-  background: var(--bg-tertiary);
-  border-color: var(--border-subtle);
-}
-
-.overview-sub-tab i {
-  font-size: 10px;
-}
-
-.overview-sub-tab-count {
-  font-weight: 400;
-  color: var(--text-tertiary);
-  margin-left: 2px;
-}
-
-.overview-sub-content {
-  overflow-x: auto;
-}
 
 /* Side-by-side NPC Health + Challenges layout */
 .overview-columns {
@@ -854,7 +757,6 @@
   font-size: 9px;
 }
 
-
 /* ─────────────────────────────────────────────────────────────────────────────
    Raid Overview Table
    ───────────────────────────────────────────────────────────────────────────── */
@@ -966,23 +868,6 @@
   flex-shrink: 0;
 }
 
-/* PvP faction icons (friend/enemy, text-presentation glyphs so CSS colors apply) */
-.overview-table .faction-icon {
-  width: 16px;
-  flex-shrink: 0;
-  text-align: center;
-  font-size: 13px;
-  line-height: 1;
-}
-
-.overview-table .faction-icon.friendly {
-  color: #4caf50;
-}
-
-.overview-table .faction-icon.enemy {
-  color: #e74c3c;
-}
-
 .overview-table .num {
   text-align: right;
   font-size: 14px;
@@ -1025,28 +910,6 @@
 /* ─────────────────────────────────────────────────────────────────────────────
    Death Tracker
    ───────────────────────────────────────────────────────────────────────────── */
-
-.death-tracker {
-  background: hsla(0, 0%, 25%, 0.4);
-  border: 1px solid hsl(0, 0%, 40%);
-  border-radius: var(--radius-sm);
-  padding: var(--space-sm);
-  margin-bottom: var(--space-md);
-}
-
-.death-tracker-title {
-  margin: 0 0 var(--space-xs) 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: hsl(0, 0%, 70%);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.death-tracker-title i {
-  font-size: 14px;
-}
 
 .death-list {
   display: flex;
@@ -1374,8 +1237,6 @@
 .recap-row-ability .col-left {
   padding-left: 20px;
 }
-
-.recap-overheal { color: var(--text-tertiary); }
 
 .recap-empty {
   padding: var(--space-sm);
@@ -2007,10 +1868,6 @@
 .log-crit .log-value {
   font-weight: 700;
 }
-.log-avoid .log-ability {
-  color: hsl(40, 70%, 60%);
-  font-style: italic;
-}
 
 /* Alternating row backgrounds for readability */
 .log-row:nth-child(even) {
@@ -2106,10 +1963,6 @@
 
 .log-filter-checkbox.effects {
   color: hsl(45, 70%, 60%);
-}
-
-.log-filter-checkbox.simplified {
-  color: var(--text-muted);
 }
 
 .log-clear-filters {

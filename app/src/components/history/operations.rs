@@ -229,7 +229,7 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                     HistoryToolbar { filter, runs: true }
                     div { class: "sidebar-search",
                         input {
-                            class: "boss-search-input",
+                            class: "search-input",
                             r#type: "text",
                             placeholder: "Search tags, operation, character…",
                             value: "{search}",

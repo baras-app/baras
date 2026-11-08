@@ -144,7 +144,7 @@ fn EntityRow(
     let file_path = boss_with_path.file_path.clone();
 
     rsx! {
-        div { class: "list-item",
+        div { class: "list-item", class: if expanded { "expanded" },
             // Header row
             div {
                 class: "list-item-header",

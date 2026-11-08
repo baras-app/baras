@@ -235,7 +235,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
 
             div { class: "library-actions",
                 input {
-                    class: "boss-search-input",
+                    class: "search-input",
                     r#type: "search",
                     placeholder: "Search file, character, area, tag",
                     value: "{search}",

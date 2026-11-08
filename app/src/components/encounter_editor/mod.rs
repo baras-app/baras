@@ -326,7 +326,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
 
                 div { class: "sidebar-search",
                     input {
-                        class: "boss-search-input",
+                        class: "search-input",
                         r#type: "text",
                         placeholder: "Filter areas...",
                         value: "{area_filter}",
@@ -498,7 +498,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                                 let entity_count = bwp.boss.entities.len();
 
                                 rsx! {
-                                    div { class: if boss_enabled { "list-item" } else { "list-item item-disabled" },
+                                    div { class: "list-item", class: if is_expanded { "expanded" }, class: if !boss_enabled { "item-disabled" },
                                         div {
                                             class: "list-item-header",
                                             onclick: move |_| {
