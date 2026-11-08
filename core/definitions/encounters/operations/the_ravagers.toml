@@ -14,7 +14,7 @@ id = 3367421863788544
 [[boss]]
 id = "sparky"
 name = "Sparky"
-difficulties = ["story", "veteran", "master"]
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
 name = "Sparky"
@@ -127,7 +127,7 @@ difficulties = ["veteran"]
 [[boss]]
 id = "bulo"
 name = "Quartermaster Bulo"
-difficulties = ["story", "veteran", "master"]
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
 name = "Quartermaster Bulo"
@@ -306,7 +306,7 @@ difficulties = ["veteran"]
 [[boss]]
 id = "torque"
 name = "Torque"
-difficulties = ["story", "veteran", "master"]
+difficulties = ["story", "veteran"]
 
 [[boss.entities]]
 name = "Torque"
@@ -448,7 +448,7 @@ difficulties = ["veteran"]
 [[boss]]
 id = "master_blaster"
 name = "Master & Blaster"
-difficulties = ["story", "veteran", "master"]
+difficulties = ["story", "veteran"]
 has_victory_trigger = true
 victory_trigger = { type = "effect_removed", effects = [3391331946725697] }
 
@@ -1457,7 +1457,7 @@ phase_id = "master_blaster_p3_t"
 [[boss]]
 id = "coratanni"
 name = "Coratanni"
-difficulties = ["story", "veteran", "master"]
+difficulties = ["story", "veteran"]
 has_victory_trigger = true
 is_final_boss = true
 victory_trigger = { type = "ability_cast", abilities = [3502391211065344] }
