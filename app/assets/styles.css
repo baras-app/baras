@@ -3778,6 +3778,10 @@ a.contributor-name:hover {
   box-shadow: none;
   color: var(--text-tertiary);
   font-weight: 500;
+  /* Colours only: animating size (or a bolder active weight) widens the pill
+     and the centred bar slides to re-centre on every click */
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 .header-nav .tab-btn:hover {
   background: rgba(var(--fg-rgb), 0.06);
@@ -3788,7 +3792,7 @@ a.contributor-name:hover {
   background: var(--bg-raised);
   border-color: rgba(var(--fg-rgb), 0.08);
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: 500;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 .header-nav .tab-btn.active > i {
