@@ -2066,6 +2066,13 @@ phase_id = "nahut_k_p2"
 type = "phase_entered"
 phase_id = "nahut_k_p4"
 
+[[boss.timer.conditions]]
+type = "not"
+
+[boss.timer.conditions.condition]
+type = "phase_active"
+phase_ids = ["nahut_k_p1_i", "nahut_k_p2", "nahut_k_p4"]
+
 [[boss.timer]]
 id = "nahut_k_es"
 name = "Energized Slice"
@@ -2267,6 +2274,10 @@ timer_id = "nahut_k_p3_t"
 [[boss.timer.cancel_trigger.conditions]]
 type = "timer_expires"
 timer_id = "nahut_spaghettification_backup"
+
+[[boss.timer.cancel_trigger.conditions]]
+type = "timer_started"
+timer_id = "nahut_k_r_p2_c"
 
 [[boss.timer]]
 id = "nahut_k_gsw_p2_1st"
