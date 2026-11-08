@@ -119,12 +119,19 @@ pub fn ItemActions(
 
 /// Titled section of an edit form; `icon` is a Font Awesome solid name ("fa-tag")
 #[component]
-pub fn FormCard(icon: &'static str, title: &'static str, children: Element) -> Element {
+pub fn FormCard(
+    icon: &'static str,
+    title: &'static str,
+    /// Right side of the header (e.g. an "Add" button)
+    #[props(default = VNode::empty())] action: Element,
+    children: Element,
+) -> Element {
     rsx! {
         div { class: "form-card",
             div { class: "form-card-header",
                 i { class: "fa-solid {icon}" }
                 span { "{title}" }
+                span { class: "form-card-action", {action} }
             }
             div { class: "form-card-content", {children} }
         }

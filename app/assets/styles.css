@@ -49,6 +49,9 @@
   --bg-light: #2f2f38;
   --bg-input: #2a2a2f;
   --bg-elevated: rgba(40, 40, 45, 0.9);
+  --bg-card: var(--bg-light);
+  --bg-card-header: #2a2a33;
+  --bg-card-input: #24242c;
 
   /* ─── Colors - Borders ───────────────────────────────────────────────────────── */
   --border-subtle: rgba(255, 255, 255, 0.05);
@@ -4329,7 +4332,7 @@ a.contributor-name:hover {
 .effect-editor-panel select,
 .effect-edit-form select {
   padding: 0.4em 0.6em;
-  background: #2a2a2f !important;
+  background: var(--bg-card-input) !important;
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
   color: #eee !important;
@@ -4537,11 +4540,6 @@ a.contributor-name:hover {
 .edit-grid-right {
   border-left: 1px solid var(--border-light);
   padding-left: var(--space-md);
-}
-
-.edit-grid-right .form-row-hz > label {
-  min-width: 60px;
-  flex-shrink: 0;
 }
 
 /* Cap text inputs and selects so they don't span the full card width */
@@ -4752,6 +4750,7 @@ a.contributor-name:hover {
   overflow: hidden;
 }
 
+/* Open row: accent outline so it stands apart from collapsed rows */
 .list-item.expanded {
   border-color: var(--border-accent-strong);
 }
@@ -4761,6 +4760,7 @@ a.contributor-name:hover {
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm);
+  background: var(--bg-card-header);
   cursor: pointer;
   transition: background var(--transition-fast);
 }
@@ -4988,6 +4988,14 @@ a.contributor-name:hover {
   font-size: 0.85em;
   color: var(--text-secondary);
   min-width: 80px;
+  text-align: left;
+}
+
+/* Leading label of a label + control row: one fixed column so controls line up */
+.form-row-hz > label:first-child:not(:last-child) {
+  flex: 0 0 auto;
+  min-width: 120px;
+  white-space: nowrap;
 }
 
 /* Row whose control is taller than one line: label stays at the top */
@@ -6081,7 +6089,7 @@ a.contributor-name:hover {
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 .form-card {
-  background: var(--bg-mid);
+  background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   margin-bottom: var(--space-md);
@@ -6092,8 +6100,8 @@ a.contributor-name:hover {
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-card-header);
+  border-bottom: 1px solid var(--border-light);
   font-size: 0.85em;
   font-weight: 500;
   color: var(--text-secondary);
@@ -6106,6 +6114,19 @@ a.contributor-name:hover {
 
 .form-card-content {
   padding: var(--space-md);
+}
+
+/* Inputs inside cards sit a step darker than the card so they read as wells */
+.form-card input[type="text"],
+.form-card input[type="number"],
+.form-card select,
+.form-card textarea {
+  background: var(--bg-card-input);
+}
+
+/* Header slot for an action button (FormCard `action`) */
+.form-card-action {
+  margin-left: auto;
 }
 
 /* Subsection header inside form cards (e.g. "Display Options", "Behavior") */

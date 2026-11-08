@@ -5,6 +5,8 @@
 
 use dioxus::prelude::*;
 
+use crate::components::editor_common::FormCard;
+
 use super::encounter_editor::triggers::{
     AbilitySelectorEditor, EffectSelectorEditor,
 };
@@ -212,14 +214,13 @@ pub fn ModifierListEditor(props: ModifierListEditorProps) -> Element {
     let modifiers = props.modifiers.clone();
 
     rsx! {
-        div { class: "form-card",
-            div { class: "form-card-header",
-                i { class: "fa-solid fa-sliders" }
-                span { "Modifiers" }
+        FormCard {
+            icon: "fa-sliders",
+            title: "Modifiers",
+            action: rsx! {
                 button {
-                    class: "btn-icon-sm",
+                    class: "btn btn-xs",
                     title: "Add modifier",
-                    style: "margin-left: auto;",
                     onclick: {
                         let modifiers = modifiers.clone();
                         let on_change = props.on_change.clone();
@@ -246,42 +247,41 @@ pub fn ModifierListEditor(props: ModifierListEditorProps) -> Element {
                         }
                     },
                     i { class: "fa-solid fa-plus" }
+                    " Add"
+                }
+            },
+            if modifiers.is_empty() {
+                div { class: "text-muted text-sm", style: "padding: 4px 0;",
+                    "No modifiers configured. Add one to reactively adjust this effect's duration when events occur."
                 }
             }
-            div { class: "form-card-content",
-                if modifiers.is_empty() {
-                    div { class: "text-muted text-sm", style: "padding: 4px 0;",
-                        "No modifiers configured. Add one to reactively adjust this effect's duration when events occur."
-                    }
-                }
-                for (idx, modifier) in modifiers.iter().enumerate() {
-                    {
-                        let on_change = props.on_change.clone();
-                        let all_modifiers = modifiers.clone();
-                        rsx! {
-                            SingleModifierEditor {
-                                key: "{idx}",
-                                modifier: modifier.clone(),
-                                index: idx,
-                                on_update: {
-                                    let all_modifiers = all_modifiers.clone();
-                                    let on_change = on_change.clone();
-                                    move |updated: EffectModifier| {
-                                        let mut mods = all_modifiers.clone();
-                                        mods[idx] = updated;
-                                        on_change.call(mods);
-                                    }
-                                },
-                                on_remove: {
-                                    let all_modifiers = all_modifiers.clone();
-                                    let on_change = on_change.clone();
-                                    move |_| {
-                                        let mut mods = all_modifiers.clone();
-                                        mods.remove(idx);
-                                        on_change.call(mods);
-                                    }
-                                },
-                            }
+            for (idx, modifier) in modifiers.iter().enumerate() {
+                {
+                    let on_change = props.on_change.clone();
+                    let all_modifiers = modifiers.clone();
+                    rsx! {
+                        SingleModifierEditor {
+                            key: "{idx}",
+                            modifier: modifier.clone(),
+                            index: idx,
+                            on_update: {
+                                let all_modifiers = all_modifiers.clone();
+                                let on_change = on_change.clone();
+                                move |updated: EffectModifier| {
+                                    let mut mods = all_modifiers.clone();
+                                    mods[idx] = updated;
+                                    on_change.call(mods);
+                                }
+                            },
+                            on_remove: {
+                                let all_modifiers = all_modifiers.clone();
+                                let on_change = on_change.clone();
+                                move |_| {
+                                    let mut mods = all_modifiers.clone();
+                                    mods.remove(idx);
+                                    on_change.call(mods);
+                                }
+                            },
                         }
                     }
                 }
@@ -325,7 +325,7 @@ fn SingleModifierEditor(props: SingleModifierEditorProps) -> Element {
                     }
                 }
                 button {
-                    class: "btn-icon-sm btn-danger",
+                    class: "btn btn-xs btn-danger",
                     title: "Remove modifier",
                     onclick: {
                         let on_remove = props.on_remove.clone();
@@ -711,7 +711,7 @@ fn render_trigger_fields(trigger: &Trigger, on_change: EventHandler<Trigger>) ->
                                     }
                                 }
                                 button {
-                                    class: "btn-icon-sm btn-danger",
+                                    class: "btn btn-xs btn-danger",
                                     title: "Remove condition",
                                     onclick: {
                                         let conds = conds.clone();
