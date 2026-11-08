@@ -36,7 +36,7 @@ pub fn ProfilesSection(
         div { class: "settings-section",
             div { class: "collapsible-content",
                 // Profile list
-                div { class: "profile-list compact",
+                div { class: "profile-list",
                         for name in profile_names().iter() {
                             {
                                 let profile_name = name.clone();
@@ -118,7 +118,7 @@ pub fn ProfilesSection(
                                                         });
                                                     }
                                                 },
-                                                "Load"
+                                                if is_active { "Active" } else { "Load" }
                                             }
                                             // Save button
                                             button {
@@ -157,6 +157,7 @@ pub fn ProfilesSection(
                                             // Delete button
                                             button {
                                                 class: "btn btn-small btn-delete",
+                                                title: "Delete profile",
                                                 onclick: {
                                                     let pname = profile_name.clone();
                                                     move |_| {
@@ -172,7 +173,7 @@ pub fn ProfilesSection(
                                                         });
                                                     }
                                                 },
-                                                "×"
+                                                i { class: "fa-solid fa-trash" }
                                             }
                                         }
                                     }
@@ -240,7 +241,7 @@ pub fn ProfilesSection(
                     p { class: "hint hint-warning compact", "Maximum {MAX_PROFILES} profiles" }
                 }
                 if !profile_status().is_empty() {
-                    p { class: "profile-status compact", "{profile_status}" }
+                    p { class: "profile-status", "{profile_status}" }
                 }
 
                 // Role default profiles

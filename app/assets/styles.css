@@ -52,11 +52,30 @@
   --bg-card: var(--bg-light);
   --bg-card-header: #2a2a33;
   --bg-card-input: #24242c;
+  --bg-deep: #18181d;
+  --bg-raised: #3a3a3a;
+  --btn-top: rgba(50, 50, 55, 0.9);
+  --btn-bottom: rgba(35, 35, 40, 0.95);
+  --btn-hover-top: rgba(60, 60, 65, 0.95);
+  --btn-hover-bottom: rgba(45, 45, 50, 0.95);
+
+  --text-gold: #e8c060;
+  --text-accent: #8cc4ff;
+  --text-violet: #c0a0dc;
+  --text-heading: #2d5a8a;
+
+  /* Foreground channel for translucent tints (white on dark, black on light) */
+  --fg-rgb: 255, 255, 255;
+  /* Scales black recessed-well backgrounds (lighter wells on light theme) */
+  --recess-k: 1;
+  /* Base lightness of phase timeline segments (hue/sat come from phase_color) */
+  --phase-l: 30%;
 
   /* ─── Colors - Borders ───────────────────────────────────────────────────────── */
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --border-light: rgba(255, 255, 255, 0.1);
-  --border-medium: rgba(255, 255, 255, 0.15);
+  --border-subtle: rgba(var(--fg-rgb), 0.05);
+  --border-light: rgba(var(--fg-rgb), 0.1);
+  --border-medium: rgba(var(--fg-rgb), 0.15);
+  --border-strong: #4a4a4a;
   --border-accent: rgba(74, 158, 255, 0.12);
   --border-accent-medium: rgba(74, 158, 255, 0.2);
   --border-accent-strong: rgba(74, 158, 255, 0.3);
@@ -125,6 +144,90 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+  color-scheme: dark;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Light Theme — overrides color tokens only; applied via <html data-theme="light">
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --swtor-blue: #1f6fd1;
+  --swtor-blue-bright: #1a5fb4;
+  --swtor-blue-dim: #9cc3ef;
+  --swtor-gold: #9a7a10;
+  --swtor-gold-dim: #c9a227;
+  --swtor-gold-glow: rgba(154, 122, 16, 0.25);
+  --accent-gold: #8f6a10;
+  --swtor-red: #d03030;
+  --swtor-orange: #b54708;
+  --swtor-orange-alpha-15: rgba(194, 90, 16, 0.12);
+
+  --color-success: #1e8a4c;
+  --color-success-bg: rgba(30, 138, 76, 0.12);
+  --color-success-bg-hover: rgba(30, 138, 76, 0.2);
+  --color-success-border: rgba(30, 138, 76, 0.4);
+  --color-error: #b42318;
+  --color-error-bg: rgba(196, 60, 60, 0.1);
+  --color-error-bg-hover: rgba(196, 60, 60, 0.18);
+  --color-error-border: rgba(196, 60, 60, 0.4);
+  --color-warning: #8a5e00;
+  --color-warning-bg: rgba(154, 106, 0, 0.12);
+  --color-warning-bg-hover: rgba(154, 106, 0, 0.2);
+  --color-warning-border: rgba(154, 106, 0, 0.4);
+
+  --text-primary: #1d1d22;
+  --text-secondary: #3c3c44;
+  --text-tertiary: #55555e;
+  --text-muted: #6e6e78;
+  --text-disabled: #9a9aa2;
+  --text-gold: #7a5800;
+  --text-accent: #1a5fb4;
+  --text-violet: #6a3fa0;
+  --text-heading: #1d5296;
+  /* Vivid status text: undefined in dark (each rule keeps its own color via
+     the var() fallback), darkened here for contrast on light surfaces */
+  --lt-red: #b42318;
+  --lt-orange: #b54708;
+  --lt-yellow: #8a6400;
+  --lt-green: #1a7f45;
+  --phase-l: 78%;
+
+  /* Same depth order as dark: body lightest, inputs/panels/sidebars progressively darker */
+  --bg-body: #f6f6f8;
+  --bg-dark: #d7d7de;
+  --bg-mid: #e0e0e6;
+  --bg-light: #f1f1f4;
+  --bg-input: #e8e8ec;
+  --bg-elevated: rgba(255, 255, 255, 0.96);
+  --bg-card-header: #eaeaee;
+  --bg-card-input: #e3e3e8;
+  --bg-deep: #cfcfd7;
+  --bg-raised: #ffffff;
+  --btn-top: #ffffff;
+  --btn-bottom: #ececf0;
+  --btn-hover-top: #ffffff;
+  --btn-hover-bottom: #e4e4ea;
+
+  --fg-rgb: 0, 0, 0;
+  --recess-k: 0.4;
+  --border-strong: #bdbdc6;
+  --border-accent: rgba(31, 111, 209, 0.18);
+  --border-accent-medium: rgba(31, 111, 209, 0.28);
+  --border-accent-strong: rgba(31, 111, 209, 0.38);
+  --border-accent-heavy: rgba(31, 111, 209, 0.5);
+
+  --blue-alpha-5: rgba(31, 111, 209, 0.05);
+  --blue-alpha-8: rgba(31, 111, 209, 0.08);
+  --blue-alpha-10: rgba(31, 111, 209, 0.1);
+  --blue-alpha-15: rgba(31, 111, 209, 0.14);
+  --blue-alpha-20: rgba(31, 111, 209, 0.18);
+  --blue-alpha-25: rgba(31, 111, 209, 0.22);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 3px 10px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 18px rgba(0, 0, 0, 0.14);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -185,8 +288,8 @@ select,
 
 select:hover,
 .select-trigger:hover {
-  border-color: rgba(255, 255, 255, 0.25);
-  background-color: #333338;
+  border-color: rgba(var(--fg-rgb), 0.25);
+  background-color: var(--bg-raised);
 }
 
 select:focus,
@@ -209,8 +312,8 @@ select option {
 }
 
 select optgroup {
-  background: #333;
-  color: #9bf;
+  background: var(--bg-light);
+  color: var(--text-accent);
   font-weight: 600;
 }
 
@@ -299,7 +402,7 @@ select optgroup {
   align-self: center;
   width: 1px;
   height: 20px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(var(--fg-rgb), 0.15);
 }
 .status-row-session {
   flex: 1;
@@ -372,8 +475,8 @@ select optgroup {
   /* A shade of the header's own blue-black rather than flat black, a soft
      edge instead of a sunken slot, and a radius one step above the pills
      so they nest in the corners */
-  background: rgba(12, 16, 26, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(12, 16, 26, calc(0.55 * var(--recess-k)));
+  border: 1px solid rgba(var(--fg-rgb), 0.06);
   border-radius: calc(var(--radius-lg) + 3px);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
 }
@@ -482,14 +585,14 @@ select optgroup {
     rgba(255, 193, 7, 0.25)
   );
   border-color: rgba(255, 193, 7, 0.8);
-  color: #ffd54f;
+  color: var(--text-gold);
   animation: none;
 }
 
 .app-header .header-version.update-available.updating {
   background: rgba(255, 183, 77, 0.15);
   border-color: rgba(255, 183, 77, 0.5);
-  color: #ffb74d;
+  color: var(--text-gold);
   cursor: wait;
 }
 
@@ -499,7 +602,7 @@ select optgroup {
   align-items: center;
   gap: 0.45em;
   padding: 0.4em 0.7em;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, calc(0.3 * var(--recess-k)));
   border-radius: var(--radius-lg);
   border: 1px solid rgba(80, 80, 90, 0.3);
 }
@@ -523,13 +626,13 @@ select optgroup {
 .header-controls-divider {
   width: 1px;
   height: 20px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(var(--fg-rgb), 0.15);
   margin: 0 0.25em;
 }
 
 .btn-header-overlay {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--fg-rgb), 0.05);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   color: var(--text-disabled);
   padding: 0.4em;
   font-size: 0.9em;
@@ -544,14 +647,14 @@ select optgroup {
 }
 
 .btn-header-overlay:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(var(--fg-rgb), 0.12);
   color: var(--text-tertiary);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(var(--fg-rgb), 0.2);
 }
 
 .btn-header-overlay.active {
   background: var(--blue-alpha-20);
-  color: #4a9eff;
+  color: var(--text-accent);
   border-color: var(--border-accent-heavy);
 }
 
@@ -595,7 +698,7 @@ select optgroup {
   flex-shrink: 0;
   gap: 0.35em;
   font-size: 0.75em;
-  color: rgba(240, 173, 78, 0.8);
+  color: var(--text-gold);
   white-space: nowrap;
   padding: 0.2em 0.5em;
   border-radius: var(--radius-sm);
@@ -604,7 +707,7 @@ select optgroup {
 
 .header-unsaved-hint i {
   font-size: 0.85em;
-  color: rgba(240, 173, 78, 0.7);
+  color: var(--text-gold);
 }
 
 .header-unsaved-save-btn {
@@ -616,7 +719,7 @@ select optgroup {
   background: rgba(240, 173, 78, 0.15);
   border: 1px solid rgba(240, 173, 78, 0.35);
   border-radius: var(--radius-sm);
-  color: rgba(240, 173, 78, 0.9);
+  color: var(--text-gold);
   font-size: 1em;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -626,7 +729,7 @@ select optgroup {
 .header-unsaved-save-btn:hover {
   background: rgba(240, 173, 78, 0.25);
   border-color: rgba(240, 173, 78, 0.5);
-  color: #f0c860;
+  color: var(--text-gold);
 }
 
 .header-unsaved-save-btn i {
@@ -656,7 +759,7 @@ button {
   font-weight: 500;
   font-family: inherit;
   color: var(--text-primary);
-  background-color: rgba(15, 15, 15, 0.6);
+  background-color: rgba(15, 15, 15, calc(0.6 * var(--recess-k)));
   transition: border-color var(--transition-normal);
   box-shadow: var(--shadow-sm);
   outline: none;
@@ -698,7 +801,7 @@ button:active {
 
 .btn:hover:not(:disabled) {
   background: var(--bg-elevated);
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(var(--fg-rgb), 0.25);
   color: var(--text-secondary);
 }
 
@@ -757,7 +860,7 @@ button:active {
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--fg-rgb), 0.05);
   color: var(--text-secondary);
 }
 
@@ -936,7 +1039,7 @@ button:active {
 .overlay-category {
   min-width: 0;
   padding: 0.8em 0.6em 0.5em 0.9em;
-  background: #1e1e26;
+  background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
 }
@@ -1063,11 +1166,11 @@ button:active {
   border: none;
   border-radius: 0;
   box-shadow: none;
-  color: rgba(255, 255, 255, 0.28);
+  color: rgba(var(--fg-rgb), 0.28);
   transition: color 0.15s;
 }
 .overlay-toggle .btn-overlay-gear.btn-active {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--fg-rgb), 0.4);
 }
 .overlay-toggle .btn-overlay-gear:hover:not(:disabled),
 .overlay-toggle .btn-overlay-gear.open {
@@ -1094,8 +1197,8 @@ button:active {
   border-radius: 999px;
   background: linear-gradient(
     180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(30, 30, 35, 0.95) 100%
+    var(--btn-top) 0%,
+    var(--btn-bottom) 100%
   );
   border: 1px solid rgba(80, 80, 90, 0.4);
   transition: all 0.2s ease;
@@ -1107,18 +1210,18 @@ button:active {
   margin: 0;
   background: linear-gradient(
     180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
+    var(--btn-top) 0%,
+    var(--btn-bottom) 100%
   );
   border-color: rgba(80, 80, 90, 0.4);
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .btn-locked:hover:not(:disabled) {
   background: linear-gradient(
     180deg,
-    rgba(60, 60, 65, 0.95) 0%,
-    rgba(45, 45, 50, 0.95) 100%
+    var(--btn-hover-top) 0%,
+    var(--btn-hover-bottom) 100%
   );
   border-color: var(--text-muted);
   color: var(--text-secondary);
@@ -1134,7 +1237,7 @@ button:active {
     rgba(140, 100, 40, 0.2) 100%
   );
   border-color: #b89040;
-  color: #d4a850;
+  color: var(--lt-yellow, #d4a850);
   box-shadow: 0 0 12px rgba(180, 140, 60, 0.2);
 }
 
@@ -1176,8 +1279,8 @@ button:active {
   margin: 0;
   background: linear-gradient(
     180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
+    var(--btn-top) 0%,
+    var(--btn-bottom) 100%
   );
   border-color: rgba(80, 80, 90, 0.4);
   color: var(--text-disabled);
@@ -1186,8 +1289,8 @@ button:active {
 .btn-hidden:hover {
   background: linear-gradient(
     180deg,
-    rgba(55, 60, 70, 0.95) 0%,
-    rgba(40, 45, 55, 0.95) 100%
+    color-mix(in srgb, var(--btn-hover-top), var(--swtor-blue) 10%) 0%,
+    color-mix(in srgb, var(--btn-hover-bottom), var(--swtor-blue) 10%) 100%
   );
   border-color: var(--swtor-blue-dim);
   color: var(--swtor-blue);
@@ -1249,8 +1352,8 @@ button:active {
   flex-shrink: 0;
   /* Same quiet pill as the controls beside it; the dot says which state */
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--fg-rgb), 0.04);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
 }
 .session-status-chip .status-dot {
   width: 8px;
@@ -1286,7 +1389,7 @@ button:active {
 .session-status-action:hover {
   opacity: 1;
   color: var(--swtor-blue);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--fg-rgb), 0.08);
 }
 
 /* Historical mode: a real button, not an icon, since it is the way back to live */
@@ -1449,7 +1552,7 @@ button:active {
 }
 
 .session-duration-badge i {
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
   font-size: 0.9em;
 }
 
@@ -1463,8 +1566,8 @@ button:active {
   border-radius: 50%;
   font-size: 0.85em;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(var(--fg-rgb), 0.06);
+  border: 1px solid rgba(var(--fg-rgb), 0.12);
   transition: all 0.3s;
 }
 
@@ -1496,8 +1599,8 @@ button:active {
   min-width: 3.5em;
   text-align: center;
   padding: 0 0.5em;
-  background: rgba(50, 50, 55, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-raised);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: var(--radius-sm);
   user-select: none;
 }
@@ -1517,7 +1620,7 @@ button:active {
   font-size: 0.7em;
   color: var(--text-tertiary);
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s;
@@ -1525,7 +1628,7 @@ button:active {
 
 .btn-op-timer:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--fg-rgb), 0.05);
   border-color: var(--swtor-blue-dim);
 }
 
@@ -1566,8 +1669,8 @@ button:active {
   padding: 0.4em 0.8em;
   font-size: 0.85em;
   /* Quiet like the settings pill; the icon carries the meaning */
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--fg-rgb), 0.04);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   cursor: pointer;
@@ -1637,8 +1740,8 @@ button:active {
   margin: 0;
   background: linear-gradient(
     180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
+    var(--btn-top) 0%,
+    var(--btn-bottom) 100%
   );
   border-color: rgba(100, 100, 110, 0.4);
   color: var(--text-tertiary);
@@ -1647,11 +1750,11 @@ button:active {
 .btn-rearrange:hover:not(:disabled) {
   background: linear-gradient(
     180deg,
-    rgba(60, 75, 70, 0.95) 0%,
-    rgba(45, 60, 55, 0.95) 100%
+    color-mix(in srgb, var(--btn-hover-top), var(--color-success) 10%) 0%,
+    color-mix(in srgb, var(--btn-hover-bottom), var(--color-success) 10%) 100%
   );
   border-color: #5a9a7a;
-  color: #7acaa0;
+  color: var(--color-success);
   box-shadow: 0 0 10px rgba(90, 154, 122, 0.2);
 }
 
@@ -1662,7 +1765,7 @@ button:active {
     rgba(60, 100, 80, 0.2) 100%
   );
   border-color: #5a9a7a;
-  color: #7acaa0;
+  color: var(--color-success);
   box-shadow:
     0 0 15px rgba(90, 154, 122, 0.3),
     inset 0 0 20px rgba(90, 154, 122, 0.1);
@@ -1679,8 +1782,8 @@ button:active {
   margin: 0;
   background: linear-gradient(
     180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
+    var(--btn-top) 0%,
+    var(--btn-bottom) 100%
   );
   border-color: rgba(100, 100, 110, 0.4);
   color: var(--text-tertiary);
@@ -1689,8 +1792,8 @@ button:active {
 .btn-clear-frames:hover:not(:disabled) {
   background: linear-gradient(
     180deg,
-    rgba(75, 55, 55, 0.95) 0%,
-    rgba(60, 40, 40, 0.95) 100%
+    color-mix(in srgb, var(--btn-hover-top), var(--swtor-red) 10%) 0%,
+    color-mix(in srgb, var(--btn-hover-bottom), var(--swtor-red) 10%) 100%
   );
   border-color: var(--swtor-red);
   color: var(--swtor-red);
@@ -1771,11 +1874,11 @@ button:active {
   padding: 0.3em 0.6em;
   font-size: 0.9em;
   background: transparent;
-  border: 1px solid #666;
+  border: 1px solid var(--border-strong);
 }
 
 .btn-close:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--fg-rgb), 0.1);
 }
 
 /* Settings tabs */
@@ -1814,8 +1917,8 @@ button:active {
 .settings-panel .tab-btn {
   background: linear-gradient(
     180deg,
-    rgba(50, 50, 55, 0.9) 0%,
-    rgba(35, 35, 40, 0.95) 100%
+    var(--btn-top) 0%,
+    var(--btn-bottom) 100%
   );
   border: 1px solid rgba(80, 80, 90, 0.4);
   color: var(--text-muted);
@@ -1824,8 +1927,8 @@ button:active {
 .settings-panel .tab-btn:hover {
   background: linear-gradient(
     180deg,
-    rgba(55, 60, 75, 0.95) 0%,
-    rgba(40, 45, 60, 0.95) 100%
+    color-mix(in srgb, var(--btn-hover-top), var(--swtor-blue) 10%) 0%,
+    color-mix(in srgb, var(--btn-hover-bottom), var(--swtor-blue) 10%) 100%
   );
   border-color: var(--swtor-blue-dim);
   color: var(--swtor-blue);
@@ -1849,7 +1952,7 @@ button:active {
 .settings-section {
   margin: 1em 0;
   padding: 0.75em;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, calc(0.15 * var(--recess-k)));
   border-radius: var(--radius-lg);
   border: 1px solid var(--blue-alpha-10);
 }
@@ -1857,7 +1960,7 @@ button:active {
 .settings-section h4 {
   margin: 0 0 0.75em 0;
   font-size: 0.95em;
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
 }
 
 /* Collapsible section using native details/summary */
@@ -2039,7 +2142,7 @@ details[open] .collapsible-summary::before {
   width: 50px;
   height: 30px;
   padding: 2px;
-  border: 1px solid #555;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   cursor: pointer;
   background: transparent;
@@ -2065,12 +2168,12 @@ details[open] .collapsible-summary::before {
   gap: 0.5em;
   margin-top: 1em;
   padding-top: 0.75em;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(var(--fg-rgb), 0.1);
 }
 
 .btn-reset {
   background: rgba(100, 100, 100, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(var(--fg-rgb), 0.2);
   color: var(--text-tertiary);
   padding: 0.4em 0.8em;
   font-size: 0.85em;
@@ -2094,14 +2197,14 @@ details[open] .collapsible-summary::before {
 }
 
 .hint-warning {
-  color: #b89940;
+  color: var(--lt-yellow, #b89940);
   display: flex;
   align-items: center;
   gap: 0.5em;
 }
 
 .hint-warning i {
-  color: #d9a940;
+  color: var(--lt-yellow, #d9a940);
 }
 
 /* Hotkey settings */
@@ -2119,10 +2222,10 @@ details[open] .collapsible-summary::before {
   align-items: center;
   gap: 0.5em;
   padding: 0.5em 0.75em;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--fg-rgb), 0.08);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
-  color: #f6f6f6;
+  color: var(--text-primary);
   font-family: monospace;
   font-size: 0.9em;
   cursor: pointer;
@@ -2133,7 +2236,7 @@ details[open] .collapsible-summary::before {
 .hotkey-input:focus {
   outline: none;
   border-color: #4a90a0;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--fg-rgb), 0.1);
 }
 
 .hotkey-input--empty .hotkey-display {
@@ -2168,7 +2271,7 @@ details[open] .collapsible-summary::before {
   width: 1.4em;
   height: 1.4em;
   padding: 0;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--fg-rgb), 0.1);
   border: none;
   border-radius: 50%;
   color: var(--text-muted);
@@ -2180,7 +2283,7 @@ details[open] .collapsible-summary::before {
 
 .hotkey-clear:hover {
   background: rgba(255, 100, 100, 0.3);
-  color: #ff6666;
+  color: var(--color-error);
 }
 
 /* Selected stats - ordered list */
@@ -2198,7 +2301,7 @@ details[open] .collapsible-summary::before {
   align-items: center;
   gap: 0.5em;
   padding: 0.4em 0.6em;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--fg-rgb), 0.05);
   border-radius: var(--radius-md);
   font-size: 0.85em;
 }
@@ -2216,15 +2319,15 @@ details[open] .collapsible-summary::before {
   padding: 0.15em 0.4em;
   min-width: unset;
   font-size: 0.75em;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(var(--fg-rgb), 0.1);
+  border: 1px solid rgba(var(--fg-rgb), 0.2);
   color: var(--text-tertiary);
   border-radius: 3px;
 }
 
 .stat-order-item .btn-order:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: rgba(var(--fg-rgb), 0.2);
+  color: var(--text-primary);
 }
 
 .stat-order-item .btn-order:disabled {
@@ -2238,7 +2341,7 @@ details[open] .collapsible-summary::before {
   font-size: 0.75em;
   background: rgba(200, 50, 50, 0.3);
   border: 1px solid rgba(200, 50, 50, 0.5);
-  color: #faa;
+  color: var(--color-error);
   border-radius: 3px;
 }
 
@@ -2248,7 +2351,7 @@ details[open] .collapsible-summary::before {
 
 /* Available stats to add */
 .stat-add-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(var(--fg-rgb), 0.1);
   padding-top: 0.75em;
 }
 
@@ -2335,13 +2438,13 @@ details[open] .collapsible-summary::before {
 
 .save-status {
   font-size: 0.85em;
-  color: #4a4;
+  color: var(--lt-green, #4a4);
   padding: 0.2em 0.5em;
   border-radius: var(--radius-md);
 }
 
 .save-status.error {
-  color: #c44;
+  color: var(--lt-red, #c44);
   background: rgba(200, 60, 60, 0.1);
 }
 
@@ -2353,8 +2456,8 @@ details[open] .collapsible-summary::before {
   padding: 0.65em 0.8em;
   overflow: hidden;
   color: var(--text-tertiary);
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: var(--radius-md);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2375,9 +2478,9 @@ details[open] .collapsible-summary::before {
   align-items: center;
   gap: 0.75em;
   padding: 0.75em 1em;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   overflow: hidden;
 }
 
@@ -2417,7 +2520,7 @@ details[open] .collapsible-summary::before {
   gap: 0.5em;
   margin-top: 0.5em;
   font-size: 0.85em;
-  color: #4a4;
+  color: var(--lt-green, #4a4);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -2429,44 +2532,47 @@ details[open] .collapsible-summary::before {
 .profile-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5em;
-  margin-bottom: 1em;
-  max-height: 200px;
+  gap: 0.35em;
+  margin-bottom: 0.6em;
+  max-height: 180px;
   overflow-y: auto;
 }
 
 .profile-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.5em 0.75em;
-  background: #353535;
-  border: 1px solid #444;
+  gap: 0.5em;
+  min-height: 2.2em;
+  padding: 0.3em 0.4em 0.3em 0.7em;
+  background: var(--bg-light);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  transition: all 0.15s ease;
+  transition: background var(--transition-normal), border-color var(--transition-normal);
 }
 
 .profile-item:hover {
-  background: #3a3a3a;
+  border-color: var(--border-medium);
 }
 
 .profile-item.active {
-  background: #2a3a4a;
-  border-color: #4a7aba;
+  background: var(--blue-alpha-10);
+  border-color: var(--border-accent-strong);
+  box-shadow: inset 3px 0 0 var(--swtor-blue);
 }
 
 .profile-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9em;
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .profile-item.active .profile-name {
-  color: #7a9fcf;
-}
-
-.profile-actions {
-  display: flex;
-  gap: 0.25em;
+  color: var(--text-accent);
 }
 
 .btn-small {
@@ -2475,146 +2581,183 @@ details[open] .collapsible-summary::before {
   min-width: auto;
 }
 
-.btn-load {
-  background: #3a5a8a;
-  border-color: #4a7aba;
+/* Uniform small buttons; only the tint varies per action */
+.profile-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.25em;
 }
 
-.btn-load:hover:not(:disabled) {
-  background: #4a6a9a;
+.profile-actions .btn {
+  height: 1.9em;
+  min-width: 1.9em;
+  padding: 0 0.6em;
+  font-size: 0.78em;
+  border-radius: var(--radius-sm);
 }
 
-.btn-load:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.profile-actions .btn-load {
+  background: var(--blue-alpha-10);
+  border-color: var(--border-accent-medium);
+  color: var(--text-accent);
 }
 
-.btn-update {
-  background: #3a6a4a;
-  border-color: #4a8a5a;
+.profile-actions .btn-load:hover:not(:disabled) {
+  background: var(--blue-alpha-20);
+  border-color: var(--border-accent-heavy);
+  color: var(--text-accent);
 }
 
-.btn-update:hover {
-  background: #4a7a5a;
+/* Active profile: the Load slot reads as a status label, not a dead button */
+.profile-actions .btn-load:disabled {
+  opacity: 1;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+  cursor: default;
 }
 
-.btn-delete {
+.profile-actions .btn-update {
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success);
+}
+
+.profile-actions .btn-update:hover:not(:disabled) {
+  background: var(--color-success-bg-hover);
+  border-color: var(--color-success-border);
+  color: var(--color-success);
+}
+
+.profile-actions .btn-rename {
+  padding: 0;
+  background: transparent;
+  border-color: var(--border-light);
+  color: var(--text-muted);
+}
+
+.profile-actions .btn-rename:hover:not(:disabled) {
+  background: rgba(var(--fg-rgb), 0.06);
+  color: var(--text-primary);
+}
+
+.profile-actions .btn-delete {
+  padding: 0;
+  background: transparent;
+  border-color: var(--border-light);
+  color: var(--text-muted);
+}
+
+.profile-actions .btn-delete:hover:not(:disabled) {
   background: var(--color-error-bg);
   border-color: var(--color-error-border);
   color: var(--color-error);
 }
 
-.btn-delete:hover {
-  background: var(--color-error-bg-hover);
-}
-
-.btn-rename {
-  background: rgba(106, 138, 186, 0.15);
-  border-color: rgba(106, 138, 186, 0.3);
-}
-
-.btn-rename:hover {
-  background: rgba(106, 138, 186, 0.25);
-}
-
-.btn-rename i {
-  font-size: 0.75em;
+.profile-rename-input,
+.profile-name-input {
+  flex: 1;
+  min-width: 0;
+  height: 2em;
+  padding: 0 0.6em;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.85em;
+  outline: none;
 }
 
 .profile-rename-input {
-  flex: 1;
-  padding: 0.3em 0.5em;
-  background: #2a2a2a;
-  border: 1px solid #6a8aba;
-  border-radius: var(--radius-md);
-  color: #f6f6f6;
-  font-size: 0.9em;
   font-weight: 500;
-  outline: none;
-  min-width: 0;
+  border-color: var(--border-accent-heavy);
 }
 
-.profile-rename-input:focus {
-  box-shadow: 0 0 4px rgba(106, 138, 186, 0.4);
-}
-
-.profile-create {
-  display: flex;
-  gap: 0.5em;
-  align-items: center;
-}
-
-.profile-name-input {
-  flex: 1;
-  padding: 0.5em 0.75em;
-  background: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: var(--radius-md);
-  color: #f6f6f6;
-  font-size: 0.9em;
-}
-
+.profile-rename-input:focus,
 .profile-name-input:focus {
-  outline: none;
-  border-color: #6a8aba;
+  border-color: var(--swtor-blue);
+  box-shadow: 0 0 0 2px var(--blue-alpha-15);
 }
 
 .profile-name-input::placeholder {
   color: var(--text-disabled);
 }
 
+.profile-create {
+  display: flex;
+  gap: 0.4em;
+  align-items: center;
+}
+
+.profile-create .btn {
+  height: 2em;
+  min-width: auto;
+  padding: 0 0.8em;
+  font-size: 0.8em;
+  border-radius: var(--radius-sm);
+}
+
 .profile-status {
-  margin-top: 0.5em;
-  padding: 0.4em 0.6em;
-  background: #2a3a2a;
-  border-radius: var(--radius-md);
-  font-size: 0.85em;
-  color: #8a8;
+  margin: 0.4em 0 0;
+  padding: 0.3em 0.6em;
+  background: var(--color-success-bg);
+  border-radius: var(--radius-sm);
+  font-size: 0.8em;
+  color: var(--color-success);
 }
 
 /* ─── Role Default Profiles ─── */
 
 .role-defaults-section {
+  display: grid;
+  grid-template-columns: 3.5em 1fr;
+  align-items: center;
+  gap: 0.35em 0.5em;
   margin-top: 0.75em;
   padding-top: 0.75em;
   border-top: 1px solid var(--border-subtle);
+}
+
+.role-defaults-header,
+.role-defaults-section > .hint {
+  grid-column: 1 / -1;
 }
 
 .role-defaults-header {
   font-size: 0.85em;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 0.25em;
 }
 
+.role-defaults-section > .hint {
+  margin: -0.2em 0 0.2em;
+  padding: 0;
+}
+
+/* Rows flatten into the section grid so labels and selects align in columns */
 .role-default-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.25em 0;
+  display: contents;
 }
 
 .role-default-label {
   font-size: 0.8em;
   color: var(--text-muted);
-  width: 3.5em;
-  flex-shrink: 0;
 }
 
 .role-default-select {
-  flex: 1;
+  height: 2em;
+  padding: 0 0.4em;
   background: var(--bg-input);
   color: var(--text-primary);
-  border: 1px solid var(--border-medium);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  padding: 0.25em 0.4em;
   font-size: 0.8em;
   cursor: pointer;
 }
 
 .role-default-select:focus {
   outline: none;
-  border-color: #6a8aba;
+  border-color: var(--swtor-blue);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -2662,8 +2805,8 @@ details[open] .collapsible-summary::before {
 .toggle-slider {
   position: absolute;
   inset: 0;
-  background: #3a3a3a;
-  border: 1px solid #555;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
   border-radius: 9px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -2694,7 +2837,7 @@ details[open] .collapsible-summary::before {
 
 /* Hover state */
 .toggle-switch-label:hover .toggle-slider {
-  border-color: #666;
+  border-color: var(--border-strong);
 }
 
 .toggle-switch-label:hover input:checked + .toggle-slider {
@@ -2704,34 +2847,15 @@ details[open] .collapsible-summary::before {
 /* profile-selector, profile-dropdown, profile-save-btn, btn-create-profile styles
    removed — profile selector consolidated to header-profile-dropdown */
 
-/* Compact profile list for settings panel */
-.profile-list.compact {
-  max-height: 150px;
-  margin-bottom: 0.5em;
-}
-
-.profile-list.compact .profile-item {
-  padding: 0.35em 0.5em;
-}
-
-.profile-list.compact .profile-name {
-  font-size: 0.9em;
-}
-
 .summary-icon {
   margin-right: 0.5em;
   color: var(--text-muted);
 }
 
-.hint.compact,
-.profile-status.compact {
+.hint.compact {
   margin: 0.25em 0;
   padding: 0.25em 0.5em;
   font-size: 0.8em;
-}
-
-.profile-create .btn-small {
-  padding: 0.4em 0.6em;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -2768,7 +2892,7 @@ details[open] .collapsible-summary::before {
 }
 
 .file-browser-header h3 i {
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
 }
 
 .file-browser-search {
@@ -2835,7 +2959,7 @@ details[open] .collapsible-summary::before {
   padding: 0.75em 1em;
   border-radius: var(--radius-lg);
   margin-bottom: 0.25em;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
   border: 1px solid transparent;
   transition: all var(--transition-normal);
 }
@@ -2935,7 +3059,7 @@ details[open] .collapsible-summary::before {
   align-items: center;
   background: var(--blue-alpha-10);
   border: 1px solid var(--blue-alpha-25);
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-normal);
@@ -2960,7 +3084,7 @@ details[open] .collapsible-summary::before {
 }
 
 .file-item .upload-status.error {
-  color: #f28b82;
+  color: var(--color-error);
 }
 
 /* File Areas (Operations visited) */
@@ -3015,45 +3139,45 @@ details[open] .collapsible-summary::before {
 .file-areas .area-tag.diff-nim {
   background: rgba(220, 60, 60, 0.2);
   border-color: rgba(220, 60, 60, 0.4);
-  color: #f08080;
+  color: var(--color-error);
 }
 
 .file-areas .area-tag.diff-nim:hover {
   background: rgba(220, 60, 60, 0.3);
-  color: #ffa0a0;
+  color: var(--color-error);
 }
 
 .file-areas .area-tag.diff-hm {
   background: rgba(220, 160, 40, 0.2);
   border-color: rgba(220, 160, 40, 0.4);
-  color: #e8c060;
+  color: var(--text-gold);
 }
 
 .file-areas .area-tag.diff-hm:hover {
   background: rgba(220, 160, 40, 0.3);
-  color: #f0d080;
+  color: var(--text-gold);
 }
 
 .file-areas .area-tag.diff-sm {
   background: rgba(60, 180, 120, 0.2);
   border-color: rgba(60, 180, 120, 0.4);
-  color: #70d8a0;
+  color: var(--color-success);
 }
 
 .file-areas .area-tag.diff-sm:hover {
   background: rgba(60, 180, 120, 0.3);
-  color: #90e8b8;
+  color: var(--color-success);
 }
 
 .file-areas .area-tag.diff-fp {
   background: rgba(80, 140, 220, 0.2);
   border-color: rgba(80, 140, 220, 0.4);
-  color: #80b8f0;
+  color: var(--text-accent);
 }
 
 .file-areas .area-tag.diff-fp:hover {
   background: rgba(80, 140, 220, 0.3);
-  color: #a0d0ff;
+  color: var(--text-accent);
 }
 
 .file-areas .area-more {
@@ -3332,7 +3456,7 @@ a.contributor-name:hover {
 
 .live-query-toggle .toggle-text {
   font-size: 1em;
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
 }
 
 .boss-filter-toggle {
@@ -3422,7 +3546,7 @@ a.contributor-name:hover {
 .parsely-upload-btn {
   background: transparent;
   border: none;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
@@ -3463,14 +3587,14 @@ a.contributor-name:hover {
 
 .encounter-name {
   font-weight: 500;
-  color: #e0e0e0;
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
 .encounter-npcs {
   font-size: 0.75em;
   opacity: 0.7;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3493,7 +3617,7 @@ a.contributor-name:hover {
 }
 
 .sortable-header:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(var(--fg-rgb), 0.08);
 }
 
 .sortable-header.active {
@@ -3510,8 +3634,8 @@ a.contributor-name:hover {
 .challenge-card {
   flex: 1 1 280px;
   max-width: 400px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(var(--fg-rgb), 0.03);
+  border: 1px solid rgba(var(--fg-rgb), 0.06);
   border-radius: var(--radius-md);
   padding: 0.5em 0.75em;
 }
@@ -3530,7 +3654,7 @@ a.contributor-name:hover {
 }
 
 .challenge-total {
-  color: #7eb8da;
+  color: var(--text-accent);
   font-weight: 500;
 }
 
@@ -3555,7 +3679,7 @@ a.contributor-name:hover {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(var(--fg-rgb), 0.04);
   margin-bottom: 2px;
 }
 
@@ -3597,7 +3721,7 @@ a.contributor-name:hover {
 
 .challenge-player-value {
   position: relative;
-  color: #7eb8da;
+  color: var(--text-accent);
   font-variant-numeric: tabular-nums;
   min-width: 4.5em;
   text-align: right;
@@ -3657,7 +3781,7 @@ a.contributor-name:hover {
   background: linear-gradient(
     180deg,
     var(--swtor-bg-light) 0%,
-    rgba(60, 60, 70, 0.9) 100%
+    var(--btn-hover-top) 100%
   );
   color: var(--text-secondary);
   border-color: var(--swtor-border);
@@ -3675,7 +3799,7 @@ a.contributor-name:hover {
   border-bottom: 2px solid var(--swtor-blue);
   box-shadow:
     0 0 10px var(--swtor-blue-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    inset 0 1px 0 rgba(var(--fg-rgb), 0.1);
 }
 
 .tab-btn i {
@@ -3713,7 +3837,7 @@ a.contributor-name:hover {
   top: 20%;
   height: 60%;
   width: 1px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(var(--fg-rgb), 0.15);
 }
 
 .header-tabs .tab-btn i {
@@ -3960,7 +4084,7 @@ a.contributor-name:hover {
   gap: 0.5em;
   margin-top: 0.5em;
   padding-top: 0.5em;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(var(--fg-rgb), 0.05);
 }
 
 /* Form action buttons (timer/effect editors) - smaller variant */
@@ -3980,10 +4104,10 @@ a.contributor-name:hover {
 .search-input {
   width: 100%;
   padding: 0.5em 0.75em;
-  background: #2a2a2f !important;
+  background: var(--bg-light) !important;
   border: 1px solid rgba(100, 140, 200, 0.3);
   border-radius: var(--radius-md);
-  color: #eee !important;
+  color: var(--text-primary) !important;
   font-size: 0.9em;
 }
 
@@ -4001,7 +4125,7 @@ a.contributor-name:hover {
   width: 40px;
   height: 28px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: var(--radius-md);
   cursor: pointer;
 }
@@ -4022,7 +4146,7 @@ a.contributor-name:hover {
   background: rgba(60, 80, 100, 0.4);
   border: 1px solid rgba(100, 140, 180, 0.3);
   border-radius: 3px;
-  color: #8cf;
+  color: var(--text-accent);
   font-size: 0.75em;
   cursor: pointer;
 }
@@ -4033,7 +4157,7 @@ a.contributor-name:hover {
 
 /* Composite Trigger */
 .composite-trigger {
-  background: rgba(40, 50, 60, 0.5);
+  background: rgba(40, 50, 60, calc(0.5 * var(--recess-k)));
   border: 1px solid rgba(100, 140, 180, 0.3);
   border-radius: var(--radius-md);
   padding: 0.5em;
@@ -4045,11 +4169,11 @@ a.contributor-name:hover {
   gap: 0.5em;
   margin-bottom: 0.5em;
   padding-bottom: 0.4em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(var(--fg-rgb), 0.1);
 }
 
 .composite-label {
-  color: #8cf;
+  color: var(--text-accent);
   font-weight: 500;
   font-size: 0.85em;
 }
@@ -4105,7 +4229,7 @@ a.contributor-name:hover {
 }
 
 .composite-condition--all-of > .composite-header > .composite-label {
-  color: #8d8;
+  color: var(--color-success);
 }
 
 .composite-condition--all-of > .composite-conditions {
@@ -4121,7 +4245,7 @@ a.contributor-name:hover {
 }
 
 .composite-condition--any-of > .composite-header > .composite-label {
-  color: #8cf;
+  color: var(--text-accent);
 }
 
 .composite-condition--any-of > .composite-conditions {
@@ -4137,7 +4261,7 @@ a.contributor-name:hover {
 }
 
 .condition-not > .composite-header > .composite-label {
-  color: #f88;
+  color: var(--color-error);
 }
 
 .condition-not > .composite-conditions {
@@ -4180,7 +4304,7 @@ a.contributor-name:hover {
   border: 1px solid rgba(200, 180, 80, 0.3);
   border-radius: var(--radius-md);
   font-size: 0.8em;
-  color: rgba(220, 200, 120, 0.9);
+  color: var(--text-gold);
 }
 
 .legacy-conditions-banner .btn-sm {
@@ -4198,7 +4322,7 @@ a.contributor-name:hover {
 }
 
 .btn-close:hover {
-  color: #faa;
+  color: var(--color-error);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -4292,7 +4416,7 @@ a.contributor-name:hover {
 }
 
 .effect-duration {
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
   font-size: 0.85em;
   padding-right: 0.5em;
 }
@@ -4304,7 +4428,7 @@ a.contributor-name:hover {
 }
 
 .effect-status.enabled {
-  color: #6d6;
+  color: var(--color-success);
   background: rgba(100, 200, 100, 0.1);
 }
 
@@ -4316,7 +4440,7 @@ a.contributor-name:hover {
 /* Effect Edit Form */
 
 .effect-id-row {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
   padding: 0.3em 0.5em;
   border-radius: var(--radius-md);
   margin-bottom: 0.3em;
@@ -4646,12 +4770,12 @@ a.contributor-name:hover {
 }
 
 .role-toggle-healer.active {
-  color: #4caf50;
+  color: var(--lt-green, #4caf50);
   border-color: #4caf50;
 }
 
 .role-toggle-dps.active {
-  color: #e57373;
+  color: var(--color-error);
   border-color: #e57373;
 }
 
@@ -4935,7 +5059,7 @@ a.contributor-name:hover {
 
 .origin-badge.modified {
   background: rgba(155, 89, 182, 0.35);
-  color: #c39bd3;
+  color: var(--text-violet);
 }
 
 .origin-badge.custom {
@@ -5242,7 +5366,7 @@ a.contributor-name:hover {
   width: 280px;
   min-width: 240px;
   max-width: 320px;
-  background: linear-gradient(180deg, #1f1f27 0%, #15151a 100%);
+  background: linear-gradient(180deg, var(--bg-input) 0%, var(--bg-deep) 100%);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-accent);
   display: flex;
@@ -5326,7 +5450,7 @@ a.contributor-name:hover {
 }
 
 .sidebar-header h3 i {
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
 }
 .sidebar-header-action {
   margin-left: auto;
@@ -5372,7 +5496,7 @@ a.contributor-name:hover {
   margin: 0.25em 0;
   cursor: pointer;
   font-size: 0.8em;
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
   background: var(--blue-alpha-5);
   border-radius: var(--radius-sm);
   transition: background 0.15s;
@@ -5614,7 +5738,7 @@ a.contributor-name:hover {
 .entity-section h4 {
   margin: 0 0 0.5em 0;
   font-size: 0.9em;
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
 }
 
 .entity-list {
@@ -5622,7 +5746,7 @@ a.contributor-name:hover {
   overflow-y: auto;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
 }
 
 .entity-row {
@@ -5677,15 +5801,15 @@ a.contributor-name:hover {
 }
 
 .entity-row .entity-value.value-damage {
-  color: #e74c3c;
+  color: var(--lt-red, #e74c3c);
 }
 
 .entity-row .entity-value.value-healing {
-  color: #2ecc71;
+  color: var(--lt-green, #2ecc71);
 }
 
 .entity-row .entity-value.value-dtps {
-  color: #e67e22;
+  color: var(--lt-orange, #e67e22);
 }
 
 .entity-row .entity-abilities {
@@ -5703,14 +5827,14 @@ a.contributor-name:hover {
 .ability-section h4 {
   margin: 0 0 0.5em 0;
   font-size: 0.9em;
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
 }
 
 .ability-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85em;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
   border-radius: var(--radius-sm);
 }
 
@@ -5723,7 +5847,7 @@ a.contributor-name:hover {
 
 .ability-table th {
   background: var(--bg-mid);
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
   font-weight: 500;
   font-size: 0.9em;
   position: sticky;
@@ -5863,16 +5987,16 @@ a.contributor-name:hover {
 
 /* Tab-colored value columns (Total, Rate) */
 .ability-table.damage-tab .col-val {
-  color: hsl(0, 60%, 72%);
+  color: var(--lt-red, hsl(0, 60%, 72%));
 }
 .ability-table.damage-tab .group-stat.col-val {
-  color: hsl(0, 55%, 68%);
+  color: var(--lt-red, hsl(0, 55%, 68%));
 }
 .ability-table.healing-tab .col-val {
-  color: hsl(120, 45%, 65%);
+  color: var(--lt-green, hsl(120, 45%, 65%));
 }
 .ability-table.healing-tab .group-stat.col-val {
-  color: hsl(120, 40%, 58%);
+  color: var(--lt-green, hsl(120, 40%, 58%));
 }
 
 /* Percentage columns - dimmed */
@@ -5946,18 +6070,18 @@ a.contributor-name:hover {
 
 /* Orange averages only on damage tabs */
 .ability-table.damage-tab .col-avg {
-  color: hsl(30, 70%, 65%);
+  color: var(--lt-orange, hsl(30, 70%, 65%));
 }
 .ability-table.damage-tab .group-stat.col-avg {
-  color: hsl(30, 60%, 60%);
+  color: var(--lt-orange, hsl(30, 60%, 60%));
 }
 
 /* Effective healing columns - lighter spearmint green to distinguish from raw heals */
 .ability-table.healing-tab .col-eff {
-  color: hsl(158, 52%, 64%);
+  color: var(--lt-green, hsl(158, 52%, 64%));
 }
 .ability-table.healing-tab .group-stat.col-eff {
-  color: hsl(158, 46%, 58%);
+  color: var(--lt-green, hsl(158, 46%, 58%));
 }
 
 /* (Bar column merged into % column - see .pct-bar-fill above) */
@@ -5979,7 +6103,7 @@ a.contributor-name:hover {
   padding: 0.5em 1em;
   border: 1px solid var(--border-medium);
   border-radius: 6px;
-  background: var(--bg-elevated, #1e1e24);
+  background: var(--bg-elevated);
   color: var(--text-secondary);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   pointer-events: none;
@@ -6016,7 +6140,7 @@ a.contributor-name:hover {
   background: linear-gradient(
     135deg,
     rgba(95, 217, 142, 0.15) 0%,
-    rgba(30, 30, 46, 0.95) 100%
+    var(--btn-bottom) 100%
   );
 }
 
@@ -6025,7 +6149,7 @@ a.contributor-name:hover {
   background: linear-gradient(
     135deg,
     rgba(239, 83, 80, 0.15) 0%,
-    rgba(30, 30, 46, 0.95) 100%
+    var(--btn-bottom) 100%
   );
 }
 
@@ -6050,12 +6174,12 @@ a.contributor-name:hover {
 
 .toast-link {
   display: block;
-  color: #5dade2;
+  color: var(--text-accent);
   text-decoration: underline;
   word-break: break-all;
 }
 .toast-link:hover {
-  color: #85c1e9;
+  color: var(--text-accent);
 }
 
 .toast-close {
@@ -6109,7 +6233,7 @@ a.contributor-name:hover {
 }
 
 .form-card-header i {
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
   font-size: 0.9em;
 }
 
@@ -6181,7 +6305,7 @@ a.contributor-name:hover {
 .id-display {
   padding: 0.2em 0.5em;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--fg-rgb), 0.05);
   color: var(--text-tertiary);
   font-family: monospace;
   font-size: 0.85em;
@@ -6594,8 +6718,8 @@ a.contributor-name:hover {
   padding: 0.4em 0.7em;
   font-size: 0.85em;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--fg-rgb), 0.04);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s;
@@ -6667,8 +6791,8 @@ a.contributor-name:hover {
   padding: 0 0.5em;
   font-size: 0.85em;
   color: var(--text-primary);
-  background: rgba(50, 50, 55, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-raised);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: var(--radius-sm);
 }
 
@@ -6723,8 +6847,8 @@ a.contributor-name:hover {
   font-weight: 500;
   letter-spacing: 0;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--fg-rgb), 0.04);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: var(--radius-md);
   box-shadow: none;
 }

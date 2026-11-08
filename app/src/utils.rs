@@ -11,6 +11,33 @@ pub fn js_set(obj: &JsValue, key: &str, value: &JsValue) {
     let _ = js_sys::Reflect::set(obj, &JsValue::from_str(key), value);
 }
 
+/// Resolve a CSS custom property (e.g. `--text-muted`) on the root element.
+/// ECharts can't read CSS variables, so chart options resolve theme colors through this.
+pub fn css_var(name: &str) -> String {
+    web_sys::window()
+        .and_then(|w| {
+            let root = w.document()?.document_element()?;
+            w.get_computed_style(&root).ok().flatten()
+        })
+        .and_then(|style| style.get_property_value(name).ok())
+        .map(|v| v.trim().to_string())
+        .unwrap_or_default()
+}
+
+/// Switch the app's color theme by toggling `data-theme` on the root element.
+pub fn apply_theme(light: bool) {
+    if let Some(root) = web_sys::window()
+        .and_then(|w| w.document())
+        .and_then(|d| d.document_element())
+    {
+        let _ = if light {
+            root.set_attribute("data-theme", "light")
+        } else {
+            root.remove_attribute("data-theme")
+        };
+    }
+}
+
 /// Parse a hex color string (e.g., "#ff0000") to RGBA bytes
 pub fn parse_hex_color(hex: &str) -> Option<Color> {
     let hex = hex.trim_start_matches('#');

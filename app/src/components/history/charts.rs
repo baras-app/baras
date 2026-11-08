@@ -5,6 +5,7 @@
 //! a point or bar publishes a `ChartPick` the table narrows itself to.
 
 use std::cell::RefCell;
+use crate::utils::css_var;
 use std::rc::Rc;
 
 use dioxus::prelude::*;
@@ -79,10 +80,10 @@ fn pull_label(iso: &str) -> String {
 
 fn base_option(title: &str) -> Value {
     json!({
-        "title": { "text": title, "left": "center", "textStyle": { "color": "#e0e0e0", "fontSize": 12 } },
+        "title": { "text": title, "left": "center", "textStyle": { "color": css_var("--text-primary"), "fontSize": 12 } },
         "grid": { "left": 52, "right": 16, "top": 32, "bottom": 28 },
         "animation": false,
-        "tooltip": { "trigger": "axis", "backgroundColor": "rgba(20,20,24,0.95)", "borderColor": "#444", "textStyle": { "color": "#e0e0e0" } },
+        "tooltip": { "trigger": "axis", "backgroundColor": css_var("--bg-elevated"), "borderColor": css_var("--border-strong"), "textStyle": { "color": css_var("--text-primary") } },
     })
 }
 
@@ -92,7 +93,7 @@ fn pull_axis(labels: Vec<String>) -> Value {
     json!({
         "type": "category",
         "data": labels,
-        "axisLabel": { "color": "#888", "fontSize": 10, "hideOverlap": true },
+        "axisLabel": { "color": css_var("--text-muted"), "fontSize": 10, "hideOverlap": true },
         "axisTick": { "alignWithLabel": true },
         "splitLine": { "show": false }
     })
@@ -159,8 +160,8 @@ fn metric_option(rows: &[PullRow], title: &str, color: &str, pick: impl Fn(&Pull
     opt["_ticks"] = ticks;
     // A boundary label reads as "from here on", so it hangs to the right of its tick
     opt["xAxis"]["axisLabel"]["align"] = json!("left");
-    opt["xAxis"]["splitLine"] = json!({ "show": true, "lineStyle": { "color": "#33333c", "type": "dashed" } });
-    opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": "#888" }, "splitLine": { "lineStyle": { "color": "#2a2a30" } }, "scale": true });
+    opt["xAxis"]["splitLine"] = json!({ "show": true, "lineStyle": { "color": css_var("--border-light"), "type": "dashed" } });
+    opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } }, "scale": true });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
     opt["series"] = json!([{
         "type": "line", "name": title, "data": data, "symbol": "circle", "symbolSize": 5,
@@ -188,8 +189,8 @@ fn ttk_option(rows: &[PullRow]) -> Option<Value> {
     opt["_ticks"] = ticks;
     opt["_mmss"] = json!(true);
     opt["xAxis"]["axisLabel"]["align"] = json!("left");
-    opt["xAxis"]["splitLine"] = json!({ "show": true, "lineStyle": { "color": "#33333c", "type": "dashed" } });
-    opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": "#888" }, "splitLine": { "lineStyle": { "color": "#2a2a30" } }, "scale": true });
+    opt["xAxis"]["splitLine"] = json!({ "show": true, "lineStyle": { "color": css_var("--border-light"), "type": "dashed" } });
+    opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } }, "scale": true });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
     opt["series"] = json!([{
         "type": "line", "name": "Time to kill", "data": data, "symbol": "diamond", "symbolSize": 11,
@@ -261,11 +262,11 @@ fn nights_option(rows: &[PullRow]) -> Option<Value> {
         .collect();
     let mut opt = base_option("Pulls per session");
     opt["xAxis"] = pull_axis(labels);
-    opt["yAxis"] = json!({ "type": "value", "minInterval": 1, "axisLabel": { "color": "#888" }, "splitLine": { "lineStyle": { "color": "#2a2a30" } } });
+    opt["yAxis"] = json!({ "type": "value", "minInterval": 1, "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } } });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
     opt["series"] = json!([{
         "type": "bar", "name": "Pulls", "data": data, "barMaxWidth": 28,
-        "label": { "show": true, "position": "top", "color": "#aaa", "fontSize": 10 },
+        "label": { "show": true, "position": "top", "color": css_var("--text-tertiary"), "fontSize": 10 },
     }]);
     Some(opt)
 }

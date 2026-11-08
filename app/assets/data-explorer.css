@@ -17,7 +17,7 @@
 .phase-timeline {
   padding: var(--space-sm);
   margin-bottom: var(--space-sm);
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -34,8 +34,8 @@
   position: relative;
   flex: 1;
   height: 34px;
-  background: hsl(210, 40%, 25%);
-  border: 2px solid hsl(210, 20%, 15%);
+  background: color-mix(in srgb, var(--bg-input), var(--swtor-blue) 20%);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   overflow: hidden;
   cursor: crosshair;
@@ -53,7 +53,7 @@
   transform: translateY(-50%);
   font-size: 10px;
   font-family: var(--font-mono);
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--fg-rgb), 0.5);
   pointer-events: none;
   z-index: 5;
 }
@@ -78,11 +78,11 @@
   align-items: center;
   gap: 4px;
   font-size: 9px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--fg-rgb), 0.8);
   overflow: hidden;
   white-space: nowrap;
   padding: 0 4px;
-  border-right: 2px solid hsl(210, 20%, 15%);
+  border-right: 2px solid var(--bg-deep);
   transition: filter var(--transition-fast);
   user-select: none;
   z-index: 6; /* Above track markers (z-index: 5) */
@@ -328,7 +328,7 @@
   height: 1.6em;
   margin-right: 0.1em;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--fg-rgb), 0.06);
   border: 1px solid var(--border-subtle);
   color: var(--text-muted);
   font-size: 0.85em;
@@ -494,7 +494,7 @@
 }
 
 .content-error-placeholder {
-  color: #e74c3c;
+  color: var(--lt-red, #e74c3c);
   font-size: 13px;
   text-align: center;
   padding: 24px 0;
@@ -527,8 +527,8 @@
   color: var(--text-primary);
   font-weight: 600;
   background: var(--bg-secondary);
-  border-left: 2px solid rgba(255, 255, 255, 0.18);
-  border-right: 2px solid rgba(255, 255, 255, 0.18);
+  border-left: 2px solid rgba(var(--fg-rgb), 0.18);
+  border-right: 2px solid rgba(var(--fg-rgb), 0.18);
   border-top: none;
   border-bottom-color: var(--bg-secondary);
   position: relative;
@@ -615,7 +615,7 @@
 .npc-health-box {
   max-width: 650px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -663,7 +663,7 @@
 }
 
 .npc-health-table .npc-row.dead .npc-hp-dead {
-  color: #e74c3c;
+  color: var(--lt-red, #e74c3c);
   font-size: 11px;
 }
 
@@ -673,7 +673,7 @@
 }
 
 .npc-health-table .npc-row.alive td.num {
-  color: #e67e22;
+  color: var(--lt-orange, #e67e22);
 }
 
 .npc-health-table tbody tr:hover {
@@ -684,11 +684,11 @@
 .npc-health-table .npc-sub-row td {
   padding-left: 32px;
   font-size: 12px;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, calc(0.12 * var(--recess-k)));
 }
 
 .npc-health-table .npc-sub-row:hover td {
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, calc(0.18 * var(--recess-k)));
 }
 
 /* Group header row (collapsible) */
@@ -748,7 +748,7 @@
 }
 
 .npc-death-time {
-  color: #e74c3c;
+  color: var(--lt-red, #e74c3c);
   font-size: 11px;
   margin-left: 5px;
 }
@@ -777,7 +777,7 @@
 /* Card around the table; it scrolls sideways itself when the columns overflow */
 .overview-table-box {
   overflow-x: auto;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -876,16 +876,16 @@
 
 /* Color-coded columns */
 .overview-table .dmg {
-  color: hsl(0, 70%, 65%);
+  color: var(--lt-red, hsl(0, 70%, 65%));
 }
 .overview-table .threat {
-  color: #b39ddb;
+  color: var(--text-violet);
 }
 .overview-table .taken {
-  color: hsl(30, 70%, 60%);
+  color: var(--lt-orange, hsl(30, 70%, 60%));
 }
 .overview-table .heal {
-  color: hsl(120, 50%, 60%);
+  color: var(--lt-green, hsl(120, 50%, 60%));
 }
 .overview-table .shield {
   color: hsl(190, 70%, 55%);
@@ -970,11 +970,11 @@
 }
 
 .death-subgroup-label.friendly {
-  color: #4caf50;
+  color: var(--lt-green, #4caf50);
 }
 
 .death-subgroup-label.enemy {
-  color: #e74c3c;
+  color: var(--lt-red, #e74c3c);
 }
 
 .death-subgroup-label.unknown {
@@ -992,11 +992,11 @@
 }
 
 .overview-side-label.friendly {
-  color: #4caf50;
+  color: var(--lt-green, #4caf50);
 }
 
 .overview-side-label.enemy {
-  color: #e74c3c;
+  color: var(--lt-red, #e74c3c);
 }
 
 .overview-side-label.unknown {
@@ -1386,16 +1386,16 @@
 }
 
 .toggle-dps {
-  color: #e74c3c;
+  color: var(--lt-red, #e74c3c);
 }
 .toggle-hps {
-  color: #2ecc71;
+  color: var(--lt-green, #2ecc71);
 }
 .toggle-dtps {
-  color: #e67e22;
+  color: var(--lt-orange, #e67e22);
 }
 .toggle-hp {
-  color: #f1c40f;
+  color: var(--lt-yellow, #f1c40f);
 }
 
 /* Charts area — takes up available space in the left column */
@@ -1436,7 +1436,7 @@
   flex: 1;
   min-height: 150px;
   box-sizing: border-box;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -1447,7 +1447,7 @@
   align-items: center;
   justify-content: center;
   min-height: 80px;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   color: var(--text-muted);
@@ -1562,7 +1562,7 @@
   color: var(--text-muted);
   font-size: 10px;
   text-transform: uppercase;
-  background: #1a1a1a;
+  background: var(--bg-deep);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -1615,7 +1615,7 @@
 }
 
 .effect-id-fallback {
-  color: #666;
+  color: var(--text-disabled);
   font-family: monospace;
   font-size: 0.85em;
 }
@@ -1711,7 +1711,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: #1a1a1a;
+  background: var(--bg-deep);
   border-bottom: 2px solid var(--border-subtle);
   font-size: 10px;
   font-weight: 600;
@@ -1854,13 +1854,13 @@
 
 /* Effect type colors */
 .log-apply {
-  color: hsl(120, 50%, 50%);
+  color: var(--lt-green, hsl(120, 50%, 50%));
 }
 .log-type-damage {
-  color: hsl(30, 90%, 55%);
+  color: var(--lt-orange, hsl(30, 90%, 55%));
 }
 .log-remove {
-  color: hsl(0, 50%, 60%);
+  color: var(--lt-red, hsl(0, 50%, 60%));
 }
 .log-event {
   color: hsl(200, 50%, 60%);
@@ -1868,10 +1868,10 @@
 
 /* Row type colors */
 .log-damage .log-value {
-  color: hsl(0, 70%, 60%);
+  color: var(--lt-red, hsl(0, 70%, 60%));
 }
 .log-heal .log-value {
-  color: hsl(120, 70%, 50%);
+  color: var(--lt-green, hsl(120, 70%, 50%));
 }
 .log-crit .log-value {
   font-weight: 700;
@@ -1879,7 +1879,7 @@
 
 /* Alternating row backgrounds for readability */
 .log-row:nth-child(even) {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--fg-rgb), 0.02);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1958,11 +1958,11 @@
 }
 
 .log-filter-checkbox.damage {
-  color: hsl(0, 70%, 65%);
+  color: var(--lt-red, hsl(0, 70%, 65%));
 }
 
 .log-filter-checkbox.healing {
-  color: hsl(120, 60%, 55%);
+  color: var(--lt-green, hsl(120, 60%, 55%));
 }
 
 .log-filter-checkbox.actions {
@@ -1970,12 +1970,12 @@
 }
 
 .log-filter-checkbox.effects {
-  color: hsl(45, 70%, 60%);
+  color: var(--lt-yellow, hsl(45, 70%, 60%));
 }
 
 .log-clear-filters {
   padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--fg-rgb), 0.04);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-muted);
@@ -2142,13 +2142,13 @@
   min-width: 200px;
   padding: 0.35em 0.5em;
   background: var(--blue-alpha-3, rgba(0, 0, 0, 0.3));
-  color: var(--text-primary, #e0e0e0);
-  border: 1px solid var(--border-color, #444);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color, var(--border-strong));
   border-radius: 4px;
 }
 
 .rotation-placeholder {
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   padding: 2rem;
   text-align: center;
 }
@@ -2160,7 +2160,7 @@
 }
 
 .rotation-cycle {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
   border-radius: 4px;
   padding: 0.5rem;
 }
@@ -2181,7 +2181,7 @@
 
 .gcd-gap-time {
   font-size: 0.65rem;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   line-height: 1;
 }
 
@@ -2191,7 +2191,7 @@
   padding: 0.25rem 0.5rem;
   margin-bottom: 0.35rem;
   font-size: 0.8em;
-  color: var(--text-secondary, #bbb);
+  color: var(--text-secondary);
 }
 
 .cycle-stat {
@@ -2200,20 +2200,20 @@
 }
 
 .cycle-stat-label {
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   font-weight: 600;
 }
 
 .cycle-stat.heal {
-  color: #6ec86e;
+  color: var(--lt-green, #6ec86e);
 }
 
 .cycle-stat.crit {
-  color: #e8c84a;
+  color: var(--lt-yellow, #e8c84a);
 }
 
 .cycle-stat.cycle-duration {
-  color: #4a9eff;
+  color: var(--text-accent);
   font-weight: 700;
   font-size: 1.3em;
 }
@@ -2227,7 +2227,7 @@
   border-radius: 2px;
   font-size: 0.55em;
   font-weight: 600;
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -2235,8 +2235,8 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 .log-context-menu {
-  background: var(--bg-secondary, #1e1e2e);
-  border: 1px solid var(--border-subtle, #444);
+  background: var(--bg-secondary, var(--bg-light));
+  border: 1px solid var(--border-subtle, var(--border-strong));
   border-radius: var(--radius-sm, 4px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   padding: 2px 0;
@@ -2247,13 +2247,13 @@
 .context-menu-item {
   padding: 3px 10px;
   cursor: pointer;
-  color: var(--text-primary, #e0e0e0);
+  color: var(--text-primary);
   transition: background var(--transition-fast, 0.1s);
   white-space: nowrap;
 }
 
 .context-menu-item:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.1));
+  background: var(--bg-hover, rgba(var(--fg-rgb), 0.1));
   color: var(--accent-gold, #ffc832);
 }
 
@@ -2265,7 +2265,7 @@
   display: grid;
   grid-template-columns: 1fr auto auto 1fr auto auto;
   grid-template-rows: repeat(4, auto);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   margin-bottom: var(--space-sm);
@@ -2420,7 +2420,7 @@
 }
 
 .usage-table tbody td.muted {
-  color: var(--text-muted, #666);
+  color: var(--text-muted, var(--text-disabled));
 }
 
 .usage-table tbody tr {
@@ -2457,7 +2457,7 @@
   /* Same dark card as the tables and charts (--bg-secondary was never defined) */
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
   padding: 8px;
 }
 
@@ -2467,7 +2467,7 @@
   justify-content: center;
   gap: 8px;
   padding: 16px;
-  color: var(--text-muted, #666);
+  color: var(--text-muted, var(--text-disabled));
   font-style: italic;
 }
 
@@ -2520,7 +2520,7 @@
 .usage-table-container,
 .log-table-container,
 .entity-list {
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -2530,7 +2530,7 @@
 .ability-table {
   border-collapse: separate;
   border-spacing: 0;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   overflow: clip;
@@ -2540,7 +2540,7 @@
 .usage-table thead th,
 .effect-table th,
 .log-header {
-  background: #18181d;
+  background: var(--bg-dark);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
@@ -2552,7 +2552,7 @@
 .ability-table th.sortable:hover,
 .usage-table thead th.sortable:hover,
 .effect-table th.sortable:hover {
-  background: #18181d;
+  background: var(--bg-dark);
   color: var(--text-primary);
 }
 
@@ -2568,7 +2568,7 @@
 .log-row:hover,
 .overview-table tbody tr:hover,
 .npc-health-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--fg-rgb), 0.04);
 }
 
 .ability-table tbody tr:last-child td,
@@ -2585,7 +2585,7 @@
 
 /* Totals keep their rule but sit on the card, not a lighter band */
 .ability-table tfoot .totals-row {
-  background: #18181d;
+  background: var(--bg-dark);
 }
 
 /* The entity list and the ability table start on the same line: their
@@ -2602,14 +2602,14 @@
 .challenge-card {
   padding: 0;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
   border: 1px solid var(--border-light);
 }
 
 .challenge-card-header {
   margin-bottom: 0;
   padding: 0.5em 0.75em;
-  background: #18181d;
+  background: var(--bg-dark);
   border-bottom: 2px solid var(--border-subtle);
 }
 
@@ -2631,7 +2631,7 @@
   margin: 0 0.4em;
   padding: 0 0.35em;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--fg-rgb), 0.06);
   font-family: var(--font-sans, inherit);
   font-size: 10px;
   font-weight: 500;

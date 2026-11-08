@@ -174,7 +174,7 @@
   min-height: 0;
   overflow: auto;
   /* Same dark card as the Data Explorer tables */
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
@@ -198,7 +198,7 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #18181d;
+  background: var(--bg-dark);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
@@ -229,7 +229,7 @@
 }
 
 .pull-history-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--fg-rgb), 0.04);
 }
 
 .pull-history-table tbody tr:last-child td {
@@ -374,7 +374,7 @@
   flex: 1 1 130px;
   min-width: 0;
   padding: 0.6em 0.9em;
-  background: #1e1e26;
+  background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
 }
@@ -424,7 +424,7 @@
 
 .pull-result.reset {
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
 .pull-partial {
@@ -578,7 +578,7 @@
 }
 
 .library-row-actions .lib-star:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
 .lib-star {
@@ -603,7 +603,7 @@
   font-size: 0.75em;
   padding: 1px 6px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--fg-rgb), 0.06);
   color: var(--text-muted);
   cursor: help;
 }
@@ -682,7 +682,7 @@
   padding: 0.4em 0.7em;
   border-radius: 4px;
   font-size: 0.9em;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--fg-rgb), 0.04);
   color: var(--text-secondary);
 }
 
@@ -710,7 +710,7 @@
   border-radius: 3px;
   font-size: 0.75em;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--fg-rgb), 0.06);
   color: var(--text-secondary);
 }
 
@@ -774,7 +774,7 @@
   padding: 0.5em 0.7em 0.6em;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(var(--fg-rgb), 0.025);
 }
 
 .library-retain-title {
@@ -904,7 +904,7 @@
   padding: 1px 5px;
   border-radius: 3px;
   font-size: 0.95em;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
 .run-badge.cleared { color: var(--color-success); background: var(--color-success-bg); }
@@ -963,9 +963,9 @@
 .run-tag-input {
   width: 12em;
   padding: 4px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(var(--fg-rgb), 0.12);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--fg-rgb), 0.04);
   color: var(--text-primary);
   font: inherit;
   font-size: 0.8em;
@@ -976,9 +976,9 @@
   min-height: 3em;
   margin-bottom: var(--space-xs);
   padding: 0.4em 0.6em;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--fg-rgb), 0.03);
   color: var(--text-primary);
   font: inherit;
   font-size: 0.85em;
@@ -1024,7 +1024,7 @@
   height: 34px;
   overflow: hidden;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, calc(0.35 * var(--recess-k)));
   border: 1px solid var(--border-light);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
 }
@@ -1061,7 +1061,7 @@
 
 .run-seg.kill { background: #2ecc71; }
 .run-seg.wipe { background: #c0392b; }
-.run-seg.gap { background: rgba(255, 255, 255, 0.08); }
+.run-seg.gap { background: rgba(var(--fg-rgb), 0.08); }
 .run-seg.kill:hover, .run-seg.wipe:hover { filter: brightness(1.25); }
 
 .run-timeline-axis {
@@ -1131,14 +1131,14 @@
 }
 
 .run-tag.small.muted {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--fg-rgb), 0.06);
   color: var(--text-muted);
 }
 
 .library-tag-input {
   width: 4.5em;
   padding: 0 6px;
-  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border: 1px dashed rgba(var(--fg-rgb), 0.15);
   border-radius: 10px;
   background: transparent;
   color: var(--text-secondary);
@@ -1166,8 +1166,8 @@
 
 .library-note:hover,
 .library-note:focus {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(var(--fg-rgb), 0.15);
+  background: rgba(var(--fg-rgb), 0.04);
   outline: none;
 }
 
@@ -1192,7 +1192,7 @@
 
 .library-add-hint {
   padding: 0 6px;
-  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border: 1px dashed rgba(var(--fg-rgb), 0.15);
   border-radius: 10px;
   font-size: 0.8em;
   color: var(--text-muted);
@@ -1241,9 +1241,9 @@
 }
 
 .history-seg .seg:last-child { border-right: none; }
-.history-seg .seg:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.04); }
+.history-seg .seg:hover { color: var(--text-primary); background: rgba(var(--fg-rgb), 0.04); }
 
-.history-seg .seg.active { color: var(--text-primary); background: rgba(255, 255, 255, 0.06); }
+.history-seg .seg.active { color: var(--text-primary); background: rgba(var(--fg-rgb), 0.06); }
 .history-seg .seg.active.tier-story { box-shadow: inset 0 -2px 0 var(--color-success); }
 .history-seg .seg.active.tier-veteran { box-shadow: inset 0 -2px 0 #e8c060; }
 .history-seg .seg.active.tier-master { box-shadow: inset 0 -2px 0 #f08080; }
@@ -1270,7 +1270,7 @@
 .subset-chip.tier-veteran { color: #e8c060; background: rgba(220, 160, 40, 0.15); }
 .subset-chip.tier-master { color: #f08080; background: rgba(220, 60, 60, 0.15); }
 .subset-chip.size { color: var(--swtor-blue-bright); background: rgba(74, 158, 255, 0.18); }
-.subset-chip.any { color: var(--text-muted); background: rgba(255, 255, 255, 0.06); font-weight: 500; }
+.subset-chip.any { color: var(--text-muted); background: rgba(var(--fg-rgb), 0.06); font-weight: 500; }
 
 .history-seg .seg.role img {
   width: 1.1em;
@@ -1304,7 +1304,7 @@
 }
 
 .history-card .sub.warn {
-  color: #e8c060;
+  color: var(--text-gold);
 }
 
 .log-heatmap {
@@ -1314,7 +1314,7 @@
   flex-direction: column;
   gap: 0.35em;
   padding: 0.6em 0.9em 0.7em;
-  background: #1e1e26;
+  background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
 }
@@ -1402,7 +1402,7 @@
 .heatmap-cell {
   aspect-ratio: 1;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--fg-rgb), 0.05);
   cursor: pointer;
 }
 
@@ -1416,7 +1416,7 @@
 }
 
 .heatmap-cell.picked {
-  outline: 1px solid #fff;
+  outline: 1px solid var(--text-primary);
 }
 
 /* Hue from the day's hardest content, depth from the bytes logged */
@@ -1440,10 +1440,10 @@
 .heatmap-cell.wb.l2 { background: rgba(170, 110, 230, 0.5); }
 .heatmap-cell.wb.l3 { background: rgba(180, 130, 235, 0.75); }
 .heatmap-cell.wb.l4 { background: #c58ee8; }
-.heatmap-cell.misc.l1 { background: rgba(255, 255, 255, 0.14); }
-.heatmap-cell.misc.l2 { background: rgba(255, 255, 255, 0.24); }
-.heatmap-cell.misc.l3 { background: rgba(255, 255, 255, 0.36); }
-.heatmap-cell.misc.l4 { background: rgba(255, 255, 255, 0.5); }
+.heatmap-cell.misc.l1 { background: rgba(var(--fg-rgb), 0.14); }
+.heatmap-cell.misc.l2 { background: rgba(var(--fg-rgb), 0.24); }
+.heatmap-cell.misc.l3 { background: rgba(var(--fg-rgb), 0.36); }
+.heatmap-cell.misc.l4 { background: rgba(var(--fg-rgb), 0.5); }
 
 .library-day-pick {
   display: inline-flex;
@@ -1459,12 +1459,12 @@
 /* Recent runs at the top of the Operations rail name their operation */
 .run-recent-header .section-area i {
   margin-right: 0.3em;
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
 }
 
 .run-item-op {
   font-size: 0.78em;
-  color: var(--swtor-blue-dim);
+  color: var(--text-heading);
   margin-bottom: 0.15em;
 }
 
@@ -1482,7 +1482,7 @@
 }
 
 .history-clear.active {
-  color: #e8c060;
+  color: var(--text-gold);
   border-color: rgba(217, 164, 65, 0.7);
   background: rgba(217, 164, 65, 0.12);
 }
@@ -1645,7 +1645,7 @@
 }
 
 .pvp-board tr.pick:hover td {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--fg-rgb), 0.04);
 }
 
 .pvp-board tr.active td {
@@ -1729,7 +1729,7 @@
 .library-ops-count {
   padding: 0 0.45em;
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(var(--fg-rgb), 0.14);
   font-size: 0.85em;
   font-weight: 600;
 }

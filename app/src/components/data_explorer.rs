@@ -24,7 +24,7 @@ use crate::components::rotation_view::RotationView;
 use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
 use crate::components::mirror_names::{self, ABILITY_NAMING, display_id, display_name};
 use crate::types::{AbilityNaming, DataTab, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
-use crate::utils::js_set;
+use crate::utils::{css_var, js_set};
 use baras_types::formatting;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3398,10 +3398,10 @@ fn build_usage_timeline_option(
     // Tooltip — show ability name + M:SS.mmm timestamp on hover
     let tooltip = js_sys::Object::new();
     js_set(&tooltip, "trigger", &JsValue::from_str("item"));
-    js_set(&tooltip, "backgroundColor", &JsValue::from_str("rgba(30, 30, 30, 0.95)"));
-    js_set(&tooltip, "borderColor", &JsValue::from_str("rgba(255, 255, 255, 0.1)"));
+    js_set(&tooltip, "backgroundColor", &JsValue::from_str(&css_var("--bg-elevated")));
+    js_set(&tooltip, "borderColor", &JsValue::from_str(&css_var("--border-light")));
     let tip_text_style = js_sys::Object::new();
-    js_set(&tip_text_style, "color", &JsValue::from_str("#ccc"));
+    js_set(&tip_text_style, "color", &JsValue::from_str(&css_var("--text-secondary")));
     js_set(&tip_text_style, "fontSize", &JsValue::from_f64(12.0));
     js_set(&tooltip, "textStyle", &tip_text_style);
     // Format tooltip as "AbilityName at M:SS.mmm"
@@ -3487,7 +3487,7 @@ fn build_usage_timeline_option(
     js_set(&x_axis, "min", &JsValue::from_f64(0.0));
     js_set(&x_axis, "max", &JsValue::from_f64(duration_secs as f64));
     let x_axis_label = js_sys::Object::new();
-    js_set(&x_axis_label, "color", &JsValue::from_str("#aaa"));
+    js_set(&x_axis_label, "color", &JsValue::from_str(&css_var("--text-tertiary")));
     js_set(&x_axis_label, "fontSize", &JsValue::from_f64(11.0));
     // Format axis labels as M:SS
     let axis_formatter = js_sys::Function::new_with_args(
@@ -3498,12 +3498,12 @@ fn build_usage_timeline_option(
     js_set(&x_axis, "axisLabel", &x_axis_label);
     let x_line = js_sys::Object::new();
     let x_line_style = js_sys::Object::new();
-    js_set(&x_line_style, "color", &JsValue::from_str("rgba(255,255,255,0.15)"));
+    js_set(&x_line_style, "color", &JsValue::from_str(&css_var("--border-medium")));
     js_set(&x_line, "lineStyle", &x_line_style);
     js_set(&x_axis, "axisLine", &x_line);
     let split_line = js_sys::Object::new();
     let split_style = js_sys::Object::new();
-    js_set(&split_style, "color", &JsValue::from_str("rgba(255,255,255,0.05)"));
+    js_set(&split_style, "color", &JsValue::from_str(&css_var("--border-subtle")));
     js_set(&split_line, "lineStyle", &split_style);
     js_set(&x_axis, "splitLine", &split_line);
     js_set(&option, "xAxis", &x_axis);
@@ -3513,7 +3513,7 @@ fn build_usage_timeline_option(
     js_set(&y_axis, "type", &JsValue::from_str("category"));
     js_set(&y_axis, "data", &categories);
     let y_axis_label = js_sys::Object::new();
-    js_set(&y_axis_label, "color", &JsValue::from_str("#ccc"));
+    js_set(&y_axis_label, "color", &JsValue::from_str(&css_var("--text-secondary")));
     js_set(&y_axis_label, "fontSize", &JsValue::from_f64(11.0));
     js_set(&y_axis, "axisLabel", &y_axis_label);
     let y_line = js_sys::Object::new();

@@ -28,7 +28,7 @@ fn parse_time(s: &str) -> Option<f32> {
 
 /// Generate a consistent HSL color based on phase_id string.
 /// All instances of the same phase type will get the same color.
-/// Uses muted colors that blend with the dark UI theme.
+/// Uses muted colors; lightness follows the active theme via `--phase-l`.
 fn phase_color(phase_id: &str) -> String {
     // Simple hash function to get a consistent hue
     let hash: u32 = phase_id
@@ -37,8 +37,9 @@ fn phase_color(phase_id: &str) -> String {
     let hue = hash % 360;
     // Muted saturation and moderate lightness for subtle distinction
     let sat = 25 + (hash % 15); // 25-40% (muted)
-    let light = 30 + (hash % 10); // 30-40% (darker, subtle)
-    format!("hsl({}, {}%, {}%)", hue, sat, light)
+    // Lightness offset on top of the theme's --phase-l (30% dark, 78% light)
+    let light = hash % 10;
+    format!("hsl({}, {}%, calc(var(--phase-l) + {}%))", hue, sat, light)
 }
 
 #[derive(Props, Clone, PartialEq)]

@@ -158,6 +158,7 @@ pub fn App() -> Element {
     let mut minimize_to_tray = use_signal(|| true);
     let mut web_overlay_enabled = use_signal(|| false);
     let mut european_number_format = use_signal(|| false);
+    let mut light_theme = use_signal(|| false);
     let mut app_version = use_signal(String::new);
 
     // Update state
@@ -231,6 +232,8 @@ pub fn App() -> Element {
             minimize_to_tray.set(config.minimize_to_tray);
             web_overlay_enabled.set(config.web_overlay_enabled);
             european_number_format.set(config.european_number_format);
+            light_theme.set(config.light_theme);
+            crate::utils::apply_theme(config.light_theme);
             parsely_username.set(config.parsely.username);
             parsely_password.set(config.parsely.password);
             parsely_guilds.set(config.parsely.guilds);
@@ -1757,6 +1760,27 @@ pub fn App() -> Element {
                                 }
                             }
                             p { class: "hint", "When enabled, closing the window hides to system tray instead of quitting." }
+                            div { class: "setting-row",
+                                label { "Light theme" }
+                                input {
+                                    r#type: "checkbox",
+                                    checked: light_theme(),
+                                    onchange: move |e| {
+                                        let checked = e.checked();
+                                        light_theme.set(checked);
+                                        crate::utils::apply_theme(checked);
+                                        let mut toast = use_toast();
+                                        spawn(async move {
+                                            if let Some(mut cfg) = api::get_config().await {
+                                                cfg.light_theme = checked;
+                                                if let Err(err) = api::update_config(&cfg).await {
+                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
                             div { class: "setting-row",
                                 label { "Overlay Streaming Source" }
                                 input {

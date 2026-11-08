@@ -3543,6 +3543,10 @@ pub struct AppConfig {
     #[serde(default)]
     pub european_number_format: bool,
 
+    /// Use the light color theme in the main app window (overlays are unaffected).
+    #[serde(default)]
+    pub light_theme: bool,
+
     /// Automatically enter live mode when combat starts in the Data Explorer.
     /// When false, live mode must be activated manually via the Live button.
     #[serde(default)]
@@ -3600,6 +3604,7 @@ impl AppConfig {
             latency_ms: 0,
             last_viewed_changelog_version: None,
             european_number_format: false,
+            light_theme: false,
             data_explorer_auto_live: false,
             default_profile_per_role: std::collections::HashMap::new(),
             ocr_debug_dump: false,

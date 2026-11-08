@@ -12,7 +12,7 @@ use crate::components::ability_icon::AbilityIcon;
 use crate::components::echarts::{
     dispose_chart, get_chart, init_chart, next_animation_frame, resize_chart, set_chart_option,
 };
-use crate::utils::js_set;
+use crate::utils::{css_var, js_set};
 use baras_types::formatting;
 
 /// Sort column for the effects table.
@@ -148,7 +148,7 @@ fn build_time_series_option(
     js_set(&title_obj, "text", &JsValue::from_str(title));
     js_set(&title_obj, "left", &JsValue::from_str("center"));
     let title_style = js_sys::Object::new();
-    js_set(&title_style, "color", &JsValue::from_str("#e0e0e0"));
+    js_set(&title_style, "color", &JsValue::from_str(&css_var("--text-primary")));
     js_set(&title_style, "fontSize", &JsValue::from_f64(12.0));
     js_set(&title_obj, "textStyle", &title_style);
     js_set(&obj, "title", &title_obj);
@@ -174,7 +174,7 @@ fn build_time_series_option(
     js_set(&x_axis, "min", &JsValue::from_f64(min_time_secs));
     js_set(&x_axis, "max", &JsValue::from_f64(max_time_secs));
     let axis_label = js_sys::Object::new();
-    js_set(&axis_label, "color", &JsValue::from_str("#888"));
+    js_set(&axis_label, "color", &JsValue::from_str(&css_var("--text-muted")));
     // Formatter function to display M:SS
     let formatter = js_sys::Function::new_with_args(
         "v",
@@ -197,7 +197,7 @@ fn build_time_series_option(
     js_set(&y_axis_left, "name", &JsValue::from_str("Burst"));
     js_set(&y_axis_left, "position", &JsValue::from_str("left"));
     let y_label_left = js_sys::Object::new();
-    js_set(&y_label_left, "color", &JsValue::from_str("#666"));
+    js_set(&y_label_left, "color", &JsValue::from_str(&css_var("--text-disabled")));
     js_set(&y_axis_left, "axisLabel", &y_label_left);
     let y_split_left = js_sys::Object::new();
     js_set(&y_split_left, "show", &JsValue::FALSE);
@@ -439,7 +439,7 @@ fn build_hp_chart_option(
     js_set(&title_obj, "text", &JsValue::from_str("HP%"));
     js_set(&title_obj, "left", &JsValue::from_str("center"));
     let title_style = js_sys::Object::new();
-    js_set(&title_style, "color", &JsValue::from_str("#e0e0e0"));
+    js_set(&title_style, "color", &JsValue::from_str(&css_var("--text-primary")));
     js_set(&title_style, "fontSize", &JsValue::from_f64(12.0));
     js_set(&title_obj, "textStyle", &title_style);
     js_set(&obj, "title", &title_obj);
@@ -463,7 +463,7 @@ fn build_hp_chart_option(
     js_set(&x_axis, "min", &JsValue::from_f64(min_time_secs));
     js_set(&x_axis, "max", &JsValue::from_f64(max_time_secs));
     let axis_label = js_sys::Object::new();
-    js_set(&axis_label, "color", &JsValue::from_str("#888"));
+    js_set(&axis_label, "color", &JsValue::from_str(&css_var("--text-muted")));
     let formatter = js_sys::Function::new_with_args(
         "v",
         "var m = Math.floor(v / 60); var s = Math.floor(v % 60); return m + ':' + (s < 10 ? '0' : '') + s;",

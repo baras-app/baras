@@ -728,7 +728,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                 class: "toast",
                 style: "position: fixed; bottom: 20px; right: 20px; z-index: 1000; \
                         padding: 12px 16px; border-radius: 6px; \
-                        background: #2a2a2e; border: 1px solid #3a3a3e; \
+                        background: var(--bg-input); border: 1px solid var(--border-strong); \
                         box-shadow: 0 4px 12px rgba(0,0,0,0.5); \
                         display: flex; align-items: center; gap: 12px;",
                 span {
