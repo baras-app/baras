@@ -487,21 +487,13 @@ select optgroup {
   justify-self: center;
   display: flex;
   align-items: center;
-  gap: 0.4em;
+  gap: 3px;
   min-width: 0;
-  padding: 0.3em;
-  /* A shade of the header's own blue-black rather than flat black, a soft
-     edge instead of a sunken slot, and a radius one step above the pills
-     so they nest in the corners */
-  background: rgba(12, 16, 26, calc(0.55 * var(--recess-k)));
-  border: 1px solid rgba(var(--fg-rgb), 0.06);
-  border-radius: calc(var(--radius-lg) + 3px);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
-}
-
-/* Pills in the bar stay pills: no tab underline on the active one */
-.header-tabs .tab-btn.active {
-  border-bottom: 1px solid var(--swtor-blue-dim);
+  padding: 3px;
+  /* Segmented control: a quiet track; the open view is the one raised pill */
+  background: rgba(var(--fg-rgb), 0.06);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
 }
 
 .app-header .header-content {
@@ -3845,22 +3837,33 @@ a.contributor-name:hover {
   padding: 0.4em clamp(0.6em, calc(var(--nav-room) / 48), 0.9em);
   font-size: clamp(0.8em, calc(var(--nav-room) / 44), 1em);
 }
-/* A thin separator between every pill in the bar, the files pill included
-   (it sits beside the tabs group, not inside it) */
-.header-tabs > * + *,
-.header-nav > * + * {
-  position: relative;
-  margin-left: 0.55em;
+.header-tabs {
+  gap: 3px;
 }
-.header-tabs > * + *::before,
-.header-nav > * + *::before {
-  content: "";
-  position: absolute;
-  left: -0.5em;
-  top: 20%;
-  height: 60%;
-  width: 1px;
-  background: rgba(var(--fg-rgb), 0.15);
+/* Segments are flat until hovered; the active one sits on a raised surface
+   (white on light, a lifted grey on dark) instead of a glow and underline */
+.header-nav .tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  box-shadow: none;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.header-nav .tab-btn:hover {
+  background: rgba(var(--fg-rgb), 0.06);
+  border-color: transparent;
+  color: var(--text-primary);
+}
+.header-nav .tab-btn.active {
+  background: var(--bg-raised);
+  border-color: rgba(var(--fg-rgb), 0.08);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+.header-nav .tab-btn.active > i {
+  color: var(--swtor-blue);
 }
 
 .header-tabs .tab-btn i {
