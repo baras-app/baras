@@ -774,6 +774,7 @@ pub fn App() -> Element {
                             NavMenu {
                                 label: "More",
                                 icon: "fa-solid fa-ellipsis",
+                                icon_only: true,
                                 items: vec![
                                     (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
                                     (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", ""),

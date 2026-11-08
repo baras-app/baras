@@ -20,6 +20,8 @@ pub fn NavMenu(
     #[props(default)] actions: Vec<NavAction>,
     /// A hairline above this item, separating the group it starts
     #[props(default)] divider_before: Option<MainTab>,
+    /// Drop the group name when none of its views is open (the icon says it)
+    #[props(default)] icon_only: bool,
     state: Signal<UiSessionState>,
 ) -> Element {
     let mut open = use_signal(|| false);
@@ -52,7 +54,9 @@ pub fn NavMenu(
                     }
                 },
                 i { class: "{btn_icon}" }
-                span { class: "tab-label", " {btn_label}" }
+                if in_menu || !icon_only {
+                    span { class: "tab-label", " {btn_label}" }
+                }
                 span {
                     class: "nav-menu-caret",
                     title: "{label}",
