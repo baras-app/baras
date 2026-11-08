@@ -338,7 +338,7 @@ fn CounterEditForm(
                 FormCard { icon: "fa-tag", title: "Identity",
                     div { class: "form-row-hz",
                         label { "Counter ID" }
-                        code { class: "tag-muted text-mono text-xs", "{counter_id_display}" }
+                        code { class: "id-display", "{counter_id_display}" }
                     }
 
                     div { class: "form-row-hz",

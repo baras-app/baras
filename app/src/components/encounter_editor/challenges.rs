@@ -327,7 +327,7 @@ fn ChallengeEditForm(
                 FormCard { icon: "fa-tag", title: "Identity",
                     div { class: "form-row-hz",
                         label { "Challenge ID" }
-                        code { class: "tag-muted text-mono text-xs", "{challenge_id_display}" }
+                        code { class: "id-display", "{challenge_id_display}" }
                     }
 
                     div { class: "form-row-hz",

@@ -541,7 +541,7 @@ fn EntityEditForm(
                                 // Row 4: Conditions (collapsible)
                                 if conditions_expanded() {
                                     div { class: "flex-col gap-xs", style: "padding-left: 4px; margin-top: 4px;",
-                                        div { class: "text-xs text-muted font-bold", "Conditions" }
+                                        div { class: "form-subheader", "Conditions" }
                                         ConditionsEditor {
                                             conditions: marker.conditions.clone(),
                                             encounter_data: enc_data,

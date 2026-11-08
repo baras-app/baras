@@ -333,7 +333,7 @@ fn PhaseEditForm(
                 FormCard { icon: "fa-tag", title: "Identity",
                     div { class: "form-row-hz",
                         label { "Phase ID" }
-                        code { class: "tag-muted text-mono text-xs", "{phase_id_display}" }
+                        code { class: "id-display", "{phase_id_display}" }
                     }
 
                     div { class: "form-row-hz",
@@ -383,7 +383,7 @@ fn PhaseEditForm(
                     }
 
                     // ─── Conditions subsection ─────────────────────────────
-                    span { class: "text-sm font-bold text-secondary mt-sm", "Conditions" }
+                    span { class: "form-subheader", "Conditions" }
 
                     div { class: "form-row-hz mt-xs",
                         label { class: "flex items-center",

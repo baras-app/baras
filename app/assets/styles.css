@@ -164,8 +164,10 @@ body {
   background: var(--text-tertiary);
 }
 
-/* Global select styling for dark theme */
-select {
+/* Global select styling for dark theme; .select-trigger is a button that
+   opens a custom dropdown and must look like a select */
+select,
+.select-trigger {
   padding: 0.4em 2em 0.4em 0.6em;
   background-color: var(--bg-input);
   border: 1px solid var(--border-medium);
@@ -181,14 +183,23 @@ select {
   background-position: right 0.5em center;
 }
 
-select:hover {
+select:hover,
+.select-trigger:hover {
   border-color: rgba(255, 255, 255, 0.25);
   background-color: #333338;
 }
 
-select:focus {
+select:focus,
+.select-trigger:focus {
   outline: none;
   border-color: #6a8aba;
+}
+
+.select-trigger {
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 select option {
@@ -4311,16 +4322,6 @@ a.contributor-name:hover {
   margin-bottom: 0.3em;
 }
 
-.effect-id-display {
-  background: rgba(100, 200, 150, 0.1);
-  color: #8fc;
-  padding: 0.2em 0.5em;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 0.9em;
-  user-select: all;
-}
-
 .effect-file-info {
   margin-top: 0.5em;
   font-size: 0.75em;
@@ -4332,10 +4333,10 @@ a.contributor-name:hover {
 .effect-editor-panel select,
 .effect-edit-form select {
   padding: 0.4em 0.6em;
-  background: var(--bg-card-input) !important;
+  background-color: var(--bg-card-input);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
-  color: #eee !important;
+  color: var(--text-primary);
   font-size: 0.9em;
 }
 
@@ -6116,12 +6117,75 @@ a.contributor-name:hover {
   padding: var(--space-md);
 }
 
-/* Inputs inside cards sit a step darker than the card so they read as wells */
-.form-card input[type="text"],
-.form-card input[type="number"],
-.form-card select,
+/* ─── Controls inside editor cards: one height, one fill ──────────────────────
+   Inputs sit a step darker than the card so they read as wells. Only
+   background-color is set so selects keep their caret image. */
+.form-card :is(input[type="text"], input[type="number"], select, .select-trigger) {
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 0.6em;
+  font-size: 0.85em;
+  background-color: var(--bg-card-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+
+.form-card :is(select, .select-trigger) {
+  padding-right: 2em;
+}
+
 .form-card textarea {
-  background: var(--bg-card-input);
+  background-color: var(--bg-card-input);
+}
+
+/* Checkboxes drawn by hand: the native unchecked box is a bright white square */
+.form-card input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  /* The global input rule pads by vw, which a drawn box would honour */
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--border-medium);
+  border-radius: 3px;
+  box-shadow: none;
+  background: var(--bg-card-input) center / 10px no-repeat;
+  cursor: pointer;
+}
+
+.form-card input[type="checkbox"]:hover {
+  border-color: var(--border-accent-heavy);
+}
+
+.form-card input[type="checkbox"]:checked {
+  background-color: var(--swtor-blue);
+  border-color: var(--swtor-blue);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.5 5.2l2.3 2.3 4.7-5' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.form-card input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--border-accent-heavy);
+  outline-offset: 1px;
+}
+
+/* Second label in a paired row (Source … Target …): fixed so pairs line up */
+.form-card .form-row-hz > label:not(:first-child) {
+  min-width: 105px;
+}
+
+/* Read-only definition ID (effect, timer, phase, counter, challenge) */
+.id-display {
+  padding: 0.2em 0.5em;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-tertiary);
+  font-family: monospace;
+  font-size: 0.85em;
+  user-select: all;
 }
 
 /* Header slot for an action button (FormCard `action`) */

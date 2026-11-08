@@ -627,7 +627,7 @@ fn TimerEditForm(
                     FormCard { icon: "fa-tag", title: "Identity",
                         div { class: "form-row-hz",
                             label { "Timer ID" }
-                            code { class: "tag-muted text-mono text-xs", "{timer_display.id}" }
+                            code { class: "id-display", "{timer_display.id}" }
                         }
 
                         div { class: "form-row-hz",
@@ -926,7 +926,7 @@ fn TimerEditForm(
                         }
 
                         // ─── Conditions subsection ─────────────────────────
-                        span { class: "text-sm font-bold text-secondary mt-sm",
+                        span { class: "form-subheader",
                             "Conditions"
                             span {
                                 class: "help-icon",
@@ -1742,8 +1742,7 @@ pub fn PhaseSelector(
             class: "phase-selector",
             // Dropdown trigger
             button {
-                class: "select",
-                style: "min-width: 160px; text-align: left;",
+                class: "select-trigger min-w-md",
                 onclick: move |e| {
                     if !dropdown_open() {
                         // Use element_coordinates to find offset within button,
@@ -1757,7 +1756,6 @@ pub fn PhaseSelector(
                     dropdown_open.set(!dropdown_open());
                 },
                 "{display}"
-                span { class: "ml-auto", "▾" }
             }
 
             // Dropdown menu (fixed position to escape overflow clipping)

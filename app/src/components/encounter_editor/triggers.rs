@@ -77,7 +77,7 @@ pub fn EntityFilterDropdown(
         div { class: "flex-col gap-xs",
             div { class: "flex items-center gap-xs",
                 if !label.is_empty() {
-                    span { class: "text-sm text-secondary", "{label}:" }
+                    span { class: "text-sm text-secondary", "{label}" }
                 }
                 select {
                     class: "select w-md",
@@ -1219,7 +1219,7 @@ pub fn EffectSelectorEditor(
 
     rsx! {
         div { class: "flex-col gap-xs items-start",
-            span { class: "text-sm text-secondary text-left", "{label}:" }
+            span { class: "text-sm text-secondary text-left", "{label}" }
 
             // Selector chips
             div { class: "flex flex-wrap gap-xs",
@@ -1299,7 +1299,7 @@ pub fn AbilitySelectorEditor(
 
     rsx! {
         div { class: "flex-col gap-xs items-start",
-            span { class: "text-sm text-secondary text-left", "{label}:" }
+            span { class: "text-sm text-secondary text-left", "{label}" }
 
             // Selector chips
             div { class: "flex flex-wrap gap-xs",
@@ -1383,7 +1383,7 @@ pub fn MitigationTypeEditor(
 
     rsx! {
         div { class: "flex-col gap-xs items-start",
-            span { class: "text-sm text-secondary text-left", "Mitigation (optional):" }
+            span { class: "text-sm text-secondary text-left", "Mitigation (optional)" }
 
             // Selected type chips
             if !selected.is_empty() {
@@ -1467,7 +1467,7 @@ pub fn EntitySelectorEditor(
     rsx! {
         div { class: "flex-col gap-xs items-start",
             if !label.is_empty() {
-                span { class: "text-sm text-secondary text-left", "{label}:" }
+                span { class: "text-sm text-secondary text-left", "{label}" }
             }
 
             // Selector chips

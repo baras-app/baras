@@ -1094,7 +1094,7 @@ fn EffectEditForm(
                             if !is_draft {
                                 div { class: "form-row-hz",
                                     label { "Effect ID" }
-                                    code { class: "effect-id-display", "{effect.id}" }
+                                    code { class: "id-display", "{effect.id}" }
                                 }
                             }
 
@@ -2281,8 +2281,7 @@ fn DisciplineSelector(
         div {
             class: "discipline-selector",
             button {
-                class: "select",
-                style: "width: 200px; text-align: left;",
+                class: "select-trigger w-md",
                 onclick: move |e| {
                     if !dropdown_open() {
                         let click = e.client_coordinates();
@@ -2294,7 +2293,6 @@ fn DisciplineSelector(
                     dropdown_open.set(!dropdown_open());
                 },
                 "{display}"
-                span { class: "ml-auto", "▾" }
             }
 
             if dropdown_open() {
@@ -2386,7 +2384,7 @@ fn TriggerAbilitiesEditor(
 
     rsx! {
         div { class: "flex-col gap-xs items-start",
-            span { class: "text-sm text-secondary text-left", "Trigger Abilities:" }
+            span { class: "text-sm text-secondary text-left", "Trigger Abilities" }
 
             // Ability chips
             div { class: "flex flex-wrap gap-xs",
@@ -2495,7 +2493,7 @@ fn RefreshAbilitiesEditor(
     rsx! {
         div { class: "flex-col gap-xs items-start",
             span { class: "flex items-center text-sm text-secondary text-left",
-                "Refresh Abilities:"
+                "Refresh Abilities"
                 span {
                     class: "help-icon",
                     title: "Abilities that refresh this effect's duration. Per ability: 'Min Stacks' only refreshes when the effect has at least that many stacks. Trigger 'On Cast' refreshes the moment the ability is used; 'On Heal' waits for a cast-time heal to land; 'On Damage' refreshes on any damage dealt by the ability. For 'On Cast', the 'Refresh on' control chooses Cast vs First Damage timing — 'Default' defers DoT-tracker effects to the ability's first damaging hit and refreshes everything else immediately.",
