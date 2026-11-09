@@ -2250,26 +2250,29 @@ pub fn App() -> Element {
                                 " Log Files"
                             }
                             label {
-                                class: "file-browser-filter-toggle",
+                                class: "toggle-switch-label file-browser-filter-toggle",
                                 title: "Hide files smaller than 1MB",
-                                input {
-                                    r#type: "checkbox",
-                                    checked: hide_small_log_files(),
-                                    onchange: move |e| {
-                                        let checked = e.checked();
-                                        hide_small_log_files.set(checked);
-                                        let mut toast = use_toast();
-                                        spawn(async move {
-                                            if let Some(mut cfg) = api::get_config().await {
-                                                cfg.hide_small_log_files = checked;
-                                                if let Err(err) = api::update_config(&cfg).await {
-                                                    toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                span { class: "toggle-switch",
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: hide_small_log_files(),
+                                        onchange: move |e| {
+                                            let checked = e.checked();
+                                            hide_small_log_files.set(checked);
+                                            let mut toast = use_toast();
+                                            spawn(async move {
+                                                if let Some(mut cfg) = api::get_config().await {
+                                                    cfg.hide_small_log_files = checked;
+                                                    if let Err(err) = api::update_config(&cfg).await {
+                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                                    }
                                                 }
-                                            }
-                                        });
-                                    },
+                                            });
+                                        },
+                                    }
+                                    span { class: "toggle-slider" }
                                 }
-                                " Hide <1MB"
+                                span { class: "toggle-text", "Hide <1MB" }
                             }
                             button {
                                 class: "btn btn-close",
