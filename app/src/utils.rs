@@ -32,6 +32,11 @@ pub fn css_var_or(name: &str, fallback: &str) -> String {
 }
 
 /// Switch the app's color theme by toggling `data-theme` on the root element.
+/// App-wide light theme flag, provided as context so ECharts views (which
+/// resolve CSS vars when they build options) can redraw on toggle
+#[derive(Clone, Copy)]
+pub struct LightTheme(pub dioxus::prelude::Signal<bool>);
+
 pub fn apply_theme(light: bool) {
     if let Some(root) = web_sys::window()
         .and_then(|w| w.document())

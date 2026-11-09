@@ -24,7 +24,7 @@ use crate::components::rotation_view::RotationView;
 use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
 use crate::components::mirror_names::{self, ABILITY_NAMING, display_id, display_name};
 use crate::types::{AbilityNaming, DataTab, SortColumn, SortDirection, UiSessionState, UsageSortColumn, ViewMode};
-use crate::utils::{css_var, js_set};
+use crate::utils::{LightTheme, css_var, js_set};
 use baras_types::formatting;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3348,16 +3348,9 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 // Ability Usage Tab
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Color palette for selected abilities in the timeline chart.
-/// Matches the effect span colors from ChartsPanel for consistency.
-const USAGE_COLORS: [&str; 6] = [
-    "rgba(255, 200, 50, 0.85)",  // Gold
-    "rgba(100, 200, 255, 0.85)", // Cyan
-    "rgba(255, 100, 150, 0.85)", // Pink
-    "rgba(150, 255, 100, 0.85)", // Lime
-    "rgba(200, 150, 255, 0.85)", // Purple
-    "rgba(255, 180, 100, 0.85)", // Orange
-];
+/// Theme tokens for selected abilities in the timeline chart (palette lives in
+/// styles.css so light mode gets darker, higher-contrast variants)
+const USAGE_COLORS: [&str; 6] = ["--usage-1", "--usage-2", "--usage-3", "--usage-4", "--usage-5", "--usage-6"];
 
 /// Format a time value in seconds with 3 decimal places.
 fn format_secs(secs: f32, european: bool) -> String {
@@ -3450,10 +3443,11 @@ fn build_usage_timeline_option(
             js_set(&track_series, "data", &track_data);
             js_set(&track_series, "symbol", &JsValue::from_str("none"));
             js_set(&track_series, "silent", &JsValue::from_bool(true));
-            // Derive a subtle version of the color for the track line
-            let track_color = color.replace("0.85)", "0.25)");
+            let color = css_var(color);
+            // Same color, faded, for the track line
             let track_line_style = js_sys::Object::new();
-            js_set(&track_line_style, "color", &JsValue::from_str(&track_color));
+            js_set(&track_line_style, "color", &JsValue::from_str(&color));
+            js_set(&track_line_style, "opacity", &JsValue::from_f64(0.3));
             js_set(&track_line_style, "width", &JsValue::from_f64(1.0));
             js_set(&track_series, "lineStyle", &track_line_style);
             // No legend entry for track lines
@@ -3475,7 +3469,7 @@ fn build_usage_timeline_option(
             js_set(&series, "data", &data);
             js_set(&series, "symbolSize", &JsValue::from_f64(8.0));
             let item_style = js_sys::Object::new();
-            js_set(&item_style, "color", &JsValue::from_str(color));
+            js_set(&item_style, "color", &JsValue::from_str(&color));
             js_set(&series, "itemStyle", &item_style);
             series_arr.push(&series);
         }
@@ -3620,7 +3614,12 @@ fn UsageTab(
 
     // Update timeline chart when selections or data change.
     // All signal reads must be inside the closure so Dioxus tracks dependencies.
+    let light_theme = try_use_context::<LightTheme>();
     use_effect(move || {
+        // Colors resolve from CSS at build time, so redraw when the theme flips
+        if let Some(LightTheme(t)) = light_theme {
+            t.read();
+        }
         let sel = selected_abilities.read().clone();
         let rows_for_chart = sorted_rows.read().clone();
         // Read timeline duration inside the effect so it re-triggers when timeline loads
@@ -3731,7 +3730,7 @@ fn UsageTab(
                             let selected_color = current_selected.iter().find(|(id, _)| *id == aid).map(|(_, c)| *c);
                             let is_selected = selected_color.is_some();
                             let style = if let Some(c) = selected_color {
-                                format!("--effect-color: {c};")
+                                format!("--effect-color: var({c});")
                             } else {
                                 String::new()
                             };

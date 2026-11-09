@@ -417,7 +417,7 @@
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  background: var(--bg-tertiary);
+  background: rgba(var(--fg-rgb), 0.04);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background var(--transition-fast);
@@ -425,21 +425,11 @@
 }
 
 .breakdown-option:hover {
-  background: var(--bg-hover);
-}
-
-.breakdown-option input {
-  margin: 0;
-  cursor: pointer;
-}
-
-.breakdown-option input:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+  background: rgba(var(--fg-rgb), 0.08);
 }
 
 .breakdown-option.primary {
-  background: var(--bg-secondary);
+  background: rgba(var(--fg-rgb), 0.06);
   border-left: 2px solid var(--accent-gold);
 }
 
@@ -915,21 +905,22 @@
 
 .death-item {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: 6px;
   padding: 4px 10px;
-  background: hsla(0, 0%, 30%, 0.6);
-  border: 1px solid hsl(0, 0%, 45%);
+  background: rgba(var(--fg-rgb), 0.04);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
+  border-left: 2px solid var(--lt-red, #e74c3c);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all var(--transition-fast);
-  font-size: 11px;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  font-size: 12px;
 }
 
 .death-item:hover {
-  background: hsla(0, 0%, 40%, 0.8);
-  border-color: hsl(0, 0%, 55%);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--lt-red, #e74c3c) 12%, transparent);
+  border-color: color-mix(in srgb, var(--lt-red, #e74c3c) 45%, transparent);
+  border-left-color: var(--lt-red, #e74c3c);
 }
 
 /* PvP: local player's own death / killing blow highlights */
@@ -1005,7 +996,7 @@
 }
 
 .death-time {
-  color: hsl(0, 0%, 65%);
+  color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 10px;
 }
@@ -1376,11 +1367,6 @@
   padding: 4px 0;
 }
 
-.chart-toggles input {
-  margin: 0;
-  cursor: pointer;
-}
-
 .toggle-dps {
   color: var(--lt-red, #e74c3c);
 }
@@ -1467,7 +1453,9 @@
   display: flex;
   gap: 2px;
   flex-shrink: 0;
-  background: var(--bg-secondary);
+  /* Same quiet track as the header nav (--bg-secondary was never defined) */
+  background: rgba(var(--fg-rgb), 0.06);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 2px;
 }
@@ -1484,18 +1472,18 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
   white-space: nowrap;
 }
 
 .source-filter-btn:hover {
   color: var(--text-primary);
-  background: var(--bg-hover);
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
 .source-filter-btn.active {
-  background: var(--accent-gold, #d4a843);
-  color: #000;
+  background: var(--swtor-blue);
+  color: #fff;
 }
 
 /* Effect sections — each table fills available space */
@@ -1962,12 +1950,7 @@
 }
 
 .log-filter-checkbox:hover {
-  background: var(--bg-hover);
-}
-
-.log-filter-checkbox input {
-  margin: 0;
-  cursor: pointer;
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
 .log-filter-checkbox.damage {
@@ -1979,7 +1962,7 @@
 }
 
 .log-filter-checkbox.actions {
-  color: hsl(200, 60%, 65%);
+  color: var(--swtor-blue);
 }
 
 .log-filter-checkbox.effects {
@@ -2110,12 +2093,7 @@
 }
 
 .log-show-ids:hover {
-  background: var(--bg-hover);
-}
-
-.log-show-ids input {
-  margin: 0;
-  cursor: pointer;
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
 /* ID prefix in names */
@@ -2441,6 +2419,10 @@
   transition: background 0.15s;
 }
 
+.usage-table tbody tr.selected {
+  background: color-mix(in srgb, var(--effect-color) 16%, transparent);
+}
+
 .usage-table .ability-name-cell {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2467,10 +2449,9 @@
 .usage-timeline-container {
   flex-shrink: 0;
   margin-top: 16px;
-  /* Same dark card as the tables and charts (--bg-secondary was never defined) */
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  background: var(--chart-bg);
   padding: 8px;
 }
 

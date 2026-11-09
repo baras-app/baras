@@ -159,6 +159,7 @@ pub fn App() -> Element {
     let mut web_overlay_enabled = use_signal(|| false);
     let mut european_number_format = use_signal(|| false);
     let mut light_theme = use_signal(|| false);
+    use_context_provider(|| crate::utils::LightTheme(light_theme));
     let mut app_version = use_signal(String::new);
 
     // Update state

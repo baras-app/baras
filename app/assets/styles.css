@@ -72,6 +72,13 @@
   --phase-l: 30%;
   /* Plot surface: a recessed well on dark, a near-white card on light */
   --chart-bg: rgba(0, 0, 0, 0.22);
+  /* Ability usage timeline series */
+  --usage-1: rgba(255, 200, 50, 0.85);
+  --usage-2: rgba(100, 200, 255, 0.85);
+  --usage-3: rgba(255, 100, 150, 0.85);
+  --usage-4: rgba(150, 255, 100, 0.85);
+  --usage-5: rgba(200, 150, 255, 0.85);
+  --usage-6: rgba(255, 180, 100, 0.85);
 
   /* ─── Colors - Borders ───────────────────────────────────────────────────────── */
   --border-subtle: rgba(var(--fg-rgb), 0.05);
@@ -196,6 +203,12 @@
   --lt-green: #1a7f45;
   --phase-l: 78%;
   --chart-bg: #fbfbfc;
+  --usage-1: #b7791f;
+  --usage-2: #1f7ab8;
+  --usage-3: #c2255c;
+  --usage-4: #2f8a3a;
+  --usage-5: #7048c0;
+  --usage-6: #c4581a;
 
   /* Same depth order as dark: body lightest, inputs/panels/sidebars progressively darker */
   --bg-body: #f6f6f8;
@@ -6221,8 +6234,9 @@ a.contributor-name:hover {
   background-color: var(--bg-card-input);
 }
 
-/* Checkboxes drawn by hand: the native unchecked box is a bright white square */
-:is(.form-card, .settings-check) input[type="checkbox"] {
+/* Checkboxes drawn by hand: the native unchecked box is a bright white square.
+   Data Explorer toolbars (charts, breakdown, combat log) share the same box */
+:is(.form-card, .settings-check, .chart-toggles, .breakdown-option, .log-filter-checkbox, .log-show-ids) input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   box-sizing: border-box;
@@ -6239,22 +6253,22 @@ a.contributor-name:hover {
   cursor: pointer;
 }
 
-:is(.form-card, .settings-check) input[type="checkbox"]:hover {
+:is(.form-card, .settings-check, .chart-toggles, .breakdown-option, .log-filter-checkbox, .log-show-ids) input[type="checkbox"]:hover {
   border-color: var(--border-accent-heavy);
 }
 
-:is(.form-card, .settings-check) input[type="checkbox"]:checked {
+:is(.form-card, .settings-check, .chart-toggles, .breakdown-option, .log-filter-checkbox, .log-show-ids) input[type="checkbox"]:checked {
   background-color: var(--swtor-blue);
   border-color: var(--swtor-blue);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.5 5.2l2.3 2.3 4.7-5' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-:is(.form-card, .settings-check) input[type="checkbox"]:disabled {
+:is(.form-card, .settings-check, .chart-toggles, .breakdown-option, .log-filter-checkbox, .log-show-ids) input[type="checkbox"]:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-:is(.form-card, .settings-check) input[type="checkbox"]:focus-visible {
+:is(.form-card, .settings-check, .chart-toggles, .breakdown-option, .log-filter-checkbox, .log-show-ids) input[type="checkbox"]:focus-visible {
   outline: 2px solid var(--border-accent-heavy);
   outline-offset: 1px;
 }
