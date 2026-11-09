@@ -112,26 +112,16 @@ pub fn App() -> Element {
     let mut ui_state = use_signal(UiSessionState::default);
 
     // Other UI state (not part of session persistence)
-    let mut settings_open = use_signal(|| false);
     let mut overlay_settings = use_signal(OverlaySettings::default);
     let mut selected_overlay_tab = use_signal(|| "dps".to_string());
     let mut settings_section = use_signal(|| SettingsSection::Overlays);
-    // Gear on an overlay toggle: show that overlay's options, or close the drawer
-    // when it is already showing them
+    // Gear on an overlay toggle: show that overlay's options in the settings panel
     let open_overlay_settings = move |key: &'static str| {
-        let showing = settings_open()
-            && settings_section() == SettingsSection::Overlays
-            && selected_overlay_tab() == key;
-        if showing {
-            settings_open.set(false);
-        } else {
-            selected_overlay_tab.set(key.to_string());
-            settings_section.set(SettingsSection::Overlays);
-            settings_open.set(true);
-        }
+        selected_overlay_tab.set(key.to_string());
+        settings_section.set(SettingsSection::Overlays);
     };
-    // Overlay whose options the drawer currently shows, for the gear highlight
-    let drawer_overlay = if settings_open() && settings_section() == SettingsSection::Overlays {
+    // Overlay whose options the panel currently shows, for the gear highlight
+    let drawer_overlay = if settings_section() == SettingsSection::Overlays {
         selected_overlay_tab()
     } else {
         String::new()
@@ -751,17 +741,12 @@ pub fn App() -> Element {
                                 i { class: "fa-solid fa-magnifying-glass-chart" }
                                 span { class: "tab-label", " Data Explorer" }
                             }
-                            NavMenu {
-                                label: "Overlays",
-                                icon: "fa-solid fa-layer-group",
-                                items: vec![
-                                    (MainTab::Overlays, "fa-solid fa-layer-group", "Overlays", "Enable, arrange and customize overlays"),
-                                ],
-                                actions: vec![
-                                    ("fa-solid fa-screwdriver-wrench", "Overlay Settings", "Fonts, colours, sizes and layout of every overlay",
-                                        EventHandler::new(move |_| settings_open.toggle())),
-                                ],
-                                state: ui_state,
+                            button {
+                                class: if ui_state.read().active_tab == MainTab::Overlays { "tab-btn active" } else { "tab-btn" },
+                                title: "Enable, arrange and customize overlays",
+                                onclick: move |_| ui_state.write().active_tab = MainTab::Overlays,
+                                i { class: "fa-solid fa-layer-group" }
+                                span { class: "tab-label", " Overlays" }
                             }
                             NavMenu {
                                 label: "Timers & Effects",
@@ -2237,8 +2222,8 @@ pub fn App() -> Element {
                 }
             }
 
-            // Overlay settings drawer (accessible from any tab via the header customize button)
-            if settings_open() {
+            // Overlay settings: docked beside the Overlays page whenever it is open
+            if ui_state.read().active_tab == MainTab::Overlays {
                 SettingsPanel {
                     settings: overlay_settings,
                     selected_tab: selected_overlay_tab,
@@ -2250,9 +2235,6 @@ pub fn App() -> Element {
                     overlays_visible: overlays_visible,
                     profile_dirty: profile_dirty,
                     section: settings_section,
-                    on_close: move |_| {
-                        settings_open.set(false);
-                    },
                     on_settings_saved: move |_| {},
                 }
             }

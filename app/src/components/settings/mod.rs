@@ -121,10 +121,18 @@ pub fn SettingsPanel(
     profile_dirty: Signal<bool>,
     /// Which top tab shows; lifted so a control-panel gear can switch to Overlays
     mut section: Signal<SettingsSection>,
-    on_close: EventHandler<()>,
     on_settings_saved: EventHandler<()>,
 ) -> Element {
     let draft = use_settings_draft(settings);
+    // The panel lives as long as the Overlays page is open; leaving it drops
+    // unsaved edits and puts the overlays back to the saved settings
+    use_drop(move || {
+        if draft.abandon() {
+            wasm_bindgen_futures::spawn_local(async {
+                api::refresh_overlay_settings().await;
+            });
+        }
+    });
     let mut metrics_global_open = use_signal(|| false);
     let mut toast = use_toast();
 
@@ -289,21 +297,6 @@ pub fn SettingsPanel(
         section { class: "drawer settings-panel",
             div { class: "settings-header",
                 h3 { "Overlay Settings" }
-                button {
-                    class: "btn btn-close",
-                    onclick: move |_| {
-                        draft.cancel_preview();
-                        let needs_revert = draft.has_changes();
-                        async move {
-                            // Restore the persisted settings if the draft was previewed
-                            if needs_revert {
-                                api::refresh_overlay_settings().await;
-                            }
-                            on_close.call(());
-                        }
-                    },
-                    "X"
-                }
             }
 
             div { class: "settings-content",

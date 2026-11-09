@@ -348,35 +348,36 @@ select optgroup {
   --side-drawer-w: min(560px, 92vw);
 }
 
-/* Overlay settings open: it docks under the header as a second column and
-   the page shrinks beside it instead of sitting underneath. Narrow windows
-   keep the overlaying drawer. */
-@media (min-width: 1000px) {
-  .container:has(> .settings-panel) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--side-drawer-w);
-    grid-template-rows: auto minmax(0, 1fr);
-    column-gap: 0.5em;
-    align-items: stretch;
-  }
-  .container:has(> .settings-panel) > .app-header {
-    grid-column: 1 / -1;
-  }
-  .container:has(> .settings-panel) > .tab-content {
-    grid-column: 1;
-    grid-row: 2;
-    min-height: 0;
-  }
-  .container:has(> .settings-panel) > .settings-panel {
-    position: static;
-    grid-column: 2;
-    grid-row: 2;
-    width: auto;
-    min-height: 0;
-    border: 1px solid var(--blue-alpha-20);
-    border-radius: var(--radius-xl) 0 0 0;
-    box-shadow: none;
-  }
+/* Overlays page: the settings panel docks under the header as a second
+   column, always open beside the overlay controls */
+.container:has(> .settings-panel) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(340px, 38vw, 560px);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 0.5em;
+  align-items: stretch;
+}
+
+.container:has(> .settings-panel) > .app-header {
+  grid-column: 1 / -1;
+}
+
+.container:has(> .settings-panel) > .tab-content {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+}
+
+.container:has(> .settings-panel) > .settings-panel {
+  position: static;
+  grid-column: 2;
+  grid-row: 2;
+  width: auto;
+  min-height: 0;
+  border: 1px solid var(--blue-alpha-20);
+  border-radius: var(--radius-xl) 0 0 0;
+  box-shadow: none;
+  animation: none;
 }
 
 /* App header */

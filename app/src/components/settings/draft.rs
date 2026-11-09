@@ -71,11 +71,17 @@ impl SettingsDraft {
         has_changes.set(false);
     }
 
-    /// Drop any pending preview so closing the panel doesn't re-apply a stale draft
-    pub fn cancel_preview(&self) {
+    /// Unmount cleanup (leaving the Overlays page): stop any pending preview;
+    /// true when unsaved edits were previewed and need reverting. try_: the
+    /// panel's signals may already be torn down
+    pub fn abandon(&self) -> bool {
         let mut request_id = self.preview_request_id;
-        request_id.set(request_id() + 1);
+        if let Ok(mut id) = request_id.try_write() {
+            *id += 1;
+        }
+        self.has_changes.try_peek().is_ok_and(|c| *c)
     }
+
 }
 
 /// Appearance for an overlay key, falling back to its bundled default
