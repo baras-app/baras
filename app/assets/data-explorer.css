@@ -1049,8 +1049,8 @@
   width: min(760px, 92vw);
   max-height: 88vh;
   overflow-y: auto;
-  background: var(--gradient-panel, var(--bg-secondary));
-  border: 1px solid var(--border-subtle);
+  background: var(--gradient-panel);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-xl);
   padding: var(--space-md);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
@@ -1128,10 +1128,10 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: var(--space-xs);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-xs);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
 }
 
 .recap-stat-value {
@@ -1153,10 +1153,10 @@
 
 .recap-sparkline-wrap {
   position: relative;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 2px 6px;
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 4px 8px;
 }
 
 .spark-axis-label {
@@ -1195,34 +1195,49 @@
 
 .recap-table-wrap h5,
 .recap-ledger-wrap h5 {
-  margin: 0 0 var(--space-xs) 0;
+  margin: var(--space-xs) 0 var(--space-sm);
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-weight: 500;
+  color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.3px;
 }
 
 .recap-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 11px;
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  overflow: clip;
 }
 
 .recap-table th {
   text-align: right;
-  padding: 3px 6px;
-  color: var(--text-muted);
-  font-weight: 500;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 5px 6px;
+  background: var(--bg-dark);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--border-subtle);
+  white-space: nowrap;
 }
 
 .recap-table td {
   text-align: right;
-  padding: 3px 6px;
+  padding: 4px 6px;
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   border-bottom: 1px solid var(--border-subtle);
-  vertical-align: top;
+  vertical-align: middle;
+}
+
+.recap-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .recap-table .col-left {
@@ -1245,7 +1260,7 @@
 }
 
 .recap-row-source:hover td {
-  background: var(--bg-hover);
+  background: rgba(var(--fg-rgb), 0.04);
 }
 
 .recap-caret {
@@ -1258,7 +1273,7 @@
 .recap-row-ability td {
   font-size: 10px;
   color: var(--text-secondary);
-  background: var(--bg-secondary);
+  background: rgba(0, 0, 0, calc(0.12 * var(--recess-k)));
 }
 
 .recap-row-ability .col-left {
@@ -1275,9 +1290,9 @@
 .recap-ledger {
   max-height: 200px;
   overflow-y: auto;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, calc(0.22 * var(--recess-k)));
 }
 
 .ledger-row {
@@ -1290,6 +1305,7 @@
 }
 
 .ledger-row:last-child { border-bottom: none; }
+.ledger-row:hover { background: rgba(var(--fg-rgb), 0.04); }
 
 .ledger-time {
   width: 44px;
