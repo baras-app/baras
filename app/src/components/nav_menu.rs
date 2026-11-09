@@ -27,44 +27,46 @@ pub fn NavMenu(
     let mut open = use_signal(|| false);
     // Last destination picked from this menu: one click on the button goes
     // straight back to it; the list is for switching
-    let mut last = use_signal(|| items[0].0);
+    // An actions-only menu (no destinations) just opens its list
+    let mut last = use_signal(|| items.first().map(|(t, ..)| *t));
     let tabs: Vec<MainTab> = items.iter().map(|(t, ..)| *t).collect();
     use_effect(move || {
         let t = state.read().active_tab;
         if tabs.contains(&t) {
-            last.set(t);
+            last.set(Some(t));
         }
     });
     let active_tab = state.read().active_tab;
     let current = items.iter().find(|(t, ..)| *t == active_tab);
     let (btn_icon, btn_label) = current.map_or((icon, label), |(_, i, l, _)| (*i, *l));
     let in_menu = current.is_some();
-    let last_label = items.iter().find(|(t, ..)| *t == *last.read()).map_or(label, |(_, _, l, _)| *l);
+    let last_tab = *last.read();
+    let last_label = items.iter().find(|(t, ..)| Some(*t) == last_tab).map_or(label, |(_, _, l, _)| *l);
+    let has_items = !items.is_empty();
 
     rsx! {
         div { class: "nav-menu",
             button {
                 class: if in_menu { "tab-btn active" } else { "tab-btn" },
-                title: if in_menu { "{label}" } else { "{last_label} · use the arrow for the other views" },
-                onclick: move |_| {
-                    if in_menu {
-                        open.toggle();
-                    } else {
-                        state.write().active_tab = *last.read();
-                    }
+                title: if in_menu || !has_items { "{label}" } else { "{last_label} · use the arrow for the other views" },
+                onclick: move |_| match *last.read() {
+                    Some(t) if !in_menu => state.write().active_tab = t,
+                    _ => open.toggle(),
                 },
                 i { class: "{btn_icon}" }
                 if in_menu || !icon_only {
                     span { class: "tab-label", " {btn_label}" }
                 }
-                span {
-                    class: "nav-menu-caret",
-                    title: "{label}",
-                    onclick: move |e| {
-                        e.stop_propagation();
-                        open.toggle();
-                    },
-                    i { class: "fa-solid fa-chevron-down" }
+                if has_items {
+                    span {
+                        class: "nav-menu-caret",
+                        title: "{label}",
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            open.toggle();
+                        },
+                        i { class: "fa-solid fa-chevron-down" }
+                    }
                 }
             }
             if *open.read() {
@@ -87,7 +89,9 @@ pub fn NavMenu(
                         }
                     }
                     if !actions.is_empty() {
-                        div { class: "nav-menu-divider" }
+                        if has_items {
+                            div { class: "nav-menu-divider" }
+                        }
                         for (i, l, t, on_pick) in actions.iter().cloned() {
                             button {
                                 class: "nav-menu-item",

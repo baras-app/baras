@@ -773,19 +773,27 @@ pub fn App() -> Element {
                                 state: ui_state,
                             }
                             NavMenu {
-                                label: "More",
-                                icon: "fa-solid fa-ellipsis",
-                                icon_only: true,
+                                label: "Statistics",
+                                icon: "fa-solid fa-chart-column",
                                 items: vec![
                                     (MainTab::BossStats, "fa-solid fa-chart-column", "Boss Statistics", "One boss across every log"),
                                     (MainTab::RaidSummaries, "fa-solid fa-dungeon", "Raid Summaries", ""),
                                     (MainTab::PvpStats, "fa-solid fa-crosshairs", "PvP Statistics", "Warzone and arena record, kills and deaths, trends"),
                                     (MainTab::Characters, "fa-solid fa-users", "Characters", "Your characters across servers, with operation lockouts"),
-                                    (MainTab::LogManagement, "fa-solid fa-folder-tree", "Log Management", "Scan, archive, delete and tag your logs"),
-                                    (MainTab::Settings, "fa-solid fa-gear", "Settings", "Log directory, hotkeys, audio and application options"),
                                 ],
-                                divider_before: Some(MainTab::LogManagement),
                                 state: ui_state,
+                            }
+                            for (tab, icon, label, tip) in [
+                                (MainTab::LogManagement, "fa-solid fa-folder-tree", "Logs", "Scan, archive, delete and tag your logs"),
+                                (MainTab::Settings, "fa-solid fa-gear", "Settings", "Log directory, hotkeys, audio and application options"),
+                            ] {
+                                button {
+                                    class: if ui_state.read().active_tab == tab { "tab-btn active" } else { "tab-btn" },
+                                    title: tip,
+                                    onclick: move |_| ui_state.write().active_tab = tab,
+                                    i { class: icon }
+                                    span { class: "tab-label", " {label}" }
+                                }
                             }
                         }
                         button {
@@ -868,51 +876,25 @@ pub fn App() -> Element {
                                     },
                                     i { class: if light_theme() { "fa-solid fa-moon" } else { "fa-solid fa-sun" } }
                                 }
-                                a {
-                                    class: "header-link",
-                                    href: "#",
-                                    title: "Discord — Questions, bugs, or feedback",
-                                    onclick: move |e| {
-                                        e.prevent_default();
-                                        spawn(async move {
-                                            api::open_url("https://discord.gg/zmtkYkhSM4").await;
-                                        });
-                                    },
-                                    i { class: "fa-brands fa-discord" }
-                                }
-                                a {
-                                    class: "header-link",
-                                    href: "#",
-                                    title: "GitHub — Source Code",
-                                    onclick: move |e| {
-                                        e.prevent_default();
-                                        spawn(async move {
-                                            api::open_url("https://github.com/baras-app/baras").await;
-                                        });
-                                    },
-                                    i { class: "fa-brands fa-github" }
-                                }
-                                a {
-                                    class: "header-link",
-                                    href: "#",
-                                    title: "Documentation & Help",
-                                    onclick: move |e| {
-                                        e.prevent_default();
-                                        spawn(async move {
-                                            api::open_url("https://baras-app.github.io/features/overview").await;
-                                        });
-                                    },
-                                    i { class: "fa-solid fa-circle-question" }
-                                }
-                                a {
-                                    class: "header-link",
-                                    href: "#",
-                                    title: "Contributors",
-                                    onclick: move |e| {
-                                        e.prevent_default();
-                                        contributors_open.set(true);
-                                    },
-                                    i { class: "fa-solid fa-heart" }
+                            }
+                            // Project links: kept out of the way, never hidden at narrow widths
+                            div { class: "header-more",
+                                NavMenu {
+                                    label: "Links",
+                                    icon: "fa-solid fa-ellipsis",
+                                    icon_only: true,
+                                    items: vec![],
+                                    actions: vec![
+                                        ("fa-solid fa-circle-question", "Documentation", "Documentation & Help",
+                                            EventHandler::new(|_| { spawn(api::open_url("https://baras-app.github.io/features/overview")); })),
+                                        ("fa-brands fa-discord", "Discord", "Questions, bugs, or feedback",
+                                            EventHandler::new(|_| { spawn(api::open_url("https://discord.gg/zmtkYkhSM4")); })),
+                                        ("fa-brands fa-github", "GitHub", "Source code",
+                                            EventHandler::new(|_| { spawn(api::open_url("https://github.com/baras-app/baras")); })),
+                                        ("fa-solid fa-heart", "Contributors", "The people behind BARAS",
+                                            EventHandler::new(move |_| contributors_open.set(true))),
+                                    ],
+                                    state: ui_state,
                                 }
                             }
                         }
