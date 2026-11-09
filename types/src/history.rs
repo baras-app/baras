@@ -95,6 +95,11 @@ pub struct BossNode {
     pub boss: String,
     pub pulls: u32,
     pub kills: u32,
+    /// Content kind, as on `PullRow`; neither = other (world bosses, dummies)
+    #[serde(default)]
+    pub is_operation: bool,
+    #[serde(default)]
+    pub is_flashpoint: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -128,7 +133,7 @@ pub struct PullFilter {
     /// "8" | "16", matched against the leading player count of the difficulty name
     #[serde(default)]
     pub group_size: String,
-    /// Flashpoint pulls and runs alongside operations (off: operations only)
+    /// Flashpoint runs alongside operations in Raid Summaries (Boss Statistics always lists them)
     #[serde(default)]
     pub flashpoints: bool,
     pub kills_only: bool,

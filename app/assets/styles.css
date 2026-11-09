@@ -345,6 +345,38 @@ select optgroup {
   width: 100%;
   overflow: hidden;
   gap: 0.75vh;
+  --side-drawer-w: min(560px, 92vw);
+}
+
+/* Overlay settings open: it docks under the header as a second column and
+   the page shrinks beside it instead of sitting underneath. Narrow windows
+   keep the overlaying drawer. */
+@media (min-width: 1000px) {
+  .container:has(> .settings-panel) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--side-drawer-w);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 0.5em;
+    align-items: stretch;
+  }
+  .container:has(> .settings-panel) > .app-header {
+    grid-column: 1 / -1;
+  }
+  .container:has(> .settings-panel) > .tab-content {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+  }
+  .container:has(> .settings-panel) > .settings-panel {
+    position: static;
+    grid-column: 2;
+    grid-row: 2;
+    width: auto;
+    min-height: 0;
+    border: 1px solid var(--blue-alpha-20);
+    border-radius: var(--radius-xl) 0 0 0;
+    box-shadow: none;
+  }
 }
 
 /* App header */
@@ -1794,7 +1826,7 @@ button:active {
   right: 0;
   bottom: 0;
   z-index: 1000;
-  width: min(560px, 92vw);
+  width: var(--side-drawer-w);
   background: var(--gradient-panel);
   border-left: 1px solid var(--blue-alpha-20);
   box-shadow:
@@ -4804,6 +4836,247 @@ a.contributor-name:hover {
   border: 1px solid var(--border-accent);
 }
 
+/* ─── Editor drawer ──────────────────────────────────────────────────────────
+   The open item's form docks at the right of .editor-layout (its containing
+   block) and pushes the list over; narrow windows let it overlay instead. */
+.editor-layout {
+  --editor-drawer-w: clamp(440px, 46vw, 860px);
+  position: relative;
+  /* clip, not hidden: a hidden box can still be scrolled by scrollIntoView,
+     which would drag the drawer (positioned against it) up with it */
+  overflow: clip;
+}
+
+.editor-layout:has(.editor-drawer) {
+  padding-right: calc(var(--editor-drawer-w) + 1.25em);
+}
+
+.editor-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  width: var(--editor-drawer-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-mid);
+  border-left: 1px solid var(--border-accent-strong);
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+  box-shadow: -6px 0 20px rgba(0, 0, 0, 0.25);
+  container-type: inline-size;
+  cursor: auto;
+  outline: none;
+}
+
+.editor-drawer-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.editor-drawer-header h3 {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1em;
+  color: var(--text-primary);
+}
+
+.editor-drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-left: auto;
+}
+
+/* Notes: the textarea fills the drawer */
+.editor-drawer-body:has(> .notes-textarea) {
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-drawer-body .notes-textarea {
+  min-height: 0;
+}
+
+.editor-drawer-body.list-item-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border-top: none;
+  background: none;
+}
+
+/* Timer and effect forms bring their own body wrapper */
+.editor-drawer-body .list-item-body {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+/* Save / Delete stay in reach while the form scrolls */
+.editor-drawer-body .form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin-top: var(--space-md);
+  padding: var(--space-sm) 0;
+  background: var(--bg-mid);
+}
+
+/* The forms' two columns were laid out for the full page; in the drawer
+   they stack, and the trigger pairs only sit side by side when there is room */
+.editor-drawer .edit-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.editor-drawer .edit-grid-right {
+  border-left: none;
+  padding-left: 0;
+}
+
+@container (max-width: 640px) {
+  .trigger-two-col {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Below ~1300px the list beside sidebar and drawer gets too thin to read:
+   the drawer overlays it instead of pushing */
+@media (max-width: 1300px) {
+  .editor-layout:has(.editor-drawer) {
+    padding-right: 0.75em;
+  }
+  .editor-drawer {
+    --editor-drawer-w: min(560px, 94%);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+  }
+  /* Nothing is pushed, so the placeholder has no place to hold */
+  .editor-drawer.empty {
+    display: none;
+  }
+}
+
+.editor-drawer.empty {
+  justify-content: center;
+  align-items: center;
+  box-shadow: none;
+  background: rgba(0, 0, 0, calc(0.12 * var(--recess-k, 1)));
+  border-left-color: var(--border-subtle);
+}
+
+.discard-prompt {
+  max-width: 400px;
+}
+
+/* Encounter editor: the boss's lists, as underline tabs (one accent, not
+   the Data Explorer's per-tab colours) */
+.boss-views {
+  /* Not an ancestor of the drawer, so it can be a size container */
+  container-type: inline-size;
+}
+
+.boss-views .data-tab {
+  flex: 0 0 auto;
+  min-width: 7.5em;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+/* Too narrow for six labelled tabs: icon + count, the label in the tooltip */
+@container (max-width: 640px) {
+  .boss-views .data-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 4px;
+  }
+  .boss-views .data-tab .tab-label {
+    display: none;
+  }
+}
+
+.boss-views .data-tab i {
+  margin-right: 0.35em;
+}
+
+.data-tab-selector.boss-views .data-tab.active::after {
+  background: var(--swtor-blue);
+}
+
+.data-tab-count {
+  margin-left: 0.45em;
+  padding: 0 0.45em;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(var(--fg-rgb), 0.07);
+}
+
+.data-tab.active .data-tab-count {
+  color: var(--text-primary);
+}
+
+/* Encounter editor: area › boss and its actions, one row */
+.editor-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.editor-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.25em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-header-area {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.editor-header-sep {
+  font-size: 0.55em;
+  color: var(--text-disabled);
+}
+
+.editor-header {
+  container-type: inline-size;
+}
+
+/* Narrow: the boss name keeps the room, the area name goes */
+@container (max-width: 420px) {
+  .editor-header-area,
+  .editor-header-sep {
+    display: none;
+  }
+}
+
+.editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-left: auto;
+}
+
+.editor-header .nav-menu-list {
+  left: auto;
+  right: 0;
+}
+
 .editor-main {
   flex: 1;
   overflow-y: auto;
@@ -4851,13 +5124,27 @@ a.contributor-name:hover {
   overflow: hidden;
 }
 
-/* Open row: accent outline so it stands apart from collapsed rows */
+/* Open row (its form is in the drawer): the whole row lights up, with an
+   accent bar on the drawer-facing side of the list */
 .list-item.expanded {
-  border-color: var(--border-accent-strong);
+  border-color: var(--swtor-blue);
+  border-left: 3px solid var(--swtor-blue);
+}
+
+.list-item.expanded > .list-item-header,
+.list-item.expanded > .list-item-header:hover {
+  background: rgba(74, 158, 255, 0.18);
+}
+
+.list-item.expanded > .list-item-header .font-medium,
+.list-item.expanded > .list-item-header .effect-name {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .list-item-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm);
@@ -4868,6 +5155,15 @@ a.contributor-name:hover {
 
 .list-item-header:hover {
   background: var(--blue-alpha-5);
+}
+
+/* The name stays on one line; tags and toggles wrap under it when narrow */
+.list-item-header > .font-medium {
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .list-item-expand {
@@ -5499,6 +5795,43 @@ a.contributor-name:hover {
   font-size: 0.9em;
 }
 
+/* Top level of the history sidebars: Operations / Flashpoints / Other */
+.sidebar-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.6em 0.4em 0.35em;
+  margin-top: 0.35em;
+  cursor: pointer;
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-heading);
+  border-bottom: 1px solid var(--border-accent-medium);
+}
+
+.sidebar-group-header:hover {
+  color: var(--text-primary);
+}
+
+.sidebar-group-header .collapse-icon {
+  width: 1em;
+  font-size: 0.85em;
+  text-align: center;
+}
+
+.sidebar-group-header .section-count {
+  margin-left: auto;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-disabled);
+}
+
+.sidebar-group-body {
+  padding-left: 0.5em;
+}
+
 /* Encounter items in sidebar */
 .sidebar-encounter-item {
   padding: 0.6em 0.75em;
@@ -5516,6 +5849,55 @@ a.contributor-name:hover {
 .sidebar-encounter-item.selected {
   background: var(--blue-alpha-10);
   border-left-color: var(--swtor-blue);
+}
+
+/* Encounter editor: the open area's bosses, nested under it */
+.sidebar-boss-list {
+  margin: 0 0 0.35em 0.9em;
+  padding-left: 0.4em;
+  border-left: 1px solid var(--border-accent-medium);
+}
+
+.sidebar-boss-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.35em 0.6em;
+  margin: 1px 0;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.sidebar-boss-item:hover {
+  background: var(--blue-alpha-5);
+  color: var(--text-primary);
+}
+
+.sidebar-boss-item.selected {
+  background: var(--blue-alpha-10);
+  color: var(--swtor-blue-bright);
+}
+
+.sidebar-boss-item.disabled {
+  opacity: 0.5;
+}
+
+.sidebar-boss-item.muted {
+  color: var(--text-disabled);
+  cursor: default;
+}
+
+.sidebar-boss-item.add {
+  color: var(--text-muted);
+  font-size: 0.82em;
+}
+
+.sidebar-boss-item .boss-final {
+  margin-left: auto;
+  font-size: 0.75em;
+  color: var(--color-warning, #d9a441);
 }
 
 .sidebar-encounter-item .encounter-main {

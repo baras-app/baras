@@ -3,6 +3,8 @@
 //! Full CRUD for the BossEncounter DSL: timers, phases, counters, challenges, entities.
 //! Uses unified BossWithPath type and EncounterItem enum for streamlined data handling.
 
+mod area_sidebar;
+mod boss_header;
 mod challenges;
 mod conditions;
 mod counters;
@@ -14,6 +16,9 @@ mod tabs;
 mod timers;
 pub mod triggers;
 
+use crate::components::editor_drawer::{DiscardPrompt, provide_drawer_guard};
+use area_sidebar::{AreaCategory, BossRow};
+use boss_header::EditorHeader;
 use dioxus::prelude::*;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -177,6 +182,7 @@ pub struct EncounterEditorProps {
 
 #[component]
 pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
+    let guard = provide_drawer_guard();
     // Area index state (not persisted - loaded fresh each time)
     let mut areas = use_signal(Vec::<AreaListItem>::new);
     let mut loading_areas = use_signal(|| true);
@@ -226,6 +232,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     // Non-persisted UI state
     let mut show_new_area = use_signal(|| false);
     let mut show_new_boss = use_signal(|| false);
+    let mut bosses_open = use_signal(|| true);
     let mut status_message = use_signal(|| None::<(String, bool)>);
 
     // Import preview state
@@ -264,7 +271,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     });
 
     // Load bosses when area is selected - single unified call
-    let mut load_area_data = move |area: AreaListItem| {
+    let load_area_data = move |area: AreaListItem| {
         let file_path = area.file_path.clone();
         let area_name = area.name.clone();
         
@@ -276,6 +283,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
         loading_bosses.set(true);
         bosses.set(Vec::new());
         expanded_boss.set(None);
+        bosses_open.set(true);
 
         spawn(async move {
             if let Some(b) = api::fetch_area_bosses(&file_path).await {
@@ -288,28 +296,83 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     // Group areas by category (with filtering)
     let grouped_areas = {
         let filter = area_filter().to_lowercase();
-        let mut ops = Vec::new();
-        let mut fps = Vec::new();
-        let mut lairs = Vec::new();
-        let mut other = Vec::new();
-
+        let mut groups: [(&'static str, Vec<AreaListItem>); 4] =
+            [("Operations", vec![]), ("Flashpoints", vec![]), ("Lair Bosses", vec![]), ("Other", vec![])];
         for area in areas() {
             if !filter.is_empty() && !area.name.to_lowercase().contains(&filter) {
                 continue;
             }
-            match area.category.as_str() {
-                "operations" => ops.push(area),
-                "flashpoints" => fps.push(area),
-                "lair_bosses" => lairs.push(area),
-                _ => other.push(area),
-            }
+            let i = match area.category.as_str() {
+                "operations" => 0,
+                "flashpoints" => 1,
+                "lair_bosses" => 2,
+                _ => 3,
+            };
+            groups[i].1.push(area);
         }
-        (ops, fps, lairs, other)
+        groups
+    };
+    let boss_rows: Vec<BossRow> = bosses
+        .read()
+        .iter()
+        .map(|b| (b.boss.id.clone(), b.boss.name.clone(), b.boss.enabled, b.boss.is_final_boss))
+        .collect();
+    let open_boss: Option<BossWithPath> = expanded_boss
+        .read()
+        .as_ref()
+        .and_then(|id| bosses.read().iter().find(|b| &b.boss.id == id).cloned());
+
+    // Area actions (header menu)
+    let export_area = move |_| {
+        if let Some(area) = selected_area() {
+            spawn(async move {
+                match api::export_encounter_toml(None, &area.file_path).await {
+                    Ok(result) => {
+                        let stem = area.name.to_lowercase().replace(' ', "_");
+                        let default_name = if result.is_bundled { format!("{stem}_custom.toml") } else { format!("{stem}.toml") };
+                        if let Some(save_path) = api::save_file_dialog(&default_name).await {
+                            match api::save_export_file(&save_path, &result.toml).await {
+                                Ok(()) => status_message.set(Some(("Area exported".to_string(), false))),
+                                Err(e) => status_message.set(Some((e, true))),
+                            }
+                        }
+                    }
+                    Err(e) => status_message.set(Some((e, true))),
+                }
+            });
+        }
+    };
+    let import_into_area = move |_| {
+        let target_path = selected_area_path.read().clone();
+        spawn(async move {
+            if let Some(path) = api::open_toml_file_dialog().await {
+                match api::read_import_file(&path).await {
+                    Ok(content) => match api::preview_import_encounter(&content, target_path.as_deref()).await {
+                        Ok(preview) => {
+                            import_toml_content.set(content);
+                            import_preview.set(Some(preview));
+                        }
+                        Err(e) => status_message.set(Some((e, true))),
+                    },
+                    Err(e) => status_message.set(Some((e, true))),
+                }
+            }
+        });
+    };
+    let refetch_bosses = move |_| {
+        if let Some(fp) = selected_area_path.read().clone() {
+            spawn(async move {
+                if let Some(b) = api::fetch_area_bosses(&fp).await {
+                    bosses.set(b);
+                }
+            });
+        }
     };
 
     rsx! {
         div { class: "editor-layout",
-            // ─── Sidebar: Area List ───────────────────────────────────────────
+            DiscardPrompt {}
+            // ─── Sidebar: Areas, and the open area's bosses ───────────────────
             aside { class: "explorer-sidebar",
                 div { class: "sidebar-header",
                     div { class: "sidebar-header-row",
@@ -338,44 +401,73 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                     if loading_areas() {
                         div { class: "sidebar-empty", "Loading..." }
                     } else {
-                        if !grouped_areas.0.is_empty() {
-                            AreaCategory {
-                                name: "Operations",
-                                areas: grouped_areas.0.clone(),
-                                selected: selected_area(),
-                                on_select: move |a| load_area_data(a),
-                            }
-                        }
-                        if !grouped_areas.1.is_empty() {
-                            AreaCategory {
-                                name: "Flashpoints",
-                                areas: grouped_areas.1.clone(),
-                                selected: selected_area(),
-                                on_select: move |a| load_area_data(a),
-                            }
-                        }
-                        if !grouped_areas.2.is_empty() {
-                            AreaCategory {
-                                name: "Lair Bosses",
-                                areas: grouped_areas.2.clone(),
-                                selected: selected_area(),
-                                on_select: move |a| load_area_data(a),
-                            }
-                        }
-                        if !grouped_areas.3.is_empty() {
-                            AreaCategory {
-                                name: "Other",
-                                areas: grouped_areas.3.clone(),
-                                selected: selected_area(),
-                                on_select: move |a| load_area_data(a),
+                        for (name, group) in grouped_areas {
+                            if !group.is_empty() {
+                                AreaCategory {
+                                    name,
+                                    areas: group,
+                                    selected: selected_area(),
+                                    bosses: boss_rows.clone(),
+                                    loading: loading_bosses(),
+                                    bosses_open: bosses_open(),
+                                    selected_boss: expanded_boss(),
+                                    on_select: move |a: AreaListItem| {
+                                        // The open area again folds or unfolds its bosses
+                                        if selected_area_path.read().as_ref() == Some(&a.file_path) {
+                                            bosses_open.toggle();
+                                        } else {
+                                            let mut load = load_area_data;
+                                            guard.confirm(move |_| load(a.clone()));
+                                        }
+                                    },
+                                    on_select_boss: move |id: String| guard.switch(expanded_boss, Some(id)),
+                                    on_new_boss: move |_| show_new_boss.set(true),
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // ─── Main Content ─────────────────────────────────────────────────
+            // ─── Main: the open boss ──────────────────────────────────────────
             div { class: "editor-main",
+                if let Some(area) = selected_area() {
+                    EditorHeader {
+                        area_name: area.name.clone(),
+                        boss: open_boss.clone(),
+                        on_refetch: refetch_bosses,
+                        on_status: move |msg| status_message.set(Some(msg)),
+                        on_export_area: export_area,
+                        on_import: import_into_area,
+                    }
+                    if show_new_boss() {
+                        {
+                            let file_path = area.file_path.clone();
+                            rsx! {
+                                new_forms::NewBossForm {
+                                    area: area.clone(),
+                                    on_create: move |new_boss| {
+                                        let fp = file_path.clone();
+                                        spawn(async move {
+                                            match api::create_boss(&new_boss).await {
+                                                Ok(_) => {
+                                                    // Reload area to get fresh BossWithPath
+                                                    if let Some(b) = api::fetch_area_bosses(&fp).await {
+                                                        bosses.set(b);
+                                                    }
+                                                    status_message.set(Some(("Boss created".to_string(), false)));
+                                                }
+                                                Err(e) => status_message.set(Some((e, true))),
+                                            }
+                                        });
+                                        show_new_boss.set(false);
+                                    },
+                                    on_cancel: move |_| show_new_boss.set(false),
+                                }
+                            }
+                        }
+                    }
+                }
                 if selected_area().is_none() {
                     div { class: "empty-state",
                         div { class: "empty-state-icon", "📂" }
@@ -383,283 +475,33 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                     }
                 } else if loading_bosses() {
                     div { class: "empty-state", "Loading..." }
+                } else if let Some(bwp) = open_boss {
+                    BossTabs {
+                        key: "{bwp.boss.id}",
+                        boss_with_path: bwp.clone(),
+                        active_tab: active_boss_tab,
+                        expanded_timer: expanded_timer,
+                        expanded_phase: expanded_phase,
+                        expanded_counter: expanded_counter,
+                        expanded_challenge: expanded_challenge,
+                        expanded_entity: expanded_entity,
+                        hide_disabled_timers: hide_disabled_timers,
+                        hide_disabled_phases: hide_disabled_phases,
+                        hide_disabled_counters: hide_disabled_counters,
+                        on_boss_change: move |updated: BossWithPath| {
+                            let mut all = bosses();
+                            if let Some(idx) = all.iter().position(|b| b.boss.id == updated.boss.id) {
+                                all[idx] = updated;
+                                bosses.set(all);
+                            }
+                        },
+                        on_refetch: refetch_bosses,
+                        on_status: move |msg| status_message.set(Some(msg)),
+                    }
+                } else if bosses.read().is_empty() {
+                    div { class: "empty-state", "No bosses in this area yet" }
                 } else {
-                    // Area header
-                    div { class: "flex items-center justify-between mb-md",
-                        h2 { class: "text-primary", "{selected_area().map(|a| a.name).unwrap_or_default()}" }
-                        div { class: "flex gap-xs",
-                            button {
-                                class: "btn btn-sm",
-                                onclick: move |_| {
-                                    if let Some(area) = selected_area() {
-                                        let area_name = area.name.clone();
-                                        let file_path = area.file_path.clone();
-                                        spawn(async move {
-                                            match api::export_encounter_toml(None, &file_path).await {
-                                                Ok(result) => {
-                                                    let stem = area_name.to_lowercase().replace(' ', "_");
-                                                    let default_name = if result.is_bundled {
-                                                        format!("{}_custom.toml", stem)
-                                                    } else {
-                                                        format!("{}.toml", stem)
-                                                    };
-                                                    if let Some(save_path) = api::save_file_dialog(&default_name).await {
-                                                        match api::save_export_file(&save_path, &result.toml).await {
-                                                            Ok(()) => status_message.set(Some(("Area exported".to_string(), false))),
-                                                            Err(e) => status_message.set(Some((e, true))),
-                                                        }
-                                                    }
-                                                }
-                                                Err(e) => status_message.set(Some((e, true))),
-                                            }
-                                        });
-                                    }
-                                },
-                                "Export Area"
-                            }
-                            button {
-                                class: "btn btn-sm",
-                                onclick: move |_| {
-                                    let target_path = selected_area_path.read().clone();
-                                    spawn(async move {
-                                        if let Some(path) = api::open_toml_file_dialog().await {
-                                            match api::read_import_file(&path).await {
-                                                Ok(content) => {
-                                                    match api::preview_import_encounter(&content, target_path.as_deref()).await {
-                                                        Ok(preview) => {
-                                                            import_toml_content.set(content);
-                                                            import_preview.set(Some(preview));
-                                                        }
-                                                        Err(e) => status_message.set(Some((e, true))),
-                                                    }
-                                                }
-                                                Err(e) => status_message.set(Some((e, true))),
-                                            }
-                                        }
-                                    });
-                                },
-                                "Import"
-                            }
-                            button {
-                                class: "btn btn-success btn-sm",
-                                onclick: move |_| show_new_boss.set(true),
-                                "+ New Boss"
-                            }
-                        }
-                    }
-
-                    // New boss form
-                    if show_new_boss() {
-                        if let Some(area) = selected_area() {
-                            {
-                                let file_path = area.file_path.clone();
-                                rsx! {
-                                    new_forms::NewBossForm {
-                                        area: area,
-                                        on_create: move |new_boss| {
-                                            let fp = file_path.clone();
-                                            spawn(async move {
-                                                match api::create_boss(&new_boss).await {
-                                                    Ok(_) => {
-                                                        // Reload area to get fresh BossWithPath
-                                                        if let Some(b) = api::fetch_area_bosses(&fp).await {
-                                                            bosses.set(b);
-                                                        }
-                                                        status_message.set(Some(("Boss created".to_string(), false)));
-                                                    }
-                                                    Err(e) => {
-                                                        status_message.set(Some((e, true)));
-                                                    }
-                                                }
-                                            });
-                                            show_new_boss.set(false);
-                                        },
-                                        on_cancel: move |_| show_new_boss.set(false),
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Boss list
-                    if bosses().is_empty() {
-                        div { class: "empty-state", "No bosses in this area" }
-                    } else {
-                        for bwp in bosses() {
-                            {
-                                let is_expanded = expanded_boss() == Some(bwp.boss.id.clone());
-                                let boss_id = bwp.boss.id.clone();
-                                let boss_enabled = bwp.boss.enabled;
-                                // Extract counts directly from BossWithPath
-                                let timer_count = bwp.boss.timers.len();
-                                let phase_count = bwp.boss.phases.len();
-                                let counter_count = bwp.boss.counters.len();
-                                let challenge_count = bwp.boss.challenges.len();
-                                let entity_count = bwp.boss.entities.len();
-
-                                rsx! {
-                                    div { class: "list-item", class: if is_expanded { "expanded" }, class: if !boss_enabled { "item-disabled" },
-                                        div {
-                                            class: "list-item-header",
-                                            onclick: move |_| {
-                                                expanded_boss.set(if is_expanded { None } else { Some(boss_id.clone()) });
-                                            },
-                                            span { class: "list-item-expand", if is_expanded { "▼" } else { "▶" } }
-                                            span { class: "font-medium text-primary", "{bwp.boss.name}" }
-                                            span { class: "text-xs text-mono text-muted", "{bwp.boss.id}" }
-                                            if timer_count > 0 {
-                                                span { class: "tag", "{timer_count} timers" }
-                                            }
-                                            if phase_count > 0 {
-                                                span { class: "tag", "{phase_count} phases" }
-                                            }
-                                            if counter_count > 0 {
-                                                span { class: "tag", "{counter_count} counters" }
-                                            }
-                                            if challenge_count > 0 {
-                                                span { class: "tag", "{challenge_count} challenges" }
-                                            }
-                                            if entity_count > 0 {
-                                                span { class: "tag", "{entity_count} entities" }
-                                            }
-                                            // Final boss flag toggle
-                                            {
-                                                let final_boss_id = bwp.boss.id.clone();
-                                                let final_file_path = bwp.file_path.clone();
-                                                let is_final = bwp.boss.is_final_boss;
-                                                rsx! {
-                                                    span {
-                                                        class: "row-toggle ml-auto",
-                                                        title: if is_final { "Final boss (auto-stops ops timer) — click to unset" } else { "Mark as final boss (auto-stops ops timer on kill)" },
-                                                        onclick: move |e| {
-                                                            e.stop_propagation();
-                                                            let bid = final_boss_id.clone();
-                                                            let fp = final_file_path.clone();
-                                                            let new_final = !is_final;
-                                                            spawn(async move {
-                                                                match api::update_boss_is_final_boss(&bid, &fp, new_final).await {
-                                                                    Ok(()) => {
-                                                                        if let Some(b) = api::fetch_area_bosses(&fp).await {
-                                                                            bosses.set(b);
-                                                                        }
-                                                                    }
-                                                                    Err(e) => status_message.set(Some((e, true))),
-                                                                }
-                                                            });
-                                                        },
-                                                        span {
-                                                            class: if is_final { "text-warning" } else { "text-muted" },
-                                                            style: "font-size: 12px;",
-                                                            "⚑"
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            // Enable/disable toggle
-                                            {
-                                                let toggle_boss_id = bwp.boss.id.clone();
-                                                let toggle_file_path = bwp.file_path.clone();
-                                                rsx! {
-                                                    span {
-                                                        class: "row-toggle",
-                                                        title: if boss_enabled { "Disable boss" } else { "Enable boss" },
-                                                        onclick: move |e| {
-                                                            e.stop_propagation();
-                                                            let bid = toggle_boss_id.clone();
-                                                            let fp = toggle_file_path.clone();
-                                                            let new_enabled = !boss_enabled;
-                                                            spawn(async move {
-                                                                match api::update_boss_enabled(&bid, &fp, new_enabled).await {
-                                                                    Ok(()) => {
-                                                                        // Refetch to update the UI
-                                                                        if let Some(b) = api::fetch_area_bosses(&fp).await {
-                                                                            bosses.set(b);
-                                                                        }
-                                                                    }
-                                                                    Err(e) => status_message.set(Some((e, true))),
-                                                                }
-                                                            });
-                                                        },
-                                                        span {
-                                                            class: if boss_enabled { "text-success" } else { "text-muted" },
-                                                            if boss_enabled { "✓" } else { "○" }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            {
-                                                let export_boss_id = bwp.boss.id.clone();
-                                                let export_file_path = bwp.file_path.clone();
-                                                rsx! {
-                                                    button {
-                                                        class: "btn btn-ghost btn-sm",
-                                                        style: "padding: 2px 8px; font-size: 11px;",
-                                                        onclick: move |e| {
-                                                            e.stop_propagation();
-                                                            let bid = export_boss_id.clone();
-                                                            let fp = export_file_path.clone();
-                                                            spawn(async move {
-                                                                match api::export_encounter_toml(Some(&bid), &fp).await {
-                                                                    Ok(result) => {
-                                                                        let default_name = if result.is_bundled {
-                                                                            format!("{}_custom.toml", bid)
-                                                                        } else {
-                                                                            format!("{}.toml", bid)
-                                                                        };
-                                                                        if let Some(save_path) = api::save_file_dialog(&default_name).await {
-                                                                            match api::save_export_file(&save_path, &result.toml).await {
-                                                                                Ok(()) => status_message.set(Some(("Boss exported".to_string(), false))),
-                                                                                Err(e) => status_message.set(Some((e, true))),
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                    Err(e) => status_message.set(Some((e, true))),
-                                                                }
-                                                            });
-                                                        },
-                                                        "Export"
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        if is_expanded {
-                                            div { class: "list-item-body",
-                                                BossTabs {
-                                                    boss_with_path: bwp.clone(),
-                                                    active_tab: active_boss_tab,
-                                                    expanded_timer: expanded_timer,
-                                                    expanded_phase: expanded_phase,
-                                                    expanded_counter: expanded_counter,
-                                                    expanded_challenge: expanded_challenge,
-                                                    expanded_entity: expanded_entity,
-                                                    hide_disabled_timers: hide_disabled_timers,
-                                                    hide_disabled_phases: hide_disabled_phases,
-                                                    hide_disabled_counters: hide_disabled_counters,
-                                                    on_boss_change: move |updated: BossWithPath| {
-                                                        let mut all = bosses();
-                                                        if let Some(idx) = all.iter().position(|b| b.boss.id == updated.boss.id) {
-                                                            all[idx] = updated;
-                                                            bosses.set(all);
-                                                        }
-                                                    },
-                                                    on_refetch: move |_| {
-                                                        let fp = bwp.file_path.clone();
-                                                        spawn(async move {
-                                                            if let Some(b) = api::fetch_area_bosses(&fp).await {
-                                                                bosses.set(b);
-                                                            }
-                                                        });
-                                                    },
-                                                    on_status: move |msg| status_message.set(Some(msg)),
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    div { class: "empty-state", "Select a boss in the sidebar" }
                 }
             }
         }
@@ -741,52 +583,6 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                     style: "padding: 2px 6px; min-width: auto;",
                     onclick: move |_| status_message.set(None),
                     "×"
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Area Category (collapsible)
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[component]
-fn AreaCategory(
-    name: &'static str,
-    areas: Vec<AreaListItem>,
-    selected: Option<AreaListItem>,
-    on_select: EventHandler<AreaListItem>,
-) -> Element {
-    let mut collapsed = use_signal(|| false);
-
-    let chevron = if collapsed() { "fa-chevron-right" } else { "fa-chevron-down" };
-
-    rsx! {
-        div {
-            class: "sidebar-section-header",
-            onclick: move |_| collapsed.set(!collapsed()),
-            i { class: "fa-solid {chevron} collapse-icon" }
-            span { class: "section-area", "{name}" }
-            span { class: "section-count", "{areas.len()}" }
-        }
-
-        if !collapsed() {
-            for area in areas {
-                {
-                    let is_active = selected.as_ref().map(|s| s.file_path == area.file_path).unwrap_or(false);
-                    let area_clone = area.clone();
-
-                    rsx! {
-                        div {
-                            class: if is_active { "sidebar-encounter-item selected" } else { "sidebar-encounter-item" },
-                            onclick: move |_| on_select.call(area_clone.clone()),
-                            div { class: "encounter-main",
-                                span { class: "encounter-name", "{area.name}" }
-                                span { class: "encounter-count", title: "bosses", "{area.boss_count}" }
-                            }
-                        }
-                    }
                 }
             }
         }

@@ -5,6 +5,7 @@
 
 use dioxus::prelude::*;
 
+use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
 use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
 use crate::api;
 use crate::types::{
@@ -46,6 +47,7 @@ pub fn ChallengesTab(
     on_change: EventHandler<Vec<ChallengeDefinition>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
+    let guard = use_drawer_guard();
     // Extract challenges from BossWithPath
     let challenges = boss_with_path.boss.challenges.clone();
 
@@ -105,7 +107,7 @@ pub fn ChallengesTab(
                                 expanded: is_expanded,
                                 encounter_data: encounter_data.clone(),
                                 on_toggle: move |_| {
-                                    expanded_challenge.set(if is_expanded { None } else { Some(challenge_key.clone()) });
+                                    guard.switch(expanded_challenge, if is_expanded { None } else { Some(challenge_key.clone()) });
                                 },
                                 on_change: on_change,
                                 on_status: on_status,
@@ -162,8 +164,6 @@ fn ChallengeRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-                // Expand arrow
-                span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
 
                 OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "challenge" }
 
@@ -215,7 +215,7 @@ fn ChallengeRow(
                     let file_path_delete = file_path.clone();
 
                     rsx! {
-                        div { class: "list-item-body",
+                        EditorDrawer { title: challenge.name.clone(), dirty: is_dirty(), on_close: on_collapse,
                             ChallengeEditForm {
                                 challenge: challenge.clone(),
                                 encounter_data: encounter_data,

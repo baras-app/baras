@@ -5,6 +5,7 @@
 
 use dioxus::prelude::*;
 
+use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
 use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
 use crate::api;
 use crate::types::{
@@ -52,6 +53,7 @@ pub fn CountersTab(
     on_refetch: EventHandler<()>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
+    let guard = use_drawer_guard();
     // Extract counters and badge IDs from BossWithPath
     let counters = boss_with_path.boss.counters.clone();
     let builtin_counter_ids = boss_with_path.builtin_counter_ids.clone();
@@ -142,7 +144,7 @@ pub fn CountersTab(
                                 expanded: is_expanded,
                                 encounter_data: encounter_data.clone(),
                                 on_toggle: move |_| {
-                                    expanded_counter.set(if is_expanded { None } else { Some(counter_key.clone()) });
+                                    guard.switch(expanded_counter, if is_expanded { None } else { Some(counter_key.clone()) });
                                 },
                                 on_change: on_change,
                                 on_refetch: on_refetch,
@@ -191,8 +193,6 @@ fn CounterRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-                // Expand arrow
-                span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
 
                 OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "counter" }
 
@@ -216,7 +216,7 @@ fn CounterRow(
                     let bwp_for_delete = boss_with_path.clone();
                     let is_reset = is_builtin || is_modified;
                     rsx! {
-                        div { class: "list-item-body",
+                        EditorDrawer { title: counter.name.clone(), dirty: is_dirty(), on_close: on_collapse,
                             CounterEditForm {
                                 counter: counter.clone(),
                                 is_builtin: is_builtin,

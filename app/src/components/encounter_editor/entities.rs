@@ -6,6 +6,7 @@
 
 use dioxus::prelude::*;
 
+use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
 use crate::components::editor_common::{FormCard, ItemActions, Origin};
 use crate::api;
 use crate::types::{BossWithPath, EncounterItem, EntityDefinition, EntityFilter, Trigger};
@@ -42,6 +43,7 @@ pub fn EntitiesTab(
     on_change: EventHandler<Vec<EntityDefinition>>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
+    let guard = use_drawer_guard();
     // Extract entities from BossWithPath
     let entities = boss_with_path.boss.entities.clone();
 
@@ -105,7 +107,7 @@ pub fn EntitiesTab(
                                 boss_with_path: boss_with_path.clone(),
                                 expanded: is_expanded,
                                 on_toggle: move |_| {
-                                    expanded_entity.set(if is_expanded { None } else { Some(entity_key.clone()) });
+                                    guard.switch(expanded_entity, if is_expanded { None } else { Some(entity_key.clone()) });
                                 },
                                 on_change: on_change,
                                 on_status: on_status,
@@ -149,7 +151,6 @@ fn EntityRow(
             div {
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
-                span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
                 span { class: "font-medium", "{entity.name}" }
                 if expanded && is_dirty() {
                     span { class: "unsaved-indicator", title: "Unsaved changes" }
@@ -192,7 +193,7 @@ fn EntityRow(
                     let file_path_delete = file_path.clone();
 
                     rsx! {
-                        div { class: "list-item-body",
+                        EditorDrawer { title: entity.name.clone(), dirty: is_dirty(), on_close: on_collapse,
                             EntityEditForm {
                                 entity: entity.clone(),
                                 encounter_data: encounter_data.clone(),
@@ -302,7 +303,7 @@ fn EntityEditForm(
 
     rsx! {
         div { class: "entity-edit-form",
-            // ─── Name ──────────────────────────────────────────────────────────
+            FormCard { icon: "fa-tag", title: "Identity",
             div { class: "form-row-hz",
                 label { "Name" }
                 input {
@@ -328,11 +329,9 @@ fn EntityEditForm(
                     }
                 }
             }
+            }
 
-            // ─── Flags ─────────────────────────────────────────────────────────
-            div { class: "form-section",
-                div { class: "font-bold text-sm mb-xs", "Flags" }
-
+            FormCard { icon: "fa-flag", title: "Flags",
                 div { class: "flex flex-col gap-xs",
                     label { class: "flex items-center gap-xs cursor-pointer",
                         input {
@@ -426,12 +425,10 @@ fn EntityEditForm(
                 }
             }
 
-            // ─── HP Markers ───────────────────────────────────────────────────
-            div { class: "form-section",
-                div { class: "flex items-center justify-between mb-xs",
-                    div { class: "font-bold text-sm", "HP Markers" }
+            FormCard { icon: "fa-location-dot", title: "HP Markers",
+                action: rsx! {
                     button {
-                        class: "btn btn-sm",
+                        class: "btn btn-xs",
                         onclick: move |_| {
                             let mut d = draft();
                             d.hp_markers.push(crate::types::HpMarker {
@@ -443,9 +440,9 @@ fn EntityEditForm(
                             });
                             draft.set(d);
                         },
-                        "+ Add Marker"
+                        "+ Add"
                     }
-                }
+                },
                 div { class: "text-xs text-muted mb-xs", "Visual indicators on the HP bar at key thresholds" }
                 for (i, marker) in draft().hp_markers.iter().cloned().enumerate() {
                     {
@@ -559,12 +556,10 @@ fn EntityEditForm(
                 }
             }
 
-            // ─── Shield Definitions ──────────────────────────────────────────
-            div { class: "form-section",
-                div { class: "flex items-center justify-between mb-xs",
-                    div { class: "font-bold text-sm", "Shields" }
+            FormCard { icon: "fa-shield-halved", title: "Shields",
+                action: rsx! {
                     button {
-                        class: "btn btn-sm",
+                        class: "btn btn-xs",
                         onclick: move |_| {
                             use crate::types::ShieldDefinition;
                             let mut d = draft();
@@ -588,9 +583,9 @@ fn EntityEditForm(
                             });
                             draft.set(d);
                         },
-                        "+ Add Shield"
+                        "+ Add"
                     }
-                }
+                },
                 div { class: "text-xs text-muted mb-xs", "Absorb shields shown on the HP bar overlay" }
 
                 for (i, shield) in draft().shields.iter().cloned().enumerate() {

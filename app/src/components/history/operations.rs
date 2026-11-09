@@ -75,11 +75,9 @@ fn group_by_operation<'a>(runs: &[&'a RunSummary]) -> Vec<(&'a str, Vec<&'a RunS
     groups
 }
 
-/// The run to show: the user's pick if still listed, else the newest
+/// The run to show: the user's pick while it is still listed
 fn effective(selected: Option<RunKey>, runs: &[&RunSummary]) -> Option<RunKey> {
-    selected
-        .filter(|k| runs.iter().any(|r| key_of(r) == *k))
-        .or_else(|| runs.first().map(|r| key_of(r)))
+    selected.filter(|k| runs.iter().any(|r| key_of(r) == *k))
 }
 
 /// One run in the rail; `show_operation` names the operation (Recent list)
@@ -178,24 +176,6 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
         }
     });
 
-    // Nothing picked (first visit, or the pick fell out of the filter): take
-    // the newest run and open its operation so the highlighted row is visible
-    use_effect(move || {
-        let read = list.read();
-        let Some(l) = read.as_ref() else { return };
-        let q = search.read().to_lowercase();
-        let visible: Vec<&RunSummary> = l.runs.iter().filter(|r| run_hit(r, &q)).collect();
-        let picked = selected.read().clone();
-        if let Some(key) = effective(picked.clone(), &visible)
-            && picked.as_ref() != Some(&key)
-        {
-            if let Some(run) = visible.iter().find(|r| key_of(r) == key) {
-                expanded.write().insert(run.operation.clone());
-            }
-            selected.set(Some(key));
-        }
-    });
-
     let list_read = list.read();
     let loading = list_read.is_none();
     let runs: &[RunSummary] = list_read.as_ref().map(|l| l.runs.as_slice()).unwrap_or(&[]);
@@ -217,7 +197,15 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
         }
     });
     let known_tags = tags.to_vec();
-    let groups = group_by_operation(&visible);
+    // Operations / Flashpoints, each split by operation
+    let groups: Vec<(usize, Vec<(&str, Vec<&RunSummary>)>)> = (0..super::CONTENT_GROUPS.len())
+        .map(|g| {
+            let in_group: Vec<&RunSummary> = visible.iter().copied().filter(|r| super::content_group(!r.is_flashpoint, r.is_flashpoint) == g).collect();
+            (g, group_by_operation(&in_group))
+        })
+        .filter(|(_, ops)| !ops.is_empty())
+        .collect();
+    let closed_groups = use_signal(std::collections::HashSet::<usize>::new);
     use_restore_scroll(&[OPS_RAIL, OPS_MAIN], !loading && (current.is_none() || detail.read().is_some()));
 
     let collapsed = props.state.read().history.sidebar_collapsed;
@@ -261,36 +249,44 @@ pub fn OperationsTab(props: OperationsProps) -> Element {
                                 }
                             }
                         }
-                        for (op, group) in groups.iter() {
-                            {
-                                let op_key = op.to_string();
-                                // A search opens every group so hits are visible
-                                let is_collapsed = query.is_empty() && !expanded.read().contains(*op);
-                                let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
-                                let cap = if unfolded.read().contains(*op) { group.len() } else { group.len().min(PAGE) };
-                                let unfold_key = op.to_string();
-                                rsx! {
-                                    div {
-                                        class: "sidebar-section-header",
-                                        onclick: move |_| {
-                                            let mut set = expanded.write();
-                                            if !set.remove(&op_key) {
-                                                set.insert(op_key.clone());
-                                            }
-                                        },
-                                        i { class: "fa-solid {chevron} collapse-icon" }
-                                        span { class: "section-area", "{op}" }
-                                        span { class: "section-count", "{group.len()}" }
-                                    }
-                                    if !is_collapsed {
-                                        for r in group[..cap].iter() {
-                                            RunItem { run: (*r).clone(), selected: current.as_ref() == Some(&key_of(r)), on_pick: move |k| selected.set(Some(k)) }
-                                        }
-                                        if cap < group.len() {
-                                            div { class: "sidebar-encounter-item run-more",
-                                                onclick: move |_| { unfolded.write().insert(unfold_key.clone()); },
-                                                i { class: "fa-solid fa-angles-down" }
-                                                " Show {group.len() - cap} more"
+                        for (g, ops) in groups.iter() {
+                            super::ContentGroupHeader { group: *g, count: ops.iter().map(|(_, runs)| runs.len()).sum::<usize>(), closed: closed_groups }
+                            // A search opens every group so hits are visible
+                            if !query.is_empty() || !closed_groups.read().contains(g) {
+                                div { class: "sidebar-group-body",
+                                    for (op, group) in ops.iter() {
+                                        {
+                                            let op_key = op.to_string();
+                                            // A search opens every group so hits are visible
+                                            let is_collapsed = query.is_empty() && !expanded.read().contains(*op);
+                                            let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
+                                            let cap = if unfolded.read().contains(*op) { group.len() } else { group.len().min(PAGE) };
+                                            let unfold_key = op.to_string();
+                                            rsx! {
+                                                div {
+                                                    class: "sidebar-section-header",
+                                                    onclick: move |_| {
+                                                        let mut set = expanded.write();
+                                                        if !set.remove(&op_key) {
+                                                            set.insert(op_key.clone());
+                                                        }
+                                                    },
+                                                    i { class: "fa-solid {chevron} collapse-icon" }
+                                                    span { class: "section-area", "{op}" }
+                                                    span { class: "section-count", "{group.len()}" }
+                                                }
+                                                if !is_collapsed {
+                                                    for r in group[..cap].iter() {
+                                                        RunItem { run: (*r).clone(), selected: current.as_ref() == Some(&key_of(r)), on_pick: move |k| selected.set(Some(k)) }
+                                                    }
+                                                    if cap < group.len() {
+                                                        div { class: "sidebar-encounter-item run-more",
+                                                            onclick: move |_| { unfolded.write().insert(unfold_key.clone()); },
+                                                            i { class: "fa-solid fa-angles-down" }
+                                                            " Show {group.len() - cap} more"
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }

@@ -260,3 +260,44 @@ fn SidebarHeader(state: Signal<UiSessionState>, icon: &'static str, title: &'sta
         }
     }
 }
+
+/// Sidebar top level, in display order
+pub(super) const CONTENT_GROUPS: [(&str, &str); 3] = [
+    ("Operations", "fa-solid fa-dungeon"),
+    ("Flashpoints", "fa-solid fa-route"),
+    ("Other", "fa-solid fa-ellipsis"),
+];
+
+/// Index into `CONTENT_GROUPS`
+pub(super) fn content_group(is_operation: bool, is_flashpoint: bool) -> usize {
+    if is_operation {
+        0
+    } else if is_flashpoint {
+        1
+    } else {
+        2
+    }
+}
+
+/// Top-level sidebar header (Operations / Flashpoints / Other); open by default
+#[component]
+fn ContentGroupHeader(group: usize, count: usize, closed: Signal<std::collections::HashSet<usize>>) -> Element {
+    let (title, icon) = CONTENT_GROUPS[group];
+    let is_closed = closed.read().contains(&group);
+    let chevron = if is_closed { "fa-chevron-right" } else { "fa-chevron-down" };
+    rsx! {
+        div {
+            class: "sidebar-group-header",
+            onclick: move |_| {
+                let mut set = closed.write();
+                if !set.remove(&group) {
+                    set.insert(group);
+                }
+            },
+            i { class: "fa-solid {chevron} collapse-icon" }
+            i { class: "{icon}" }
+            span { "{title}" }
+            span { class: "section-count", "{count}" }
+        }
+    }
+}

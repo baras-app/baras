@@ -55,7 +55,7 @@ fn preset_start(days: Option<i32>) -> String {
 }
 
 /// Filters behind the toggle that are narrowing the view, for its badge
-fn extra_active(f: &PullFilter) -> usize {
+fn extra_active(f: &PullFilter, runs: bool) -> usize {
     [
         &f.character,
         &f.discipline,
@@ -69,12 +69,12 @@ fn extra_active(f: &PullFilter) -> usize {
     .filter(|v| !v.is_empty())
     .count()
         + usize::from(f.kills_only)
-        + usize::from(f.flashpoints)
+        + usize::from(runs && f.flashpoints)
 }
 
 /// Everything narrowing the view, segmented toggles included (Clear button)
-fn active_count(f: &PullFilter) -> usize {
-    extra_active(f) + [&f.tier, &f.group_size, &f.role].iter().filter(|v| !v.is_empty()).count()
+fn active_count(f: &PullFilter, runs: bool) -> usize {
+    extra_active(f, runs) + [&f.tier, &f.group_size, &f.role].iter().filter(|v| !v.is_empty()).count()
 }
 
 /// `runs`: the Raid Summaries view, where the role played is meaningless
@@ -95,8 +95,8 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
 
     let mut set = move |update: fn(&mut PullFilter, String), value: String| update(&mut filter.write(), value);
     let f = filter.read().clone();
-    let extra = extra_active(&f);
-    let active = active_count(&f);
+    let extra = extra_active(&f, runs);
+    let active = active_count(&f, runs);
     // Starts open when a hidden filter is already narrowing the view
     let mut more = use_signal(|| extra > 0);
 
@@ -179,16 +179,19 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                         }
                         span { class: "toggle-text", if runs { "Full clears only" } else { "Kills only" } }
                     }
-                    label { class: "toggle-switch-label history-switch", title: "Flashpoint bosses and runs alongside operations",
-                        span { class: "toggle-switch",
-                            input {
-                                r#type: "checkbox",
-                                checked: f.flashpoints,
-                                onchange: move |e| filter.write().flashpoints = e.checked(),
+                    // Boss Statistics always lists flashpoints, under their own sidebar group
+                    if runs {
+                        label { class: "toggle-switch-label history-switch", title: "Flashpoint runs alongside operations",
+                            span { class: "toggle-switch",
+                                input {
+                                    r#type: "checkbox",
+                                    checked: f.flashpoints,
+                                    onchange: move |e| filter.write().flashpoints = e.checked(),
+                                }
+                                span { class: "toggle-slider" }
                             }
-                            span { class: "toggle-slider" }
+                            span { class: "toggle-text", "Include flashpoints" }
                         }
-                        span { class: "toggle-text", "Include flashpoints" }
                     }
                 }
                 select {

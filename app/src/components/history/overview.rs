@@ -34,11 +34,9 @@ pub(super) fn short_ts(iso: &str) -> String {
     iso.get(..16).unwrap_or(iso).replacen('T', " ", 1)
 }
 
-/// The boss to show: the user's pick if it still exists, else the first boss
+/// The boss to show: the user's pick while it still exists under the filter
 fn effective_selection(selected: Option<BossKey>, bosses: &[BossNode]) -> Option<BossKey> {
-    selected
-        .filter(|(op, boss)| bosses.iter().any(|n| n.operation == *op && n.boss == *boss))
-        .or_else(|| bosses.first().map(|n| (n.operation.clone(), n.boss.clone())))
+    selected.filter(|(op, boss)| bosses.iter().any(|n| n.operation == *op && n.boss == *boss))
 }
 
 /// Group consecutive nodes (already sorted by operation) into tree sections
@@ -113,27 +111,20 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
         }
     });
 
-    // Nothing picked (first visit, or the pick fell out of the filter): take
-    // the first boss and open its operation so the highlighted row is visible
-    use_effect(move || {
-        let read = overview.read();
-        let Some(o) = read.as_ref() else { return };
-        let picked = selected.read().clone();
-        if let Some(key) = effective_selection(picked.clone(), &o.bosses)
-            && picked.as_ref() != Some(&key)
-        {
-            expanded.write().insert(key.0.clone());
-            selected.set(Some(key));
-        }
-    });
-
     let overview_read = overview.read();
     let loading = overview_read.is_none();
     let bosses: &[BossNode] = overview_read.as_ref().map(|o| o.bosses.as_slice()).unwrap_or(&[]);
     let search = boss_search.read().to_lowercase();
-    let tree = group_by_operation(bosses.iter().filter(|n| {
-        search.is_empty() || n.boss.to_lowercase().contains(&search) || n.operation.to_lowercase().contains(&search)
-    }));
+    let hits: Vec<&BossNode> = bosses
+        .iter()
+        .filter(|n| search.is_empty() || n.boss.to_lowercase().contains(&search) || n.operation.to_lowercase().contains(&search))
+        .collect();
+    // Operations / Flashpoints / Other, each an operation → boss tree
+    let groups: Vec<(usize, Vec<(&str, Vec<&BossNode>)>)> = (0..super::CONTENT_GROUPS.len())
+        .map(|g| (g, group_by_operation(hits.iter().copied().filter(|n| super::content_group(n.is_operation, n.is_flashpoint) == g))))
+        .filter(|(_, tree)| !tree.is_empty())
+        .collect();
+    let closed_groups = use_signal(std::collections::HashSet::<usize>::new);
     let current = effective_selection(selected.read().clone(), bosses);
     let current_node = current
         .as_ref()
@@ -232,44 +223,52 @@ pub fn OverviewTab(props: OverviewProps) -> Element {
                         }
                     }
                     div { id: OV_RAIL, class: "sidebar-encounter-list", onscroll: move |_| save_scroll(OV_RAIL),
-                        if !loading && tree.is_empty() {
+                        if !loading && groups.is_empty() {
                             div { class: "sidebar-empty",
                                 i { class: "fa-solid fa-clock-rotate-left" }
                                 p { "No recorded pulls" }
                                 p { class: "hint", "Widen the filters, or re-scan your logs from Log Management." }
                             }
                         }
-                        for (op, nodes) in tree.iter() {
-                            {
-                                let op_key = op.to_string();
-                                let is_collapsed = search.is_empty() && !expanded.read().contains(*op);
-                                let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
-                                let op_pulls: u32 = nodes.iter().map(|n| n.pulls).sum();
-                                rsx! {
-                                    div {
-                                        class: "sidebar-section-header",
-                                        onclick: move |_| {
-                                            let mut set = expanded.write();
-                                            if !set.remove(&op_key) {
-                                                set.insert(op_key.clone());
-                                            }
-                                        },
-                                        i { class: "fa-solid {chevron} collapse-icon" }
-                                        span { class: "section-area", "{op}" }
-                                        span { class: "section-count", "{op_pulls}" }
-                                    }
-                                    if !is_collapsed {
-                                        for node in nodes.iter() {
-                                            {
-                                                let key = (node.operation.clone(), node.boss.clone());
-                                                let is_selected = current.as_ref() == Some(&key);
-                                                rsx! {
-                                                    div {
-                                                        class: if is_selected { "sidebar-encounter-item selected" } else { "sidebar-encounter-item" },
-                                                        onclick: move |_| selected.set(Some(key.clone())),
-                                                        div { class: "encounter-main",
-                                                            span { class: "encounter-name", "{node.boss}" }
-                                                            span { class: "pull-tree-count", title: "pulls · kills", "{node.pulls} · {node.kills}" }
+                        for (g, tree) in groups.iter() {
+                            super::ContentGroupHeader { group: *g, count: tree.iter().flat_map(|(_, n)| n).map(|n| n.pulls as usize).sum::<usize>(), closed: closed_groups }
+                            // A search opens every group so hits are visible
+                            if !search.is_empty() || !closed_groups.read().contains(g) {
+                                div { class: "sidebar-group-body",
+                                    for (op, nodes) in tree.iter() {
+                                        {
+                                            let op_key = op.to_string();
+                                            let is_collapsed = search.is_empty() && !expanded.read().contains(*op);
+                                            let chevron = if is_collapsed { "fa-chevron-right" } else { "fa-chevron-down" };
+                                            let op_pulls: u32 = nodes.iter().map(|n| n.pulls).sum();
+                                            rsx! {
+                                                div {
+                                                    class: "sidebar-section-header",
+                                                    onclick: move |_| {
+                                                        let mut set = expanded.write();
+                                                        if !set.remove(&op_key) {
+                                                            set.insert(op_key.clone());
+                                                        }
+                                                    },
+                                                    i { class: "fa-solid {chevron} collapse-icon" }
+                                                    span { class: "section-area", "{op}" }
+                                                    span { class: "section-count", "{op_pulls}" }
+                                                }
+                                                if !is_collapsed {
+                                                    for node in nodes.iter() {
+                                                        {
+                                                            let key = (node.operation.clone(), node.boss.clone());
+                                                            let is_selected = current.as_ref() == Some(&key);
+                                                            rsx! {
+                                                                div {
+                                                                    class: if is_selected { "sidebar-encounter-item selected" } else { "sidebar-encounter-item" },
+                                                                    onclick: move |_| selected.set(Some(key.clone())),
+                                                                    div { class: "encounter-main",
+                                                                        span { class: "encounter-name", "{node.boss}" }
+                                                                        span { class: "pull-tree-count", title: "pulls · kills", "{node.pulls} · {node.kills}" }
+                                                                    }
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }

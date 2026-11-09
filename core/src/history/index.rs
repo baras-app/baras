@@ -170,13 +170,15 @@ impl PullIndex {
         let mut versions = distinct(self.rows().map(|r| r.game_version.as_str()).filter(|s| !s.is_empty()));
         versions.reverse();
 
-        // (pulls, kills, area_id): the id is for definition order below
-        let mut counts: HashMap<(&str, &str), (u32, u32, i64)> = HashMap::new();
+        // (pulls, kills, area_id, is_operation, is_flashpoint): the id is for definition order below
+        let mut counts: HashMap<(&str, &str), (u32, u32, i64, bool, bool)> = HashMap::new();
         for r in self.filtered(filter, catalog, meta) {
             let e = counts.entry((&r.operation, &r.boss)).or_default();
             e.0 += 1;
             e.1 += u32::from(r.success);
             e.2 = e.2.max(r.area_id);
+            e.3 |= r.is_operation;
+            e.4 |= r.is_flashpoint;
         }
         // Operation order from the definition; bosses it does not know go last, by name
         let order = |area_id: i64, boss: &str| {
@@ -187,7 +189,7 @@ impl PullIndex {
         };
         let mut keyed: Vec<(usize, BossNode)> = counts
             .into_iter()
-            .map(|((operation, boss), (pulls, kills, area_id))| {
+            .map(|((operation, boss), (pulls, kills, area_id, is_operation, is_flashpoint))| {
                 (
                     order(area_id, boss),
                     BossNode {
@@ -195,6 +197,8 @@ impl PullIndex {
                         boss: boss.to_string(),
                         pulls,
                         kills,
+                        is_operation,
+                        is_flashpoint,
                     },
                 )
             })
@@ -423,7 +427,6 @@ fn matches(r: &PullRow, f: &PullFilter) -> bool {
         && (f.discipline.is_empty() || r.discipline.as_deref() == Some(f.discipline.as_str()))
         && (f.tier.is_empty() || r.difficulty.contains(f.tier.as_str()))
         && (f.group_size.is_empty() || r.is_flashpoint || r.difficulty.split(' ').next() == Some(f.group_size.as_str()))
-        && (f.flashpoints || !r.is_flashpoint)
         && (!f.kills_only || r.success)
         && (f.server.is_empty() || r.server == f.server)
         && (f.game_version.is_empty() || r.game_version == f.game_version)

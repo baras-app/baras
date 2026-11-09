@@ -5,6 +5,7 @@
 
 use dioxus::prelude::*;
 
+use crate::components::editor_drawer::{EditorDrawer, use_drawer_guard};
 use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
 use crate::api;
 use crate::components::SoundPicker;
@@ -80,6 +81,7 @@ pub fn TimersTab(
     on_refetch: EventHandler<()>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
+    let guard = use_drawer_guard();
 
     // Extract timers from BossWithPath
     let timers = boss_with_path.boss.timers.clone();
@@ -205,7 +207,7 @@ pub fn TimersTab(
                                 encounter_data: encounter_data.clone(),
                                 expanded: is_expanded,
                                 on_toggle: move |_| {
-                                    expanded_timer.set(if is_expanded { None } else { Some(timer_key.clone()) });
+                                    guard.switch(expanded_timer, if is_expanded { None } else { Some(timer_key.clone()) });
                                 },
                                 on_change: on_change,
                                 on_refetch: on_refetch,
@@ -271,8 +273,6 @@ fn TimerRow(
                 class: "list-item-header timer-row-header",
                 onclick: move |_| on_toggle.call(()),
 
-                // Expand arrow
-                span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
 
                 OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "timer" }
 
@@ -382,6 +382,7 @@ fn TimerRow(
 
             // Edit form
             if expanded {
+                EditorDrawer { title: timer.name.clone(), dirty: is_dirty(), on_close: on_collapse,
                 TimerEditForm {
                     timer: timer.clone(),
                     all_timers: all_timers,
@@ -394,6 +395,7 @@ fn TimerRow(
                     on_status: on_status,
                     on_collapse: on_collapse,
                     on_dirty: move |dirty: bool| is_dirty.set(dirty),
+                }
                 }
             }
         }

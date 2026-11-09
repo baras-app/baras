@@ -3,6 +3,7 @@
 //! Each boss expands to show tabs: [Timers] [Phases] [Counters] [Challenges] [Entities]
 //! All encounter data comes from BossWithPath - no additional loading needed.
 
+use crate::components::editor_drawer::{EmptyDrawer, use_drawer_guard};
 use dioxus::prelude::*;
 
 use crate::types::{
@@ -37,6 +38,17 @@ impl BossTab {
             Self::Challenges => "Challenges",
             Self::Entities => "Entities",
             Self::Notes => "Notes",
+        }
+    }
+
+    pub fn icon(&self) -> &'static str {
+        match self {
+            Self::Timers => "fa-solid fa-stopwatch",
+            Self::Phases => "fa-solid fa-layer-group",
+            Self::Counters => "fa-solid fa-hashtag",
+            Self::Challenges => "fa-solid fa-trophy",
+            Self::Entities => "fa-solid fa-users",
+            Self::Notes => "fa-solid fa-note-sticky",
         }
     }
 
@@ -126,6 +138,11 @@ impl EncounterData {
     }
 }
 
+/// Is the list's open item (`key`) one of this boss's `ids`?
+fn open<'a>(key: Signal<Option<String>>, mut ids: impl Iterator<Item = &'a String>) -> bool {
+    key.read().as_ref().is_some_and(|k| ids.any(|id| id == k))
+}
+
 /// Tab container for a single boss
 #[component]
 pub fn BossTabs(
@@ -143,6 +160,7 @@ pub fn BossTabs(
     on_refetch: EventHandler<()>,
     on_status: EventHandler<(String, bool)>,
 ) -> Element {
+    let guard = use_drawer_guard();
     // Convert persisted string to BossTab enum, or default to Timers
     let mut active_tab_enum = use_signal(|| {
         active_tab
@@ -167,34 +185,57 @@ pub fn BossTabs(
     let challenge_count = boss_with_path.boss.challenges.len();
     let entity_count = boss_with_path.boss.entities.len();
 
+    // The active list's open item, if it still exists on this boss (the
+    // open ids are shared across bosses); Notes has no drawer
+    let boss = &boss_with_path.boss;
+    let empty_hint = match active_tab_enum() {
+        BossTab::Timers if !open(expanded_timer, boss.timers.iter().map(|t| &t.id)) => Some("Select a timer to edit"),
+        BossTab::Phases if !open(expanded_phase, boss.phases.iter().map(|p| &p.id)) => Some("Select a phase to edit"),
+        BossTab::Counters if !open(expanded_counter, boss.counters.iter().map(|c| &c.id)) => Some("Select a counter to edit"),
+        BossTab::Challenges if !open(expanded_challenge, boss.challenges.iter().map(|c| &c.id)) => {
+            Some("Select a challenge to edit")
+        }
+        BossTab::Entities if !open(expanded_entity, boss.entities.iter().map(|e| &e.name)) => Some("Select an entity to edit"),
+        _ => None,
+    };
+
     rsx! {
         div { class: "boss-tabs",
             // Tab bar with counts
-            div { class: "tab-nav",
+            div { class: "data-tab-selector boss-views",
                 for tab in BossTab::all() {
                     {
                         let is_active = active_tab_enum() == *tab;
                         let tab_copy = *tab;
-                        let count_label = match tab {
-                            BossTab::Timers => format!(" ({})", timer_count),
-                            BossTab::Phases => format!(" ({})", phase_count),
-                            BossTab::Counters => format!(" ({})", counter_count),
-                            BossTab::Challenges => format!(" ({})", challenge_count),
-                            BossTab::Entities => format!(" ({})", entity_count),
-                            BossTab::Notes => String::new(), // No count for notes
+                        let count = match tab {
+                            BossTab::Timers => Some(timer_count),
+                            BossTab::Phases => Some(phase_count),
+                            BossTab::Counters => Some(counter_count),
+                            BossTab::Challenges => Some(challenge_count),
+                            BossTab::Entities => Some(entity_count),
+                            BossTab::Notes => None,
                         };
 
                         rsx! {
                             button {
-                                class: if is_active { "tab-btn active" } else { "tab-btn" },
-                                onclick: move |_| active_tab_enum.set(tab_copy),
-                                "{tab.label()}{count_label}"
+                                class: if is_active { "data-tab active" } else { "data-tab" },
+                                title: tab.label(),
+                                // Leaving the tab closes its drawer: ask first when it has edits
+                                onclick: move |_| guard.confirm(move |_| active_tab_enum.set(tab_copy)),
+                                i { class: tab.icon() }
+                                span { class: "tab-label", " {tab.label()}" }
+                                if let Some(n) = count {
+                                    span { class: "data-tab-count", "{n}" }
+                                }
                             }
                         }
                     }
                 }
             }
 
+            if let Some(hint) = empty_hint {
+                EmptyDrawer { hint }
+            }
             // Tab content
             div { class: "p-sm",
                 match active_tab_enum() {

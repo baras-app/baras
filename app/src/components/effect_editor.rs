@@ -5,6 +5,7 @@
 //! - Inline expansion for editing
 //! - Full CRUD operations
 
+use crate::components::editor_drawer::{DiscardPrompt, EditorDrawer, provide_drawer_guard};
 use dioxus::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
@@ -318,6 +319,7 @@ pub struct EffectEditorProps {
 
 #[component]
 pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
+    let guard = provide_drawer_guard();
     // Data state (loaded fresh)
     let mut effects = use_signal(Vec::<EffectListItem>::new);
     let mut loading = use_signal(|| true);
@@ -354,10 +356,11 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
         loading.set(false);
     });
 
-    // Scroll to expanded effect when effects finish loading
+    // Bring the restored open effect into view once, when the list first
+    // loads; picking a row later must not move the list (peek: no subscription)
     use_effect(move || {
         if !loading() {
-            if let Some(effect_id) = expanded_effect.read().clone() {
+            if let Some(effect_id) = expanded_effect.peek().clone() {
                 // Small delay to ensure DOM is rendered
                 spawn(async move {
                     gloo_timers::future::TimeoutFuture::new(100).await;
@@ -551,6 +554,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
 
     rsx! {
         div { class: "editor-layout",
+            DiscardPrompt {}
             EffectSidebar { effects: searched_effects, filters, search: search_query, collapsed: sidebar_collapsed }
             div { class: "editor-main effect-editor-panel",
                 // Header
@@ -670,11 +674,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                                         expanded: is_draft_expanded,
                                         is_draft: true,
                                         on_toggle: move |_| {
-                                            if is_draft_expanded {
-                                                expanded_effect.set(None);
-                                            } else {
-                                                expanded_effect.set(Some(DRAFT_EFFECT_ID.to_string()));
-                                            }
+                                            guard.switch(expanded_effect, (!is_draft_expanded).then(|| DRAFT_EFFECT_ID.to_string()));
                                         },
                                         on_save: on_save_draft,
                                         on_delete: on_cancel_draft,
@@ -702,11 +702,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
                                         expanded: is_effect_expanded,
                                         is_draft: false,
                                         on_toggle: move |_| {
-                                            if is_effect_expanded {
-                                                expanded_effect.set(None);
-                                            } else {
-                                                expanded_effect.set(Some(effect_key.clone()));
-                                            }
+                                            guard.switch(expanded_effect, (!is_effect_expanded).then(|| effect_key.clone()));
                                         },
                                         on_save: on_save,
                                         on_delete: move |_| on_delete(effect_for_delete.clone()),
@@ -902,8 +898,6 @@ fn EffectRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-                // Expand arrow
-                span { class: "list-item-expand", if expanded { "▼" } else { "▶" } }
 
                 OriginBadge { origin: effect_origin(is_draft, effect.is_bundled, effect.is_user_override), kind: "effect" }
 
@@ -990,6 +984,10 @@ fn EffectRow(
             }
 
             if expanded {
+                EditorDrawer {
+                    title: if effect.name.is_empty() { "New effect".to_string() } else { effect.name.clone() },
+                    dirty: is_dirty(),
+                    on_close: on_toggle,
                 EffectEditForm {
                     effect: effect.clone(),
                     is_draft: is_draft,
@@ -1000,6 +998,7 @@ fn EffectRow(
                     on_duplicate: on_duplicate,
                     on_export: on_export,
                     on_dirty: move |dirty: bool| is_dirty.set(dirty),
+                }
                 }
             }
         }
