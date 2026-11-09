@@ -12,7 +12,7 @@ use std::time::SystemTime;
 use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
-    BossNode, HistoryStatus, PullFilter, PullHistoryOverview, PullRow, PvpMatchRow, RunSummary, TimerStart,
+    BossNode, HistoryStatus, PullFilter, PullHistoryOverview, keeps, PullRow, PvpMatchRow, RunSummary, TimerStart,
 };
 
 use super::catalog::AreaCatalog;
@@ -243,7 +243,7 @@ impl PullIndex {
             {
                 let ranges = ranges.get_or_insert_with(|| log.tag_ranges(catalog, meta));
                 let tags = tags_at(ranges, r.start_ms);
-                if !filter.tag.is_empty() && !tags.contains(&filter.tag) {
+                if !filter.tags.is_empty() && !filter.tags.iter().any(|t| tags.contains(t)) {
                     continue;
                 }
                 // One stat per log: on disk, else in the archive
@@ -307,10 +307,10 @@ impl PullIndex {
     fn filtered(&self, filter: &PullFilter, catalog: &AreaCatalog, meta: &LibraryMeta) -> Vec<&PullRow> {
         let mut out = Vec::new();
         for log in self.logs.values() {
-            let ranges = (!filter.tag.is_empty()).then(|| log.tag_ranges(catalog, meta));
+            let ranges = (!filter.tags.is_empty()).then(|| log.tag_ranges(catalog, meta));
             for r in log.rows.iter().filter(|r| matches(r, filter)) {
                 if let Some(ranges) = &ranges
-                    && !tags_at(ranges, r.start_ms).contains(&filter.tag)
+                    && !filter.tags.iter().any(|t| tags_at(ranges, r.start_ms).contains(t))
                 {
                     continue;
                 }
@@ -422,14 +422,14 @@ fn is_stale(history: &LogHistory, log_path: &Path) -> bool {
 }
 
 fn matches(r: &PullRow, f: &PullFilter) -> bool {
-    (f.character.is_empty() || r.character == f.character)
+    keeps(&f.characters, &r.character)
         && (f.role.is_empty() || r.role.as_deref() == Some(f.role.as_str()))
-        && (f.discipline.is_empty() || r.discipline.as_deref() == Some(f.discipline.as_str()))
+        && (f.disciplines.is_empty() || r.discipline.as_ref().is_some_and(|d| f.disciplines.contains(d)))
         && (f.tier.is_empty() || r.difficulty.contains(f.tier.as_str()))
         && (f.group_size.is_empty() || r.is_flashpoint || r.difficulty.split(' ').next() == Some(f.group_size.as_str()))
         && (!f.kills_only || r.success)
-        && (f.server.is_empty() || r.server == f.server)
-        && (f.game_version.is_empty() || r.game_version == f.game_version)
+        && keeps(&f.servers, &r.server)
+        && keeps(&f.game_versions, &r.game_version)
         && in_date_range(&r.timestamp, f)
 }
 

@@ -4,6 +4,8 @@
 //! the people you play with and against. One fetch of compact match rows;
 //! everything here is derived from them locally.
 
+use super::multi_select::{MultiSelect, discipline_entries, plain_entries, toggle_value};
+use baras_types::history::keeps;
 use std::collections::HashMap;
 
 use dioxus::prelude::*;
@@ -26,25 +28,27 @@ const PEOPLE: usize = 12;
 /// Local filters within the chosen mode. Empty = any.
 #[derive(Clone, PartialEq, Default)]
 struct PvpFilter {
-    character: String,
-    map: String,
-    discipline: String,
-    server: String,
+    characters: Vec<String>,
+    maps: Vec<String>,
+    /// Discipline names to keep (mirror pairs together); empty = any
+    disciplines: Vec<String>,
+    servers: Vec<String>,
     /// Only matches this player was in, on either side
     person: String,
 }
 
 impl PvpFilter {
     fn matches(&self, r: &PvpMatchRow) -> bool {
-        (self.character.is_empty() || r.character == self.character)
-            && (self.map.is_empty() || r.map == self.map)
-            && (self.discipline.is_empty() || r.discipline.as_deref() == Some(self.discipline.as_str()))
-            && (self.server.is_empty() || r.server == self.server)
+        keeps(&self.characters, &r.character)
+            && keeps(&self.maps, &r.map)
+            && (self.disciplines.is_empty() || r.discipline.as_ref().is_some_and(|d| self.disciplines.contains(d)))
+            && keeps(&self.servers, &r.server)
             && (self.person.is_empty() || r.players.iter().any(|p| p.name == self.person))
     }
 
     fn active(&self) -> usize {
-        [&self.character, &self.map, &self.discipline, &self.server, &self.person].iter().filter(|s| !s.is_empty()).count()
+        [&self.characters, &self.maps, &self.disciplines, &self.servers].iter().filter(|v| !v.is_empty()).count()
+            + usize::from(!self.person.is_empty())
     }
 }
 
@@ -200,14 +204,14 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
         apply(&mut filter.write(), v);
         paged.show_all("");
     };
-    let pick_map = move |name: String| {
-        let v = if filter.read().map == name { String::new() } else { name };
-        set(|f, v| f.map = v, v);
+    // Multi-select change (toolbar list or board click); starts the table over
+    let mut pick = move |field: fn(&mut PvpFilter) -> &mut Vec<String>, v: Vec<String>| {
+        *field(&mut filter.write()) = v;
+        paged.show_all("");
     };
-    let pick_disc = move |name: String| {
-        let v = if filter.read().discipline == name { String::new() } else { name };
-        set(|f, v| f.discipline = v, v);
-    };
+    // Board clicks toggle one value; a discipline brings its mirror, as in the list
+    let pick_map = move |name: String| pick(|f| &mut f.maps, toggle_value(&filter.read().maps, &name, false));
+    let pick_disc = move |name: String| pick(|f| &mut f.disciplines, toggle_value(&filter.read().disciplines, &name, true));
     let pick_person = move |name: String| {
         let v = if filter.read().person == name { String::new() } else { name };
         set(|f, v| f.person = v, v);
@@ -227,30 +231,35 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
                     }
                 }
                 div { class: "history-toolbar",
-                    select {
-                        value: "{f.character}",
-                        onchange: move |e| set(|f, v| f.character = v, e.value()),
-                        option { value: "", "All characters" }
-                        for c in characters.iter() { option { value: "{c}", "{c}" } }
+                    MultiSelect {
+                        any_label: "All characters",
+                        noun: "characters",
+                        entries: plain_entries(&characters),
+                        picked: f.characters.clone(),
+                        on_change: move |v| pick(|f| &mut f.characters, v),
                     }
-                    select {
-                        value: "{f.map}",
-                        onchange: move |e| set(|f, v| f.map = v, e.value()),
-                        option { value: "", "Any map" }
-                        for m in maps.iter() { option { value: "{m}", "{m}" } }
+                    MultiSelect {
+                        any_label: "Any map",
+                        noun: "maps",
+                        entries: plain_entries(&maps),
+                        picked: f.maps.clone(),
+                        on_change: move |v| pick(|f| &mut f.maps, v),
                     }
-                    select {
-                        value: "{f.discipline}",
-                        onchange: move |e| set(|f, v| f.discipline = v, e.value()),
-                        option { value: "", "Any discipline" }
-                        for d in disciplines.iter() { option { value: "{d}", "{d}" } }
+                    MultiSelect {
+                        any_label: "Any discipline",
+                        noun: "disciplines",
+                        title: "Mirror disciplines count as one",
+                        entries: discipline_entries(&disciplines),
+                        picked: f.disciplines.clone(),
+                        on_change: move |v| pick(|f| &mut f.disciplines, v),
                     }
-                    if servers.len() > 1 || !f.server.is_empty() {
-                        select {
-                            value: "{f.server}",
-                            onchange: move |e| set(|f, v| f.server = v, e.value()),
-                            option { value: "", "Any server" }
-                            for s in servers.iter() { option { value: "{s}", "{s}" } }
+                    if servers.len() > 1 || !f.servers.is_empty() {
+                        MultiSelect {
+                            any_label: "Any server",
+                            noun: "servers",
+                            entries: plain_entries(&servers),
+                            picked: f.servers.clone(),
+                            on_change: move |v| pick(|f| &mut f.servers, v),
                         }
                     }
                     if let Some((from, to)) = range.clone() {
@@ -309,10 +318,10 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
                 }
 
                 div { class: "pvp-boards",
-                    Board { title: "Maps", icon: "fa-solid fa-map", rows: map_board.clone(), record: is_arena, active: f.map.clone(), on_pick: pick_map }
-                    Board { title: "Your disciplines", icon: "fa-solid fa-user-shield", rows: disc_board.clone(), record: is_arena, active: f.discipline.clone(), on_pick: pick_disc }
-                    Board { title: "Played with most", icon: "fa-solid fa-people-group", rows: mates, record: is_arena, active: f.person.clone(), on_pick: pick_person }
-                    Board { title: "Played against most", icon: "fa-solid fa-skull-crossbones", rows: foes, record: is_arena, active: f.person.clone(), on_pick: pick_person }
+                    Board { title: "Maps", icon: "fa-solid fa-map", rows: map_board.clone(), record: is_arena, active: f.maps.clone(), on_pick: pick_map }
+                    Board { title: "Your disciplines", icon: "fa-solid fa-user-shield", rows: disc_board.clone(), record: is_arena, active: f.disciplines.clone(), on_pick: pick_disc }
+                    Board { title: "Played with most", icon: "fa-solid fa-people-group", rows: mates, record: is_arena, active: vec![f.person.clone()], on_pick: pick_person }
+                    Board { title: "Played against most", icon: "fa-solid fa-skull-crossbones", rows: foes, record: is_arena, active: vec![f.person.clone()], on_pick: pick_person }
                 }
 
                 div { id: TABLE_ID, class: "pull-history-table-wrap", onscroll: move |_| paged.on_scroll(TABLE_ID, "pvp", total),
@@ -397,7 +406,8 @@ fn Board(
     icon: &'static str,
     rows: Vec<Tally>,
     record: bool,
-    #[props(default)] active: String,
+    /// Names shown as picked
+    #[props(default)] active: Vec<String>,
     #[props(default)] on_pick: Option<EventHandler<String>>,
 ) -> Element {
     rsx! {
@@ -412,7 +422,7 @@ fn Board(
                             {
                                 let name = t.name.clone();
                                 let pickable = on_pick.is_some();
-                                let is_active = pickable && active == t.name;
+                                let is_active = pickable && active.contains(&t.name);
                                 let rate = win_rate(t.wins, t.losses);
                                 rsx! {
                                     tr {

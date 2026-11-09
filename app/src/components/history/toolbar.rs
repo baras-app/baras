@@ -3,6 +3,7 @@
 //! discipline, server, patch and tag behind "More filters". Option lists come from the overview
 //! resource; the filter itself lives in the parent so it survives tab switches.
 
+use super::multi_select::{MultiSelect, discipline_entries, plain_entries};
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -56,18 +57,8 @@ fn preset_start(days: Option<i32>) -> String {
 
 /// Filters behind the toggle that are narrowing the view, for its badge
 fn extra_active(f: &PullFilter, runs: bool) -> usize {
-    [
-        &f.character,
-        &f.discipline,
-        &f.server,
-        &f.game_version,
-        &f.tag,
-        &f.date_from,
-        &f.date_to,
-    ]
-    .iter()
-    .filter(|v| !v.is_empty())
-    .count()
+    [&f.date_from, &f.date_to].iter().filter(|v| !v.is_empty()).count()
+        + [&f.characters, &f.disciplines, &f.servers, &f.game_versions, &f.tags].iter().filter(|v| !v.is_empty()).count()
         + usize::from(f.kills_only)
         + usize::from(runs && f.flashpoints)
 }
@@ -194,54 +185,49 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
                         }
                     }
                 }
-                select {
-                    value: "{f.character}",
-                    onchange: move |e| set(|f, v| f.character = v, e.value()),
-                    option { value: "", "All characters" }
-                    for c in characters.iter() {
-                        option { value: "{c}", "{c}" }
-                    }
+                MultiSelect {
+                    any_label: "All characters",
+                    noun: "characters",
+                    entries: plain_entries(characters),
+                    picked: f.characters.clone(),
+                    on_change: move |v: Vec<String>| filter.write().characters = v,
                 }
-                select {
-                    value: "{f.discipline}",
-                    onchange: move |e| set(|f, v| f.discipline = v, e.value()),
-                    option { value: "", "Any discipline" }
-                    for d in disciplines.iter() {
-                        option { value: "{d}", "{d}" }
-                    }
+                MultiSelect {
+                    any_label: "Any discipline",
+                    noun: "disciplines",
+                    title: "Mirror disciplines count as one",
+                    entries: discipline_entries(disciplines),
+                    picked: f.disciplines.clone(),
+                    on_change: move |v: Vec<String>| filter.write().disciplines = v,
                 }
-                if servers.len() > 1 || !f.server.is_empty() {
-                    select {
+                if servers.len() > 1 || !f.servers.is_empty() {
+                    MultiSelect {
+                        any_label: "Any server",
+                        noun: "servers",
                         title: "Server the log was recorded on",
-                        value: "{f.server}",
-                        onchange: move |e| set(|f, v| f.server = v, e.value()),
-                        option { value: "", "Any server" }
-                        for s in servers.iter() {
-                            option { value: "{s}", "{s}" }
-                        }
+                        entries: plain_entries(servers),
+                        picked: f.servers.clone(),
+                        on_change: move |v: Vec<String>| filter.write().servers = v,
                     }
                 }
-                if versions.len() > 1 || !f.game_version.is_empty() {
-                    select {
+                if versions.len() > 1 || !f.game_versions.is_empty() {
+                    MultiSelect {
+                        any_label: "Any patch",
+                        noun: "patches",
                         title: "Game patch live at the time of the pull",
-                        value: "{f.game_version}",
-                        onchange: move |e| set(|f, v| f.game_version = v, e.value()),
-                        option { value: "", "Any patch" }
-                        for v in versions.iter() {
-                            option { value: "{v}", "Patch {v}" }
-                        }
+                        entries: plain_entries(versions),
+                        picked: f.game_versions.clone(),
+                        on_change: move |v: Vec<String>| filter.write().game_versions = v,
                     }
                 }
-                if !tags.is_empty() || !f.tag.is_empty() {
-                    select {
-                        class: if f.tag.is_empty() { "" } else { "history-tag-active" },
-                        title: "Only pulls and runs with this tag",
-                        value: "{f.tag}",
-                        onchange: move |e| set(|f, v| f.tag = v, e.value()),
-                        option { value: "", "Any tag" }
-                        for t in tags.iter() {
-                            option { value: "{t}", "{t}" }
-                        }
+                if !tags.is_empty() || !f.tags.is_empty() {
+                    MultiSelect {
+                        any_label: "Any tag",
+                        noun: "tags",
+                        title: "Only pulls and runs with any of these tags",
+                        entries: plain_entries(tags),
+                        picked: f.tags.clone(),
+                        on_change: move |v: Vec<String>| filter.write().tags = v,
                     }
                 }
                 div { class: "history-range", title: "Date range",

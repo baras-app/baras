@@ -1747,3 +1747,26 @@
 .cleanup-rules .library-retain-title {
   margin-top: 0.4em;
 }
+
+/* Multi-select filters: a select-looking button over a checklist */
+.multi-select {
+  display: flex;
+  min-width: 0;
+}
+
+.multi-select .select-trigger {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Something picked: the filter is narrowing the view */
+.multi-select .select-trigger.active {
+  border-color: var(--swtor-blue-bright);
+  color: var(--swtor-blue-bright);
+}
+
+/* Opens rightward: long pair names would run off the left edge of a sidebar */
+.multi-select-list {
+  max-height: 60vh;
+  overflow-y: auto;
+}

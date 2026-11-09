@@ -120,14 +120,51 @@ pub struct PullHistoryOverview {
     pub versions: Vec<String>,
 }
 
+/// Imperial and Republic discipline names that play the same, as logged
+pub const DISCIPLINE_MIRRORS: [(&str, &str); 24] = [
+    ("Lightning", "Telekinetics"),
+    ("Madness", "Balance"),
+    ("Corruption", "Seer"),
+    ("Hatred", "Serenity"),
+    ("Darkness", "Kinetic Combat"),
+    ("Deception", "Infiltration"),
+    ("Vengeance", "Vigilance"),
+    ("Immortal", "Defense"),
+    ("Rage", "Focus"),
+    ("Annihilation", "Watchman"),
+    ("Carnage", "Combat"),
+    ("Fury", "Concentration"),
+    ("Arsenal", "Gunnery"),
+    ("Innovative Ordnance", "Assault Specialist"),
+    ("Bodyguard", "Combat Medic"),
+    ("Shield Tech", "Shield Specialist"),
+    ("Pyrotech", "Plasmatech"),
+    ("Advanced Prototype", "Tactics"),
+    ("Concealment", "Scrapper"),
+    ("Lethality", "Ruffian"),
+    ("Medicine", "Sawbones"),
+    ("Marksmanship", "Sharpshooter"),
+    ("Engineering", "Saboteur"),
+    ("Virulence", "Dirty Fighting"),
+];
+
+/// The mirror pair a discipline belongs to, as (Imperial, Republic)
+pub fn discipline_mirror(name: &str) -> Option<(&'static str, &'static str)> {
+    DISCIPLINE_MIRRORS.iter().copied().find(|(i, r)| *i == name || *r == name)
+}
+
 /// Row filter applied server-side to both the tree and the pull list.
 /// Empty strings mean "any".
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PullFilter {
-    pub character: String,
+    /// Logging characters to keep; empty = any
+    #[serde(default)]
+    pub characters: Vec<String>,
     /// "Tank" | "Healer" | "Dps"
     pub role: String,
-    pub discipline: String,
+    /// Discipline names to keep; picking a mirror pair adds both. Empty = any
+    #[serde(default)]
+    pub disciplines: Vec<String>,
     /// "Story" | "Veteran" | "Master", matched against the difficulty name
     pub tier: String,
     /// "8" | "16", matched against the leading player count of the difficulty name
@@ -140,22 +177,27 @@ pub struct PullFilter {
     /// Inclusive day bounds as `YYYY-MM-DD`; empty = open-ended
     pub date_from: String,
     pub date_to: String,
-    /// Only pulls / runs carrying this run tag
+    /// Only pulls / runs carrying any of these run tags
     #[serde(default)]
-    pub tag: String,
-    /// Server display name and patch, as shown on rows; empty = any
+    pub tags: Vec<String>,
+    /// Server display names and patches, as shown on rows; empty = any
     #[serde(default)]
-    pub server: String,
+    pub servers: Vec<String>,
     #[serde(default)]
-    pub game_version: String,
+    pub game_versions: Vec<String>,
+}
+
+/// Multi-select filter test: an empty pick list keeps everything
+pub fn keeps(picked: &[String], value: &str) -> bool {
+    picked.is_empty() || picked.iter().any(|p| p == value)
 }
 
 impl Default for PullFilter {
     fn default() -> Self {
         Self {
-            character: String::new(),
+            characters: Vec::new(),
             role: String::new(),
-            discipline: String::new(),
+            disciplines: Vec::new(),
             // Nothing narrowed: every difficulty and size
             tier: String::new(),
             group_size: String::new(),
@@ -163,9 +205,9 @@ impl Default for PullFilter {
             kills_only: false,
             date_from: String::new(),
             date_to: String::new(),
-            tag: String::new(),
-            server: String::new(),
-            game_version: String::new(),
+            tags: Vec::new(),
+            servers: Vec::new(),
+            game_versions: Vec::new(),
         }
     }
 }

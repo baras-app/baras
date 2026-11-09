@@ -5,7 +5,7 @@
 use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
-    PullFilter, PullRow, RunBoss, RunDetail, RunMeta, RunPlayer, RunSummary, RunTimer, TimerStart,
+    PullFilter, PullRow, keeps, RunBoss, RunDetail, RunMeta, RunPlayer, RunSummary, RunTimer, TimerStart,
 };
 
 use super::catalog::AreaCatalog;
@@ -157,16 +157,16 @@ fn summarize(
 /// is an operations thing.
 pub(super) fn run_matches(run: &RunSummary, f: &PullFilter) -> bool {
     let day = run.started.get(..10).unwrap_or(&run.started);
-    (f.character.is_empty() || run.character == f.character)
+    keeps(&f.characters, &run.character)
         && (f.role.is_empty() || run.role.as_deref() == Some(f.role.as_str()))
-        && (f.discipline.is_empty() || run.discipline.as_deref() == Some(f.discipline.as_str()))
+        && (f.disciplines.is_empty() || run.discipline.as_ref().is_some_and(|d| f.disciplines.contains(d)))
         && (f.flashpoints || !run.is_flashpoint)
         && (f.tier.is_empty() || run.tier == f.tier)
         && (f.group_size.is_empty() || run.is_flashpoint || run.group_size.to_string() == f.group_size)
         && (!f.kills_only || run.cleared)
-        && (f.tag.is_empty() || run.tags.contains(&f.tag))
-        && (f.server.is_empty() || run.server == f.server)
-        && (f.game_version.is_empty() || run.game_version == f.game_version)
+        && (f.tags.is_empty() || f.tags.iter().any(|t| run.tags.contains(t)))
+        && keeps(&f.servers, &run.server)
+        && keeps(&f.game_versions, &run.game_version)
         && (f.date_from.is_empty() || day >= f.date_from.as_str())
         && (f.date_to.is_empty() || day <= f.date_to.as_str())
 }
