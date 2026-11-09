@@ -727,17 +727,20 @@
   color: var(--text-muted);
 }
 
-/* Rules share one grid so the checkboxes, inputs and units line up */
+/* Each rule is its own grid with fixed columns so checkboxes, inputs and units
+   line up. Not `display: contents` on one shared grid: WebKitGTK 2.44 (bundled
+   in the AppImage) paints those rows at stale positions after a reflow. */
 .library-rules {
-  display: grid;
-  grid-template-columns: max-content 5.5em max-content;
-  align-items: center;
-  column-gap: 0.5em;
-  row-gap: 0.35em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
 }
 
 .library-rule {
-  display: contents;
+  display: grid;
+  grid-template-columns: 13em 5.5em max-content;
+  align-items: center;
+  column-gap: 0.5em;
 }
 
 .library-rule .settings-check {
