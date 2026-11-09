@@ -1979,6 +1979,9 @@
 }
 
 .log-clear-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
   padding: 4px 10px;
   background: rgba(var(--fg-rgb), 0.04);
   border: 1px solid var(--border-subtle);
@@ -1986,8 +1989,10 @@
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .log-clear-filters:hover {
@@ -1995,32 +2000,27 @@
   border-color: var(--text-muted);
 }
 
-/* Lit up while any filter diverges from its default; the animation replays
+/* Lit up while any filter diverges from its default (same gold tint as the
+   history Clear filters, readable in both themes); the animation replays
    each time the class is (re)applied, giving a flash on the transition */
 .log-clear-filters.active {
-  background: hsl(45, 40%, 18%);
-  border-color: hsl(45, 50%, 35%);
-  color: hsl(45, 90%, 75%);
+  color: var(--text-gold);
+  border-color: rgba(217, 164, 65, 0.7);
+  background: rgba(217, 164, 65, 0.12);
   animation: clear-filters-flash 0.5s ease-out;
 }
 
 .log-clear-filters.active:hover {
-  background: var(--accent-gold);
-  color: var(--bg-primary);
-  border-color: var(--accent-gold);
+  background: rgba(217, 164, 65, 0.24);
 }
 
 @keyframes clear-filters-flash {
   0% {
-    background: var(--accent-gold);
-    color: var(--bg-primary);
-    border-color: var(--accent-gold);
-    box-shadow: 0 0 8px rgba(255, 200, 50, 0.6);
+    background: rgba(217, 164, 65, 0.45);
+    box-shadow: 0 0 8px rgba(217, 164, 65, 0.5);
   }
   100% {
-    background: hsl(45, 40%, 18%);
-    color: hsl(45, 90%, 75%);
-    border-color: hsl(45, 50%, 35%);
+    background: rgba(217, 164, 65, 0.12);
     box-shadow: none;
   }
 }

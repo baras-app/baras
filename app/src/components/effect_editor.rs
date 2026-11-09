@@ -913,11 +913,6 @@ fn EffectRow(
                     if expanded && is_dirty() {
                         span { class: "unsaved-indicator", title: "Unsaved changes" }
                     }
-                    if let Some(ref dt) = effect.display_text {
-                        if dt != &effect.name {
-                            span { class: "effect-display-text", "→ \"{dt}\"" }
-                        }
-                    }
                     if !is_draft {
                         span { class: "text-xs text-mono text-muted", "  {effect.id}" }
                     }

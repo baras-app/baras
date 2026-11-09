@@ -13,7 +13,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use wasm_bindgen::prelude::*;
 
+use baras_types::formatting;
 use baras_types::history::PullRow;
+
+use crate::components::class_icons::{get_class_icon, get_role_icon};
 
 use crate::components::echarts::{
     dispose_chart, init_chart, json_to_js, next_animation_frame, on_click, set_js_fn, set_option_replace,
@@ -56,8 +59,7 @@ const DPS_ID: &str = "hist-chart-dps";
 const EHPS_ID: &str = "hist-chart-ehps";
 const NIGHTS_ID: &str = "hist-chart-nights";
 const CHART_IDS: [&str; 3] = [DPS_ID, EHPS_ID, NIGHTS_ID];
-/// Pull markers: green diamonds for kills, smaller red diamonds for wipes;
-/// size keeps them apart without relying on red/green discrimination.
+/// Kill / wipe colours for the hover dot and the tooltip's result line
 const KILL_COLOR: &str = "#2ecc71";
 const WIPE_COLOR: &str = "#e74c3c";
 const NO_KILL_COLOR: &str = "#6c7a89";
@@ -75,6 +77,42 @@ fn pull_label(iso: &str) -> String {
         _ => iso.to_string(),
     }
 }
+
+/// Minimal HTML escape for names placed in the tooltip markup
+fn escape(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+}
+
+/// A pull point: its value plus what the tooltip shows (character with role
+/// and discipline icons, the value as text, kill or wipe) and the click pick
+fn pull_point(r: &PullRow, value: i64, shown: String) -> Value {
+    let icon = |a: Option<&'static manganis::Asset>| a.map(|a| a.to_string()).unwrap_or_default();
+    let (result, result_color) = match r.boss_hp_pct {
+        _ if r.success => ("Kill".to_string(), KILL_COLOR),
+        Some(pct) => (format!("Wipe · {pct:.1} %"), WIPE_COLOR),
+        None => ("Wipe".to_string(), WIPE_COLOR),
+    };
+    json!({
+        "value": value,
+        "pick": ChartPick::Pull { filename: r.filename.clone(), start_ms: r.start_ms },
+        // Invisible until hovered (the series' emphasis), but still a click target
+        "itemStyle": { "color": result_color, "opacity": 0 },
+        "who": escape(&r.character),
+        "role": icon(r.role_icon.as_deref().and_then(get_role_icon)),
+        "disc": icon(r.discipline_icon.as_deref().and_then(get_class_icon)),
+        "shown": shown,
+        "result": result,
+        "rc": result_color,
+    })
+}
+
+/// Tooltip body for pull charts (axis trigger); reads the `pull_point` fields
+const PULL_TOOLTIP: &str = "var p = params[0], d = p.data || {};\
+    var img = function (u) { return u ? '<img src=\"' + u + '\" style=\"width:16px;height:16px;vertical-align:-3px;margin-right:4px\">' : ''; };\
+    return '<div style=\"font-size:11px;opacity:.7;margin-bottom:2px\">' + p.name + '</div>'\
+      + '<div>' + img(d.role) + img(d.disc) + '<b>' + (d.who || '') + '</b></div>'\
+      + '<div>' + p.marker + p.seriesName + ': <b>' + (d.shown || p.value) + '</b></div>'\
+      + '<div style=\"color:' + d.rc + ';font-weight:600\">' + (d.result || '') + '</div>';";
 
 fn base_option(title: &str) -> Value {
     json!({
@@ -131,7 +169,7 @@ fn period_ticks(timestamps: &[&str]) -> Value {
 }
 
 /// One point per pull where the logging character has the metric, in
-/// chronological order, marked as kill or wipe diamonds.
+/// chronological order; the tooltip says who played and whether it was a kill.
 fn metric_option(rows: &[PullRow], title: &str, color: &str, pick: impl Fn(&PullRow) -> Option<i64>) -> Option<Value> {
     let points: Vec<(&PullRow, i64)> = rows.iter().filter_map(|r| pick(r).filter(|v| *v > 0).map(|v| (r, v))).collect();
     if points.is_empty() {
@@ -139,15 +177,9 @@ fn metric_option(rows: &[PullRow], title: &str, color: &str, pick: impl Fn(&Pull
     }
     let labels: Vec<String> = points.iter().map(|(r, _)| pull_label(&r.timestamp)).collect();
     let ticks = period_ticks(&points.iter().map(|(r, _)| r.timestamp.as_str()).collect::<Vec<_>>());
-    let data: Vec<Value> = points
-        .iter()
-        .map(|(r, v)| {
-            let pick = ChartPick::Pull { filename: r.filename.clone(), start_ms: r.start_ms };
-            let (color, size) = if r.success { (KILL_COLOR, 12) } else { (WIPE_COLOR, 8) };
-            json!({ "value": v, "pick": pick, "symbolSize": size, "itemStyle": { "color": color } })
-        })
-        .collect();
+    let data: Vec<Value> = points.iter().map(|(r, v)| pull_point(r, *v, formatting::format_compact(*v, false))).collect();
     let mut opt = base_option(title);
+    opt["_pull_tooltip"] = json!(true);
     opt["xAxis"] = pull_axis(labels);
     // Read by the effect to install the boundary-only label/tick/gridline functions
     opt["_ticks"] = ticks;
@@ -157,14 +189,16 @@ fn metric_option(rows: &[PullRow], title: &str, color: &str, pick: impl Fn(&Pull
     opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } }, "scale": true });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
     opt["series"] = json!([{
-        "type": "line", "name": title, "data": data, "symbol": "diamond",
+        // No markers; the hover dot takes the pull's kill / wipe colour
+        "type": "line", "name": title, "data": data, "symbol": "circle", "symbolSize": 9, "showAllSymbol": true,
+        "emphasis": { "itemStyle": { "opacity": 1 } },
         "itemStyle": { "color": color },
         "lineStyle": { "color": color, "width": 1.5 }, "areaStyle": { "color": color, "opacity": 0.08 },
     }]);
     Some(opt)
 }
 
-/// Kills only: time to kill per clear, in order, with the same kill diamonds
+/// Kills only: time to kill per clear, in order, with the same tooltip
 /// as the metric charts; y is m:ss via `_mmss`.
 fn ttk_option(rows: &[PullRow]) -> Option<Value> {
     let kills: Vec<&PullRow> = rows.iter().filter(|r| r.success).collect();
@@ -175,9 +209,10 @@ fn ttk_option(rows: &[PullRow]) -> Option<Value> {
     let ticks = period_ticks(&kills.iter().map(|r| r.timestamp.as_str()).collect::<Vec<_>>());
     let data: Vec<Value> = kills
         .iter()
-        .map(|r| json!({ "value": r.duration_seconds, "pick": ChartPick::Pull { filename: r.filename.clone(), start_ms: r.start_ms } }))
+        .map(|r| pull_point(r, r.duration_seconds, formatting::format_duration(r.duration_seconds)))
         .collect();
     let mut opt = base_option("Time to kill");
+    opt["_pull_tooltip"] = json!(true);
     opt["xAxis"] = pull_axis(labels);
     opt["_ticks"] = ticks;
     opt["_mmss"] = json!(true);
@@ -186,7 +221,8 @@ fn ttk_option(rows: &[PullRow]) -> Option<Value> {
     opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } }, "scale": true });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
     opt["series"] = json!([{
-        "type": "line", "name": "Time to kill", "data": data, "symbol": "diamond", "symbolSize": 12,
+        "type": "line", "name": "Time to kill", "data": data, "symbol": "circle", "symbolSize": 9, "showAllSymbol": true,
+        "emphasis": { "itemStyle": { "opacity": 1 } },
         "itemStyle": { "color": KILL_COLOR },
         "lineStyle": { "color": KILL_COLOR, "width": 1.5 }, "areaStyle": { "color": KILL_COLOR, "opacity": 0.08 },
     }]);
@@ -259,7 +295,6 @@ fn nights_option(rows: &[PullRow]) -> Option<Value> {
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
     opt["series"] = json!([{
         "type": "bar", "name": "Pulls", "data": data, "barMaxWidth": 28,
-        "label": { "show": true, "position": "top", "color": css_var("--text-tertiary"), "fontSize": 10 },
     }]);
     Some(opt)
 }
@@ -276,8 +311,8 @@ fn chronological(pulls: &Resource<Option<Vec<PullRow>>>) -> Vec<PullRow> {
 /// meaningless, so the third slot shows time to kill instead.
 fn options(rows: &[PullRow], kills_only: bool) -> [(&'static str, Option<Value>); 3] {
     [
-        (DPS_ID, metric_option(rows, "DPS per pull", "#e74c3c", |r| r.dps)),
-        (EHPS_ID, metric_option(rows, "EHPS per pull", "#2ecc71", |r| r.ehps)),
+        (DPS_ID, metric_option(rows, "DPS", "#e74c3c", |r| r.dps)),
+        (EHPS_ID, metric_option(rows, "EHPS", "#2ecc71", |r| r.ehps)),
         (NIGHTS_ID, if kills_only { ttk_option(rows) } else { nights_option(rows) }),
     ]
 }
@@ -318,6 +353,9 @@ pub fn PullCharts(pulls: Resource<Option<Vec<PullRow>>>, pick: Signal<Option<Cha
                                 let mmss = "var m = Math.floor(v / 60), s = Math.floor(v % 60); return m + ':' + (s < 10 ? '0' : '') + s;";
                                 set_js_fn(&js, &["yAxis", "axisLabel", "formatter"], "v", mmss);
                                 set_js_fn(&js, &["tooltip", "valueFormatter"], "v", mmss);
+                            }
+                            if option.get("_pull_tooltip").is_some() {
+                                set_js_fn(&js, &["tooltip", "formatter"], "params", PULL_TOOLTIP);
                             }
                             set_option_replace(&chart, &js);
                             let handler = Closure::new(move |params: JsValue| {

@@ -5236,8 +5236,8 @@ a.contributor-name:hover {
 
 .list-item-header {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
+  text-align: left;
   gap: var(--space-sm);
   padding: var(--space-sm);
   background: var(--bg-card-header);
@@ -5249,13 +5249,30 @@ a.contributor-name:hover {
   background: var(--blue-alpha-5);
 }
 
-/* The name stays on one line; tags and toggles wrap under it when narrow */
-.list-item-header > .font-medium {
+/* One line per row: the name and id shorten with an ellipsis (the id
+   first), tags and toggles keep their size */
+.list-item-header > * {
+  flex-shrink: 0;
+}
+
+.list-item-header > .font-medium,
+.list-item-header > .text-mono {
   min-width: 0;
-  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.list-item-header > .font-medium {
+  flex-shrink: 1;
+}
+
+.list-item-header > .text-mono {
+  flex-shrink: 10;
+}
+
+.list-item-header > .row-col-name-id {
+  flex-shrink: 1;
 }
 
 .list-item-expand {
@@ -5377,6 +5394,14 @@ a.contributor-name:hover {
   min-width: 0;
   flex: 1 1 0;
   overflow: hidden;
+}
+
+/* Single line, ellipsis when it does not fit */
+.truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row-col-name-id > .truncate {

@@ -947,6 +947,7 @@ pub fn CombatLog(props: CombatLogProps) -> Element {
                         filter_effects.set(true);
                         filter_other.set(true);
                     },
+                    i { class: "fa-solid fa-filter-circle-xmark" }
                     "Clear Filters"
                 }
 
