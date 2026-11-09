@@ -21,6 +21,7 @@ use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, Upl
 use crate::components::overview_table::{OverviewSort, OverviewTable, OverviewTotals};
 use crate::components::phase_timeline::PhaseTimelineFilter;
 use crate::components::toggle_switch::ToggleSwitch;
+use crate::components::dt_summary::DtSummaryTable;
 use crate::components::rotation_view::RotationView;
 use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
 use crate::components::mirror_names::{self, ABILITY_NAMING, display_id, display_name};
@@ -1841,13 +1842,23 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                             "Rotation"
                         }
                         // Mirror-class naming toggle (Republic / Imperial names for class abilities)
-                        div { class: "naming-toggle", title: "Show class abilities with Republic or Imperial names",
-                            for (naming, label) in [(AbilityNaming::AsLogged, "Log"), (AbilityNaming::Republic, "Rep"), (AbilityNaming::Imperial, "Imp")] {
-                                button {
-                                    key: "{label}",
-                                    class: if *ABILITY_NAMING.read() == naming { "naming-toggle-btn active" } else { "naming-toggle-btn" },
-                                    onclick: move |_| *ABILITY_NAMING.write() = naming,
-                                    "{label}"
+                        // Neither lit = names as logged; clicking the lit one goes back to that
+                        div { class: "naming-toggle",
+                            for (naming, label, tip) in [
+                                (AbilityNaming::Republic, "Rep", "Show class abilities with Republic names"),
+                                (AbilityNaming::Imperial, "Imp", "Show class abilities with Imperial names"),
+                            ] {
+                                {
+                                    let on = *ABILITY_NAMING.read() == naming;
+                                    rsx! {
+                                        button {
+                                            key: "{label}",
+                                            class: if on { "naming-toggle-btn active" } else { "naming-toggle-btn" },
+                                            title: if on { "Click to show names as logged" } else { tip },
+                                            onclick: move |_| *ABILITY_NAMING.write() = if on { AbilityNaming::AsLogged } else { naming },
+                                            "{label}"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2636,59 +2647,25 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 if current_tab == DataTab::DamageTaken {
                                     if let Some(ref summary) = *dt_summary.read() {
                                         div { class: "damage-taken-summary",
-                                            // Left section: damage type breakdown
-                                            div { class: "dt-summary-left",
-                                                div { class: "dt-summary-row",
-                                                    span { class: "dt-summary-label", "Internal/Elemental" }
-                                                    span { class: "dt-summary-pct", "{format_pct(summary.internal_elemental_pct)}" }
-                                                    span { class: "dt-summary-val", "{format_number(summary.internal_elemental_total)}" }
-                                                }
-                                                div { class: "dt-summary-row",
-                                                    span { class: "dt-summary-label", "Kinetic/Energy" }
-                                                    span { class: "dt-summary-pct", "{format_pct(summary.kinetic_energy_pct)}" }
-                                                    span { class: "dt-summary-val", "{format_number(summary.kinetic_energy_total)}" }
-                                                }
-                                                div { class: "dt-summary-row",
-                                                    span { class: "dt-summary-label", "Force/Tech" }
-                                                    span { class: "dt-summary-pct", "{format_pct(summary.force_tech_pct)}" }
-                                                    span { class: "dt-summary-val", "{format_number(summary.force_tech_total)}" }
-                                                }
-                                                div { class: "dt-summary-row",
-                                                    span { class: "dt-summary-label", "Melee/Ranged" }
-                                                    span { class: "dt-summary-pct", "{format_pct(summary.melee_ranged_pct)}" }
-                                                    span { class: "dt-summary-val", "{format_number(summary.melee_ranged_total)}" }
-                                                }
+                                            DtSummaryTable {
+                                                title: "Damage types",
+                                                european: eu,
+                                                rows: vec![
+                                                    ("Internal / Elemental", summary.internal_elemental_pct, Some(summary.internal_elemental_total)),
+                                                    ("Kinetic / Energy", summary.kinetic_energy_pct, Some(summary.kinetic_energy_total)),
+                                                    ("Force / Tech", summary.force_tech_pct, Some(summary.force_tech_total)),
+                                                    ("Melee / Ranged", summary.melee_ranged_pct, Some(summary.melee_ranged_total)),
+                                                ],
                                             }
-                                            // Right section: mitigation breakdown
-                                            div { class: "dt-summary-right",
-                                                div { class: "dt-summary-row",
-                                                    span { class: "dt-summary-label", "Avoided" }
-                                                    span { class: "dt-summary-pct", "{format_pct(summary.avoided_pct)}" }
-                                                    span { class: "dt-summary-val" }
-                                                }
-                                                div { class: "dt-summary-row",
-                                                    span { class: "dt-summary-label", "Shielded" }
-                                                    span { class: "dt-summary-pct", "{format_pct(summary.shielded_pct)}" }
-                                                    span { class: "dt-summary-val" }
-                                                }
-                                                div { class: "dt-summary-row",
-                                                    span { class: "dt-summary-label", "Absorbed (self)" }
-                                                    span { class: "dt-summary-pct", "{format_pct(summary.absorbed_self_pct)}" }
-                                                    span { class: "dt-summary-val",
-                                                        if summary.absorbed_self_total > 0.0 {
-                                                            "{format_number(summary.absorbed_self_total)}"
-                                                        }
-                                                    }
-                                                }
-                                                div { class: "dt-summary-row",
-                                                    span { class: "dt-summary-label", "Absorbed (given)" }
-                                                    span { class: "dt-summary-pct", "{format_pct(summary.absorbed_given_pct)}" }
-                                                    span { class: "dt-summary-val",
-                                                        if summary.absorbed_given_total > 0.0 {
-                                                            "{format_number(summary.absorbed_given_total)}"
-                                                        }
-                                                    }
-                                                }
+                                            DtSummaryTable {
+                                                title: "Mitigation",
+                                                european: eu,
+                                                rows: vec![
+                                                    ("Avoided", summary.avoided_pct, None),
+                                                    ("Shielded", summary.shielded_pct, None),
+                                                    ("Absorbed (self)", summary.absorbed_self_pct, Some(summary.absorbed_self_total)),
+                                                    ("Absorbed (given)", summary.absorbed_given_pct, Some(summary.absorbed_given_total)),
+                                                ],
                                             }
                                         }
                                     }

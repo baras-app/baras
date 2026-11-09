@@ -2261,77 +2261,67 @@
    Damage Taken Summary Panel
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* Damage Taken summary: two matching tables side by side (damage types,
+   mitigation), same columns and colours as the stat tables below */
 .damage-taken-summary {
   display: grid;
-  grid-template-columns: 1fr auto auto 1fr auto auto;
-  grid-template-rows: repeat(4, auto);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-md) var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-sm);
   background: rgba(0, 0, 0, calc(0.2 * var(--recess-k)));
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--space-sm);
+  border-radius: var(--radius-md);
   font-size: 0.85em;
-  overflow: hidden;
+  text-align: left;
 }
 
-/* Both halves use display:contents so their children land in the grid */
-.dt-summary-left,
-.dt-summary-right {
-  display: contents;
+.dt-summary-table {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: var(--space-md);
+  align-content: start;
 }
 
-.dt-summary-row {
-  display: contents;
+/* Muted uppercase heading on a rule, like the table headers */
+.dt-summary-title {
+  grid-column: 1 / -1;
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+  border-bottom: 2px solid var(--border-light);
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-/* All cells: consistent vertical padding */
-.dt-summary-row > span {
+.dt-summary-table > span {
   padding: 4px 0;
+  border-bottom: 1px solid rgba(var(--fg-rgb), 0.05);
+  white-space: nowrap;
 }
-
-/* Horizontal midline between row 2 and 3 (splits each half into two pairs) */
-.dt-summary-left .dt-summary-row:nth-child(3) > span,
-.dt-summary-right .dt-summary-row:nth-child(3) > span {
-  border-top: 2px solid var(--border-light);
-}
-
-/* Vertical divider: right border on the val cell of the left section */
-.dt-summary-left .dt-summary-val {
-  border-right: 2px solid var(--border-light);
-}
-
-/* Right section: place cells in columns 4-6 */
-.dt-summary-right .dt-summary-label { grid-column: 4; }
-.dt-summary-right .dt-summary-pct   { grid-column: 5; }
-.dt-summary-right .dt-summary-val   { grid-column: 6; }
-
-/* Row placement for right section rows */
-.dt-summary-right .dt-summary-row:nth-child(1) > span { grid-row: 1; }
-.dt-summary-right .dt-summary-row:nth-child(2) > span { grid-row: 2; }
-.dt-summary-right .dt-summary-row:nth-child(3) > span { grid-row: 3; }
-.dt-summary-right .dt-summary-row:nth-child(4) > span { grid-row: 4; }
 
 .dt-summary-label {
   color: var(--text-secondary);
-  padding-left: var(--space-md) !important;
-  padding-right: var(--space-sm) !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dt-summary-pct,
+.dt-summary-val {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .dt-summary-pct {
-  text-align: right;
-  font-family: var(--font-mono);
   color: var(--text-primary);
-  white-space: nowrap;
-  padding-left: var(--space-sm) !important;
-  padding-right: var(--space-md) !important;
 }
 
 .dt-summary-val {
-  min-width: 48px;
-  text-align: right;
-  font-family: var(--font-mono);
+  min-width: 5ch;
   color: var(--text-muted);
-  padding-right: var(--space-md) !important;
-  white-space: nowrap;
 }
 
 /* DT (damage type) column in ability table */
@@ -2480,37 +2470,40 @@
 }
 
 /* Mirror-class naming toggle (Log / Rep / Imp) in the data tab bar */
+/* Rep / Imp naming: one joined pill; neither lit = names as logged */
 .naming-toggle {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+  display: inline-flex;
   flex: 0 0 auto;
   margin-left: var(--space-xs);
-  padding: 0 var(--space-xs);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .naming-toggle-btn {
-  padding: 3px 8px;
+  padding: 3px 10px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-muted);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.naming-toggle-btn + .naming-toggle-btn {
+  border-left: 1px solid var(--border-medium);
 }
 
 .naming-toggle-btn:hover {
   color: var(--text-primary);
-  background: var(--bg-hover);
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
 .naming-toggle-btn.active {
-  color: var(--text-primary);
-  font-weight: 600;
-  background: var(--bg-secondary);
-  border-color: var(--accent-gold);
+  color: #fff;
+  background: var(--swtor-blue);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

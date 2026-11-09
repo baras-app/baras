@@ -13,6 +13,7 @@ pub mod data_explorer;
 pub mod death_recap_modal;
 pub mod echarts;
 pub mod editor_common;
+pub mod dt_summary;
 pub mod editor_drawer;
 pub mod multi_select;
 pub mod toggle_switch;

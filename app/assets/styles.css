@@ -5163,6 +5163,129 @@ a.contributor-name:hover {
   border-left-color: var(--border-subtle);
 }
 
+/* ─── Import preview (encounter definitions) ─────────────────────────────── */
+.import-preview {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 92vw);
+  max-height: 80vh;
+  text-align: left;
+}
+
+.import-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px var(--space-md);
+  margin-bottom: var(--space-md);
+  font-size: 0.85em;
+  color: var(--text-primary);
+}
+
+.import-meta-key {
+  color: var(--text-muted);
+}
+
+.import-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid rgba(231, 76, 60, 0.5);
+  border-radius: var(--radius-md);
+  background: rgba(231, 76, 60, 0.1);
+  font-size: 0.85em;
+  color: var(--color-error, #e74c3c);
+}
+
+.import-error {
+  display: flex;
+  gap: 0.5em;
+  align-items: baseline;
+}
+
+/* Scrolls when many bosses change; the header and buttons stay put */
+.import-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.import-boss {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(var(--fg-rgb), 0.03);
+}
+
+.import-boss-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: 6px;
+}
+
+.import-boss-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Change line: badge column, then count and names (names wrap under the count) */
+.import-change {
+  display: grid;
+  grid-template-columns: 5.5em 1fr;
+  gap: var(--space-sm);
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 0.85em;
+}
+
+.import-change-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5em;
+  min-width: 0;
+}
+
+.import-count {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.import-names {
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.import-badge {
+  justify-self: start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.import-badge.replace {
+  color: var(--text-gold);
+  background: rgba(217, 164, 65, 0.15);
+}
+
+.import-badge.add,
+.import-badge.new {
+  color: var(--color-success, #2ecc71);
+  background: rgba(46, 204, 113, 0.15);
+}
+
+.import-summary {
+  padding-top: 3px;
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
 .discard-prompt {
   width: 400px;
   text-align: left;

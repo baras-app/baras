@@ -4,6 +4,7 @@
 //! Uses unified BossWithPath type and EncounterItem enum for streamlined data handling.
 
 mod area_sidebar;
+mod import_preview;
 mod boss_header;
 mod challenges;
 mod conditions;
@@ -20,6 +21,7 @@ use crate::components::editor_drawer::{DiscardPrompt, layout_style, provide_draw
 use crate::components::sidebar_header::SidebarHeader;
 use area_sidebar::{AreaCategory, BossRow};
 use boss_header::EditorHeader;
+use import_preview::ImportPreviewModal;
 use dioxus::prelude::*;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -596,180 +598,6 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Import Preview Modal
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Group items by type, returning (type_label, vec_of_names)
-fn group_by_type(items: &[crate::types::ImportItemDiff]) -> Vec<(String, Vec<String>)> {
-    let mut map: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
-    for item in items {
-        map.entry(item.item_type.clone()).or_default().push(item.name.clone());
-    }
-    map.into_iter().collect()
-}
-
-/// Pluralize an item type label: "timer" -> "timers" etc
-fn plural(item_type: &str, count: usize) -> String {
-    if count == 1 { item_type.to_string() } else { format!("{}s", item_type) }
-}
-
-#[component]
-fn ImportPreviewModal(
-    preview: ImportPreview,
-    target_area_name: Option<String>,
-    on_confirm: EventHandler<()>,
-    on_cancel: EventHandler<()>,
-) -> Element {
-    let has_errors = !preview.errors.is_empty();
-
-    rsx! {
-        div {
-            class: "modal-overlay",
-            onclick: move |_| on_cancel.call(()),
-
-            div {
-                class: "modal-content",
-                style: "max-width: 550px; max-height: 80vh; display: flex; flex-direction: column;",
-                onclick: move |e| e.stop_propagation(),
-
-                div { class: "modal-header",
-                    h3 { "Import Encounter Definition" }
-                }
-
-                // Scrollable body
-                div { style: "overflow-y: auto; flex: 1; padding: 0 16px;",
-
-                    // Source/target row
-                    div { style: "display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin-bottom: 12px;",
-                        if let Some(ref name) = preview.source_area_name {
-                            span { class: "text-xs text-muted", "Source" }
-                            span { class: "text-xs text-primary", "{name}" }
-                        }
-                        if preview.is_new_area {
-                            span { class: "text-xs text-muted", "Target" }
-                            span { class: "text-xs text-warning", "New area" }
-                        } else if let Some(ref name) = target_area_name {
-                            span { class: "text-xs text-muted", "Target" }
-                            span { class: "text-xs text-primary", "{name}" }
-                        }
-                    }
-
-                    // Validation errors
-                    if has_errors {
-                        div { class: "mb-sm",
-                            for err in &preview.errors {
-                                div { class: "text-xs text-error",
-                                    "{err}"
-                                }
-                            }
-                        }
-                    }
-
-                    // Boss previews
-                    for boss in &preview.bosses {
-                        div { style: "border: 1px solid var(--color-border); border-radius: 4px; \
-                                      padding: 8px 10px; margin-bottom: 8px;",
-                            // Boss header
-                            div { class: "flex items-center gap-xs",
-                                style: "margin-bottom: 6px;",
-                                span { class: "font-medium text-primary text-sm", "{boss.boss_name}" }
-                                if boss.is_new_boss {
-                                    span { class: "tag",
-                                        style: "background: var(--color-success); color: #000; font-size: 10px; padding: 0 4px;",
-                                        "new"
-                                    }
-                                }
-                            }
-
-                            if boss.is_new_boss {
-                                // New boss — summarize by type
-                                {
-                                    let grouped = group_by_type(&boss.items_to_add);
-                                    rsx! {
-                                        div { class: "text-xs text-muted",
-                                            {grouped.iter().map(|(t, names)| format!("{} {}", names.len(), plural(t, names.len()))).collect::<Vec<_>>().join(", ")}
-                                        }
-                                    }
-                                }
-                            } else {
-                                // Existing boss — show replace/add grouped by type
-                                if !boss.items_to_replace.is_empty() {
-                                    {
-                                        let grouped = group_by_type(&boss.items_to_replace);
-                                        rsx! {
-                                            for (item_type, names) in grouped {
-                                                div { class: "text-xs",
-                                                    style: "margin-bottom: 2px;",
-                                                    span { class: "text-warning", "Replace " }
-                                                    span { class: "text-muted",
-                                                        "{names.len()} {plural(&item_type, names.len())}: "
-                                                    }
-                                                    span { class: "text-warning",
-                                                        "{names.join(\", \")}"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                if !boss.items_to_add.is_empty() {
-                                    {
-                                        let grouped = group_by_type(&boss.items_to_add);
-                                        rsx! {
-                                            for (item_type, names) in grouped {
-                                                div { class: "text-xs",
-                                                    style: "margin-bottom: 2px;",
-                                                    span { class: "text-success", "Add " }
-                                                    span { class: "text-muted",
-                                                        "{names.len()} {plural(&item_type, names.len())}: "
-                                                    }
-                                                    span { class: "text-success",
-                                                        "{names.join(\", \")}"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                if boss.items_unchanged > 0 {
-                                    div { class: "text-xs text-muted",
-                                        style: "margin-top: 2px;",
-                                        "{boss.items_unchanged} unchanged"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Footer
-                div { class: "modal-footer",
-                    button {
-                        class: "btn btn-ghost",
-                        onclick: move |_| on_cancel.call(()),
-                        "Cancel"
-                    }
-                    button {
-                        class: "btn btn-success",
-                        disabled: has_errors,
-                        onclick: move |_| on_confirm.call(()),
-                        "Import"
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared: Difficulties Editor
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Toggle-button row for selecting difficulty tiers (story / veteran / master).
-///
-/// Empty selection means "all difficulties". Matches the same semantic as
-/// timer difficulties.
 #[component]
 pub fn DifficultiesEditor(
     difficulties: Vec<String>,
