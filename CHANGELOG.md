@@ -1,3 +1,8 @@
+# v2026.11.9
+
+- Light Mode Added (beta)
+- More UI Improvements
+
 # v2026.11.7
 
 ## UI Overhaul
