@@ -4207,6 +4207,8 @@ pub struct EncounterBuilderState {
     pub hide_disabled_phases: bool,
     /// Whether to hide disabled counters in the Counters tab
     pub hide_disabled_counters: bool,
+    /// Whether the area sidebar is folded
+    pub sidebar_collapsed: bool,
 }
 
 /// Effects Editor session state

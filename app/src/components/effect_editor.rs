@@ -5,7 +5,7 @@
 //! - Inline expansion for editing
 //! - Full CRUD operations
 
-use crate::components::editor_drawer::{DiscardPrompt, EditorDrawer, provide_drawer_guard};
+use crate::components::editor_drawer::{DiscardPrompt, layout_style, EditorDrawer, provide_drawer_guard};
 use dioxus::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
@@ -553,7 +553,7 @@ pub fn EffectEditorPanel(mut props: EffectEditorProps) -> Element {
     };
 
     rsx! {
-        div { class: "editor-layout",
+        div { class: "editor-layout", style: layout_style(),
             DiscardPrompt {}
             EffectSidebar { effects: searched_effects, filters, search: search_query, collapsed: sidebar_collapsed }
             div { class: "editor-main effect-editor-panel",

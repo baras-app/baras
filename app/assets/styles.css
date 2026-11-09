@@ -4954,13 +4954,70 @@ a.contributor-name:hover {
     padding-right: 0.75em;
   }
   .editor-drawer {
-    --editor-drawer-w: min(560px, 94%);
+    max-width: 94%;
     box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
   }
   /* Nothing is pushed, so the placeholder has no place to hold */
   .editor-drawer.empty {
     display: none;
   }
+}
+
+/* Left-edge grip; a full-window catcher takes over while dragging */
+.editor-drawer-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  z-index: 2;
+  width: 8px;
+  cursor: col-resize;
+}
+
+.editor-drawer-resize:hover,
+.editor-drawer-resize:active {
+  background: linear-gradient(to right, transparent 3px, var(--swtor-blue) 3px, var(--swtor-blue) 5px, transparent 5px);
+}
+
+.editor-drawer-drag-capture {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  cursor: col-resize;
+}
+
+/* Folded: a thin strip with the unfold button and the title running down it */
+.editor-layout:has(.editor-drawer.collapsed) {
+  padding-right: calc(38px + 1.25em);
+}
+
+.editor-drawer.collapsed {
+  width: 38px;
+  max-width: none;
+}
+
+.editor-drawer.collapsed .editor-drawer-header {
+  flex: 1;
+  flex-direction: column;
+  padding: var(--space-sm) 0;
+  border-bottom: none;
+}
+
+.editor-drawer.collapsed .editor-drawer-header h3 {
+  writing-mode: vertical-rl;
+  cursor: pointer;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+.editor-drawer.collapsed .editor-drawer-actions {
+  flex-direction: column;
+  margin-left: 0;
+  margin-top: auto;
+}
+
+.editor-drawer.collapsed .editor-drawer-body {
+  display: none;
 }
 
 .editor-drawer.empty {

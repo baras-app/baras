@@ -16,7 +16,8 @@ mod tabs;
 mod timers;
 pub mod triggers;
 
-use crate::components::editor_drawer::{DiscardPrompt, provide_drawer_guard};
+use crate::components::editor_drawer::{DiscardPrompt, layout_style, provide_drawer_guard};
+use crate::components::sidebar_header::SidebarHeader;
 use area_sidebar::{AreaCategory, BossRow};
 use boss_header::EditorHeader;
 use dioxus::prelude::*;
@@ -196,6 +197,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     let mut selected_area_name = use_signal(|| props.state.read().encounter_builder.selected_area_name.clone());
     let mut expanded_boss = use_signal(|| props.state.read().encounter_builder.expanded_boss.clone());
     let mut area_filter = use_signal(|| props.state.read().encounter_builder.area_filter.clone());
+    let mut sidebar_collapsed = use_signal(|| props.state.read().encounter_builder.sidebar_collapsed);
     let active_boss_tab = use_signal(|| props.state.read().encounter_builder.active_boss_tab.clone());
     
     // Expanded items within each tab
@@ -218,6 +220,7 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
         state.encounter_builder.selected_area_name = selected_area_name.read().clone();
         state.encounter_builder.expanded_boss = expanded_boss.read().clone();
         state.encounter_builder.area_filter = area_filter.read().clone();
+        state.encounter_builder.sidebar_collapsed = *sidebar_collapsed.read();
         state.encounter_builder.active_boss_tab = active_boss_tab.read().clone();
         state.encounter_builder.expanded_timer = expanded_timer.read().clone();
         state.encounter_builder.expanded_phase = expanded_phase.read().clone();
@@ -370,13 +373,16 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
     };
 
     rsx! {
-        div { class: "editor-layout",
+        div { class: "editor-layout", style: layout_style(),
             DiscardPrompt {}
             // ─── Sidebar: Areas, and the open area's bosses ───────────────────
-            aside { class: "explorer-sidebar",
-                div { class: "sidebar-header",
-                    div { class: "sidebar-header-row",
-                        h3 { i { class: "fa-solid fa-map-location-dot" } " Areas" }
+            aside { class: "explorer-sidebar", class: if sidebar_collapsed() { "collapsed" },
+                SidebarHeader {
+                    icon: "fa-solid fa-map-location-dot",
+                    title: "Areas",
+                    collapsed: sidebar_collapsed(),
+                    on_toggle: move |_| sidebar_collapsed.toggle(),
+                    action: rsx! {
                         button {
                             class: "btn btn-xs sidebar-header-action",
                             title: "Create a new area",
@@ -384,44 +390,45 @@ pub fn EncounterEditorPanel(mut props: EncounterEditorProps) -> Element {
                             i { class: "fa-solid fa-plus" }
                             " New"
                         }
-                    }
+                    },
                 }
-
-                div { class: "sidebar-search",
-                    input {
-                        class: "search-input",
-                        r#type: "text",
-                        placeholder: "Filter areas...",
-                        value: "{area_filter}",
-                        oninput: move |e| area_filter.set(e.value())
+                if !sidebar_collapsed() {
+                    div { class: "sidebar-search",
+                        input {
+                            class: "search-input",
+                            r#type: "text",
+                            placeholder: "Filter areas...",
+                            value: "{area_filter}",
+                            oninput: move |e| area_filter.set(e.value())
+                        }
                     }
-                }
-
-                div { class: "sidebar-encounter-list",
-                    if loading_areas() {
-                        div { class: "sidebar-empty", "Loading..." }
-                    } else {
-                        for (name, group) in grouped_areas {
-                            if !group.is_empty() {
-                                AreaCategory {
-                                    name,
-                                    areas: group,
-                                    selected: selected_area(),
-                                    bosses: boss_rows.clone(),
-                                    loading: loading_bosses(),
-                                    bosses_open: bosses_open(),
-                                    selected_boss: expanded_boss(),
-                                    on_select: move |a: AreaListItem| {
-                                        // The open area again folds or unfolds its bosses
-                                        if selected_area_path.read().as_ref() == Some(&a.file_path) {
-                                            bosses_open.toggle();
-                                        } else {
-                                            let mut load = load_area_data;
-                                            guard.confirm(move |_| load(a.clone()));
-                                        }
-                                    },
-                                    on_select_boss: move |id: String| guard.switch(expanded_boss, Some(id)),
-                                    on_new_boss: move |_| show_new_boss.set(true),
+    
+                    div { class: "sidebar-encounter-list",
+                        if loading_areas() {
+                            div { class: "sidebar-empty", "Loading..." }
+                        } else {
+                            for (name, group) in grouped_areas {
+                                if !group.is_empty() {
+                                    AreaCategory {
+                                        name,
+                                        areas: group,
+                                        selected: selected_area(),
+                                        bosses: boss_rows.clone(),
+                                        loading: loading_bosses(),
+                                        bosses_open: bosses_open(),
+                                        selected_boss: expanded_boss(),
+                                        on_select: move |a: AreaListItem| {
+                                            // The open area again folds or unfolds its bosses
+                                            if selected_area_path.read().as_ref() == Some(&a.file_path) {
+                                                bosses_open.toggle();
+                                            } else {
+                                                let mut load = load_area_data;
+                                                guard.confirm(move |_| load(a.clone()));
+                                            }
+                                        },
+                                        on_select_boss: move |id: String| guard.switch(expanded_boss, Some(id)),
+                                        on_new_boss: move |_| show_new_boss.set(true),
+                                    }
                                 }
                             }
                         }

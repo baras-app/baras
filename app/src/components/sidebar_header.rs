@@ -11,12 +11,15 @@ pub fn SidebarHeader(
     on_toggle: EventHandler<()>,
     /// Shown under the toggle while folded (e.g. active filter count)
     #[props(default)] badge: Option<String>,
+    /// Beside the toggle while open (e.g. a "New" button)
+    #[props(default = VNode::empty())] action: Element,
 ) -> Element {
     rsx! {
         div { class: "sidebar-header",
             div { class: "sidebar-header-row",
                 if !collapsed {
                     h3 { i { class: "{icon}" } " {title}" }
+                    {action}
                 }
                 button {
                     class: "sidebar-collapse-btn",

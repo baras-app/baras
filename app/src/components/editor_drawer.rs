@@ -4,6 +4,77 @@
 
 use dioxus::prelude::*;
 
+// ─────────────────────────────────────────────────────────────────────────
+// Size: dragged width and folded state, shared by both editors for the session
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Width (px) the user dragged the drawer to; None = the CSS default
+static DRAWER_WIDTH: GlobalSignal<Option<f64>> = Signal::global(|| None);
+static DRAWER_COLLAPSED: GlobalSignal<bool> = Signal::global(|| false);
+
+const MIN_WIDTH: f64 = 360.0;
+
+fn window_width() -> f64 {
+    web_sys::window()
+        .and_then(|w| w.inner_width().ok())
+        .and_then(|v| v.as_f64())
+        .unwrap_or(1600.0)
+}
+
+/// The drawer's current width: dragged, else the CSS default clamp(440px, 46vw, 860px)
+fn current_width() -> f64 {
+    DRAWER_WIDTH().unwrap_or_else(|| (window_width() * 0.46).clamp(440.0, 860.0))
+}
+
+/// `style` for `.editor-layout`: the dragged width, which both the drawer and
+/// the push padding read
+pub fn layout_style() -> String {
+    DRAWER_WIDTH().map(|w| format!("--editor-drawer-w: {w:.0}px")).unwrap_or_default()
+}
+
+/// Left-edge grip: drag to resize, double-click for the default width
+#[component]
+fn ResizeHandle() -> Element {
+    // (pointer x, width) when the drag started
+    let mut drag = use_signal(|| None::<(f64, f64)>);
+    rsx! {
+        div {
+            class: "editor-drawer-resize",
+            title: "Drag to resize · double-click to reset",
+            onmousedown: move |e| {
+                e.prevent_default();
+                drag.set(Some((e.client_coordinates().x, current_width())));
+            },
+            ondoubleclick: move |_| *DRAWER_WIDTH.write() = None,
+        }
+        // Full-window catcher while dragging, so the pointer can leave the grip
+        if let Some((x0, w0)) = drag() {
+            div {
+                class: "editor-drawer-drag-capture",
+                onmousemove: move |e| {
+                    let w = (w0 + x0 - e.client_coordinates().x).clamp(MIN_WIDTH, window_width() * 0.7);
+                    *DRAWER_WIDTH.write() = Some(w);
+                },
+                onmouseup: move |_| drag.set(None),
+            }
+        }
+    }
+}
+
+/// Fold / unfold button for the drawer header
+#[component]
+fn CollapseButton() -> Element {
+    let collapsed = DRAWER_COLLAPSED();
+    rsx! {
+        button {
+            class: "btn btn-xs btn-ghost editor-drawer-fold",
+            title: if collapsed { "Expand the editor" } else { "Collapse the editor" },
+            onclick: move |_| *DRAWER_COLLAPSED.write() = !collapsed,
+            i { class: if collapsed { "fa-solid fa-angles-left" } else { "fa-solid fa-angles-right" } }
+        }
+    }
+}
+
 /// Shared by a panel's lists and its open drawer
 #[derive(Clone, Copy)]
 pub struct DrawerGuard {
@@ -95,22 +166,31 @@ pub fn EditorDrawer(
         }
     };
 
+    let collapsed = DRAWER_COLLAPSED();
+
     rsx! {
         aside {
-            class: "editor-drawer",
+            // Folded, the form stays mounted (hidden) so its edits survive
+            class: if collapsed { "editor-drawer collapsed" } else { "editor-drawer" },
             tabindex: "-1",
             onkeydown: move |e| {
                 if e.key() == Key::Escape {
                     close();
                 }
             },
+            if !collapsed {
+                ResizeHandle {}
+            }
             div { class: "editor-drawer-header",
-                h3 { title: "{title}", "{title}" }
+                CollapseButton {}
+                h3 { title: "{title}", onclick: move |_| if collapsed { *DRAWER_COLLAPSED.write() = false }, "{title}" }
                 if dirty {
                     span { class: "unsaved-indicator", title: "Unsaved changes" }
                 }
                 span { class: "editor-drawer-actions",
-                    {actions}
+                    if !collapsed {
+                        {actions}
+                    }
                     if on_close.is_some() {
                         button { class: "btn btn-xs btn-ghost", title: "Close (Esc)", onclick: move |_| close(),
                             i { class: "fa-solid fa-xmark" }
@@ -128,11 +208,17 @@ pub fn EditorDrawer(
 /// between lists does not resize the panel
 #[component]
 pub fn EmptyDrawer(hint: String) -> Element {
+    let collapsed = DRAWER_COLLAPSED();
     rsx! {
-        aside { class: "editor-drawer empty",
-            div { class: "empty-state-guidance",
-                i { class: "fa-solid fa-pen-to-square" }
-                p { class: "hint", "{hint}" }
+        aside { class: if collapsed { "editor-drawer empty collapsed" } else { "editor-drawer empty" },
+            if collapsed {
+                div { class: "editor-drawer-header", CollapseButton {} }
+            } else {
+                ResizeHandle {}
+                div { class: "empty-state-guidance",
+                    i { class: "fa-solid fa-pen-to-square" }
+                    p { class: "hint", "{hint}" }
+                }
             }
         }
     }
