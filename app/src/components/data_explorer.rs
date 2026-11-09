@@ -20,6 +20,7 @@ use crate::components::death_recap_modal::DeathRecapModal;
 use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, UploadState, group_by_area};
 use crate::components::overview_table::{OverviewSort, OverviewTable, OverviewTotals};
 use crate::components::phase_timeline::PhaseTimelineFilter;
+use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::rotation_view::RotationView;
 use crate::components::{ToastSeverity, use_parsely_upload, use_toast};
 use crate::components::mirror_names::{self, ABILITY_NAMING, display_id, display_name};
@@ -1474,31 +1475,25 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                     }
                     if !*sidebar_collapsed.read() {
                         div { class: "history-controls",
-                            label { class: "toggle-switch-label boss-filter-toggle",
-                                span { class: "toggle-switch",
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: *show_only_bosses.read(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            show_only_bosses.set(checked);
-                                            // Update parent state immediately (avoids bidirectional sync loop)
-                                            if let Ok(mut state) = props.state.try_write() {
-                                                state.data_explorer.show_only_bosses = checked;
-                                            }
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.show_only_bosses = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
+                            ToggleSwitch {
+                                label: "Bosses Only",
+                                class: "boss-filter-toggle",
+                                checked: *show_only_bosses.read(),
+                                on_change: move |checked: bool| {
+                                    show_only_bosses.set(checked);
+                                    // Update parent state immediately (avoids bidirectional sync loop)
+                                    if let Ok(mut state) = props.state.try_write() {
+                                        state.data_explorer.show_only_bosses = checked;
                                     }
-                                    span { class: "toggle-slider" }
-                                }
-                                span { class: "toggle-text", "Bosses Only" }
+                                    spawn(async move {
+                                        if let Some(mut cfg) = api::get_config().await {
+                                            cfg.show_only_bosses = checked;
+                                            if let Err(err) = api::update_config(&cfg).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                            }
+                                        }
+                                    });
+                                },
                             }
                             span { class: "encounter-count",
                                 "{filtered_history().len()}"
@@ -1541,39 +1536,31 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                 if *live_query_active.read() { " Live Encounter" } else { " Live" }
                             }
                             // Auto-live toggle — nested in the live button row
-                            label {
-                                class: "toggle-switch-label live-query-toggle",
-                                // Stop click from bubbling to the live button's onclick
-                                onclick: move |e| { e.stop_propagation(); },
-                                span { class: "toggle-switch",
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: *auto_live.read(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            auto_live.set(checked);
-                                            if checked {
-                                                auto_follow.set(true);
-                                            } else {
-                                                auto_follow.set(false);
-                                                live_query_active.set(false);
-                                            }
-                                            if let Ok(mut state) = props.state.try_write() {
-                                                state.data_explorer.auto_live = checked;
-                                            }
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.data_explorer_auto_live = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        }
+                            ToggleSwitch {
+                                label: "auto",
+                                class: "live-query-toggle",
+                                stop_propagation: true,
+                                checked: *auto_live.read(),
+                                on_change: move |checked: bool| {
+                                    auto_live.set(checked);
+                                    if checked {
+                                        auto_follow.set(true);
+                                    } else {
+                                        auto_follow.set(false);
+                                        live_query_active.set(false);
                                     }
-                                    span { class: "toggle-slider" }
-                                }
-                                span { class: "toggle-text", "auto" }
+                                    if let Ok(mut state) = props.state.try_write() {
+                                        state.data_explorer.auto_live = checked;
+                                    }
+                                    spawn(async move {
+                                        if let Some(mut cfg) = api::get_config().await {
+                                            cfg.data_explorer_auto_live = checked;
+                                            if let Err(err) = api::update_config(&cfg).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                            }
+                                        }
+                                    });
+                                },
                             }
                         }
                     }

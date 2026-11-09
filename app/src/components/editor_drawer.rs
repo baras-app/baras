@@ -122,7 +122,7 @@ pub fn DiscardPrompt() -> Element {
         div { class: "modal-overlay",
             div { class: "modal-content discard-prompt",
                 div { class: "modal-header", h3 { "Discard unsaved changes?" } }
-                p { class: "hint", "The open item has edits that have not been saved." }
+                p { "The open item has edits that have not been saved. Discard them and continue?" }
                 div { class: "modal-footer",
                     button { class: "btn btn-sm", onclick: move |_| pending.set(None), "Keep editing" }
                     button {

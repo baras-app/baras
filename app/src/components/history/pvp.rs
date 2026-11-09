@@ -4,7 +4,7 @@
 //! the people you play with and against. One fetch of compact match rows;
 //! everything here is derived from them locally.
 
-use super::multi_select::{MultiSelect, discipline_entries, plain_entries, toggle_value};
+use crate::components::multi_select::{MultiSelect, discipline_entries, plain_entries, toggle_value};
 use baras_types::history::keeps;
 use std::collections::HashMap;
 

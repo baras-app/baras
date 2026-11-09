@@ -14,6 +14,8 @@ pub mod death_recap_modal;
 pub mod echarts;
 pub mod editor_common;
 pub mod editor_drawer;
+pub mod multi_select;
+pub mod toggle_switch;
 pub mod effect_editor;
 pub mod effect_sidebar;
 pub mod encounter_editor;

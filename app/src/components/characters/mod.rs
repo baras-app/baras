@@ -8,6 +8,9 @@ mod matrix;
 mod settings;
 mod table;
 
+use crate::components::toggle_switch::ToggleSwitch;
+use crate::components::multi_select::{Entry, MultiSelect, class_entries, plain_entries};
+use baras_types::history::keeps;
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -25,7 +28,32 @@ use lockouts::until;
 use matrix::LockoutMatrix;
 use table::{CharacterTable, SortKey, sort_rows};
 
-const ROLES: &[&str] = &["Tank", "Healer", "Dps"];
+/// Toolbar multi-selects; each empty list means "any"
+#[derive(Clone, PartialEq, Default)]
+struct RosterFilter {
+    servers: Vec<String>,
+    roles: Vec<String>,
+    factions: Vec<String>,
+    classes: Vec<String>,
+}
+
+impl RosterFilter {
+    fn keeps(&self, row: &CharacterRow) -> bool {
+        keeps(&self.servers, &row.server)
+            && keeps(&self.factions, row.faction.label())
+            && keeps_any(&self.roles, row.roles.iter().map(|r| r.name.as_str()))
+            && keeps_any(&self.classes, row.classes.iter().map(|c| c.name.as_str()))
+    }
+}
+
+/// A row with several values (classes, roles) passes when any one is picked
+fn keeps_any<'a>(picked: &[String], mut values: impl Iterator<Item = &'a str>) -> bool {
+    picked.is_empty() || values.any(|v| keeps(picked, v))
+}
+
+fn entries(pairs: &[(&str, &str)]) -> Vec<Entry> {
+    pairs.iter().map(|(v, l)| (l.to_string(), vec![v.to_string()])).collect()
+}
 
 /// Is the character locked out of this operation at `tier`?
 fn locked_at(row: &CharacterRow, op_key: &str, tier: &str) -> bool {
@@ -54,14 +82,10 @@ impl FreeFor {
     }
 }
 
-fn matches(row: &CharacterRow, search: &str, server: &str, role: &str, faction: &str, free_for: &FreeFor) -> bool {
+fn matches(row: &CharacterRow, search: &str, filter: &RosterFilter, free_for: &FreeFor) -> bool {
     let q = search.trim().to_lowercase();
     let text = || [&row.name, &row.guild, &row.note, &row.server].into_iter().any(|f| f.to_lowercase().contains(&q));
-    (q.is_empty() || text())
-        && (server.is_empty() || row.server == server)
-        && (role.is_empty() || row.roles.iter().any(|r| r.name == role))
-        && (faction.is_empty() || row.faction.label() == faction)
-        && !free_for.excludes(row)
+    (q.is_empty() || text()) && filter.keeps(row) && !free_for.excludes(row)
 }
 
 #[component]
@@ -69,9 +93,7 @@ pub fn CharactersPanel() -> Element {
     let mut toast = use_toast();
     let mut roster = use_resource(|| async move { api::get_character_roster().await.unwrap_or_default() });
     let mut search = use_signal(String::new);
-    let mut server = use_signal(String::new);
-    let mut role = use_signal(String::new);
-    let mut faction = use_signal(String::new);
+    let mut filter: Signal<RosterFilter> = use_signal(RosterFilter::default);
     let mut show_hidden = use_signal(|| false);
     // Which view: the roster table, or the lockout matrix
     let mut matrix = use_signal(|| false);
@@ -93,11 +115,12 @@ pub fn CharactersPanel() -> Element {
         .rows
         .iter()
         .filter(|r| r.hidden == *show_hidden.read())
-        .filter(|r| matches(r, &search.read(), &server.read(), &role.read(), &faction.read(), &free_for.read()))
+        .filter(|r| matches(r, &search.read(), &filter.read(), &free_for.read()))
         .cloned()
         .collect();
     sort_rows(&mut rows, *sort_key.read(), *sort_desc.read());
     let total = data.rows.len() - hidden_count;
+    let f = filter.read().clone();
     // One badge per operation seen in the logs, with how many characters it
     // locks out at the chosen difficulty
     // Per operation: its key, name, and how many characters each of its
@@ -147,23 +170,41 @@ pub fn CharactersPanel() -> Element {
                     value: "{search}",
                     oninput: move |e| search.set(e.value()),
                 }
-                select { value: "{server}", onchange: move |e| server.set(e.value()),
-                    option { value: "", "All servers" }
-                    for s in data.servers.iter() { option { value: "{s}", "{s}" } }
+                MultiSelect {
+                    any_label: "All servers",
+                    noun: "servers",
+                    entries: plain_entries(&data.servers),
+                    picked: f.servers.clone(),
+                    on_change: move |v| filter.write().servers = v,
                 }
-                select { value: "{role}", onchange: move |e| role.set(e.value()),
-                    option { value: "", "Any role" }
-                    for r in ROLES.iter() { option { value: "{r}", if *r == "Dps" { "DPS" } else { "{r}" } } }
+                MultiSelect {
+                    any_label: "Any class",
+                    noun: "classes",
+                    title: "Mirror classes count as one",
+                    entries: class_entries(data.rows.iter().flat_map(|r| r.classes.iter().map(|c| c.name.as_str()))),
+                    picked: f.classes.clone(),
+                    on_change: move |v| filter.write().classes = v,
                 }
-                select { value: "{faction}", onchange: move |e| faction.set(e.value()),
-                    option { value: "", "Both factions" }
-                    option { value: "Republic", "Republic" }
-                    option { value: "Empire", "Empire" }
+                MultiSelect {
+                    any_label: "Any role",
+                    noun: "roles",
+                    entries: entries(&[("Tank", "Tank"), ("Healer", "Healer"), ("Dps", "DPS")]),
+                    picked: f.roles.clone(),
+                    on_change: move |v| filter.write().roles = v,
+                }
+                MultiSelect {
+                    any_label: "Both factions",
+                    noun: "factions",
+                    entries: entries(&[("Republic", "Republic"), ("Empire", "Empire")]),
+                    picked: f.factions.clone(),
+                    on_change: move |v| filter.write().factions = v,
                 }
                 if hidden_count > 0 {
-                    label { class: "history-toggle",
-                        input { r#type: "checkbox", checked: *show_hidden.read(), onchange: move |e| show_hidden.set(e.checked()) }
-                        " Hidden ({hidden_count})"
+                    ToggleSwitch {
+                        label: format!("Hidden ({hidden_count})"),
+                        title: "Show the characters you removed instead",
+                        checked: *show_hidden.read(),
+                        on_change: move |v| show_hidden.set(v),
                     }
                 }
                 button {

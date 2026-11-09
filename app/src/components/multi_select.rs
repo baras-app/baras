@@ -1,10 +1,14 @@
-//! Multi-select filter for the history toolbars: a select-looking button over
-//! a checklist. Each entry can stand for several logged values (mirror
-//! disciplines are one entry), and any number of entries can be picked.
+//! Multi-select filter: a select-looking button over a checklist. Each entry
+//! can stand for several values (mirror disciplines or classes are one
+//! entry), and any number of entries can be picked. Used by the history
+//! views, Characters and Log Management.
 
 use dioxus::prelude::*;
 
-use baras_types::history::discipline_mirror;
+use baras_types::history::{class_mirror, discipline_mirror};
+
+/// Looks up the (Imperial, Republic) pair a name belongs to
+pub type Mirror = fn(&str) -> Option<(&'static str, &'static str)>;
 
 /// A pickable entry: its label and every logged value it stands for
 pub type Entry = (String, Vec<String>);
@@ -14,19 +18,19 @@ pub fn plain_entries(values: &[String]) -> Vec<Entry> {
     values.iter().map(|v| (v.clone(), vec![v.clone()])).collect()
 }
 
-/// The logged names a discipline stands for: itself and its mirror
-fn names_of(name: &str) -> Vec<String> {
-    match discipline_mirror(name) {
+/// The names a value stands for: itself and its mirror
+fn names_of(name: &str, mirror: Mirror) -> Vec<String> {
+    match mirror(name) {
         Some((imp, rep)) => vec![imp.to_string(), rep.to_string()],
         None => vec![name.to_string()],
     }
 }
 
-/// Disciplines played, one entry per mirror pair ("Madness / Balance"), by name
-pub fn discipline_entries(played: &[String]) -> Vec<Entry> {
+/// One entry per mirror pair ("Madness / Balance"), by label
+fn mirror_entries<'a>(values: impl IntoIterator<Item = &'a str>, mirror: Mirror) -> Vec<Entry> {
     let mut out: Vec<Entry> = Vec::new();
-    for d in played {
-        let names = names_of(d);
+    for d in values {
+        let names = names_of(d, mirror);
         let label = names.join(" / ");
         if !out.iter().any(|(l, _)| *l == label) {
             out.push((label, names));
@@ -34,6 +38,16 @@ pub fn discipline_entries(played: &[String]) -> Vec<Entry> {
     }
     out.sort_by(|a, b| a.0.cmp(&b.0));
     out
+}
+
+/// Disciplines played, mirror pairs as one entry
+pub fn discipline_entries(played: &[String]) -> Vec<Entry> {
+    mirror_entries(played.iter().map(String::as_str), discipline_mirror)
+}
+
+/// Advanced classes, mirror pairs as one entry ("Sorcerer / Sage")
+pub fn class_entries<'a>(classes: impl IntoIterator<Item = &'a str>) -> Vec<Entry> {
+    mirror_entries(classes, class_mirror)
 }
 
 /// `picked` with `values` added, or removed when any of them is already in
@@ -48,7 +62,7 @@ fn toggle(picked: &[String], values: &[String]) -> Vec<String> {
 
 /// Toggle one value in `picked` (a board click); a discipline brings its mirror
 pub fn toggle_value(picked: &[String], value: &str, mirrored: bool) -> Vec<String> {
-    let values = if mirrored { names_of(value) } else { vec![value.to_string()] };
+    let values = if mirrored { names_of(value, discipline_mirror) } else { vec![value.to_string()] };
     toggle(picked, &values)
 }
 

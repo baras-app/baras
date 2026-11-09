@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 pub use library::{
     ArchiveReport, CleanupCandidate, CleanupPlan, CleanupReport, ContentTag, DeleteReport,
-    HistoryStatus, LOG_NOTE_MAX, LibraryContent, LibraryRow, LogCleanup, LogStatus,
+    HistoryStatus, LOG_NOTE_MAX, LibraryRow, LogCleanup, LogStatus,
 };
 pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
@@ -148,6 +148,23 @@ pub const DISCIPLINE_MIRRORS: [(&str, &str); 24] = [
     ("Virulence", "Dirty Fighting"),
 ];
 
+/// Imperial and Republic advanced classes that play the same
+pub const CLASS_MIRRORS: [(&str, &str); 8] = [
+    ("Sorcerer", "Sage"),
+    ("Assassin", "Shadow"),
+    ("Juggernaut", "Guardian"),
+    ("Marauder", "Sentinel"),
+    ("Mercenary", "Commando"),
+    ("Powertech", "Vanguard"),
+    ("Operative", "Scoundrel"),
+    ("Sniper", "Gunslinger"),
+];
+
+/// The mirror pair an advanced class belongs to, as (Imperial, Republic)
+pub fn class_mirror(name: &str) -> Option<(&'static str, &'static str)> {
+    CLASS_MIRRORS.iter().copied().find(|(i, r)| *i == name || *r == name)
+}
+
 /// The mirror pair a discipline belongs to, as (Imperial, Republic)
 pub fn discipline_mirror(name: &str) -> Option<(&'static str, &'static str)> {
     DISCIPLINE_MIRRORS.iter().copied().find(|(i, r)| *i == name || *r == name)
@@ -251,7 +268,9 @@ pub struct HistoryState {
     pub run_search: String,
     /// Library filters
     pub library_search: String,
-    pub library_content: LibraryContent,
+    /// Content tags to keep (any of); empty = any
+    pub library_tags: Vec<ContentTag>,
+    pub library_kills: bool,
     pub library_favorites: bool,
     /// Boss Statistics and Raid Summaries: the selection sidebar is folded
     /// to its toggle
@@ -271,7 +290,8 @@ impl Default for HistoryState {
             run_expanded: HashSet::new(),
             run_search: String::new(),
             library_search: String::new(),
-            library_content: LibraryContent::default(),
+            library_tags: Vec::new(),
+            library_kills: false,
             library_favorites: false,
             sidebar_collapsed: false,
         }

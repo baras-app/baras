@@ -1410,6 +1410,29 @@ button:active {
 .dashboard-empty-state > .session-status-group {
   margin-left: auto;
 }
+
+/* Character and session time sit just left of the status chip, together on
+   the right of the row; the name gives way first when space runs out */
+.dashboard-summary > .dashboard-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.dashboard-identity > * {
+  flex-shrink: 0;
+}
+
+.dashboard-identity > .dashboard-player-name {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.dashboard-identity ~ .session-status-group {
+  margin-left: 0;
+}
 .session-status-chip {
   display: inline-flex;
   align-items: center;
@@ -5054,6 +5077,84 @@ a.contributor-name:hover {
   display: none;
 }
 
+/* ─── Edit forms inside the drawer: nothing clips ────────────────────────────
+   Controls shrink to the drawer, fixed widths cap at 100%, rows wrap instead
+   of overflowing, and the long read-only id truncates. */
+.editor-drawer .edit-grid-left,
+.editor-drawer .edit-grid-right {
+  overflow: visible;
+}
+
+.editor-drawer .form-row-hz {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  min-width: 0;
+}
+
+.editor-drawer .form-row-hz > *,
+.editor-drawer :is(input[type="text"], input[type="number"], select, .select-trigger, textarea) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.editor-drawer :is(.w-md, .w-lg) {
+  max-width: 100%;
+}
+
+.editor-drawer .id-display {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Trigger editor rows (Abilities, Source, Target, HP %…) are plain flex
+   rows with fixed-width selects: let them wrap and shrink too */
+.editor-drawer :is(.trigger-node, .composite-trigger, .conditions-editor) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.editor-drawer :is(.trigger-node, .composite-trigger, .conditions-editor) .flex {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.editor-drawer :is(.trigger-node, .composite-trigger, .conditions-editor) :is(.flex, .flex-col) > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Field labels read as bold headings at every width: every text label in a
+   row (the second of a pair too, e.g. Target), and the trigger editor's own
+   field labels. Checkbox labels (they wrap an input) are left alone. */
+.editor-drawer .form-row-hz > label:not(:has(input)),
+.editor-drawer .trigger-node .flex > :is(label, span).text-secondary:first-child {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* A pair's second label wraps under the first: same column width so both
+   controls line up */
+.editor-drawer .form-card .form-row-hz > label:not(:first-child):not(:has(input)) {
+  flex: 0 0 auto;
+  min-width: 120px;
+}
+
+/* Narrow drawer: the label moves onto its own line above the controls,
+   which then get the full width */
+@container (max-width: 560px) {
+  .editor-drawer .form-row-hz > label:first-child:not(:last-child),
+  .editor-drawer .form-card .form-row-hz > label:not(:first-child):not(:has(input)) {
+    flex-basis: 100%;
+    min-width: 0;
+    padding-top: 0;
+    white-space: normal;
+  }
+  .form-row-hz :is(input[type="text"], select, .select-trigger):only-of-type {
+    flex: 1 1 auto;
+  }
+}
+
 .editor-drawer.empty {
   justify-content: center;
   align-items: center;
@@ -5063,7 +5164,23 @@ a.contributor-name:hover {
 }
 
 .discard-prompt {
-  max-width: 400px;
+  width: 400px;
+  text-align: left;
+}
+
+.discard-prompt .modal-header {
+  margin-bottom: var(--space-sm);
+}
+
+.discard-prompt .modal-header h3 {
+  font-size: 1.1em;
+}
+
+.discard-prompt p {
+  margin: 0;
+  font-size: 0.9em;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 /* Encounter editor: the boss's lists, as underline tabs (one accent, not
@@ -5580,6 +5697,16 @@ a.contributor-name:hover {
 .modal-header h3 {
   margin: 0;
   color: var(--text-primary);
+}
+
+/* Modal buttons: right-aligned, spaced, set off from the body (modals with
+   their own footer layout override this) */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
 }
 
 /* ─── Empty State ────────────────────────────────────────────────────────────── */

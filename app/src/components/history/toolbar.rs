@@ -3,7 +3,8 @@
 //! discipline, server, patch and tag behind "More filters". Option lists come from the overview
 //! resource; the filter itself lives in the parent so it survives tab switches.
 
-use super::multi_select::{MultiSelect, discipline_entries, plain_entries};
+use crate::components::toggle_switch::ToggleSwitch;
+use crate::components::multi_select::{MultiSelect, discipline_entries, plain_entries};
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -159,29 +160,19 @@ pub fn HistoryToolbar(filter: Signal<PullFilter>, runs: bool) -> Element {
             div { class: "history-toolbar secondary",
                 // Switches first, then the dropdowns, then the date range
                 div { class: "history-switches",
-                    label { class: "toggle-switch-label history-switch",
-                        span { class: "toggle-switch",
-                            input {
-                                r#type: "checkbox",
-                                checked: f.kills_only,
-                                onchange: move |e| filter.write().kills_only = e.checked(),
-                            }
-                            span { class: "toggle-slider" }
-                        }
-                        span { class: "toggle-text", if runs { "Full clears only" } else { "Kills only" } }
+                    ToggleSwitch {
+                        label: (if runs { "Full clears only" } else { "Kills only" }).to_string(),
+                        class: "history-switch",
+                        checked: f.kills_only,
+                        on_change: move |checked: bool| filter.write().kills_only = checked,
                     }
                     // Boss Statistics always lists flashpoints, under their own sidebar group
                     if runs {
-                        label { class: "toggle-switch-label history-switch", title: "Flashpoint runs alongside operations",
-                            span { class: "toggle-switch",
-                                input {
-                                    r#type: "checkbox",
-                                    checked: f.flashpoints,
-                                    onchange: move |e| filter.write().flashpoints = e.checked(),
-                                }
-                                span { class: "toggle-slider" }
-                            }
-                            span { class: "toggle-text", "Include flashpoints" }
+                        ToggleSwitch {
+                            label: "Include flashpoints",
+                            class: "history-switch",
+                            checked: f.flashpoints,
+                            on_change: move |checked: bool| filter.write().flashpoints = checked,
                         }
                     }
                 }

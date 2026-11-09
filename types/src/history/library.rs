@@ -228,21 +228,4 @@ pub struct LibraryRow {
     pub parsely_fights: u32,
 }
 
-/// Library content filter: any log, logs with kills, or logs carrying one tag
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub enum LibraryContent {
-    #[default]
-    Any,
-    Kills,
-    Tag(ContentTag),
-}
 
-impl LibraryContent {
-    pub fn label(self) -> &'static str {
-        match self {
-            LibraryContent::Any => "Any content",
-            LibraryContent::Kills => "Kills only",
-            LibraryContent::Tag(t) => t.label(),
-        }
-    }
-}

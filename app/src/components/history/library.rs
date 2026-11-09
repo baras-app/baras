@@ -2,11 +2,13 @@
 //! metadata, the scan and cleanup actions, favorites and restore. The rules
 //! behind the cleanup are on the Settings page (`library_rules`).
 
+use crate::components::multi_select::{Entry, MultiSelect};
+use crate::components::toggle_switch::ToggleSwitch;
 use std::collections::HashSet;
 
 use dioxus::prelude::*;
 
-use baras_types::history::{BackfillEvent, CleanupEvent, ContentTag, HistoryStatus, LibraryContent, LibraryRow, LogStatus};
+use baras_types::history::{BackfillEvent, CleanupEvent, ContentTag, HistoryStatus, LibraryRow, LogStatus};
 
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
@@ -22,11 +24,9 @@ use crate::types::UiSessionState;
 const LIB_TABLE: &str = "hist-lib-table";
 
 
-/// Select options: fixed entries first, then one per content tag
-fn content_options() -> Vec<LibraryContent> {
-    let mut v = vec![LibraryContent::Any, LibraryContent::Kills];
-    v.extend(ContentTag::ALL.iter().map(|t| LibraryContent::Tag(*t)));
-    v
+/// Content multi-select: one entry per tag, keyed by its label
+fn tag_entries() -> Vec<Entry> {
+    ContentTag::ALL.iter().map(|t| (t.label().to_string(), vec![t.label().to_string()])).collect()
 }
 
 pub fn fmt_bytes(b: u64) -> String {
@@ -41,12 +41,8 @@ pub fn fmt_bytes(b: u64) -> String {
     }
 }
 
-fn matches(row: &LibraryRow, content: LibraryContent, favorites_only: bool, search: &str) -> bool {
-    let content_ok = match content {
-        LibraryContent::Any => true,
-        LibraryContent::Kills => row.kills > 0,
-        LibraryContent::Tag(t) => row.content.contains(&t),
-    };
+fn matches(row: &LibraryRow, tags: &[ContentTag], kills_only: bool, favorites_only: bool, search: &str) -> bool {
+    let content_ok = (tags.is_empty() || tags.iter().any(|t| row.content.contains(t))) && (!kills_only || row.kills > 0);
     let search_ok = search.is_empty()
         || row.filename.to_lowercase().contains(search)
         || row.character.as_deref().is_some_and(|c| c.to_lowercase().contains(search))
@@ -142,7 +138,8 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
 
     // Filters live in the session state so a tab switch keeps them
     let mut search = use_signal(|| state.read().history.library_search.clone());
-    let mut content = use_signal(|| state.read().history.library_content);
+    let mut tags = use_signal(|| state.read().history.library_tags.clone());
+    let mut kills_only = use_signal(|| state.read().history.library_kills);
     let mut favorites_only = use_signal(|| state.read().history.library_favorites);
     // Calendar pick: inclusive day bounds, or None for every day
     let mut day_range: Signal<Option<super::heatmap::DayRange>> = use_signal(|| None);
@@ -150,7 +147,8 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     use_effect(move || {
         let mut s = state.write();
         s.history.library_search = search.read().clone();
-        s.history.library_content = *content.read();
+        s.history.library_tags = tags.read().clone();
+        s.history.library_kills = *kills_only.read();
         s.history.library_favorites = *favorites_only.read();
     });
 
@@ -181,12 +179,12 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
     let picked_days = day_range.read().clone();
     let visible: Vec<&LibraryRow> = all
         .iter()
-        .filter(|r| matches(r, *content.read(), *favorites_only.read(), &q))
+        .filter(|r| matches(r, &tags.read(), *kills_only.read(), *favorites_only.read(), &q))
         .filter(|r| picked_days.as_ref().is_none_or(|d| super::heatmap::in_range(&r.date, d)))
         .collect();
     let day_stats = super::heatmap::day_stats(all);
     // Rows render a page at a time; a filter change starts over
-    let page_key = format!("{q}|{:?}|{}|{:?}", *content.read(), *favorites_only.read(), picked_days);
+    let page_key = format!("{q}|{:?}|{}|{}|{:?}", *tags.read(), *kills_only.read(), *favorites_only.read(), picked_days);
     let paged = use_paged(&page_key);
     let limit = paged.limit(&page_key);
     let shown = visible.len().min(limit);
@@ -241,23 +239,17 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                     value: "{search}",
                     oninput: move |e| search.set(e.value()),
                 }
-                select {
-                    onchange: move |e| {
-                        let i: usize = e.value().parse().unwrap_or(0);
-                        content.set(content_options().get(i).copied().unwrap_or_default());
+                MultiSelect {
+                    any_label: "Any content",
+                    noun: "content types",
+                    entries: tag_entries(),
+                    picked: tags.read().iter().map(|t| t.label().to_string()).collect::<Vec<_>>(),
+                    on_change: move |picked: Vec<String>| {
+                        tags.set(ContentTag::ALL.iter().copied().filter(|t| picked.iter().any(|p| p == t.label())).collect());
                     },
-                    for (i, c) in content_options().into_iter().enumerate() {
-                        option { value: "{i}", selected: c == *content.read(), {c.label()} }
-                    }
                 }
-                label { class: "history-toggle",
-                    input {
-                        r#type: "checkbox",
-                        checked: *favorites_only.read(),
-                        onchange: move |e| favorites_only.set(e.checked()),
-                    }
-                    " Favorites"
-                }
+                ToggleSwitch { label: "Kills only", checked: *kills_only.read(), on_change: move |v| kills_only.set(v) }
+                ToggleSwitch { label: "Favorites", checked: *favorites_only.read(), on_change: move |v| favorites_only.set(v) }
                 if let Some((from, to)) = picked_days.clone() {
                     span { class: "library-day-pick",
                         i { class: "fa-solid fa-calendar-day" }
@@ -271,7 +263,8 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                         title: "Clear the filters and scroll to the log that is open right now (always the first row)",
                         onclick: move |_| {
                             search.set(String::new());
-                            content.set(LibraryContent::Any);
+                            tags.set(Vec::new());
+                            kills_only.set(false);
                             favorites_only.set(false);
                             super::scroll::scroll_to_top(LIB_TABLE);
                         },

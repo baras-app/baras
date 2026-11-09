@@ -12,6 +12,7 @@ use crate::components::{
     use_file_opener_provider, use_parsely_upload,
     use_parsely_upload_provider, use_toast, use_toast_provider,
 };
+use crate::components::toggle_switch::ToggleSwitch;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 use crate::types::{
     AreaVisitInfo, LogFileInfo, MainTab, MetricType, OverlaySettings, OverlayStatus, OverlayType,
@@ -114,7 +115,7 @@ pub fn App() -> Element {
     // Other UI state (not part of session persistence)
     let mut overlay_settings = use_signal(OverlaySettings::default);
     let mut selected_overlay_tab = use_signal(|| "dps".to_string());
-    let mut settings_section = use_signal(|| SettingsSection::Overlays);
+    let mut settings_section = use_signal(|| SettingsSection::Global);
     // Gear on an overlay toggle: show that overlay's options in the settings panel
     let open_overlay_settings = move |key: &'static str| {
         selected_overlay_tab.set(key.to_string());
@@ -1059,36 +1060,8 @@ pub fn App() -> Element {
                                 div {
                                     class: "dashboard-toggle-row",
 
-                                    // Session status icon + label + player name + duration (always visible as a summary)
+                                    // Session tools on the left; character, duration and status on the right
                                     div { class: "dashboard-summary",
-                                        // Role icon (small)
-                                        if let Some(ref role_name) = info.role_icon {
-                                            if let Some(role_asset) = get_role_icon(role_name) {
-                                                img { class: "dashboard-role-icon", src: *role_asset }
-                                            }
-                                        }
-                                        // Class icon (small)
-                                        if let Some(ref icon_name) = info.class_icon {
-                                            if let Some(icon_asset) = get_class_icon(icon_name) {
-                                                img { class: "dashboard-class-icon", src: *icon_asset }
-                                            }
-                                        }
-
-                                        // Player name
-                                        if let Some(ref name) = info.player_name {
-                                            span { class: "dashboard-player-name", "{name}" }
-                                        }
-
-                                        // Duration badge
-                                        if let Some(ref duration) = info.duration_formatted {
-                                            span { class: "session-duration-badge",
-                                                title: session_time_text.as_deref().map(|t| format!("Session: {t}")).unwrap_or_default(),
-                                                i { class: "fa-regular fa-clock" }
-                                                " {duration}"
-                                            }
-                                        }
-                                        span { class: "header-controls-divider" }
-
                                         // Combat status icon (live only)
                                         if live_tailing && !session_ended() && !info.stale_session {
                                             span {
@@ -1158,7 +1131,36 @@ pub fn App() -> Element {
 
                                         ProfileUnsavedHint { active_profile, profile_dirty }
 
-                                        // Live / historical status closes the row on the right
+                                        // Session facts on the right: who, how long, then live / prior
+                                        span { class: "dashboard-identity",
+                                            // Role icon (small)
+                                            if let Some(ref role_name) = info.role_icon {
+                                                if let Some(role_asset) = get_role_icon(role_name) {
+                                                    img { class: "dashboard-role-icon", src: *role_asset }
+                                                }
+                                            }
+                                            // Class icon (small)
+                                            if let Some(ref icon_name) = info.class_icon {
+                                                if let Some(icon_asset) = get_class_icon(icon_name) {
+                                                    img { class: "dashboard-class-icon", src: *icon_asset }
+                                                }
+                                            }
+
+                                            // Player name
+                                            if let Some(ref name) = info.player_name {
+                                                span { class: "dashboard-player-name", "{name}" }
+                                            }
+
+                                            // Duration badge
+                                            if let Some(ref duration) = info.duration_formatted {
+                                                span { class: "session-duration-badge",
+                                                    title: session_time_text.as_deref().map(|t| format!("Session: {t}")).unwrap_or_default(),
+                                                    i { class: "fa-regular fa-clock" }
+                                                    " {duration}"
+                                                }
+                                            }
+                                        }
+                                        span { class: "header-controls-divider" }
                                         SessionStatusChip {
                                             live_tailing,
                                             watching,
@@ -2249,30 +2251,23 @@ pub fn App() -> Element {
                                 i { class: "fa-solid fa-folder-open" }
                                 " Log Files"
                             }
-                            label {
-                                class: "toggle-switch-label file-browser-filter-toggle",
+                            ToggleSwitch {
+                                label: "Hide <1MB",
+                                class: "file-browser-filter-toggle",
                                 title: "Hide files smaller than 1MB",
-                                span { class: "toggle-switch",
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: hide_small_log_files(),
-                                        onchange: move |e| {
-                                            let checked = e.checked();
-                                            hide_small_log_files.set(checked);
-                                            let mut toast = use_toast();
-                                            spawn(async move {
-                                                if let Some(mut cfg) = api::get_config().await {
-                                                    cfg.hide_small_log_files = checked;
-                                                    if let Err(err) = api::update_config(&cfg).await {
-                                                        toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
-                                                    }
-                                                }
-                                            });
-                                        },
-                                    }
-                                    span { class: "toggle-slider" }
-                                }
-                                span { class: "toggle-text", "Hide <1MB" }
+                                checked: hide_small_log_files(),
+                                on_change: move |checked: bool| {
+                                    hide_small_log_files.set(checked);
+                                    let mut toast = use_toast();
+                                    spawn(async move {
+                                        if let Some(mut cfg) = api::get_config().await {
+                                            cfg.hide_small_log_files = checked;
+                                            if let Err(err) = api::update_config(&cfg).await {
+                                                toast.show(format!("Failed to save settings: {}", err), ToastSeverity::Normal);
+                                            }
+                                        }
+                                    });
+                                },
                             }
                             button {
                                 class: "btn btn-close",
