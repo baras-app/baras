@@ -2,6 +2,7 @@
 
 use dioxus::prelude::*;
 
+use crate::components::editor_common::FormCard;
 use crate::types::{AreaListItem, BossEditItem, NewAreaRequest};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,9 +21,7 @@ pub fn NewAreaForm(
     let can_create = !name().is_empty() && !area_id().is_empty();
 
     rsx! {
-        div {
-            class: "modal-overlay",
-            onclick: move |_| on_cancel.call(()),
+        div { class: "modal-overlay", onclick: move |_| on_cancel.call(()),
 
             div {
                 class: "modal-content",
@@ -40,7 +39,7 @@ pub fn NewAreaForm(
                         class: "input w-full",
                         placeholder: "e.g., The Ravagers",
                         value: "{name}",
-                        oninput: move |e| name.set(e.value())
+                        oninput: move |e| name.set(e.value()),
                     }
                 }
 
@@ -52,7 +51,7 @@ pub fn NewAreaForm(
                         class: "input w-full",
                         placeholder: "e.g., 833571547775799",
                         value: "{area_id}",
-                        oninput: move |e| area_id.set(e.value())
+                        oninput: move |e| area_id.set(e.value()),
                     }
                     span { class: "hint", "Find in combat log: AreaEntered with area ID" }
                 }
@@ -84,11 +83,12 @@ pub fn NewAreaForm(
                         disabled: !can_create,
                         onclick: move |_| {
                             if let Ok(id) = area_id().parse::<i64>() {
-                                on_create.call(NewAreaRequest {
-                                    name: name(),
-                                    area_id: id,
-                                    area_type: area_type(),
-                                });
+                                on_create
+                                    .call(NewAreaRequest {
+                                        name: name(),
+                                        area_id: id,
+                                        area_type: area_type(),
+                                    });
                             }
                         },
                         "Create Area"
@@ -122,78 +122,80 @@ pub fn NewBossForm(
     let can_create = !id().is_empty() && !name().is_empty();
 
     rsx! {
-        div { class: "list-item mb-md",
-            div { class: "flex justify-between items-center mb-sm p-sm",
-                h4 { class: "text-primary", "New Boss" }
+        FormCard {
+            icon: "fa-skull",
+            title: "New Boss",
+            action: rsx! {
                 button {
-                    class: "btn btn-ghost btn-sm",
+                    class: "btn btn-ghost btn-xs",
+                    title: "Cancel",
                     onclick: move |_| on_cancel.call(()),
-                    "×"
+                    i { class: "fa-solid fa-xmark" }
+                }
+            },
+
+            // Boss ID
+            div { class: "form-row-hz",
+                label { "Boss ID" }
+                input {
+                    r#type: "text",
+                    class: "flex-1",
+                    placeholder: "e.g., apex_vanguard (snake_case)",
+                    value: "{id}",
+                    oninput: move |e| id.set(e.value()),
                 }
             }
 
-            div { class: "p-sm",
-                // Boss ID
-                div { class: "form-row-hz",
-                    label { class: "form-label", "Boss ID" }
-                    input {
-                        r#type: "text",
-                        class: "input-inline flex-1",
-                        placeholder: "e.g., apex_vanguard (snake_case)",
-                        value: "{id}",
-                        oninput: move |e| id.set(e.value())
-                    }
+            // Name
+            div { class: "form-row-hz",
+                label { "Name" }
+                input {
+                    r#type: "text",
+                    class: "flex-1",
+                    placeholder: "e.g., Apex Vanguard",
+                    value: "{name}",
+                    oninput: move |e| name.set(e.value()),
                 }
+            }
 
-                // Name
-                div { class: "form-row-hz",
-                    label { class: "form-label", "Name" }
-                    input {
-                        r#type: "text",
-                        class: "input-inline flex-1",
-                        placeholder: "e.g., Apex Vanguard",
-                        value: "{name}",
-                        oninput: move |e| name.set(e.value())
-                    }
-                }
+            // Difficulties
+            div { class: "form-row-hz",
+                label { "Difficulties" }
+                div { class: "flex gap-xs",
+                    for diff in ["story", "veteran", "master"] {
+                        {
+                            let diff_str = diff.to_string();
+                            let is_active = difficulties().contains(&diff_str);
+                            let diff_clone = diff_str.clone();
 
-                // Difficulties
-                div { class: "form-field",
-                    label { class: "form-label", "Difficulties" }
-                    div { class: "flex gap-xs",
-                        for diff in ["story", "veteran", "master"] {
-                            {
-                                let diff_str = diff.to_string();
-                                let is_active = difficulties().contains(&diff_str);
-                                let diff_clone = diff_str.clone();
-
-                                rsx! {
-                                    button {
-                                        class: if is_active { "toggle-btn active capitalize" } else { "toggle-btn capitalize" },
-                                        onclick: move |_| {
-                                            let mut d = difficulties();
-                                            if d.contains(&diff_clone) {
-                                                d.retain(|x| x != &diff_clone);
-                                            } else {
-                                                d.push(diff_clone.clone());
-                                            }
-                                            difficulties.set(d);
-                                        },
-                                        "{diff}"
-                                    }
+                            rsx! {
+                                button {
+                                    class: if is_active { "toggle-btn active capitalize" } else { "toggle-btn capitalize" },
+                                    onclick: move |_| {
+                                        let mut d = difficulties();
+                                        if d.contains(&diff_clone) {
+                                            d.retain(|x| x != &diff_clone);
+                                        } else {
+                                            d.push(diff_clone.clone());
+                                        }
+                                        difficulties.set(d);
+                                    },
+                                    "{diff}"
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                // Actions
-                div { class: "flex gap-sm",
-                    button {
-                        class: if can_create { "btn btn-success btn-sm" } else { "btn btn-sm" },
-                        disabled: !can_create,
-                        onclick: move |_| {
-                            on_create.call(BossEditItem {
+            // Actions
+            div { class: "form-actions",
+                button {
+                    class: if can_create { "btn btn-success btn-sm" } else { "btn btn-sm" },
+                    disabled: !can_create,
+                    onclick: move |_| {
+                        on_create
+                            .call(BossEditItem {
                                 id: id(),
                                 name: name(),
                                 area_name: area.name.clone(),
@@ -201,15 +203,14 @@ pub fn NewBossForm(
                                 file_path: area.file_path.clone(),
                                 difficulties: difficulties(),
                             });
-                        },
-                        "Create Boss"
-                    }
+                    },
+                    "Create Boss"
+                }
 
-                    button {
-                        class: "btn btn-ghost btn-sm",
-                        onclick: move |_| on_cancel.call(()),
-                        "Cancel"
-                    }
+                button {
+                    class: "btn btn-ghost btn-sm",
+                    onclick: move |_| on_cancel.call(()),
+                    "Cancel"
                 }
             }
         }

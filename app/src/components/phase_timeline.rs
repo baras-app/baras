@@ -42,6 +42,14 @@ fn phase_color(phase_id: &str) -> String {
     format!("hsl({}, {}%, calc(var(--phase-l) + {}%))", hue, sat, light)
 }
 
+/// A phase is selected when the range matches it exactly. A full range never
+/// counts, even if a single phase happens to span the entire fight.
+fn is_phase_selected(range: TimeRange, duration: f32, phase: &PhaseSegment) -> bool {
+    !range.is_full(duration)
+        && (range.start - phase.start_secs).abs() < 0.1
+        && (range.end - phase.end_secs).abs() < 0.1
+}
+
 #[derive(Props, Clone, PartialEq)]
 pub struct PhaseTimelineProps {
     /// Timeline data (duration + phases)
@@ -86,11 +94,14 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
         }
     };
 
-    // Handle clicking on a phase segment
+    // Handle clicking on a phase segment or chip; clicking the selected phase clears it
     let select_phase = move |phase: &PhaseSegment| {
-        props
-            .on_range_change
-            .call(TimeRange::new(phase.start_secs, phase.end_secs));
+        let next = if is_phase_selected(range, duration, phase) {
+            TimeRange::full(duration)
+        } else {
+            TimeRange::new(phase.start_secs, phase.end_secs)
+        };
+        props.on_range_change.call(next);
     };
 
     // Handle reset to full range
@@ -299,11 +310,7 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                         {
                             let left = time_to_pct(phase.start_secs);
                             let width = time_to_pct(phase.end_secs - phase.start_secs);
-                            // A full range never counts as a phase selection, even if a
-                            // single phase happens to span the entire fight
-                            let is_selected = !range.is_full(duration)
-                                && (range.start - phase.start_secs).abs() < 0.1
-                                && (range.end - phase.end_secs).abs() < 0.1;
+                            let is_selected = is_phase_selected(range, duration, phase);
                             let phase_clone = phase.clone();
                             let bg_color = phase_color(&phase.phase_id);
 
@@ -496,9 +503,7 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                     div { class: "phase-chips",
                         for phase in phases.iter() {
                             {
-                                let is_active = !range.is_full(duration)
-                                    && (range.start - phase.start_secs).abs() < 0.1
-                                    && (range.end - phase.end_secs).abs() < 0.1;
+                                let is_active = is_phase_selected(range, duration, phase);
                                 let phase_clone = phase.clone();
                                 let bg_color = phase_color(&phase.phase_id);
 

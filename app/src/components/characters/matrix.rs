@@ -5,6 +5,8 @@ use dioxus::prelude::*;
 
 use baras_types::characters::{CharacterRow, Lockout, OperationRef, operation_key};
 
+use crate::components::class_icons::get_role_icon;
+
 use super::lockouts::{tier_short, until};
 use super::table::FactionIcon;
 
@@ -47,25 +49,56 @@ fn LockBar(operation: String, tier: &'static str, bosses: usize, lock: Option<Lo
     }
 }
 
+/// SM / VM / NiM toggles for the matrix; the last one on stays on
 #[component]
-pub fn LockoutMatrix(rows: Vec<CharacterRow>, operations: Vec<OperationRef>, on_edit: EventHandler<CharacterRow>) -> Element {
-    // Columns: operations with a known boss list first, then the rest
-    let mut ops: Vec<&OperationRef> = operations.iter().collect();
-    ops.sort_by_key(|o| (o.tiers.is_empty(), o.name.clone()));
-    let keys: Vec<String> = ops.iter().map(|o| operation_key(o.area_id, &o.name)).collect();
-    // Modes drawn per column: the ones the operation has (every one with a
-    // lockout when the area is unknown)
-    let shown: Vec<Vec<(&'static str, usize)>> = ops
-        .iter()
-        .zip(keys.iter())
-        .map(|(o, k)| {
-            if o.tiers.is_empty() {
-                TIERS.iter().copied().filter(|t| rows.iter().any(|r| lock_at(r, k, t).is_some())).map(|t| (t, 0)).collect()
-            } else {
-                TIERS.iter().copied().filter_map(|t| o.tiers.iter().find(|tb| tb.tier == t).map(|tb| (t, tb.bosses.len()))).collect()
+pub fn TierPicks(tiers: Signal<[bool; 3]>) -> Element {
+    let on = *tiers.read();
+    rsx! {
+        div { class: "matrix-tier-picks", title: "Modes shown in the lockout matrix",
+            for (i, t) in TIERS.iter().enumerate() {
+                button {
+                    class: format!("matrix-tier-pick tier-{}{}", t.to_lowercase(), if on[i] { " on" } else { "" }),
+                    onclick: move |_| {
+                        let mut v = *tiers.read();
+                        v[i] = !v[i];
+                        if v.iter().any(|b| *b) {
+                            tiers.set(v);
+                        }
+                    },
+                    {tier_short(t)}
+                }
             }
+        }
+    }
+}
+
+#[component]
+pub fn LockoutMatrix(
+    rows: Vec<CharacterRow>,
+    operations: Vec<OperationRef>,
+    /// Which of Story / Veteran / Master to draw
+    tiers: [bool; 3],
+    on_edit: EventHandler<CharacterRow>,
+) -> Element {
+    let picked: Vec<&'static str> = TIERS.iter().zip(tiers).filter(|(_, on)| *on).map(|(t, _)| *t).collect();
+    // Columns: operations with a known boss list first, then the rest
+    let mut sorted: Vec<&OperationRef> = operations.iter().collect();
+    sorted.sort_by_key(|o| (o.tiers.is_empty(), o.name.clone()));
+    // Modes drawn per column: the picked ones the operation has (every picked
+    // one with a lockout when the area is unknown). A known operation with
+    // none of the picked modes drops out.
+    let (ops, (keys, shown)): (Vec<&OperationRef>, (Vec<String>, Vec<Vec<(&'static str, usize)>>)) = sorted
+        .into_iter()
+        .filter_map(|o| {
+            let k = operation_key(o.area_id, &o.name);
+            let modes: Vec<(&'static str, usize)> = if o.tiers.is_empty() {
+                picked.iter().copied().filter(|t| rows.iter().any(|r| lock_at(r, &k, t).is_some())).map(|t| (t, 0)).collect()
+            } else {
+                picked.iter().copied().filter_map(|t| o.tiers.iter().find(|tb| tb.tier == t).map(|tb| (t, tb.bosses.len()))).collect()
+            };
+            (o.tiers.is_empty() || !modes.is_empty()).then_some((o, (k, modes)))
         })
-        .collect();
+        .unzip();
     // How many characters each column locks out at a shown mode, for the header
     let locked_counts: Vec<usize> = keys
         .iter()
@@ -104,8 +137,16 @@ pub fn LockoutMatrix(rows: Vec<CharacterRow>, operations: Vec<OperationRef>, on_
                                     td { class: "matrix-char",
                                         button { class: "matrix-char-btn", title: "Edit {row.name}", onclick: move |_| on_edit.call(r.clone()),
                                             FactionIcon { faction: row.faction }
-                                            span { class: "matrix-char-name", "{row.name}" }
-                                            if !row.server.is_empty() { span { class: "matrix-char-server", "{row.server}" } }
+                                            span { class: "matrix-char-text",
+                                                span { class: "matrix-char-name", "{row.name}" }
+                                                if !row.roles.is_empty() {
+                                                    span { class: "matrix-char-roles",
+                                                        for r in row.roles.iter() {
+                                                            if let Some(icon) = get_role_icon(&r.icon) { img { src: *icon, alt: "{r.name}", title: "{r.name}" } }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                     for ((o, key), modes) in ops.iter().zip(keys.iter()).zip(shown.iter()) {

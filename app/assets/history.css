@@ -1218,12 +1218,15 @@
 
 /* ── Difficulty / size: segmented toggles and the subset chips ───────────── */
 
+/* Segmented control in the navbar's scheme: a faint track, flat segments,
+   the picked one raised with its icon in the filter's colour */
 .history-seg {
   display: inline-flex;
-  overflow: hidden;
+  gap: 2px;
+  padding: 2px;
+  background: rgba(var(--fg-rgb), 0.06);
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  background: var(--bg-mid);
+  border-radius: 9px;
 }
 
 .history-seg .seg {
@@ -1231,23 +1234,31 @@
   align-items: center;
   gap: 0.35em;
   padding: 0.35em 0.7em;
-  border: none;
-  border-right: 1px solid var(--border-subtle);
+  border: 1px solid transparent;
+  border-radius: 7px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   font: inherit;
   font-size: 0.9em;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.history-seg .seg:last-child { border-right: none; }
-.history-seg .seg:hover { color: var(--text-primary); background: rgba(var(--fg-rgb), 0.04); }
+.history-seg .seg:hover { color: var(--text-primary); background: rgba(var(--fg-rgb), 0.06); }
 
-.history-seg .seg.active { color: var(--text-primary); background: rgba(var(--fg-rgb), 0.06); }
-.history-seg .seg.active.tier-story { box-shadow: inset 0 -2px 0 var(--color-success); }
-.history-seg .seg.active.tier-veteran { box-shadow: inset 0 -2px 0 #e8c060; }
-.history-seg .seg.active.tier-master { box-shadow: inset 0 -2px 0 #f08080; }
-.history-seg .seg.active.size { box-shadow: inset 0 -2px 0 var(--swtor-blue-bright); }
+.history-seg .seg.active {
+  color: var(--text-primary);
+  background: var(--bg-raised);
+  border-color: rgba(var(--fg-rgb), 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+.history-seg .seg.active > i { color: var(--swtor-blue); }
+.history-seg .seg.active.tier-story > i { color: var(--color-success); }
+.history-seg .seg.active.tier-veteran > i { color: #e8c060; }
+.history-seg .seg.active.tier-master > i { color: #f08080; }
+.history-seg .seg.active.size > i { color: var(--swtor-blue-bright); }
 
 .history-subset {
   display: inline-flex;
@@ -1279,7 +1290,6 @@
 }
 
 .history-seg .seg.role.active img { opacity: 1; }
-.history-seg .seg.active.role { box-shadow: inset 0 -2px 0 var(--text-secondary); }
 
 /* ─────────────────────────────────────────────────────────────────────────
    Log Management: activity calendar beside the 2×2 value boxes

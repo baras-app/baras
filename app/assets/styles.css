@@ -490,16 +490,21 @@ select optgroup {
   border: 1px solid var(--border-accent);
   border-radius: var(--radius-xl);
 }
-/* Sections flow into two balanced columns on wide windows, one when narrow */
+/* Two explicit columns on wide windows, one when narrow. Not CSS multi-column:
+   WebKitGTK 2.44 (bundled in the AppImage) paints content at stale positions
+   when a section inside it changes height after loading. */
 .settings-page .settings-content {
-  columns: 2 460px;
-  column-gap: 1.25em;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0 1.25em;
+}
+.settings-page .settings-col {
+  flex: 1 1 460px;
+  min-width: 0;
 }
 .settings-page .settings-section {
-  display: inline-block;
-  width: 100%;
   box-sizing: border-box;
-  break-inside: avoid;
   margin: 0 0 1.25em;
 }
 .settings-page h4 {
@@ -523,7 +528,6 @@ select optgroup {
 .settings-page .settings-footer {
   margin-top: 0.75em;
   padding: 0.75em 0 0;
-  background: none;
 }
 
 .header-meta {
@@ -2411,7 +2415,6 @@ details[open] .collapsible-summary::before {
   padding: 1em 0 0 1em;
   border-top: 1px solid var(--blue-alpha-15);
   flex-shrink: 0;
-  background: inherit;
 }
 
 .btn-save {
@@ -4379,9 +4382,6 @@ a.contributor-name:hover {
   font-size: 10px;
 }
 
-.history-seg .seg.active.origin-seg.custom { box-shadow: inset 0 -2px 0 var(--color-success, #2ecc71); }
-.history-seg .seg.active.origin-seg.modified { box-shadow: inset 0 -2px 0 #c39bd3; }
-.history-seg .seg.active.origin-seg.builtin { box-shadow: inset 0 -2px 0 var(--swtor-blue-bright, #6ab0ff); }
 
 .effect-editor-header {
   display: flex;

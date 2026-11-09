@@ -416,7 +416,9 @@ svg.char-faction {
   left: 0;
   z-index: 1;
   background: var(--bg-mid);
-  min-width: 11em;
+  /* Shrink to the widest name instead of absorbing the table's slack */
+  width: 1%;
+  white-space: nowrap;
 }
 
 .lockout-matrix thead .matrix-char {
@@ -444,9 +446,23 @@ svg.char-faction {
   font-weight: 500;
 }
 
-.matrix-char-server {
-  font-size: 0.78em;
-  color: var(--text-muted);
+/* Name over its role icons */
+.matrix-char-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.matrix-char-roles {
+  display: flex;
+  gap: 3px;
+}
+
+.matrix-char-roles img {
+  width: 14px;
+  height: 14px;
+  opacity: 0.85;
 }
 
 .matrix-cell {
@@ -502,3 +518,34 @@ svg.char-faction {
 .lock-bar.tier-master .seg.on { background: #e05a5a; }
 .lock-bar.tier-veteran .seg.on { background: #d9a441; }
 .lock-bar.tier-story .seg.on { background: #5fc47a; }
+
+/* Mode toggles at the right of the Roster / Lockouts tabs */
+.matrix-tier-picks {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  align-self: center;
+}
+
+.matrix-tier-pick {
+  min-width: 3.2em;
+  padding: 2px 8px;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.matrix-tier-pick:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-medium);
+}
+
+.matrix-tier-pick.on { color: var(--text-primary); }
+.matrix-tier-pick.tier-story.on { background: rgba(95, 196, 122, 0.18); border-color: #5fc47a; }
+.matrix-tier-pick.tier-veteran.on { background: rgba(217, 164, 65, 0.18); border-color: #d9a441; }
+.matrix-tier-pick.tier-master.on { background: rgba(224, 90, 90, 0.18); border-color: #e05a5a; }

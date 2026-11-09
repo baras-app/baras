@@ -210,8 +210,16 @@ pub fn PvpTab(european: bool, backfill: Backfill) -> Element {
         paged.show_all("");
     };
     // Board clicks toggle one value; a discipline brings its mirror, as in the list
-    let pick_map = move |name: String| pick(|f| &mut f.maps, toggle_value(&filter.read().maps, &name, false));
-    let pick_disc = move |name: String| pick(|f| &mut f.disciplines, toggle_value(&filter.read().disciplines, &name, true));
+    // Compute in its own statement: a `filter.read()` temporary inside the call
+    // arguments would outlive into `pick`'s `filter.write()` and panic
+    let pick_map = move |name: String| {
+        let v = toggle_value(&filter.read().maps, &name, false);
+        pick(|f| &mut f.maps, v);
+    };
+    let pick_disc = move |name: String| {
+        let v = toggle_value(&filter.read().disciplines, &name, true);
+        pick(|f| &mut f.disciplines, v);
+    };
     let pick_person = move |name: String| {
         let v = if filter.read().person == name { String::new() } else { name };
         set(|f, v| f.person = v, v);

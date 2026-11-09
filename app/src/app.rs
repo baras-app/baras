@@ -1663,6 +1663,7 @@ pub fn App() -> Element {
                             h3 { "Settings" }
                         }
                         div { class: "settings-content",
+                        div { class: "settings-col",
                         div { class: "settings-section",
                             h4 { "Log Directory" }
                             p { class: "hint", "Select the directory containing your SWTOR combat logs." }
@@ -1981,6 +1982,8 @@ pub fn App() -> Element {
                             }
                         }
 
+                        } // settings-col
+                        div { class: "settings-col",
                         div { class: "settings-section",
                             h4 { "Parsely.io" }
                             p { class: "hint", "Upload logs to parsely.io for leaderboards and detailed analysis." }
@@ -2171,6 +2174,7 @@ pub fn App() -> Element {
                             p { class: "hint", "The oldest images are removed once this limit is reached." }
                         }
 
+                        } // settings-col
                         } // settings-content
                     }
                 }

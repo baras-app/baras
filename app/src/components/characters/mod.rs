@@ -25,7 +25,7 @@ pub use settings::LockoutResetSetting;
 
 use editor::{CharacterEditor, EditTarget};
 use lockouts::until;
-use matrix::LockoutMatrix;
+use matrix::{LockoutMatrix, TierPicks};
 use table::{CharacterTable, SortKey, sort_rows};
 
 /// Toolbar multi-selects; each empty list means "any"
@@ -62,16 +62,16 @@ fn locked_at(row: &CharacterRow, op_key: &str, tier: &str) -> bool {
 
 const TIERS: [(&str, &str); 3] = [("Story", "SM"), ("Veteran", "VM"), ("Master", "NiM")];
 
-/// Lockout picks: characters locked out of any of these (operation key,
-/// mode) pairs are hidden.
+/// Lockout picks: only characters locked out of any of these (operation key,
+/// mode) pairs are shown. No picks keeps everyone.
 #[derive(Clone, PartialEq, Default)]
-struct FreeFor {
+struct LockedFor {
     picks: HashSet<(String, String)>,
 }
 
-impl FreeFor {
-    fn excludes(&self, row: &CharacterRow) -> bool {
-        self.picks.iter().any(|(k, t)| locked_at(row, k, t))
+impl LockedFor {
+    fn keeps(&self, row: &CharacterRow) -> bool {
+        self.picks.is_empty() || self.picks.iter().any(|(k, t)| locked_at(row, k, t))
     }
 
     fn toggle(&mut self, key: &str, tier: &str) {
@@ -82,10 +82,10 @@ impl FreeFor {
     }
 }
 
-fn matches(row: &CharacterRow, search: &str, filter: &RosterFilter, free_for: &FreeFor) -> bool {
+fn matches(row: &CharacterRow, search: &str, filter: &RosterFilter, locked_for: &LockedFor) -> bool {
     let q = search.trim().to_lowercase();
     let text = || [&row.name, &row.guild, &row.note, &row.server].into_iter().any(|f| f.to_lowercase().contains(&q));
-    (q.is_empty() || text()) && filter.keeps(row) && !free_for.excludes(row)
+    (q.is_empty() || text()) && filter.keeps(row) && locked_for.keeps(row)
 }
 
 #[component]
@@ -97,7 +97,9 @@ pub fn CharactersPanel() -> Element {
     let mut show_hidden = use_signal(|| false);
     // Which view: the roster table, or the lockout matrix
     let mut matrix = use_signal(|| false);
-    let mut free_for: Signal<FreeFor> = use_signal(FreeFor::default);
+    // Modes the lockout matrix draws (Story, Veteran, Master)
+    let matrix_tiers = use_signal(|| [true; 3]);
+    let mut locked_for: Signal<LockedFor> = use_signal(LockedFor::default);
     let sort_key = use_signal(|| SortKey::LastSeen);
     let sort_desc = use_signal(|| true);
     let mut editing: Signal<Option<EditTarget>> = use_signal(|| None);
@@ -115,7 +117,7 @@ pub fn CharactersPanel() -> Element {
         .rows
         .iter()
         .filter(|r| r.hidden == *show_hidden.read())
-        .filter(|r| matches(r, &search.read(), &filter.read(), &free_for.read()))
+        .filter(|r| matches(r, &search.read(), &filter.read(), &locked_for.read()))
         .cloned()
         .collect();
     sort_rows(&mut rows, *sort_key.read(), *sort_desc.read());
@@ -138,7 +140,7 @@ pub fn CharactersPanel() -> Element {
             (key, o.name.clone(), modes)
         })
         .collect();
-    let active_picks = free_for.read().picks.len();
+    let active_picks = locked_for.read().picks.len();
 
     let reload = move |_| roster.restart();
     let on_delete = move |row: CharacterRow| {
@@ -234,9 +236,9 @@ pub fn CharactersPanel() -> Element {
                         div { class: "op-filter-head",
                             i { class: "fa-solid fa-lock" }
                             span { class: "op-filter-label", "Lockouts" }
-                            span { class: "hint", "Click a circle to hide the characters locked out there" }
+                            span { class: "hint", "Click a count to show only the characters locked out there" }
                             if active_picks > 0 {
-                                button { class: "btn btn-xs btn-ghost", title: "Show every character again", onclick: move |_| free_for.write().picks.clear(),
+                                button { class: "btn btn-xs btn-ghost", title: "Show every character again", onclick: move |_| locked_for.write().picks.clear(),
                                     i { class: "fa-solid fa-xmark" } " Clear"
                                 }
                             }
@@ -244,7 +246,7 @@ pub fn CharactersPanel() -> Element {
                         div { class: "op-filter-grid",
                             for (key, op, modes) in op_badges.iter() {
                                 {
-                                    let ff = free_for.read();
+                                    let ff = locked_for.read();
                                     let active = ff.picks.iter().any(|(k, _)| k == key);
                                     let any_locked = modes.iter().any(|(.., n)| *n > 0);
                                     rsx! {
@@ -260,10 +262,11 @@ pub fn CharactersPanel() -> Element {
                                                         rsx! {
                                                             button {
                                                                 class: format!("op-mode tier-{}{}{}", t.to_lowercase(), if *n == 0 { " none" } else { "" }, if lit { " lit" } else { "" }),
-                                                                title: "{short}: {n} locked out · click to hide them",
+                                                                title: "{short}: {n} locked out · click to show only them",
+                                                                disabled: *n == 0 && !lit,
                                                                 onclick: move |e| {
                                                                     e.stop_propagation();
-                                                                    free_for.write().toggle(&key, tier);
+                                                                    locked_for.write().toggle(&key, tier);
                                                                 },
                                                                 "{n}"
                                                             }
@@ -286,11 +289,15 @@ pub fn CharactersPanel() -> Element {
                 button { class: if *matrix.read() { "data-tab active" } else { "data-tab" }, title: "Who is locked out of what, boss by boss", onclick: move |_| matrix.set(true),
                     i { class: "fa-solid fa-table-cells" } " Lockouts"
                 }
+                if *matrix.read() {
+                    TierPicks { tiers: matrix_tiers }
+                }
             }
             if *matrix.read() {
                 LockoutMatrix {
                     rows,
                     operations: data.operations.clone(),
+                    tiers: *matrix_tiers.read(),
                     on_edit: move |row: CharacterRow| editing.set(Some(EditTarget::from(&row))),
                 }
             } else {
