@@ -2,6 +2,7 @@
 
 use dioxus::prelude::*;
 
+use baras_types::ClassColorConfig;
 use baras_types::characters::{CharacterRow, Faction};
 use baras_types::history::iso_to_ms;
 
@@ -29,6 +30,14 @@ pub fn FactionIcon(faction: Faction) -> Element {
         },
         Faction::Unknown => rsx! { span { class: "char-faction unknown", title: "Faction not set", "—" } },
     }
+}
+
+/// `--class-color` for a class icon disc, from the default overlay class colors
+fn class_color_style(name: &str) -> String {
+    ClassColorConfig::default()
+        .for_class_name(name)
+        .map(|[r, g, b, _]| format!("--class-color: rgb({r}, {g}, {b})"))
+        .unwrap_or_default()
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -110,7 +119,10 @@ pub fn CharacterTable(
                                     td {
                                         div { class: "char-icons", title: if row.classes_auto { "From your logs" } else { "Assigned" },
                                             for c in row.classes.iter() {
-                                                span { class: "char-class", title: "{c.name}",
+                                                span {
+                                                    class: "char-class",
+                                                    title: "{c.name}",
+                                                    style: class_color_style(&c.name),
                                                     if let Some(icon) = get_class_icon(&c.icon) { img { src: *icon, alt: "" } }
                                                     "{c.name}"
                                                 }

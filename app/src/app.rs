@@ -795,6 +795,23 @@ pub fn App() -> Element {
                                     span { class: "tab-label", " {label}" }
                                 }
                             }
+                            NavMenu {
+                                label: "Links",
+                                icon: "fa-solid fa-ellipsis",
+                                icon_only: true,
+                                items: vec![],
+                                actions: vec![
+                                    ("fa-solid fa-circle-question", "Documentation", "Documentation & Help",
+                                        EventHandler::new(|_| { spawn(api::open_url("https://baras-app.github.io/features/overview")); })),
+                                    ("fa-brands fa-discord", "Discord", "Questions, bugs, or feedback",
+                                        EventHandler::new(|_| { spawn(api::open_url("https://discord.gg/zmtkYkhSM4")); })),
+                                    ("fa-brands fa-github", "GitHub", "Source code",
+                                        EventHandler::new(|_| { spawn(api::open_url("https://github.com/baras-app/baras")); })),
+                                    ("fa-solid fa-heart", "Contributors", "The people behind BARAS",
+                                        EventHandler::new(move |_| contributors_open.set(true))),
+                                ],
+                                state: ui_state,
+                            }
                         }
                         button {
                             class: if file_browser_open() { "tab-btn header-files-btn active" } else { "tab-btn header-files-btn" },
@@ -875,26 +892,6 @@ pub fn App() -> Element {
                                         set_light_theme(light_theme, !light_theme());
                                     },
                                     i { class: if light_theme() { "fa-solid fa-moon" } else { "fa-solid fa-sun" } }
-                                }
-                            }
-                            // Project links: kept out of the way, never hidden at narrow widths
-                            div { class: "header-more",
-                                NavMenu {
-                                    label: "Links",
-                                    icon: "fa-solid fa-ellipsis",
-                                    icon_only: true,
-                                    items: vec![],
-                                    actions: vec![
-                                        ("fa-solid fa-circle-question", "Documentation", "Documentation & Help",
-                                            EventHandler::new(|_| { spawn(api::open_url("https://baras-app.github.io/features/overview")); })),
-                                        ("fa-brands fa-discord", "Discord", "Questions, bugs, or feedback",
-                                            EventHandler::new(|_| { spawn(api::open_url("https://discord.gg/zmtkYkhSM4")); })),
-                                        ("fa-brands fa-github", "GitHub", "Source code",
-                                            EventHandler::new(|_| { spawn(api::open_url("https://github.com/baras-app/baras")); })),
-                                        ("fa-solid fa-heart", "Contributors", "The people behind BARAS",
-                                            EventHandler::new(move |_| contributors_open.set(true))),
-                                    ],
-                                    state: ui_state,
                                 }
                             }
                         }

@@ -3924,23 +3924,6 @@ a.contributor-name:hover {
   color: var(--swtor-blue-bright);
 }
 
-/* Project links menu beside the version: a quiet icon, list opens leftward */
-.header-more .tab-btn {
-  padding: 0.15em 0.45em;
-  font-size: clamp(0.75rem, 1.4vh, 1rem);
-  color: var(--swtor-blue);
-  opacity: 0.5;
-}
-
-.header-more .tab-btn:hover {
-  opacity: 1;
-}
-
-.header-more .nav-menu-list {
-  left: auto;
-  right: 0;
-}
-
 .tab-content {
   flex: 1;
   display: flex;

@@ -27,17 +27,15 @@ use table::{CharacterTable, SortKey, sort_rows};
 
 const ROLES: &[&str] = &["Tank", "Healer", "Dps"];
 
-/// Is the character locked out of this operation at `tier` (empty = any mode)?
+/// Is the character locked out of this operation at `tier`?
 fn locked_at(row: &CharacterRow, op_key: &str, tier: &str) -> bool {
-    row.lockouts
-        .iter()
-        .any(|l| operation_key(l.area_id, &l.operation) == op_key && (tier.is_empty() || l.tier == tier))
+    row.lockouts.iter().any(|l| operation_key(l.area_id, &l.operation) == op_key && l.tier == tier)
 }
 
 const TIERS: [(&str, &str); 3] = [("Story", "SM"), ("Veteran", "VM"), ("Master", "NiM")];
 
 /// Lockout picks: characters locked out of any of these (operation key,
-/// mode) pairs are hidden. An empty mode means any mode.
+/// mode) pairs are hidden.
 #[derive(Clone, PartialEq, Default)]
 struct FreeFor {
     picks: HashSet<(String, String)>,
@@ -46,10 +44,6 @@ struct FreeFor {
 impl FreeFor {
     fn excludes(&self, row: &CharacterRow) -> bool {
         self.picks.iter().any(|(k, t)| locked_at(row, k, t))
-    }
-
-    fn has_op(&self, key: &str) -> bool {
-        self.picks.iter().any(|(k, _)| k == key)
     }
 
     fn toggle(&mut self, key: &str, tier: &str) {
@@ -210,20 +204,18 @@ pub fn CharactersPanel() -> Element {
                             for (key, op, modes) in op_badges.iter() {
                                 {
                                     let ff = free_for.read();
-                                    let active = ff.has_op(key);
+                                    let active = ff.picks.iter().any(|(k, _)| k == key);
                                     let any_locked = modes.iter().any(|(.., n)| *n > 0);
-                                    let key_tile = key.clone();
                                     rsx! {
                                         div {
                                             class: if active { "op-filter-badge active" } else if any_locked { "op-filter-badge locked" } else { "op-filter-badge free" },
-                                            title: "{op} · click to hide characters locked out at any mode",
-                                            onclick: move |_| free_for.write().toggle(&key_tile, ""),
+                                            title: "{op}",
                                             span { class: "op-filter-name", "{op}" }
                                             span { class: "op-filter-modes",
                                                 for (t, short, n) in modes.iter() {
                                                     {
                                                         let (key, tier) = (key.clone(), *t);
-                                                        let lit = ff.picks.contains(&(key.clone(), tier.to_string())) || ff.picks.contains(&(key.clone(), String::new()));
+                                                        let lit = ff.picks.contains(&(key.clone(), tier.to_string()));
                                                         rsx! {
                                                             button {
                                                                 class: format!("op-mode tier-{}{}{}", t.to_lowercase(), if *n == 0 { " none" } else { "" }, if lit { " lit" } else { "" }),
