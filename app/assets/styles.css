@@ -534,12 +534,16 @@ select optgroup {
 }
 .header-nav {
   justify-self: center;
+  min-width: 0;
+}
+
+/* Segmented control: a quiet track; the open view is the one raised pill.
+   Shared by the header nav and the Overlay Settings section tabs */
+:is(.header-nav, .settings-top-tabs) {
   display: flex;
   align-items: center;
   gap: 3px;
-  min-width: 0;
   padding: 3px;
-  /* Segmented control: a quiet track; the open view is the one raised pill */
   background: rgba(var(--fg-rgb), 0.06);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
@@ -1906,19 +1910,16 @@ button:active {
 
 /* Settings panel tab buttons - blue theme */
 /* Drawer top tabs: Overlays | Profiles | Global */
+/* Overlays / Profiles / Global: the header's segmented pills (shared rules
+   under "Segments are flat until hovered"), sharing the width equally */
 .settings-top-tabs {
-  display: flex;
-  gap: 0.25em;
   margin: 0.75em 0;
-  padding-bottom: 0.5em;
-  border-bottom: 1px solid var(--blue-alpha-15);
 }
 .settings-top-tabs .tab-btn {
   flex: 1;
   justify-content: center;
-  padding: 0.55em 1em;
-  font-size: 0.95em;
-  font-weight: 600;
+  padding: 0.4em 1em;
+  font-size: 0.9em;
 }
 .overlay-select-row {
   margin-bottom: 0.25em;
@@ -1939,37 +1940,6 @@ button:active {
   padding-bottom: 0.35em;
   border-bottom: 1px solid var(--blue-alpha-15);
 }
-.settings-panel .tab-btn {
-  background: linear-gradient(
-    180deg,
-    var(--btn-top) 0%,
-    var(--btn-bottom) 100%
-  );
-  border: 1px solid var(--border-medium);
-  color: var(--text-muted);
-}
-
-.settings-panel .tab-btn:hover {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--btn-hover-top), var(--swtor-blue) 10%) 0%,
-    color-mix(in srgb, var(--btn-hover-bottom), var(--swtor-blue) 10%) 100%
-  );
-  border-color: var(--swtor-blue-dim);
-  color: var(--swtor-blue);
-}
-
-.settings-panel .tab-btn.active {
-  background: linear-gradient(
-    180deg,
-    var(--blue-alpha-20) 0%,
-    rgba(45, 90, 140, 0.15) 100%
-  );
-  border-color: var(--swtor-blue);
-  color: var(--swtor-blue);
-  box-shadow: 0 0 10px var(--blue-alpha-15);
-}
-
 /* Note: Main tab-btn styles are defined below in the "Main Tabs" section.
    These are fallback/older styles that may be overridden. */
 
@@ -3874,7 +3844,7 @@ a.contributor-name:hover {
 }
 /* Segments are flat until hovered; the active one sits on a raised surface
    (white on light, a lifted grey on dark) instead of a glow and underline */
-.header-nav .tab-btn {
+:is(.header-nav, .settings-top-tabs) .tab-btn {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 7px;
@@ -3886,12 +3856,12 @@ a.contributor-name:hover {
   transition: background-color var(--transition-fast), color var(--transition-fast),
     border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
-.header-nav .tab-btn:hover {
+:is(.header-nav, .settings-top-tabs) .tab-btn:hover {
   background: rgba(var(--fg-rgb), 0.06);
   border-color: transparent;
   color: var(--text-primary);
 }
-.header-nav .tab-btn.active {
+:is(.header-nav, .settings-top-tabs) .tab-btn.active {
   background: var(--bg-raised);
   border-color: rgba(var(--fg-rgb), 0.08);
   color: var(--text-primary);

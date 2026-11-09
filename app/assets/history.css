@@ -1017,14 +1017,16 @@
   height: 34px;
   overflow: hidden;
   border-radius: 4px;
-  background: rgba(0, 0, 0, calc(0.35 * var(--recess-k)));
+  /* The track itself is the "between pulls" colour; recess-k keeps it
+     quiet on the light theme */
+  background: rgba(var(--fg-rgb), 0.07);
   border: 1px solid var(--border-light);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, calc(0.4 * var(--recess-k)));
 }
 
-/* A thin dark seam keeps back-to-back pulls apart */
-.run-timeline-bar .run-seg + .run-seg {
-  border-left: 1px solid rgba(0, 0, 0, 0.6);
+/* A thin seam only where two pulls touch; gaps need no edge */
+.run-timeline-bar .run-seg:not(.gap) + .run-seg:not(.gap) {
+  border-left: 1px solid rgba(0, 0, 0, calc(0.5 * var(--recess-k)));
 }
 
 .run-timeline-ticks {
@@ -1054,7 +1056,9 @@
 
 .run-seg.kill { background: #2ecc71; }
 .run-seg.wipe { background: #c0392b; }
-.run-seg.gap { background: rgba(var(--fg-rgb), 0.08); }
+/* Between pulls: the bare track (the legend swatch matches it) */
+.run-seg.gap { background: transparent; }
+.run-timeline-legend .run-seg.gap { background: rgba(var(--fg-rgb), 0.12); }
 .run-seg.kill:hover, .run-seg.wipe:hover { filter: brightness(1.25); }
 
 .run-timeline-axis {
