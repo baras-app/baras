@@ -4,10 +4,9 @@ use dioxus::prelude::*;
 
 use crate::components::Slider;
 use crate::types::{CooldownTrackerConfig, OverlaySettings};
-use crate::utils::{color_to_hex, parse_hex_color};
 
 use super::draft::SettingsDraft;
-use super::widgets::OpacitySlider;
+use super::widgets::{BorderRows, Check, DynamicBackground, FontScale, Group, NumberRow, OpacitySlider, ResetRow, Section};
 
 /// Which of the cooldown overlays this tab edits
 #[derive(Clone, Copy, PartialEq)]
@@ -50,200 +49,65 @@ impl CooldownGroup {
 pub fn CooldownsTab(draft: SettingsDraft, group: CooldownGroup, actions: Element) -> Element {
     let current_settings = draft.current();
     let cfg = group.config(&current_settings).clone();
+    let set = move |f: fn(&mut CooldownTrackerConfig, bool)| move |v: bool| draft.edit(|s| f(group.config_mut(s), v));
 
     rsx! {
-        // Cooldowns Settings
         div { class: "settings-section",
-            h4 { "Appearance" }
-
-            OpacitySlider {
-                label: "Background Opacity",
-                value: group.opacity(&current_settings),
-                on_change: move |val| {
-                    let mut new_settings = draft.current();
-                    *group.opacity_mut(&mut new_settings) = val;
-                    draft.update(new_settings);
-                },
-            }
-
-            Slider {
-                label: "Icon/Bar Size",
-                value: cfg.icon_size as f64,
-                min: 16.0,
-                max: 128.0,
-                suffix: "px",
-                on_change: move |v: f64| {
-                    let mut new_settings = draft.current();
-                    group.config_mut(&mut new_settings).icon_size = (v as u8).clamp(16, 128);
-                    draft.update(new_settings);
-                },
-            }
-
-            div { class: "setting-row",
-                label { "Max Displayed" }
-                select {
-                    class: "input-inline",
-                    value: "{cfg.max_display}",
-                    onchange: move |e: Event<FormData>| {
-                        if let Ok(val) = e.value().parse::<u8>() {
-                            let mut new_settings = draft.current();
-                            group.config_mut(&mut new_settings).max_display = val.clamp(1, 20);
-                            draft.update(new_settings);
-                        }
-                    },
-                    for n in 1..=20u8 {
-                        option { value: "{n}", selected: cfg.max_display == n, "{n}" }
-                    }
+            Section { group: Group::Background,
+                OpacitySlider {
+                    value: group.opacity(&current_settings),
+                    on_change: move |v| draft.edit(|s| *group.opacity_mut(s) = v),
                 }
-            }
-
-            h4 { "Display Options" }
-
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: cfg.layout_bar,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        group.config_mut(&mut new_settings).layout_bar = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Bar Mode"
-            }
-
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: cfg.show_header,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        group.config_mut(&mut new_settings).show_header = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Show Header"
-            }
-
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: cfg.show_ability_names,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        group.config_mut(&mut new_settings).show_ability_names = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Show Ability Names"
-            }
-
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: cfg.sort_by_remaining,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        group.config_mut(&mut new_settings).sort_by_remaining = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Sort by Remaining Time"
-            }
-
-            Slider {
-                label: "Font Scale",
-                value: (cfg.font_scale * 100.0) as i32 as f64,
-                min: 30.0,
-                max: 300.0,
-                step: 10.0,
-                suffix: "%",
-                on_change: move |v: f64| {
-                    let mut new_settings = draft.current();
-                    group.config_mut(&mut new_settings).font_scale = (v as f32 / 100.0).clamp(0.3, 3.0);
-                    draft.update(new_settings);
-                },
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: cfg.dynamic_background,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        group.config_mut(&mut new_settings).dynamic_background = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Dynamic Background"
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: cfg.stack_from_bottom,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        group.config_mut(&mut new_settings).stack_from_bottom = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Stack from Bottom"
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
+                DynamicBackground { checked: cfg.dynamic_background, on_change: set(|c, v| c.dynamic_background = v) }
+                Check {
+                    label: "Gradient Bars",
+                    note: "(bar layout)",
                     checked: cfg.bar_gradient,
                     disabled: !cfg.layout_bar,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        group.config_mut(&mut new_settings).bar_gradient = e.checked();
-                        draft.update(new_settings);
-                    }
+                    on_change: set(|c, v| c.bar_gradient = v),
                 }
-                "Gradient Bars (bar layout)"
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: cfg.show_border,
+                BorderRows {
+                    show: cfg.show_border,
+                    color: cfg.border_color,
+                    note: "(bar layout)",
                     disabled: !cfg.layout_bar,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        group.config_mut(&mut new_settings).show_border = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Show Border (bar layout)"
-            }
-            div { class: "setting-row",
-                label { "Border Color" }
-                input {
-                    r#type: "color",
-                    value: "{color_to_hex(&cfg.border_color)}",
-                    class: "color-picker",
-                    disabled: !(cfg.layout_bar && cfg.show_border),
-                    oninput: move |e: Event<FormData>| {
-                        if let Some(color) = parse_hex_color(&e.value()) {
-                            let mut new_settings = draft.current();
-                            group.config_mut(&mut new_settings).border_color = color;
-                            draft.update(new_settings);
-                        }
-                    }
+                    on_show: set(|c, v| c.show_border = v),
+                    on_color: move |v| draft.edit(|s| group.config_mut(s).border_color = v),
                 }
             }
-
-            div { class: "setting-row reset-row",
-                button {
-                    class: "btn btn-reset",
-                    onclick: move |_| {
-                        let mut new_settings = draft.current();
-                        *group.config_mut(&mut new_settings) = CooldownTrackerConfig::default();
-                        *group.opacity_mut(&mut new_settings) = 180;
-                        draft.update(new_settings);
-                    },
-                    i { class: "fa-solid fa-rotate-left" }
-                    span { " Reset to Defaults" }
+            Section { group: Group::Layout,
+                Slider {
+                    label: "Icon/Bar Size",
+                    value: cfg.icon_size as f64,
+                    min: 16.0,
+                    max: 128.0,
+                    suffix: "px",
+                    on_change: move |v: f64| draft.edit(|s| group.config_mut(s).icon_size = (v as u8).clamp(16, 128)),
                 }
-                {actions}
+                NumberRow {
+                    label: "Max Displayed",
+                    value: cfg.max_display as f64,
+                    min: 1.0,
+                    max: 20.0,
+                    on_change: move |v: f64| draft.edit(|s| group.config_mut(s).max_display = (v as u8).clamp(1, 20)),
+                }
+                Check { label: "Bar Mode", checked: cfg.layout_bar, on_change: set(|c, v| c.layout_bar = v) }
+                Check { label: "Stack from Bottom", checked: cfg.stack_from_bottom, on_change: set(|c, v| c.stack_from_bottom = v) }
+            }
+            Section { group: Group::Content,
+                Check { label: "Show Header", checked: cfg.show_header, on_change: set(|c, v| c.show_header = v) }
+                Check { label: "Show Ability Names", checked: cfg.show_ability_names, on_change: set(|c, v| c.show_ability_names = v) }
+                Check { label: "Sort by Remaining Time", checked: cfg.sort_by_remaining, on_change: set(|c, v| c.sort_by_remaining = v) }
+            }
+            Section { group: Group::Text,
+                FontScale { value: cfg.font_scale, on_change: move |v| draft.edit(|s| group.config_mut(s).font_scale = v) }
+            }
+            ResetRow {
+                on_reset: move |_| draft.edit(|s| {
+                    *group.config_mut(s) = CooldownTrackerConfig::default();
+                    *group.opacity_mut(s) = 180;
+                }),
+                actions,
             }
         }
     }

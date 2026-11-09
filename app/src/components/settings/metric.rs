@@ -1,237 +1,75 @@
 //! Settings tab shared by every metric overlay (DPS, HPS, ...), keyed by its config key.
+//! Font Scale and Dynamic Background live in Global Metrics Settings.
 
 use dioxus::prelude::*;
 
-use crate::components::{NumberInput, Slider};
-use crate::utils::{color_to_hex, parse_hex_color};
+use crate::components::Slider;
+use crate::types::OverlayAppearanceConfig;
 
 use super::draft::{SettingsDraft, appearance_for};
+use super::widgets::{Check, ColorRow, Group, NumberRow, ResetRow, Section};
+
+/// Edit this overlay's appearance, seeding it from its default on first change
+fn edit_appearance(draft: SettingsDraft, tab: &str, f: impl FnOnce(&mut OverlayAppearanceConfig)) {
+    draft.edit(|s| {
+        let default = s.default_appearances.get(tab).cloned().unwrap_or_default();
+        f(s.appearances.entry(tab.to_string()).or_insert(default));
+    });
+}
 
 #[component]
 pub fn MetricTab(draft: SettingsDraft, tab_key: String, actions: Element) -> Element {
-    let current_settings = draft.current();
-    let tab = tab_key;
-    let current_appearance = appearance_for(&current_settings, &tab);
-    let bar_color_hex = color_to_hex(&current_appearance.bar_color);
-    let font_color_hex = color_to_hex(&current_appearance.font_color);
+    let a = appearance_for(&draft.current(), &tab_key);
+    let check = |f: fn(&mut OverlayAppearanceConfig, bool)| {
+        let tab = tab_key.clone();
+        move |v: bool| edit_appearance(draft, &tab, |a| f(a, v))
+    };
+    let color = |f: fn(&mut OverlayAppearanceConfig, crate::types::Color)| {
+        let tab = tab_key.clone();
+        move |v| edit_appearance(draft, &tab, |a| f(a, v))
+    };
+    let (tab_max, tab_spacing, tab_reset) = (tab_key.clone(), tab_key.clone(), tab_key.clone());
 
     rsx! {
-        // Metric Settings (default tab content)
-        {
-            let tab_key = tab.clone();
-            rsx! {
-                div { class: "settings-section",
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_appearance.show_per_second,
-                            onchange: {
-                                let tab = tab_key.clone();
-                                move |e: Event<FormData>| {
-                                    let mut new_settings = draft.current();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                    appearance.show_per_second = e.checked();
-                                    draft.update(new_settings);
-                                }
-                            }
-                        }
-                        "Show Per-Second"
-                    }
-
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_appearance.show_total,
-                            onchange: {
-                                let tab = tab_key.clone();
-                                move |e: Event<FormData>| {
-                                    let mut new_settings = draft.current();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                    appearance.show_total = e.checked();
-                                    draft.update(new_settings);
-                                }
-                            }
-                        }
-                        "Show Total"
-                    }
-
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_appearance.show_header,
-                            onchange: {
-                                let tab = tab_key.clone();
-                                move |e: Event<FormData>| {
-                                    let mut new_settings = draft.current();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                    appearance.show_header = e.checked();
-                                    draft.update(new_settings);
-                                }
-                            }
-                        }
-                        "Show Header"
-                    }
-
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_appearance.show_footer,
-                            onchange: {
-                                let tab = tab_key.clone();
-                                move |e: Event<FormData>| {
-                                    let mut new_settings = draft.current();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                    appearance.show_footer = e.checked();
-                                    draft.update(new_settings);
-                                }
-                            }
-                        }
-                        "Show Footer"
-                    }
-
-                    div { class: "setting-row",
-                        label { "Max Entries" }
-                        NumberInput {
-                            value: current_appearance.max_entries as f64,
-                            min: 1.0,
-                            max: 16.0,
-                            on_change: {
-                                let tab = tab_key.clone();
-                                move |v: f64| {
-                                    let mut new_settings = draft.current();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                    appearance.max_entries = v as u8;
-                                    draft.update(new_settings);
-                                }
-                            }
-                        }
-                    }
-
-                    div { class: "setting-row",
-                        label { "Bar Color" }
-                        input {
-                            r#type: "color",
-                            value: "{bar_color_hex}",
-                            class: "color-picker",
-                            oninput: {
-                                let tab = tab_key.clone();
-                                move |e: Event<FormData>| {
-                                    if let Some(color) = parse_hex_color(&e.value()) {
-                                        let mut new_settings = draft.current();
-                                        let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                        let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                        appearance.bar_color = color;
-                                        draft.update(new_settings);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    div { class: "setting-row",
-                        label { "Font Color" }
-                        input {
-                            r#type: "color",
-                            value: "{font_color_hex}",
-                            class: "color-picker",
-                            oninput: {
-                                let tab = tab_key.clone();
-                                move |e: Event<FormData>| {
-                                    if let Some(color) = parse_hex_color(&e.value()) {
-                                        let mut new_settings = draft.current();
-                                        let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                        let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                        appearance.font_color = color;
-                                        draft.update(new_settings);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_appearance.use_class_color,
-                            onchange: {
-                                let tab = tab_key.clone();
-                                move |e: Event<FormData>| {
-                                    let mut new_settings = draft.current();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                    appearance.use_class_color = e.checked();
-                                    draft.update(new_settings);
-                                }
-                            }
-                        }
-                        "Color Bars by Class"
-                    }
-
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_appearance.bar_gradient,
-                            onchange: {
-                                let tab = tab_key.clone();
-                                move |e: Event<FormData>| {
-                                    let mut new_settings = draft.current();
-                                    let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                    let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                    appearance.bar_gradient = e.checked();
-                                    draft.update(new_settings);
-                                }
-                            }
-                        }
-                        "Gradient Bars"
-                    }
-
-                    Slider {
-                        label: "Bar Spacing",
-                        value: (current_appearance.bar_spacing_ratio * 100.0) as i32 as f64,
-                        min: 0.0,
-                        max: 60.0,
-                        step: 5.0,
-                        suffix: "%",
-                        on_change: {
-                            let tab = tab_key.clone();
-                            move |v: f64| {
-                                let mut new_settings = draft.current();
-                                let default = new_settings.default_appearances.get(&tab).cloned().unwrap_or_default();
-                                let appearance = new_settings.appearances.entry(tab.clone()).or_insert(default);
-                                appearance.bar_spacing_ratio = (v as f32 / 100.0).clamp(0.0, 0.6);
-                                draft.update(new_settings);
-                            }
-                        },
-                    }
-
-                    // Font Scale and Dynamic Background are in Global Metrics Settings
-
-                    div { class: "setting-row reset-row",
-                        button {
-                            class: "btn btn-reset",
-                            onclick: {
-                                let tab = tab_key.clone();
-                                move |_| {
-                                    let mut new_settings = draft.current();
-                                    let default_appearance = new_settings.default_appearances
-                                        .get(&tab)
-                                        .cloned()
-                                        .unwrap_or_default();
-                                    new_settings.appearances.insert(tab.clone(), default_appearance);
-                                    draft.update(new_settings);
-                                }
-                            },
-                            i { class: "fa-solid fa-rotate-left" }
-                            span { " Reset Style" }
-                        }
-                        {actions}
-                    }
+        div { class: "settings-section",
+            Section { group: Group::Background,
+                ColorRow { label: "Bar Color", value: a.bar_color, on_change: color(|a, v| a.bar_color = v) }
+                Check { label: "Color Bars by Class", checked: a.use_class_color, on_change: check(|a, v| a.use_class_color = v) }
+                Check { label: "Gradient Bars", checked: a.bar_gradient, on_change: check(|a, v| a.bar_gradient = v) }
+            }
+            Section { group: Group::Layout,
+                NumberRow {
+                    label: "Max Displayed",
+                    value: a.max_entries as f64,
+                    min: 1.0,
+                    max: 16.0,
+                    on_change: move |v: f64| edit_appearance(draft, &tab_max, |a| a.max_entries = v as u8),
                 }
+                Slider {
+                    label: "Bar Spacing",
+                    value: (a.bar_spacing_ratio * 100.0) as i32 as f64,
+                    min: 0.0,
+                    max: 60.0,
+                    step: 5.0,
+                    suffix: "%",
+                    on_change: move |v: f64| edit_appearance(draft, &tab_spacing, |a| a.bar_spacing_ratio = (v as f32 / 100.0).clamp(0.0, 0.6)),
+                }
+            }
+            Section { group: Group::Content,
+                Check { label: "Show Per-Second", checked: a.show_per_second, on_change: check(|a, v| a.show_per_second = v) }
+                Check { label: "Show Total", checked: a.show_total, on_change: check(|a, v| a.show_total = v) }
+                Check { label: "Show Header", checked: a.show_header, on_change: check(|a, v| a.show_header = v) }
+                Check { label: "Show Footer", checked: a.show_footer, on_change: check(|a, v| a.show_footer = v) }
+            }
+            Section { group: Group::Text,
+                ColorRow { label: "Font Color", value: a.font_color, on_change: color(|a, v| a.font_color = v) }
+            }
+            ResetRow {
+                on_reset: move |_| draft.edit(|s| {
+                    let default = s.default_appearances.get(&tab_reset).cloned().unwrap_or_default();
+                    s.appearances.insert(tab_reset.clone(), default);
+                }),
+                actions,
             }
         }
     }

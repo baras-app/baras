@@ -3,24 +3,32 @@
 use dioxus::prelude::*;
 
 use crate::components::Slider;
-use crate::types::ClassIconMode;
-use crate::utils::{color_to_hex, parse_hex_color};
+use crate::types::{ClassColorConfig, ClassIconMode, Color};
 
 use super::draft::SettingsDraft;
-use super::widgets::OpacitySlider;
+use super::widgets::{Check, ColorRow, DynamicBackground, FontScale, Group, OpacitySlider, Section, SelectRow};
+
+/// The eight class colours: label and field
+const CLASS_COLORS: [(&str, fn(&mut ClassColorConfig) -> &mut Color); 8] = [
+    ("Sorcerer / Sage", |c| &mut c.sorcerer_sage),
+    ("Assassin / Shadow", |c| &mut c.assassin_shadow),
+    ("Juggernaut / Guardian", |c| &mut c.juggernaut_guardian),
+    ("Marauder / Sentinel", |c| &mut c.marauder_sentinel),
+    ("Mercenary / Commando", |c| &mut c.mercenary_commando),
+    ("Powertech / Vanguard", |c| &mut c.powertech_vanguard),
+    ("Operative / Scoundrel", |c| &mut c.operative_scoundrel),
+    ("Sniper / Gunslinger", |c| &mut c.sniper_gunslinger),
+];
 
 #[component]
 pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Element {
-    let current_settings = draft.current();
-    let cc = &current_settings.class_colors;
-    let cc_sorc = color_to_hex(&cc.sorcerer_sage);
-    let cc_asin = color_to_hex(&cc.assassin_shadow);
-    let cc_jugg = color_to_hex(&cc.juggernaut_guardian);
-    let cc_mara = color_to_hex(&cc.marauder_sentinel);
-    let cc_merc = color_to_hex(&cc.mercenary_commando);
-    let cc_pt = color_to_hex(&cc.powertech_vanguard);
-    let cc_oper = color_to_hex(&cc.operative_scoundrel);
-    let cc_snip = color_to_hex(&cc.sniper_gunslinger);
+    let s = draft.current();
+    let mut class_colors = s.class_colors.clone();
+    let icon_mode = match s.class_icon_mode {
+        ClassIconMode::None => "none",
+        ClassIconMode::Class => "class",
+        ClassIconMode::Discipline => "discipline",
+    };
 
     rsx! {
         div { class: if open() { "settings-section collapsible metrics-global open" } else { "settings-section collapsible metrics-global" },
@@ -32,233 +40,60 @@ pub fn MetricsGlobalSection(draft: SettingsDraft, mut open: Signal<bool>) -> Ele
             }
             if open() {
                 div { class: "collapsible-content",
-                OpacitySlider {
-                    label: "Background Opacity",
-                    value: current_settings.metric_opacity,
-                    on_change: move |val| {
-                        let mut new_settings = draft.current();
-                        new_settings.metric_opacity = val;
-                        draft.update(new_settings);
-                    },
-                }
-
-                Slider {
-                    label: "Bar Thickness",
-                    value: (current_settings.metric_scaling_factor * 100.0) as i32 as f64,
-                    min: 30.0,
-                    max: 200.0,
-                    step: 5.0,
-                    suffix: "%",
-                    on_change: move |v: f64| {
-                        let mut new_settings = draft.current();
-                        new_settings.metric_scaling_factor = (v as f32 / 100.0).clamp(0.3, 2.0);
-                        draft.update(new_settings);
-                    },
-                }
-
-                label { class: "settings-check",
-                    input {
-                        r#type: "checkbox",
-                        checked: current_settings.metric_show_empty_bars,
-                        onchange: move |e: Event<FormData>| {
-                            let mut new_settings = draft.current();
-                            new_settings.metric_show_empty_bars = e.checked();
-                            draft.update(new_settings);
+                    Section { group: Group::Background,
+                        OpacitySlider { value: s.metric_opacity, on_change: move |v| draft.edit(|s| s.metric_opacity = v) }
+                        DynamicBackground { checked: s.metric_dynamic_background, on_change: move |v| draft.edit(|s| s.metric_dynamic_background = v) }
+                        Check { label: "Show Background Bar", checked: s.metric_show_background_bar, on_change: move |v| draft.edit(|s| s.metric_show_background_bar = v) }
+                        Slider {
+                            label: "Gradient Intensity",
+                            value: (s.metric_gradient_intensity * 100.0) as i32 as f64,
+                            min: 0.0,
+                            max: 60.0,
+                            step: 2.0,
+                            suffix: "%",
+                            on_change: move |v: f64| draft.edit(|s| s.metric_gradient_intensity = (v as f32 / 100.0).clamp(0.0, 0.6)),
                         }
-                    }
-                    "Show Empty Bars"
-                }
-
-                label { class: "settings-check",
-                    input {
-                        r#type: "checkbox",
-                        checked: current_settings.metric_stack_from_bottom,
-                        onchange: move |e: Event<FormData>| {
-                            let mut new_settings = draft.current();
-                            new_settings.metric_stack_from_bottom = e.checked();
-                            draft.update(new_settings);
-                        }
-                    }
-                    "Stack From Bottom"
-                }
-
-                div { class: "setting-row",
-                    label { "Class Icons" }
-                    select {
-                        value: match current_settings.class_icon_mode {
-                            ClassIconMode::None => "none",
-                            ClassIconMode::Class => "class",
-                            ClassIconMode::Discipline => "discipline",
-                        },
-                        onchange: move |e: Event<FormData>| {
-                            let mut new_settings = draft.current();
-                            new_settings.class_icon_mode = match e.value().as_str() {
-                                "class" => ClassIconMode::Class,
-                                "discipline" => ClassIconMode::Discipline,
-                                _ => ClassIconMode::None,
-                            };
-                            draft.update(new_settings);
-                        },
-                        option { value: "none", "None" }
-                        option { value: "class", "Class" }
-                        option { value: "discipline", "Discipline" }
-                    }
-                }
-
-                // ── Class Colors ─────────────────────────────────
-                details { class: "collapsible",
-                    summary { class: "collapsible-summary", "Class Colors" }
-                    div { class: "setting-row",
-                        label { "Sorcerer / Sage" }
-                        input { r#type: "color", value: "{cc_sorc}", class: "color-picker",
-                            oninput: move |e: Event<FormData>| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
-                                    let mut s = draft.current();
-                                    s.class_colors.sorcerer_sage = color;
-                                    draft.update(s);
+                        details { class: "collapsible",
+                            summary { class: "collapsible-summary", "Class Colors" }
+                            for (label, field) in CLASS_COLORS {
+                                ColorRow {
+                                    label,
+                                    value: *field(&mut class_colors),
+                                    on_change: move |v| draft.edit(|s| *field(&mut s.class_colors) = v),
                                 }
                             }
                         }
                     }
-                    div { class: "setting-row",
-                        label { "Assassin / Shadow" }
-                        input { r#type: "color", value: "{cc_asin}", class: "color-picker",
-                            oninput: move |e: Event<FormData>| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
-                                    let mut s = draft.current();
-                                    s.class_colors.assassin_shadow = color;
-                                    draft.update(s);
-                                }
-                            }
+                    Section { group: Group::Layout,
+                        Slider {
+                            label: "Bar Thickness",
+                            value: (s.metric_scaling_factor * 100.0) as i32 as f64,
+                            min: 30.0,
+                            max: 200.0,
+                            step: 5.0,
+                            suffix: "%",
+                            on_change: move |v: f64| draft.edit(|s| s.metric_scaling_factor = (v as f32 / 100.0).clamp(0.3, 2.0)),
+                        }
+                        Check { label: "Stack from Bottom", checked: s.metric_stack_from_bottom, on_change: move |v| draft.edit(|s| s.metric_stack_from_bottom = v) }
+                    }
+                    Section { group: Group::Content,
+                        Check { label: "Show Empty Bars", checked: s.metric_show_empty_bars, on_change: move |v| draft.edit(|s| s.metric_show_empty_bars = v) }
+                        SelectRow {
+                            label: "Class Icons",
+                            value: icon_mode.to_string(),
+                            options: vec![("none", "None"), ("class", "Class"), ("discipline", "Discipline")],
+                            on_change: move |v: String| draft.edit(|s| {
+                                s.class_icon_mode = match v.as_str() {
+                                    "class" => ClassIconMode::Class,
+                                    "discipline" => ClassIconMode::Discipline,
+                                    _ => ClassIconMode::None,
+                                };
+                            }),
                         }
                     }
-                    div { class: "setting-row",
-                        label { "Juggernaut / Guardian" }
-                        input { r#type: "color", value: "{cc_jugg}", class: "color-picker",
-                            oninput: move |e: Event<FormData>| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
-                                    let mut s = draft.current();
-                                    s.class_colors.juggernaut_guardian = color;
-                                    draft.update(s);
-                                }
-                            }
-                        }
+                    Section { group: Group::Text,
+                        FontScale { value: s.metric_font_scale, on_change: move |v| draft.edit(|s| s.metric_font_scale = v) }
                     }
-                    div { class: "setting-row",
-                        label { "Marauder / Sentinel" }
-                        input { r#type: "color", value: "{cc_mara}", class: "color-picker",
-                            oninput: move |e: Event<FormData>| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
-                                    let mut s = draft.current();
-                                    s.class_colors.marauder_sentinel = color;
-                                    draft.update(s);
-                                }
-                            }
-                        }
-                    }
-                    div { class: "setting-row",
-                        label { "Mercenary / Commando" }
-                        input { r#type: "color", value: "{cc_merc}", class: "color-picker",
-                            oninput: move |e: Event<FormData>| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
-                                    let mut s = draft.current();
-                                    s.class_colors.mercenary_commando = color;
-                                    draft.update(s);
-                                }
-                            }
-                        }
-                    }
-                    div { class: "setting-row",
-                        label { "Powertech / Vanguard" }
-                        input { r#type: "color", value: "{cc_pt}", class: "color-picker",
-                            oninput: move |e: Event<FormData>| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
-                                    let mut s = draft.current();
-                                    s.class_colors.powertech_vanguard = color;
-                                    draft.update(s);
-                                }
-                            }
-                        }
-                    }
-                    div { class: "setting-row",
-                        label { "Operative / Scoundrel" }
-                        input { r#type: "color", value: "{cc_oper}", class: "color-picker",
-                            oninput: move |e: Event<FormData>| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
-                                    let mut s = draft.current();
-                                    s.class_colors.operative_scoundrel = color;
-                                    draft.update(s);
-                                }
-                            }
-                        }
-                    }
-                    div { class: "setting-row",
-                        label { "Sniper / Gunslinger" }
-                        input { r#type: "color", value: "{cc_snip}", class: "color-picker",
-                            oninput: move |e: Event<FormData>| {
-                                if let Some(color) = parse_hex_color(&e.value()) {
-                                    let mut s = draft.current();
-                                    s.class_colors.sniper_gunslinger = color;
-                                    draft.update(s);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Slider {
-                    label: "Font Scale",
-                    value: (current_settings.metric_font_scale * 100.0) as i32 as f64,
-                    min: 30.0,
-                    max: 300.0,
-                    step: 5.0,
-                    suffix: "%",
-                    on_change: move |v: f64| {
-                        let mut new_settings = draft.current();
-                        new_settings.metric_font_scale = (v as f32 / 100.0).clamp(0.3, 3.0);
-                        draft.update(new_settings);
-                    },
-                }
-
-                Slider {
-                    label: "Gradient Intensity",
-                    value: (current_settings.metric_gradient_intensity * 100.0) as i32 as f64,
-                    min: 0.0,
-                    max: 60.0,
-                    step: 2.0,
-                    suffix: "%",
-                    on_change: move |v: f64| {
-                        let mut new_settings = draft.current();
-                        new_settings.metric_gradient_intensity = (v as f32 / 100.0).clamp(0.0, 0.6);
-                        draft.update(new_settings);
-                    },
-                }
-
-                label { class: "settings-check",
-                    input {
-                        r#type: "checkbox",
-                        checked: current_settings.metric_dynamic_background,
-                        onchange: move |e: Event<FormData>| {
-                            let mut new_settings = draft.current();
-                            new_settings.metric_dynamic_background = e.checked();
-                            draft.update(new_settings);
-                        }
-                    }
-                    "Dynamic Background"
-                }
-
-                label { class: "settings-check",
-                    input {
-                        r#type: "checkbox",
-                        checked: current_settings.metric_show_background_bar,
-                        onchange: move |e: Event<FormData>| {
-                            let mut new_settings = draft.current();
-                            new_settings.metric_show_background_bar = e.checked();
-                            draft.update(new_settings);
-                        }
-                    }
-                    "Show Background Bar"
-                }
                 }
             }
         }

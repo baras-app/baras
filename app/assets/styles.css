@@ -1965,6 +1965,28 @@ button:active {
   color: var(--text-heading);
 }
 
+/* Overlay tab sections, always in this order: Background & Bars, Layout,
+   Content, Text */
+.settings-group + .settings-group {
+  margin-top: 1em;
+  padding-top: 0.75em;
+  border-top: 1px solid rgba(var(--fg-rgb), 0.08);
+}
+
+.settings-group > h4 {
+  margin: 0 0 0.5em;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-heading);
+}
+
+.settings-check-note {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
 /* Later subsection headers inside one section (Appearance → Layout → Display) */
 .settings-section > h4:not(:first-child) {
   margin-top: 1.25em;
@@ -2126,10 +2148,22 @@ details[open] .collapsible-summary::before {
   cursor: default;
 }
 
+/* Dropdowns in settings rows share one look (no per-tab class needed) */
+.setting-row select {
+  padding: var(--space-xs) 0.5em;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9em;
+}
+
+/* Unit column: fixed width on every value row, empty or not, so number
+   boxes, swatches and dropdowns share one right edge */
 .slider-unit {
+  width: 1.6em;
   font-size: 0.85em;
   color: var(--text-muted);
-  min-width: 1.4em;
   flex-shrink: 0;
 }
 

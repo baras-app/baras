@@ -4,265 +4,97 @@ use dioxus::prelude::*;
 
 use crate::components::Slider;
 use crate::types::{BossHealthConfig, IconPosition};
-use crate::utils::{color_to_hex, parse_hex_color};
 
 use super::draft::SettingsDraft;
-use super::widgets::OpacitySlider;
+use super::widgets::{BorderRows, Check, ColorRow, DynamicBackground, FontScale, Group, OpacitySlider, ResetRow, Section, SelectRow};
 
 #[component]
 pub fn BossHealthTab(draft: SettingsDraft, actions: Element) -> Element {
-    let current_settings = draft.current();
-    let boss_bar_hex = color_to_hex(&current_settings.boss_health.bar_color);
+    let s = draft.current();
+    let cfg = s.boss_health.clone();
+    let set = move |f: fn(&mut BossHealthConfig, bool)| move |v: bool| draft.edit(|s| f(&mut s.boss_health, v));
 
     rsx! {
-        // Boss Health Settings
         div { class: "settings-section",
-            h4 { "Appearance" }
-
-            OpacitySlider {
-                label: "Background Opacity",
-                value: current_settings.boss_health_opacity,
-                on_change: move |val| {
-                    let mut new_settings = draft.current();
-                    new_settings.boss_health_opacity = val;
-                    draft.update(new_settings);
-                },
-            }
-
-            div { class: "setting-row",
-                label { "Bar Color" }
-                input {
-                    r#type: "color",
-                    value: "{boss_bar_hex}",
-                    class: "color-picker",
-                    oninput: move |e: Event<FormData>| {
-                        if let Some(color) = parse_hex_color(&e.value()) {
-                            let mut new_settings = draft.current();
-                            new_settings.boss_health.bar_color = color;
-                            draft.update(new_settings);
-                        }
-                    }
+            Section { group: Group::Background,
+                OpacitySlider { value: s.boss_health_opacity, on_change: move |v| draft.edit(|s| s.boss_health_opacity = v) }
+                DynamicBackground { checked: cfg.dynamic_background, on_change: set(|c, v| c.dynamic_background = v) }
+                ColorRow { label: "Bar Color", value: cfg.bar_color, on_change: move |v| draft.edit(|s| s.boss_health.bar_color = v) }
+                Check { label: "Gradient Bars", checked: cfg.bar_gradient, on_change: set(|c, v| c.bar_gradient = v) }
+                BorderRows {
+                    show: cfg.show_border,
+                    color: cfg.border_color,
+                    on_show: set(|c, v| c.show_border = v),
+                    on_color: move |v| draft.edit(|s| s.boss_health.border_color = v),
                 }
             }
-
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_settings.boss_health.show_target,
-                            onchange: move |e: Event<FormData>| {
-                                let mut new_settings = draft.current();
-                                new_settings.boss_health.show_target = e.checked();
-                                draft.update(new_settings);
-                            }
-                        }
-                        "Show current target"
-                    }
-
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_settings.boss_health.show_hp_value,
-                            onchange: move |e: Event<FormData>| {
-                                let mut new_settings = draft.current();
-                                new_settings.boss_health.show_hp_value = e.checked();
-                                draft.update(new_settings);
-                            }
-                        }
-                        "Show HP value"
-                    }
-
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_settings.boss_health.show_hp_markers,
-                            onchange: move |e: Event<FormData>| {
-                                let mut new_settings = draft.current();
-                                new_settings.boss_health.show_hp_markers = e.checked();
-                                draft.update(new_settings);
-                            }
-                        }
-                        "Show HP markers"
-                    }
-
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_settings.boss_health.show_shield,
-                            onchange: move |e: Event<FormData>| {
-                                let mut new_settings = draft.current();
-                                new_settings.boss_health.show_shield = e.checked();
-                                draft.update(new_settings);
-                            }
-                        }
-                        "Show shields"
-                    }
-
-                    label { class: "settings-check",
-                        input {
-                            r#type: "checkbox",
-                            checked: current_settings.boss_health.show_icons,
-                            onchange: move |e: Event<FormData>| {
-                                let mut new_settings = draft.current();
-                                new_settings.boss_health.show_icons = e.checked();
-                                draft.update(new_settings);
-                            }
-                        }
-                        "Show effect icons"
-                    }
-
-                    div { class: "setting-row",
-                        label { "Icon Position" }
-                        select {
-                            class: "input-inline",
-                            disabled: !current_settings.boss_health.show_icons,
-                            onchange: move |e: Event<FormData>| {
-                                let mut new_settings = draft.current();
-                                new_settings.boss_health.icon_position = match e.value().as_str() {
-                                    "top" => IconPosition::Top,
-                                    "left" => IconPosition::Left,
-                                    "right" => IconPosition::Right,
-                                    _ => IconPosition::Bottom,
-                                };
-                                draft.update(new_settings);
-                            },
-                            option { value: "top", selected: current_settings.boss_health.icon_position == IconPosition::Top, "Top" }
-                            option { value: "bottom", selected: current_settings.boss_health.icon_position == IconPosition::Bottom, "Bottom" }
-                            option { value: "left", selected: current_settings.boss_health.icon_position == IconPosition::Left, "Left (4 slots)" }
-                            option { value: "right", selected: current_settings.boss_health.icon_position == IconPosition::Right, "Right (4 slots)" }
-                        }
-                    }
-
-            Slider {
-                label: "Font Scale",
-                value: (current_settings.boss_health.font_scale * 100.0) as i32 as f64,
-                min: 30.0,
-                max: 300.0,
-                step: 10.0,
-                suffix: "%",
-                on_change: move |v: f64| {
-                    let mut new_settings = draft.current();
-                    new_settings.boss_health.font_scale = (v as f32 / 100.0).clamp(0.3, 3.0);
-                    draft.update(new_settings);
-                },
-            }
-            Slider {
-                label: "Lower Bar Scale",
-                value: (current_settings.boss_health.lower_bar_scale * 100.0) as i32 as f64,
-                min: 50.0,
-                max: 200.0,
-                step: 10.0,
-                suffix: "%",
-                on_change: move |v: f64| {
-                    let mut new_settings = draft.current();
-                    new_settings.boss_health.lower_bar_scale = (v as f32 / 100.0).clamp(0.5, 2.0);
-                    draft.update(new_settings);
-                },
-            }
-            Slider {
-                label: "Icon Scale",
-                value: (current_settings.boss_health.icon_scale * 100.0) as i32 as f64,
-                min: 50.0,
-                max: 200.0,
-                step: 10.0,
-                suffix: "%",
-                disabled: !current_settings.boss_health.show_icons,
-                on_change: move |v: f64| {
-                    let mut new_settings = draft.current();
-                    new_settings.boss_health.icon_scale = (v as f32 / 100.0).clamp(0.5, 2.0);
-                    draft.update(new_settings);
-                },
-            }
-            Slider {
-                label: "Bosses Sized to Fit",
-                tooltip: "The number of entries to reserve space for in the overlay window. If this number is exceeded, the entries will be compressed.",
-                value: current_settings.boss_health.visible_bosses as f64,
-                min: 1.0,
-                max: 7.0,
-                step: 1.0,
-                on_change: move |v: f64| {
-                    let mut new_settings = draft.current();
-                    new_settings.boss_health.visible_bosses = (v as u32).clamp(1, 7);
-                    draft.update(new_settings);
-                },
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.boss_health.dynamic_background,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.boss_health.dynamic_background = e.checked();
-                        draft.update(new_settings);
-                    }
+            Section { group: Group::Layout,
+                Slider {
+                    label: "Bosses Sized to Fit",
+                    tooltip: "The number of entries to reserve space for in the overlay window. If this number is exceeded, the entries will be compressed.",
+                    value: cfg.visible_bosses as f64,
+                    min: 1.0,
+                    max: 7.0,
+                    step: 1.0,
+                    on_change: move |v: f64| draft.edit(|s| s.boss_health.visible_bosses = (v as u32).clamp(1, 7)),
                 }
-                "Dynamic Background"
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.boss_health.clear_after_combat,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.boss_health.clear_after_combat = e.checked();
-                        draft.update(new_settings);
-                    }
+                Slider {
+                    label: "Lower Bar Scale",
+                    value: (cfg.lower_bar_scale * 100.0) as i32 as f64,
+                    min: 50.0,
+                    max: 200.0,
+                    step: 10.0,
+                    suffix: "%",
+                    on_change: move |v: f64| draft.edit(|s| s.boss_health.lower_bar_scale = (v as f32 / 100.0).clamp(0.5, 2.0)),
                 }
-                "Clear After Combat"
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.boss_health.bar_gradient,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.boss_health.bar_gradient = e.checked();
-                        draft.update(new_settings);
-                    }
+                Slider {
+                    label: "Icon Scale",
+                    value: (cfg.icon_scale * 100.0) as i32 as f64,
+                    min: 50.0,
+                    max: 200.0,
+                    step: 10.0,
+                    suffix: "%",
+                    disabled: !cfg.show_icons,
+                    on_change: move |v: f64| draft.edit(|s| s.boss_health.icon_scale = (v as f32 / 100.0).clamp(0.5, 2.0)),
                 }
-                "Gradient Bars"
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.boss_health.show_border,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.boss_health.show_border = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Show Border"
-            }
-            div { class: "setting-row",
-                label { "Border Color" }
-                input {
-                    r#type: "color",
-                    value: "{color_to_hex(&current_settings.boss_health.border_color)}",
-                    class: "color-picker",
-                    disabled: !current_settings.boss_health.show_border,
-                    oninput: move |e: Event<FormData>| {
-                        if let Some(color) = parse_hex_color(&e.value()) {
-                            let mut new_settings = draft.current();
-                            new_settings.boss_health.border_color = color;
-                            draft.update(new_settings);
-                        }
-                    }
-                }
-            }
-
-            div { class: "setting-row reset-row",
-                button {
-                    class: "btn btn-reset",
-                    onclick: move |_| {
-                        let mut new_settings = draft.current();
-                        new_settings.boss_health = BossHealthConfig::default();
-                        new_settings.boss_health_opacity = 180;
-                        draft.update(new_settings);
+                SelectRow {
+                    label: "Icon Position",
+                    value: match cfg.icon_position {
+                        IconPosition::Top => "top",
+                        IconPosition::Left => "left",
+                        IconPosition::Right => "right",
+                        IconPosition::Bottom => "bottom",
+                    }.to_string(),
+                    options: vec![("top", "Top"), ("bottom", "Bottom"), ("left", "Left (4 slots)"), ("right", "Right (4 slots)")],
+                    disabled: !cfg.show_icons,
+                    on_change: move |v: String| {
+                        let pos = match v.as_str() {
+                            "top" => IconPosition::Top,
+                            "left" => IconPosition::Left,
+                            "right" => IconPosition::Right,
+                            _ => IconPosition::Bottom,
+                        };
+                        draft.edit(|s| s.boss_health.icon_position = pos);
                     },
-                    i { class: "fa-solid fa-rotate-left" }
-                    span { " Reset Style" }
                 }
-                {actions}
+            }
+            Section { group: Group::Content,
+                Check { label: "Show Current Target", checked: cfg.show_target, on_change: set(|c, v| c.show_target = v) }
+                Check { label: "Show HP Value", checked: cfg.show_hp_value, on_change: set(|c, v| c.show_hp_value = v) }
+                Check { label: "Show HP Markers", checked: cfg.show_hp_markers, on_change: set(|c, v| c.show_hp_markers = v) }
+                Check { label: "Show Shields", checked: cfg.show_shield, on_change: set(|c, v| c.show_shield = v) }
+                Check { label: "Show Effect Icons", checked: cfg.show_icons, on_change: set(|c, v| c.show_icons = v) }
+                Check { label: "Clear After Combat", checked: cfg.clear_after_combat, on_change: set(|c, v| c.clear_after_combat = v) }
+            }
+            Section { group: Group::Text,
+                FontScale { value: cfg.font_scale, on_change: move |v| draft.edit(|s| s.boss_health.font_scale = v) }
+            }
+            ResetRow {
+                on_reset: move |_| draft.edit(|s| {
+                    s.boss_health = BossHealthConfig::default();
+                    s.boss_health_opacity = 180;
+                }),
+                actions,
             }
         }
     }

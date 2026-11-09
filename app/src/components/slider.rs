@@ -42,9 +42,8 @@ pub fn Slider(
                 },
             }
             NumberInput { value, min, max, step, disabled, on_change }
-            if !suffix.is_empty() {
-                span { class: "slider-unit", "{suffix}" }
-            }
+            // Always present (empty without a unit) so value boxes line up
+            span { class: "slider-unit", "{suffix}" }
         }
     }
 }

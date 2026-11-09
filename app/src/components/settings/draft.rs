@@ -64,6 +64,13 @@ impl SettingsDraft {
         });
     }
 
+    /// Change the draft in place: `draft.edit(|s| s.alerts_opacity = v)`
+    pub fn edit(&self, f: impl FnOnce(&mut OverlaySettings)) {
+        let mut s = self.current();
+        f(&mut s);
+        self.update(s);
+    }
+
     /// Replace the draft with persisted settings (after a save, profile load or reset)
     pub fn replace(&self, settings: OverlaySettings) {
         let (mut current, mut has_changes) = (self.settings, self.has_changes);

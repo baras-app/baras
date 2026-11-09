@@ -4,238 +4,84 @@ use dioxus::prelude::*;
 
 use crate::components::Slider;
 use crate::types::DotTrackerConfig;
-use crate::utils::{color_to_hex, parse_hex_color};
 
 use super::draft::SettingsDraft;
-use super::widgets::OpacitySlider;
+use super::widgets::{BorderRows, Check, ColorRow, DynamicBackground, FontScale, Group, NumberRow, OpacitySlider, ResetRow, Section};
 
 #[component]
 pub fn DotTrackerTab(draft: SettingsDraft, actions: Element) -> Element {
-    let current_settings = draft.current();
+    let s = draft.current();
+    let cfg = s.dot_tracker.clone();
+    let set = move |f: fn(&mut DotTrackerConfig, bool)| move |v: bool| draft.edit(|s| f(&mut s.dot_tracker, v));
 
     rsx! {
-        // DOT Tracker Settings
         div { class: "settings-section",
-            h4 { "Appearance" }
-
-            OpacitySlider {
-                label: "Background Opacity",
-                value: current_settings.dot_tracker_opacity,
-                on_change: move |val| {
-                    let mut new_settings = draft.current();
-                    new_settings.dot_tracker_opacity = val;
-                    draft.update(new_settings);
-                },
-            }
-
-            Slider {
-                label: "Icon/Bar Size",
-                value: current_settings.dot_tracker.icon_size as f64,
-                min: 12.0,
-                max: 48.0,
-                suffix: "px",
-                on_change: move |v: f64| {
-                    let mut new_settings = draft.current();
-                    new_settings.dot_tracker.icon_size = (v as u8).clamp(12, 48);
-                    draft.update(new_settings);
-                },
-            }
-
-            div { class: "setting-row",
-                label { "Max Targets" }
-                select {
-                    class: "input-inline",
-                    value: "{current_settings.dot_tracker.max_targets}",
-                    onchange: move |e: Event<FormData>| {
-                        if let Ok(val) = e.value().parse::<u8>() {
-                            let mut new_settings = draft.current();
-                            new_settings.dot_tracker.max_targets = val.clamp(1, 10);
-                            draft.update(new_settings);
-                        }
-                    },
-                    for n in 1..=10u8 {
-                        option { value: "{n}", selected: current_settings.dot_tracker.max_targets == n, "{n}" }
-                    }
+            Section { group: Group::Background,
+                OpacitySlider { value: s.dot_tracker_opacity, on_change: move |v| draft.edit(|s| s.dot_tracker_opacity = v) }
+                DynamicBackground { checked: cfg.dynamic_background, on_change: set(|c, v| c.dynamic_background = v) }
+                Check {
+                    label: "Gradient Bars",
+                    note: "(bar layout)",
+                    checked: cfg.bar_gradient,
+                    disabled: !cfg.layout_bar,
+                    on_change: set(|c, v| c.bar_gradient = v),
+                }
+                BorderRows {
+                    show: cfg.show_border,
+                    color: cfg.border_color,
+                    note: "(bar layout)",
+                    disabled: !cfg.layout_bar,
+                    on_show: set(|c, v| c.show_border = v),
+                    on_color: move |v| draft.edit(|s| s.dot_tracker.border_color = v),
                 }
             }
-
-            h4 { "Display Options" }
-
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.dot_tracker.layout_bar,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.dot_tracker.layout_bar = e.checked();
-                        draft.update(new_settings);
-                    }
+            Section { group: Group::Layout,
+                Slider {
+                    label: "Icon/Bar Size",
+                    value: cfg.icon_size as f64,
+                    min: 12.0,
+                    max: 48.0,
+                    suffix: "px",
+                    on_change: move |v: f64| draft.edit(|s| s.dot_tracker.icon_size = (v as u8).clamp(12, 48)),
                 }
-                "Bar Mode"
-            }
-
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.dot_tracker.show_header,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.dot_tracker.show_header = e.checked();
-                        draft.update(new_settings);
-                    }
+                NumberRow {
+                    label: "Max Targets",
+                    value: cfg.max_targets as f64,
+                    min: 1.0,
+                    max: 10.0,
+                    on_change: move |v: f64| draft.edit(|s| s.dot_tracker.max_targets = (v as u8).clamp(1, 10)),
                 }
-                "Show Header"
-            }
-
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.dot_tracker.show_effect_names,
-                    disabled: !current_settings.dot_tracker.layout_bar,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.dot_tracker.show_effect_names = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Show Effect Names (bar layout)"
-            }
-
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.dot_tracker.show_countdown,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.dot_tracker.show_countdown = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Show Countdown"
-            }
-
-            div { class: "setting-row",
-                label { "Font Color" }
-                input {
-                    r#type: "color",
-                    value: "{color_to_hex(&current_settings.dot_tracker.font_color)}",
-                    class: "color-picker",
-                    oninput: move |e: Event<FormData>| {
-                        if let Some(color) = parse_hex_color(&e.value()) {
-                            let mut new_settings = draft.current();
-                            new_settings.dot_tracker.font_color = color;
-                            draft.update(new_settings);
-                        }
-                    }
+                Check { label: "Bar Mode", checked: cfg.layout_bar, on_change: set(|c, v| c.layout_bar = v) }
+                Check { label: "Stack from Bottom", checked: cfg.stack_from_bottom, on_change: set(|c, v| c.stack_from_bottom = v) }
+                Check {
+                    label: "Right-Align Icons",
+                    note: "(icon layout)",
+                    checked: cfg.right_align_icons,
+                    disabled: cfg.layout_bar,
+                    on_change: set(|c, v| c.right_align_icons = v),
                 }
             }
-
-            Slider {
-                label: "Font Scale",
-                value: (current_settings.dot_tracker.font_scale * 100.0) as i32 as f64,
-                min: 30.0,
-                max: 300.0,
-                step: 10.0,
-                suffix: "%",
-                on_change: move |v: f64| {
-                    let mut new_settings = draft.current();
-                    new_settings.dot_tracker.font_scale = (v as f32 / 100.0).clamp(0.3, 3.0);
-                    draft.update(new_settings);
-                },
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.dot_tracker.dynamic_background,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.dot_tracker.dynamic_background = e.checked();
-                        draft.update(new_settings);
-                    }
+            Section { group: Group::Content,
+                Check { label: "Show Header", checked: cfg.show_header, on_change: set(|c, v| c.show_header = v) }
+                Check {
+                    label: "Show Effect Names",
+                    note: "(bar layout)",
+                    checked: cfg.show_effect_names,
+                    disabled: !cfg.layout_bar,
+                    on_change: set(|c, v| c.show_effect_names = v),
                 }
-                "Dynamic Background"
+                Check { label: "Show Countdown", checked: cfg.show_countdown, on_change: set(|c, v| c.show_countdown = v) }
             }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.dot_tracker.stack_from_bottom,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.dot_tracker.stack_from_bottom = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Stack from Bottom"
+            Section { group: Group::Text,
+                FontScale { value: cfg.font_scale, on_change: move |v| draft.edit(|s| s.dot_tracker.font_scale = v) }
+                ColorRow { label: "Font Color", value: cfg.font_color, on_change: move |v| draft.edit(|s| s.dot_tracker.font_color = v) }
             }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.dot_tracker.right_align_icons,
-                    disabled: current_settings.dot_tracker.layout_bar,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.dot_tracker.right_align_icons = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Right-Align Icons (icon layout)"
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.dot_tracker.bar_gradient,
-                    disabled: !current_settings.dot_tracker.layout_bar,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.dot_tracker.bar_gradient = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Gradient Bars (bar layout)"
-            }
-            label { class: "settings-check",
-                input {
-                    r#type: "checkbox",
-                    checked: current_settings.dot_tracker.show_border,
-                    disabled: !current_settings.dot_tracker.layout_bar,
-                    onchange: move |e: Event<FormData>| {
-                        let mut new_settings = draft.current();
-                        new_settings.dot_tracker.show_border = e.checked();
-                        draft.update(new_settings);
-                    }
-                }
-                "Show Border (bar layout)"
-            }
-            div { class: "setting-row",
-                label { "Border Color" }
-                input {
-                    r#type: "color",
-                    value: "{color_to_hex(&current_settings.dot_tracker.border_color)}",
-                    class: "color-picker",
-                    disabled: !(current_settings.dot_tracker.layout_bar && current_settings.dot_tracker.show_border),
-                    oninput: move |e: Event<FormData>| {
-                        if let Some(color) = parse_hex_color(&e.value()) {
-                            let mut new_settings = draft.current();
-                            new_settings.dot_tracker.border_color = color;
-                            draft.update(new_settings);
-                        }
-                    }
-                }
-            }
-
-            div { class: "setting-row reset-row",
-                button {
-                    class: "btn btn-reset",
-                    onclick: move |_| {
-                        let mut new_settings = draft.current();
-                        new_settings.dot_tracker = DotTrackerConfig::default();
-                        new_settings.dot_tracker_opacity = 180;
-                        draft.update(new_settings);
-                    },
-                    i { class: "fa-solid fa-rotate-left" }
-                    span { " Reset to Defaults" }
-                }
-                {actions}
+            ResetRow {
+                on_reset: move |_| draft.edit(|s| {
+                    s.dot_tracker = DotTrackerConfig::default();
+                    s.dot_tracker_opacity = 180;
+                }),
+                actions,
             }
         }
     }
