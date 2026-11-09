@@ -8,9 +8,9 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* Reserve vertical space for the timeline so content doesn't shift when it loads.
-   Height: track (34px) + controls row (24px) + padding (~8px) */
+   Height: track (34px) + axis (14px) + controls row (24px) + padding (~8px) */
 .phase-timeline-slot {
-  min-height: 66px;
+  min-height: 80px;
   flex-shrink: 0;
 }
 
@@ -46,27 +46,16 @@
   cursor: ew-resize;
 }
 
-/* Time markers inside the track */
-.track-marker {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+/* Time axis below the track: start / mid / end */
+.phase-timeline-axis {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 2px 0;
   font-size: 10px;
+  line-height: 12px;
   font-family: var(--font-mono);
   color: rgba(var(--fg-rgb), 0.5);
   pointer-events: none;
-  z-index: 5;
-}
-
-.track-marker.start {
-  left: 6px;
-}
-.track-marker.mid {
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-.track-marker.end {
-  right: 6px;
 }
 
 /* Phase segment blocks */
@@ -74,6 +63,7 @@
   position: absolute;
   top: 0;
   height: 100%;
+  box-sizing: border-box; /* padding must not widen the % width */
   display: flex;
   align-items: center;
   gap: 4px;
@@ -82,11 +72,14 @@
   overflow: hidden;
   white-space: nowrap;
   padding: 0 4px;
-  border-right: 2px solid var(--bg-deep);
   transition: filter var(--transition-fast);
   user-select: none;
-  z-index: 6; /* Above track markers (z-index: 5) */
   /* Background color set via inline style from phase_color() */
+}
+
+/* Thin divider between adjacent phases only (none at the track edges) */
+.phase-segment + .phase-segment {
+  box-shadow: inset 1px 0 0 rgba(var(--fg-rgb), 0.18);
 }
 
 .phase-segment:hover {
@@ -134,7 +127,6 @@
   box-shadow: 0 0 12px hsl(45, 100%, 50%);
 }
 
-/* Range display below timeline, left-aligned */
 /* Controls row: range inputs + phase chips inline */
 .phase-timeline-controls {
   display: flex;
@@ -144,64 +136,82 @@
   flex-wrap: wrap;
 }
 
+/* Range selector: one compact pill holding start — end [×] */
 .phase-timeline-range {
-  display: flex;
-  gap: 4px;
+  display: inline-flex;
   align-items: center;
+  gap: 2px;
+  height: 24px;
+  padding: 0 3px;
   font-size: 12px;
   white-space: nowrap;
   flex-shrink: 0;
+  background: rgba(var(--fg-rgb), 0.04);
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.phase-timeline-range:hover {
+  border-color: var(--border-medium);
+}
+
+.phase-timeline-range:focus-within {
+  border-color: color-mix(in srgb, var(--accent-gold) 60%, transparent);
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
 .phase-timeline-range-value {
   font-family: var(--font-mono);
-  color: var(--accent-gold);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  padding: 2px 4px;
-  width: 6.5ch;
-  text-align: center;
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
+  color: var(--text-gold);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 2px 6px;
+  width: 7ch;
+  text-align: center;
   cursor: text;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .phase-timeline-range-value:hover {
-  border-color: var(--border-subtle);
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
 .phase-timeline-range-value:focus {
   outline: none;
-  border-color: var(--accent-gold);
-  background: var(--bg-tertiary);
-  border-bottom: 2px solid var(--accent-gold);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent-gold) 18%, transparent);
 }
 
 .phase-timeline-range-separator {
-  color: var(--text-muted);
+  color: var(--text-disabled);
+  font-size: 10px;
 }
 
-/* Reset button - compact X */
+/* Reset: ghost icon inside the pill, turns red on hover */
 .phase-timeline-reset {
-  width: 20px;
-  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
   padding: 0;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1;
-  background: hsl(0, 50%, 30%);
-  border: 1px solid hsl(0, 50%, 40%);
-  border-radius: var(--radius-sm);
-  color: hsl(0, 100%, 85%);
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  margin-left: 4px;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .phase-timeline-reset:hover {
-  background: hsl(0, 60%, 40%);
-  color: white;
-  border-color: hsl(0, 60%, 50%);
+  color: var(--color-error);
+  background: var(--color-error-bg-hover);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -216,34 +226,55 @@
 }
 
 .phase-chip {
+  --chip: var(--chip-color, var(--text-muted));
   display: inline-flex;
   align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 8px 0 6px;
   font-size: 10px;
+  font-weight: 500;
   color: var(--text-secondary);
-  padding: 2px 6px;
-  background: var(--bg-tertiary);
-  border: none;
-  border-left: 3px solid var(--chip-color, var(--text-muted));
-  border-radius: 2px;
+  background: color-mix(in srgb, var(--chip) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip) 30%, transparent);
+  border-radius: 999px;
   cursor: pointer;
-  transition: all var(--transition-fast);
   white-space: nowrap;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+/* Color dot matching the phase segment */
+.phase-chip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--chip);
+  flex-shrink: 0;
 }
 
 .phase-chip:hover {
-  background: var(--bg-hover);
   color: var(--text-primary);
+  background: color-mix(in srgb, var(--chip) 22%, transparent);
+  border-color: color-mix(in srgb, var(--chip) 55%, transparent);
+}
+
+.phase-chip:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 1px;
 }
 
 .phase-chip.active {
-  background: var(--bg-hover);
   color: var(--text-primary);
-  box-shadow: 0 0 0 1px var(--accent-gold);
+  background: color-mix(in srgb, var(--chip) 35%, transparent);
+  border-color: var(--accent-gold);
 }
 
 .chip-instance {
   color: var(--text-muted);
   font-size: 0.9em;
+  margin-left: -2px;
 }
 
 /* Selected entity indicator (shown when entity sidebar collapsed) */

@@ -294,11 +294,6 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                         props.on_range_change.call(TimeRange::full(duration));
                     },
 
-                    // Time markers inside the track
-                    span { class: "track-marker start", "0:00" }
-                    span { class: "track-marker mid", "{format_time(duration / 2.0)}" }
-                    span { class: "track-marker end", "{format_time(duration)}" }
-
                     // Render phase segments
                     for phase in phases.iter() {
                         {
@@ -356,6 +351,13 @@ pub fn PhaseTimelineFilter(props: PhaseTimelineProps) -> Element {
                         }
                     }
                 }
+            }
+
+            // Time axis below the track (kept out of the track so labels never collide)
+            div { class: "phase-timeline-axis",
+                span { "0:00" }
+                span { "{format_time(duration / 2.0)}" }
+                span { "{format_time(duration)}" }
             }
 
             // Controls row: range inputs + phase chips inline
