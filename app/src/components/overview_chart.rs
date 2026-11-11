@@ -17,15 +17,13 @@ use crate::utils::{LightTheme, css_var};
 const CHART_ID: &str = "overview-group-chart";
 /// Categorical slots (validated order); past eight players the rest fold
 /// into grey "Others"
-const SERIES_LIGHT: [&str; 8] = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"];
-const SERIES_DARK: [&str; 8] = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
 const OTHERS: &str = "Others";
 
 const TABS: [(&str, OverviewSort); 4] = [
     ("DPS", OverviewSort::DPS),
     ("EHPS", OverviewSort::EHPS),
     ("DTPS", OverviewSort::DTPS),
-    ("TPS", OverviewSort::TPS),
+    ("Threat", OverviewSort::ThreatTotal),
 ];
 
 fn metric_of(sort: OverviewSort) -> GroupMetric {
@@ -93,7 +91,7 @@ fn tooltip_js(eu: bool, stacked: bool) -> String {
 
 /// Players in the table, coloured in a stable (alphabetical) order. Past
 /// eight, the top seven by total keep a colour and the rest share grey.
-fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], stacked: bool, light: bool) -> Option<Value> {
+fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], stacked: bool) -> Option<Value> {
     let mut players: Vec<(&str, Vec<f64>, f64)> = data
         .series
         .iter()
@@ -104,7 +102,8 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
     if players.is_empty() {
         return None;
     }
-    let palette = if light { SERIES_LIGHT } else { SERIES_DARK };
+    // Theme palette (--series-N in styles.css)
+    let palette: Vec<String> = (1..=8).map(|i| css_var(&format!("--series-{i}"))).collect();
     players.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
     let keep = if players.len() > palette.len() { palette.len() - 1 } else { players.len() };
     let rest = players.split_off(keep);
@@ -146,7 +145,7 @@ fn build_option(data: &GroupTimeSeries, metric: GroupMetric, roster: &[String], 
         }
     };
 
-    let mut series: Vec<Value> = players.iter().zip(palette).map(|((n, v, _), c)| line(n, v, c)).collect();
+    let mut series: Vec<Value> = players.iter().zip(&palette).map(|((n, v, _), c)| line(n, v, c)).collect();
     if !rest.is_empty() {
         if stacked {
             let sum: Vec<f64> = (0..group.len()).map(|i| rest.iter().map(|r| r.1[i]).sum()).collect();
@@ -197,8 +196,11 @@ pub fn OverviewGroupChart(
     let metric = metric_of(sort_col());
     let mut stacked = use_signal(|| false);
     let roster: Vec<String> = rows.iter().map(|r| r.name.clone()).collect();
-    // Colours resolve from CSS when the option is built: rebuild on a theme flip
-    let light = try_use_context::<LightTheme>().is_some_and(|LightTheme(t)| t());
+    // Colours resolve from CSS when the option is built; reading the theme
+    // subscribes this render, so a theme flip rebuilds the option
+    if let Some(LightTheme(t)) = try_use_context::<LightTheme>() {
+        let _ = t();
+    }
 
     let data = use_resource(use_reactive!(|(encounter_idx, time_range, metric, rows)| async move {
         let _ = rows;
@@ -217,7 +219,7 @@ pub fn OverviewGroupChart(
         }
     });
 
-    let option = data.read().as_ref().and_then(|d| d.as_ref()).and_then(|d| build_option(d, metric, &roster, stacked(), light));
+    let option = data.read().as_ref().and_then(|d| d.as_ref()).and_then(|d| build_option(d, metric, &roster, stacked()));
     let has_data = option.is_some();
 
     use_resize_charts(&[CHART_ID]);

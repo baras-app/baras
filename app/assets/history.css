@@ -315,10 +315,6 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.explorer-sidebar .history-toolbar .filter-pills .seg {
-  padding: 0.1em 0.5em;
-}
-
 .explorer-sidebar .history-more {
   justify-content: center;
   padding: 0.45em;
@@ -327,6 +323,7 @@
 /* Sized by their label, then sharing the slack: equal thirds would clip
    the widest one when the rail is narrow */
 .explorer-sidebar .history-toolbar .filter-pills .seg {
+  padding: 0.1em 0.5em;
   flex: 1 1 auto;
   min-width: 0;
   justify-content: center;

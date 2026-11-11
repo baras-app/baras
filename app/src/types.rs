@@ -17,8 +17,6 @@ pub use baras_types::{
     AlertsOverlayConfig,
     AppConfig,
     BossHealthConfig,
-    // UI Session State types (persisted across tab switches)
-    BreakdownMode,
     ChallengeColumns,
     ChallengeLayout,
     ClassColorConfig,
@@ -26,7 +24,6 @@ pub use baras_types::{
     Color,
     CombatLogSessionState,
     CooldownTrackerConfig,
-    DataExplorerState,
     DataTab,
     DotTrackerConfig,
     MirrorAbility,
@@ -36,14 +33,11 @@ pub use baras_types::{
     EffectStackConfig,
     EffectsAConfig,
     EffectFilters,
-    EffectsEditorState,
-    EncounterBuilderState,
     EntityFilter,
     EntitySelector,
     IconPosition,
     MainTab,
     MitigationType,
-    NotesOverlayConfig,
     OverlayAppearanceConfig,
     OverlaySettings,
     PersonalOverlayConfig,
@@ -1161,19 +1155,6 @@ pub enum Condition {
 }
 
 impl Condition {
-    /// Returns a human-readable label for this condition type.
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::PhaseActive { .. } => "Phase Active",
-            Self::CounterCompare { .. } => "Counter Compare",
-            Self::CounterCompareCounter { .. } => "Counter vs Counter",
-            Self::TimerTimeRemaining { .. } => "Timer Time Remaining",
-            Self::AllOf { .. } => "All Of (AND)",
-            Self::AnyOf { .. } => "Any Of (OR)",
-            Self::Not { .. } => "Not",
-        }
-    }
-
     /// Returns the snake_case type name for this condition.
     pub fn type_name(&self) -> &'static str {
         match self {

@@ -17,7 +17,7 @@ use crate::components::charts_panel::ChartsPanel;
 use crate::components::class_icons::get_class_icon;
 use crate::components::combat_log::CombatLog;
 use crate::components::death_recap_drawer::DeathRecapDrawer;
-use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, UploadState, group_by_area};
+use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, group_by_area};
 use crate::components::effect_uptime::EffectUptimeView;
 use crate::components::overview_chart::OverviewGroupChart;
 use crate::components::tab_more_menu::TabMoreMenu;
@@ -44,7 +44,6 @@ enum LoadState {
     Idle,
     Loading,
     Loaded,
-    Error(String),
 }
 
 /// Overview table data with pre-calculated totals
@@ -202,7 +201,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
 
     // Parsely upload state for per-encounter uploads
     let mut parsely_upload = use_parsely_upload();
-    let mut upload_states = use_signal(HashMap::<u64, UploadState>::new);
 
     // Combat log state is a separate signal that CombatLog component will modify
     let mut combat_log_state = use_signal(|| props.state.read().combat_log.clone());
@@ -1657,10 +1655,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                         .collect::<Vec<_>>()
                                                         .join(", ");
                                                     let persisted_link = enc.parsely_link.clone();
-                                                    let current_upload_state = upload_states()
-                                                        .get(&enc_id)
-                                                        .cloned()
-                                                        .unwrap_or(UploadState::Idle);
                                                     let start_line = enc.event_start_line.unwrap_or(0);
                                                     let end_line = enc.event_end_line.unwrap_or(0);
                                                     let area_line = enc.area_entered_line;
@@ -1688,16 +1682,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                                 div { class: "encounter-main-right",
                                                                     // Parsely upload / link button
                                                                     {
-                                                                        // Determine the link to show (persisted takes priority, then transient success)
-                                                                        let link_url = persisted_link.clone().or_else(|| {
-                                                                            if let UploadState::Success(ref url) = current_upload_state {
-                                                                                Some(url.clone())
-                                                                            } else {
-                                                                                None
-                                                                            }
-                                                                        });
-
-                                                                        if let Some(url) = link_url {
+                                                                        if let Some(url) = persisted_link.clone() {
                                                                             rsx! {
                                                                                 button {
                                                                                     class: "parsely-upload-btn success",
@@ -1711,54 +1696,31 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                                                                 }
                                                                             }
                                                                         } else {
-                                                                            match current_upload_state {
-                                                                                UploadState::Idle => rsx! {
-                                                                                    button {
-                                                                                        class: "parsely-upload-btn",
-                                                                                        title: "Upload to Parsely",
-                                                                                        onclick: {
-                                                                                            let encounter_name = enc.display_name.clone();
-                                                                                            move |e| {
-                                                                                                e.stop_propagation();
-                                                                                                let name = encounter_name.clone();
-                                                                                                spawn(async move {
-                                                                                                    if let Some(path) = api::get_active_file().await {
-                                                                                                        parsely_upload.open_encounter(
-                                                                                                            path,
-                                                                                                            name,
-                                                                                                            enc_id,
-                                                                                                            start_line,
-                                                                                                            end_line,
-                                                                                                            area_line,
-                                                                                                        );
-                                                                                                    }
-                                                                                                });
-                                                                                            }
-                                                                                        },
-                                                                                        i { class: "fa-solid fa-upload" }
-                                                                                    }
-                                                                                },
-                                                                                UploadState::Uploading => rsx! {
-                                                                                    span { class: "parsely-upload-btn uploading",
-                                                                                        i { class: "fa-solid fa-spinner fa-spin" }
-                                                                                    }
-                                                                                },
-                                                                                UploadState::Success(_) => rsx! {
-                                                                                    // Handled above via link_url
-                                                                                },
-                                                                                UploadState::Error(ref err) => rsx! {
-                                                                                    button {
-                                                                                        class: "parsely-upload-btn error",
-                                                                                        title: "Error: {err}. Click to retry.",
-                                                                                        onclick: move |e| {
+                                                                            rsx! {
+                                                                                button {
+                                                                                    class: "parsely-upload-btn",
+                                                                                    title: "Upload to Parsely",
+                                                                                    onclick: {
+                                                                                        let encounter_name = enc.display_name.clone();
+                                                                                        move |e| {
                                                                                             e.stop_propagation();
-                                                                                            upload_states.with_mut(|states| {
-                                                                                                states.insert(enc_id, UploadState::Idle);
+                                                                                            let name = encounter_name.clone();
+                                                                                            spawn(async move {
+                                                                                                if let Some(path) = api::get_active_file().await {
+                                                                                                    parsely_upload.open_encounter(
+                                                                                                        path,
+                                                                                                        name,
+                                                                                                        enc_id,
+                                                                                                        start_line,
+                                                                                                        end_line,
+                                                                                                        area_line,
+                                                                                                    );
+                                                                                                }
                                                                                             });
-                                                                                        },
-                                                                                        i { class: "fa-solid fa-triangle-exclamation" }
-                                                                                    }
-                                                                                },
+                                                                                        }
+                                                                                    },
+                                                                                    i { class: "fa-solid fa-upload" }
+                                                                                }
                                                                             }
                                                                         }
                                                                     }
@@ -3332,14 +3294,6 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                     }
 
                     } // end timeline-loaded gate
-
-                    // Error display — rendered below content so it never causes layout shift
-                    if let LoadState::Error(msg) = content_state() {
-                        div { class: "content-error-placeholder",
-                            i { class: "fa-solid fa-triangle-exclamation" }
-                            " {msg}"
-                        }
-                    }
                     } // end tab-content-area
                 }
             }

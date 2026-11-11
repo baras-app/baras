@@ -607,13 +607,6 @@
   flex-direction: column;
 }
 
-.content-error-placeholder {
-  color: var(--lt-red, #e74c3c);
-  font-size: 13px;
-  text-align: center;
-  padding: 24px 0;
-}
-
 /* Underline tabs: flat labels; the open one gets its accent as an underline
    sitting on the strip's hairline */
 .data-tab {
@@ -2860,12 +2853,13 @@
   border-radius: 2px;
 }
 
-/* Lanes cycle colours so neighbouring rows read apart (child 1 is the title) */
-.uptime-lane:nth-child(6n + 3) { --lane-color: var(--color-success); }
-.uptime-lane:nth-child(6n + 4) { --lane-color: var(--color-warning); }
-.uptime-lane:nth-child(6n + 5) { --lane-color: #a78bfa; }
-.uptime-lane:nth-child(6n + 6) { --lane-color: #2dd4bf; }
-.uptime-lane:nth-child(6n + 7) { --lane-color: var(--color-error); }
+/* Lanes cycle the chart series colours (child 1 is the title) */
+.uptime-lane:nth-child(6n + 2) { --lane-color: var(--series-1); }
+.uptime-lane:nth-child(6n + 3) { --lane-color: var(--series-2); }
+.uptime-lane:nth-child(6n + 4) { --lane-color: var(--series-3); }
+.uptime-lane:nth-child(6n + 5) { --lane-color: var(--series-4); }
+.uptime-lane:nth-child(6n + 6) { --lane-color: var(--series-5); }
+.uptime-lane:nth-child(6n + 7) { --lane-color: var(--series-7); }
 
 .uptime-lane-pct {
   color: var(--text-muted);

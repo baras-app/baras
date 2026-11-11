@@ -6,18 +6,6 @@
 use serde::{Deserialize, Serialize};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Upload State Tracking
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum UploadState {
-    Idle,
-    Uploading,
-    Success(String), // Contains the Parsely link
-    Error(String),   // Contains the error message
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Data Types (mirrors backend)
 // ─────────────────────────────────────────────────────────────────────────────
 
