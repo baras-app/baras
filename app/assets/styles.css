@@ -767,12 +767,10 @@ select optgroup {
   background: rgba(240, 173, 78, 0.06);
 }
 
-.header-unsaved-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
+.header-unsaved-hint > i {
+  font-size: 0.9em;
 }
+
 
 .header-unsaved-save-btn {
   display: inline-flex;
@@ -4461,13 +4459,6 @@ a.contributor-name:hover {
 }
 
 /* Effect Row */
-.effect-color-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
 .effect-name {
   color: var(--text-primary);
   font-weight: 500;
@@ -5603,14 +5594,6 @@ a.contributor-name:hover {
 .list-item-header:has(.unsaved-indicator) + .list-item-body {
   outline: 2px solid var(--swtor-orange, #f0ad4e);
   outline-offset: -2px;
-}
-
-/* ─── Color Swatch ───────────────────────────────────────────────────────────── */
-.color-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 /* ─── Tags/Badges ────────────────────────────────────────────────────────────── */
@@ -7693,4 +7676,28 @@ a.contributor-name:hover {
 /* Version block buttons (update) stay on one line; the nav gives way instead */
 .header-meta button {
   white-space: nowrap;
+}
+
+/* Editor list rows: the item's icon ringed in its color, else a color dot */
+.row-color-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.row-color-icon img {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1.5px var(--ring);
+}
+
+.row-color-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--dot);
 }

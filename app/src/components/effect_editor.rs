@@ -14,6 +14,7 @@ use super::encounter_editor::triggers::{
     EffectSelectorEditor, EntityFilterDropdown,
 };
 use crate::components::effect_filters::{EffectFilterBar, matches_filters};
+use crate::components::ability_icon::ColorIcon;
 use crate::components::editor_sort::{apply_rank, use_stable_rank};
 use crate::components::editor_common::{FormCard, ItemActions, Origin, OriginBadge};
 use crate::api;
@@ -47,6 +48,24 @@ fn get_effect_when_label(trigger: &Trigger) -> &'static str {
         Trigger::EffectRemoved { .. } => "Effect Removed",
         _ => "Effect Applied",
     }
+}
+
+/// Icon the overlay shows: the explicit icon, else the trigger's first effect/ability id
+fn effect_icon_id(icon: Option<u64>, trigger: &Trigger) -> Option<u64> {
+    icon.or_else(|| {
+        let (is_effect_trigger, effects) = get_trigger_effects(trigger);
+        if is_effect_trigger {
+            effects.first().and_then(|sel| match sel {
+                EffectSelector::Id(id) => Some(*id),
+                EffectSelector::Name(_) => None,
+            })
+        } else {
+            get_trigger_abilities(trigger).first().and_then(|sel| match sel {
+                AbilitySelector::Id(id) => Some(*id),
+                AbilitySelector::Name(_) => None,
+            })
+        }
+    })
 }
 
 /// Get the effects from an effect-based trigger (returns is_effect_trigger, effects)
@@ -902,10 +921,9 @@ fn EffectRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-                // Color dot
-                span {
-                    class: "effect-color-dot",
-                    style: "background-color: {color_hex}"
+                ColorIcon {
+                    icon_id: effect.show_icon.then(|| effect_icon_id(effect.icon_ability_id, &effect.trigger)).flatten(),
+                    color: color_hex.clone(),
                 }
 
                 // Name | ID grouped left-aligned
@@ -1031,21 +1049,7 @@ fn EffectEditForm(
     // Load icon preview - use explicit icon_ability_id, or fall back to trigger ID
     use_effect(move || {
         let current_draft = draft(); // Read inside effect for reactivity
-        let preview_id = current_draft.icon_ability_id.or_else(|| {
-            let (is_effect_trigger, effects) = get_trigger_effects(&current_draft.trigger);
-            if is_effect_trigger {
-                effects.first().and_then(|sel| match sel {
-                    EffectSelector::Id(id) => Some(*id),
-                    EffectSelector::Name(_) => None,
-                })
-            } else {
-                let abilities = get_trigger_abilities(&current_draft.trigger);
-                abilities.first().and_then(|sel| match sel {
-                    AbilitySelector::Id(id) => Some(*id),
-                    AbilitySelector::Name(_) => None,
-                })
-            }
-        });
+        let preview_id = effect_icon_id(current_draft.icon_ability_id, &current_draft.trigger);
 
         if let Some(ability_id) = preview_id {
             spawn(async move {
