@@ -19,7 +19,7 @@ use baras_types::history::PullRow;
 use crate::components::class_icons::{get_class_icon, get_role_icon};
 
 use crate::components::echarts::{
-    dispose_chart, init_chart, json_to_js, next_animation_frame, on_click, set_js_fn, set_option_replace,
+    dispose_chart, init_chart, json_to_js, next_animation_frame, on_column_click, set_js_fn, set_option_replace,
     use_resize_charts,
 };
 
@@ -395,8 +395,8 @@ pub fn PullCharts(pulls: Resource<Option<Vec<PullRow>>>, pick: Signal<Option<Cha
                                 set_js_fn(&js, &["tooltip", "formatter"], "params", PULL_TOOLTIP);
                             }
                             set_option_replace(&chart, &js);
-                            let handler = Closure::new(move |params: JsValue| {
-                                let data = js_sys::Reflect::get(&params, &JsValue::from_str("data")).unwrap_or(JsValue::NULL);
+                            // A click anywhere in a pull's column picks it (what the tooltip shows)
+                            let handler = Closure::new(move |data: JsValue| {
                                 let hit = js_sys::Reflect::get(&data, &JsValue::from_str("pick")).unwrap_or(JsValue::NULL);
                                 if let Ok(hit) = serde_wasm_bindgen::from_value::<ChartPick>(hit) {
                                     // Outside the Dioxus runtime (JS callback), so never panic on a lock
@@ -405,7 +405,7 @@ pub fn PullCharts(pulls: Resource<Option<Vec<PullRow>>>, pick: Signal<Option<Cha
                                     });
                                 }
                             });
-                            on_click(&chart, &handler);
+                            on_column_click(&chart, &handler);
                             fresh.push(handler);
                         }
                     }
