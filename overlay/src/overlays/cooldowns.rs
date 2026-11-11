@@ -142,10 +142,10 @@ pub struct CooldownOverlay {
     config: CooldownConfig,
     background_alpha: u8,
     data: CooldownData,
-    /// Last rendered state for dirty checking (icon mode): (ability_id, time_string, charges, progress_q)
-    last_rendered: Vec<(u64, String, u8, u16)>,
-    /// Last rendered state for dirty checking (bar mode): (ability_id, time_string, charges, is_ready_state, progress_q)
-    last_rendered_bar: Vec<(u64, String, u8, bool, u16)>,
+    /// Last rendered state for dirty checking (icon mode): (ability_id, time_string, charges, remaining_bits)
+    last_rendered: Vec<(u64, String, u8, u32)>,
+    /// Last rendered state for dirty checking (bar mode): (ability_id, time_string, charges, is_ready_state, remaining_bits)
+    last_rendered_bar: Vec<(u64, String, u8, bool, u32)>,
     european_number_format: bool,
 }
 
@@ -244,9 +244,9 @@ impl CooldownOverlay {
         let max_display = self.config.max_display as usize;
 
         // Build current visible state for dirty check.
-        // Include a quantized progress value so the clock-wipe overlay updates smoothly
+        // Include the exact remaining time so the clock-wipe overlay updates smoothly
         // even when the displayed time string is stable (e.g. whole seconds when >= 10s).
-        let current_state: Vec<(u64, String, u8, u16)> = self
+        let current_state: Vec<(u64, String, u8, u32)> = self
             .data
             .entries
             .iter()
@@ -256,7 +256,7 @@ impl CooldownOverlay {
                     e.ability_id,
                     e.format_time(self.european_number_format),
                     e.charges,
-                    (e.progress() * 200.0) as u16,
+                    e.remaining_secs.to_bits(),
                 )
             })
             .collect();
@@ -640,9 +640,9 @@ impl CooldownOverlay {
         let max_display = self.config.max_display as usize;
 
         // Dirty check: include ready state so border changes are caught.
-        // Include a quantized progress value (0-200) so the bar fill updates smoothly
+        // Include the exact remaining time so the bar fill updates smoothly
         // even when the displayed time string is stable (e.g. whole seconds when >= 10s).
-        let current_state: Vec<(u64, String, u8, bool, u16)> = self
+        let current_state: Vec<(u64, String, u8, bool, u32)> = self
             .data
             .entries
             .iter()
@@ -653,7 +653,7 @@ impl CooldownOverlay {
                     e.format_time(self.european_number_format),
                     e.charges,
                     e.is_in_ready_state,
-                    (e.progress() * 200.0) as u16,
+                    e.remaining_secs.to_bits(),
                 )
             })
             .collect();

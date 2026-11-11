@@ -1490,8 +1490,11 @@ impl RaidOverlay {
                     // Fill depletes from bottom to top (remaining time shrinks upward)
                     // Flush with the square edges: the border stroke overlaps the
                     // outer half-pixel, so no dark gap shows between fill and outline
-                    let fill_height = (effect_size * fill_percent).round();
-                    let fill_y = ey + effect_size - fill_height;
+                    // Bottom edge snaps to the pixel grid; the top edge stays
+                    // fractional so anti-aliasing shows sub-pixel depletion
+                    let size_px = effect_size.round();
+                    let fill_height = size_px * fill_percent;
+                    let fill_y = ey.round() + size_px - fill_height;
 
                     // Combine per-effect alpha (from color) with config opacity
                     // This allows per-effect control while config acts as global multiplier
@@ -1507,16 +1510,15 @@ impl RaidOverlay {
 
                     // Bottom corners follow the square's rounding so no fill pokes
                     // past it; the top edge stays square while partially depleted
-                    let top_radius = if fill_height >= effect_size.round() {
+                    let top_radius = if fill_height >= size_px {
                         corner_radius
                     } else {
                         0.0
                     };
-                    // Use rounded coordinates to avoid sub-pixel rendering artifacts
                     self.frame.fill_corner_rounded_rect(
                         ex.round(),
-                        fill_y.round(),
-                        effect_size.round(),
+                        fill_y,
+                        size_px,
                         fill_height,
                         top_radius,
                         corner_radius,
