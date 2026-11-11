@@ -5,7 +5,7 @@
 use hashbrown::{HashMap, HashSet};
 
 use baras_types::history::{
-    PullFilter, PullRow, keeps, RunBoss, RunDetail, RunMeta, RunPlayer, RunSummary, RunTimer, TimerStart,
+    PlayerSpec, PullFilter, PullRow, keeps, RunBoss, RunDetail, RunMeta, RunPlayer, RunSummary, RunTimer, TimerStart,
 };
 
 use super::catalog::AreaCatalog;
@@ -149,6 +149,7 @@ fn summarize(
         timer,
         tags: Vec::new(),
         note: String::new(),
+        hidden: false,
     }
 }
 
@@ -164,6 +165,8 @@ pub(super) fn run_matches(run: &RunSummary, f: &PullFilter) -> bool {
         && (f.tier.is_empty() || run.tier == f.tier)
         && (f.group_size.is_empty() || run.is_flashpoint || run.group_size.to_string() == f.group_size)
         && (!f.kills_only || run.cleared)
+        && (!f.timed_only || run.timer.achieved == Some(true))
+        && (f.show_hidden || !run.hidden)
         && (f.tags.is_empty() || f.tags.iter().any(|t| run.tags.contains(t)))
         && keeps(&f.servers, &run.server)
         && keeps(&f.game_versions, &run.game_version)
@@ -175,6 +178,7 @@ pub(super) fn apply_meta(run: &mut RunSummary, meta: Option<RunMeta>) {
     if let Some(m) = meta {
         run.tags = m.tags;
         run.note = m.note;
+        run.hidden = m.hidden;
     }
 }
 
@@ -222,8 +226,8 @@ pub fn run_detail(run: RunSummary, rows: Vec<PullRow>, records: &[PullRecord], c
 
     #[derive(Default)]
     struct Acc {
-        discipline: Option<crate::game_data::Discipline>,
-        discipline_name: Option<String>,
+        /// Disciplines in order of first appearance
+        specs: Vec<(crate::game_data::Discipline, String)>,
         pulls: u32,
         deaths: u32,
         first_deaths: u32,
@@ -240,9 +244,10 @@ pub fn run_detail(run: RunSummary, rows: Vec<PullRow>, records: &[PullRecord], c
             a.dps += line.dps;
             a.hps += line.hps;
             a.ehps += line.ehps;
-            if line.discipline.is_some() {
-                a.discipline = line.discipline;
-                a.discipline_name = line.discipline_name.clone();
+            if let Some(d) = line.discipline
+                && !a.specs.iter().any(|(x, _)| *x == d)
+            {
+                a.specs.push((d, line.discipline_name.clone().unwrap_or_default()));
             }
         }
         for (i, d) in p.deaths.iter().enumerate() {
@@ -257,9 +262,15 @@ pub fn run_detail(run: RunSummary, rows: Vec<PullRow>, records: &[PullRecord], c
             let n = i64::from(a.pulls.max(1));
             RunPlayer {
                 name: name.to_string(),
-                discipline: a.discipline_name,
-                discipline_icon: a.discipline.map(|d| d.icon_name().to_string()),
-                role_icon: a.discipline.map(|d| d.role().icon_name().to_string()),
+                specs: a
+                    .specs
+                    .into_iter()
+                    .map(|(d, name)| PlayerSpec {
+                        discipline: name,
+                        discipline_icon: d.icon_name().to_string(),
+                        role_icon: d.role().icon_name().to_string(),
+                    })
+                    .collect(),
                 pulls: a.pulls,
                 deaths: a.deaths,
                 first_deaths: a.first_deaths,
@@ -269,7 +280,20 @@ pub fn run_detail(run: RunSummary, rows: Vec<PullRow>, records: &[PullRecord], c
             }
         })
         .collect();
-    players.sort_by(|a, b| (&a.role_icon, b.avg_dps).cmp(&(&b.role_icon, a.avg_dps)));
+    // Grouped by the role first played, highest DPS first within it
+    let role = |p: &RunPlayer| p.specs.first().map(|s| s.role_icon.clone());
+    players.sort_by(|a, b| (role(a), b.avg_dps).cmp(&(role(b), a.avg_dps)));
 
-    RunDetail { run, bosses, players, pulls: rows }
+    let first_deaths = rows
+        .iter()
+        .map(|r| {
+            records
+                .iter()
+                .find(|p| p.start_ms == r.start_ms)
+                .and_then(|p| p.deaths.first())
+                .map(|d| d.name.clone())
+        })
+        .collect();
+
+    RunDetail { run, bosses, players, pulls: rows, first_deaths }
 }

@@ -43,7 +43,8 @@ pub struct PullMeta {
     /// `(combat_secs, label)`
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub bookmarks: Vec<(f32, String)>,
-    /// User-hidden pull (practice pull, bugged fight)
+    /// User-hidden pull (practice pull, bugged fight): left out of Boss
+    /// Statistics unless the "Show hidden" filter is on
     #[serde(default)]
     pub excluded: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
