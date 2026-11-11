@@ -1716,7 +1716,8 @@
   padding: var(--space-sm);
   display: flex;
   flex-direction: column;
-  flex: 1;
+  /* Content height, shrinking (and scrolling) only when the column is short */
+  flex: 0 1 auto;
   min-height: 0;
   overflow: hidden;
 }
@@ -1739,7 +1740,7 @@
 
 /* Effect table wrapper — fills available space in its section, scrollable */
 .effect-table-wrapper {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
   border: 1px solid var(--border-subtle);
