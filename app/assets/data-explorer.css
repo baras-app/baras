@@ -938,6 +938,44 @@
   border-radius: var(--radius-md);
 }
 
+/* Group chart under the overview table */
+.overview-chart-box {
+  margin-top: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm) 0;
+  background: var(--well-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.overview-chart-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 12px;
+}
+
+.overview-chart-header .seg {
+  padding: 0.25em 0.65em;
+}
+
+.overview-chart-note {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.overview-chart {
+  height: 240px;
+}
+
+.overview-chart.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .overview-table {
   width: 100%;
   border-collapse: collapse;

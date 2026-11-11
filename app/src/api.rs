@@ -1208,7 +1208,8 @@ pub use baras_types::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch,
     CombatLogRow, CombatLogSortColumn, DamageTakenSummary, DataTab, DeathRecap,
     DeathRecapEventKind, EffectChartData, EffectWindow,
-    EncounterTimeline, EntityBreakdown, GroupedEntityNames, HpPoint, NpcHealthRow, NpcSpawn,
+    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, GroupedEntityNames, HpPoint,
+    NpcHealthRow, NpcSpawn,
     PhaseSegment, PlayerDeath, PvpFaction, RaidOverviewRow, RotationAnalysis,
     SortDirection, TimeRange, TimeSeriesPoint,
 };
@@ -1371,6 +1372,22 @@ pub async fn query_dps_over_time(
 }
 
 /// Query encounter timeline with phase segments.
+/// Every player's metric over time, for the Overview's group chart.
+pub async fn query_group_over_time(
+    encounter_idx: Option<u32>,
+    bucket_ms: i64,
+    metric: GroupMetric,
+    time_range: Option<&TimeRange>,
+) -> Option<GroupTimeSeries> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "encounterIdx", &encounter_idx.map_or(JsValue::NULL, |i| JsValue::from_f64(i as f64)));
+    js_set(&obj, "bucketMs", &JsValue::from_f64(bucket_ms as f64));
+    js_set(&obj, "metric", &serde_wasm_bindgen::to_value(&metric).unwrap_or(JsValue::NULL));
+    let tr = time_range.and_then(|tr| serde_wasm_bindgen::to_value(tr).ok());
+    js_set(&obj, "timeRange", &tr.unwrap_or(JsValue::NULL));
+    from_js(invoke("query_group_over_time", obj.into()).await)
+}
+
 pub async fn query_encounter_timeline(encounter_idx: Option<u32>) -> Option<EncounterTimeline> {
     let obj = js_sys::Object::new();
     if let Some(idx) = encounter_idx {

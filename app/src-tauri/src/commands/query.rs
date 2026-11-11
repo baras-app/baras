@@ -5,7 +5,7 @@
 use baras_core::query::{
     AbilityBreakdown, AbilityUsageRow, BreakdownMode, CombatLogFilters, CombatLogFindMatch,
     CombatLogRow, CombatLogSortColumn, DamageTakenSummary, DataTab, EffectChartData, EffectWindow,
-    EncounterTimeline, EntityBreakdown, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow,
+    EncounterTimeline, EntityBreakdown, GroupMetric, GroupTimeSeries, HpPoint, NpcHealthRow, PlayerDeath, RaidOverviewRow,
     RotationAnalysis, SortDirection, TimeRange, TimeSeriesPoint,
 };
 use tauri::State;
@@ -77,6 +77,20 @@ pub async fn query_dps_over_time(
 ) -> Result<Vec<TimeSeriesPoint>, String> {
     handle
         .query_dps_over_time(encounter_idx, bucket_ms, source_name, time_range)
+        .await
+}
+
+/// Every player's metric over time, for the Overview's group chart.
+#[tauri::command]
+pub async fn query_group_over_time(
+    handle: State<'_, ServiceHandle>,
+    encounter_idx: Option<u32>,
+    bucket_ms: i64,
+    metric: GroupMetric,
+    time_range: Option<TimeRange>,
+) -> Result<GroupTimeSeries, String> {
+    handle
+        .query_group_over_time(encounter_idx, bucket_ms, metric, time_range)
         .await
 }
 
