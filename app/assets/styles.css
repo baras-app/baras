@@ -5569,15 +5569,32 @@ a.contributor-name:hover {
 
 /* ─── Unsaved Changes Indicator ──────────────────────────────────────────────── */
 .unsaved-indicator {
-  display: inline-block;
-  font-size: 0.75rem;
-  color: var(--swtor-orange, #f0ad4e);
-  margin-left: 8px;
-  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  flex-shrink: 0;
+  margin-left: 0.5em;
+  padding: 0.1em 0.55em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--lt-orange, var(--swtor-orange, #f0ad4e));
+  background: rgba(240, 173, 78, 0.12);
+  border: 1px solid rgba(240, 173, 78, 0.35);
+  border-radius: 999px;
 }
 
 .unsaved-indicator::before {
-  content: "unsaved changes";
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.unsaved-indicator::after {
+  content: "Unsaved";
 }
 
 /* Orange outline on inner form body when unsaved */
