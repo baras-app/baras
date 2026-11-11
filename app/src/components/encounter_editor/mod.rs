@@ -6,14 +6,20 @@
 mod area_sidebar;
 mod import_preview;
 mod boss_header;
+mod challenge_form;
 mod challenges;
 mod conditions;
+mod counter_form;
 mod counters;
 mod entities;
+mod entity_form;
 mod new_forms;
 mod notes;
+mod optional_trigger;
+mod phase_form;
 mod phases;
 mod tabs;
+mod timer_form;
 mod timers;
 pub mod triggers;
 

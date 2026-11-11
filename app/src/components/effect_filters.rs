@@ -5,7 +5,8 @@
 use dioxus::prelude::*;
 
 use super::editor_common::{ORIGINS, Origin, OriginFilter};
-use super::effect_editor::{ALL_DISCIPLINES, ALL_ROLES, effect_origin};
+use super::discipline_selector::{ALL_DISCIPLINES, ALL_ROLES};
+use super::effect_editor::effect_origin;
 use crate::types::{DisplayTarget, EffectFilters, EffectListItem};
 
 const NO_OVERLAY: &str = "No overlay";

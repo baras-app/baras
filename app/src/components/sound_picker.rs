@@ -10,6 +10,7 @@ use dioxus::prelude::*;
 use wasm_bindgen_futures::spawn_local as spawn;
 
 use crate::api;
+use crate::components::form_fields::Field;
 use crate::types::SoundCategory;
 
 #[derive(Props, Clone, PartialEq)]
@@ -51,12 +52,11 @@ pub fn SoundPicker(props: SoundPickerProps) -> Element {
     let current_value_for_preview = current_value.clone();
     let active_cat_for_options = active_cat.clone();
 
+    let has_file = !current_value_for_preview.is_empty();
+
     rsx! {
-        div { class: "flex-col",
-        div { class: "form-row-hz mt-sm",
-            label { "Category" }
+        Field { label: "Category",
             select {
-                class: "select-inline",
                 value: "{category_idx()}",
                 onchange: move |e| {
                     if let Ok(idx) = e.value().parse::<usize>() {
@@ -65,19 +65,19 @@ pub fn SoundPicker(props: SoundPickerProps) -> Element {
                     }
                 },
                 for (i, cat) in cats.iter().enumerate() {
-                    option {
-                        key: "{cat.folder}",
-                        value: "{i}",
-                        "{cat.name}"
-                    }
+                    option { key: "{cat.folder}", value: "{i}", "{cat.name}" }
                 }
             }
+            input {
+                r#type: "text",
+                class: "field-short",
+                placeholder: "Filter",
+                value: "{search}",
+                oninput: move |e| search.set(e.value()),
+            }
         }
-        div { class: "form-row-hz",
-            label { "Sound" }
+        Field { label: "Sound",
             select {
-                class: "select-inline",
-                style: "flex: 1; min-width: 0;",
                 value: "{current_value_for_select}",
                 onchange: move |e| {
                     let v = e.value();
@@ -88,48 +88,37 @@ pub fn SoundPicker(props: SoundPickerProps) -> Element {
                     for name in cat.files.iter() {
                         {
                             let opt_value = format!("{}/{}", cat.folder, name);
-                            let is_selected = matches_selected(
-                                &current_value,
-                                &opt_value,
-                                name,
-                                cat.folder == "sounds",
-                            );
-                            let matches_search = search_lc.is_empty()
-                                || name.to_lowercase().contains(&search_lc);
+                            let is_selected = matches_selected(&current_value, &opt_value, name, cat.folder == "sounds");
+                            let matches_search = search_lc.is_empty() || name.to_lowercase().contains(&search_lc);
                             rsx! {
                                 if matches_search || is_selected {
-                                    option {
-                                        key: "{opt_value}",
-                                        value: "{opt_value}",
-                                        selected: is_selected,
-                                        "{name}"
-                                    }
+                                    option { key: "{opt_value}", value: "{opt_value}", selected: is_selected, "{name}" }
                                 }
                             }
                         }
                     }
                 }
-                if !current_value.is_empty()
-                    && !value_in_current_view(&current_value, active_cat.as_ref())
-                {
-                    option {
-                        value: "{current_value}",
-                        selected: true,
-                        "{current_value} (custom)"
-                    }
+                if !current_value.is_empty() && !value_in_current_view(&current_value, active_cat.as_ref()) {
+                    option { value: "{current_value}", selected: true, "{current_value} (custom)" }
                 }
             }
-            input {
-                r#type: "text",
-                class: "input input-sm",
-                style: "width: 90px; flex-shrink: 0;",
-                placeholder: "Filter",
-                value: "{search}",
-                oninput: move |e| search.set(e.value()),
+            button {
+                class: "btn btn-sm btn-icon",
+                r#type: "button",
+                disabled: !has_file,
+                title: if has_file { "Preview sound" } else { "Select a sound first" },
+                onclick: move |_| {
+                    let file = current_value_for_preview.clone();
+                    if !file.is_empty() {
+                        spawn(async move { api::preview_sound(&file).await; });
+                    }
+                },
+                i { class: "fa-solid fa-play" }
             }
             button {
-                class: "btn btn-sm",
+                class: "btn btn-sm btn-icon",
                 r#type: "button",
+                title: "Choose an .mp3 or .wav file",
                 onclick: move |_| {
                     spawn(async move {
                         if let Some(path) = api::pick_audio_file().await {
@@ -140,33 +129,8 @@ pub fn SoundPicker(props: SoundPickerProps) -> Element {
                         }
                     });
                 },
-                "Browse"
+                i { class: "fa-solid fa-folder-open" }
             }
-        }
-        div { class: "form-row-hz",
-            label { "" }
-            {
-                let has_file = !current_value_for_preview.is_empty();
-                let preview_value = current_value_for_preview.clone();
-                rsx! {
-                    button {
-                        class: "btn btn-sm",
-                        r#type: "button",
-                        disabled: !has_file,
-                        title: if has_file { "Preview sound" } else { "Select a sound first" },
-                        onclick: move |_| {
-                            let file = preview_value.clone();
-                            if !file.is_empty() {
-                                spawn(async move {
-                                    api::preview_sound(&file).await;
-                                });
-                            }
-                        },
-                        "Play"
-                    }
-                }
-            }
-        }
         }
     }
 }
