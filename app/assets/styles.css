@@ -6776,6 +6776,10 @@ a.contributor-name:hover {
   white-space: nowrap;
 }
 
+:root[data-theme="light"] .pct-text {
+  color: var(--text-primary);
+}
+
 /* Average columns group - left border separator */
 .ability-table .col-avg-first {
   border-left: 1px solid var(--border-subtle);
