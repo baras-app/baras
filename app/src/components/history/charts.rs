@@ -220,9 +220,11 @@ fn metric_option(rows: &[PullRow], title: &str, pick: impl Fn(&PullRow) -> Optio
     opt["xAxis"]["splitLine"] = json!({ "show": true, "lineStyle": { "color": css_var("--border-light"), "type": "dashed" } });
     opt["yAxis"] = json!({ "type": "value", "axisLabel": { "color": css_var("--text-muted") }, "splitLine": { "lineStyle": { "color": css_var("--border-light") } }, "scale": true });
     opt["dataZoom"] = json!([{ "type": "inside", "zoomOnMouseWheel": true, "moveOnMouseMove": true }]);
-    // Legend only when more than one role shows; clicking an entry hides that line
+    // Legend only when more than one role shows; clicking an entry hides that line.
+    // Under the axis labels, so it never runs into the title
     if series.len() > 1 {
-        opt["legend"] = json!({ "top": 0, "right": 8, "itemWidth": 14, "itemHeight": 8, "textStyle": { "color": css_var("--text-muted"), "fontSize": 10 } });
+        opt["legend"] = json!({ "bottom": 0, "left": "center", "itemWidth": 14, "itemHeight": 8, "textStyle": { "color": css_var("--text-muted"), "fontSize": 10 } });
+        opt["grid"]["bottom"] = json!(48);
     }
     opt["series"] = Value::Array(series);
     Some(opt)
