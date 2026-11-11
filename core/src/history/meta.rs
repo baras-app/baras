@@ -187,6 +187,19 @@ impl LibraryMeta {
         self.log_mut(filename).parsely = Some(upload);
     }
 
+    pub fn is_pull_hidden(&self, filename: &str, start_ms: i64) -> bool {
+        self.pull(filename, start_ms).is_some_and(|m| m.excluded)
+    }
+
+    /// Hide or show a pull; an entry left with nothing is dropped
+    pub fn set_pull_hidden(&mut self, filename: &str, start_ms: i64, hidden: bool) {
+        self.pull_mut(filename, start_ms).excluded = hidden;
+        let key = pull_key(filename, start_ms);
+        if self.pulls.get(&key).is_some_and(|m| m.is_empty()) {
+            self.pulls.remove(&key);
+        }
+    }
+
     pub fn set_pull_parsely(&mut self, filename: &str, start_ms: i64, upload: ParselyUpload) {
         self.pull_mut(filename, start_ms).parsely = Some(upload);
     }

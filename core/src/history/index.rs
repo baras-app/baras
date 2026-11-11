@@ -241,6 +241,10 @@ impl PullIndex {
                 .iter()
                 .filter(|r| r.operation == operation && r.boss == boss && matches(r, filter))
             {
+                let hidden = meta.is_pull_hidden(&r.filename, r.start_ms);
+                if hidden && !filter.show_hidden {
+                    continue;
+                }
                 let ranges = ranges.get_or_insert_with(|| log.tag_ranges(catalog, meta));
                 let tags = tags_at(ranges, r.start_ms);
                 if !filter.tags.is_empty() && !filter.tags.iter().any(|t| tags.contains(t)) {
@@ -255,6 +259,7 @@ impl PullIndex {
                 row.path = exists.then(|| log.log_path.to_string_lossy().into_owned());
                 row.archived = archived;
                 row.tags = tags.to_vec();
+                row.hidden = hidden;
                 out.push(row);
             }
         }
@@ -309,6 +314,10 @@ impl PullIndex {
         for log in self.logs.values() {
             let ranges = (!filter.tags.is_empty()).then(|| log.tag_ranges(catalog, meta));
             for r in log.rows.iter().filter(|r| matches(r, filter)) {
+                // Hidden pulls stay out of the boss counts too
+                if !filter.show_hidden && meta.is_pull_hidden(&r.filename, r.start_ms) {
+                    continue;
+                }
                 if let Some(ranges) = &ranges
                     && !filter.tags.iter().any(|t| tags_at(ranges, r.start_ms).contains(t))
                 {
@@ -485,6 +494,7 @@ fn row_from(log: &LogHistory, p: &PullRecord) -> PullRow {
         server: server_name(&p.server).to_string(),
         game_version: game_version_at(p.start_time.get(..10).unwrap_or("")).to_string(),
         tags: Vec::new(),
+        hidden: false,
         boss,
         difficulty: p.difficulty.clone().unwrap_or_else(|| "-".into()),
         success: p.success,

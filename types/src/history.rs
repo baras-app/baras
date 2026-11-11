@@ -20,7 +20,7 @@ pub use library::{
 pub use meta::{LogMeta, ParselyUpload, PullMeta};
 pub use progress::{BossHpRecord, PhaseRef, PullDeath, PullEnd, PullProgress};
 pub use pvp::{PvpMatchRow, PvpPlayer, PvpRound};
-pub use runs::{RunBoss, RunDetail, RunList, RunMeta, RunPlayer, RunSummary, RunTimer, TimerStart, iso_to_ms};
+pub use runs::{RunBoss, RunDetail, RunList, RunMeta, PlayerSpec, RunPlayer, RunSummary, RunTimer, TimerStart, iso_to_ms};
 
 /// One recorded pull, reduced to what the History table shows.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -51,6 +51,9 @@ pub struct PullRow {
     /// Tags of the operation run this pull belongs to
     #[serde(default)]
     pub tags: Vec<String>,
+    /// The user hid this pull (`PullMeta::excluded`); set at query time
+    #[serde(default)]
+    pub hidden: bool,
     pub boss: String,
     pub difficulty: String,
     pub success: bool,
@@ -202,6 +205,12 @@ pub struct PullFilter {
     pub servers: Vec<String>,
     #[serde(default)]
     pub game_versions: Vec<String>,
+    /// Raid Summaries: only runs cleared within the area's time limit
+    #[serde(default)]
+    pub timed_only: bool,
+    /// Raid Summaries: list runs the user hid
+    #[serde(default)]
+    pub show_hidden: bool,
 }
 
 /// Multi-select filter test: an empty pick list keeps everything
@@ -225,6 +234,8 @@ impl Default for PullFilter {
             tags: Vec::new(),
             servers: Vec::new(),
             game_versions: Vec::new(),
+            timed_only: false,
+            show_hidden: false,
         }
     }
 }

@@ -1695,6 +1695,10 @@ pub mod overlay_colors {
 // Serde Default Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+fn default_lockout_tiers() -> [bool; 3] {
+    [true; 3]
+}
+
 fn default_true() -> bool {
     true
 }
@@ -3547,6 +3551,10 @@ pub struct AppConfig {
     #[serde(default)]
     pub light_theme: bool,
 
+    /// Characters tab: Story / Veteran / Master columns shown in the lockout matrix
+    #[serde(default = "default_lockout_tiers")]
+    pub lockout_tiers: [bool; 3],
+
     /// Automatically enter live mode when combat starts in the Data Explorer.
     /// When false, live mode must be activated manually via the Live button.
     #[serde(default)]
@@ -3605,6 +3613,7 @@ impl AppConfig {
             last_viewed_changelog_version: None,
             european_number_format: false,
             light_theme: false,
+            lockout_tiers: [true; 3],
             data_explorer_auto_live: false,
             default_profile_per_role: std::collections::HashMap::new(),
             ocr_debug_dump: false,

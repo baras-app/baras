@@ -43,11 +43,14 @@ pub struct RunMeta {
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub note: String,
+    /// Left out of Raid Summaries (its pulls stay in the statistics)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub hidden: bool,
 }
 
 impl RunMeta {
     pub fn is_empty(&self) -> bool {
-        self.tags.is_empty() && self.note.is_empty()
+        self.tags.is_empty() && self.note.is_empty() && !self.hidden
     }
 }
 
@@ -123,6 +126,9 @@ pub struct RunSummary {
     pub tags: Vec<String>,
     #[serde(default)]
     pub note: String,
+    /// The user hid this run (see `RunMeta::hidden`)
+    #[serde(default)]
+    pub hidden: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -153,9 +159,8 @@ pub struct RunBoss {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RunPlayer {
     pub name: String,
-    pub discipline: Option<String>,
-    pub discipline_icon: Option<String>,
-    pub role_icon: Option<String>,
+    /// Every discipline played in the run, in order of first appearance
+    pub specs: Vec<PlayerSpec>,
     pub pulls: u32,
     pub deaths: u32,
     /// Deaths that were the first of their pull
@@ -165,6 +170,14 @@ pub struct RunPlayer {
     pub avg_ehps: i64,
 }
 
+/// One discipline a player appeared as, with icon names
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlayerSpec {
+    pub discipline: String,
+    pub discipline_icon: String,
+    pub role_icon: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RunDetail {
     pub run: RunSummary,
@@ -172,4 +185,7 @@ pub struct RunDetail {
     pub players: Vec<RunPlayer>,
     /// The run's pulls, chronological
     pub pulls: Vec<PullRow>,
+    /// Who died first in each pull, aligned with `pulls`
+    #[serde(default)]
+    pub first_deaths: Vec<Option<String>>,
 }
