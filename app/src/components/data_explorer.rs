@@ -20,7 +20,7 @@ use crate::components::death_recap_drawer::DeathRecapDrawer;
 use crate::components::encounter_types::{ChallengeSummary, EncounterSummary, group_by_area};
 use crate::components::effect_uptime::EffectUptimeView;
 use crate::components::overview_chart::OverviewGroupChart;
-use crate::components::tab_more_menu::TabMoreMenu;
+use crate::components::ability_naming::AbilityNamingPills;
 use crate::components::overview_table::{OverviewSort, OverviewTable, OverviewTotals};
 use crate::components::phase_timeline::PhaseTimelineFilter;
 use crate::components::toggle_switch::ToggleSwitch;
@@ -182,7 +182,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
     // Sidebar collapse states (not persisted - always start expanded)
     let mut sidebar_collapsed = use_signal(|| false);
     let mut entity_collapsed = use_signal(|| false);
-    let overview_fullscreen = use_signal(|| false);
+    let mut overview_fullscreen = use_signal(|| false);
 
     // NPC health table: which grouped NPC names are expanded (not persisted)
     let mut expanded_npc_groups = use_signal(HashSet::<String>::new);
@@ -1853,7 +1853,12 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                             onclick: move |_| view_mode.set(ViewMode::Uptime),
                             "Effect Uptime"
                         }
-                        TabMoreMenu { fullscreen: overview_fullscreen }
+                        button {
+                            class: "tab-fullscreen-btn",
+                            title: if overview_fullscreen() { "Exit fullscreen" } else { "Fullscreen" },
+                            onclick: move |_| overview_fullscreen.toggle(),
+                            i { class: if overview_fullscreen() { "fa-solid fa-down-left-and-up-right-to-center" } else { "fa-solid fa-up-right-and-down-left-from-center" } }
+                        }
                     }
 
                     // Content area — fixed-height flex region below tab bar
@@ -2740,6 +2745,7 @@ pub fn DataExplorerPanel(mut props: DataExplorerProps) -> Element {
                                             }
                                         }
                                     }
+                                    AbilityNamingPills {}
                                 }
                                 // Table with dynamic columns (sortable)
                                 {
@@ -3626,6 +3632,7 @@ fn UsageTab(
     let eu = european;
 
     rsx! {
+        div { class: "ability-header", AbilityNamingPills {} }
         // Ability Usage Table
         div { class: "usage-table-container",
             table { class: "usage-table effect-table",

@@ -36,7 +36,7 @@ pub mod mirror_names;
 pub mod overlay_toggle;
 pub mod effect_uptime;
 pub mod overview_chart;
-pub mod tab_more_menu;
+pub mod ability_naming;
 pub mod overview_table;
 pub mod parsely_upload_modal;
 pub mod phase_timeline;
