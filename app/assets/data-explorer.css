@@ -2656,13 +2656,10 @@
   transition: height 0.2s ease;
 }
 
-/* "⋯" menu closing the tab bar: ability naming + fullscreen */
-.tab-more {
+/* Fullscreen toggle closing the tab bar */
+.tab-fullscreen-btn {
   margin-left: auto;
   align-self: center;
-}
-
-.tab-more-btn {
   padding: 4px 10px;
   background: none;
   border: none;
@@ -2671,22 +2668,9 @@
   cursor: pointer;
 }
 
-.tab-more-btn:hover {
+.tab-fullscreen-btn:hover {
   color: var(--text-primary);
   background: rgba(var(--fg-rgb), 0.06);
-}
-
-.tab-more-list {
-  left: auto;
-  right: 0;
-  min-width: 12em;
-  font-size: 13px;
-}
-
-.tab-more-label {
-  padding: 0.3em 0.4em 0.15em;
-  color: var(--text-muted);
-  font-size: 0.8em;
 }
 
 /* Effect Uptime tab: targets × effects */

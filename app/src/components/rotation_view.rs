@@ -5,6 +5,7 @@
 
 use dioxus::prelude::*;
 
+use crate::components::ability_naming::AbilityNamingPills;
 use crate::api;
 use crate::api::{RotationAnalysis, TimeRange};
 use crate::components::ability_icon::AbilityIcon;
@@ -170,6 +171,7 @@ pub fn RotationView(props: RotationViewProps) -> Element {
                     },
                     if loading() { "Loading..." } else { "Create" }
                 }
+                AbilityNamingPills {}
             }
 
             if source.is_none() {
