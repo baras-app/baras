@@ -6026,7 +6026,6 @@ a.contributor-name:hover {
   color: var(--text-heading);
 }
 .sidebar-header-action {
-  margin-left: auto;
   flex-shrink: 0;
 }
 
