@@ -2,8 +2,7 @@
 
 use dioxus::prelude::*;
 
-use crate::components::editor_common::FormCard;
-use crate::components::form_fields::{Field, TextField, TogglePill};
+use crate::components::form_fields::TogglePill;
 use crate::types::{AreaListItem, BossEditItem, NewAreaRequest};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -121,52 +120,72 @@ pub fn NewBossForm(
     });
 
     let can_create = !id().is_empty() && !name().is_empty();
+    let area_name = area.name.clone();
 
     rsx! {
-        FormCard {
-            icon: "fa-skull",
-            title: "New Boss",
-            action: rsx! {
-                button {
-                    class: "btn btn-ghost btn-xs",
-                    title: "Cancel",
-                    onclick: move |_| on_cancel.call(()),
-                    i { class: "fa-solid fa-xmark" }
-                }
-            },
+        div { class: "modal-overlay", onclick: move |_| on_cancel.call(()),
+            div {
+                class: "modal-content",
+                onclick: move |e| e.stop_propagation(),
 
-            TextField {
-                label: "Boss ID",
-                value: id(),
-                placeholder: "e.g., apex_vanguard (snake_case)",
-                on_input: move |v| id.set(v),
-            }
-            TextField { label: "Name", value: name(), placeholder: "e.g., Apex Vanguard", on_input: move |v| name.set(v) }
-            Field { label: "Difficulties",
-                for (diff, label) in [("story", "Story"), ("veteran", "Veteran"), ("master", "Master")] {
-                    TogglePill {
-                        label,
-                        active: difficulties().iter().any(|d| d == diff),
-                        on_click: move |_| {
-                            let mut d = difficulties.write();
-                            if d.iter().any(|x| x == diff) {
-                                d.retain(|x| x != diff);
-                            } else {
-                                d.push(diff.to_string());
-                            }
-                        },
+                div { class: "modal-header",
+                    h3 { "New Boss in {area_name}" }
+                }
+
+                div { class: "form-field",
+                    label { class: "form-label", "Boss Name" }
+                    input {
+                        r#type: "text",
+                        class: "input w-full",
+                        placeholder: "e.g., Apex Vanguard",
+                        value: "{name}",
+                        oninput: move |e| name.set(e.value()),
                     }
                 }
-            }
 
-            // Actions
-            div { class: "form-actions",
-                button {
-                    class: if can_create { "btn btn-success btn-sm" } else { "btn btn-sm" },
-                    disabled: !can_create,
-                    onclick: move |_| {
-                        on_create
-                            .call(BossEditItem {
+                div { class: "form-field",
+                    label { class: "form-label", "Boss ID" }
+                    input {
+                        r#type: "text",
+                        class: "input w-full",
+                        placeholder: "e.g., apex_vanguard",
+                        value: "{id}",
+                        oninput: move |e| id.set(e.value()),
+                    }
+                    span { class: "hint", "Unique within the area, snake_case" }
+                }
+
+                div { class: "form-field",
+                    label { class: "form-label", "Difficulties" }
+                    div { class: "flex gap-xs",
+                        for (diff, label) in [("story", "Story"), ("veteran", "Veteran"), ("master", "Master")] {
+                            TogglePill {
+                                label,
+                                active: difficulties().iter().any(|d| d == diff),
+                                on_click: move |_| {
+                                    let mut d = difficulties.write();
+                                    if d.iter().any(|x| x == diff) {
+                                        d.retain(|x| x != diff);
+                                    } else {
+                                        d.push(diff.to_string());
+                                    }
+                                },
+                            }
+                        }
+                    }
+                }
+
+                div { class: "form-actions",
+                    button {
+                        class: "btn btn-ghost",
+                        onclick: move |_| on_cancel.call(()),
+                        "Cancel"
+                    }
+                    button {
+                        class: if can_create { "btn btn-success" } else { "btn" },
+                        disabled: !can_create,
+                        onclick: move |_| {
+                            on_create.call(BossEditItem {
                                 id: id(),
                                 name: name(),
                                 area_name: area.name.clone(),
@@ -174,14 +193,9 @@ pub fn NewBossForm(
                                 file_path: area.file_path.clone(),
                                 difficulties: difficulties(),
                             });
-                    },
-                    "Create Boss"
-                }
-
-                button {
-                    class: "btn btn-ghost btn-sm",
-                    onclick: move |_| on_cancel.call(()),
-                    "Cancel"
+                        },
+                        "Create Boss"
+                    }
                 }
             }
         }

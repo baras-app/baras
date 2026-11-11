@@ -6027,7 +6027,8 @@ a.contributor-name:hover {
 }
 
 .sidebar-header h3 {
-  margin: 0;
+  /* Takes the slack, so an action button sits beside the fold toggle */
+  margin: 0 auto 0 0;
   font-size: 0.95em;
   color: var(--swtor-blue);
   display: flex;
