@@ -800,7 +800,8 @@
 .history-chart {
   height: 190px;
   min-width: 0;
-  background: var(--bg-mid);
+  /* Same plot surface as the Data Explorer charts: near-white on light */
+  background: var(--chart-bg);
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
 }
@@ -917,9 +918,9 @@
 .run-tag-input {
   width: 12em;
   padding: 4px 10px;
-  border: 1px solid rgba(var(--fg-rgb), 0.12);
+  border: 1px solid var(--border-medium);
   border-radius: 10px;
-  background: rgba(var(--fg-rgb), 0.04);
+  background: var(--bg-input);
   color: var(--text-primary);
   font: inherit;
   font-size: 0.8em;
@@ -930,9 +931,9 @@
   min-height: 3em;
   margin-bottom: var(--space-xs);
   padding: 0.4em 0.6em;
-  border: 1px solid rgba(var(--fg-rgb), 0.1);
+  border: 1px solid var(--border-medium);
   border-radius: 4px;
-  background: rgba(var(--fg-rgb), 0.03);
+  background: var(--bg-input);
   color: var(--text-primary);
   font: inherit;
   font-size: 0.85em;
@@ -1744,4 +1745,100 @@
 .multi-select-list {
   max-height: 60vh;
   overflow-y: auto;
+}
+
+/* ── Raid Summaries: header actions, bosses with their pulls ── */
+
+.run-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.run-boss-table .run-boss-row.expandable {
+  cursor: pointer;
+}
+
+.run-boss-table .run-boss-row.expandable:hover td {
+  background: var(--bg-hover);
+}
+
+.run-boss-table .run-boss-row.open td {
+  border-bottom-color: transparent;
+}
+
+.run-boss-caret {
+  width: 1.5em;
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+.run-boss-name {
+  font-weight: 600;
+}
+
+/* The pulls sit indented under their boss, a step recessed */
+.run-boss-pulls > td {
+  padding: 0 0 var(--space-sm) 2em;
+}
+
+.run-pull-subtable {
+  width: 100%;
+  font-size: 0.95em;
+  background: var(--well-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+/* Sub-table header: a light caption row, not the parent's dark sticky bar */
+.run-pull-subtable th {
+  position: static;
+  padding: 0.35em 0.8em;
+  background: rgba(var(--fg-rgb), 0.03);
+  color: var(--text-muted);
+  font-size: 0.8em;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.run-pull-subtable td {
+  padding: 0.35em 0.8em;
+}
+
+.run-pull-subtable tr:last-child td {
+  border-bottom: none;
+}
+
+.run-first-death {
+  color: var(--lt-red, hsl(0, 70%, 70%));
+}
+
+.run-player-spec {
+  display: inline-flex;
+  align-items: center;
+}
+
+.run-player-spec + .run-player-spec {
+  margin-left: 2px;
+  padding-left: 4px;
+  border-left: 1px solid var(--border-subtle);
+}
+
+/* Boss Statistics: Parsely, open and hide buttons share one cell */
+.pull-row-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.pull-row-actions .pull-log-missing {
+  display: inline-block;
+  padding: 0 0.5em;
+}
+
+/* Boss Statistics: a hidden pull, listed only while "Show hidden" is on */
+.pull-history-table tr.pull-hidden td:not(.pull-row-actions) {
+  opacity: 0.45;
 }

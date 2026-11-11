@@ -192,15 +192,13 @@ fn PhaseRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-
-                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "phase" }
-
                 span { class: "font-medium", "{phase.name}" }
                 if expanded && is_dirty() {
                     span { class: "unsaved-indicator", title: "Unsaved changes" }
                 }
                 span { class: "text-xs text-mono text-muted", "{phase.id}" }
                 span { class: "tag", "{trigger_label}" }
+                span { class: "ml-auto shrink-0", OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "phase" } }
             }
 
             // Expanded content

@@ -5,6 +5,7 @@ use dioxus::prelude::*;
 
 use baras_types::characters::{CharacterRow, Lockout, OperationRef, operation_key};
 
+use crate::api;
 use crate::components::class_icons::get_role_icon;
 
 use super::lockouts::{tier_short, until};
@@ -63,6 +64,12 @@ pub fn TierPicks(tiers: Signal<[bool; 3]>) -> Element {
                         v[i] = !v[i];
                         if v.iter().any(|b| *b) {
                             tiers.set(v);
+                            spawn(async move {
+                                if let Some(mut cfg) = api::get_config().await {
+                                    cfg.lockout_tiers = v;
+                                    let _ = api::update_config(&cfg).await;
+                                }
+                            });
                         }
                     },
                     {tier_short(t)}

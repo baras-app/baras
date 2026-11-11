@@ -203,9 +203,6 @@ fn CounterRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-
-                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "counter" }
-
                 span { class: "font-medium", "{counter.name}" }
                 if expanded && is_dirty() {
                     span { class: "unsaved-indicator", title: "Unsaved changes" }
@@ -216,6 +213,7 @@ fn CounterRow(
                 } else if counter.decrement {
                     span { class: "tag tag-warning", "Decrement" }
                 }
+                span { class: "ml-auto shrink-0", OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "counter" } }
             }
 
             // Expanded content

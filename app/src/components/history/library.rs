@@ -497,7 +497,7 @@ pub fn LibraryTab(state: Signal<UiSessionState>, backfill: Backfill, cleanup: Si
                                                     title: "Open in Encounter Analysis",
                                                     disabled: opener.busy(),
                                                     onclick: move |_| opener.open(path.clone(), None),
-                                                    i { class: "fa-solid fa-eye" }
+                                                    i { class: "fa-solid fa-magnifying-glass-chart" }
                                                 }
                                             }
                                             button {

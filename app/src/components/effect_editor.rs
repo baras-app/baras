@@ -902,9 +902,6 @@ fn EffectRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-
-                OriginBadge { origin: effect_origin(is_draft, effect.is_bundled, effect.is_user_override), kind: "effect" }
-
                 // Color dot
                 span {
                     class: "effect-color-dot",
@@ -979,6 +976,7 @@ fn EffectRow(
                             if effect.audio.enabled { "🔊" } else { "🔇" }
                         }
                     }
+                    OriginBadge { origin: effect_origin(is_draft, effect.is_bundled, effect.is_user_override), kind: "effect" }
                 }
             }
 

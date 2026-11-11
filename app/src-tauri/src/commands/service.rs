@@ -348,6 +348,11 @@ pub fn set_log_meta(
 }
 
 #[tauri::command]
+pub fn set_pull_hidden(filename: String, start_ms: i64, hidden: bool, handle: State<'_, ServiceHandle>) -> Result<bool, String> {
+    Ok(handle.set_pull_hidden(&filename, start_ms, hidden))
+}
+
+#[tauri::command]
 pub fn remove_run_tag_for_log(filename: String, tag: String, handle: State<'_, ServiceHandle>) -> Result<bool, String> {
     Ok(handle.remove_run_tag_for_log(&filename, &tag))
 }

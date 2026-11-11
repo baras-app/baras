@@ -593,6 +593,16 @@ pub async fn set_log_meta(filename: &str, tags: &[String], note: &str) -> Result
     from_js(result).ok_or_else(|| "Failed to parse response".to_string())
 }
 
+/// Hide or show one pull in Boss Statistics
+pub async fn set_pull_hidden(filename: &str, start_ms: i64, hidden: bool) -> Result<bool, String> {
+    let obj = js_sys::Object::new();
+    js_set(&obj, "filename", &JsValue::from_str(filename));
+    js_set(&obj, "startMs", &JsValue::from_f64(start_ms as f64));
+    js_set(&obj, "hidden", &JsValue::from_bool(hidden));
+    let result = try_invoke("set_pull_hidden", obj.into()).await?;
+    from_js(result).ok_or_else(|| "Failed to parse response".to_string())
+}
+
 /// Take a tag off every run of one log
 pub async fn remove_run_tag_for_log(filename: &str, tag: &str) -> Result<bool, String> {
     let obj = js_sys::Object::new();

@@ -184,9 +184,6 @@ fn ChallengeRow(
                 class: "list-item-header",
                 onclick: move |_| on_toggle.call(()),
 
-
-                OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "challenge" }
-
                 span { class: "font-medium", "{challenge.name}" }
                 if expanded && is_dirty() {
                     span { class: "unsaved-indicator", title: "Unsaved changes" }
@@ -222,6 +219,7 @@ fn ChallengeRow(
                             if challenge.enabled { "✓" } else { "○" }
                         }
                     }
+                    OriginBadge { origin: Origin::of(is_builtin, is_modified), kind: "challenge" }
                 }
             }
 

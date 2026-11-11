@@ -315,6 +315,7 @@ pub fn run() {
             commands::set_log_favorite,
             commands::set_log_meta,
             commands::remove_run_tag_for_log,
+            commands::set_pull_hidden,
             commands::get_retained_content,
             commands::set_retained_content,
             commands::preview_log_cleanup,

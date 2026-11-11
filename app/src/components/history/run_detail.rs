@@ -4,7 +4,7 @@
 use dioxus::prelude::*;
 
 use baras_types::formatting;
-use baras_types::history::{RunDetail, RunMeta};
+use baras_types::history::{PullRow, RunDetail, RunMeta};
 
 use super::operations::{tier_class, tier_label};
 use super::overview::{result_badge, short_ts};
@@ -101,6 +101,8 @@ pub fn RunDetailView(
     let opener = use_file_opener();
     let mut toast = use_toast();
     let mut tag_input = use_signal(String::new);
+    // Bosses whose pulls are unfolded (all folded by default)
+    let mut open_bosses = use_signal(std::collections::HashSet::<String>::new);
 
     let detail_read = detail.read();
     let Some(d) = detail_read.as_ref().and_then(|d| d.as_ref()) else {
@@ -111,6 +113,7 @@ pub fn RunDetailView(
         };
     };
     let run = &d.run;
+    let hidden = run.hidden;
 
     // Saving tags or the note: the backend holds the meta, so send the whole thing
     let save_meta = {
@@ -138,7 +141,7 @@ pub fn RunDetailView(
             }
             let mut tags = tags.clone();
             tags.push(value);
-            save(RunMeta { tags, note: note.clone() });
+            save(RunMeta { tags, note: note.clone(), hidden });
         }
     };
 
@@ -160,35 +163,55 @@ pub fn RunDetailView(
                     }
                 }
             }
-            if let Some(path) = run.path.clone() {
-                button {
-                    class: "btn btn-sm btn-primary",
-                    title: "Open this log in Encounter Analysis",
-                    disabled: opener.busy(),
-                    onclick: move |_| opener.open(path.clone(), None),
-                    i { class: "fa-solid fa-eye" }
-                    " Open log"
+            div { class: "run-header-actions",
+                {
+                    let (tags, note, save) = (run.tags.clone(), run.note.clone(), save_meta.clone());
+                    rsx! {
+                        button {
+                            class: "btn btn-sm",
+                            title: if hidden { "Show this run in Raid Summaries again" } else { "Hide this run from Raid Summaries; its pulls stay in the statistics" },
+                            onclick: move |_| save(RunMeta { tags: tags.clone(), note: note.clone(), hidden: !hidden }),
+                            i { class: if hidden { "fa-solid fa-eye" } else { "fa-solid fa-eye-slash" } }
+                            if hidden { " Unhide" } else { " Hide run" }
+                        }
+                    }
                 }
-            } else if run.archived {
-                button {
-                    class: "btn btn-sm btn-primary",
-                    title: "This log is archived: restore it to the log directory, then open it in Encounter Analysis",
-                    disabled: opener.busy(),
-                    onclick: {
-                        let filename = run.filename.clone();
-                        move |_| opener.restore_and_open(filename.clone(), None)
-                    },
-                    i { class: "fa-solid fa-box-open" }
-                    " Restore & open"
-                }
-            } else {
-                span { class: "pull-history-operation", title: "The log file was deleted; its pulls stay in the statistics",
-                    i { class: "fa-solid fa-file-circle-xmark" }
-                    " Log missing"
+                if let Some(path) = run.path.clone() {
+                    button {
+                        class: "btn btn-sm btn-primary",
+                        title: "Open this log in Encounter Analysis",
+                        disabled: opener.busy(),
+                        onclick: move |_| opener.open(path.clone(), None),
+                        i { class: "fa-solid fa-magnifying-glass-chart" }
+                        " Open log"
+                    }
+                } else if run.archived {
+                    button {
+                        class: "btn btn-sm btn-primary",
+                        title: "This log is archived: restore it to the log directory, then open it in Encounter Analysis",
+                        disabled: opener.busy(),
+                        onclick: {
+                            let filename = run.filename.clone();
+                            move |_| opener.restore_and_open(filename.clone(), None)
+                        },
+                        i { class: "fa-solid fa-box-open" }
+                        " Restore & open"
+                    }
+                } else {
+                    span { class: "pull-history-operation", title: "The log file was deleted; its pulls stay in the statistics",
+                        i { class: "fa-solid fa-file-circle-xmark" }
+                        " Log missing"
+                    }
                 }
             }
         }
 
+        if hidden {
+            div { class: "history-pick",
+                i { class: "fa-solid fa-eye-slash" }
+                " This run is hidden. It only shows while \"Show hidden\" (More filters) is on; its pulls still count in the statistics."
+            }
+        }
         if run.area_id == 0 {
             div { class: "history-pick",
                 i { class: "fa-solid fa-triangle-exclamation" }
@@ -243,7 +266,7 @@ pub fn RunDetailView(
                         let tags: Vec<String> = run.tags.iter().filter(|x| *x != t).cloned().collect();
                         let note = run.note.clone();
                         let save = save_meta.clone();
-                        move |_| save(RunMeta { tags: tags.clone(), note: note.clone() })
+                        move |_| save(RunMeta { tags: tags.clone(), note: note.clone(), hidden })
                     };
                     rsx! {
                         span { class: "run-tag", "{t}"
@@ -290,46 +313,10 @@ pub fn RunDetailView(
                 onchange: {
                     let tags = run.tags.clone();
                     let save = save_meta.clone();
-                    move |e| save(RunMeta { tags: tags.clone(), note: e.value().trim().chars().take(140).collect() })
+                    move |e| save(RunMeta { tags: tags.clone(), note: e.value().trim().chars().take(140).collect(), hidden })
                 },
             }
             span { class: "run-note-count", "{run.note.chars().count()}/140" }
-        }
-
-        div { class: "run-section",
-            h4 { "Bosses" }
-            div { class: "pull-history-table-wrap",
-                table { class: "pull-history-table",
-                    thead { tr { th { "#" } th { "Boss" } th { "Pulls" } th { "Result" } th { "Deaths" } } }
-                    tbody {
-                        for (i, b) in d.bosses.iter().enumerate() {
-                            tr { key: "{b.name}",
-                                td { "{i + 1}" }
-                                td { class: if b.skipped { "run-boss-skipped" } else { "" }, "{b.name}" }
-                                td { if b.skipped { "—" } else { "{b.pulls}" } }
-                                td {
-                                    if b.killed {
-                                        span { class: "pull-result kill", "Kill" }
-                                        if let Some(s) = b.kill_secs { span { class: "sub", " at {fmt_secs(s)}" } }
-                                    } else if b.skipped {
-                                        span { class: "run-boss-skipped", "Not pulled" }
-                                    } else {
-                                        span { class: "pull-result wipe",
-                                            match (b.best_hp_pct, b.phase.as_deref()) {
-                                                (Some(p), Some(ph)) => format!("Best {} % · {ph}", fmt_pct(p)),
-                                                (Some(p), None) => format!("Best {} %", fmt_pct(p)),
-                                                (None, Some(ph)) => format!("Best {ph}"),
-                                                (None, None) => "No kill".to_string(),
-                                            }
-                                        }
-                                    }
-                                }
-                                td { if b.skipped { "—" } else { "{b.deaths}" } }
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         div { class: "run-section",
@@ -343,11 +330,16 @@ pub fn RunDetailView(
                                 class: if p.name == run.character { "run-player-me" } else { "" },
                                 td {
                                     span { class: "pull-discipline",
-                                        if let Some(icon) = p.role_icon.as_deref().and_then(get_role_icon) {
-                                            img { class: "role-icon", src: *icon, alt: "" }
-                                        }
-                                        if let Some(icon) = p.discipline_icon.as_deref().and_then(get_class_icon) {
-                                            img { class: "discipline-icon", src: *icon, alt: "" }
+                                        // Every discipline played in the run, first played first
+                                        for spec in p.specs.iter() {
+                                            span { class: "run-player-spec", title: "{spec.discipline}",
+                                                if let Some(icon) = get_role_icon(&spec.role_icon) {
+                                                    img { class: "role-icon", src: *icon, alt: "" }
+                                                }
+                                                if let Some(icon) = get_class_icon(&spec.discipline_icon) {
+                                                    img { class: "discipline-icon", src: *icon, alt: "" }
+                                                }
+                                            }
                                         }
                                         "{p.name}"
                                     }
@@ -365,42 +357,99 @@ pub fn RunDetailView(
             }
         }
 
+        // Bosses in order; each one opens onto its pulls
         div { class: "run-section",
-            h4 { "Pulls" }
+            h4 { "Bosses" }
             div { class: "pull-history-table-wrap",
-                table { class: "pull-history-table",
-                    thead { tr { th { "Time" } th { "Boss" } th { "Result" } th { "Phase" } th { "Duration" } th { "Deaths" } th { "" } } }
+                table { class: "pull-history-table run-boss-table",
+                    thead { tr { th { "" } th { "#" } th { "Boss" } th { "Pulls" } th { "Result" } th { "Deaths" } } }
                     tbody {
-                        for row in d.pulls.iter() {
+                        for (i, b) in d.bosses.iter().enumerate() {
                             {
-                                let (label, class) = result_badge(row, eu);
-                                let encounter_id = row.encounter_id;
-                                let path = row.path.clone();
-                                let archived = row.archived.then(|| row.filename.clone());
+                                let is_open = !b.skipped && open_bosses.read().contains(&b.name);
+                                let toggle_name = b.name.clone();
+                                let pulls: Vec<(usize, &PullRow)> = d.pulls.iter().enumerate().filter(|(_, p)| p.boss == b.name).collect();
                                 rsx! {
-                                    tr { key: "{row.start_ms}",
-                                        td { {short_ts(&row.timestamp)} }
-                                        td { "{row.boss}" }
-                                        td { span { class: "{class}", "{label}" } }
-                                        td { {row.phase.clone().unwrap_or_else(|| "-".into())} }
-                                        td { {formatting::format_duration(row.duration_seconds)} }
-                                        td { "{row.deaths}" }
+                                    tr { key: "{b.name}",
+                                        class: if b.skipped { "run-boss-row" } else if is_open { "run-boss-row expandable open" } else { "run-boss-row expandable" },
+                                        onclick: move |_| {
+                                            let mut set = open_bosses.write();
+                                            if !set.remove(&toggle_name) {
+                                                set.insert(toggle_name.clone());
+                                            }
+                                        },
+                                        td { class: "run-boss-caret",
+                                            if !b.skipped {
+                                                i { class: if is_open { "fa-solid fa-chevron-down" } else { "fa-solid fa-chevron-right" } }
+                                            }
+                                        }
+                                        td { "{i + 1}" }
+                                        td { class: if b.skipped { "run-boss-skipped" } else { "run-boss-name" }, "{b.name}" }
+                                        td { if b.skipped { "—" } else { "{b.pulls}" } }
                                         td {
-                                            if let Some(path) = path {
-                                                button {
-                                                    class: "btn btn-xs btn-ghost",
-                                                    title: "Open this pull in Encounter Analysis",
-                                                    disabled: opener.busy(),
-                                                    onclick: move |_| opener.open(path.clone(), Some(encounter_id)),
-                                                    i { class: "fa-solid fa-eye" }
+                                            if b.killed {
+                                                span { class: "pull-result kill", "Kill" }
+                                                if let Some(s) = b.kill_secs { span { class: "sub", " at {fmt_secs(s)}" } }
+                                            } else if b.skipped {
+                                                span { class: "run-boss-skipped", "Not pulled" }
+                                            } else {
+                                                span { class: "pull-result wipe",
+                                                    match (b.best_hp_pct, b.phase.as_deref()) {
+                                                        (Some(p), Some(ph)) => format!("Best {} % · {ph}", fmt_pct(p)),
+                                                        (Some(p), None) => format!("Best {} %", fmt_pct(p)),
+                                                        (None, Some(ph)) => format!("Best {ph}"),
+                                                        (None, None) => "No kill".to_string(),
+                                                    }
                                                 }
-                                            } else if let Some(filename) = archived {
-                                                button {
-                                                    class: "btn btn-xs btn-ghost",
-                                                    title: "The log is archived: restore it, then open this pull in Encounter Analysis",
-                                                    disabled: opener.busy(),
-                                                    onclick: move |_| opener.restore_and_open(filename.clone(), Some(encounter_id)),
-                                                    i { class: "fa-solid fa-box-open" }
+                                            }
+                                        }
+                                        td { if b.skipped { "—" } else { "{b.deaths}" } }
+                                    }
+                                    if is_open {
+                                        tr { key: "{b.name}-pulls", class: "run-boss-pulls",
+                                            td { colspan: "6",
+                                                table { class: "pull-history-table run-pull-subtable",
+                                                    thead { tr { th { "Time" } th { "Result" } th { "Phase" } th { "Duration" } th { "Deaths" } th { "First death" } th { "" } } }
+                                                    tbody {
+                                                        for (idx, row) in pulls {
+                                                            {
+                                                                let (label, class) = result_badge(row, eu);
+                                                                let encounter_id = row.encounter_id;
+                                                                let path = row.path.clone();
+                                                                let archived = row.archived.then(|| row.filename.clone());
+                                                                let first = d.first_deaths.get(idx).cloned().flatten();
+                                                                rsx! {
+                                                                    tr { key: "{row.start_ms}",
+                                                                        td { {short_ts(&row.timestamp)} }
+                                                                        td { span { class: "{class}", "{label}" } }
+                                                                        td { {row.phase.clone().unwrap_or_else(|| "-".into())} }
+                                                                        td { {formatting::format_duration(row.duration_seconds)} }
+                                                                        td { "{row.deaths}" }
+                                                                        td { class: "run-first-death", {first.unwrap_or_else(|| "-".into())} }
+                                                                        td {
+                                                                            if let Some(path) = path {
+                                                                                button {
+                                                                                    class: "btn btn-xs btn-ghost",
+                                                                                    title: "Open this pull in Encounter Analysis",
+                                                                                    disabled: opener.busy(),
+                                                                                    onclick: move |_| opener.open(path.clone(), Some(encounter_id)),
+                                                                                    i { class: "fa-solid fa-magnifying-glass-chart" }
+                                                                                }
+                                                                            } else if let Some(filename) = archived {
+                                                                                button {
+                                                                                    class: "btn btn-xs btn-ghost",
+                                                                                    title: "The log is archived: restore it, then open this pull in Encounter Analysis",
+                                                                                    disabled: opener.busy(),
+                                                                                    onclick: move |_| opener.restore_and_open(filename.clone(), Some(encounter_id)),
+                                                                                    i { class: "fa-solid fa-box-open" }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
